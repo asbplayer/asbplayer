@@ -171,6 +171,7 @@ const useControlStyles = makeStyles<Theme>((theme) => ({
 const useProgressBarStyles = makeStyles<Theme>((theme) => ({
     root: {
         height: 10,
+        position: 'relative',
     },
     container: {
         height: 10,
@@ -189,6 +190,19 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         pointerEvents: 'auto',
         position: 'absolute',
         width: '100%',
+    },
+    preview: {
+        position: 'absolute',
+        width: 145,
+        height: 79,
+        backgroundColor: 'grey',
+        borderRadius: 5,
+        top: -90,
+    },
+    thumbnail: {
+        height: 79,
+        width: 145,
+        borderRadius: 5,
     },
     fillContainer: {
         background: 'rgba(30,30,30,0.7)',
@@ -260,13 +274,20 @@ function elementWidth(element: HTMLElement) {
 
 interface ProgressBarProps {
     onSeek: (progress: number) => void;
+    onSeekPreview: (progress: number) => string | null | undefined;
     value: number;
 }
 
-function ProgressBar({ onSeek, value }: ProgressBarProps) {
+// right now this takes VideoPlayer's handle seek function
+// so what I could do is have parent pass down 
+// Thumbnail preview is part of controls, so its controls job to render it
+function ProgressBar({ onSeek, onSeekPreview, value }: ProgressBarProps) {
     const classes = useProgressBarStyles();
     const [mouseOver, setMouseOver] = useState(false);
     const containerRef = useRef(null);
+    // x position of mouse
+    const [hoverX, setHoverX] = useState(0);
+    const [thumbnailSrc, setThumbnailSrc] = useState<string>('');
 
     const handleClick = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
@@ -279,7 +300,26 @@ function ProgressBar({ onSeek, value }: ProgressBarProps) {
         [onSeek]
     );
 
-    const handleMouseOver = useCallback(() => setMouseOver(true), []);
+    const handleMouseOver = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            setMouseOver(true);
+            const rect = e.currentTarget.getBoundingClientRect();
+            // Account for margins by subtracting 10 from left/right sides
+            const width = rect.right - rect.left - 20;
+            const progress = Math.min(1, Math.max(0, (e.pageX - rect.left - 10) / width));
+            const positionInPixels = progress * width;
+            // subtract to center the mouse in the center of the preview box
+            setHoverX((positionInPixels - (145 / 2)) + 10);
+            const previewSrc = onSeekPreview(progress);
+            if (previewSrc) {
+                setThumbnailSrc(previewSrc);
+            }
+        },
+        [onSeekPreview]
+    );
+
+
+    // const handleMouseOver = useCallback(() => setMouseOver(true), []);
     const handleMouseOut = useCallback(() => setMouseOver(false), []);
     const progressWidth =
         Number.isFinite(value) && containerRef.current ? (elementWidth(containerRef.current) * value) / 100 : 0;
@@ -292,6 +332,12 @@ function ProgressBar({ onSeek, value }: ProgressBarProps) {
 
     return (
         <div className={classes.root}>
+
+            {mouseOver && 
+            <div style={{left: hoverX}} className={classes.preview}>
+                <img src={thumbnailSrc} className={classes.thumbnail} />
+            </div>
+            }
             <div ref={containerRef} className={classes.container}>
                 <div className={fillContainerClassName}>
                     <div className={classes.fill} style={fillStyle}></div>
@@ -303,7 +349,8 @@ function ProgressBar({ onSeek, value }: ProgressBarProps) {
             <div
                 className={classes.mouseEventListener}
                 onClick={handleClick}
-                onMouseOver={handleMouseOver}
+                // onMouseOver={handleMouseOver}
+                onMouseMove={handleMouseOver}
                 onMouseOut={handleMouseOut}
             ></div>
         </div>
@@ -484,6 +531,7 @@ interface ControlsProps {
     playbackRateEnabled?: boolean;
     onAudioTrackSelected: (id: string) => void;
     onSeek: (progress: number) => void;
+    onSeekPreview: (progress: number) => string | undefined | null;
     mousePositionRef: MutableRefObject<Point | undefined>;
     onShow?: (show: boolean) => void;
     onPause: () => void;
@@ -540,6 +588,7 @@ export default function Controls({
     playbackRateEnabled,
     onAudioTrackSelected,
     onSeek,
+    onSeekPreview,
     mousePositionRef,
     onShow,
     onPause,
@@ -909,7 +958,7 @@ export default function Controls({
             >
                 <Fade in={show} timeout={200}>
                     <div className={classes.subContainer}>
-                        <ProgressBar onSeek={handleSeek} value={progress * 100} />
+                        <ProgressBar onSeekPreview={onSeekPreview} onSeek={handleSeek} value={progress * 100} />
                         {!hideToolbar && (
                             <Grid container className={classes.gridContainer} direction="row" wrap="nowrap">
                                 <Grid item>
