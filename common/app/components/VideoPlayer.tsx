@@ -275,8 +275,6 @@ export interface SeekRequest {
     timestamp: number;
 }
 
-// 行ける！
-// have access to videoFile
 interface Props {
     settings: AsbplayerSettings;
     extension: ChromeExtension;
@@ -352,8 +350,7 @@ export default function VideoPlayer({
     const { t } = useTranslation();
     const poppingInRef = useRef<boolean>(undefined);
     const videoRef = useRef<ExperimentalHTMLVideoElement>(undefined);
-    // this one is for the seek preview thumbnail
-    const hiddenVideoRef = useRef<HTMLVideoElement>(null);
+    const hiddenVideoRef = useRef<HTMLVideoElement>(null); // seek preview thumbnail
     const [windowWidth, windowHeight] = useWindowSize(true);
     if (videoRef.current) {
         videoRef.current.width = windowWidth;
@@ -414,6 +411,8 @@ export default function VideoPlayer({
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
+    const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 4s
+    const isGeneratingRef = useRef(false);
 
     useEffect(() => {
         setMiscSettings(settings);
@@ -735,33 +734,46 @@ export default function VideoPlayer({
         [length, clock, playerChannel]
     );
 
-    // so what do I want to return here? Remember that controls should only render the image
     const handleSeekPreview = useCallback(
-        (progress: number) => {
+        (progress: number): string | undefined => {
             if (!Number.isFinite(length)) {
                 return;
             }
 
             if (!hiddenVideoRef.current) {
-                return null;
+                return;
             }
 
             const time = progress * length;
             const video = hiddenVideoRef.current;
+
+            const thumbnailKey = Math.floor(((time / 1000) / 4));
+
+            // cached url found, return url
+            if (thumbnailsRef.current.has(thumbnailKey)) {
+                return (thumbnailsRef.current.get(thumbnailKey));
+            }
+
+            if (isGeneratingRef.current) return;
+            // if not in cache, generate new one in the background
+            isGeneratingRef.current = true;
+
+            const onSeeked = () => {                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth * 0.7;
+                canvas.height = video.videoHeight * 0.7;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+                thumbnailsRef.current.set(thumbnailKey, thumbnailUrl);
+                isGeneratingRef.current = false;
+            };
+            
+            video.addEventListener('seeked', onSeeked, { once: true });
             video.currentTime = time / 1000;
-
-            // this kinda works, but its buggy, and not the most accurate sometimes
-            // second best thing to do is to generate like a map or something that keeps track of every frame
-            // frame and pregenerates
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-
-            return canvas.toDataURL('image/png');
-            // console.log(time / 1000);
+            
+            return;
         },
         [length, clock]
     );

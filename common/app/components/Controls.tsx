@@ -274,13 +274,10 @@ function elementWidth(element: HTMLElement) {
 
 interface ProgressBarProps {
     onSeek: (progress: number) => void;
-    onSeekPreview: (progress: number) => string | null | undefined;
+    onSeekPreview: (progress: number) => string | undefined;
     value: number;
 }
 
-// right now this takes VideoPlayer's handle seek function
-// so what I could do is have parent pass down 
-// Thumbnail preview is part of controls, so its controls job to render it
 function ProgressBar({ onSeek, onSeekPreview, value }: ProgressBarProps) {
     const classes = useProgressBarStyles();
     const [mouseOver, setMouseOver] = useState(false);
@@ -318,8 +315,6 @@ function ProgressBar({ onSeek, onSeekPreview, value }: ProgressBarProps) {
         [onSeekPreview]
     );
 
-
-    // const handleMouseOver = useCallback(() => setMouseOver(true), []);
     const handleMouseOut = useCallback(() => setMouseOver(false), []);
     const progressWidth =
         Number.isFinite(value) && containerRef.current ? (elementWidth(containerRef.current) * value) / 100 : 0;
@@ -349,7 +344,6 @@ function ProgressBar({ onSeek, onSeekPreview, value }: ProgressBarProps) {
             <div
                 className={classes.mouseEventListener}
                 onClick={handleClick}
-                // onMouseOver={handleMouseOver}
                 onMouseMove={handleMouseOver}
                 onMouseOut={handleMouseOut}
             ></div>
@@ -531,7 +525,7 @@ interface ControlsProps {
     playbackRateEnabled?: boolean;
     onAudioTrackSelected: (id: string) => void;
     onSeek: (progress: number) => void;
-    onSeekPreview: (progress: number) => string | undefined | null;
+    onSeekPreview: (progress: number) => string | undefined;
     mousePositionRef: MutableRefObject<Point | undefined>;
     onShow?: (show: boolean) => void;
     onPause: () => void;
