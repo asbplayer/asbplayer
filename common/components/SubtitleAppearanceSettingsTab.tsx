@@ -168,6 +168,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
         subtitleCustomStyles,
         subtitleBlur,
         subtitleAlignment,
+        subtitleAboveThumbnail
     } = textSubtitleSettingsForTrack(settings, selectedSubtitleAppearanceTrack);
     const handleSubtitleTextSettingChanged = useCallback(
         <K extends keyof TextSubtitleSettings>(key: K, value: TextSubtitleSettings[K]) => {
@@ -491,6 +492,40 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                             label={t('settings.subtitleAlignmentTop')}
                         />
                     </RadioGroup>
+                </FormControl>
+            )}
+
+            {subtitleAboveThumbnail !== undefined && (
+                <FormControl>
+                    <FormLabel component="legend">{t('settings.subtitlePositionRelativeToThumbnail')}</FormLabel>
+                        <RadioGroup row>
+                            <LabelWithHoverEffect
+                                control={
+                                    <Radio
+                                        checked={!subtitleAboveThumbnail}
+                                        value={false}
+                                        onChange={(event) =>
+                                            event.target.checked &&
+                                            handleSubtitleTextSettingChanged('subtitleAboveThumbnail', false)
+                                        }
+                                    />
+                                }
+                                label={t('settings.subtitleBehindThumbnail')}
+                            />
+                            <LabelWithHoverEffect
+                                control={
+                                    <Radio
+                                        checked={subtitleAboveThumbnail}
+                                        value={true}
+                                        onChange={(event) =>
+                                            event.target.checked &&
+                                            handleSubtitleTextSettingChanged('subtitleAboveThumbnail', true)
+                                        }
+                                    />
+                                }
+                                label={t('settings.subtitleInFrontOfThumbnail')}
+                            />
+                        </RadioGroup>
                 </FormControl>
             )}
 

@@ -21,6 +21,7 @@ import {
     AnkiSettings,
     AsbplayerSettings,
     SubtitleAlignment,
+    SubtitleAboveThumbnail,
     changeForTextSubtitleSetting,
     textSubtitleSettingsForTrack,
     PauseOnHoverMode,
@@ -245,16 +246,16 @@ const useSubtitleContainerStyles = makeStyles(() => ({
 interface SubtitleContainerProps {
     subtitleSettings: SubtitleSettings;
     alignment: SubtitleAlignment;
+    subtitleZIndex: SubtitleAboveThumbnail;
     baseOffset: number;
     children: React.ReactNode;
 }
 
 const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProps>(function SubtitleContainer(
-    { subtitleSettings, alignment, baseOffset, children }: SubtitleContainerProps,
+    { subtitleSettings, alignment, baseOffset, children, subtitleZIndex }: SubtitleContainerProps,
     ref
 ) {
     const classes = useSubtitleContainerStyles();
-
     return (
         <div
             ref={ref}
@@ -264,6 +265,7 @@ const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProp
                     ? { bottom: subtitleSettings.subtitlePositionOffset + baseOffset }
                     : { top: subtitleSettings.topSubtitlePositionOffset + baseOffset }),
                 ...(subtitleSettings.subtitlesWidth === -1 ? {} : { width: `${subtitleSettings.subtitlesWidth}%` }),
+                zIndex: subtitleZIndex ? 12 : 0,
             }}
         >
             {children}
@@ -412,7 +414,7 @@ export default function VideoPlayer({
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
     const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 4s
-    const isGeneratingRef = useRef(false);
+    const isGeneratingRef = useRef(false); // avoid subsequent calls to generate thumbnail while generating one
 
     useEffect(() => {
         setMiscSettings(settings);
@@ -1861,7 +1863,7 @@ export default function VideoPlayer({
                 ref={hiddenVideoRef}
             />
             {topSubtitleElements.length > 0 && (
-                <SubtitleContainer alignment={'top'} subtitleSettings={subtitleSettings} baseOffset={0}>
+                <SubtitleContainer alignment={'top'} subtitleSettings={subtitleSettings} baseOffset={0} subtitleZIndex={settings.subtitleAboveThumbnail}>
                     {topSubtitleElements}
                 </SubtitleContainer>
             )}
@@ -1871,6 +1873,7 @@ export default function VideoPlayer({
                     alignment={'bottom'}
                     subtitleSettings={subtitleSettings}
                     baseOffset={baseBottomSubtitleOffset}
+                    subtitleZIndex={settings.subtitleAboveThumbnail}
                 >
                     {bottomSubtitleElements}
                 </SubtitleContainer>

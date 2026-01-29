@@ -198,6 +198,7 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         backgroundColor: 'grey',
         borderRadius: 5,
         top: -90,
+        zIndex: -1, 
     },
     thumbnail: {
         height: 79,
