@@ -578,7 +578,6 @@ export async function ensureStoragePersisted(): Promise<void> {
     const persisted = await navigator.storage.persist();
     if (!persisted) console.warn('Storage could not be persisted, data may be cleared by the browser');
 }
-<<<<<<< HEAD
 
 type Block = {
     pos: number[];
@@ -715,5 +714,3 @@ export class AsyncSemaphore {
         }
     }
 }
-=======
->>>>>>> a52e43ba (remove merge header)
