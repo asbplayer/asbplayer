@@ -21,7 +21,6 @@ import {
     AnkiSettings,
     AsbplayerSettings,
     SubtitleAlignment,
-    SubtitleAboveThumbnail,
     changeForTextSubtitleSetting,
     textSubtitleSettingsForTrack,
     PauseOnHoverMode,
@@ -246,7 +245,7 @@ const useSubtitleContainerStyles = makeStyles(() => ({
 interface SubtitleContainerProps {
     subtitleSettings: SubtitleSettings;
     alignment: SubtitleAlignment;
-    subtitleZIndex: SubtitleAboveThumbnail;
+    subtitleZIndex: boolean;
     baseOffset: number;
     children: React.ReactNode;
 }
@@ -1863,7 +1862,12 @@ export default function VideoPlayer({
                 ref={hiddenVideoRef}
             />
             {topSubtitleElements.length > 0 && (
-                <SubtitleContainer alignment={'top'} subtitleSettings={subtitleSettings} baseOffset={0} subtitleZIndex={settings.subtitleAboveThumbnail}>
+                <SubtitleContainer 
+                    alignment={'top'} 
+                    subtitleSettings={subtitleSettings}
+                    baseOffset={0}
+                    subtitleZIndex={settings.subtitleAboveThumbnail}
+                >
                     {topSubtitleElements}
                 </SubtitleContainer>
             )}
