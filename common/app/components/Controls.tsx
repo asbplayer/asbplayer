@@ -275,7 +275,7 @@ function elementWidth(element: HTMLElement) {
 
 interface ProgressBarProps {
     onSeek: (progress: number) => void;
-    onSeekPreview: (progress: number) => string | undefined;
+    onSeekPreview?: (progress: number) => string | undefined;
     value: number;
 }
 
@@ -301,6 +301,7 @@ function ProgressBar({ onSeek, onSeekPreview, value }: ProgressBarProps) {
     const handleMouseOver = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             setMouseOver(true);
+            if (onSeekPreview == undefined) return;
             const rect = e.currentTarget.getBoundingClientRect();
             // Account for margins by subtracting 10 from left/right sides
             const width = rect.right - rect.left - 20;
@@ -308,6 +309,7 @@ function ProgressBar({ onSeek, onSeekPreview, value }: ProgressBarProps) {
             const positionInPixels = progress * width;
             // subtract to center the mouse in the center of the preview box
             setHoverX((positionInPixels - (145 / 2)) + 10);
+
             const previewSrc = onSeekPreview(progress);
             if (previewSrc) {
                 setThumbnailSrc(previewSrc);
@@ -526,7 +528,7 @@ interface ControlsProps {
     playbackRateEnabled?: boolean;
     onAudioTrackSelected: (id: string) => void;
     onSeek: (progress: number) => void;
-    onSeekPreview: (progress: number) => string | undefined;
+    onSeekPreview?: (progress: number) => string | undefined;
     mousePositionRef: MutableRefObject<Point | undefined>;
     onShow?: (show: boolean) => void;
     onPause: () => void;
