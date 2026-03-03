@@ -39,6 +39,7 @@ import {
     ensureStoragePersisted,
     subtitleTimestampWithDelay,
 } from '@project/common/util';
+import MemoryTester from '@project/common/components/MemoryTester';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken } from '@project/common/subtitle-annotations';
 import Clock from '../services/clock';
@@ -1860,6 +1861,8 @@ export default function VideoPlayer({
             {/* Optional blur mask overlay; constrained to the video bounds within the player container */}
             {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
             {/* this video is for getting the seek preview */}
+            <MemoryTester />
+            {/* this video is for getting the seek preview below */}
             <video
                 src={videoFile}
                 muted
