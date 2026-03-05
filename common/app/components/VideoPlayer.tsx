@@ -425,6 +425,20 @@ export default function VideoPlayer({
     }, [settings]);
 
     useEffect(() => {
+        const probeMemoryUsage = async () => {
+            try {
+                if (crossOriginIsolated && 'measureUserAgentSpecificMemory' in performance) {
+                    const memSample = await (performance as any).measureUserAgentSpecificMemory();
+                    console.log(memSample);
+                }
+            } catch (exception) {
+                console.error(exception);
+            }
+        };
+        probeMemoryUsage();
+    }, []);
+
+    useEffect(() => {
         setSubtitleAlignments(allSubtitleAlignments(subtitleSettings));
         setBottomSubtitlePositionOffset(subtitleSettings.subtitlePositionOffset);
         setTopSubtitlePositionOffset(subtitleSettings.topSubtitlePositionOffset);
@@ -1862,6 +1876,7 @@ export default function VideoPlayer({
             {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
             {/* this video is for getting the seek preview */}
             <MemoryTester />
+            {/* <MemoryTester /> */}
             {/* this video is for getting the seek preview below */}
             <video
                 src={videoFile}
