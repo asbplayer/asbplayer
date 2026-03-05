@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-// tracks memory usage every 500ms (only chrome based browsers)
+// this only captures the heap, not all the dom stuff, use measureUserAgentSpecificMemory() instead
 const MemoryMonitor = () => {
+
     type MemoryState = {
         count: number;
         currentUsage: number; // memory size currently using
@@ -33,23 +34,34 @@ const MemoryMonitor = () => {
                         totalAllocated: totalAllocated, 
                         totalUsed: totalUsed,
                         limit: limit, 
-                        average: average};
-                    }
-                )
+                        average: average
+                    };
+                })
             }
         }, 500);
 
         return () => clearInterval(probeMemory);
     }, []);
 
+    useEffect(() => {
+
+        const probeMemoryUsage = async () => {
+            if (crossOriginIsolated && ('measureUserAgentSpecificMemory' in performance)) {
+                const measure = performance.measureUserAgentSpecificMemory as () => Promise<{
+                    bytes: number,
+                    breakdown: []
+                }>
+                const memSample = await measure();
+                console.log(memSample);
+            }
+        }
+
+    })
+
     if (!memory) return <div>Memory API not supported (use Chromium based browser)</div>
 
     return (
         <div style={{ position: "fixed", bottom: 10, right: 10, background: "#000", color: "#0f0", padding: 8, fontSize: 12, zIndex: 999 }}>
-            <div>Current: {memory.currentUsage.toFixed(2)} MB</div>
-            <div>Average: {memory.average.toFixed(2)} MB</div>
-            <div>Total: {memory.totalAllocated.toFixed(2)} MB</div>
-            <div>Limit: {memory.limit.toFixed(2)} MB</div>
         </div>
     );
 };
