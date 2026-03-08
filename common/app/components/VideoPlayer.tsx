@@ -39,7 +39,6 @@ import {
     ensureStoragePersisted,
     subtitleTimestampWithDelay,
 } from '@project/common/util';
-import MemoryTester from '@project/common/components/MemoryTester';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken } from '@project/common/subtitle-annotations';
 import Clock from '../services/clock';
