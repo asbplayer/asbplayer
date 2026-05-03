@@ -4,7 +4,10 @@ import {
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
     DictionaryGetAllTokensMessage,
+    DictionaryGetRecordsMessage,
     DictionaryImportRecordLocalBulkMessage,
+    DictionaryDeleteRecordsMessage,
+    DictionaryUpdateRecordsMessage,
     ExtensionToAsbPlayerCommand,
     Message,
     ExtensionToVideoCommand,
@@ -89,6 +92,25 @@ export default class DictionaryHandler {
                 const message = command.message as DictionaryImportRecordLocalBulkMessage;
                 this.dictionaryDB
                     .importRecordLocalBulk(message.records, message.profiles)
+                    .then((result) => sendResponse(result));
+                return true;
+            }
+            case 'dictionary-get-records': {
+                const message = command.message as DictionaryGetRecordsMessage;
+                this.dictionaryDB.getRecords(message.profile, message.track).then((result) => sendResponse(result));
+                return true;
+            }
+            case 'dictionary-update-records': {
+                const message = command.message as DictionaryUpdateRecordsMessage;
+                this.dictionaryDB
+                    .updateRecords(message.profile, message.updates, message.applyStates)
+                    .then((result) => sendResponse(result));
+                return true;
+            }
+            case 'dictionary-delete-records': {
+                const message = command.message as DictionaryDeleteRecordsMessage;
+                this.dictionaryDB
+                    .deleteRecords(message.profile, message.tokenKeys)
                     .then((result) => sendResponse(result));
                 return true;
             }

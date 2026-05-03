@@ -30,7 +30,12 @@ import {
     BrowserFeatures,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';
-import { DictionaryLocalTokenInput, DictionaryTokenRecord } from '../dictionary-db/dictionary-db';
+import {
+    DictionaryLocalTokenInput,
+    DictionaryTokenKey,
+    DictionaryTokenRecord,
+    DictionaryRecordUpdateInput,
+} from '../dictionary-db/dictionary-db';
 
 export interface Message {
     readonly command: string;
@@ -849,6 +854,25 @@ export interface DictionaryImportRecordLocalBulkMessage extends MessageWithId {
     readonly command: 'dictionary-import-record-local-bulk';
     readonly records: Partial<DictionaryTokenRecord>[];
     readonly profiles: string[];
+}
+
+export interface DictionaryGetRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-get-records';
+    readonly profile: string | undefined;
+    readonly track: number | undefined;
+}
+
+export interface DictionaryUpdateRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-update-records';
+    readonly profile: string | undefined;
+    readonly updates: DictionaryRecordUpdateInput[];
+    readonly applyStates: ApplyStrategy;
+}
+
+export interface DictionaryDeleteRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-delete-records';
+    readonly profile: string | undefined;
+    readonly tokenKeys: DictionaryTokenKey[];
 }
 
 export interface DictionaryBuildAnkiCacheMessage extends MessageWithId {

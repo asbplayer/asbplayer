@@ -5,7 +5,9 @@ import {
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
     DictionaryGetAllTokensMessage,
+    DictionaryGetRecordsMessage,
     DictionaryDBCommand,
+    DictionaryDeleteRecordsMessage,
     DictionaryDeleteProfileMessage,
     DictionaryDeleteRecordLocalBulkMessage,
     DictionaryExportRecordLocalBulkMessage,
@@ -18,12 +20,22 @@ import {
     DictionaryRequestStatisticsSeekMessage,
     DictionarySaveRecordLocalBulkMessage,
     DictionaryStatisticsMessage,
+    DictionaryUpdateRecordsMessage,
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
     Message,
 } from '@project/common';
 import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import { DictionaryLocalTokenInput, DictionaryStorage, DictionaryTokenRecord } from '@project/common/dictionary-db';
+import {
+    DictionaryLocalTokenInput,
+    DictionaryStorage,
+    DictionaryTokenKey,
+    DictionaryTokenRecord,
+    DictionaryRecordDeleteResult,
+    DictionaryRecordUpdateInput,
+    DictionaryRecordUpdateResult,
+    DictionaryRecordsResult,
+} from '@project/common/dictionary-db';
 import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -171,6 +183,50 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         const message: DictionaryDBCommand<DictionaryImportRecordLocalBulkMessage> = {
             sender: 'asbplayer-dictionary',
             message: { command: 'dictionary-import-record-local-bulk', messageId: uuidv4(), records, profiles },
+        };
+        return browser.runtime.sendMessage(message);
+    }
+
+    getRecords(profile: string | undefined, track: number | undefined): Promise<DictionaryRecordsResult> {
+        const message: DictionaryDBCommand<DictionaryGetRecordsMessage> = {
+            sender: 'asbplayer-dictionary',
+            message: {
+                command: 'dictionary-get-records',
+                messageId: uuidv4(),
+                profile,
+                track,
+            },
+        };
+        return browser.runtime.sendMessage(message);
+    }
+
+    updateRecords(
+        profile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ): Promise<DictionaryRecordUpdateResult> {
+        const message: DictionaryDBCommand<DictionaryUpdateRecordsMessage> = {
+            sender: 'asbplayer-dictionary',
+            message: {
+                command: 'dictionary-update-records',
+                profile,
+                updates,
+                applyStates,
+                messageId: uuidv4(),
+            },
+        };
+        return browser.runtime.sendMessage(message);
+    }
+
+    deleteRecords(profile: string | undefined, tokenKeys: DictionaryTokenKey[]): Promise<DictionaryRecordDeleteResult> {
+        const message: DictionaryDBCommand<DictionaryDeleteRecordsMessage> = {
+            sender: 'asbplayer-dictionary',
+            message: {
+                command: 'dictionary-delete-records',
+                profile,
+                tokenKeys,
+                messageId: uuidv4(),
+            },
         };
         return browser.runtime.sendMessage(message);
     }

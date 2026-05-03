@@ -36,13 +36,16 @@ import {
     GetGlobalStateMessage,
     DictionaryBuildAnkiCacheMessage,
     DictionaryGetAllTokensMessage,
+    DictionaryGetRecordsMessage,
     DictionaryGetBulkMessage,
     DictionaryGetByLemmaBulkMessage,
     DictionarySaveRecordLocalBulkMessage,
     DictionaryDeleteRecordLocalBulkMessage,
+    DictionaryDeleteRecordsMessage,
     DictionaryDeleteProfileMessage,
     DictionaryExportRecordLocalBulkMessage,
     DictionaryImportRecordLocalBulkMessage,
+    DictionaryUpdateRecordsMessage,
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
     SaveTokenLocalFromAppMessage,
@@ -53,6 +56,7 @@ import {
 import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import {
     DictionaryLocalTokenInput,
+    DictionaryTokenKey,
     DictionaryTokenRecord,
     DictionaryExportRecordLocalResult,
     DictionaryImportRecordLocalResult,
@@ -61,6 +65,10 @@ import {
     TokenResults,
     DictionaryDeleteRecordLocalResult,
     DictionaryDeleteProfileResult,
+    DictionaryRecordDeleteResult,
+    DictionaryRecordUpdateInput,
+    DictionaryRecordUpdateResult,
+    DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
 import {
     ApplyStrategy,
@@ -181,6 +189,10 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsDictionaryBrowser() {
+        return this.installed && gte(this.version, '1.16.0');
     }
 
     get supportsDictionaryStatistics() {
@@ -777,6 +789,62 @@ export default class ChromeExtension {
         };
         window.postMessage(command);
         return await this._createResponsePromise(messageId);
+    }
+
+    async dictionaryGetRecords(
+        profile: string | undefined,
+        track: number | undefined
+    ): Promise<DictionaryRecordsResult> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryGetRecordsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-get-records',
+                profile,
+                track,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
+    }
+
+    async dictionaryUpdateRecords(
+        profile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ): Promise<DictionaryRecordUpdateResult> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryUpdateRecordsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-update-records',
+                profile,
+                updates,
+                applyStates,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
+    }
+
+    async dictionaryDeleteRecords(
+        profile: string | undefined,
+        tokenKeys: DictionaryTokenKey[]
+    ): Promise<DictionaryRecordDeleteResult> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryDeleteRecordsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-delete-records',
+                profile,
+                tokenKeys,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
     }
 
     buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {

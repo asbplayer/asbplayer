@@ -66,6 +66,7 @@ import {
 } from '../util';
 import DictionaryImport from './DictionaryImport';
 import { applyTokenStyle, InternalToken } from '../subtitle-annotations';
+import WordBrowserDialog from './WordBrowserDialog';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
@@ -172,6 +173,7 @@ interface Props {
     settings: AsbplayerSettings;
     dictionaryProvider: DictionaryProvider;
     extensionInstalled: boolean;
+    supportsDictionaryBrowser: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -185,6 +187,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     dictionaryProvider,
     settings,
     extensionInstalled,
+    supportsDictionaryBrowser,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
     onSettingChanged,
@@ -355,6 +358,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     }, [dictionaryProvider, setBuildAnkiCacheState]);
 
     const [dictionaryImportOpen, setDictionaryImportOpen] = useState<boolean>(false);
+    const [wordBrowserOpen, setWordBrowserOpen] = useState<boolean>(false);
     const ankiSectionRef = useRef<HTMLDivElement | null>(null);
     const handleAnkiHelperTextClicked = () => ankiSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     const subtitleStyles = useMemo(
@@ -372,6 +376,13 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 dictionaryProvider={dictionaryProvider}
                 activeProfile={activeProfile}
                 profiles={profiles}
+            />
+            <WordBrowserDialog
+                open={wordBrowserOpen}
+                dictionaryProvider={dictionaryProvider}
+                activeProfile={activeProfile}
+                dictionaryTracks={dictionaryTracks}
+                onClose={() => setWordBrowserOpen(false)}
             />
             <Stack spacing={1}>
                 {(dictionaryYomitanUrlError || dictionaryYomitanMecabError || !extensionInstalled) && (
@@ -399,63 +410,81 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Stack>
                     </Alert>
                 )}
-                <div>
-                    <SettingsSection>{t('settings.dictionaryLocalWordDatabase')}</SettingsSection>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            style={{ flex: 1 }}
-                            onClick={() => setDictionaryImportOpen(true)}
-                        >
-                            {t('action.importDictionaryLocalRecords')}
-                        </Button>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            style={{ flex: 1 }}
-                            onClick={handleExportDictionaryDB}
-                            loading={exportingDictionaryDB}
-                        >
-                            {t('action.exportDictionaryLocalRecords')}
-                        </Button>
-                    </Stack>
-                    <Typography variant="caption" color="textSecondary">
-                        <Trans
-                            i18nKey={'settings.annotationLocalAnkiHelperText'}
-                            components={[<Link key={0} onClick={onViewKeyboardShortcuts} sx={{ cursor: 'pointer' }} />]}
-                        />
-                    </Typography>
-                </div>
+                <SettingsSection>{t('settings.manageWords')}</SettingsSection>
                 <Stack spacing={1}>
-                    <SettingsSection>{t('settings.dictionaryAnkiWordDatabase')}</SettingsSection>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        style={{ width: '100%' }}
-                        onClick={handleBuildAnkiCache}
-                        loading={buildingAnkiCache}
-                        disabled={buildAnkiCacheDisabled}
-                        startIcon={<RefreshIcon />}
-                    >
-                        {t('settings.buildAnkiCache')}
-                    </Button>
-                    <Typography variant="caption" color="textSecondary">
-                        {t('settings.buildAnkiCacheHelperText')}{' '}
-                        {!ankiFieldsEnabled && (
+                    {supportsDictionaryBrowser && (
+                        <Button variant="contained" color="primary" onClick={() => setWordBrowserOpen(true)}>
+                            {t('settings.dictionaryBrowser.title')}
+                        </Button>
+                    )}
+                    <div>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
+                            {t('settings.dictionaryLocalWordDatabase')}
+                        </Typography>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                style={{ flex: 1 }}
+                                onClick={() => setDictionaryImportOpen(true)}
+                            >
+                                {t('action.importDictionaryLocalRecords')}
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                style={{ flex: 1 }}
+                                onClick={handleExportDictionaryDB}
+                                loading={exportingDictionaryDB}
+                            >
+                                {t('action.exportDictionaryLocalRecords')}
+                            </Button>
+                        </Stack>
+                        <Typography variant="caption" color="textSecondary">
                             <Trans
-                                i18nKey={'settings.buildAnkiCacheAnkiEnableHelperText'}
+                                i18nKey={'settings.annotationLocalAnkiHelperText'}
                                 components={[
-                                    <Link key={0} onClick={handleAnkiHelperTextClicked} sx={{ cursor: 'pointer' }} />,
+                                    <Link key={0} onClick={onViewKeyboardShortcuts} sx={{ cursor: 'pointer' }} />,
                                 ]}
                             />
+                        </Typography>
+                    </div>
+                    <Stack spacing={1}>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
+                            {t('settings.dictionaryAnkiWordDatabase')}
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            style={{ width: '100%' }}
+                            onClick={handleBuildAnkiCache}
+                            loading={buildingAnkiCache}
+                            disabled={buildAnkiCacheDisabled}
+                            startIcon={<RefreshIcon />}
+                        >
+                            {t('settings.buildAnkiCache')}
+                        </Button>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.buildAnkiCacheHelperText')}{' '}
+                            {!ankiFieldsEnabled && (
+                                <Trans
+                                    i18nKey={'settings.buildAnkiCacheAnkiEnableHelperText'}
+                                    components={[
+                                        <Link
+                                            key={0}
+                                            onClick={handleAnkiHelperTextClicked}
+                                            sx={{ cursor: 'pointer' }}
+                                        />,
+                                    ]}
+                                />
+                            )}
+                        </Typography>
+                        {buildMessage && buildMessageSeverity && (
+                            <div style={{ marginTop: 8 }}>
+                                <Alert severity={buildMessageSeverity}>{buildMessage}</Alert>
+                            </div>
                         )}
-                    </Typography>
-                    {buildMessage && buildMessageSeverity && (
-                        <div style={{ marginTop: 8 }}>
-                            <Alert severity={buildMessageSeverity}>{buildMessage}</Alert>
-                        </div>
-                    )}
+                    </Stack>
                 </Stack>
                 <SettingsSection docs="docs/reference/settings#annotation">{t('settings.annotation')}</SettingsSection>
                 <SettingsTextField

@@ -18,7 +18,12 @@ import {
     DictionaryDB,
     DictionaryLocalTokenInput,
     DictionaryStorage,
+    DictionaryTokenKey,
     DictionaryTokenRecord,
+    DictionaryRecordDeleteResult,
+    DictionaryRecordUpdateInput,
+    DictionaryRecordUpdateResult,
+    DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
 import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
 
@@ -92,6 +97,22 @@ export class LocalDictionaryStorage implements DictionaryStorage {
 
     importRecordLocalBulk(records: Partial<DictionaryTokenRecord>[], profiles: string[]) {
         return this.dictionaryDB.importRecordLocalBulk(records, profiles);
+    }
+
+    getRecords(profile: string | undefined, track: number | undefined): Promise<DictionaryRecordsResult> {
+        return this.dictionaryDB.getRecords(profile, track);
+    }
+
+    updateRecords(
+        profile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ): Promise<DictionaryRecordUpdateResult> {
+        return this.dictionaryDB.updateRecords(profile, updates, applyStates);
+    }
+
+    deleteRecords(profile: string | undefined, tokenKeys: DictionaryTokenKey[]): Promise<DictionaryRecordDeleteResult> {
+        return this.dictionaryDB.deleteRecords(profile, tokenKeys);
     }
 
     buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {

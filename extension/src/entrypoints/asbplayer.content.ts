@@ -24,6 +24,9 @@ import type {
     SetGlobalStateMessage,
     SetSettingsMessage,
     ExtensionVersionMessage,
+    DictionaryUpdateRecordsMessage,
+    DictionaryDeleteRecordsMessage,
+    DictionaryGetRecordsMessage,
 } from '@project/common';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
@@ -168,6 +171,30 @@ export default defineContentScript({
                         sendMessageToPlayer({
                             response: await dictionaryStorage.importRecordLocalBulk(message.records, message.profiles),
                             messageId: message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-get-records': {
+                        const { profile, track } = command.message as DictionaryGetRecordsMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.getRecords(profile, track),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-update-records': {
+                        const { profile, updates, applyStates } = command.message as DictionaryUpdateRecordsMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.updateRecords(profile, updates, applyStates),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-delete-records': {
+                        const { profile, tokenKeys } = command.message as DictionaryDeleteRecordsMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.deleteRecords(profile, tokenKeys),
+                            messageId: command.message.messageId,
                         });
                         break;
                     }

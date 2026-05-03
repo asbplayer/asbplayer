@@ -386,7 +386,7 @@ export class Yomitan {
         try {
             lemmas = this.lemmatizeCache.get(token);
             if (lemmas) return lemmas;
-            if (now <= this.lastCancelledAt) return;
+            if (now < this.lastCancelledAt) return;
             const entries: TermDictionaryEntry[] = (
                 await this._executeAction('termEntries', { term: token }, yomitanUrl)
             ).dictionaryEntries;
@@ -418,7 +418,7 @@ export class Yomitan {
                 const semaphoreId = await this.asyncSemaphore.acquire();
                 try {
                     if (this.frequencyCache.has(token)) return;
-                    if (now <= this.lastCancelledAt) {
+                    if (now < this.lastCancelledAt) {
                         this.tokensWereModified!(token); // May need to reprocess with the new Yomitan instance
                         return;
                     }
@@ -445,7 +445,7 @@ export class Yomitan {
         try {
             const freq = this.frequencyCache.get(token);
             if (freq !== undefined) return freq;
-            if (now <= this.lastCancelledAt) return;
+            if (now < this.lastCancelledAt) return;
             const entries: TermDictionaryEntry[] = (
                 await this._executeAction('termEntries', { term: token }, yomitanUrl)
             ).dictionaryEntries;
@@ -507,7 +507,7 @@ export class Yomitan {
         const now = Date.now();
         const semaphoreId = await this.asyncSemaphore.acquire(2);
         try {
-            if (now <= this.lastCancelledAt) return;
+            if (now < this.lastCancelledAt) return;
             for (const token of tokensToFetch) {
                 if (this.lemmatizeCache.has(token) && this.frequencyCache.has(token)) tokensToFetch.delete(token);
             }

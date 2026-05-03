@@ -1,5 +1,14 @@
 import { ChromeExtension } from '@project/common/app';
-import { DictionaryLocalTokenInput, DictionaryStorage, DictionaryTokenRecord } from '@project/common/dictionary-db';
+import {
+    DictionaryLocalTokenInput,
+    DictionaryStorage,
+    DictionaryTokenKey,
+    DictionaryTokenRecord,
+    DictionaryRecordDeleteResult,
+    DictionaryRecordUpdateInput,
+    DictionaryRecordUpdateResult,
+    DictionaryRecordsResult,
+} from '@project/common/dictionary-db';
 import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
 import {
     CardExportedDialogMessage,
@@ -88,6 +97,22 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
 
     importRecordLocalBulk(records: Partial<DictionaryTokenRecord>[], profiles: string[]) {
         return this._extension.dictionaryImportRecordLocalBulk(records, profiles);
+    }
+
+    getRecords(profile: string | undefined, track: number | undefined): Promise<DictionaryRecordsResult> {
+        return this._extension.dictionaryGetRecords(profile, track);
+    }
+
+    updateRecords(
+        profile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ): Promise<DictionaryRecordUpdateResult> {
+        return this._extension.dictionaryUpdateRecords(profile, updates, applyStates);
+    }
+
+    deleteRecords(profile: string | undefined, tokenKeys: DictionaryTokenKey[]): Promise<DictionaryRecordDeleteResult> {
+        return this._extension.dictionaryDeleteRecords(profile, tokenKeys);
     }
 
     buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {

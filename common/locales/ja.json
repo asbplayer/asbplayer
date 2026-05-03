@@ -1,6 +1,7 @@
 {
     "action": {
         "cancel": "キャンセル",
+        "close": "Close",
         "copy": "コピー",
         "delete": "削除",
         "save": "保存",
@@ -31,7 +32,9 @@
         "increaseOffsetButton": "前の字幕を現在のタイムスタンプに合わせる。長押しすると、字幕表示タイミングが100msずつ変わる。",
         "gotIt": "分かった",
         "revert": "元に戻す",
-        "userGuide": "ユーザーガイド"
+        "userGuide": "ユーザーガイド",
+        "search": "Search",
+        "reload": "Reload"
     },
     "about": {
         "title": "asbplayerについて",
@@ -462,6 +465,7 @@
         "annotationHelperText": "アノテーション機能は<0>Yomitan API</0>が必要です。",
         "annotationNoExtensionWarn": "単語がブラウザによって削除されないためには、asbplayer拡張機能のインストールをお勧めします。設定をなくさないためには拡張機能をインストールする前に設定のエクスポートもお勧めします。",
         "annotationLocalAnkiHelperText": "単語の成熟度は、Ankiの単語データベースより、ローカルの単語データベースが優先されます。単語を収集するためには、こちらのボタンでインポートするか、字幕にマウスカーソルを重ね、<0>キーボードショートカット</0>を使用することができます。",
+        "manageWords": "Manage words",
         "buildAnkiCache": "Ankiの単語データベースを再構築",
         "buildAnkiCacheHelperText": "Ankiの単語データベースは、トラックが有効になっておりAnkiが接続可能なときに、メディア再生中に自動的に更新されます。",
         "buildAnkiCacheAnkiEnableHelperText": "習得した単語を収集するためには、<0>検索対象の文章または単語フィールドを設定</0>してください。",
@@ -543,6 +547,49 @@
         "dictionaryImportClipboardText": "テキストまたは一行に一つの単語を貼り付けてください",
         "dictionaryImportClipboardNoTokens": "有効な単語が見つかりません",
         "dictionaryImportedMaturity": "インポートされた単語を次のように扱います",
+        "applyStrategies": {
+            "add": "Add",
+            "remove": "Remove",
+            "replace": "Replace",
+            "toggle": "Toggle"
+        },
+        "dictionaryBrowser": {
+            "title": "Word Browser",
+            "searchPlaceholder": "Search by word or lemma",
+            "yomitanWarning": "Yomitan lemma search is unavailable: {{message}}",
+            "bulkStatus": "Selected status",
+            "bulkStates": "Selected states",
+            "stateStrategy": "State strategy",
+            "applyToSelected": "Apply to selected",
+            "deleteSelected": "Delete selected",
+            "confirmApplyToSelected": "Are you sure you want to apply the selected changes to {{count}} entries?",
+            "confirmApplyToSelectedDeleteWarning": "Entries that are uncollected with no states will be deleted.",
+            "confirmDeleteSelected": "Are you sure you want to delete {{count}} selected entries?",
+            "results": "Showing {{shown}} of {{total}} entries - {{selected}} selected",
+            "noResults": "No matching words found.",
+            "columns": {
+                "word": "Word",
+                "lemmas": "Lemmas",
+                "source": "Source",
+                "status": "Status",
+                "states": "States",
+                "track": "Track",
+                "cardIds": "Card IDs",
+                "noteIds": "Note IDs",
+                "suspended": "Suspended"
+            },
+            "sources": {
+                "local": "Local",
+                "ankiWord": "Anki word",
+                "ankiSentence": "Anki sentence"
+            },
+            "suspended": {
+                "all": "All",
+                "yes": "Yes",
+                "no": "No",
+                "mixed": "Mixed"
+            }
+        },
         "ui": "UI",
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。"

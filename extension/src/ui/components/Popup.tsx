@@ -220,6 +220,7 @@ const Popup = ({
                             extensionSupportsExportCardBind
                             extensionSupportsPageSettings
                             extensionSupportsDictionary
+                            extensionSupportsDictionaryBrowser
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             extensionSupportsDictionaryYomitanMecab
                             forceVerticalTabs={false}

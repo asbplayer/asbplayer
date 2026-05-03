@@ -31,7 +31,7 @@ const BUILD_MIN_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
  * without any headaches. If in the future per track local tokens are desired as a new option,
  * then -1 would simply become the fallback and represent trackless tokens.
  */
-const LOCAL_TOKEN_TRACK = -1; // null cannot be used in Dexie indexes
+export const LOCAL_TOKEN_TRACK = -1; // null cannot be used in Dexie indexes
 
 /**
  * If adding/removing fields here, add/remove the UI helperText in the settings tab
@@ -76,7 +76,7 @@ export interface DictionaryLocalTokenInput {
 }
 
 type DictionaryAnkiCardKey = [number, number, string];
-interface DictionaryAnkiCardRecord {
+export interface DictionaryAnkiCardRecord {
     profile: string;
     track: number;
     cardId: number;
@@ -162,6 +162,28 @@ export interface DictionaryDeleteProfileResult {
     deletedAnkiCards: DictionaryAnkiCardKey[];
 }
 
+export type DictionaryAnkiCardRecordsByTrack = Record<number, Record<number, DictionaryAnkiCardRecord>>;
+
+export interface DictionaryRecordsResult {
+    tokenRecords: DictionaryTokenRecord[];
+    ankiCardRecords: DictionaryAnkiCardRecordsByTrack;
+}
+
+export interface DictionaryRecordUpdateInput {
+    tokenKey: DictionaryTokenKey;
+    status: TokenStatus;
+    states: TokenState[];
+}
+
+export interface DictionaryRecordUpdateResult {
+    savedTokens: DictionaryTokenKey[];
+    deletedTokens: DictionaryTokenKey[];
+}
+
+export interface DictionaryRecordDeleteResult {
+    deletedTokens: DictionaryTokenKey[];
+}
+
 function hasDeck(dt: DictionaryTrack, cardDeck: string): boolean {
     if (!dt.dictionaryAnkiDecks.length) return true;
     return dt.dictionaryAnkiDecks.some((deck) => deck === cardDeck || cardDeck.startsWith(`${deck}::`));
@@ -171,6 +193,29 @@ function hasField(dt: DictionaryTrack, fields: string[]): boolean {
     return fields.some(
         (field) => dt.dictionaryAnkiWordFields.includes(field) || dt.dictionaryAnkiSentenceFields.includes(field)
     );
+}
+
+function applyStrategyToStates(currentStates: TokenState[], nextStates: TokenState[], applyStates: ApplyStrategy) {
+    const currentStateSet = new Set(currentStates);
+    switch (applyStates) {
+        case ApplyStrategy.ADD:
+            return Array.from(new Set([...currentStates, ...nextStates])).sort((lhs, rhs) => lhs - rhs);
+        case ApplyStrategy.REMOVE:
+            return currentStates.filter((state) => !nextStates.includes(state));
+        case ApplyStrategy.REPLACE:
+            return [...nextStates].sort((lhs, rhs) => lhs - rhs);
+        case ApplyStrategy.TOGGLE:
+            for (const state of nextStates) {
+                if (currentStateSet.has(state)) {
+                    currentStateSet.delete(state);
+                } else {
+                    currentStateSet.add(state);
+                }
+            }
+            return Array.from(currentStateSet).sort((lhs, rhs) => lhs - rhs);
+        default:
+            throw new Error(`Unsupported applyStates value: "${applyStates}"`);
+    }
 }
 
 export class DictionaryDB {
@@ -294,8 +339,8 @@ export class DictionaryDB {
 
         return this.db.transaction('r', this.db.tokens, this.db.ankiCards, async () => {
             const records = await this.db.tokens
-                .where('[profile+token]')
-                .between([profile, Dexie.minKey], [profile, Dexie.maxKey])
+                .where('profile')
+                .equals(profile)
                 .filter((r) => r.track === track || r.track === LOCAL_TOKEN_TRACK)
                 .toArray();
             return this._tokenResultsFromRecords(profile, track, records);
@@ -442,33 +487,11 @@ export class DictionaryDB {
                 const existingRecord = tokenRecordMap.get(localTokenInput.token); // Ignore existing lemmas as they should be re-calculated
                 if (existingRecord) {
                     if (localTokenInput.status == null) localTokenInput.status = existingRecord.status;
-                    switch (applyStates) {
-                        case ApplyStrategy.ADD:
-                            for (const state of existingRecord.states) {
-                                if (!localTokenInput.states.includes(state)) localTokenInput.states.push(state);
-                            }
-                            break;
-                        case ApplyStrategy.REMOVE:
-                            localTokenInput.states = existingRecord.states.filter(
-                                (existingState) => !localTokenInput.states.includes(existingState)
-                            );
-                            break;
-                        case ApplyStrategy.REPLACE:
-                            break;
-                        case ApplyStrategy.TOGGLE:
-                            for (const existingState of existingRecord.states) {
-                                const idx = localTokenInput.states.indexOf(existingState);
-                                if (idx !== -1) {
-                                    localTokenInput.states.splice(idx, 1);
-                                } else {
-                                    localTokenInput.states.push(existingState);
-                                }
-                            }
-                            break;
-                        default:
-                            console.error(`Unsupported applyStates value: "${applyStates}"`);
-                            return { savedTokens: [], deletedTokens: [] };
-                    }
+                    localTokenInput.states = applyStrategyToStates(
+                        existingRecord.states,
+                        localTokenInput.states,
+                        applyStates
+                    );
                 } else if (localTokenInput.status == null) {
                     localTokenInput.status = TokenStatus.UNCOLLECTED;
                 }
@@ -615,6 +638,114 @@ export class DictionaryDB {
                 this.db.ankiCards.bulkDelete(deletedAnkiCards),
             ]);
             return { deletedMetas, deletedTokens, deletedAnkiCards };
+        });
+    }
+
+    async getRecords(inputProfile: string | undefined, track: number | undefined): Promise<DictionaryRecordsResult> {
+        const profile = this._getProfile(inputProfile);
+
+        return this.db.transaction('r', this.db.tokens, this.db.ankiCards, async () => {
+            const tokenRecords =
+                track === undefined
+                    ? await this.db.tokens.where('profile').equals(profile).toArray()
+                    : await this.db.tokens
+                          .where('profile')
+                          .equals(profile)
+                          .filter((r) => r.track === track || r.track === LOCAL_TOKEN_TRACK)
+                          .toArray();
+            if (!tokenRecords.length) return { tokenRecords: [], ankiCardRecords: {} };
+
+            const ankiCardKeys = Array.from(
+                new Map(
+                    tokenRecords
+                        .filter((record) => record.source !== DictionaryTokenSource.LOCAL)
+                        .flatMap((record) =>
+                            record.cardIds.map((cardId) => [
+                                `${cardId}:${record.track}`,
+                                [cardId, record.track, profile] as const,
+                            ])
+                        )
+                ).values()
+            );
+            const ankiCardRecords = ankiCardKeys.length
+                ? await this.db.ankiCards
+                      .where('[cardId+track+profile]')
+                      .anyOf(ankiCardKeys)
+                      .toArray()
+                      .then((records) => {
+                          const recordsByTrack: DictionaryAnkiCardRecordsByTrack = {};
+                          for (const record of records) {
+                              const trackRecords = recordsByTrack[record.track];
+                              if (trackRecords) {
+                                  trackRecords[record.cardId] = record;
+                              } else {
+                                  recordsByTrack[record.track] = { [record.cardId]: record };
+                              }
+                          }
+                          return recordsByTrack;
+                      })
+                : {};
+
+            return { tokenRecords, ankiCardRecords };
+        });
+    }
+
+    async updateRecords(
+        inputProfile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ): Promise<DictionaryRecordUpdateResult> {
+        if (!updates.length) return { savedTokens: [], deletedTokens: [] };
+        const profile = this._getProfile(inputProfile);
+
+        return this.db.transaction('rw', this.db.tokens, async () => {
+            const existingRecords = await this.db.tokens.bulkGet(updates.map((update) => update.tokenKey));
+            const recordsToPut: DictionaryTokenRecord[] = [];
+            const tokenKeysToDelete: DictionaryTokenKey[] = [];
+            for (const [index, update] of updates.entries()) {
+                const existingRecord = existingRecords[index];
+                if (
+                    !existingRecord ||
+                    existingRecord.profile !== profile ||
+                    existingRecord.source !== DictionaryTokenSource.LOCAL
+                ) {
+                    continue;
+                }
+                const nextStates = applyStrategyToStates(existingRecord.states, update.states, applyStates);
+                if (update.status === TokenStatus.UNCOLLECTED && !nextStates.length) {
+                    tokenKeysToDelete.push(update.tokenKey);
+                    continue;
+                }
+                recordsToPut.push({
+                    ...existingRecord,
+                    status: update.status,
+                    states: nextStates,
+                });
+            }
+            const res = await Promise.all([
+                this._saveRecordBulk(recordsToPut),
+                this.db.tokens.bulkDelete(tokenKeysToDelete),
+            ]);
+            return { savedTokens: res[0], deletedTokens: tokenKeysToDelete };
+        });
+    }
+
+    async deleteRecords(
+        inputProfile: string | undefined,
+        tokenKeys: DictionaryTokenKey[]
+    ): Promise<DictionaryRecordDeleteResult> {
+        if (!tokenKeys.length) return { deletedTokens: [] };
+        const profile = this._getProfile(inputProfile);
+
+        return this.db.transaction('rw', this.db.tokens, async () => {
+            const existingRecords = await this.db.tokens.bulkGet(tokenKeys);
+            const deletedTokens = tokenKeys.filter(
+                (_, index) =>
+                    existingRecords[index]?.profile === profile &&
+                    existingRecords[index]?.source === DictionaryTokenSource.LOCAL
+            );
+            if (deletedTokens.length) await this.db.tokens.bulkDelete(deletedTokens);
+            return { deletedTokens };
         });
     }
 

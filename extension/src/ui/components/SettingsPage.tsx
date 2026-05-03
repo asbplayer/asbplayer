@@ -119,6 +119,7 @@ const SettingsPage = ({
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
                         extensionSupportsDictionary
+                        extensionSupportsDictionaryBrowser
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         extensionSupportsDictionaryYomitanMecab
                         chromeKeyBinds={commands}

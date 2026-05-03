@@ -1,6 +1,7 @@
 {
     "action": {
         "cancel": "Batal",
+        "close": "Close",
         "copy": "Salin",
         "delete": "Hapus",
         "save": "Save",
@@ -31,7 +32,9 @@
         "increaseOffsetButton": "Tambah offset agar takarir sebelumnya berada di posisi saat ini. Tahan untuk menambah 100 ms.",
         "gotIt": "Mengerti",
         "revert": "Kembalikan",
-        "userGuide": "Panduan Pengguna"
+        "userGuide": "Panduan Pengguna",
+        "search": "Search",
+        "reload": "Reload"
     },
     "about": {
         "title": "Tentang asbplayer",
@@ -462,6 +465,7 @@
         "annotationHelperText": "Annotation requires <0>Yomitan API</0> to function.",
         "annotationNoExtensionWarn": "Installing the asbplayer extension is recommended to prevent your browser from deleting manually stored words. Export your settings before installing the extension to preserve your data.",
         "annotationLocalAnkiHelperText": "Word status is determined by your local collection then from Anki cards. Collect words locally through imports or by hovering over words and using the keyboard shortcuts.",
+        "manageWords": "Manage words",
         "buildAnkiCache": "Re-Build Anki cache",
         "buildAnkiCacheHelperText": "The cache is automatically updated during playback when a track is enabled and Anki is connectable.",
         "buildAnkiCacheAnkiEnableHelperText": "Configure word fields and/or sentence fields to use Anki for known words.",
@@ -543,6 +547,49 @@
         "dictionaryImportClipboardText": "Paste text or one word per line",
         "dictionaryImportClipboardNoTokens": "No valid words found",
         "dictionaryImportedMaturity": "Treat imported words as",
+        "applyStrategies": {
+            "add": "Add",
+            "remove": "Remove",
+            "replace": "Replace",
+            "toggle": "Toggle"
+        },
+        "dictionaryBrowser": {
+            "title": "Word Browser",
+            "searchPlaceholder": "Search by word or lemma",
+            "yomitanWarning": "Yomitan lemma search is unavailable: {{message}}",
+            "bulkStatus": "Selected status",
+            "bulkStates": "Selected states",
+            "stateStrategy": "State strategy",
+            "applyToSelected": "Apply to selected",
+            "deleteSelected": "Delete selected",
+            "confirmApplyToSelected": "Are you sure you want to apply the selected changes to {{count}} entries?",
+            "confirmApplyToSelectedDeleteWarning": "Entries that are uncollected with no states will be deleted.",
+            "confirmDeleteSelected": "Are you sure you want to delete {{count}} selected entries?",
+            "results": "Showing {{shown}} of {{total}} entries - {{selected}} selected",
+            "noResults": "No matching words found.",
+            "columns": {
+                "word": "Word",
+                "lemmas": "Lemmas",
+                "source": "Source",
+                "status": "Status",
+                "states": "States",
+                "track": "Track",
+                "cardIds": "Card IDs",
+                "noteIds": "Note IDs",
+                "suspended": "Suspended"
+            },
+            "sources": {
+                "local": "Local",
+                "ankiWord": "Anki word",
+                "ankiSentence": "Anki sentence"
+            },
+            "suspended": {
+                "all": "All",
+                "yes": "Yes",
+                "no": "No",
+                "mixed": "Mixed"
+            }
+        },
         "ui": "UI",
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>."

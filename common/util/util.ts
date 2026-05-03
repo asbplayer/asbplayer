@@ -424,6 +424,25 @@ export function isKatakanaOnly(text: string) {
     return KATAKANA_ONLY_REGEX.test(text.normalize('NFC'));
 }
 
+export function normalizeForSearch(text: string): string {
+    return text
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .replace(/ß/g, 'ss')
+        .replace(/ẞ/g, 'SS')
+        .replace(/æ/g, 'ae')
+        .replace(/Æ/g, 'AE')
+        .replace(/œ/g, 'oe')
+        .replace(/Œ/g, 'OE')
+        .replace(/ø/g, 'o')
+        .replace(/Ø/g, 'O')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .replace(/ł/g, 'l')
+        .replace(/Ł/g, 'L')
+        .normalize('NFC');
+}
+
 // https://stackoverflow.com/questions/63116039/camelcase-to-kebab-case
 function kebabize(str: string) {
     const kebabized = str.replace(/[A-Z]+(?![a-z])|[A-Z]/g, ($, ofs) => (ofs ? '-' : '') + $.toLowerCase());

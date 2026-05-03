@@ -1,6 +1,7 @@
 {
     "action": {
         "cancel": "取消",
+        "close": "Close",
         "copy": "复制",
         "delete": "删除",
         "save": "保存",
@@ -31,7 +32,9 @@
         "increaseOffsetButton": "增大偏移量（使上一句字幕对齐当前位置，长按每次增大 100 毫秒）",
         "gotIt": "知道了",
         "revert": "还原",
-        "userGuide": "用户指南"
+        "userGuide": "用户指南",
+        "search": "Search",
+        "reload": "Reload"
     },
     "about": {
         "title": "关于 asbplayer",
@@ -462,6 +465,7 @@
         "annotationHelperText": "标注功能需配合 <0>Yomitan API</0> 进行分词解析才能使用。",
         "annotationNoExtensionWarn": "建议安装扩展程序，以防浏览器清理手动保存的词汇记录。安装前请先导出备份数据。",
         "annotationLocalAnkiHelperText": "词汇状态优先依据本地生词本，其次依据 Anki 卡片。可利用快捷键在本地快速收集生词。",
+        "manageWords": "Manage words",
         "buildAnkiCache": "重建 Anki 缓存",
         "buildAnkiCacheHelperText": "在播放期间且 Anki 连接正常时，缓存将自动更新。",
         "buildAnkiCacheAnkiEnableHelperText": "配置单词或例句字段，以便调用 Anki 数据识别已掌握词汇。",
@@ -543,6 +547,49 @@
         "dictionaryImportClipboardText": "粘贴文本或单行录入单词",
         "dictionaryImportClipboardNoTokens": "未提取到有效单词",
         "dictionaryImportedMaturity": "导入词汇的默认掌握度",
+        "applyStrategies": {
+            "add": "Add",
+            "remove": "Remove",
+            "replace": "Replace",
+            "toggle": "Toggle"
+        },
+        "dictionaryBrowser": {
+            "title": "Word Browser",
+            "searchPlaceholder": "Search by word or lemma",
+            "yomitanWarning": "Yomitan lemma search is unavailable: {{message}}",
+            "bulkStatus": "Selected status",
+            "bulkStates": "Selected states",
+            "stateStrategy": "State strategy",
+            "applyToSelected": "Apply to selected",
+            "deleteSelected": "Delete selected",
+            "confirmApplyToSelected": "Are you sure you want to apply the selected changes to {{count}} entries?",
+            "confirmApplyToSelectedDeleteWarning": "Entries that are uncollected with no states will be deleted.",
+            "confirmDeleteSelected": "Are you sure you want to delete {{count}} selected entries?",
+            "results": "Showing {{shown}} of {{total}} entries - {{selected}} selected",
+            "noResults": "No matching words found.",
+            "columns": {
+                "word": "Word",
+                "lemmas": "Lemmas",
+                "source": "Source",
+                "status": "Status",
+                "states": "States",
+                "track": "Track",
+                "cardIds": "Card IDs",
+                "noteIds": "Note IDs",
+                "suspended": "Suspended"
+            },
+            "sources": {
+                "local": "Local",
+                "ankiWord": "Anki word",
+                "ankiSentence": "Anki sentence"
+            },
+            "suspended": {
+                "all": "All",
+                "yes": "Yes",
+                "no": "No",
+                "mixed": "Mixed"
+            }
+        },
         "ui": "界面排版",
         "webSocketInterface": "WebSocket 接口",
         "yomitanHelperText": "Yomitan API 配置说明详见 <0>此处</0>。"

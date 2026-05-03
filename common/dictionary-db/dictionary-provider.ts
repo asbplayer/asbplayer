@@ -1,5 +1,6 @@
 import {
     DictionaryLocalTokenInput,
+    DictionaryTokenKey,
     DictionaryTokenRecord,
     DictionaryExportRecordLocalResult,
     DictionaryImportRecordLocalResult,
@@ -8,6 +9,10 @@ import {
     TokenResults,
     DictionaryDeleteRecordLocalResult,
     DictionaryDeleteProfileResult,
+    DictionaryRecordDeleteResult,
+    DictionaryRecordUpdateInput,
+    DictionaryRecordUpdateResult,
+    DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
 import { DictionaryBuildAnkiCacheState } from '@project/common';
 import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
@@ -33,6 +38,16 @@ export interface DictionaryStorage {
         records: Partial<DictionaryTokenRecord>[],
         profiles: string[]
     ) => Promise<DictionaryImportRecordLocalResult>;
+    getRecords: (profile: string | undefined, track: number | undefined) => Promise<DictionaryRecordsResult>;
+    updateRecords: (
+        profile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ) => Promise<DictionaryRecordUpdateResult>;
+    deleteRecords: (
+        profile: string | undefined,
+        tokenKeys: DictionaryTokenKey[]
+    ) => Promise<DictionaryRecordDeleteResult>;
     buildAnkiCache: (profile: string | undefined, settings: AsbplayerSettings) => Promise<void>;
     ankiCardWasModified: () => void;
     onAnkiCardModified: (callback: () => void) => () => void;
@@ -96,6 +111,18 @@ export class DictionaryProvider {
 
     importRecordLocalBulk(records: Partial<DictionaryTokenRecord>[], profiles: string[]) {
         return this._storage.importRecordLocalBulk(records, profiles);
+    }
+
+    getRecords(profile: string | undefined, track: number | undefined) {
+        return this._storage.getRecords(profile, track);
+    }
+
+    updateRecords(profile: string | undefined, updates: DictionaryRecordUpdateInput[], applyStates: ApplyStrategy) {
+        return this._storage.updateRecords(profile, updates, applyStates);
+    }
+
+    deleteRecords(profile: string | undefined, tokenKeys: DictionaryTokenKey[]) {
+        return this._storage.deleteRecords(profile, tokenKeys);
     }
 
     buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {

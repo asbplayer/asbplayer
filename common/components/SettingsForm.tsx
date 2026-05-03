@@ -179,6 +179,7 @@ interface Props {
     extensionSupportsExportCardBind: boolean;
     extensionSupportsPageSettings: boolean;
     extensionSupportsDictionary: boolean;
+    extensionSupportsDictionaryBrowser: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
     insideApp?: boolean;
@@ -227,6 +228,7 @@ export default function SettingsForm({
     extensionSupportsExportCardBind,
     extensionSupportsPageSettings,
     extensionSupportsDictionary,
+    extensionSupportsDictionaryBrowser,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
     insideApp,
@@ -248,6 +250,7 @@ export default function SettingsForm({
     onUnlockLocalFonts,
 }: Props) {
     const supportsDictionary = !extensionInstalled || extensionSupportsDictionary;
+    const supportsDictionaryBrowser = !extensionInstalled || extensionSupportsDictionaryBrowser;
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
@@ -457,6 +460,7 @@ export default function SettingsForm({
                     profiles={profiles}
                     activeProfile={activeProfile}
                     extensionInstalled={extensionInstalled}
+                    supportsDictionaryBrowser={supportsDictionaryBrowser}
                     supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                     supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                     onSettingChanged={handleSettingChanged}
