@@ -1,21 +1,9 @@
 import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
 export function extractExtension(url: string, fallback: string) {
-    const dotIndex = url.lastIndexOf('.');
-    let extension = fallback;
-
-    if (dotIndex !== -1) {
-        extension = url.substring(dotIndex + 1);
-
-        // Account for case when URL has a query parameter
-        const questionMarkIndex = extension.indexOf('?');
-
-        if (questionMarkIndex !== -1) {
-            extension = extension.substring(0, questionMarkIndex);
-        }
-    }
-
-    return extension;
+    const path = url.split(/[?#]/)[0];
+    const dotIndex = path.lastIndexOf('.');
+    return dotIndex === -1 ? fallback : path.substring(dotIndex + 1);
 }
 
 export function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
