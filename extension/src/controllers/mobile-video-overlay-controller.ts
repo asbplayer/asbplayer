@@ -127,14 +127,12 @@ export class MobileVideoOverlayController {
             }
 
             if (message.message.command === 'playMode') {
-                console.error('received play mode command', message.message);
                 const command = message as MobileOverlayToVideoCommand<PlayModeMessage>;
                 this._context.togglePlayMode(command.message.playMode);
             } else if (message.message.command === 'hidden') {
                 this._doHide();
             }
         };
-        console.error('adding listener');
         browser.runtime.onMessage.addListener(this._messageListener);
         this._bound = true;
 

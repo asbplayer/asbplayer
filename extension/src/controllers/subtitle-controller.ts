@@ -89,7 +89,7 @@ export default class SubtitleController {
     /**
      * Seekable subittle collection is a subtitle collection that contains gap intervals for only "seekable" tracks.
      * Seekable tracks are eligible for play mode behavior, like condensed mode. This separate collection is needed
-     *  because the gap intervals are used to calculate the next subtitle for condensed mode, and this separate
+     * because the gap intervals are used to calculate the next subtitle for condensed mode, and this separate
      * collection excludes all subtitles that are not configured as "seekable.""
      */
     private seekableSubtitleCollection: SubtitleCollection<IndexedSubtitleModel>;

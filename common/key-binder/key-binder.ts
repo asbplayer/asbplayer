@@ -425,15 +425,13 @@ export class DefaultKeyBinder implements KeyBinder {
                 return false;
             }
 
-            const seekableTracks = seekableTracksGetter();
-
             const subtitles = subtitlesGetter();
 
             if (!subtitles || subtitles.length === 0) {
                 return false;
             }
 
-            const subtitle = this._currentOrPreviousSubtitle(timeGetter(), subtitles);
+            const subtitle = this._currentOrPreviousSubtitle(timeGetter(), subtitles, seekableTracksGetter());
 
             if (subtitle !== undefined && subtitle.start >= 0 && subtitle.end >= 0) {
                 onSeekToBeginningOfCurrentSubtitle(event, subtitle);
@@ -445,7 +443,7 @@ export class DefaultKeyBinder implements KeyBinder {
         return this._bind(shortcut, capture, handler);
     }
 
-    _currentOrPreviousSubtitle(time: number, subtitles: SubtitleModel[]) {
+    _currentOrPreviousSubtitle(time: number, subtitles: SubtitleModel[], seekableTracks: SeekableTracks) {
         const now = time;
         let currentSubtitle: SubtitleModel | undefined;
         let previousSubtitle: SubtitleModel | undefined;
@@ -454,7 +452,7 @@ export class DefaultKeyBinder implements KeyBinder {
         for (let i = 0; i < subtitles.length; ++i) {
             const s = subtitles[i];
 
-            if (s.start < 0 || s.end < 0) {
+            if (!isTrackSeekable(seekableTracks, s.track) || s.start < 0 || s.end < 0) {
                 continue;
             }
 

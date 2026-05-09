@@ -14,7 +14,6 @@ export default class MobileOverlayForwarderHandler {
             return;
         }
 
-        console.error('mobile forwarder', command);
         browser.tabs.sendMessage(sender.tab.id, command);
         return false;
     }

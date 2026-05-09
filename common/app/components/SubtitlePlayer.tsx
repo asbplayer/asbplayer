@@ -543,7 +543,7 @@ export default function SubtitlePlayer({
                 cancelAnimationFrame(requestAnimationRef.current);
             }
         };
-    }, [settings]);
+    }, []);
 
     const scrollToCurrentSubtitle = useCallback(() => {
         const highlightedSubtitleIndexes = highlightedSubtitleIndexesRef.current;

@@ -14,7 +14,6 @@ export default class StatisticsOverlayForwarderHandler {
             return;
         }
 
-        console.error('stats forwarder', command);
         browser.tabs.sendMessage(sender.tab.id, command);
         return false;
     }
