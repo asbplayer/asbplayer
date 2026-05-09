@@ -17,7 +17,7 @@ import {
     DownloadAudioMessage,
     CardExportedMessage,
 } from '@project/common';
-import type { Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
+import type { AsbplayerInstance, Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
 import type { BulkExportStartedPayload } from '../../controllers/bulk-export-controller';
 import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { AudioClip } from '@project/common/audio-clip';
@@ -53,7 +53,7 @@ import { DictionaryProvider } from '@project/common/dictionary-db';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import { useSidePanelRequestedLocation } from '../hooks/use-side-panel-requested-location';
 import { clearExtensionRequestedLocation } from '@/services/side-panel';
-import { uiTabRegistry } from '../hooks/use-has-subtitles';
+import { uiTabRegistry } from '../hooks/use-media-id';
 import { createStatisticsPopup } from '@/services/statistics-util';
 
 interface Props {
@@ -65,6 +65,31 @@ interface Props {
 
 const sameVideoTab = (a: VideoTabModel, b: VideoTabModel) => {
     return a.id === b.id && a.src === b.src && a.synced === b.synced && a.syncedTimestamp === b.syncedTimestamp;
+};
+
+const sameAsbplayerInstance = (a: AsbplayerInstance, b: AsbplayerInstance) => {
+    if (a.syncedVideoElement === undefined) {
+        if (b.syncedVideoElement !== a.syncedVideoElement) {
+            return false;
+        } // else both undefined
+    } else {
+        if (b.syncedVideoElement === undefined) {
+            return false;
+        }
+
+        if (!sameVideoTab(a.syncedVideoElement, b.syncedVideoElement)) {
+            return false;
+        }
+    }
+
+    return (
+        a.id === b.id &&
+        a.tabId === b.tabId &&
+        a.sidePanel === b.sidePanel &&
+        a.timestamp === b.timestamp &&
+        a.videoPlayer === b.videoPlayer &&
+        a.loadedSubtitles === b.loadedSubtitles
+    );
 };
 
 const emptyArray: VideoTabModel[] = [];
@@ -98,8 +123,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     const [initializing, setInitializing] = useState<boolean>(true);
     const [syncedVideoTab, setSyncedVideoElement] = useState<VideoTabModel>();
     const [recordingAudio, setRecordingAudio] = useState<boolean>(false);
-    const [viewingAsbplayerId, setViewingAsbplayerId] = useState<string>();
-    const [viewingAsbplayerHasSubtitles, setViewingAsbplayerHasSubtitles] = useState<boolean>(false);
+    const [viewingAsbplayer, setViewingAsbplayer] = useState<AsbplayerInstance>();
 
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const currentTabId = useCurrentTabId();
@@ -209,23 +233,22 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
 
     useEffect(() => {
         if (currentTabId === undefined) {
-            setViewingAsbplayerId(undefined);
-            setViewingAsbplayerHasSubtitles(false);
+            setViewingAsbplayer(undefined);
             return;
         }
 
         return extension.subscribeTabs(() => {
             const asbplayer = extension.asbplayers?.find((a) => a.tabId === currentTabId);
             if (asbplayer === undefined) {
-                setViewingAsbplayerId(undefined);
-                setViewingAsbplayerHasSubtitles(false);
+                setViewingAsbplayer(undefined);
                 return;
             }
 
-            setViewingAsbplayerId(asbplayer.id);
-            setViewingAsbplayerHasSubtitles(asbplayer.loadedSubtitles);
+            if (viewingAsbplayer === undefined || !sameAsbplayerInstance(asbplayer, viewingAsbplayer)) {
+                setViewingAsbplayer(asbplayer);
+            }
         });
-    }, [currentTabId, extension]);
+    }, [currentTabId, viewingAsbplayer, extension]);
 
     useEffect(() => {
         return extension.subscribe((message) => {
@@ -396,10 +419,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
         copyHistoryRepository
     );
     useEffect(() => {
-        if (viewingAsbplayerId) {
+        if (viewingAsbplayer) {
             refreshCopyHistory();
         }
-    }, [refreshCopyHistory, viewingAsbplayerId]);
+    }, [refreshCopyHistory, viewingAsbplayer]);
     const [showCopyHistory, setShowCopyHistory] = useState<boolean>(false);
     const handleShowCopyHistory = useCallback(async () => {
         await refreshCopyHistory();
@@ -411,7 +434,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     }, []);
     const handleClipAudio = useCallback(
         async (item: CopyHistoryItem) => {
-            if (viewingAsbplayerId) {
+            if (viewingAsbplayer) {
                 if (currentTabId) {
                     const downloadAudioCommand: ExtensionToAsbPlayerCommand<DownloadAudioMessage> = {
                         sender: 'asbplayer-extension-to-player',
@@ -435,11 +458,11 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 }
             }
         },
-        [settings, currentTabId, viewingAsbplayerId]
+        [settings, currentTabId, viewingAsbplayer]
     );
     const handleDownloadImage = useCallback(
         (item: CopyHistoryItem) => {
-            if (viewingAsbplayerId) {
+            if (viewingAsbplayer) {
                 if (currentTabId) {
                     const downloadImageCommand: ExtensionToAsbPlayerCommand<DownloadImageMessage> = {
                         sender: 'asbplayer-extension-to-player',
@@ -466,11 +489,11 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 }
             }
         },
-        [settings, currentTabId, viewingAsbplayerId]
+        [settings, currentTabId, viewingAsbplayer]
     );
     const handleJumpToSubtitle = useCallback(
         (card: CardModel) => {
-            if (!currentTabId || !viewingAsbplayerId) {
+            if (!currentTabId || !viewingAsbplayer) {
                 return;
             }
 
@@ -484,7 +507,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             };
             browser.tabs.sendMessage(currentTabId, asbplayerCommand);
         },
-        [currentTabId, viewingAsbplayerId]
+        [currentTabId, viewingAsbplayer]
     );
     const handleAnki = useCallback(
         (copyHistoryItem: CopyHistoryItem) => {
@@ -595,26 +618,26 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             <Alert open={alertOpen} onClose={handleAlertClosed} autoHideDuration={3000} severity={alertSeverity}>
                 {alert}
             </Alert>
-            {viewingAsbplayerId &&
-                (appRequestedLocation === 'mining-history' || appRequestedLocation === undefined) && (
-                    <CopyHistory
-                        open={true}
-                        showBackButton={false}
-                        items={copyHistoryItems}
-                        forceShowDownloadOptions={true}
-                        onClose={noOp}
-                        onDelete={deleteCopyHistoryItem}
-                        onDeleteAll={deleteAllCopyHistoryItems}
-                        onAnki={handleAnki}
-                        onClipAudio={handleClipAudio}
-                        onDownloadImage={handleDownloadImage}
-                        onSelect={handleJumpToSubtitle}
-                    />
-                )}
-            {viewingAsbplayerId && appRequestedLocation === 'statistics' && (
+            {viewingAsbplayer && (appRequestedLocation === 'mining-history' || appRequestedLocation === undefined) && (
+                <CopyHistory
+                    open={true}
+                    showBackButton={false}
+                    items={copyHistoryItems}
+                    forceShowDownloadOptions={true}
+                    onClose={noOp}
+                    onDelete={deleteCopyHistoryItem}
+                    onDeleteAll={deleteAllCopyHistoryItems}
+                    onAnki={handleAnki}
+                    onClipAudio={handleClipAudio}
+                    onDownloadImage={handleDownloadImage}
+                    onSelect={handleJumpToSubtitle}
+                />
+            )}
+            {viewingAsbplayer && appRequestedLocation === 'statistics' && (
                 <StatisticsDrawer
+                    mediaId={viewingAsbplayer.syncedVideoElement?.src ?? viewingAsbplayer.id}
                     open
-                    hasSubtitles={viewingAsbplayerHasSubtitles}
+                    hasSubtitles={viewingAsbplayer.loadedSubtitles}
                     settings={settings}
                     showBackButton={false}
                     dictionaryProvider={dictionaryProvider}
@@ -625,7 +648,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     sx={{ p: 2 }}
                 />
             )}
-            {!viewingAsbplayerId && (
+            {!viewingAsbplayer && (
                 <>
                     <CopyHistory
                         open={showCopyHistory || extensionRequestedLocation === 'mining-history'}
@@ -685,6 +708,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 keyBinder={keyBinder}
                             />
                             <StatisticsDrawer
+                                mediaId={syncedVideoTab?.src}
                                 open={statisticsOpen || extensionRequestedLocation === 'statistics'}
                                 settings={settings}
                                 showBackButton

@@ -30,11 +30,13 @@ import Paper from '@mui/material/Paper';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
-import { uiTabRegistry, useHasSubtitles } from '../hooks/use-has-subtitles';
+import { uiTabRegistry, useMediaId } from '../hooks/use-media-id';
 import Statistics from '@project/common/components/Statistics';
 import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
+import { useCurrentTabId } from '../hooks/use-current-tab-id';
+import { useLastMediaIdOnce } from '../hooks/use-media-id';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
@@ -117,7 +119,6 @@ const Popup = ({
     const { localFontsAvailable, localFontsPermission, localFontFamilies } = useLocalFontFamilies();
     const theme = useTheme();
     const { handleAnnotationTutorialSeen, inAnnotationTutorial } = useAnnotationTutorial({ globalStateProvider });
-    const hasSubtitles = useHasSubtitles({ whereAsbplayer: (asbplayer) => !asbplayer.syncedVideoElement }); // Only care about owners
     const [scrollToId, setScrollToId] = useState<string>();
     const handleViewAnnotationSettings = useCallback(() => {
         setScrollToId('annotation');
@@ -140,11 +141,19 @@ const Popup = ({
     const settingsRef = useRef<AsbplayerSettings>(settings);
     settingsRef.current = settings;
 
+    const currentTabId = useCurrentTabId();
+    const currentMediaIdWithSubtitles = useMediaId({
+        whereAsbplayer: (a) => a.tab?.id === currentTabId,
+        whereVideoElement: (v) => v.id === currentTabId,
+    });
+    const fallbackMediaIdWithSubtitles = useLastMediaIdOnce();
+    const mediaIdWithSubtitles = currentMediaIdWithSubtitles ?? fallbackMediaIdWithSubtitles;
+
     useEffect(() => {
         const annotationsEnabled =
             settingsRef.current?.dictionaryTracks.some((dt) => dictionaryTrackEnabled(dt)) ?? false;
-        setStatisticsOpen(hasSubtitles && annotationsEnabled);
-    }, [hasSubtitles]);
+        setStatisticsOpen(mediaIdWithSubtitles !== undefined && annotationsEnabled);
+    }, [mediaIdWithSubtitles]);
 
     const handleToggleStatistics = useCallback(() => setStatisticsOpen((v) => !v), []);
     const fetchStatisticsMediaInfo = useCallback(async (mediaId: string) => {
@@ -171,7 +180,7 @@ const Popup = ({
                         },
                     }}
                 >
-                    {hasSubtitles && (
+                    {mediaIdWithSubtitles !== undefined && (
                         <>
                             {statisticsOpen && (
                                 <NavButton
@@ -246,9 +255,10 @@ const Popup = ({
                     {statisticsOpen && (
                         <Box sx={{ display: 'flex', width: '100%', height: '100%', overflowY: 'scroll' }}>
                             <Statistics
+                                mediaId={mediaIdWithSubtitles}
                                 dictionaryProvider={dictionaryProvider}
                                 settings={settings}
-                                hasSubtitles={hasSubtitles}
+                                hasSubtitles={mediaIdWithSubtitles !== undefined}
                                 onViewAnnotationSettings={handleViewAnnotationSettings}
                                 onOpenOverlay={handleOpenStatisticsOverlay}
                                 onSeekWasRequested={uiTabRegistry.focusTabForMediaId}

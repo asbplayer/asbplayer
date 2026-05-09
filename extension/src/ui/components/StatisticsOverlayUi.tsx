@@ -23,7 +23,7 @@ import {
     TabToExtensionCommand,
 } from '@project/common';
 import Box from '@mui/material/Box';
-import { uiTabRegistry } from '../hooks/use-has-subtitles';
+import { uiTabRegistry } from '../hooks/use-media-id';
 import { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
 
 export interface OpenStatisticsOverlayOneUncollectedDialogMessage extends Message {

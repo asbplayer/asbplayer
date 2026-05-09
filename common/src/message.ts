@@ -53,6 +53,7 @@ export interface AsbplayerInstance {
     timestamp: number;
     videoPlayer: boolean;
     loadedSubtitles: boolean;
+    syncedVideoElement?: VideoTabModel;
 }
 
 export interface AsbplayerHeartbeatMessage extends Message {

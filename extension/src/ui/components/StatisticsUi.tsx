@@ -11,8 +11,9 @@ import Paper from '@mui/material/Paper';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useEffect, useCallback, useMemo } from 'react';
-import { uiTabRegistry } from '../hooks/use-has-subtitles';
+import { uiTabRegistry, useLastMediaId, useMediaId } from '../hooks/use-media-id';
 import { Command, OpenStatisticsOverlayMessage } from '@project/common';
+import { useCurrentTabId } from '../hooks/use-current-tab-id';
 
 const dictionaryProvider = new DictionaryProvider(new ExtensionDictionaryStorage());
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
@@ -52,6 +53,13 @@ const StatisticsUi = () => {
         };
         browser.runtime.sendMessage(command);
     }, []);
+    const currentTabId = useCurrentTabId();
+    const currentMediaIdWithSubtitles = useMediaId({
+        whereAsbplayer: (a) => a.tab?.id === currentTabId,
+        whereVideoElement: (v) => v.id === currentTabId,
+    });
+    const fallbackMediaIdWithSubtitles = useLastMediaId();
+    const mediaIdWithSubtitles = currentMediaIdWithSubtitles ?? fallbackMediaIdWithSubtitles;
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
 
@@ -64,9 +72,10 @@ const StatisticsUi = () => {
             <CssBaseline />
             <Paper square sx={{ display: 'flex', width: '100vw', height: '100vh', overflowY: 'scroll' }}>
                 <Statistics
+                    mediaId={mediaIdWithSubtitles}
                     dictionaryProvider={dictionaryProvider}
                     settings={settings}
-                    hasSubtitles
+                    hasSubtitles={mediaIdWithSubtitles !== undefined}
                     onSeekWasRequested={uiTabRegistry.focusTabForMediaId}
                     onMineWasRequested={uiTabRegistry.focusTabForMediaId}
                     onViewAnnotationSettings={handleViewAnnotationSettings}
