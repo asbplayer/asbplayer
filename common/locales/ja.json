@@ -598,7 +598,7 @@
         "ui": "UI",
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。",
-        "seekableTracks": "Subtitle tracks eligible for seeking and play mode behavior"
+        "seekableTracks": "Subtitle tracks eligible for keyboard shortcut seeking and play mode behavior"
     },
     "statistics": {
         "title": "統計",
