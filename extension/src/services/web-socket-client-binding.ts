@@ -7,7 +7,6 @@ import {
 } from '@project/common/web-socket-client';
 import TabRegistry from './tab-registry';
 import {
-    CurrentTimeToVideoMessage,
     CopySubtitleMessage,
     CopySubtitleWithAdditionalFieldsMessage,
     ExtensionToAsbPlayerCommand,

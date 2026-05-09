@@ -3,9 +3,11 @@ import HistoryIcon from '@mui/icons-material/History';
 import LoadSubtitlesIcon from '@project/common/components/LoadSubtitlesIcon';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Fade from '@mui/material/Fade';
+import Badge from '@mui/material/Badge';
 import { ForwardedRef, useEffect, useState } from 'react';
 import React from 'react';
 import Tooltip from '@project/common/components/Tooltip';
@@ -18,6 +20,8 @@ interface Props {
     onDownloadSubtitles: () => void;
     onBulkExportSubtitles: () => void;
     onShowMiningHistory: () => void;
+    miningHistoryCount: number;
+    onShowStatistics: () => void;
     disableBulkExport?: boolean;
 }
 
@@ -29,6 +33,8 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
         onDownloadSubtitles,
         onBulkExportSubtitles,
         onShowMiningHistory,
+        miningHistoryCount,
+        onShowStatistics,
         disableBulkExport,
     }: Props,
     ref: ForwardedRef<HTMLDivElement>
@@ -43,8 +49,6 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
 
     return (
         <Fade in={show || forceShow}>
-            {/* Box type is missing ref support */}
-            {/* @ts-ignore */}
             <Box ref={ref} style={{ position: 'absolute', top: 12, right: 12 }}>
                 <Grid container direction="column">
                     <Grid item>
@@ -77,7 +81,16 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                     <Grid item>
                         <IconButton onClick={onShowMiningHistory}>
                             <Tooltip title={t('bar.miningHistory')!}>
-                                <HistoryIcon />
+                                <Badge badgeContent={miningHistoryCount} color="default" showZero>
+                                    <HistoryIcon />
+                                </Badge>
+                            </Tooltip>
+                        </IconButton>
+                    </Grid>
+                    <Grid item>
+                        <IconButton onClick={onShowStatistics}>
+                            <Tooltip title={t('statistics.title')!}>
+                                <BarChartIcon />
                             </Tooltip>
                         </IconButton>
                     </Grid>

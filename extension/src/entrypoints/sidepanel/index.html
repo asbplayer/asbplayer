@@ -3,7 +3,15 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="manifest.include" content="['chrome']" />
+        <meta name="manifest.open_at_install" content="false" />
+        <meta
+            name="manifest.default_icon"
+            content="{
+                '16': 'icon/icon16.png',
+                '48': 'icon/icon48.png',
+                '128': 'icon/icon128.png',
+            }"
+        />
         <title>asbplayer</title>
         <style>
             @import url('/fonts/fonts.css');

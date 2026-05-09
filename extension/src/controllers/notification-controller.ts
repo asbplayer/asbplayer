@@ -1,5 +1,5 @@
 import Binding from '../services/binding';
-import UiFrame from '../services/ui-frame';
+import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import FrameBridgeClient from '../services/frame-bridge-client';
 import { fetchLocalization } from '../services/localization-fetcher';
 
@@ -12,7 +12,7 @@ export default class NotificationController {
 
     constructor(context: Binding) {
         this._context = context;
-        this._frame = new UiFrame(
+        this._frame = uiFrameForHtml(
             async (lang) =>
                 `<!DOCTYPE html>
                     <html lang="en">

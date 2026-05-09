@@ -7,8 +7,8 @@ import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import ChromeExtension from '../services/chrome-extension';
-import { type Theme } from '@mui/material';
-import { useAppBarHeight } from '../hooks/use-app-bar-height';
+import { useMediaQuery, useTheme, type Theme } from '@mui/material';
+import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { VideoTabModel } from '../..';
 import VideoElementSelector from './VideoElementSelector';
 
@@ -70,11 +70,13 @@ export default function LandingPage({
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const extensionUpdateAvailable = extension.version && gt(latestExtensionVersion, extension.version);
+    const theme = useTheme();
+    const smallScreen = useMediaQuery(theme.breakpoints.down(500));
 
     return (
         <Paper square className={classes.background}>
             <Fade in={!loading && !dragging} timeout={500}>
-                <div>
+                <div style={{ minWidth: smallScreen ? window.innerWidth : 'auto' }}>
                     <Typography variant="h6">
                         <Trans i18nKey={'landing.cta'}>
                             Drag and drop subtitle and media files, or

@@ -28,5 +28,8 @@
     },
     "contextMenuLoadSubtitles": {
         "message": "Muat Takarir"
+    },
+    "shortcutOpenSidePanel": {
+        "message": "Tampilkan/sembunyikan panel samping"
     }
 }

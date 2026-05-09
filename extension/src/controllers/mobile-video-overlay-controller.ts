@@ -8,6 +8,7 @@ import {
 import Binding from '../services/binding';
 import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
 import { adjacentSubtitle } from '@project/common/key-binder';
+import { frameColorScheme } from '@/services/frame-color-scheme';
 
 const smallScreenVideoHeightThreshold = 300;
 
@@ -127,7 +128,7 @@ export class MobileVideoOverlayController {
 
             if (message.message.command === 'playMode') {
                 const command = message as MobileOverlayToVideoCommand<PlayModeMessage>;
-                this._context.playMode = command.message.playMode;
+                this._context.togglePlayMode(command.message.playMode);
             } else if (message.message.command === 'hidden') {
                 this._doHide();
             }
@@ -182,7 +183,7 @@ export class MobileVideoOverlayController {
             postMineAction: clickToMineDefaultAction,
             subtitleDisplaying,
             subtitlesAreVisible: streamingDisplaySubtitles,
-            playMode: this._context.playMode,
+            playModes: Array.from(this._context.playModes),
             themeType,
         };
         return model;
@@ -217,11 +218,12 @@ export class MobileVideoOverlayController {
             this._overlay.uncacheHtml();
         }
 
+        const colorScheme = frameColorScheme();
         this._overlay.setHtml([
             {
                 key: 'ui',
                 html: () =>
-                    `<iframe style="border: 0; color-scheme: normal; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
+                    `<iframe style="border: 0; color-scheme: ${colorScheme}; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
                         '/mobile-video-overlay-ui.html'
                     )}?src=${src}&anchor=${anchor}&tooltips=${tooltips}"/>`,
             },

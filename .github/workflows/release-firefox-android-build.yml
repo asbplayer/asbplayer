@@ -29,6 +29,6 @@ jobs:
                     --firefox-zip .output/*-firefox-android.zip --firefox-sources-zip .output/*-sources.zip \
                     --firefox-channel listed
               env:
-                  FIREFOX_EXTENSION_ID: 49de9206-c73e-4829-be4d-bda770d7f4b5
+                  FIREFOX_EXTENSION_ID: "asbplayer-android"
                   FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
                   FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

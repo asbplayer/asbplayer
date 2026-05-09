@@ -11,6 +11,7 @@ import { SettingsProvider } from '@project/common/settings';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
+import { StatisticsOverlayController } from '@/controllers/statistics-overlay-controller';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
@@ -19,7 +20,7 @@ import { isFirefoxBuild } from '@/services/build-flags';
 import type { ContentScriptContext } from '#imports';
 import './video.css';
 
-const excludeGlobs = ['*://killergerbah.github.io/asbplayer*', '*://app.asbplayer.dev/*'];
+const excludeGlobs = ['*://app.asbplayer.dev/*'];
 
 if (import.meta.env.DEV) {
     excludeGlobs.push('*://localhost:3000/*');
@@ -80,6 +81,21 @@ export default defineContentScript({
             return false;
         };
 
+        const shadowRootsWithBindings: ShadowRoot[] = [];
+
+        const injectStylesIntoShadowRoot = async (shadowRoot: ShadowRoot, cssPath: string) => {
+            for (const s of shadowRootsWithBindings) {
+                if (s.isSameNode(shadowRoot)) {
+                    return;
+                }
+            }
+
+            shadowRootsWithBindings.push(shadowRoot);
+            const sheet = new CSSStyleSheet();
+            await sheet.replace(await (await fetch(cssPath)).text());
+            shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, sheet];
+        };
+
         const bind = async () => {
             const bindings: Binding[] = [];
             const page = await currentPageDelegate();
@@ -107,6 +123,10 @@ export default defineContentScript({
 
                     for (const video of shadowRootHost.shadowRoot.querySelectorAll('video')) {
                         videoElements.push(video);
+                        void injectStylesIntoShadowRoot(
+                            shadowRootHost.shadowRoot,
+                            browser.runtime.getURL('/content-scripts/video.css')
+                        );
                     }
                 }
 
@@ -161,9 +181,12 @@ export default defineContentScript({
             videoSelectController.bind();
 
             const ankiUiController = new TabAnkiUiController(settingsProvider);
+            let statisticsOverlayController: StatisticsOverlayController | undefined;
 
             if (isParentDocument) {
                 bindToggleSidePanel();
+                statisticsOverlayController = new StatisticsOverlayController();
+                statisticsOverlayController.bind();
             }
 
             const messageListener = (
@@ -260,6 +283,7 @@ export default defineContentScript({
                 frameInfoListener?.unbind();
                 frameInfoBroadcaster?.unbind();
                 unbindToggleSidePanel?.();
+                statisticsOverlayController?.unbind();
                 browser.runtime.onMessage.removeListener(messageListener);
             });
         };

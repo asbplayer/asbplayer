@@ -5,6 +5,7 @@ import {
     SettingsProvider,
     SettingsStorage,
     SubtitleAlignment,
+    VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
     prefixedSettings,
@@ -101,6 +102,8 @@ it('can change the value of value-typed settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());
     await provider.set({ audioField: 'test-value' });
     expect(await provider.getSingle('audioField')).toBe('test-value');
+    await provider.set({ videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.autoMaximizeVideo });
+    expect(await provider.getSingle('videoSubtitleSplitBehavior')).toBe(VideoSubtitleSplitBehavior.autoMaximizeVideo);
 });
 
 it('returns the same object references if the values inside do not change', async () => {

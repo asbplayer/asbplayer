@@ -25,5 +25,8 @@
     },
     "contextMenuMineSubtitle": {
         "message": "加载字幕"
+    },
+    "shortcutOpenSidePanel": {
+        "message": "隐藏侧边栏"
     }
 }

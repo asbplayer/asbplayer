@@ -13,7 +13,7 @@
         "@project/common": "workspace:^",
         "@types/node": "^22.13.14",
         "@types/react": "^19.1.8",
-        "@vitejs/plugin-react": "^4.7.0",
+        "@vitejs/plugin-react": "^6.0.1",
         "gh-pages": "^6.3.0",
         "i18next": "^25.3.2",
         "react": "^19.1.0",
@@ -21,10 +21,9 @@
         "react-dom": "^19.1.0",
         "react-i18next": "^15.6.1",
         "typescript": "^5.8.3",
-        "vite": "^7.0.6",
-        "vite-tsconfig-paths": "^5.1.4"
+        "vite": "^8.0.0"
     },
-    "homepage": "https://killergerbah.github.io/asbplayer",
+    "homepage": "https://app.asbplayer.dev",
     "scripts": {
         "start": "VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) vite",
         "verify": "../scripts/loc/loc-keys-match && tsc && jest",
@@ -59,8 +58,8 @@
         "jest": "^30.0.5",
         "ts-jest": "^29.4.0",
         "vite-plugin-html": "^3.2.2",
-        "vite-plugin-pwa": "^1.0.2",
-        "vite-plugin-static-copy": "^3.1.1",
+        "vite-plugin-pwa": "^1.2.0",
+        "vite-plugin-static-copy": "^3.3.0",
         "yarn-upgrade-all": "^0.7.5"
     }
 }

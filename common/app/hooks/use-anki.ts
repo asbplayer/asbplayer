@@ -79,6 +79,18 @@ class SettingsAccessor {
     get maxImageHeight() {
         return this.settings.maxImageHeight;
     }
+    get mediaFragmentFormat() {
+        return this.settings.mediaFragmentFormat;
+    }
+    get mediaFragmentTrimStart() {
+        return this.settings.mediaFragmentTrimStart;
+    }
+    get mediaFragmentTrimEnd() {
+        return this.settings.mediaFragmentTrimEnd;
+    }
+    get mediaFragmentMaxClipLength() {
+        return this.settings.mediaFragmentMaxClipLength;
+    }
     get surroundingSubtitlesCountRadius() {
         return this.settings.surroundingSubtitlesCountRadius;
     }

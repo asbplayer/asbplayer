@@ -28,5 +28,8 @@
     },
     "shortcutExportCardDescription": {
         "message": "Vie kortti suoraan Ankiin, ohittaen dialogin."
+    },
+    "shortcutOpenSidePanel": {
+        "message": "Vaihda sivupaneelin tilaa"
     }
 }

@@ -71,6 +71,8 @@ export default function VideoSelectUi({ bridge }: Props) {
         });
     }, [bridge]);
 
+    useEffect(() => bridge.serverIsReady(), [bridge]);
+
     const handleConfirm = useCallback(() => {
         const message: VideoSelectModeConfirmMessage = {
             command: 'confirm',

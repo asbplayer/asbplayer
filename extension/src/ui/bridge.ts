@@ -4,6 +4,7 @@ export default class Bridge {
     private readonly _resolves: { [key: string]: (response: any) => void } = {};
     private _clientMessageListeners: ((message: any) => void)[] = [];
     private _serverMessageListeners: ((message: any) => void)[] = [];
+    private _serverReadyListeners: (() => void)[] = [];
 
     sendMessageFromClient(message: Message) {
         if ('messageId' in message) {
@@ -28,10 +29,23 @@ export default class Bridge {
         };
     }
 
+    serverIsReady() {
+        for (const l of this._serverReadyListeners) {
+            l();
+        }
+    }
+
     addServerMessageListener(listener: (message: Message) => void) {
         this._serverMessageListeners.push(listener);
         return () => {
             this._serverMessageListeners = this._serverMessageListeners.filter((l) => l !== listener);
+        };
+    }
+
+    addServerReadyListener(listener: () => void) {
+        this._serverReadyListeners.push(listener);
+        return () => {
+            this._serverReadyListeners = this._serverReadyListeners.filter((l) => l !== listener);
         };
     }
 
@@ -60,5 +74,6 @@ export default class Bridge {
     unbind() {
         this._clientMessageListeners = [];
         this._serverMessageListeners = [];
+        this._serverReadyListeners = [];
     }
 }

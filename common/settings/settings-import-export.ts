@@ -33,6 +33,9 @@ const dictionaryTrackSchema = {
         dictionaryColorizeSubtitles: {
             type: 'boolean',
         },
+        dictionaryAutoGenerateStatistics: {
+            type: 'boolean',
+        },
         dictionaryColorizeOnHoverOnly: {
             type: 'boolean',
         },
@@ -46,6 +49,9 @@ const dictionaryTrackSchema = {
             type: 'string',
         },
         dictionaryYomitanUrl: {
+            type: 'string',
+        },
+        dictionaryYomitanParser: {
             type: 'string',
         },
         dictionaryYomitanScanLength: {
@@ -100,6 +106,18 @@ const dictionaryTrackSchema = {
             type: 'array',
             items: {
                 type: 'string',
+            },
+        },
+        dictionaryTokenStatusConfig: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    display: { type: 'boolean' },
+                    color: { type: 'string' },
+                    alpha: { type: 'string' },
+                },
+                required: ['display', 'color', 'alpha'],
             },
         },
     },
@@ -290,6 +308,18 @@ const settingsSchema = {
         maxImageHeight: {
             type: 'number',
         },
+        mediaFragmentFormat: {
+            type: 'string',
+        },
+        mediaFragmentTrimStart: {
+            type: 'number',
+        },
+        mediaFragmentTrimEnd: {
+            type: 'number',
+        },
+        mediaFragmentMaxClipLength: {
+            type: 'number',
+        },
         surroundingSubtitlesCountRadius: {
             type: 'number',
         },
@@ -365,6 +395,7 @@ const settingsSchema = {
                 markHoveredToken1: { $ref: '/KeyBind' },
                 markHoveredToken0: { $ref: '/KeyBind' },
                 toggleHoveredTokenIgnored: { $ref: '/KeyBind' },
+                openStatistics: { $ref: '/KeyBind' },
             },
         },
         recordWithAudioPlayback: {
@@ -389,6 +420,9 @@ const settingsSchema = {
             type: 'number',
         },
         themeType: {
+            type: 'string',
+        },
+        videoSubtitleSplitBehavior: {
             type: 'string',
         },
         copyToClipboardOnMine: {

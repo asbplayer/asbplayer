@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef, ComponentProps } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material/styles';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import { useWindowSize } from '../hooks/use-window-size';
+import { useLocationHash } from '@project/common/hooks/use-location-hash';
 import {
-    Image,
+    MediaFragment,
+    OpenStatisticsOverlayMessage,
     SubtitleModel,
     VideoTabModel,
     LegacyPlayerSyncMessage,
@@ -19,12 +21,12 @@ import {
     DownloadImageMessage,
     DownloadAudioMessage,
     CardTextFieldValues,
-    ImageErrorCode,
+    MediaFragmentErrorCode,
     RequestSubtitlesResponse,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
 import { AsbplayerSettings, Profile, SettingsProvider } from '@project/common/settings';
-import { humanReadableTime, download, extractText } from '@project/common/util';
+import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
@@ -37,6 +39,7 @@ import DragOverlay from './DragOverlay';
 import Bar from './Bar';
 import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension';
 import CopyHistory from './CopyHistory';
+import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from './LandingPage';
 import Player, { MediaSources } from './Player';
 import SettingsDialog from './SettingsDialog';
@@ -53,7 +56,6 @@ import { useAppKeyBinder } from '../hooks/use-app-key-binder';
 import { useAnki } from '../hooks/use-anki';
 import { usePlaybackPreferences } from '../hooks/use-playback-preferences';
 import { MiningContext } from '../services/mining-context';
-import { timeDurationDisplay } from '../services/util';
 import { useAppWebSocketClient } from '../hooks/use-app-web-socket-client';
 import { LoadSubtitlesCommand } from '../../web-socket-client';
 import { ExtensionBridgedCopyHistoryRepository } from '../services/extension-bridged-copy-history-repository';
@@ -67,8 +69,11 @@ import { StyledEngineProvider } from '@mui/material/styles';
 import { useServiceWorker } from '../hooks/use-service-worker';
 import NeedRefreshDialog from './NeedRefreshDialog';
 import { DictionaryProvider } from '../../dictionary-db';
+import { isFirefox } from '../../browser-detection';
+import StatisticsOverlay, { StatisticsOverlayProps } from '../../components/StatisticsOverlay';
+import OneUncollectedSentenceDetailsDialog from '../../components/OneUncollectedSentenceDetailsDialog';
 
-const latestExtensionVersion = '1.12.0';
+const latestExtensionVersion = '1.16.0';
 const extensionUrl =
     'https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab';
 
@@ -175,7 +180,7 @@ interface RenderVideoProps {
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
-    onPlayModeChangedViaBind: (oldPlayMode: PlayMode, newPlayMode: PlayMode) => void;
+    onPlayModeChangedViaBind: (playModes: Set<PlayMode>, targetMode: PlayMode) => void;
 }
 
 function RenderVideo({ searchParams, ...props }: RenderVideoProps) {
@@ -207,6 +212,57 @@ function Content(props: ContentProps) {
         >
             {props.children}
         </main>
+    );
+}
+
+function AppStatisticsOverlay({ dictionaryProvider, mediaId, ...rest }: StatisticsOverlayProps & { mediaId: string }) {
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+
+    useEffect(() => {
+        if (rest.open) {
+            setPosition({ x: 0, y: 0 });
+        }
+    }, [rest.open]);
+
+    const handleMoveBy = useCallback((deltaX: number, deltaY: number) => {
+        setPosition((current) => ({
+            x: current.x + deltaX,
+            y: Math.max(0, current.y + deltaY),
+        }));
+    }, []);
+
+    const [oneUncollectedSentenceDetailsDialogState, setOneUncollectedSentenceDetailsDialogState] = useState<
+        Omit<ComponentProps<typeof OneUncollectedSentenceDetailsDialog>, 'onClose'>
+    >({
+        open: false,
+        entries: [],
+        totalSentences: 0,
+        miningEnabled: true,
+        dictionaryProvider,
+    });
+    return (
+        <>
+            <StatisticsOverlay
+                {...rest}
+                dictionaryProvider={dictionaryProvider}
+                onMoveBy={handleMoveBy}
+                sx={{
+                    position: 'absolute',
+                    top: 8,
+                    left: '50%',
+                    transform: `translateX(calc(-50% + ${position.x}px)) translateY(${position.y}px)`,
+                }}
+                onOpenSentenceDetails={(entries, totalSentences) =>
+                    setOneUncollectedSentenceDetailsDialogState((s) => ({ ...s, open: true, entries, totalSentences }))
+                }
+            />
+            <OneUncollectedSentenceDetailsDialog
+                {...oneUncollectedSentenceDetailsDialogState}
+                mediaId={mediaId}
+                dictionaryProvider={dictionaryProvider}
+                onClose={() => setOneUncollectedSentenceDetailsDialogState((s) => ({ ...s, open: false }))}
+            />
+        </>
     );
 }
 
@@ -257,6 +313,7 @@ function App({
         settings.convertNetflixRuby,
     ]);
     const webSocketClient = useAppWebSocketClient({ settings });
+    const supportsDictionaryStatistics = !extension.installed || extension.supportsDictionaryStatistics;
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>([]);
     const playbackPreferences = usePlaybackPreferences(settings, extension);
     const theme = useMemo<Theme>(() => createTheme(settings.themeType), [settings.themeType]);
@@ -289,6 +346,7 @@ function App({
     const copyHistoryItemsRef = useRef<CopyHistoryItem[]>([]);
     copyHistoryItemsRef.current = copyHistoryItems;
     const [copyHistoryOpen, setCopyHistoryOpen] = useState<boolean>(false);
+    const [statisticsOpen, setStatisticsOpen] = useState<boolean>(false);
     const [theaterMode, setTheaterMode] = useState<boolean>(playbackPreferences.theaterMode);
     const [hideSubtitlePlayer, setHideSubtitlePlayer] = useState<boolean>(playbackPreferences.hideSubtitleList);
     const [videoPopOut, setVideoPopOut] = useState<boolean>(false);
@@ -311,6 +369,9 @@ function App({
     const [disableKeyEvents, setDisableKeyEvents] = useState<boolean>(false);
     const [tab, setTab] = useState<VideoTabModel>();
     const [availableTabs, setAvailableTabs] = useState<VideoTabModel[]>();
+    const [isSidePanelOpen, setIsSidePanelOpen] = useState<boolean>(false);
+    const [statisticsOverlayOpen, setStatisticsOverlayOpen] = useState<boolean>(false);
+    const [statisticsOverlayDismissed, setStatisticsOverlayDismissed] = useState<boolean>(false);
     const [lastError, setLastError] = useState<any>();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { subtitleFiles } = sources;
@@ -506,10 +567,14 @@ function App({
                         track3: extractText(card.subtitle, card.surroundingSubtitles, 2),
                         definition: newCard.definition ?? '',
                         audioClip: audioClip,
-                        image: Image.fromCard(
+                        image: MediaFragment.fromCard(
                             newCard,
                             settingsRef.current.maxImageWidth,
-                            settingsRef.current.maxImageHeight
+                            settingsRef.current.maxImageHeight,
+                            settingsRef.current.mediaFragmentFormat,
+                            settingsRef.current.mediaFragmentTrimStart,
+                            settingsRef.current.mediaFragmentTrimEnd,
+                            settingsRef.current.mediaFragmentMaxClipLength
                         ),
                         word: newCard.word ?? '',
                         source: `${newCard.subtitleFileName} (${humanReadableTime(card.mediaTimestamp)})`,
@@ -527,14 +592,77 @@ function App({
     );
 
     const handleOpenCopyHistory = useCallback(async () => {
-        if (extension.supportsSidePanel) {
-            extension.toggleSidePanel();
-        } else {
+        const toggleInAppCopyHistory = async () => {
             await refreshCopyHistory();
             setCopyHistoryOpen((copyHistoryOpen) => !copyHistoryOpen);
             setVideoFullscreen(false);
+        };
+        if (isFirefox) {
+            // Firefox doesn't support opening the side panel with a button from the app.
+            // So update the side panel state if it happens to be open,
+            // otherwise open the in-app drawer.
+            if (extension.supportsSidePanel && isSidePanelOpen) {
+                extension.toggleSidePanel('mining-history');
+            } else {
+                await toggleInAppCopyHistory();
+            }
+        } else if (extension.supportsSidePanel) {
+            extension.toggleSidePanel('mining-history');
+        } else {
+            await toggleInAppCopyHistory();
         }
-    }, [extension, refreshCopyHistory]);
+    }, [extension, refreshCopyHistory, isSidePanelOpen]);
+    const handleOpenStatistics = useCallback(() => {
+        const toggleInAppStatistics = () => {
+            setStatisticsOpen((statisticsOpen) => !statisticsOpen);
+            setVideoFullscreen(false);
+        };
+        if (isFirefox) {
+            // Firefox doesn't support opening the side panel with a button from the app.
+            // So update the side panel state if it happens to be open,
+            // otherwise open the in-app drawer.
+            if (extension.supportsSidePanel && isSidePanelOpen) {
+                extension.toggleSidePanel('statistics');
+            } else {
+                toggleInAppStatistics();
+            }
+        } else if (extension.supportsSidePanel) {
+            extension.toggleSidePanel('statistics');
+        } else {
+            toggleInAppStatistics();
+        }
+    }, [extension, isSidePanelOpen]);
+    const handleReceivedStatisticsSnapshot = useCallback(
+        (mediaId: string, trackIndex: number) => {
+            if (mediaId !== extension.id) {
+                return;
+            }
+
+            if (settings.dictionaryTracks[trackIndex].dictionaryAutoGenerateStatistics && !statisticsOverlayDismissed) {
+                setStatisticsOverlayOpen(true);
+            }
+        },
+        [extension, settings.dictionaryTracks, statisticsOverlayDismissed]
+    );
+    const handleCloseStatisticsOverlay = useCallback(() => {
+        setStatisticsOverlayOpen(false);
+        setStatisticsOverlayDismissed(true);
+    }, []);
+    const handleStatisticsOverlaySnapshotCleared = useCallback(() => {
+        setStatisticsOverlayOpen(false);
+    }, []);
+    const openStatisticsOverlay = useCallback(() => {
+        setStatisticsOverlayDismissed(false);
+        setStatisticsOverlayOpen(true);
+    }, []);
+    const handleOpenStatisticsOverlay = useCallback(() => {
+        if (statisticsOverlayOpen) {
+            handleCloseStatisticsOverlay();
+            return;
+        }
+
+        openStatisticsOverlay();
+    }, [handleCloseStatisticsOverlay, openStatisticsOverlay, statisticsOverlayOpen]);
     const handleCloseCopyHistory = useCallback(() => setCopyHistoryOpen(false), []);
     const handleAppBarToggle = useCallback(() => {
         const newValue = !playbackPreferences.theaterMode;
@@ -588,6 +716,9 @@ function App({
                 return;
             }
 
+            void dictionaryProvider.publishStatisticsSnapshot(extension.id, undefined);
+            setStatisticsOverlayOpen(false);
+
             setSources((previous) => {
                 revokeBlobUrl(videoFileUrl);
 
@@ -599,7 +730,7 @@ function App({
             });
             setVideoFullscreen(false);
         },
-        [sources]
+        [dictionaryProvider, extension.id, sources]
     );
 
     const handleDownloadAudio = useCallback(
@@ -626,20 +757,37 @@ function App({
     const handleDownloadImage = useCallback(
         (item: CardModel) => {
             try {
-                const image = Image.fromCard(item, settings.maxImageWidth, settings.maxImageHeight)!;
+                const image = MediaFragment.fromCard(
+                    item,
+                    settings.maxImageWidth,
+                    settings.maxImageHeight,
+                    settings.mediaFragmentFormat,
+                    settings.mediaFragmentTrimStart,
+                    settings.mediaFragmentTrimEnd,
+                    settings.mediaFragmentMaxClipLength
+                )!;
 
                 if (image.error === undefined) {
                     image.download();
-                } else if (image.error === ImageErrorCode.fileLinkLost) {
+                } else if (image.error === MediaFragmentErrorCode.fileLinkLost) {
                     handleError(t('ankiDialog.imageFileLinkLost'));
-                } else if (image.error === ImageErrorCode.captureFailed) {
+                } else if (image.error === MediaFragmentErrorCode.captureFailed) {
                     handleError(t('ankiDialog.imageCaptureFailed'));
                 }
             } catch (e) {
                 handleError(e);
             }
         },
-        [handleError, settings.maxImageWidth, settings.maxImageHeight, t]
+        [
+            handleError,
+            settings.maxImageWidth,
+            settings.maxImageHeight,
+            settings.mediaFragmentFormat,
+            settings.mediaFragmentTrimStart,
+            settings.mediaFragmentTrimEnd,
+            settings.mediaFragmentMaxClipLength,
+            t,
+        ]
     );
 
     const handleDownloadCopyHistorySectionAsSrt = useCallback(
@@ -685,6 +833,9 @@ function App({
         },
         [handleJumpToSubtitle]
     );
+    const handleJumpToSubtitleHandled = useCallback(() => {
+        setJumpToSubtitle(undefined);
+    }, []);
 
     const handleAnki = useCallback((card: CardModel) => {
         setAnkiDialogCard(card);
@@ -762,6 +913,9 @@ function App({
                 setTab(undefined);
                 handleError(t('error.lostTabConnection', { tabName: tab!.id + ' ' + tab!.title }));
             }
+
+            const isSidePanelOpen = extension.asbplayers?.find((a) => a.sidePanel) !== undefined;
+            setIsSidePanelOpen(isSidePanelOpen);
         }
 
         return extension.subscribeTabs(onTabs);
@@ -967,6 +1121,14 @@ function App({
                 setSettingsDialogOpen(true);
             } else if (message.data.command === 'show-anki-ui') {
                 handleAnki(message.data as ShowAnkiUiMessage);
+            } else if (message.data.command === 'open-statistics-overlay') {
+                const openMessage = message.data as OpenStatisticsOverlayMessage;
+
+                if (openMessage.force && statisticsOverlayOpen) {
+                    handleCloseStatisticsOverlay();
+                } else {
+                    openStatisticsOverlay();
+                }
             }
         }
 
@@ -976,7 +1138,20 @@ function App({
         extension.syncedVideoElement = tab;
         extension.startHeartbeat();
         return unsubscribe;
-    }, [extension, subtitles, inVideoPlayer, sources.videoFileUrl, tab, handleFiles, handleAnki, handleUnloadVideo]);
+    }, [
+        extension,
+        subtitles,
+        supportsDictionaryStatistics,
+        inVideoPlayer,
+        sources.videoFileUrl,
+        statisticsOverlayOpen,
+        tab,
+        handleFiles,
+        handleAnki,
+        handleCloseStatisticsOverlay,
+        handleUnloadVideo,
+        openStatisticsOverlay,
+    ]);
 
     useEffect(() => {
         if (inVideoPlayer) {
@@ -1015,36 +1190,34 @@ function App({
         });
     }, [extension, inVideoPlayer, handleDownloadAudio]);
 
-    const handleAutoPauseModeChangedViaBind = useCallback(
-        (oldPlayMode: PlayMode, newPlayMode: PlayMode) => {
-            switch (newPlayMode) {
-                case PlayMode.autoPause:
-                    setAlert(t('info.enabledAutoPause')!);
-                    break;
-                case PlayMode.condensed:
-                    setAlert(t('info.enabledCondensedPlayback')!);
-                    break;
-                case PlayMode.fastForward:
-                    setAlert(t('info.enabledFastForwardPlayback')!);
-                    break;
-                case PlayMode.repeat:
-                    setAlert(t('info.enabledRepeatPlayback')!);
-                    break;
-                case PlayMode.normal:
-                    if (oldPlayMode === PlayMode.autoPause) {
-                        setAlert(t('info.disabledAutoPause')!);
-                    } else if (oldPlayMode === PlayMode.condensed) {
-                        setAlert(t('info.disabledCondensedPlayback')!);
-                    } else if (oldPlayMode === PlayMode.fastForward) {
-                        setAlert(t('info.disabledFastForwardPlayback')!);
-                    } else if (oldPlayMode === PlayMode.repeat) {
-                        setAlert(t('info.disabledRepeatPlayback')!);
-                    }
-                    break;
-            }
+    const handlePlayModeChangedViaBind = useCallback(
+        (playModes: Set<PlayMode>, targetMode: PlayMode) => {
+            if (targetMode === PlayMode.normal) {
+                if (playModes.size === 1 && playModes.has(PlayMode.normal)) {
+                    return;
+                }
 
-            setAlertSeverity('info');
-            setAlertOpen(true);
+                setAlert(t('info.disabledAllPlayModes')!);
+            } else {
+                const enabling = !playModes.has(targetMode);
+                switch (targetMode) {
+                    case PlayMode.autoPause:
+                        setAlert(t(enabling ? 'info.enabledAutoPause' : 'info.disabledAutoPause')!);
+                        break;
+                    case PlayMode.condensed:
+                        setAlert(t(enabling ? 'info.enabledCondensedPlayback' : 'info.disabledCondensedPlayback')!);
+                        break;
+                    case PlayMode.fastForward:
+                        setAlert(t(enabling ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback')!);
+                        break;
+                    case PlayMode.repeat:
+                        setAlert(t(enabling ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback')!);
+                        break;
+                }
+
+                setAlertSeverity('info');
+                setAlertOpen(true);
+            }
         },
         [t]
     );
@@ -1199,17 +1372,15 @@ function App({
         );
     }, []);
 
+    const { hash: settingsHash } = useLocationHash({ view: 'settings' });
     useEffect(() => {
-        var view = searchParams.get('view');
-        if (view === 'settings') {
-            setSettingsDialogOpen(true);
-
-            if (location.hash && location.hash.startsWith('#')) {
-                const id = location.hash.substring(1, location.hash.length);
-                setSettingsDialogScrollToId(id);
-            }
+        if (settingsHash === undefined) {
+            return;
         }
-    }, [searchParams]);
+
+        setSettingsDialogScrollToId(settingsHash);
+        setSettingsDialogOpen(true);
+    }, [settingsHash]);
 
     useEffect(() => {
         if (sources.videoFile && alertOpen && alert && alertSeverity) {
@@ -1225,12 +1396,46 @@ function App({
     useEffect(() => {
         return keyBinder?.bindToggleSidePanel(
             () => {
-                handleOpenCopyHistory();
+                if (extension.supportsSidePanel) {
+                    extension.toggleSidePanel();
+                } else if (copyHistoryOpen) {
+                    handleOpenCopyHistory();
+                } else if (statisticsOpen) {
+                    handleOpenStatistics();
+                } else {
+                    handleOpenCopyHistory();
+                }
             },
             () => ankiDialogOpen || !extension.supportsSidePanel,
             false
         );
-    }, [extension, keyBinder, handleOpenCopyHistory, ankiDialogOpen]);
+    }, [
+        extension,
+        keyBinder,
+        copyHistoryOpen,
+        statisticsOpen,
+        handleOpenCopyHistory,
+        handleOpenStatistics,
+        ankiDialogOpen,
+    ]);
+
+    useEffect(() => {
+        return keyBinder?.bindOpenStatistics(
+            (event) => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                setDisableKeyEvents(true);
+                handleOpenStatistics();
+            },
+            () => ankiDialogOpen || !supportsDictionaryStatistics,
+            false
+        );
+    }, [keyBinder, ankiDialogOpen, supportsDictionaryStatistics, handleOpenStatistics]);
+
+    const fetchStatisticsMediaInfo = useCallback(async (_: string) => {
+        // In-app statistics can only show the current media - no need to display redundant information like the source string
+        return { sourceString: '' };
+    }, []);
 
     const mp3Encoder = useCallback(async (blob: Blob, extension: string) => {
         return await Mp3Encoder.encode(blob, () => new mp3WorkerFactory());
@@ -1256,6 +1461,11 @@ function App({
         onNeedRefresh: handleOpenNeedRefreshDialog,
         onOfflineReady: handleOfflineReady,
     });
+    const handleCloseStatistics = useCallback(() => setStatisticsOpen(false), []);
+    const handleViewAnnotationSettings = useCallback(() => {
+        setSettingsDialogScrollToId('annotation');
+        setSettingsDialogOpen(true);
+    }, []);
 
     if (!i18nInitialized) {
         return null;
@@ -1266,11 +1476,12 @@ function App({
         tab === undefined &&
         ((loading && !videoFrameRef.current) || (sources.subtitleFiles.length === 0 && !sources.videoFile));
     const appBarHidden = sources.videoFile !== undefined && ((theaterMode && !videoPopOut) || videoFullscreen);
-    const effectiveCopyHistoryOpen = copyHistoryOpen && !videoFullscreen;
+    const effectiveDrawerOpen = (copyHistoryOpen || statisticsOpen) && !videoFullscreen;
     const lastSelectedAnkiExportMode =
         !extension.installed || extension.supportsLastSelectedAnkiExportModeSetting
             ? settings.lastSelectedAnkiExportMode
             : 'default';
+
     return (
         <StyledEngineProvider injectFirst>
             <ThemeProvider theme={theme}>
@@ -1304,7 +1515,7 @@ function App({
                                 onAnkiDialogRequest={handleAnkiDialogRequestFromVideoPlayer}
                                 onAnkiDialogRewind={handleAnkiDialogRewindFromVideoPlayer}
                                 onError={handleError}
-                                onPlayModeChangedViaBind={handleAutoPauseModeChangedViaBind}
+                                onPlayModeChangedViaBind={handlePlayModeChangedViaBind}
                             />
                             {ankiDialogCard && (
                                 <AnkiDialog
@@ -1328,7 +1539,7 @@ function App({
                         <Paper square>
                             <CopyHistory
                                 items={copyHistoryItems}
-                                open={effectiveCopyHistoryOpen}
+                                open={effectiveDrawerOpen}
                                 drawerWidth={drawerWidth}
                                 onClose={handleCloseCopyHistory}
                                 onDelete={deleteCopyHistoryItem}
@@ -1338,6 +1549,19 @@ function App({
                                 onDownloadSectionAsSrt={handleDownloadCopyHistorySectionAsSrt}
                                 onSelect={handleSelectCopyHistoryItem}
                                 onAnki={handleAnki}
+                            />
+                            <StatisticsDrawer
+                                open={statisticsOpen}
+                                settings={settings}
+                                dictionaryProvider={dictionaryProvider}
+                                hasSubtitles={subtitles !== undefined && subtitles.length > 0}
+                                showBackButton
+                                drawerWidth={drawerWidth}
+                                onViewAnnotationSettings={handleViewAnnotationSettings}
+                                onOpenOverlay={handleOpenStatisticsOverlay}
+                                onClose={handleCloseStatistics}
+                                mediaInfoFetcher={fetchStatisticsMediaInfo}
+                                sx={{ p: 2 }}
                             />
                             {ankiDialogCard && (
                                 <AnkiDialog
@@ -1377,10 +1601,11 @@ function App({
                             <Bar
                                 title={fileName || 'asbplayer'}
                                 drawerWidth={drawerWidth}
-                                drawerOpen={effectiveCopyHistoryOpen}
+                                drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
                                 subtitleFiles={sources.subtitleFiles}
                                 onOpenCopyHistory={handleOpenCopyHistory}
+                                onOpenStatistics={supportsDictionaryStatistics ? handleOpenStatistics : undefined}
                                 onDownloadSubtitleFilesAsSrt={handleDownloadSubtitleFilesAsSrt}
                                 onOpenSettings={handleOpenSettings}
                                 lastError={lastError}
@@ -1394,7 +1619,7 @@ function App({
                                 multiple
                                 hidden
                             />
-                            <Content drawerWidth={drawerWidth} drawerOpen={effectiveCopyHistoryOpen}>
+                            <Content drawerWidth={drawerWidth} drawerOpen={effectiveDrawerOpen}>
                                 <Paper square style={{ width: '100%', height: '100%', position: 'relative' }}>
                                     {nothingLoaded && (
                                         <LandingPage
@@ -1420,6 +1645,7 @@ function App({
                                     origin={origin}
                                     subtitleReader={subtitleReader}
                                     subtitles={subtitles}
+                                    mediaId={extension.id}
                                     settings={settings}
                                     dictionaryProvider={dictionaryProvider}
                                     settingsProvider={settingsProvider}
@@ -1434,22 +1660,34 @@ function App({
                                     onAppBarToggle={handleAppBarToggle}
                                     onHideSubtitlePlayer={handleHideSubtitlePlayer}
                                     onVideoPopOut={handleVideoPopOut}
-                                    onPlayModeChangedViaBind={handleAutoPauseModeChangedViaBind}
+                                    onPlayModeChangedViaBind={handlePlayModeChangedViaBind}
                                     onSubtitles={
                                         setSubtitles as React.Dispatch<
                                             React.SetStateAction<DisplaySubtitleModel[] | undefined>
                                         >
+                                    }
+                                    statisticsOverlay={
+                                        <AppStatisticsOverlay
+                                            open={statisticsOverlayOpen}
+                                            mediaId={extension.id}
+                                            dictionaryProvider={dictionaryProvider}
+                                            onOpenStatistics={handleOpenStatistics}
+                                            onReceivedSnapshot={handleReceivedStatisticsSnapshot}
+                                            onSnapshotCleared={handleStatisticsOverlaySnapshotCleared}
+                                            onClose={handleCloseStatisticsOverlay}
+                                        />
                                     }
                                     onLoadFiles={handleFileSelector}
                                     tab={tab}
                                     availableTabs={availableTabs ?? []}
                                     sources={sources}
                                     jumpToSubtitle={jumpToSubtitle}
+                                    onJumpToSubtitleHandled={handleJumpToSubtitleHandled}
                                     rewindSubtitle={rewindSubtitle}
                                     videoFrameRef={videoFrameRef}
                                     videoChannelRef={videoChannelRef}
                                     extension={extension}
-                                    drawerOpen={effectiveCopyHistoryOpen}
+                                    drawerOpen={effectiveDrawerOpen}
                                     appBarHidden={appBarHidden}
                                     showCopyButton={tab === undefined}
                                     videoFullscreen={videoFullscreen}

@@ -27,7 +27,7 @@
 }
 
 .asb-frequency rt {
-    font-size: 0.25em; /* This is overridden for SubtitlePlayer as it's too small */
+    font-size: 0.3em; /* This is overridden for SubtitlePlayer as it's too small */
     line-height: 1;
 }
 
@@ -36,7 +36,7 @@
 }
 
 .asb-frequency-hover rt {
-    font-size: 0.25em; /* This is overridden for SubtitlePlayer as it's too small */
+    font-size: 0.3em; /* This is overridden for SubtitlePlayer as it's too small */
     line-height: 1;
     display: none;
 }

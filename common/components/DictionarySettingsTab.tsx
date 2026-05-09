@@ -2,24 +2,24 @@ import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next';
 import LabelWithHoverEffect from './LabelWithHoverEffect';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import {
-    Autocomplete,
-    Button,
-    Checkbox,
-    FormControl,
-    FormLabel,
-    IconButton,
-    InputAdornment,
-    Link,
-    MenuItem,
-    ListItemIcon,
-    ListItemText,
-    Radio,
-    RadioGroup,
-    Stack,
-    Switch,
-    Typography,
-} from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Link from '@mui/material/Link';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
 import MuiAlert, { type AlertProps } from '@mui/material/Alert';
 import {
     AsbplayerSettings,
@@ -34,6 +34,11 @@ import {
     Profile,
     dictionaryStatusCollectionEnabled,
     TokenFrequencyAnnotation,
+    TokenStatusConfig,
+    textSubtitleSettingsForTrack,
+    TextSubtitleSettings,
+    TokenStatus,
+    DictionaryTrack,
 } from '@project/common/settings';
 import { Anki } from '../anki';
 import { Yomitan } from '../yomitan/yomitan';
@@ -51,16 +56,20 @@ import {
     DictionaryBuildAnkiCacheStats,
 } from '../src/message';
 import { DictionaryProvider } from '../dictionary-db';
-import { ensureStoragePersisted, humanReadableTime } from '../util';
+import {
+    computeStyles,
+    ensureStoragePersisted,
+    hex2ToPercent,
+    humanReadableTime,
+    localizedDate,
+    percentToHex2,
+} from '../util';
 import DictionaryImport from './DictionaryImport';
+import { applyTokenStyle, InternalToken } from '../subtitle-annotations';
+import WordBrowserDialog from './WordBrowserDialog';
 
-const localizedDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    });
-};
+const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
+const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
 
 const useBuildAnkiCacheState: () => {
     severity: 'error' | 'info';
@@ -98,6 +107,15 @@ const useBuildAnkiCacheState: () => {
                         break;
                 }
                 break;
+            case DictionaryBuildAnkiCacheStateType.start:
+                msg = t('settings.dictionaryBuildAnkiStarted');
+                break;
+            case DictionaryBuildAnkiCacheStateType.progress:
+                const progress = buildAnkiCacheState.body as DictionaryBuildAnkiCacheProgress;
+                const rate = progress.current / (Date.now() - progress.buildTimestamp);
+                const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
+                msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(Date.now() + eta)} (${humanReadableTime(eta)})]`;
+                break;
             case DictionaryBuildAnkiCacheStateType.stats:
                 const stats = buildAnkiCacheState.body as DictionaryBuildAnkiCacheStats;
                 const parts: string[] = [];
@@ -121,19 +139,11 @@ const useBuildAnkiCacheState: () => {
                         })
                     );
                 }
-                if (stats.buildTimestamp !== undefined) {
-                    const duration = Math.floor((Date.now() - stats.buildTimestamp) / 1000);
-                    if (duration > 0) {
-                        parts.push(`[${duration.toLocaleString('en-US')}s]`);
-                    }
+                const duration = Math.floor((Date.now() - stats.buildTimestamp) / 1000);
+                if (duration > 0) {
+                    parts.push(`[${duration.toLocaleString('en-US')}s]`);
                 }
                 msg = parts.join(' | ');
-                break;
-            case DictionaryBuildAnkiCacheStateType.progress:
-                const progress = buildAnkiCacheState.body as DictionaryBuildAnkiCacheProgress;
-                const rate = progress.current / (Date.now() - progress.buildTimestamp);
-                const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
-                msg = `${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(Date.now() + eta)} (${humanReadableTime(eta)})]`;
                 break;
         }
     }
@@ -163,6 +173,9 @@ interface Props {
     settings: AsbplayerSettings;
     dictionaryProvider: DictionaryProvider;
     extensionInstalled: boolean;
+    supportsDictionaryBrowser: boolean;
+    supportsDictionaryTokenStatusDisplayAlpha: boolean;
+    supportsDictionaryYomitanMecab: boolean;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     onViewKeyboardShortcuts: () => void;
     profiles: Profile[];
@@ -174,6 +187,9 @@ const DictionarySettingsTab: React.FC<Props> = ({
     dictionaryProvider,
     settings,
     extensionInstalled,
+    supportsDictionaryBrowser,
+    supportsDictionaryTokenStatusDisplayAlpha,
+    supportsDictionaryYomitanMecab,
     onSettingChanged,
     onViewKeyboardShortcuts,
     profiles,
@@ -187,7 +203,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const selectedDictionary = dictionaryTracks[selectedDictionaryTrack];
 
     const getHelperTextForAnkiCacheSettingsDependencies = useCallback(
-        (fieldName: string, key: keyof typeof selectedDictionary, error?: string) => {
+        (fieldName: string, key: keyof typeof selectedDictionary, error?: React.ReactNode) => {
             if (error) return error;
             const initialTrack = initialDictionaryTracksRef.current[selectedDictionaryTrack];
             if (compareDTField(key, initialTrack, selectedDictionary)) return;
@@ -215,11 +231,35 @@ const DictionarySettingsTab: React.FC<Props> = ({
     }, [selectedDictionary.dictionaryColorizeFullyKnownTokens]);
 
     const [dictionaryYomitanUrlError, setDictionaryYomitanUrlError] = useState<string>();
+    const [dictionaryYomitanMecabError, setDictionaryYomitanMecabError] = useState<React.ReactNode>();
     const dictionaryRequestYomitan = useCallback(async () => {
         try {
             const yomitan = new Yomitan(selectedDictionary);
             await yomitan.version();
             setDictionaryYomitanUrlError(undefined);
+            if (!supportsDictionaryYomitanMecab) {
+                setDictionaryYomitanMecabError(undefined);
+                return;
+            }
+            if (selectedDictionary.dictionaryYomitanParser !== 'mecab' || yomitan.getSupportsMecabLemma()) {
+                setDictionaryYomitanMecabError(undefined);
+                return;
+            }
+            if (yomitan.getSupportsMecab()) {
+                setDictionaryYomitanMecabError(
+                    <Trans
+                        i18nKey="settings.dictionaryYomitanMecabLemmaNotSupportedError"
+                        components={[<Link key={0} target="_blank" href={yomitanMecabInstallerUrl} />]}
+                    />
+                );
+                return;
+            }
+            setDictionaryYomitanMecabError(
+                <Trans
+                    i18nKey="settings.dictionaryYomitanMecabNotSupportedError"
+                    components={[<Link key={0} target="_blank" href={yomitanMecabInstallerUrl} />]}
+                />
+            );
         } catch (e) {
             console.error(e);
             if (e instanceof Error) {
@@ -230,7 +270,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 setDictionaryYomitanUrlError(String(e));
             }
         }
-    }, [selectedDictionary]);
+    }, [selectedDictionary, supportsDictionaryYomitanMecab]);
 
     useEffect(() => {
         let canceled = false;
@@ -318,8 +358,14 @@ const DictionarySettingsTab: React.FC<Props> = ({
     }, [dictionaryProvider, setBuildAnkiCacheState]);
 
     const [dictionaryImportOpen, setDictionaryImportOpen] = useState<boolean>(false);
+    const [wordBrowserOpen, setWordBrowserOpen] = useState<boolean>(false);
     const ankiSectionRef = useRef<HTMLDivElement | null>(null);
     const handleAnkiHelperTextClicked = () => ankiSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const subtitleStyles = useMemo(
+        () => computeStyles(textSubtitleSettingsForTrack(settings, selectedDictionaryTrack) as TextSubtitleSettings),
+        [settings, selectedDictionaryTrack]
+    );
+    const theme = useTheme();
     return (
         <>
             <DictionaryImport
@@ -331,11 +377,18 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 activeProfile={activeProfile}
                 profiles={profiles}
             />
+            <WordBrowserDialog
+                open={wordBrowserOpen}
+                dictionaryProvider={dictionaryProvider}
+                activeProfile={activeProfile}
+                dictionaryTracks={dictionaryTracks}
+                onClose={() => setWordBrowserOpen(false)}
+            />
             <Stack spacing={1}>
-                {(dictionaryYomitanUrlError || !extensionInstalled) && (
+                {(dictionaryYomitanUrlError || dictionaryYomitanMecabError || !extensionInstalled) && (
                     <Alert severity="info">
                         <Stack spacing={1}>
-                            {dictionaryYomitanUrlError && (
+                            {(dictionaryYomitanUrlError || dictionaryYomitanMecabError) && (
                                 <div>
                                     <Trans
                                         i18nKey="settings.annotationHelperText"
@@ -357,65 +410,83 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Stack>
                     </Alert>
                 )}
-                <div>
-                    <SettingsSection>{t('settings.dictionaryLocalWordDatabase')}</SettingsSection>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            style={{ flex: 1 }}
-                            onClick={() => setDictionaryImportOpen(true)}
-                        >
-                            {t('action.importDictionaryLocalRecords')}
-                        </Button>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            style={{ flex: 1 }}
-                            onClick={handleExportDictionaryDB}
-                            loading={exportingDictionaryDB}
-                        >
-                            {t('action.exportDictionaryLocalRecords')}
-                        </Button>
-                    </Stack>
-                    <Typography variant="caption" color="textSecondary">
-                        <Trans
-                            i18nKey={'settings.annotationLocalAnkiHelperText'}
-                            components={[<Link key={0} onClick={onViewKeyboardShortcuts} sx={{ cursor: 'pointer' }} />]}
-                        />
-                    </Typography>
-                </div>
+                <SettingsSection>{t('settings.manageWords')}</SettingsSection>
                 <Stack spacing={1}>
-                    <SettingsSection>{t('settings.dictionaryAnkiWordDatabase')}</SettingsSection>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        style={{ width: '100%' }}
-                        onClick={handleBuildAnkiCache}
-                        loading={buildingAnkiCache}
-                        disabled={buildAnkiCacheDisabled}
-                        startIcon={<RefreshIcon />}
-                    >
-                        {t('settings.buildAnkiCache')}
-                    </Button>
-                    <Typography variant="caption" color="textSecondary">
-                        {t('settings.buildAnkiCacheHelperText')}{' '}
-                        {!ankiFieldsEnabled && (
+                    {supportsDictionaryBrowser && (
+                        <Button variant="contained" color="primary" onClick={() => setWordBrowserOpen(true)}>
+                            {t('settings.dictionaryBrowser.title')}
+                        </Button>
+                    )}
+                    <div>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
+                            {t('settings.dictionaryLocalWordDatabase')}
+                        </Typography>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                style={{ flex: 1 }}
+                                onClick={() => setDictionaryImportOpen(true)}
+                            >
+                                {t('action.importDictionaryLocalRecords')}
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                style={{ flex: 1 }}
+                                onClick={handleExportDictionaryDB}
+                                loading={exportingDictionaryDB}
+                            >
+                                {t('action.exportDictionaryLocalRecords')}
+                            </Button>
+                        </Stack>
+                        <Typography variant="caption" color="textSecondary">
                             <Trans
-                                i18nKey={'settings.buildAnkiCacheAnkiEnableHelperText'}
+                                i18nKey={'settings.annotationLocalAnkiHelperText'}
                                 components={[
-                                    <Link key={0} onClick={handleAnkiHelperTextClicked} sx={{ cursor: 'pointer' }} />,
+                                    <Link key={0} onClick={onViewKeyboardShortcuts} sx={{ cursor: 'pointer' }} />,
                                 ]}
                             />
+                        </Typography>
+                    </div>
+                    <Stack spacing={1}>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
+                            {t('settings.dictionaryAnkiWordDatabase')}
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            style={{ width: '100%' }}
+                            onClick={handleBuildAnkiCache}
+                            loading={buildingAnkiCache}
+                            disabled={buildAnkiCacheDisabled}
+                            startIcon={<RefreshIcon />}
+                        >
+                            {t('settings.buildAnkiCache')}
+                        </Button>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.buildAnkiCacheHelperText')}{' '}
+                            {!ankiFieldsEnabled && (
+                                <Trans
+                                    i18nKey={'settings.buildAnkiCacheAnkiEnableHelperText'}
+                                    components={[
+                                        <Link
+                                            key={0}
+                                            onClick={handleAnkiHelperTextClicked}
+                                            sx={{ cursor: 'pointer' }}
+                                        />,
+                                    ]}
+                                />
+                            )}
+                        </Typography>
+                        {buildMessage && buildMessageSeverity && (
+                            <div style={{ marginTop: 8 }}>
+                                <Alert severity={buildMessageSeverity}>{buildMessage}</Alert>
+                            </div>
                         )}
-                    </Typography>
-                    {buildMessage && buildMessageSeverity && (
-                        <div style={{ marginTop: 8 }}>
-                            <Alert severity={buildMessageSeverity}>{buildMessage}</Alert>
-                        </div>
-                    )}
+                    </Stack>
                 </Stack>
-                <SettingsSection>{t('settings.annotation')}</SettingsSection>
+                <SettingsSection docs="docs/reference/settings#annotation">{t('settings.annotation')}</SettingsSection>
                 <SettingsTextField
                     select
                     fullWidth
@@ -447,6 +518,23 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         />
                     }
                     label={t('settings.dictionaryColorizeSubtitles')}
+                    labelPlacement="start"
+                />
+                <SwitchLabelWithHoverEffect
+                    control={
+                        <Switch
+                            checked={selectedDictionary.dictionaryAutoGenerateStatistics}
+                            onChange={(e) => {
+                                const newTracks = [...dictionaryTracks];
+                                newTracks[selectedDictionaryTrack] = {
+                                    ...newTracks[selectedDictionaryTrack],
+                                    dictionaryAutoGenerateStatistics: e.target.checked,
+                                };
+                                onSettingChanged('dictionaryTracks', newTracks);
+                            }}
+                        />
+                    }
+                    label={t('settings.dictionaryAutoGenerateStatistics')}
                     labelPlacement="start"
                 />
                 <FormControl>
@@ -902,9 +990,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     <Alert severity="info">
                         <Trans
                             i18nKey={t('settings.yomitanHelperText')}
-                            components={[
-                                <Link key={0} target="_blank" href="https://github.com/yomidevs/yomitan-api" />,
-                            ]}
+                            components={[<Link key={0} target="_blank" href={yomitanInstallerUrl} />]}
                         />
                     </Alert>
                 )}
@@ -938,27 +1024,56 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         },
                     }}
                 />
-                <SettingsTextField
-                    type="number"
-                    label={t('settings.dictionaryYomitanScanLength')}
-                    value={selectedDictionary.dictionaryYomitanScanLength}
-                    helperText={getHelperTextForAnkiCacheSettingsDependencies(
-                        t('settings.dictionaryYomitanScanLength'),
-                        'dictionaryYomitanScanLength'
-                    )}
-                    color="primary"
-                    onChange={(e) => {
-                        const newTracks = [...dictionaryTracks];
-                        newTracks[selectedDictionaryTrack] = {
-                            ...newTracks[selectedDictionaryTrack],
-                            dictionaryYomitanScanLength: Number(e.target.value),
-                        };
-                        onSettingChanged('dictionaryTracks', newTracks);
-                    }}
-                    slotProps={{
-                        htmlInput: { min: 1, max: 128, step: 1 },
-                    }}
-                />
+                {dictionaryYomitanMecabError && <Alert severity="info">{dictionaryYomitanMecabError}</Alert>}
+                {supportsDictionaryYomitanMecab && (
+                    <SettingsTextField
+                        select
+                        label={t('settings.dictionaryYomitanParser')}
+                        value={selectedDictionary.dictionaryYomitanParser}
+                        error={Boolean(dictionaryYomitanMecabError)}
+                        helperText={getHelperTextForAnkiCacheSettingsDependencies(
+                            t('settings.dictionaryYomitanParser'),
+                            'dictionaryYomitanParser',
+                            dictionaryYomitanMecabError
+                        )}
+                        color="primary"
+                        onChange={(e) => {
+                            const newTracks = [...dictionaryTracks];
+                            newTracks[selectedDictionaryTrack] = {
+                                ...newTracks[selectedDictionaryTrack],
+                                dictionaryYomitanParser: e.target.value as DictionaryTrack['dictionaryYomitanParser'],
+                            };
+                            onSettingChanged('dictionaryTracks', newTracks);
+                        }}
+                    >
+                        <MenuItem value="scanning-parser">{t('settings.dictionaryYomitanScanningParser')}</MenuItem>
+                        <MenuItem value="mecab">{t('settings.dictionaryYomitanMecabParser')}</MenuItem>
+                    </SettingsTextField>
+                )}
+                {(selectedDictionary.dictionaryYomitanParser === 'scanning-parser' ||
+                    !supportsDictionaryYomitanMecab) && (
+                    <SettingsTextField
+                        type="number"
+                        label={t('settings.dictionaryYomitanScanLength')}
+                        value={selectedDictionary.dictionaryYomitanScanLength}
+                        helperText={getHelperTextForAnkiCacheSettingsDependencies(
+                            t('settings.dictionaryYomitanScanLength'),
+                            'dictionaryYomitanScanLength'
+                        )}
+                        color="primary"
+                        onChange={(e) => {
+                            const newTracks = [...dictionaryTracks];
+                            newTracks[selectedDictionaryTrack] = {
+                                ...newTracks[selectedDictionaryTrack],
+                                dictionaryYomitanScanLength: Number(e.target.value),
+                            };
+                            onSettingChanged('dictionaryTracks', newTracks);
+                        }}
+                        slotProps={{
+                            htmlInput: { min: 1, max: 128, step: 1 },
+                        }}
+                    />
+                )}
                 <SettingsSection ref={ankiSectionRef}>{t('settings.anki')}</SettingsSection>
                 <Autocomplete
                     multiple
@@ -1114,28 +1229,26 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             label={t('settings.dictionaryAnkiTreatSuspendedNormal')}
                         />
                         {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
-                            const tokenStatusIndex = NUM_TOKEN_STATUSES - 1 - i;
-                            if (tokenStatusIndex === 0) return null;
+                            const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
+                            if (tokenStatus === TokenStatus.UNCOLLECTED) return null;
                             return (
                                 <LabelWithHoverEffect
                                     key={i}
                                     control={
                                         <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryAnkiTreatSuspended === tokenStatusIndex
-                                            }
+                                            checked={selectedDictionary.dictionaryAnkiTreatSuspended === tokenStatus}
                                             onChange={(event) => {
                                                 if (!event.target.checked) return;
                                                 const newTracks = [...dictionaryTracks];
                                                 newTracks[selectedDictionaryTrack] = {
                                                     ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryAnkiTreatSuspended: tokenStatusIndex,
+                                                    dictionaryAnkiTreatSuspended: tokenStatus,
                                                 };
                                                 onSettingChanged('dictionaryTracks', newTracks);
                                             }}
                                         />
                                     }
-                                    label={t(`settings.dictionaryTokenStatus${tokenStatusIndex}`)}
+                                    label={t(`settings.dictionaryTokenStatus${tokenStatus}`)}
                                 />
                             );
                         })}
@@ -1258,48 +1371,217 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         }}
                     />
                 )}
-                <SettingsSection>{t('settings.colors')}</SettingsSection>
-                <SwitchLabelWithHoverEffect
-                    control={
-                        <Switch
-                            checked={selectedDictionary.dictionaryColorizeFullyKnownTokens}
-                            onChange={(e) => {
+                {supportsDictionaryTokenStatusDisplayAlpha ? (
+                    <Stack spacing={1}>
+                        {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
+                            const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
+                            const { display, color, alpha } =
+                                selectedDictionary.dictionaryTokenStatusConfig[tokenStatus];
+                            const updateTokenStatusConfig = (newConfig: TokenStatusConfig) => {
+                                const newConfigs = [...selectedDictionary.dictionaryTokenStatusConfig];
+                                newConfigs[tokenStatus] = newConfig;
                                 const newTracks = [...dictionaryTracks];
                                 newTracks[selectedDictionaryTrack] = {
                                     ...newTracks[selectedDictionaryTrack],
-                                    dictionaryColorizeFullyKnownTokens: e.target.checked,
+                                    dictionaryTokenStatusConfig: newConfigs,
+                                    dictionaryTokenStatusColors: newConfigs.map((config) => config.color),
+                                    dictionaryColorizeFullyKnownTokens: newConfigs[getFullyKnownTokenStatus()].display,
                                 };
                                 onSettingChanged('dictionaryTracks', newTracks);
-                            }}
+                            };
+                            const localizedMaturity = t(`settings.dictionaryTokenStatus${tokenStatus}`);
+                            const localizedReading = t(`settings.dictionaryTokenStatusReading${tokenStatus}`);
+                            const frequency =
+                                tokenStatus === TokenStatus.MATURE
+                                    ? 1
+                                    : tokenStatus === TokenStatus.YOUNG
+                                      ? 23
+                                      : tokenStatus === TokenStatus.GRADUATED
+                                        ? 456
+                                        : tokenStatus === TokenStatus.LEARNING
+                                          ? 7890
+                                          : tokenStatus === TokenStatus.UNKNOWN
+                                            ? 12345
+                                            : 678901;
+                            const displayingDictionaryTrack: DictionaryTrack = {
+                                ...selectedDictionary,
+                                dictionaryColorizeSubtitles: true,
+                            };
+                            return (
+                                <Stack
+                                    key={i}
+                                    direction="row"
+                                    sx={{ margin: 0, padding: 0, opacity: display ? 1 : 0.5 }}
+                                >
+                                    <Stack
+                                        sx={{
+                                            width: '100%',
+                                            '& .asb-reading': {
+                                                rubyPosition: 'over',
+                                            },
+                                            '& .asb-reading rt': {
+                                                fontSize: '0.5em',
+                                                lineHeight: 1,
+                                            },
+                                            '& .asb-frequency': {
+                                                rubyPosition: 'under',
+                                            },
+                                            '& .asb-frequency rt': {
+                                                fontSize: '0.5em',
+                                                lineHeight: 1,
+                                            },
+                                        }}
+                                        spacing={1}
+                                    >
+                                        <div
+                                            style={{
+                                                ...subtitleStyles,
+                                                fontSize: 24,
+                                                width: '100%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                flexShrink: 0,
+                                                backgroundImage: `linear-gradient(45deg, ${theme.palette.action.disabledBackground} 25%, transparent 25%), linear-gradient(-45deg, ${theme.palette.action.disabledBackground} 25%, transparent 25%), linear-gradient(45deg, transparent 75%, ${theme.palette.action.disabledBackground} 75%), linear-gradient(-45deg, transparent 75%,${theme.palette.action.disabledBackground} 75%)`,
+                                                backgroundSize: '20px 20px',
+                                                backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                                            }}
+                                        >
+                                            <div
+                                                style={{ padding: theme.spacing(1) }}
+                                                dangerouslySetInnerHTML={{
+                                                    __html: applyTokenStyle(
+                                                        localizedMaturity,
+                                                        {
+                                                            pos: [0, localizedMaturity.length],
+                                                            status: tokenStatus,
+                                                            states: [],
+                                                            readings: [
+                                                                {
+                                                                    pos: [0, localizedMaturity.length],
+                                                                    reading: localizedReading,
+                                                                },
+                                                            ],
+                                                            frequency,
+                                                            __internal: true,
+                                                        } as InternalToken,
+                                                        true,
+                                                        displayingDictionaryTrack
+                                                    ),
+                                                }}
+                                            />
+                                            <Switch
+                                                sx={{ position: 'relative', left: 0 }}
+                                                checked={display}
+                                                onChange={(e) =>
+                                                    updateTokenStatusConfig({
+                                                        ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
+                                                        display: e.target.checked,
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                        <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'center' }}>
+                                            <TextField
+                                                type="color"
+                                                sx={{ width: '50%' }}
+                                                value={color}
+                                                color="primary"
+                                                disabled={!display}
+                                                onChange={(e) =>
+                                                    updateTokenStatusConfig({
+                                                        ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
+                                                        color: e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            <TextField
+                                                type="number"
+                                                label={t('settings.dictionaryTokenStatusAlpha')}
+                                                sx={{ flexGrow: 1 }}
+                                                value={Math.round(hex2ToPercent(alpha) * 100)}
+                                                disabled={!display}
+                                                onChange={(e) => {
+                                                    const parsed = Number(e.target.value);
+                                                    if (Number.isNaN(parsed)) return;
+                                                    updateTokenStatusConfig({
+                                                        ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
+                                                        alpha: percentToHex2(Math.max(0, Math.min(100, parsed)) / 100),
+                                                    });
+                                                }}
+                                                slotProps={{
+                                                    htmlInput: { min: 0, max: 100, step: 1 },
+                                                    input: {
+                                                        endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                                                    },
+                                                }}
+                                            />
+                                        </Stack>
+                                    </Stack>
+                                </Stack>
+                            );
+                        })}
+                    </Stack>
+                ) : (
+                    <>
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={selectedDictionary.dictionaryColorizeFullyKnownTokens}
+                                    onChange={(e) => {
+                                        const fullyKnownStatus = getFullyKnownTokenStatus();
+                                        const newConfigs = [...selectedDictionary.dictionaryTokenStatusConfig];
+
+                                        newConfigs[fullyKnownStatus] = {
+                                            ...newConfigs[fullyKnownStatus],
+                                            display: e.target.checked,
+                                        };
+                                        const newTracks = [...dictionaryTracks];
+                                        newTracks[selectedDictionaryTrack] = {
+                                            ...newTracks[selectedDictionaryTrack],
+                                            dictionaryColorizeFullyKnownTokens: e.target.checked,
+                                            dictionaryTokenStatusConfig: newConfigs,
+                                        };
+                                        onSettingChanged('dictionaryTracks', newTracks);
+                                    }}
+                                />
+                            }
+                            label={t('settings.dictionaryColorizeFullyKnownTokens')}
+                            labelPlacement="start"
                         />
-                    }
-                    label={t('settings.dictionaryColorizeFullyKnownTokens')}
-                    labelPlacement="start"
-                />
-                {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
-                    const tokenStatusIndex = NUM_TOKEN_STATUSES - 1 - i;
-                    if (tokenStatusIndex === tokenStylingToHide) return null;
-                    return (
-                        <SettingsTextField
-                            key={i}
-                            type="color"
-                            label={t(`settings.dictionaryTokenStatus${tokenStatusIndex}`)}
-                            fullWidth
-                            value={selectedDictionary.dictionaryTokenStatusColors[tokenStatusIndex]}
-                            color="primary"
-                            onChange={(e) => {
-                                const newColors = [...selectedDictionary.dictionaryTokenStatusColors];
-                                newColors[tokenStatusIndex] = e.target.value;
-                                const newTracks = [...dictionaryTracks];
-                                newTracks[selectedDictionaryTrack] = {
-                                    ...newTracks[selectedDictionaryTrack],
-                                    dictionaryTokenStatusColors: newColors,
-                                };
-                                onSettingChanged('dictionaryTracks', newTracks);
-                            }}
-                        />
-                    );
-                })}
+                        {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
+                            const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
+                            if (tokenStatus === tokenStylingToHide) return null;
+                            return (
+                                <SettingsTextField
+                                    key={i}
+                                    type="color"
+                                    label={t(`settings.dictionaryTokenStatus${tokenStatus}`)}
+                                    fullWidth
+                                    value={selectedDictionary.dictionaryTokenStatusColors[tokenStatus]}
+                                    color="primary"
+                                    onChange={(e) => {
+                                        const newColors = [...selectedDictionary.dictionaryTokenStatusColors];
+                                        newColors[tokenStatus] = e.target.value;
+                                        const newConfigs = [...selectedDictionary.dictionaryTokenStatusConfig];
+                                        newConfigs[tokenStatus] = {
+                                            ...newConfigs[tokenStatus],
+                                            color: e.target.value,
+                                        };
+
+                                        const newTracks = [...dictionaryTracks];
+                                        newTracks[selectedDictionaryTrack] = {
+                                            ...newTracks[selectedDictionaryTrack],
+                                            dictionaryTokenStatusColors: newColors,
+                                            dictionaryTokenStatusConfig: newConfigs,
+                                        };
+                                        onSettingChanged('dictionaryTracks', newTracks);
+                                    }}
+                                />
+                            );
+                        })}
+                    </>
+                )}
             </Stack>
         </>
     );

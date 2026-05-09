@@ -28,5 +28,8 @@
     },
     "contextMenuLoadSubtitles": {
         "message": "자막 불러오기"
+    },
+    "shortcutOpenSidePanel": {
+        "message": "측면 패널 켜기/끄기"
     }
 }

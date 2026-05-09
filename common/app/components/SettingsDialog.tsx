@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import makeStyles from '@mui/styles/makeStyles';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
@@ -16,6 +16,8 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import { type Theme } from '@mui/material';
 import { DictionaryProvider } from '../../dictionary-db';
+import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
+import { AppExtensionGlobalStateProvider } from '../services/app-extension-global-state-provider';
 
 const appTestCard = () => {
     const basePath = window.location.pathname === '/' ? '' : window.location.pathname;
@@ -82,6 +84,8 @@ export default function SettingsDialog({
         updateLocalFontsPermission();
         updateLocalFonts();
     }, [updateLocalFontsPermission, updateLocalFonts]);
+    const globalStateProvider = useMemo(() => new AppExtensionGlobalStateProvider(extension), [extension]);
+    const { inAnnotationTutorial, handleAnnotationTutorialSeen } = useAnnotationTutorial({ globalStateProvider });
 
     return (
         <Dialog open={open} maxWidth="md" fullWidth className={classes.root} onClose={onClose}>
@@ -108,6 +112,11 @@ export default function SettingsDialog({
                     extensionSupportsExportCardBind={extension.supportsExportCardBind}
                     extensionSupportsPageSettings={extension.supportsPageSettings}
                     extensionSupportsDictionary={extension.supportsDictionary}
+                    extensionSupportsDictionaryBrowser={extension.supportsDictionaryBrowser}
+                    extensionSupportsDictionaryTokenStatusDisplayAlpha={
+                        extension.supportsDictionaryTokenStatusDisplayAlpha
+                    }
+                    extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersion={import.meta.env.VITE_APP_GIT_COMMIT}
@@ -125,6 +134,8 @@ export default function SettingsDialog({
                     supportedLanguages={supportedLanguages}
                     testCard={appTestCard}
                     onUnlockLocalFonts={handleUnlockLocalFonts}
+                    inAnnotationTutorial={inAnnotationTutorial}
+                    onAnnotationTutorialSeen={handleAnnotationTutorialSeen}
                 />
             </DialogContent>
             {(!extension.installed || extension.supportsSettingsProfiles) && (

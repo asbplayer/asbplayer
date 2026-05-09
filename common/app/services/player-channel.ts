@@ -20,7 +20,7 @@ import {
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
     PlayMode,
-    PlayModeMessage,
+    PlayModesMessage,
     PostMineAction,
     ReadyFromVideoMessage,
     ReadyStateFromVideoMessage,
@@ -62,7 +62,7 @@ export default class PlayerChannel {
     ) => void)[];
     private offsetCallbacks: ((offset: number) => void)[];
     private playbackRateCallbacks: ((playbackRate: number) => void)[];
-    private playModeCallbacks: ((playMode: PlayMode) => void)[];
+    private playModesCallbacks: ((playModes: Set<PlayMode>) => void)[];
     private hideSubtitlePlayerToggleCallbacks: ((hidden: boolean) => void)[];
     private appBarToggleCallbacks: ((hidden: boolean) => void)[];
     private fullscreenToggleCallbacks: ((hidden: boolean) => void)[];
@@ -90,7 +90,7 @@ export default class PlayerChannel {
         this.saveTokenLocalCallbacks = [];
         this.offsetCallbacks = [];
         this.playbackRateCallbacks = [];
-        this.playModeCallbacks = [];
+        this.playModesCallbacks = [];
         this.hideSubtitlePlayerToggleCallbacks = [];
         this.appBarToggleCallbacks = [];
         this.fullscreenToggleCallbacks = [];
@@ -188,11 +188,12 @@ export default class PlayerChannel {
                         callback(subtitleSettingsMessage.value);
                     }
                     break;
-                case 'playMode':
-                    const playModeMessage = event.data as PlayModeMessage;
+                case 'playModes':
+                    const playModesMessage = event.data as PlayModesMessage;
 
-                    for (let callback of that.playModeCallbacks) {
-                        callback(playModeMessage.playMode);
+                    for (let callback of that.playModesCallbacks) {
+                        const modes = new Set<PlayMode>(playModesMessage.playModes);
+                        callback(modes);
                     }
                     break;
                 case 'hideSubtitlePlayerToggle':
@@ -318,9 +319,9 @@ export default class PlayerChannel {
         return () => this._remove(callback, this.playbackRateCallbacks);
     }
 
-    onPlayMode(callback: (playMode: PlayMode) => void) {
-        this.playModeCallbacks.push(callback);
-        return () => this._remove(callback, this.playModeCallbacks);
+    onPlayModes(callback: (playModes: Set<PlayMode>) => void) {
+        this.playModesCallbacks.push(callback);
+        return () => this._remove(callback, this.playModesCallbacks);
     }
 
     onHideSubtitlePlayerToggle(callback: (hidden: boolean) => void) {
@@ -463,8 +464,8 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
-    playMode(playMode: PlayMode) {
-        this.channel?.postMessage({ command: 'playMode', playMode: playMode });
+    playModes(playModes: Set<PlayMode>) {
+        this.channel?.postMessage({ command: 'playModes', playModes: Array.from(playModes) });
     }
 
     hideSubtitlePlayerToggle() {
@@ -510,7 +511,7 @@ export default class PlayerChannel {
             this.subtitlesUpdatedCallbacks = [];
             this.offsetCallbacks = [];
             this.playbackRateCallbacks = [];
-            this.playModeCallbacks = [];
+            this.playModesCallbacks = [];
             this.hideSubtitlePlayerToggleCallbacks = [];
             this.appBarToggleCallbacks = [];
             this.fullscreenToggleCallbacks = [];

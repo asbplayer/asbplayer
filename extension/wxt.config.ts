@@ -31,6 +31,16 @@ const extName = 'asbplayer';
 export default defineConfig({
     modules: ['@wxt-dev/module-react'],
     srcDir: 'src',
+    vite: () => ({
+        plugins: [
+            {
+                name: 'watch-common',
+                configureServer(server) {
+                    server.watcher.add(path.resolve(__dirname, '../common'));
+                },
+            },
+        ],
+    }),
     zip: {
         sourcesRoot: '..',
         includeSources: ['.yarn/patches/**'],
@@ -47,10 +57,11 @@ export default defineConfig({
             for (const { srcDir, destDir } of commonAssets) {
                 addToPublicPathsType(srcDir, destDir, paths);
             }
+            paths.push('content-scripts/video.css');
         },
     },
     manifest: ({ browser, mode }) => {
-        const version = '1.14.0';
+        const version = '1.17.0';
         const isDev = mode === 'development';
         const devLabel = isDev ? ' (Dev)' : '';
         const title = `${extName}${devLabel}`;
@@ -94,6 +105,8 @@ export default defineConfig({
                         'areena-yle-page.js',
                         'hbo-max-page.js',
                         'cijapanese-page.js',
+                        'svt-play-page.js',
+                        'ur-play-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',
@@ -101,7 +114,11 @@ export default defineConfig({
                         'video-select-ui.js',
                         'notification-ui.js',
                         'mobile-video-overlay-ui.html',
+                        'statistics-overlay-ui.html',
+                        'statistics-overlay-one-uncollected-ui.html',
+                        'statistics-overlay-one-uncollected-ui.js',
                         'page-favicons/*',
+                        'content-scripts/video.css',
                     ],
                     matches: ['<all_urls>'],
                 },
@@ -137,10 +154,6 @@ export default defineConfig({
                 description: '__MSG_shortcutExportCardDescription__',
             },
             'take-screenshot': {
-                suggested_key: {
-                    default: 'Ctrl+Shift+V',
-                    mac: 'MacCtrl+Shift+V',
-                },
                 description: '__MSG_shortcutTakeScreenshotDescription__',
             },
             'toggle-recording': {
@@ -180,18 +193,27 @@ export default defineConfig({
         if (browser === 'firefox') {
             permissions = [...permissions, 'contextMenus', 'webRequest', 'webRequestBlocking', 'clipboardWrite'];
 
+            commands = {
+                _execute_sidebar_action: {
+                    description: '__MSG_shortcutOpenSidePanel__',
+                },
+                ...commands,
+            };
+
             const gecko = isDev
                 ? {
                       id: `${extName}-dev-${version}@example.com`,
                   }
                 : {
                       id: '{e4b27483-2e73-4762-b2ec-8d988a143a40}',
-                      update_url: 'https://killergerbah.github.io/asbplayer/firefox-extension-updates.json',
                   };
 
             manifest = {
                 ...manifest,
                 host_permissions: ['<all_urls>'],
+                sidebar_action: {
+                    default_panel: 'index.html',
+                },
                 commands,
                 browser_specific_settings: {
                     gecko,

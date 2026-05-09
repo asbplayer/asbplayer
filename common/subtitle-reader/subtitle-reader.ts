@@ -1,8 +1,9 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
-import { WebVTT } from 'vtt.js';
+import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
 import { SubtitleHtml, SubtitleTextImage, Token, Tokenization } from '@project/common';
+import DOMPurify from 'dompurify';
 
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
@@ -380,7 +381,7 @@ export default class SubtitleReader {
         if (file.name.endsWith('.bbjson')) {
             const body = JSON.parse(await file.text()).body;
             return body.map((s: any) => ({
-                text: s.content,
+                text: this._filterText(s.content),
                 start: s.from * 1000,
                 end: s.to * 1000,
                 track,
@@ -544,6 +545,7 @@ export default class SubtitleReader {
     }
 
     private _filterText(text: string): string {
+        text = DOMPurify.sanitize(text);
         text =
             this._textFilter === undefined
                 ? text

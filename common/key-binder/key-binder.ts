@@ -173,6 +173,11 @@ export interface KeyBinder {
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
+    bindOpenStatistics(
+        onOpenStatistics: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture?: boolean
+    ): () => void;
 }
 
 export class DefaultKeyBinder implements KeyBinder {
@@ -1018,6 +1023,28 @@ export class DefaultKeyBinder implements KeyBinder {
             }
 
             onToggleHoveredTokenIgnored(event);
+            return true;
+        };
+        return this._bind(shortcut, capture, handler);
+    }
+
+    bindOpenStatistics(
+        onOpenStatistics: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture = false
+    ) {
+        const shortcut = this.keyBindSet.openStatistics.keys;
+
+        if (!shortcut) {
+            return () => {};
+        }
+
+        const handler = (event: KeyboardEvent) => {
+            if (disabledGetter()) {
+                return false;
+            }
+
+            onOpenStatistics(event);
             return true;
         };
         return this._bind(shortcut, capture, handler);

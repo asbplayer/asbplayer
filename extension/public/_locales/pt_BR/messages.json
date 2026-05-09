@@ -28,5 +28,8 @@
     },
     "shortcutExportCardDescription": {
         "message": "Exportar cartão diretamente para o Anki, ignorando a caixa de diálogo."
+    },
+    "shortcutOpenSidePanel": {
+        "message": "Alternar painel lateral"
     }
 }

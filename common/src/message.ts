@@ -9,7 +9,8 @@ import type {
     TokenState,
     TokenStatus,
 } from '../settings/settings';
-import type { GlobalState } from '../global-state';
+import type { GlobalState, OnlineSubtitleSourceConfig } from '../global-state';
+import type { DictionaryStatisticsSnapshot } from '../dictionary-statistics';
 import {
     RectModel,
     SubtitleModel,
@@ -26,9 +27,16 @@ import {
     AnkiDialogSettings,
     AnkiExportMode,
     RichSubtitleModel,
+    BrowserFeatures,
+    Tokenization,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';
-import { DictionaryLocalTokenInput, DictionaryTokenRecord } from '../dictionary-db/dictionary-db';
+import {
+    DictionaryLocalTokenInput,
+    DictionaryTokenKey,
+    DictionaryTokenRecord,
+    DictionaryRecordUpdateInput,
+} from '../dictionary-db/dictionary-db';
 
 export interface Message {
     readonly command: string;
@@ -44,6 +52,7 @@ export interface AsbplayerInstance {
     sidePanel: boolean;
     timestamp: number;
     videoPlayer: boolean;
+    loadedSubtitles: boolean;
 }
 
 export interface AsbplayerHeartbeatMessage extends Message {
@@ -52,6 +61,7 @@ export interface AsbplayerHeartbeatMessage extends Message {
     readonly receivedTabs?: VideoTabModel[];
     readonly videoPlayer: boolean;
     readonly sidePanel?: boolean;
+    readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
     readonly syncedVideoElement?: VideoTabModel;
 }
@@ -62,6 +72,7 @@ export interface AckTabsMessage extends Message {
     readonly receivedTabs: VideoTabModel[];
     readonly videoPlayer: boolean;
     readonly sidePanel?: boolean;
+    readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
     readonly syncedVideoElement?: VideoTabModel;
 }
@@ -428,6 +439,11 @@ export interface PlayModeMessage extends Message {
     readonly playMode: PlayMode;
 }
 
+export interface PlayModesMessage extends Message {
+    readonly command: 'playModes';
+    readonly playModes: PlayMode[];
+}
+
 export interface HideSubtitlePlayerToggleToVideoMessage extends Message {
     readonly command: 'hideSubtitlePlayerToggle';
     readonly value: boolean;
@@ -507,6 +523,11 @@ export interface VideoDataUiBridgeConfirmMessage extends Message {
 export interface VideoDataUiBridgeOpenFileMessage extends Message {
     readonly command: 'openFile';
     readonly subtitles: SerializedSubtitleFile[];
+}
+
+export interface VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage extends Message {
+    readonly command: 'setOnlineSubtitleSourceConfig';
+    readonly state: Partial<OnlineSubtitleSourceConfig>;
 }
 
 export interface CropAndResizeMessage extends Message, ImageCaptureParams {
@@ -589,6 +610,7 @@ export interface EditKeyboardShortcutsMessage extends Message {
 export interface OpenAsbplayerSettingsMessage extends Message {
     readonly command: 'open-asbplayer-settings';
     readonly tutorial?: boolean;
+    readonly scrollToId?: string;
 }
 
 export interface ExtensionVersionMessage extends Message {
@@ -596,6 +618,7 @@ export interface ExtensionVersionMessage extends Message {
     version: string;
     extensionCommands?: { [key: string]: string | undefined };
     pageConfig?: { [K in keyof PageSettings]: SettingsFormPageConfig };
+    browserFeatures?: BrowserFeatures;
 }
 
 export interface AlertMessage extends Message {
@@ -640,8 +663,20 @@ export interface GrantedActiveTabPermissionMessage extends Message {
     readonly command: 'granted-active-tab-permission';
 }
 
+export type SidePanelLocation = 'mining-history' | 'statistics';
+
 export interface ToggleSidePanelMessage extends Message {
     readonly command: 'toggle-side-panel';
+    readonly location?: SidePanelLocation;
+}
+
+export interface OpenSidePanelLocationMessage extends Message {
+    readonly command: 'open-side-panel-location';
+    readonly location: SidePanelLocation;
+}
+
+export interface OpenStatisticsMessage extends Message {
+    readonly command: 'open-statistics';
 }
 
 export interface CloseSidePanelMessage extends Message {
@@ -822,6 +857,25 @@ export interface DictionaryImportRecordLocalBulkMessage extends MessageWithId {
     readonly profiles: string[];
 }
 
+export interface DictionaryGetRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-get-records';
+    readonly profile: string | undefined;
+    readonly track: number | undefined;
+}
+
+export interface DictionaryUpdateRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-update-records';
+    readonly profile: string | undefined;
+    readonly updates: DictionaryRecordUpdateInput[];
+    readonly applyStates: ApplyStrategy;
+}
+
+export interface DictionaryDeleteRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-delete-records';
+    readonly profile: string | undefined;
+    readonly tokenKeys: DictionaryTokenKey[];
+}
+
 export interface DictionaryBuildAnkiCacheMessage extends MessageWithId {
     readonly command: 'dictionary-build-anki-cache';
     readonly profile: string | undefined;
@@ -842,24 +896,36 @@ export interface DictionaryBuildAnkiCacheStateMessage extends DictionaryBuildAnk
 }
 
 export enum DictionaryBuildAnkiCacheStateType {
+    start = 0,
     unknown = 1,
     error = 2,
     stats = 3,
     progress = 4,
 }
 
-export interface DictionaryBuildAnkiCacheStats extends DictionaryBuildAnkiCacheStateBody {
-    tracksToBuild?: number[];
-    tracksToClear?: number[];
-    orphanedCards?: number;
-    modifiedCards?: number;
-    buildTimestamp?: number;
+export interface DictionaryBuildAnkiCacheStart extends DictionaryBuildAnkiCacheStateBody {
+    buildTimestamp: number;
+}
+
+export interface Progress {
+    current: number;
+    total: number;
+    startedAt: number;
 }
 
 export interface DictionaryBuildAnkiCacheProgress extends DictionaryBuildAnkiCacheStateBody {
     current: number;
     total: number;
     buildTimestamp: number;
+    forAnkiSync?: boolean;
+}
+
+export interface DictionaryBuildAnkiCacheStats extends DictionaryBuildAnkiCacheStateBody {
+    buildTimestamp: number;
+    tracksToBuild?: number[];
+    tracksToClear?: number[];
+    orphanedCards?: number;
+    modifiedCards?: number;
 }
 
 export enum DictionaryBuildAnkiCacheStateErrorCode {
@@ -922,4 +988,61 @@ export interface SaveTokenLocalToVideoMessage extends Message {
     readonly status: TokenStatus | null;
     readonly states: TokenState[];
     readonly applyStates: ApplyStrategy;
+}
+
+export interface DictionaryGetAllTokensMessage extends MessageWithId {
+    readonly command: 'dictionary-get-all-tokens';
+    readonly profile: string | undefined;
+    readonly track: number;
+}
+
+export interface DictionaryStatisticsMessage extends Message {
+    readonly command: 'dictionary-statistics';
+    readonly mediaId: string;
+    readonly snapshot?: DictionaryStatisticsSnapshot;
+}
+
+export interface DictionaryRequestStatisticsGenerationMessage extends Message {
+    readonly command: 'dictionary-request-statistics-generation';
+    readonly mediaId?: string;
+}
+
+export interface DictionaryRequestStatisticsSnapshotMessage extends Message {
+    readonly command: 'dictionary-request-statistics-snapshot';
+    readonly mediaId?: string;
+}
+
+export interface DictionaryRequestStatisticsSeekMessage extends Message {
+    readonly command: 'dictionary-request-statistics-seek';
+    readonly mediaId: string;
+    readonly timestamp: number;
+}
+
+export interface DictionaryRequestStatisticsMineSentencesMessage extends Message {
+    readonly command: 'dictionary-request-statistics-mine-sentences';
+    readonly mediaId: string;
+    readonly indexes: number[];
+}
+
+export interface OpenStatisticsOverlayMessage extends Message {
+    readonly command: 'open-statistics-overlay';
+    readonly mediaId: string;
+    readonly force: boolean;
+}
+
+export interface ResizeStatisticsOverlayMessage extends Message {
+    readonly command: 'resize-statistics-overlay';
+    readonly width: number;
+    readonly height: number;
+}
+
+export interface MoveStatisticsOverlayMessage extends Message {
+    readonly command: 'move-statistics-overlay';
+    readonly deltaX: number;
+    readonly deltaY: number;
+}
+
+export interface CloseStatisticsOverlayMessage extends Message {
+    readonly command: 'close-statistics-overlay';
+    readonly mediaId: string;
 }

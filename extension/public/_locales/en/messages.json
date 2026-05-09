@@ -2,6 +2,9 @@
     "extensionDescription": {
         "message": "Enhance streaming video for language-learning."
     },
+    "shortcutOpenSidePanel": {
+        "message": "Toggle side panel"
+    },
     "shortcutMineSubtitleDescription": {
         "message": "Mine current subtitle. When video is synced without a subtitle file, starts/stops recording audio."
     },

@@ -25,5 +25,8 @@
     },
     "contextMenuLoadSubtitles": {
         "message": "Załaduj napisy"
+    },
+    "shortcutOpenSidePanel": {
+        "message": "Przełącz panel boczny"
     }
 }

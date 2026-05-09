@@ -1,6 +1,6 @@
 import { Command, HttpPostMessage, Message } from '@project/common';
 
-const allowedKeys = ['version', 'action', 'params', 'text', 'scanLength', 'term'];
+const allowedKeys = ['version', 'action', 'params', 'text', 'scanLength', 'parser', 'term'];
 const allowedActions = [
     'areSuspended',
     'guiAddCards',

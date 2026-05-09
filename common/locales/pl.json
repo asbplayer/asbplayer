@@ -1,6 +1,7 @@
 {
     "action": {
         "cancel": "Anuluj",
+        "close": "Close",
         "copy": "Kopiuj",
         "delete": "Usuń",
         "save": "Save",
@@ -31,7 +32,9 @@
         "increaseOffsetButton": "Zwiększ przesunięcie, aby poprzednie napisy znalazły się na obecnej pozycji. Przytrzymaj, aby zwiększyć o 100 Ms.",
         "gotIt": "Got it",
         "revert": "Revert",
-        "userGuide": "User guide"
+        "userGuide": "User guide",
+        "search": "Search",
+        "reload": "Reload"
     },
     "about": {
         "title": "About asbplayer",
@@ -57,6 +60,9 @@
         "disabled": "Disabled",
         "inNotOut": "Enabled",
         "inAndOut": "Enabled with auto-resume"
+    },
+    "videoSubtitleSplitBehavior": {
+        "autoMaximizeVideo": "Auto-maximize local video"
     },
     "ankiDialog": {
         "applySelection": "Zastosuj wybór",
@@ -152,7 +158,8 @@
         "moveTopSubtitlesUp": "Move top subtitles up",
         "moveTopSubtitlesDown": "Move top subtitles down",
         "markHoveredToken": "Mark hovered word as {{tokenStatus}}",
-        "toggleHoveredTokenIgnored": "Toggle hovered word as ignored"
+        "toggleHoveredTokenIgnored": "Toggle hovered word as ignored",
+        "openStatistics": "Open statistics"
     },
     "controls": {
         "autoPauseMode": "Automatyczna pauza",
@@ -174,7 +181,9 @@
         "toggleTheaterMode": "Przełącz tryb kinowy",
         "showSubtitlePlayer": "Pokaż listę napisów",
         "hideSubtitlePlayer": "Schowaj listę napisów",
-        "currentTimestamp": "Current Timestamp"
+        "currentTimestamp": "Current Timestamp",
+        "showBlurOverlay": "Show Blur Overlay",
+        "hideBlurOverlay": "Hide Blur Overlay"
     },
     "copyHistory": {
         "blank": "Puste",
@@ -288,6 +297,7 @@
         "disabledAutoPause": "Automatyczna pauza: Wyłączona",
         "disabledCondensedPlayback": "Skondensowane odtwarzanie: Wyłączone",
         "disabledFastForwardPlayback": "Tryb przyspieszonego odtwarzania: Wyłączony",
+        "disabledAllPlayModes": "All playback modes: Off",
         "enabledAutoPause": "Automatyczna pauza: Włączona",
         "enabledCondensedPlayback": "Odtwarzanie skondensowane: Włączone",
         "enabledFastForwardPlayback": "Tryb przyspieszonego odtwarzania: Włączony",
@@ -374,6 +384,12 @@
         "layout": "Layout",
         "maxImageHeight": "Maksymalna wysokość obrazu",
         "maxImageWidth": "Maksymalna szerokość obrazu",
+        "mediaFragmentCaptureFormat": "Capture format",
+        "mediaFragmentFormatScreenshot": "Screenshot",
+        "mediaFragmentFormatVideoClip": "Video clip (local video only)",
+        "mediaFragmentMaxClipLength": "Max clip length",
+        "mediaFragmentTrimEnd": "Clip trim end",
+        "mediaFragmentTrimStart": "Clip trim start",
         "mining": "Kopanie",
         "miningHistoryStorageLimit": "Limit przechowywania historii kopania",
         "clickToMineDefaultAction": "Domyślna akcja przycisku kopania",
@@ -396,7 +412,7 @@
         "track2Field": "Subtitle Track 2 Field",
         "track3Field": "Subtitle Track 3 Field",
         "reset": "Reset",
-        "screenshots": "Screenshots",
+        "screenshots": "Image capture",
         "subtitleAppearance": "Wygląd napisów",
         "subtitleBackgroundColor": "Kolor tła napisów",
         "subtitleBackgroundOpacity": "Krycie tła napisów",
@@ -451,9 +467,11 @@
         "pauseOnHoverMode": "Auto-pause when mousing over subtitles",
         "createTestCard": "Create Test Card",
         "annotation": "Annotation",
+        "ftueAnnotation": "Subtitle annotation features are now available.",
         "annotationHelperText": "Annotation requires <0>Yomitan API</0> to function.",
         "annotationNoExtensionWarn": "Installing the asbplayer extension is recommended to prevent your browser from deleting manually stored words. Export your settings before installing the extension to preserve your data.",
         "annotationLocalAnkiHelperText": "Word status is determined by your local collection then from Anki cards. Collect words locally through imports or by hovering over words and using the keyboard shortcuts.",
+        "manageWords": "My word database",
         "buildAnkiCache": "Re-Build Anki cache",
         "buildAnkiCacheHelperText": "The cache is automatically updated during playback when a track is enabled and Anki is connectable.",
         "buildAnkiCacheAnkiEnableHelperText": "Configure word fields and/or sentence fields to use Anki for known words.",
@@ -461,6 +479,7 @@
         "dictionaryLocalWordDatabase": "Local word database",
         "dictionaryAnkiWordDatabase": "Anki word database",
         "dictionaryColorizeSubtitles": "Colorize subtitles based on known words",
+        "dictionaryAutoGenerateStatistics": "Generate statistics automatically",
         "dictionaryColorizeOnHoverOnly": "On Hover Only",
         "dictionaryHighlightOnHover": "Highlight words on hover",
         "dictionaryTokenMatchStrategy": "Word field search strategy",
@@ -475,6 +494,11 @@
         "dictionaryTokenMatchStrategyPriorityLeastKnown": "Least known card",
         "dictionaryYomitanSection": "Yomitan",
         "dictionaryYomitanUrl": "Yomitan API URL",
+        "dictionaryYomitanParser": "Yomitan parser",
+        "dictionaryYomitanScanningParser": "Scanning Parser (All languages)",
+        "dictionaryYomitanMecabParser": "MeCab (Japanese)",
+        "dictionaryYomitanMecabNotSupportedError": "Failed to parse with MeCab, instructions to setup are <0>here</0>. Install UniDic for the best results.",
+        "dictionaryYomitanMecabLemmaNotSupportedError": "Update to the latest MeCab installer <0>here</0> and install UniDic for the best results.",
         "dictionaryYomitanScanLength": "Max word length",
         "dictionaryTokenReadingAnnotation": "Annotation for word readings",
         "dictionaryTokenReadingAnnotationAlways": "Always",
@@ -505,11 +529,20 @@
         "dictionaryTokenStylingThickness": "Thickness",
         "dictionaryColorizeFullyKnownTokens": "Colorize fully known words",
         "dictionaryTokenStatus5": "Mature",
+        "dictionaryTokenStatusReading5": "Reading",
         "dictionaryTokenStatus4": "Young",
+        "dictionaryTokenStatusReading4": "Reading",
         "dictionaryTokenStatus3": "Graduated",
+        "dictionaryTokenStatusReading3": "Reading",
         "dictionaryTokenStatus2": "Learning",
+        "dictionaryTokenStatusReading2": "Reading",
         "dictionaryTokenStatus1": "Unknown",
+        "dictionaryTokenStatusReading1": "Reading",
         "dictionaryTokenStatus0": "Uncollected",
+        "dictionaryTokenStatusReading0": "Reading",
+        "dictionaryTokenStateIgnored": "Ignored",
+        "dictionaryBuildAnkiStarted": "Querying Anki for modified cards",
+        "dictionaryTokenStatusAlpha": "Alpha",
         "dictionaryBuildAnkiTracks": "Anki track(s): {{tracks}}",
         "dictionaryBuildModifiedCards": "{{numCards}} modified card(s)",
         "dictionaryBuildOrphanedCards": "{{numCards}} deleted card(s) from orphaned track(s): {{tracks}}",
@@ -520,10 +553,105 @@
         "dictionaryImportClipboardText": "Paste text or one word per line",
         "dictionaryImportClipboardNoTokens": "No valid words found",
         "dictionaryImportedMaturity": "Treat imported words as",
+        "applyStrategies": {
+            "add": "Add",
+            "remove": "Remove",
+            "replace": "Replace",
+            "toggle": "Toggle"
+        },
+        "dictionaryBrowser": {
+            "title": "Word Browser",
+            "searchPlaceholder": "Search by word or lemma",
+            "yomitanWarning": "Yomitan lemma search is unavailable: {{message}}",
+            "bulkStatus": "Maturity",
+            "applyToSelected": "Apply to selected",
+            "deleteSelected": "Delete selected",
+            "updateSelected": "Update {{selectedCount}} selected words",
+            "confirmApplyToSelected": "Are you sure you want to apply the selected changes to {{count}} entries?",
+            "confirmApplyToSelectedDeleteWarning": "Entries that are uncollected with no states will be deleted.",
+            "confirmDeleteSelected": "Are you sure you want to delete {{count}} selected entries?",
+            "results": "Showing {{shown}} of {{total}} entries",
+            "noResults": "No matching words found.",
+            "columns": {
+                "word": "Word",
+                "lemmas": "Lemmas",
+                "source": "Source",
+                "status": "Status",
+                "states": "States",
+                "track": "Track",
+                "cardIds": "Card IDs",
+                "noteIds": "Note IDs",
+                "suspended": "Suspended"
+            },
+            "sources": {
+                "local": "Local",
+                "ankiWord": "Anki word",
+                "ankiSentence": "Anki sentence"
+            },
+            "suspended": {
+                "all": "All",
+                "yes": "Yes",
+                "no": "No",
+                "mixed": "Mixed"
+            }
+        },
         "ui": "UI",
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
         "seekableTracks": "Ścieżki napisów brane pod uwagę przy przewijaniu (skróty) i automatycznym pauzowaniu"
+    },
+    "statistics": {
+        "title": "Statistics",
+        "generate": "Generate statistics",
+        "generationInProgress": "Statistics generation in progress",
+        "empty": "No statistics have been generated for the current sentences yet.",
+        "gettingStarted": "To generate statistics for loaded subtitles, enable annotations from the <0>settings</0>.",
+        "uniqueWords": "Unique words",
+        "knownWords": "Known words",
+        "uniqueWordsPerSentence": "Unique words per sentence",
+        "knownWordsPerSentence": "Known words per sentence",
+        "globalKnownWords": "Global known words",
+        "comprehension": "Comprehension",
+        "sentenceIndex": "Sentence index",
+        "wordDistribution": "Word distribution (occurrences)",
+        "statusDistribution": "Status",
+        "frequency": "Frequency",
+        "occurrences": "Occurrences",
+        "sentenceStatistics": "Sentence statistics",
+        "currentWatch": "Current watch",
+        "projectedRewatch": "Projected rewatch",
+        "rewatchSelect": "Rewatch",
+        "rewatchOption": "Rewatch #{{rewatch}}",
+        "miningDisabledUntilComplete": "Mining is available after statistics for this track finish generating.",
+        "sortBy": "Sort by",
+        "matchingSentences": "{{number}} matching sentences",
+        "sentenceDetailsEmpty": "No sentences matched this bucket.",
+        "noMoreRewatches": "There will be no more mining after all i+1 sentences this session.",
+        "totalSentences": "Total sentences",
+        "knownSentences": "Known sentences",
+        "anki": {
+            "ankiStatistics": "Anki statistics",
+            "dueByToday": "Due by today",
+            "dueByTomorrow": "Due by tomorrow",
+            "dueByWeek": "Due within a week",
+            "suspended": "Suspended",
+            "deckBreakdown": "Deck breakdown",
+            "modelBreakdown": "Model breakdown",
+            "ankiNeedsToBeRunning": "Anki needs to be running to load statistics.",
+            "noDeckBreakdown": "No matching Anki cards were found for this media.",
+            "info": {
+                "ankiStatistics": "How your Anki cards match up with the words in this media."
+            }
+        },
+        "info": {
+            "comprehension": "How many unique words are known, weighted by status and occurrences.",
+            "globalKnownWords": "How many words are known including locally stored words and Anki.",
+            "wordDistribution": "How unique words are distributed across status and frequency.",
+            "frequency": "Frequency: The rank-based frequency from your frequency dictionaries.",
+            "occurrences": "Occurrences: The total number of times a word appears.",
+            "sentenceStatistics": "How easily this content can be mined.",
+            "projectedRewatch": "Assumes all i+1 uncollected sentences were mined from the previous watch."
+        }
     },
     "subtitlePlayer": {
         "multiSubtitleSelectHelp": "Kliknij, przytrzymaj i przeciągnij, aby wykopać więcej linii napisów"
@@ -531,5 +659,15 @@
     "app": {
         "pwaUpdatePromptTitle": "App update",
         "pwaUpdatePromptBody": "Click \"OK\" to complete update."
+    },
+    "onlineSubtitleSources": {
+        "searchOnlineSubtitles": "Search online subtitles",
+        "searchTerm": "Search term",
+        "jimakuApiKey": "Jimaku API key",
+        "jimakuApiKeyAutosaveHint": "Saved automatically. Get an API key <0>here</0>.",
+        "entries": "Search results",
+        "noEntries": "No search results",
+        "availableFiles": "Files",
+        "noFiles": "No files"
     }
 }

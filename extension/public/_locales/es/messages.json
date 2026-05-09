@@ -25,5 +25,8 @@
     },
     "shortcutUpdateLastCardDescription": {
         "message": "Actualizar la última tarjeta de Anki creada con medios capturados por asbplayer. Cuando el video es sincronizado sin una pista de subtítulos, comienza/finaliza la grabación de audio."
+    },
+    "shortcutOpenSidePanel": {
+        "message": "Abrir/Cerrar Panel Lateral"
     }
 }

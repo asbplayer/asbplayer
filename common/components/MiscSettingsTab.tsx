@@ -21,6 +21,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection from './SettingsSection';
+import { VideoSubtitleSplitBehavior } from '../settings';
 
 function regexIsValid(regex: string) {
     try {
@@ -53,6 +54,7 @@ const MiscSettingTab: React.FC<Props> = ({
     const { t } = useTranslation();
     const {
         themeType,
+        videoSubtitleSplitBehavior,
         language,
         rememberSubtitleOffset,
         autoCopyCurrentSubtitle,
@@ -163,6 +165,23 @@ const MiscSettingTab: React.FC<Props> = ({
                         </MenuItem>
                     ))}
                 </SettingsTextField>
+                <SwitchLabelWithHoverEffect
+                    control={
+                        <Switch
+                            checked={videoSubtitleSplitBehavior === VideoSubtitleSplitBehavior.autoMaximizeVideo}
+                            onChange={(event) =>
+                                onSettingChanged(
+                                    'videoSubtitleSplitBehavior',
+                                    event.target.checked
+                                        ? VideoSubtitleSplitBehavior.autoMaximizeVideo
+                                        : VideoSubtitleSplitBehavior.rememberSplitPosition
+                                )
+                            }
+                        />
+                    }
+                    label={t('videoSubtitleSplitBehavior.autoMaximizeVideo')}
+                    labelPlacement="start"
+                />
                 <SettingsSection>{t('settings.subtitles')}</SettingsSection>
                 <SwitchLabelWithHoverEffect
                     control={

@@ -60,6 +60,9 @@ const NotificationUi = ({ bridge }: Props) => {
             }
         });
     }, [bridge, t]);
+
+    useEffect(() => bridge.serverIsReady(), [bridge]);
+
     const [themeType, setThemeType] = useState<PaletteMode>('dark');
     const theme = useMemo(() => createTheme(themeType), [themeType]);
 
@@ -91,7 +94,7 @@ const NotificationUi = ({ bridge }: Props) => {
                                     color="primary"
                                     target="_blank"
                                     rel="noreferrer"
-                                    href={`https://github.com/killergerbah/asbplayer/releases/tag/v${newVersion}`}
+                                    href={`https://github.com/asbplayer/asbplayer/releases/tag/v${newVersion}`}
                                 >
                                     release notes
                                 </Link>,

@@ -19,6 +19,7 @@ import { useSettingsProfileContext } from '@project/common/hooks/use-settings-pr
 import { StyledEngineProvider } from '@mui/material/styles';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
+import { isFirefoxBuild } from '@/services/build-flags';
 
 interface Props {
     commands: any;
@@ -64,8 +65,13 @@ export function PopupUi({ commands }: Props) {
     }, [settings]);
 
     const handleOpenSidePanel = useCallback(async () => {
-        // @ts-ignore
-        browser.sidePanel.open({ windowId: (await browser.windows.getLastFocused()).id });
+        if (isFirefoxBuild) {
+            // @ts-ignore
+            browser.sidebarAction.open();
+        } else {
+            // @ts-ignore
+            browser.windows.getLastFocused((window) => browser.sidePanel.open({ windowId: window.id }));
+        }
     }, []);
 
     const handleOpenUserGuide = useCallback(() => {

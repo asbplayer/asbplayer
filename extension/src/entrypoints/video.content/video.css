@@ -27,6 +27,7 @@
 }
 
 .asbplayer-subtitles-blurred {
+    display: inline-block; /* Blur ruby annotations as well */
     filter: blur(10px);
 }
 
@@ -121,7 +122,7 @@
 }
 
 .asb-frequency rt {
-    font-size: 0.25em;
+    font-size: 0.3em; /* This is overridden for SubtitlePlayer as it's too small */
     line-height: 1;
 }
 
@@ -130,7 +131,7 @@
 }
 
 .asb-frequency-hover rt {
-    font-size: 0.25em; /* This is overridden for SubtitlePlayer as it's too small */
+    font-size: 0.3em; /* This is overridden for SubtitlePlayer as it's too small */
     line-height: 1;
     display: none;
 }
@@ -231,7 +232,7 @@
     position: absolute !important;
     transform: translate(-50%) !important;
     display: inline-block !important;
-    z-index: 2147483647 !important;
+    z-index: 2147483646 !important;
     text-align: center !important;
     pointer-events: auto !important;
 }
@@ -240,10 +241,21 @@
     position: absolute !important;
     transform: translate(-50%, -100%) !important;
     display: inline-block !important;
-    z-index: 2147483647 !important;
+    z-index: 2147483646 !important;
     text-align: center !important;
     pointer-events: auto !important;
 }
 
 .asbplayer-mobile-video-overlay {
+}
+
+.asbplayer-statistics-overlay-container {
+    position: fixed !important;
+    top: 8px !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+    width: 100vw !important;
+    /* +1 more than mobile overlay */
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
 }

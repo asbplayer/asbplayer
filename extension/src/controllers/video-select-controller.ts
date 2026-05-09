@@ -9,7 +9,7 @@ import {
 import { SettingsProvider } from '@project/common/settings';
 import { VideoElement } from '../ui/components/VideoSelectUi';
 import Binding from '../services/binding';
-import UiFrame from '../services/ui-frame';
+import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { fetchLocalization } from '../services/localization-fetcher';
 import { ExtensionSettingsStorage } from '../services/extension-settings-storage';
 
@@ -27,7 +27,7 @@ export default class VideoSelectController {
 
     constructor(bindings: Binding[]) {
         this._bindings = bindings;
-        this._frame = new UiFrame(
+        this._frame = uiFrameForHtml(
             async (lang) => `<!DOCTYPE html>
                 <html lang="en">
                 <head>

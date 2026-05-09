@@ -1,13 +1,19 @@
 import type {
     AddProfileMessage,
     DictionaryBuildAnkiCacheMessage,
+    DictionaryGetAllTokensMessage,
     DictionaryDeleteProfileMessage,
     DictionaryDeleteRecordLocalBulkMessage,
     DictionaryGetBulkMessage,
     DictionaryGetByLemmaBulkMessage,
+    DictionaryRequestStatisticsGenerationMessage,
+    DictionaryRequestStatisticsSnapshotMessage,
+    DictionaryRequestStatisticsMineSentencesMessage,
+    DictionaryRequestStatisticsSeekMessage,
     DictionarySaveRecordLocalBulkMessage,
     DictionaryExportRecordLocalBulkMessage,
     DictionaryImportRecordLocalBulkMessage,
+    DictionaryStatisticsMessage,
     GetGlobalStateMessage,
     GetSettingsMessage,
     RemoveProfileMessage,
@@ -17,14 +23,17 @@ import type {
     SetActiveProfileMessage,
     SetGlobalStateMessage,
     SetSettingsMessage,
+    ExtensionVersionMessage,
+    DictionaryUpdateRecordsMessage,
+    DictionaryDeleteRecordsMessage,
+    DictionaryGetRecordsMessage,
 } from '@project/common';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import type { ContentScriptContext } from '#imports';
-import gte from 'semver/functions/gte';
 
-const matches = ['*://killergerbah.github.io/asbplayer*', '*://app.asbplayer.dev/*'];
+const matches = ['*://app.asbplayer.dev/*'];
 
 if (import.meta.env.DEV) {
     matches.push('*://localhost/*');
@@ -165,12 +174,69 @@ export default defineContentScript({
                         });
                         break;
                     }
+                    case 'dictionary-get-records': {
+                        const { profile, track } = command.message as DictionaryGetRecordsMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.getRecords(profile, track),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-update-records': {
+                        const { profile, updates, applyStates } = command.message as DictionaryUpdateRecordsMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.updateRecords(profile, updates, applyStates),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-delete-records': {
+                        const { profile, tokenKeys } = command.message as DictionaryDeleteRecordsMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.deleteRecords(profile, tokenKeys),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
                     case 'dictionary-build-anki-cache': {
                         const { profile, settings } = command.message as DictionaryBuildAnkiCacheMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.buildAnkiCache(profile, settings, { useOriginTab: true }), // App with extension doesn't have full extension context
+                            response: await dictionaryStorage.buildAnkiCache(profile, settings),
                             messageId: command.message.messageId,
                         });
+                        break;
+                    }
+                    case 'dictionary-get-all-tokens': {
+                        const { profile, track } = command.message as DictionaryGetAllTokensMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.getAllTokens(profile, track),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-statistics': {
+                        const { mediaId, snapshot } = command.message as DictionaryStatisticsMessage;
+                        await dictionaryStorage.publishStatisticsSnapshot(mediaId, snapshot);
+                        break;
+                    }
+                    case 'dictionary-request-statistics-snapshot': {
+                        const { mediaId } = command.message as DictionaryRequestStatisticsSnapshotMessage;
+                        await dictionaryStorage.requestStatisticsSnapshot(mediaId);
+                        break;
+                    }
+                    case 'dictionary-request-statistics-generation': {
+                        const { mediaId } = command.message as DictionaryRequestStatisticsGenerationMessage;
+                        await dictionaryStorage.requestStatisticsGeneration(mediaId);
+                        break;
+                    }
+                    case 'dictionary-request-statistics-seek': {
+                        const { mediaId, timestamp } = command.message as DictionaryRequestStatisticsSeekMessage;
+                        await dictionaryStorage.requestStatisticsSeek(mediaId, timestamp);
+                        break;
+                    }
+                    case 'dictionary-request-statistics-mine-sentences': {
+                        const { mediaId, indexes } = command.message as DictionaryRequestStatisticsMineSentencesMessage;
+                        await dictionaryStorage.requestStatisticsMineSentences(mediaId, indexes);
                         break;
                     }
                     case 'request-subtitles':
@@ -254,21 +320,29 @@ export default defineContentScript({
                 },
             });
 
-            const pageConfigPromise = gte(manifest.version, '1.12.0')
-                ? browser.runtime.sendMessage({
-                      sender: 'asbplayerv2',
-                      message: {
-                          command: 'page-config',
-                      },
-                  })
-                : new Promise((resolve) => resolve(undefined));
+            const pageConfigPromise = browser.runtime.sendMessage({
+                sender: 'asbplayerv2',
+                message: {
+                    command: 'page-config',
+                },
+            });
 
-            sendMessageToPlayer({
+            const browserFeaturesPromise = browser.runtime.sendMessage({
+                sender: 'asbplayerv2',
+                message: {
+                    command: 'browser-features',
+                },
+            });
+
+            const versionMessage: ExtensionVersionMessage = {
                 command: 'version',
                 version: manifest.version,
                 extensionCommands: await commandsPromise,
                 pageConfig: await pageConfigPromise,
-            });
+                browserFeatures: await browserFeaturesPromise,
+            };
+
+            sendMessageToPlayer(versionMessage);
         });
     },
 });

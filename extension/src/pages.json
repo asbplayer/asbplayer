@@ -196,6 +196,29 @@
             "autoSync": {
                 "enabled": true
             }
+        },
+        {
+            "key": "svtplay",
+            "host": "www\\.svtplay\\.se",
+            "pageScript": "svt-play-page.js",
+            "syncAllowedAtPath": "video",
+            "autoSync": {
+                "enabled": true
+            }
+        },
+        {
+            "key": "urplay",
+            "host": "urplay\\.se",
+            "pageScript": "ur-play-page.js",
+            "syncAllowedAtPath": "program|serie",
+            "autoSync": {
+                "enabled": true
+            }
+        },
+        {
+            "key": "archive",
+            "host": "archive\\.org",
+            "searchShadowRootsForVideoElements": true
         }
     ]
 }

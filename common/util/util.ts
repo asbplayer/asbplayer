@@ -1,6 +1,7 @@
 import sanitize from 'sanitize-filename';
 import { Rgb, SubtitleModel, Tokenization, TokenReading } from '../src/model';
 import { TextSubtitleSettings } from '../settings/settings';
+import { Progress } from '..';
 
 export function arrayEquals<T>(a: T[], b: T[], equals = (lhs: T, rhs: T) => lhs === rhs): boolean {
     if (a.length !== b.length) {
@@ -15,6 +16,14 @@ export function arrayEquals<T>(a: T[], b: T[], equals = (lhs: T, rhs: T) => lhs 
 
     return true;
 }
+
+export const localizedDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
+};
 
 export function humanReadableTime(timestamp: number, nearestTenth = false, fullyPadded = false): string {
     const totalSeconds = Math.floor(timestamp / 1000);
@@ -48,6 +57,39 @@ export function humanReadableTime(timestamp: number, nearestTenth = false, fully
 
         return minutes + 'm' + String(seconds).padStart(2, '0') + 's';
     }
+}
+
+export function timeDurationDisplay(
+    milliseconds: number,
+    totalMilliseconds: number,
+    includeMilliseconds = true
+): string {
+    if (milliseconds < 0) {
+        return timeDurationDisplay(0, totalMilliseconds, includeMilliseconds);
+    }
+
+    milliseconds = Math.round(milliseconds);
+    const remainingMilliseconds = milliseconds % 1000;
+    milliseconds = (milliseconds - remainingMilliseconds) / 1000;
+    const seconds = milliseconds % 60;
+    milliseconds = (milliseconds - seconds) / 60;
+    const minutes = milliseconds % 60;
+
+    if (totalMilliseconds >= 3600000) {
+        const hours = (milliseconds - minutes) / 60;
+
+        if (includeMilliseconds) {
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
+        }
+
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    if (includeMilliseconds) {
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
+    }
+
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 export function getCurrentTimeString(): string {
@@ -244,6 +286,13 @@ function withinBoundaryAroundInterval(
     return false;
 }
 
+export function subtitleTimestampWithDelay(subtitle: Pick<SubtitleModel, 'start' | 'end'>, delay: number): number {
+    const start = Math.min(subtitle.start, subtitle.end);
+    const end = Math.max(subtitle.start, subtitle.end);
+
+    return Math.max(start, Math.min(end, delay >= 0 ? start + delay : end + delay));
+}
+
 export function subtitleIntersectsTimeInterval(subtitle: SubtitleModel, interval: number[]) {
     const length = Math.max(0, subtitle.end - subtitle.start);
 
@@ -375,6 +424,25 @@ export function isKatakanaOnly(text: string) {
     return KATAKANA_ONLY_REGEX.test(text.normalize('NFC'));
 }
 
+export function normalizeForSearch(text: string): string {
+    return text
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .replace(/ß/g, 'ss')
+        .replace(/ẞ/g, 'SS')
+        .replace(/æ/g, 'ae')
+        .replace(/Æ/g, 'AE')
+        .replace(/œ/g, 'oe')
+        .replace(/Œ/g, 'OE')
+        .replace(/ø/g, 'o')
+        .replace(/Ø/g, 'O')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .replace(/ł/g, 'l')
+        .replace(/Ł/g, 'L')
+        .normalize('NFC');
+}
+
 // https://stackoverflow.com/questions/63116039/camelcase-to-kebab-case
 function kebabize(str: string) {
     const kebabized = str.replace(/[A-Z]+(?![a-z])|[A-Z]/g, ($, ofs) => (ofs ? '-' : '') + $.toLowerCase());
@@ -417,6 +485,19 @@ export function hexToRgb(hex: string): Rgb {
     };
 }
 
+export function hex2ToPercent(hex: string): number {
+    const parsed = Number.parseInt(hex.replace('#', ''), 16);
+    if (!Number.isFinite(parsed)) return 1;
+    return Math.max(0, Math.min(255, parsed)) / 255;
+}
+
+export function percentToHex2(percent: number): string {
+    const hex = Math.round(Math.max(0, Math.min(1, percent)) * 255)
+        .toString(16)
+        .toUpperCase();
+    return hex.length === 1 ? `0${hex}` : hex;
+}
+
 export function sourceString(subtitleFileName: string, timestamp: number) {
     return timestamp === 0 ? subtitleFileName : `${subtitleFileName} (${humanReadableTime(timestamp, true, true)})`;
 }
@@ -436,36 +517,56 @@ export function seekWithNudge(media: HTMLMediaElement, timestampSeconds: number)
 export async function inBatches<T>(
     items: T[],
     cb: (batch: T[]) => Promise<void>,
-    options = { batchSize: 5 }
+    options: { batchSize: number; statusUpdates?: (progress: Progress) => Promise<void> } = { batchSize: 5 }
 ): Promise<void> {
     const batchSize = options.batchSize > 0 ? options.batchSize : 1;
+    let current = 0;
+    const total = items.length;
+    const startedAt = Date.now();
     for (let i = 0; i < items.length; i += batchSize) {
-        await cb(items.slice(i, i + batchSize));
+        const batch = items.slice(i, i + batchSize);
+        await cb(batch);
+        if (options.statusUpdates) {
+            current += batch.length;
+            await options.statusUpdates({ current, total, startedAt });
+        }
     }
 }
 
 export async function fromBatches<T, R>(
     items: T[],
     cb: (batch: T[]) => Promise<R[]>,
-    options = { batchSize: 5 }
+    options: { batchSize: number; statusUpdates?: (progress: Progress) => Promise<void> } = { batchSize: 5 }
 ): Promise<R[]> {
     const batchSize = options.batchSize > 0 ? options.batchSize : 1;
     const results: R[] = [];
+    let current = 0;
+    const total = items.length;
+    const startedAt = Date.now();
     for (let i = 0; i < items.length; i += batchSize) {
-        const res = await cb(items.slice(i, i + batchSize));
+        const batch = items.slice(i, i + batchSize);
+        const res = await cb(batch);
         for (let j = 0; j < res.length; j++) results.push(res[j]);
+        if (options.statusUpdates) {
+            current += batch.length;
+            await options.statusUpdates({ current, total, startedAt });
+        }
     }
     return results;
 }
 
-export async function mapAsync<T, R>(arr: T[], cb: (e: T) => Promise<R>, options = { batchSize: 5 }): Promise<R[]> {
+export async function mapAsync<T, R>(
+    arr: T[],
+    cb: (e: T) => Promise<R>,
+    options: { batchSize: number; statusUpdates?: (progress: Progress) => Promise<void> } = { batchSize: 5 }
+): Promise<R[]> {
     return fromBatches(arr, (batch) => Promise.all(batch.map(cb)), options);
 }
 
 export async function filterAsync<T>(
     arr: T[],
     cb: (e: T) => Promise<boolean>,
-    options = { batchSize: 5 }
+    options: { batchSize: number; statusUpdates?: (progress: Progress) => Promise<void> } = { batchSize: 5 }
 ): Promise<T[]> {
     const results = await mapAsync(arr, cb, options);
     return arr.filter((_, index) => results[index]);
@@ -535,6 +636,7 @@ const areTokensEqual = (aToken: any, bToken: any) => {
     if (!arrayEquals(aToken.states, bToken.states)) return false;
     if (!arrayEquals(aToken.readings, bToken.readings, areTokenReadingsEqual)) return false;
     if (aToken.frequency !== bToken.frequency) return false;
+    if (aToken.groupingKey !== bToken.groupingKey) return false;
     return true;
 };
 
@@ -542,7 +644,8 @@ const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) =>
     arrayEquals(a.pos, b.pos) && a.reading === b.reading;
 
 /**
- * An async safe semaphore implementation that preserves FIFO order.
+ * An async safe semaphore implementation that preserves FIFO order (within a priority group).
+ * Priority levels are set with acquire(), higher numbers indicate a higher priority.
  * It uses an id for release to allow multiple releases (e.g try/finally with early releases).
  * @param options.permits The number of concurrent permits.
  * @param options.lifetimeMs Maximum lifetime of an acquire before automatic release (prevents deadlocks if callers don't call this.release()).
@@ -552,7 +655,7 @@ export class AsyncSemaphore {
     private lifetimeMs?: number;
     private acquired: Set<number> = new Set();
     private timers: Map<number, ReturnType<typeof setTimeout>> = new Map();
-    private waiting: ((id: number) => void)[] = [];
+    private waiting: Map<number, ((id: number) => void)[]> = new Map();
     private counter: number = 0;
     private getNextId = () => {
         if (this.counter === Number.MAX_SAFE_INTEGER) this.counter = 0;
@@ -582,13 +685,15 @@ export class AsyncSemaphore {
         return id;
     }
 
-    acquire(): Promise<number> {
+    acquire(priority: number = 0): Promise<number> {
         return new Promise<number>((resolve) => {
             if (this.permits > 0) {
                 this.permits--;
                 resolve(this._acquire());
             } else {
-                this.waiting.push(resolve);
+                const queue = this.waiting.get(priority);
+                if (queue) queue.push(resolve);
+                else this.waiting.set(priority, [resolve]);
             }
         });
     }
@@ -599,8 +704,11 @@ export class AsyncSemaphore {
         clearTimeout(this.timers.get(id)!);
         this.timers.delete(id);
 
-        if (this.waiting.length > 0) {
-            this.waiting.shift()!(this._acquire());
+        if (this.waiting.size > 0) {
+            const highestPriority = Math.max(...this.waiting.keys());
+            const queue = this.waiting.get(highestPriority)!;
+            queue.shift()!(this._acquire());
+            if (!queue.length) this.waiting.delete(highestPriority);
         } else {
             this.permits++;
         }

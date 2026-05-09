@@ -54,7 +54,7 @@ import { bindWebSocketClient, unbindWebSocketClient } from '@/services/web-socke
 import { isFirefoxBuild } from '@/services/build-flags';
 import { CaptureStreamAudioRecorder, OffscreenAudioRecorder } from '@/services/audio-recorder-delegate';
 import RequestModelHandler from '@/handlers/mobile-overlay/request-model-handler';
-import CurrentTabHandler from '@/handlers/mobile-overlay/current-tab-handler';
+import CurrentTabHandler from '@/handlers/current-tab-handler';
 import UpdateMobileOverlayModelHandler from '@/handlers/video/update-mobile-overlay-model-handler';
 import { isMobile } from '@project/common/device-detection/mobile';
 import { enqueueUpdateAlert } from '@/services/update-alert';
@@ -70,6 +70,13 @@ import EncodeMp3Handler from '@/handlers/video/encode-mp3-handler';
 import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
 import DictionaryHandler from '@/handlers/dictionary/dictionary-handler';
 import SaveTokenLocalHandler from '@/handlers/asbplayerv2/save-token-local-handler';
+import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
+import { lt as semverLt } from 'semver';
+import { AnnotationTutorialState } from '@project/common/global-state';
+import BrowserFeaturesHandler from '@/handlers/asbplayerv2/browser-features-handler';
+import OpenStatisticsHandler from '@/handlers/video/open-statistics-handler';
+import StatisticsOverlayForwarderHandler from '@/handlers/statistics-overlay/statistics-overlay-forwarder-handler';
+import OpenStatisticsOverlayHandler from '@/handlers/open-statistics-overlay-handler';
 
 export default defineBackground(() => {
     if (!isFirefoxBuild) {
@@ -82,9 +89,38 @@ export default defineBackground(() => {
         primeLocalization(await settings.getSingle('language'));
     };
 
+    const globalStateProvider = new ExtensionGlobalStateProvider();
+
+    const updateBadgeForAnnotationTutorial = () => {
+        browser.action.setBadgeText({ text: '!' });
+        browser.storage.local.onChanged.addListener((changes) => {
+            // Hide the "!" badge when the user views the annotation tutorial
+            for (const [key, { newValue }] of Object.entries(changes)) {
+                if (key === 'ftueAnnotation' && newValue !== AnnotationTutorialState.shouldSee) {
+                    browser.action.setBadgeText({ text: '' });
+                }
+            }
+        });
+    };
+
+    globalStateProvider.get(['ftueAnnotation']).then((s) => {
+        if (s.ftueAnnotation === AnnotationTutorialState.shouldSee) {
+            updateBadgeForAnnotationTutorial();
+        }
+    });
+
     const installListener = async (details: Browser.runtime.InstalledDetails) => {
         if (details.reason === browser.runtime.OnInstalledReason.UPDATE) {
             primeLocalization(await settings.getSingle('language'));
+
+            // Existing users who upgrade to 1.14.0 should see the annotation tutorial
+            if (details.previousVersion !== undefined && semverLt(details.previousVersion, '1.14.0')) {
+                const annotationTutorialState = (await globalStateProvider.get(['ftueAnnotation'])).ftueAnnotation;
+                if (annotationTutorialState === AnnotationTutorialState.hasNotSeen) {
+                    await globalStateProvider.set({ ftueAnnotation: AnnotationTutorialState.shouldSee });
+                    updateBadgeForAnnotationTutorial();
+                }
+            }
             return;
         }
 
@@ -146,10 +182,12 @@ export default defineBackground(() => {
         new SyncHandler(tabRegistry),
         new HttpPostHandler(),
         new ToggleSidePanelHandler(tabRegistry),
+        new OpenStatisticsHandler(tabRegistry),
+        new OpenStatisticsOverlayHandler(tabRegistry),
         new OpenAsbplayerSettingsHandler(),
         new CopyToClipboardHandler(),
         new EncodeMp3Handler(),
-        new DictionaryHandler(dictionaryDB),
+        new DictionaryHandler(dictionaryDB, tabRegistry),
         new VideoDisappearedHandler(tabRegistry),
         new RequestingActiveTabPermissionHandler(),
         new CopySubtitleHandler(tabRegistry),
@@ -178,11 +216,13 @@ export default defineBackground(() => {
         new OpenExtensionShortcutsHandler(),
         new ExtensionCommandsHandler(),
         new PageConfigHandler(),
+        new BrowserFeaturesHandler(),
         new AsbplayerV2ToVideoCommandForwardingHandler(),
         new CaptureVisibleTabHandler(),
         new RequestModelHandler(),
         new CurrentTabHandler(),
         new MobileOverlayForwarderHandler(),
+        new StatisticsOverlayForwarderHandler(),
     ];
 
     browser.runtime.onMessage.addListener((request: Command<Message>, sender, sendResponse) => {
@@ -422,6 +462,12 @@ export default defineBackground(() => {
     updateWebSocketClientState();
     tabRegistry.onAsbplayerInstance(updateWebSocketClientState);
     tabRegistry.onSyncedElement(updateWebSocketClientState);
+    browser.runtime.onConnect.addListener((port) => {
+        const asbplayerId = /asbplayer-side-panel-(.+)/.exec(port.name)?.[1];
+        if (asbplayerId) {
+            port.onDisconnect.addListener(() => tabRegistry.onAsbplayerRemoved(asbplayerId));
+        }
+    });
 
     const action = browser.action || browser.browserAction;
 

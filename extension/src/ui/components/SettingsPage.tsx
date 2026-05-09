@@ -1,5 +1,5 @@
 import { CardModel, HttpFetcher } from '@project/common';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
@@ -13,12 +13,12 @@ import { useI18n } from '../hooks/use-i18n';
 import Paper from '@mui/material/Paper';
 import { Anki } from '@project/common/anki';
 import { useSupportedLanguages } from '../hooks/use-supported-languages';
-import { isFirefoxBuild } from '../../services/build-flags';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
 import { AsbplayerSettings, Profile, testCard } from '@project/common/settings';
 import { useTheme, type Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import { useLocationHash } from '@project/common/hooks/use-location-hash';
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
@@ -42,6 +42,8 @@ interface Props {
     profiles: Profile[];
     activeProfile?: string;
     inTutorial?: boolean;
+    inAnnotationTutorial?: boolean;
+    onAnnotationTutorialSeen?: () => void;
     onNewProfile: (name: string) => void;
     onRemoveProfile: (name: string) => void;
     onSetActiveProfile: (name: string | undefined) => void;
@@ -54,7 +56,15 @@ const extensionTestCard: () => Promise<CardModel> = () => {
     });
 };
 
-const SettingsPage = ({ dictionaryProvider, settings, inTutorial, onSettingsChanged, ...profileContext }: Props) => {
+const SettingsPage = ({
+    dictionaryProvider,
+    settings,
+    inTutorial,
+    inAnnotationTutorial,
+    onAnnotationTutorialSeen,
+    onSettingsChanged,
+    ...profileContext
+}: Props) => {
     const { t } = useTranslation();
     const theme = useTheme();
     const anki = useMemo(
@@ -82,14 +92,9 @@ const SettingsPage = ({ dictionaryProvider, settings, inTutorial, onSettingsChan
     }, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
-    const section = useMemo(() => {
-        if (location.hash && location.hash.startsWith('#')) {
-            return location.hash.substring(1, location.hash.length);
-        }
-
-        return undefined;
-    }, []);
     const { supportedLanguages } = useSupportedLanguages();
+
+    const { hash: scrollToId } = useLocationHash();
 
     if (!settings || !anki || !commands || !i18nInitialized) {
         return null;
@@ -106,7 +111,7 @@ const SettingsPage = ({ dictionaryProvider, settings, inTutorial, onSettingsChan
                         extensionVersion={browser.runtime.getManifest().version}
                         extensionSupportsAppIntegration
                         extensionSupportsOverlay
-                        extensionSupportsSidePanel={!isFirefoxBuild}
+                        extensionSupportsSidePanel
                         extensionSupportsOrderableAnkiFields
                         extensionSupportsTrackSpecificSettings
                         extensionSupportsSubtitlesWidthSetting
@@ -114,6 +119,9 @@ const SettingsPage = ({ dictionaryProvider, settings, inTutorial, onSettingsChan
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
                         extensionSupportsDictionary
+                        extensionSupportsDictionaryBrowser
+                        extensionSupportsDictionaryTokenStatusDisplayAlpha
+                        extensionSupportsDictionaryYomitanMecab
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}
@@ -127,9 +135,11 @@ const SettingsPage = ({ dictionaryProvider, settings, inTutorial, onSettingsChan
                         localFontFamilies={localFontFamilies}
                         supportedLanguages={supportedLanguages}
                         onUnlockLocalFonts={handleUnlockLocalFonts}
-                        scrollToId={section}
                         inTutorial={inTutorial}
+                        inAnnotationTutorial={inAnnotationTutorial}
+                        onAnnotationTutorialSeen={onAnnotationTutorialSeen}
                         testCard={extensionTestCard}
+                        scrollToId={scrollToId}
                     />
                 </DialogContent>
                 <Box style={{ marginBottom: theme.spacing(2) }} className={classes.profilesContainer}>

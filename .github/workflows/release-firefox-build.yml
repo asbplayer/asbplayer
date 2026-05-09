@@ -27,8 +27,8 @@ jobs:
               run: |
                   yarn run wxt submit \
                     --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip \
-                    --firefox-channel unlisted
+                    --firefox-channel listed
               env:
-                  FIREFOX_EXTENSION_ID: e4b27483-2e73-4762-b2ec-8d988a143a40
+                  FIREFOX_EXTENSION_ID: "asbplayer-language-learning"
                   FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
                   FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

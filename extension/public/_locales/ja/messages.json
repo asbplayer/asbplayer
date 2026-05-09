@@ -28,5 +28,8 @@
     },
     "shortcutExportCardDescription": {
         "message": "直接カードをAnkiにエクスポート。"
+    },
+    "shortcutOpenSidePanel": {
+        "message": "サイドパネルを開く/閉じる"
     }
 }

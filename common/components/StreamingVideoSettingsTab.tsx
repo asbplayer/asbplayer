@@ -56,7 +56,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
         streamingTakeScreenshot,
         streamingCleanScreenshot,
         streamingCropScreenshot,
-        streamingScreenshotDelay,
         streamingSubsDragAndDrop,
         streamingAutoSync,
         streamingAutoSyncPromptOnFailure,
@@ -172,23 +171,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     }
                     label={t('extension.settings.cropScreenshot')}
                     labelPlacement="start"
-                />
-                <SettingsTextField
-                    type="number"
-                    color="primary"
-                    fullWidth
-                    label={t('extension.settings.screenshotCaptureDelay')}
-                    value={streamingScreenshotDelay}
-                    onChange={(e) => onSettingChanged('streamingScreenshotDelay', Number(e.target.value))}
-                    slotProps={{
-                        htmlInput: {
-                            min: 0,
-                            step: 1,
-                        },
-                        input: {
-                            endAdornment: <InputAdornment position="end">ms</InputAdornment>,
-                        },
-                    }}
                 />
                 <SettingsSection>{t('settings.subtitles')}</SettingsSection>
                 <SwitchLabelWithHoverEffect

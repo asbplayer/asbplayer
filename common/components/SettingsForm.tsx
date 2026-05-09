@@ -22,6 +22,13 @@ import KeyboardShortcutsSettingsTab from './KeyboardShortcutsSettingsTab';
 import StreamingVideoSettingsTab from './StreamingVideoSettingsTab';
 import MiscSettingsTab from './MiscSettingsTab';
 import { DictionaryProvider } from '../dictionary-db';
+import TutorialBubble, { type TutorialBubbleProps } from './TutorialBubble';
+
+interface AnnotationTutorialPosition {
+    left: number;
+    top: number;
+    placement: TutorialBubbleProps['placement'];
+}
 
 interface StylesProps {
     smallScreen: boolean;
@@ -31,6 +38,7 @@ interface StylesProps {
 const useStyles = makeStyles<Theme, StylesProps>((theme) => ({
     root: ({ smallScreen }) => {
         let styles: any = {
+            position: 'relative',
             maxHeight: '100%',
             height: 'calc(100% - 48px)',
         };
@@ -145,7 +153,7 @@ const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(function TabPan
 type TabName =
     | 'anki-settings'
     | 'mining-settings'
-    | 'dictionary'
+    | 'annotation'
     | 'subtitle-appearance'
     | 'keyboard-shortcuts'
     | 'streaming-video'
@@ -171,6 +179,9 @@ interface Props {
     extensionSupportsExportCardBind: boolean;
     extensionSupportsPageSettings: boolean;
     extensionSupportsDictionary: boolean;
+    extensionSupportsDictionaryBrowser: boolean;
+    extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
+    extensionSupportsDictionaryYomitanMecab: boolean;
     insideApp?: boolean;
     appVersion?: string;
     dictionaryProvider: DictionaryProvider;
@@ -186,6 +197,8 @@ interface Props {
     supportedLanguages: string[];
     forceVerticalTabs?: boolean;
     inTutorial?: boolean;
+    inAnnotationTutorial?: boolean;
+    onAnnotationTutorialSeen?: () => void;
     heightConstrained?: boolean;
     testCard?: () => Promise<CardModel>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
@@ -215,6 +228,9 @@ export default function SettingsForm({
     extensionSupportsExportCardBind,
     extensionSupportsPageSettings,
     extensionSupportsDictionary,
+    extensionSupportsDictionaryBrowser,
+    extensionSupportsDictionaryTokenStatusDisplayAlpha,
+    extensionSupportsDictionaryYomitanMecab,
     insideApp,
     appVersion,
     scrollToId,
@@ -225,6 +241,8 @@ export default function SettingsForm({
     supportedLanguages,
     forceVerticalTabs,
     inTutorial,
+    inAnnotationTutorial,
+    onAnnotationTutorialSeen,
     heightConstrained,
     testCard,
     onSettingsChanged,
@@ -232,6 +250,10 @@ export default function SettingsForm({
     onUnlockLocalFonts,
 }: Props) {
     const supportsDictionary = !extensionInstalled || extensionSupportsDictionary;
+    const supportsDictionaryBrowser = !extensionInstalled || extensionSupportsDictionaryBrowser;
+    const supportsDictionaryTokenStatusDisplayAlpha =
+        !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
+    const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const theme = useTheme();
     const smallScreen = useMediaQuery(theme.breakpoints.down(500)) && !forceVerticalTabs;
     const classes = useStyles({ smallScreen, heightConstrained });
@@ -249,18 +271,14 @@ export default function SettingsForm({
             'mining-settings',
             'subtitle-appearance',
             'keyboard-shortcuts',
-            'dictionary',
+            'annotation',
             'streaming-video',
             'misc-settings',
             'about',
         ];
 
-        if (!extensionSupportsAppIntegration) {
-            tabs.splice(tabs.indexOf('streaming-video'), 1);
-        }
-        if (!supportsDictionary) {
-            tabs.splice(tabs.indexOf('dictionary'), 1);
-        }
+        if (!extensionSupportsAppIntegration) tabs.splice(tabs.indexOf('streaming-video'), 1);
+        if (!supportsDictionary) tabs.splice(tabs.indexOf('annotation'), 1);
 
         return Object.fromEntries(tabs.map((tab, i) => [tab, i]));
     }, [extensionSupportsAppIntegration, supportsDictionary]);
@@ -285,6 +303,10 @@ export default function SettingsForm({
         }
     }, [tutorialStep, noteType]);
 
+    const handleAnnotationTutorialSeen = useCallback(() => {
+        onAnnotationTutorialSeen?.();
+    }, [onAnnotationTutorialSeen]);
+
     const ankiPanelRef = useRef<HTMLDivElement>(null);
     const keyboardShortcutsPanelRef = useRef<HTMLDivElement>(null);
 
@@ -294,16 +316,88 @@ export default function SettingsForm({
         }
     }, [tutorialStep]);
 
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const annotationTabRef = useRef<HTMLDivElement | null>(null);
+
+    const calculateAnnotationTutorialPosition = useCallback(() => {
+        if (!rootRef.current || !annotationTabRef.current) {
+            return;
+        }
+
+        const elm = annotationTabRef.current;
+        const height = elm.getBoundingClientRect().height;
+        const width = elm.getBoundingClientRect().width;
+
+        if (smallScreen) {
+            setAnnotationTutorialPosition({
+                left: Math.min(elm.offsetLeft + width / 2, rootRef.current.clientWidth / 2),
+                top: elm.offsetTop + height,
+                placement: 'bottom',
+            });
+        } else {
+            setAnnotationTutorialPosition({
+                left: elm.offsetLeft + width,
+                top: elm.offsetTop + height / 2,
+                placement: 'right',
+            });
+        }
+    }, [smallScreen]);
+
+    const handleRootRef = useCallback(
+        (ref: HTMLDivElement | null) => {
+            if (!ref) {
+                return;
+            }
+            rootRef.current = ref;
+            calculateAnnotationTutorialPosition();
+        },
+        [calculateAnnotationTutorialPosition]
+    );
+
+    const handleAnnotationTabRef = useCallback(
+        (ref: HTMLDivElement | null) => {
+            if (!ref) {
+                return;
+            }
+            annotationTabRef.current = ref;
+            calculateAnnotationTutorialPosition();
+        },
+        [calculateAnnotationTutorialPosition]
+    );
+
+    const [annotationTutorialPosition, setAnnotationTutorialPosition] = useState<AnnotationTutorialPosition>();
+
     return (
-        <div className={classes.root}>
+        <div ref={handleRootRef} className={classes.root}>
+            {annotationTutorialPosition && (
+                <TutorialBubble
+                    show={inAnnotationTutorial}
+                    placement={annotationTutorialPosition.placement}
+                    text={t('settings.ftueAnnotation')}
+                    onConfirm={handleAnnotationTutorialSeen}
+                >
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: annotationTutorialPosition.left,
+                            top: annotationTutorialPosition.top,
+                        }}
+                    />
+                </TutorialBubble>
+            )}
             <Tabs
                 orientation={tabsOrientation}
                 variant="scrollable"
                 value={tabIndex}
                 className={classes.tabs}
                 scrollButtons={false}
-                onChange={(event, index) => setTabIndex(index)}
-                style={{
+                onChange={(event, index) => {
+                    setTabIndex(index);
+                    if (supportsDictionary && inAnnotationTutorial && index === 4) {
+                        onAnnotationTutorialSeen?.();
+                    }
+                }}
+                sx={{
                     maxWidth: '100vw',
                     marginLeft: smallScreen ? 'auto' : 0,
                     marginRight: smallScreen ? 'auto' : 0,
@@ -313,7 +407,9 @@ export default function SettingsForm({
                 <Tab tabIndex={1} label={t('settings.mining')} id="mining-settings" />
                 <Tab tabIndex={2} label={t('settings.subtitleAppearance')} id="subtitle-appearance" />
                 <Tab tabIndex={3} label={t('settings.keyboardShortcuts')} id="keyboard-shortcuts" />
-                {supportsDictionary && <Tab tabIndex={4} label={t('settings.annotation')} id="dictionary" />}
+                {supportsDictionary && (
+                    <Tab ref={handleAnnotationTabRef} tabIndex={4} label={t('settings.annotation')} id="annotation" />
+                )}
                 {extensionSupportsAppIntegration && (
                     <Tab
                         tabIndex={4 + Number(supportsDictionary)}
@@ -354,9 +450,13 @@ export default function SettingsForm({
                 />
             </TabPanel>
             <TabPanel value={tabIndex} index={tabIndicesById['mining-settings']} tabsOrientation={tabsOrientation}>
-                <MiningSettingsTab settings={settings} onSettingChanged={handleSettingChanged} />
+                <MiningSettingsTab
+                    settings={settings}
+                    onSettingChanged={handleSettingChanged}
+                    showWebmMediaFragmentSettings={Boolean(insideApp)}
+                />
             </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['dictionary']} tabsOrientation={tabsOrientation}>
+            <TabPanel value={tabIndex} index={tabIndicesById['annotation']} tabsOrientation={tabsOrientation}>
                 <DictionarySettingsTab
                     anki={anki}
                     dictionaryProvider={dictionaryProvider}
@@ -364,6 +464,9 @@ export default function SettingsForm({
                     profiles={profiles}
                     activeProfile={activeProfile}
                     extensionInstalled={extensionInstalled}
+                    supportsDictionaryBrowser={supportsDictionaryBrowser}
+                    supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
+                    supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                     onSettingChanged={handleSettingChanged}
                     onViewKeyboardShortcuts={() => {
                         setTabIndex(tabIndicesById['keyboard-shortcuts']);

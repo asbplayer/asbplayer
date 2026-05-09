@@ -1,19 +1,20 @@
-import { defineConfig, loadEnv, normalizePath } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import viteTsconfigPaths from 'vite-tsconfig-paths';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd());
-    const domain = env.VITE_APP_DOMAIN || 'killergerbah.github.io';
-    const base = env.VITE_APP_BASE_PATH || '/asbplayer';
+    const domain = env.VITE_APP_DOMAIN || 'app.asbplayer.dev';
+    const base = env.VITE_APP_BASE_PATH || '/';
     return {
         base,
+        resolve: {
+            tsconfigPaths: true,
+        },
         plugins: [
             react(),
-            viteTsconfigPaths(),
             createHtmlPlugin({
                 inject: {
                     data: {

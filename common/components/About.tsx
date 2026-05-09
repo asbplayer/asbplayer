@@ -116,10 +116,10 @@ const dependencies: Dependency[] = [
         purpose: 'Subtitle parsing',
     },
     {
-        name: 'vtt.js',
-        projectLink: 'https://github.com/mozilla/vtt.js',
+        name: 'videojs-vtt.js',
+        projectLink: 'https://github.com/videojs/vtt.js',
         license: 'Apache 2.0',
-        licenseLink: 'https://github.com/mozilla/vtt.js/blob/master/LICENSE',
+        licenseLink: 'https://github.com/videojs/vtt.js/blob/0.15.x/LICENSE',
         purpose: 'Subtitle parsing',
     },
     {
@@ -188,6 +188,13 @@ const dependencies: Dependency[] = [
         purpose: 'Subtitle detection',
         extension: true,
     },
+    {
+        name: 'DOMPurify',
+        projectLink: 'https://github.com/cure53/DOMPurify',
+        license: 'Apache 2.0',
+        licenseLink: 'https://github.com/cure53/DOMPurify/blob/main/LICENSE',
+        purpose: 'HTML sanitization',
+    },
 ];
 
 const dependencyPurposeCounts: { [key: string]: number } = {};
@@ -207,7 +214,7 @@ const About = ({ appVersion, extensionVersion }: Props) => {
             <Box style={{ width: '100%', textAlign: 'center' }}>
                 <LogoIcon style={{ width: 48, height: 48 }} />
                 <br />
-                <Link variant="h5" href="https://github.com/killergerbah/asbplayer">
+                <Link variant="h5" href="https://github.com/asbplayer/asbplayer">
                     asbplayer
                 </Link>
                 <br />
@@ -215,7 +222,7 @@ const About = ({ appVersion, extensionVersion }: Props) => {
                     <>
                         <Typography variant="caption">
                             {t('about.appVersion')}{' '}
-                            <Link href={`https://github.com/killergerbah/asbplayer/commit/${appVersion}`}>
+                            <Link href={`https://github.com/asbplayer/asbplayer/commit/${appVersion}`}>
                                 {appVersion}
                             </Link>
                         </Typography>
@@ -225,7 +232,7 @@ const About = ({ appVersion, extensionVersion }: Props) => {
                 {extensionVersion && (
                     <Typography variant="caption">
                         {t('about.extensionVersion')}{' '}
-                        <Link href={`https://github.com/killergerbah/asbplayer/releases/tag/v${extensionVersion}`}>
+                        <Link href={`https://github.com/asbplayer/asbplayer/releases/tag/v${extensionVersion}`}>
                             {extensionVersion}
                         </Link>
                     </Typography>

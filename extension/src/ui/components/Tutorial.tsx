@@ -102,7 +102,7 @@ const LoadSubtitlesDialog: React.FC<{ open: boolean; count?: number; onClose: ()
     return (
         <Dialog style={{ zIndex: zIndexTop }} open={open}>
             <DialogContent>
-                {count === undefined && !isMobile && !isFirefox && (
+                {count === undefined && !isMobile && (
                     <Trans
                         i18nKey="ftue.loadSubtitles"
                         components={[
@@ -113,12 +113,6 @@ const LoadSubtitlesDialog: React.FC<{ open: boolean; count?: number; onClose: ()
                         ]}
                     />
                 )}
-                {count === undefined && !isMobile && isFirefox && (
-                    <Trans
-                        i18nKey="ftue.loadSubtitlesFirefox"
-                        components={[<b key={0}>Right-click</b>, <b key={2}>context menu</b>]}
-                    />
-                )}
                 {count === undefined && isMobile && (
                     <Trans
                         i18nKey="ftue.loadSubtitlesMobile"
@@ -126,13 +120,6 @@ const LoadSubtitlesDialog: React.FC<{ open: boolean; count?: number; onClose: ()
                     />
                 )}
             </DialogContent>
-            {isFirefox && (
-                <DialogActions>
-                    <Button onClick={onClose}>
-                        <Trans i18nKey="action.ok" />
-                    </Button>
-                </DialogActions>
-            )}
         </Dialog>
     );
 };

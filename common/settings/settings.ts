@@ -14,8 +14,14 @@ export enum PauseOnHoverMode {
     inNotOut = 2,
 }
 
+export enum VideoSubtitleSplitBehavior {
+    rememberSplitPosition = 'rememberSplitPosition',
+    autoMaximizeVideo = 'autoMaximizeVideo',
+}
+
 export interface MiscSettings {
     readonly themeType: 'dark' | 'light';
+    readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
     readonly seekableTracks: SeekableTracks;
@@ -104,6 +110,43 @@ export function getFullyKnownTokenStatus(): TokenStatus {
     return TokenStatus.MATURE; // If future statuses are optional, this logic may need to change
 }
 
+export function isTokenStatusKnown(status: TokenStatus): boolean {
+    return status >= TokenStatus.LEARNING;
+}
+
+// Any future field added will likely need to be optional for app/extension version mismatch
+export interface TokenStatusConfig {
+    readonly display: boolean;
+    readonly color: string;
+    readonly alpha: string;
+}
+
+const tokenStatusConfigComparators: {
+    [K in keyof TokenStatusConfig]: (a: TokenStatusConfig[K], b: TokenStatusConfig[K]) => boolean;
+} = {
+    display: (a, b) => a === b,
+    color: (a, b) => a === b,
+    alpha: (a, b) => a === b,
+};
+
+export function compareTokenStatusConfigField<K extends keyof TokenStatusConfig>(
+    key: K,
+    a: TokenStatusConfig,
+    b: TokenStatusConfig
+): boolean {
+    return tokenStatusConfigComparators[key](a[key], b[key]);
+}
+
+export function areTokenStatusConfigsEqual(a: TokenStatusConfig, b: TokenStatusConfig): boolean {
+    if (a === b) return true;
+    for (const key in tokenStatusConfigComparators) {
+        if (!compareTokenStatusConfigField(key as keyof TokenStatusConfig, a, b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 export enum TokenState {
     IGNORED = 0, // If ever adding more states, they should go last (if adding colors for states, use a separate array from dictionaryTokenStatusColors indexed by TokenState)
 }
@@ -131,6 +174,7 @@ export enum TokenFrequencyAnnotation {
 export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
     return (
         dt.dictionaryColorizeSubtitles ||
+        dt.dictionaryAutoGenerateStatistics ||
         dt.dictionaryTokenReadingAnnotation !== TokenReadingAnnotation.NEVER ||
         dt.dictionaryDisplayIgnoredTokenReadings ||
         dt.dictionaryTokenFrequencyAnnotation !== TokenFrequencyAnnotation.NEVER
@@ -140,6 +184,7 @@ export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
 export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack): boolean {
     return (
         dt.dictionaryColorizeSubtitles ||
+        dt.dictionaryAutoGenerateStatistics ||
         dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.LEARNING_OR_BELOW ||
         dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.UNKNOWN_OR_BELOW ||
         dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.UNCOLLECTED_ONLY
@@ -148,11 +193,13 @@ export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack): boolean 
 
 export interface DictionaryTrack {
     readonly dictionaryColorizeSubtitles: boolean;
+    readonly dictionaryAutoGenerateStatistics: boolean;
     readonly dictionaryColorizeOnHoverOnly: boolean; // Currently applies to both colorization and reading annotations, named in case we want to separate later
     readonly dictionaryHighlightOnHover: boolean;
     readonly dictionaryTokenMatchStrategy: TokenMatchStrategy;
     readonly dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority;
     readonly dictionaryYomitanUrl: string;
+    readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
     readonly dictionaryYomitanScanLength: number;
     readonly dictionaryTokenReadingAnnotation: TokenReadingAnnotation;
     readonly dictionaryDisplayIgnoredTokenReadings: boolean;
@@ -165,8 +212,9 @@ export interface DictionaryTrack {
     readonly dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL';
     readonly dictionaryTokenStyling: TokenStyling;
     readonly dictionaryTokenStylingThickness: number;
-    readonly dictionaryColorizeFullyKnownTokens: boolean;
-    readonly dictionaryTokenStatusColors: string[]; // Indexed by TokenStatus (if adding colors for states, use a separate array indexed by TokenState)
+    readonly dictionaryColorizeFullyKnownTokens: boolean; // Deprecated in favor of dictionaryTokenStatusConfig
+    readonly dictionaryTokenStatusColors: string[]; // Deprecated in favor of dictionaryTokenStatusConfig
+    readonly dictionaryTokenStatusConfig: TokenStatusConfig[]; // Indexed by TokenStatus (if adding config for states, use a separate array indexed by TokenState)
 }
 
 export interface DictionarySettings {
@@ -177,11 +225,13 @@ const dictionaryTrackComparators: {
     [K in keyof DictionaryTrack]: (a: DictionaryTrack[K], b: DictionaryTrack[K]) => boolean;
 } = {
     dictionaryColorizeSubtitles: (a, b) => a === b,
+    dictionaryAutoGenerateStatistics: (a, b) => a === b,
     dictionaryColorizeOnHoverOnly: (a, b) => a === b,
     dictionaryHighlightOnHover: (a, b) => a === b,
     dictionaryTokenMatchStrategy: (a, b) => a === b,
     dictionaryTokenMatchStrategyPriority: (a, b) => a === b,
     dictionaryYomitanUrl: (a, b) => a === b,
+    dictionaryYomitanParser: (a, b) => a === b,
     dictionaryYomitanScanLength: (a, b) => a === b,
     dictionaryTokenReadingAnnotation: (a, b) => a === b,
     dictionaryDisplayIgnoredTokenReadings: (a, b) => a === b,
@@ -196,6 +246,7 @@ const dictionaryTrackComparators: {
     dictionaryTokenStylingThickness: (a, b) => a === b,
     dictionaryColorizeFullyKnownTokens: (a, b) => a === b,
     dictionaryTokenStatusColors: (a, b) => arrayEquals(a, b),
+    dictionaryTokenStatusConfig: (a, b) => arrayEquals(a, b, areTokenStatusConfigsEqual),
 };
 
 export function compareDTField<K extends keyof DictionaryTrack>(
@@ -228,6 +279,8 @@ export type AnkiSettingsFieldKey =
     | 'track2Field'
     | 'track3Field';
 
+export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
+
 export interface AnkiSettings {
     readonly ankiConnectUrl: string;
     readonly deck: string;
@@ -250,6 +303,10 @@ export interface AnkiSettings {
     readonly audioPaddingEnd: number;
     readonly maxImageWidth: number;
     readonly maxImageHeight: number;
+    readonly mediaFragmentFormat: MediaFragmentFormatSetting;
+    readonly mediaFragmentTrimStart: number;
+    readonly mediaFragmentTrimEnd: number;
+    readonly mediaFragmentMaxClipLength: number;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -298,6 +355,10 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     audioPaddingEnd: true,
     maxImageWidth: true,
     maxImageHeight: true,
+    mediaFragmentFormat: true,
+    mediaFragmentTrimStart: true,
+    mediaFragmentTrimEnd: true,
+    mediaFragmentMaxClipLength: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,
@@ -434,6 +495,7 @@ export interface KeyBindSet {
     readonly markHoveredToken1: KeyBind;
     readonly markHoveredToken0: KeyBind;
     readonly toggleHoveredTokenIgnored: KeyBind;
+    readonly openStatistics: KeyBind;
 
     // Bound from Chrome if extension is installed
     readonly copySubtitle: KeyBind;
@@ -505,6 +567,9 @@ export interface PageSettings {
     stremio: Page;
     cijapanese: Page;
     iwanttfc: Page;
+    svtplay: Page;
+    urplay: Page;
+    archive: Page;
 }
 
 export interface StreamingVideoSettings {

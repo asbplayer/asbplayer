@@ -23,6 +23,8 @@
     },
     "packageManager": "yarn@3.2.0",
     "resolutions": {
-        "lamejs@1.2.0": "patch:lamejs@npm:1.2.0#.yarn/patches/lamejs-npm-1.2.0-b0315d05aa.patch"
+        "lamejs@1.2.0": "patch:lamejs@npm:1.2.0#.yarn/patches/lamejs-npm-1.2.0-b0315d05aa.patch",
+        "vite": "8.0.0",
+        "@vitejs/plugin-react": "^6.0.1"
     }
 }

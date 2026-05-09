@@ -22,5 +22,9 @@ it('can retrieve all keys', async () => {
     expect(await provider.getAll()).toEqual({
         ftueHasSeenAnkiDialogQuickSelectV2: false,
         ftueHasSeenSubtitleTrackSelector: false,
+        ftueAnnotation: 0,
+        onlineSubtitleSourceConfig: {
+            jimakuApiKey: '',
+        },
     });
 });
