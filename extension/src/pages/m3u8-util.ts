@@ -1,9 +1,11 @@
 import { VideoDataSubtitleTrack } from '@project/common';
 import { Parser } from 'm3u8-parser';
-import { extractExtension, trackFromDef } from './util';
+import { extractExtension, inferTracks, trackFromDef } from './util';
 
 function baseUrlForUrl(url: string) {
-    return url.substring(0, url.lastIndexOf('/'));
+    const parsedUrl = new URL(url);
+    const originAndPath = `${parsedUrl.origin}${parsedUrl.pathname}`;
+    return originAndPath.substring(0, originAndPath.lastIndexOf('/'));
 }
 
 export function fetchM3U8(url: string): Promise<any> {
@@ -86,3 +88,33 @@ export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSub
         }, 0);
     });
 }
+
+export const inferTracksFromInterceptedM3u8 = (urlRegex: RegExp) => {
+    let lastManifestUrl: string | undefined;
+
+    const originalXhrOpen = window.XMLHttpRequest.prototype.open;
+    window.XMLHttpRequest.prototype.open = function () {
+        const url = arguments[1];
+
+        if (typeof url === 'string' && urlRegex.test(url)) {
+            lastManifestUrl = url;
+        }
+
+        // @ts-ignore
+        originalXhrOpen.apply(this, arguments);
+    };
+
+    inferTracks({
+        onRequest: async (addTrack, setBasename) => {
+            setBasename(document.title);
+
+            if (lastManifestUrl !== undefined) {
+                const tracks = await subtitleTrackSegmentsFromM3U8(lastManifestUrl);
+                for (const track of tracks) {
+                    addTrack(track);
+                }
+            }
+        },
+        waitForBasename: false,
+    });
+};
