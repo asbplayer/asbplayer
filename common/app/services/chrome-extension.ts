@@ -191,6 +191,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsSeekableTrackSetting() {
+        return this.installed && gte(this.version, '1.17.0');
+    }
+
     get supportsDictionaryBrowser() {
         return this.installed && gte(this.version, '1.17.0');
     }

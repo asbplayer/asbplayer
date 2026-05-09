@@ -180,6 +180,7 @@ interface Props {
     extensionSupportsPageSettings: boolean;
     extensionSupportsDictionary: boolean;
     extensionSupportsDictionaryBrowser: boolean;
+    extensionSupportsSeekableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
     insideApp?: boolean;
@@ -229,6 +230,7 @@ export default function SettingsForm({
     extensionSupportsPageSettings,
     extensionSupportsDictionary,
     extensionSupportsDictionaryBrowser,
+    extensionSupportsSeekableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
     insideApp,
@@ -527,6 +529,7 @@ export default function SettingsForm({
                     insideApp={insideApp}
                     extensionInstalled={extensionInstalled}
                     extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
+                    extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                 />
             </TabPanel>
             <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>

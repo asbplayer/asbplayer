@@ -221,6 +221,7 @@ const Popup = ({
                             extensionSupportsPageSettings
                             extensionSupportsDictionary
                             extensionSupportsDictionaryBrowser
+                            extensionSupportsSeekableTrackSetting
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             extensionSupportsDictionaryYomitanMecab
                             forceVerticalTabs={false}

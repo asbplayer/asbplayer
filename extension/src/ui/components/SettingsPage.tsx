@@ -120,6 +120,7 @@ const SettingsPage = ({
                         extensionSupportsPageSettings
                         extensionSupportsDictionary
                         extensionSupportsDictionaryBrowser
+                        extensionSupportsSeekableTrackSetting
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         extensionSupportsDictionaryYomitanMecab
                         chromeKeyBinds={commands}

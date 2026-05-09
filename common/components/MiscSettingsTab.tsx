@@ -47,6 +47,7 @@ interface Props {
     insideApp?: boolean;
     extensionInstalled?: boolean;
     extensionSupportsPauseOnHover?: boolean;
+    extensionSupportsSeekableTrackSetting?: boolean;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
@@ -57,6 +58,7 @@ const MiscSettingTab: React.FC<Props> = ({
     insideApp,
     extensionInstalled,
     extensionSupportsPauseOnHover,
+    extensionSupportsSeekableTrackSetting,
 }) => {
     const { t } = useTranslation();
     const {
@@ -210,34 +212,36 @@ const MiscSettingTab: React.FC<Props> = ({
                     label={t('settings.autoCopy')}
                     labelPlacement="start"
                 />
-                <FormControl>
-                    <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
-                    <FormGroup>
-                        {[0, 1, 2].map((trackIndex) => {
-                            return (
-                                <FormControlLabel
-                                    key={trackIndex}
-                                    control={
-                                        <Checkbox
-                                            checked={isTrackSeekable(seekableTracks, trackIndex)}
-                                            onChange={(event) => {
-                                                onSettingChanged(
-                                                    'seekableTracks',
-                                                    updateSeekableTracksValue(
-                                                        seekableTracks,
-                                                        trackIndex,
-                                                        event.target.checked
-                                                    )
-                                                );
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.subtitleTrackChoice', { trackNumber: trackIndex + 1 })}
-                                />
-                            );
-                        })}
-                    </FormGroup>
-                </FormControl>
+                {(!extensionInstalled || extensionSupportsSeekableTrackSetting) && (
+                    <FormControl>
+                        <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
+                        <FormGroup>
+                            {[0, 1, 2].map((trackIndex) => {
+                                return (
+                                    <FormControlLabel
+                                        key={trackIndex}
+                                        control={
+                                            <Checkbox
+                                                checked={isTrackSeekable(seekableTracks, trackIndex)}
+                                                onChange={(event) => {
+                                                    onSettingChanged(
+                                                        'seekableTracks',
+                                                        updateSeekableTracksValue(
+                                                            seekableTracks,
+                                                            trackIndex,
+                                                            event.target.checked
+                                                        )
+                                                    );
+                                                }}
+                                            />
+                                        }
+                                        label={t('settings.subtitleTrackChoice', { trackNumber: trackIndex + 1 })}
+                                    />
+                                );
+                            })}
+                        </FormGroup>
+                    </FormControl>
+                )}
                 <SettingsTextField
                     label={t('settings.subtitleRegexFilter')}
                     fullWidth
