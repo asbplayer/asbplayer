@@ -82,7 +82,12 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 convertNetflixRuby: settings.convertNetflixRuby,
                 pgsParserWorkerFactory,
             }),
-        [settings]
+        [
+            settings.subtitleRegexFilter,
+            settings.subtitleRegexFilterTextReplacement,
+            settings.subtitleHtml,
+            settings.convertNetflixRuby,
+        ]
     );
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>();
     const [subtitleFileNames, setSubtitleFileNames] = useState<string[]>();
