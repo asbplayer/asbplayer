@@ -1,4 +1,11 @@
-import { AnkiExportMode, AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '../src/model';
+import {
+    AnkiExportMode,
+    AutoPausePreference,
+    PostMineAction,
+    PostMinePlayback,
+    SeekableTracks,
+    SubtitleHtml,
+} from '../src/model';
 import { arrayEquals } from '../util';
 
 export enum PauseOnHoverMode {
@@ -17,6 +24,7 @@ export interface MiscSettings {
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
+    readonly seekableTracks: SeekableTracks;
     readonly seekDuration: number;
     readonly speedChangeStep: number;
     readonly fastForwardModePlaybackRate: number;
@@ -37,6 +45,25 @@ export interface MiscSettings {
     readonly tabName: string;
     readonly pauseOnHoverMode: PauseOnHoverMode;
 }
+
+export const isTrackSeekable = (seekable: SeekableTracks, track: number) => {
+    return ((seekable >> track) & 1) > 0;
+};
+
+export const calculateSeekableTracksValue = (trackIndices: number[]): SeekableTracks => {
+    let val: SeekableTracks = 0;
+    for (const i of trackIndices) {
+        val |= 1 << i;
+    }
+    return val;
+};
+
+export const updateSeekableTracksValue = (seekableTracks: SeekableTracks, trackIndex: number, add: boolean) => {
+    if (add) {
+        return seekableTracks | (1 << trackIndex);
+    }
+    return seekableTracks & ~(1 << trackIndex);
+};
 
 export enum DictionaryTokenSource {
     LOCAL = 0,

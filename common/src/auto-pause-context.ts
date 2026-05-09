@@ -4,7 +4,7 @@ export default class AutoPauseContext {
     private lastStartedShowing?: SubtitleModel;
     private lastWillStopShowing?: SubtitleModel;
 
-    onStartedShowing?: () => void;
+    onStartedShowing?: (subtitle: SubtitleModel) => void;
     onWillStopShowing?: (subtitle: SubtitleModel) => void;
     onNextToShow?: (subtitle: SubtitleModel) => void;
 
@@ -22,7 +22,7 @@ export default class AutoPauseContext {
             return;
         }
 
-        this.onStartedShowing?.();
+        this.onStartedShowing?.(subtitle);
         this.lastStartedShowing = subtitle;
     }
 

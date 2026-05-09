@@ -6,10 +6,20 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Switch from '@mui/material/Switch';
 import Stack from '@mui/material/Stack';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormGroup from '@mui/material/FormGroup';
+import Checkbox from '@mui/material/Checkbox';
 import SettingsTextField from './SettingsTextField';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from './LabelWithHoverEffect';
-import { AsbplayerSettings, exportSettings, PauseOnHoverMode, validateSettings } from '../settings';
+import {
+    AsbplayerSettings,
+    exportSettings,
+    isTrackSeekable,
+    PauseOnHoverMode,
+    updateSeekableTracksValue,
+    validateSettings,
+} from '../settings';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SubtitleHtml } from '..';
@@ -55,6 +65,7 @@ const MiscSettingTab: React.FC<Props> = ({
         language,
         rememberSubtitleOffset,
         autoCopyCurrentSubtitle,
+        seekableTracks,
         miningHistoryStorageLimit,
         subtitleRegexFilter,
         tabName,
@@ -199,6 +210,34 @@ const MiscSettingTab: React.FC<Props> = ({
                     label={t('settings.autoCopy')}
                     labelPlacement="start"
                 />
+                <FormControl>
+                    <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
+                    <FormGroup>
+                        {[0, 1, 2].map((trackIndex) => {
+                            return (
+                                <FormControlLabel
+                                    key={trackIndex}
+                                    control={
+                                        <Checkbox
+                                            checked={isTrackSeekable(seekableTracks, trackIndex)}
+                                            onChange={(event) => {
+                                                onSettingChanged(
+                                                    'seekableTracks',
+                                                    updateSeekableTracksValue(
+                                                        seekableTracks,
+                                                        trackIndex,
+                                                        event.target.checked
+                                                    )
+                                                );
+                                            }}
+                                        />
+                                    }
+                                    label={t('settings.subtitleTrackChoice', { trackNumber: trackIndex + 1 })}
+                                />
+                            );
+                        })}
+                    </FormGroup>
+                </FormControl>
                 <SettingsTextField
                     label={t('settings.subtitleRegexFilter')}
                     fullWidth

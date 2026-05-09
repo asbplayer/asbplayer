@@ -1,5 +1,4 @@
 import {
-    OpenAsbplayerSettingsMessage,
     OpenStatisticsMessage,
     PlayMode,
     SettingsUpdatedMessage,
@@ -131,6 +130,7 @@ export default class KeyBindings {
             () => context.subtitleController.subtitles.length === 0,
             () => context.video.currentTime * 1000,
             () => context.subtitleController.subtitles,
+            () => context.seekableTracks,
             true
         );
 
@@ -159,6 +159,7 @@ export default class KeyBindings {
             () => context.subtitleController.subtitles.length === 0,
             () => context.video.currentTime * 1000,
             () => context.subtitleController.subtitles,
+            () => context.seekableTracks,
             true
         );
 
@@ -286,6 +287,7 @@ export default class KeyBindings {
             () => context.subtitleController.subtitles.length === 0,
             () => context.video.currentTime * 1000,
             () => context.subtitleController.subtitles,
+            () => context.seekableTracks,
             true
         );
 

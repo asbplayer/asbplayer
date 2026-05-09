@@ -640,9 +640,10 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settings.seekableTracks
         );
-    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length]);
+    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, settings.seekableTracks]);
 
     useEffect(() => {
         return keyBinder.bindSeekToSubtitle(
@@ -653,7 +654,8 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settingsRef.current.seekableTracks
         );
     }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length]);
 
@@ -666,7 +668,8 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settingsRef.current.seekableTracks
         );
     }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length, settings.alwaysPlayOnSubtitleRepeat]);
 

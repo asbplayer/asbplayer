@@ -163,12 +163,13 @@ export class MobileVideoOverlayController {
         const subtitleDisplaying =
             subtitles.length > 0 && this._context.subtitleController.currentSubtitle()[0] !== null;
         const timestamp = this._context.video.currentTime * 1000;
-        const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles } =
+        const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles, seekableTracks } =
             await this._context.settings.get([
                 'language',
                 'clickToMineDefaultAction',
                 'themeType',
                 'streamingDisplaySubtitles',
+                'seekableTracks',
             ]);
         const model: MobileOverlayModel = {
             offset: subtitles.length === 0 ? 0 : subtitles[0].start - subtitles[0].originalStart,
@@ -176,8 +177,10 @@ export class MobileVideoOverlayController {
             emptySubtitleTrack: subtitles.length === 0,
             recordingEnabled: this._context.recordMedia,
             recording: this._context.recordingMedia,
-            previousSubtitleTimestamp: adjacentSubtitle(false, timestamp, subtitles)?.originalStart ?? undefined,
-            nextSubtitleTimestamp: adjacentSubtitle(true, timestamp, subtitles)?.originalStart ?? undefined,
+            previousSubtitleTimestamp:
+                adjacentSubtitle(false, timestamp, subtitles, seekableTracks)?.originalStart ?? undefined,
+            nextSubtitleTimestamp:
+                adjacentSubtitle(true, timestamp, subtitles, seekableTracks)?.originalStart ?? undefined,
             currentTimestamp: timestamp,
             language,
             postMineAction: clickToMineDefaultAction,

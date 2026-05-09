@@ -329,6 +329,9 @@ const settingsSchema = {
         autoPausePreference: {
             type: 'number',
         },
+        seekableTracks: {
+            type: 'number',
+        },
         subtitleHtml: {
             type: 'number',
         },

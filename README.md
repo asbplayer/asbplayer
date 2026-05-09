@@ -126,7 +126,8 @@ Thank you to all those who have contributed to asbplayer:
 [@saifkaral](https://github.com/saifkaral),
 [@xwxb](https://github.com/xwxb),
 [@yqmmm](https://github.com/yqmmm),
-[@jprostko](https://github.com/jprostko)
+[@jprostko](https://github.com/jprostko),
+[@rodrigo-suarezmajor](https://github.com/rodrigo-suarezmajor)
 
 Thank you to all those who have translated asbplayer:
 
