@@ -1,5 +1,9 @@
 import { CachingElementOverlay, OffsetAnchor } from '@/services/element-overlay';
+import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { frameColorScheme } from '@/services/frame-color-scheme';
+import UiFrame, { uiFrameForSrc } from '@/services/ui-frame';
+import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '@/ui/components/StatisticsOverlayUi';
+import { type UiState } from '@/ui/components/StatisticsOverlayOneUncollectedUi';
 import {
     CloseStatisticsOverlayMessage,
     Command,
@@ -9,8 +13,11 @@ import {
     ResizeStatisticsOverlayMessage,
     StatisticsOverlayToTabCommand,
 } from '@project/common';
+import { SettingsProvider } from '@project/common/settings';
 
 type State = 'open' | 'fullscreen' | 'closed';
+
+const settings = new SettingsProvider(new ExtensionSettingsStorage());
 
 export class StatisticsOverlayController {
     private _messageListener?: (
@@ -20,6 +27,7 @@ export class StatisticsOverlayController {
     ) => void;
     private _windowMessageListener?: (event: MessageEvent) => void;
     private _overlay?: CachingElementOverlay;
+    private _oneUncollectedDialogFrame?: UiFrame;
     private _height?: string;
     private _mediaId?: string;
     private _restoreWidth?: string;
@@ -44,6 +52,8 @@ export class StatisticsOverlayController {
         }
         this._overlay?.dispose();
         this._overlay = undefined;
+        this._oneUncollectedDialogFrame?.unbind();
+        this._oneUncollectedDialogFrame = undefined;
     }
 
     bind() {
@@ -79,27 +89,20 @@ export class StatisticsOverlayController {
         const command = message as StatisticsOverlayToTabCommand<Message>;
 
         switch (command.message.command) {
-            case 'fullscreen-statistics-overlay':
-                if (this._state !== 'fullscreen') {
-                    this._state = 'fullscreen';
-                    this._setHeight('100vh');
-                    this._restoreWidth = this._width;
-                    this._setWidth('100vw');
-                }
-                break;
-            case 'restore-statistics-overlay':
-                // Hack: delay to let sentence dialog animate closed
-                if (this._restoreTimeout !== undefined) {
-                    clearTimeout(this._restoreTimeout);
-                }
-                this._restoreTimeout = setTimeout(() => {
-                    if (this._state === 'fullscreen') {
-                        this._state = 'open';
-                        this._setHeight('68px');
-                        this._setWidth(this._restoreWidth ?? '100%');
-                        this._refreshOverlay();
-                    }
-                }, 500);
+            case 'open-statistics-overlay-one-uncollected-dialog':
+                const openDialogMessage = command.message as OpenStatisticsOverlayOneUncollectedDialogMessage;
+                const { entries, totalSentences, mediaId } = openDialogMessage;
+                this._getOneUncollectedDialogFrame().then(async (frame) => {
+                    const state: UiState = {
+                        open: true,
+                        mediaId,
+                        entries,
+                        totalSentences,
+                    };
+                    const client = await frame.client();
+                    client.updateState(state);
+                    frame.show();
+                });
                 break;
             case 'open-statistics-overlay':
                 const openMessage = command.message as OpenStatisticsOverlayMessage;
@@ -177,10 +180,6 @@ export class StatisticsOverlayController {
         this._applyCurrentContainerStyles();
     }
 
-    private _refreshOverlay() {
-        this._overlay?.refresh();
-    }
-
     private _applyCurrentContainerStyles() {
         const container = this._overlay?.containerElement;
 
@@ -254,5 +253,25 @@ export class StatisticsOverlayController {
                     )}"/>`,
             },
         ]);
+    }
+
+    private async _getOneUncollectedDialogFrame() {
+        if (this._oneUncollectedDialogFrame !== undefined) {
+            return this._oneUncollectedDialogFrame;
+        }
+        this._oneUncollectedDialogFrame = uiFrameForSrc(
+            browser.runtime.getURL('/statistics-overlay-one-uncollected-ui.html')
+        );
+        await this._oneUncollectedDialogFrame.bind();
+        const client = await this._oneUncollectedDialogFrame.client();
+        client.onMessage((message) => {
+            switch (message.command) {
+                case 'close':
+                    this._oneUncollectedDialogFrame?.hide();
+                    break;
+            }
+        });
+        this._oneUncollectedDialogFrame.hide();
+        return this._oneUncollectedDialogFrame;
     }
 }

@@ -24,7 +24,7 @@ import { SettingsProvider } from '@project/common/settings';
 import { sourceString } from '@project/common/util';
 import Binding from '../services/binding';
 import { fetchLocalization } from '../services/localization-fetcher';
-import UiFrame from '../services/ui-frame';
+import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 
@@ -63,7 +63,7 @@ export default class AnkiUiController {
     private _inTutorial: boolean;
 
     constructor() {
-        this.frame = new UiFrame(html);
+        this.frame = uiFrameForHtml(html);
         this._inTutorial = isOnTutorialPage();
     }
 

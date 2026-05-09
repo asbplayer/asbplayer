@@ -115,6 +115,8 @@ export default defineConfig({
                         'notification-ui.js',
                         'mobile-video-overlay-ui.html',
                         'statistics-overlay-ui.html',
+                        'statistics-overlay-one-uncollected-ui.html',
+                        'statistics-overlay-one-uncollected-ui.js',
                         'page-favicons/*',
                         'content-scripts/video.css',
                     ],

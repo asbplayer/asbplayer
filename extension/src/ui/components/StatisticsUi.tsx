@@ -12,7 +12,7 @@ import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useEffect, useCallback, useMemo } from 'react';
 import { uiTabRegistry } from '../hooks/use-has-subtitles';
-import { AsbPlayerToTabCommand, Command, OpenStatisticsOverlayMessage } from '@project/common';
+import { Command, OpenStatisticsOverlayMessage } from '@project/common';
 
 const dictionaryProvider = new DictionaryProvider(new ExtensionDictionaryStorage());
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());

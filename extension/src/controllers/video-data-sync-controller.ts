@@ -17,7 +17,7 @@ import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
 import Binding from '../services/binding';
 import { currentPageDelegate } from '../services/pages';
-import UiFrame from '../services/ui-frame';
+import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { fetchLocalization } from '../services/localization-fetcher';
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
@@ -95,7 +95,7 @@ export default class VideoDataSyncController {
             extension: 'srt',
         };
         this._domain = new URL(window.location.href).host;
-        this._frame = new UiFrame(html);
+        this._frame = uiFrameForHtml(html);
         this._isTutorial = isOnTutorialPage();
     }
 

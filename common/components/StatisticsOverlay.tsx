@@ -3,6 +3,7 @@ import { DictionaryProvider } from '../dictionary-db';
 import {
     DictionarySimplifiedStatisticsTrackSnapshot,
     dictionaryStatisticsComprehensionBandForPercent,
+    DictionaryStatisticsSentenceBucketEntry,
     DictionaryStatisticsSnapshot,
     percentDisplay,
     processSimplifiedDictionaryStatistics,
@@ -66,8 +67,7 @@ export interface StatisticsOverlayProps {
     onSnapshotCleared?: () => void;
     onClose: (mediaId?: string) => void;
     onMoveBy?: (deltaX: number, deltaY: number) => void;
-    onSentenceDetailsWereOpened?: () => void;
-    onSentenceDetailsWereClosed?: () => void;
+    onOpenSentenceDetails?: (entries: DictionaryStatisticsSentenceBucketEntry[], totalSentences: number) => void;
     sx?: SxProps<Theme>;
 }
 
@@ -98,15 +98,13 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
         onSnapshotCleared,
         onClose,
         onMoveBy,
-        onSentenceDetailsWereOpened,
-        onSentenceDetailsWereClosed,
+        onOpenSentenceDetails,
         sx,
     },
     ref
 ) {
     const { t } = useTranslation();
     const [bestTrackSnapshot, setBestTrackSnapshot] = useState<DictionarySimplifiedStatisticsTrackSnapshot>();
-    const [sentenceDetailsOpen, setSentenceDetailsOpen] = useState<boolean>(false);
     const [dragging, setDragging] = useState<boolean>(false);
     const [mediaId, setMediaId] = useState<string>();
     const dragRef = useRef<{ pointerId: number; clientX: number; clientY: number } | undefined>(undefined);
@@ -120,7 +118,6 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
                 if (!snapshot) {
                     setMediaId(undefined);
                     setBestTrackSnapshot(undefined);
-                    setSentenceDetailsOpen(false);
                     onSnapshotClearedRef.current?.();
                     return;
                 }
@@ -133,7 +130,6 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
                     onReceivedSnapshotRef.current?.(snapshot.mediaId, bestIndex);
                 } else {
                     setBestTrackSnapshot(undefined);
-                    setSentenceDetailsOpen(false);
                     onSnapshotClearedRef.current?.();
                 }
             }
@@ -146,37 +142,10 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
 
     const iPlusOneSentenceBucket = bestTrackSnapshot?.sentenceBuckets.uncollected.find((b) => b.tokenCount === 1);
     const iPlusOneSentenceCount = iPlusOneSentenceBucket?.entries?.length ?? 0;
-    const iPlusOneLabel = `1 ${t('settings.dictionaryTokenStatus0')}`;
     const comprehensionBand = bestTrackSnapshot
         ? dictionaryStatisticsComprehensionBandForPercent(bestTrackSnapshot.comprehensionPercent)
         : undefined;
 
-    const handleOpenSentenceDetails = useCallback(() => {
-        setSentenceDetailsOpen(true);
-        onSentenceDetailsWereOpened?.();
-    }, [onSentenceDetailsWereOpened]);
-    const handleCloseSentenceDetails = useCallback(() => {
-        setSentenceDetailsOpen(false);
-        onSentenceDetailsWereClosed?.();
-    }, [onSentenceDetailsWereClosed]);
-    const handleSeekToSentence = useCallback(
-        (timestamp: number) => {
-            if (!mediaId) {
-                return;
-            }
-            dictionaryProvider.requestStatisticsSeek(mediaId, timestamp);
-        },
-        [mediaId, dictionaryProvider]
-    );
-    const handleMineSentence = useCallback(
-        (index: number) => {
-            if (!mediaId) {
-                return;
-            }
-            dictionaryProvider.requestStatisticsMineSentences(mediaId, [index]);
-        },
-        [mediaId, dictionaryProvider]
-    );
     const handlePointerDown = useCallback(
         (event: React.PointerEvent<HTMLDivElement>) => {
             if (onMoveBy === undefined || event.button !== 0) {
@@ -268,7 +237,7 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
                     position: 'relative',
                     cursor: onMoveBy === undefined ? 'auto' : dragging ? 'grabbing' : 'grab',
                     touchAction: onMoveBy === undefined ? 'auto' : 'none',
-                    userSelect: dragging ? 'none' : undefined,
+                    userSelect: 'none',
                     ...(sx ?? {}),
                 }}
             >
@@ -285,7 +254,17 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
                         <Statistic
                             label={`1 ${t('settings.dictionaryTokenStatus0')}`}
                             value={iPlusOneSentenceCount}
-                            onClick={iPlusOneSentenceCount > 0 ? handleOpenSentenceDetails : undefined}
+                            onClick={
+                                iPlusOneSentenceCount > 0 &&
+                                iPlusOneSentenceBucket !== undefined &&
+                                bestTrackSnapshot !== undefined
+                                    ? () =>
+                                          onOpenSentenceDetails?.(
+                                              iPlusOneSentenceBucket.entries,
+                                              bestTrackSnapshot.progress.total
+                                          )
+                                    : undefined
+                            }
                         />
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center' }} data-statistics-overlay-interactive="true">
@@ -309,19 +288,6 @@ const StatisticsOverlay = React.forwardRef<HTMLDivElement, StatisticsOverlayProp
                             borderRadius: 0,
                             height: 2,
                         }}
-                    />
-                )}
-                {iPlusOneSentenceBucket && bestTrackSnapshot && (
-                    <StatisticsSentenceDetailsDialog
-                        open={sentenceDetailsOpen}
-                        title={iPlusOneLabel}
-                        subtitles={[iPlusOneLabel]}
-                        entries={iPlusOneSentenceBucket.entries}
-                        totalSentences={bestTrackSnapshot.progress.total}
-                        miningEnabled
-                        onClose={handleCloseSentenceDetails}
-                        onSeekToSentence={(s) => handleSeekToSentence(s.start)}
-                        onMineSentence={(s) => handleMineSentence(s.index)}
                     />
                 )}
             </Paper>

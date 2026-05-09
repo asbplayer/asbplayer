@@ -13,19 +13,25 @@ import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
 import {
     CloseStatisticsOverlayMessage,
     CurrentTabMessage,
-    FullscreenStatisticsOverlayMessage,
     Message,
     MoveStatisticsOverlayMessage,
     OpenStatisticsMessage,
     OpenStatisticsOverlayMessage,
     ResizeStatisticsOverlayMessage,
-    RestoreStatisticsOverlayMessage,
     StatisticsOverlayCommand,
     StatisticsOverlayToTabCommand,
     TabToExtensionCommand,
 } from '@project/common';
 import Box from '@mui/material/Box';
 import { uiTabRegistry } from '../hooks/use-has-subtitles';
+import { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
+
+export interface OpenStatisticsOverlayOneUncollectedDialogMessage extends Message {
+    readonly command: 'open-statistics-overlay-one-uncollected-dialog';
+    readonly entries: DictionaryStatisticsSentenceBucketEntry[];
+    readonly totalSentences: number;
+    readonly mediaId: string;
+}
 
 const dictionaryProvider = new DictionaryProvider(new ExtensionDictionaryStorage());
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
@@ -162,24 +168,24 @@ const StatisticsOverlayUi = () => {
         handleCloseStatisticsOverlay(mediaIdRef.current);
         setMediaId(undefined);
     }, [handleCloseStatisticsOverlay]);
-    const handleSentenceDetailsWereOpened = useCallback(() => {
-        const command: StatisticsOverlayToTabCommand<FullscreenStatisticsOverlayMessage> = {
-            sender: 'asbplayer-statistics-overlay-to-tab',
-            message: {
-                command: 'fullscreen-statistics-overlay',
-            },
-        };
-        sendToTab(command);
-    }, [sendToTab]);
-    const handleSentenceDetailsWereClosed = useCallback(() => {
-        const command: StatisticsOverlayToTabCommand<RestoreStatisticsOverlayMessage> = {
-            sender: 'asbplayer-statistics-overlay-to-tab',
-            message: {
-                command: 'restore-statistics-overlay',
-            },
-        };
-        sendToTab(command);
-    }, [sendToTab]);
+    const handleOpenSentenceDetails = useCallback(
+        (entries: DictionaryStatisticsSentenceBucketEntry[], totalSentences: number) => {
+            if (!mediaId) {
+                return;
+            }
+            const command: StatisticsOverlayToTabCommand<OpenStatisticsOverlayOneUncollectedDialogMessage> = {
+                sender: 'asbplayer-statistics-overlay-to-tab',
+                message: {
+                    command: 'open-statistics-overlay-one-uncollected-dialog',
+                    mediaId,
+                    entries,
+                    totalSentences,
+                },
+            };
+            sendToTab(command);
+        },
+        [mediaId, sendToTab]
+    );
     const handleMoveOverlayBy = useCallback(
         (deltaX: number, deltaY: number) => {
             const command: StatisticsOverlayToTabCommand<MoveStatisticsOverlayMessage> = {
@@ -220,8 +226,7 @@ const StatisticsOverlayUi = () => {
                     onSnapshotCleared={handleStatisticsSnapshotCleared}
                     onClose={handleCloseStatisticsOverlay}
                     onMoveBy={handleMoveOverlayBy}
-                    onSentenceDetailsWereOpened={handleSentenceDetailsWereOpened}
-                    onSentenceDetailsWereClosed={handleSentenceDetailsWereClosed}
+                    onOpenSentenceDetails={handleOpenSentenceDetails}
                 />
             </Box>
         </ThemeProvider>

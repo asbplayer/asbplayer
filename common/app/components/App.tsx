@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef, ComponentProps } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material/styles';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
@@ -71,6 +71,7 @@ import NeedRefreshDialog from './NeedRefreshDialog';
 import { DictionaryProvider } from '../../dictionary-db';
 import { isFirefox } from '../../browser-detection';
 import StatisticsOverlay, { StatisticsOverlayProps } from '../../components/StatisticsOverlay';
+import OneUncollectedSentenceDetailsDialog from '../../components/OneUncollectedSentenceDetailsDialog';
 
 const latestExtensionVersion = '1.16.0';
 const extensionUrl =
@@ -214,14 +215,14 @@ function Content(props: ContentProps) {
     );
 }
 
-function AppStatisticsOverlay(props: StatisticsOverlayProps) {
+function AppStatisticsOverlay({ dictionaryProvider, mediaId, ...rest }: StatisticsOverlayProps & { mediaId: string }) {
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
-        if (props.open) {
+        if (rest.open) {
             setPosition({ x: 0, y: 0 });
         }
-    }, [props.open]);
+    }, [rest.open]);
 
     const handleMoveBy = useCallback((deltaX: number, deltaY: number) => {
         setPosition((current) => ({
@@ -230,17 +231,38 @@ function AppStatisticsOverlay(props: StatisticsOverlayProps) {
         }));
     }, []);
 
+    const [oneUncollectedSentenceDetailsDialogState, setOneUncollectedSentenceDetailsDialogState] = useState<
+        Omit<ComponentProps<typeof OneUncollectedSentenceDetailsDialog>, 'onClose'>
+    >({
+        open: false,
+        entries: [],
+        totalSentences: 0,
+        miningEnabled: true,
+        dictionaryProvider,
+    });
     return (
-        <StatisticsOverlay
-            {...props}
-            onMoveBy={handleMoveBy}
-            sx={{
-                position: 'absolute',
-                top: 8,
-                left: '50%',
-                transform: `translateX(calc(-50% + ${position.x}px)) translateY(${position.y}px)`,
-            }}
-        />
+        <>
+            <StatisticsOverlay
+                {...rest}
+                dictionaryProvider={dictionaryProvider}
+                onMoveBy={handleMoveBy}
+                sx={{
+                    position: 'absolute',
+                    top: 8,
+                    left: '50%',
+                    transform: `translateX(calc(-50% + ${position.x}px)) translateY(${position.y}px)`,
+                }}
+                onOpenSentenceDetails={(entries, totalSentences) =>
+                    setOneUncollectedSentenceDetailsDialogState((s) => ({ ...s, open: true, entries, totalSentences }))
+                }
+            />
+            <OneUncollectedSentenceDetailsDialog
+                {...oneUncollectedSentenceDetailsDialogState}
+                mediaId={mediaId}
+                dictionaryProvider={dictionaryProvider}
+                onClose={() => setOneUncollectedSentenceDetailsDialogState((s) => ({ ...s, open: false }))}
+            />
+        </>
     );
 }
 
@@ -1647,6 +1669,7 @@ function App({
                                     statisticsOverlay={
                                         <AppStatisticsOverlay
                                             open={statisticsOverlayOpen}
+                                            mediaId={extension.id}
                                             dictionaryProvider={dictionaryProvider}
                                             onOpenStatistics={handleOpenStatistics}
                                             onReceivedSnapshot={handleReceivedStatisticsSnapshot}

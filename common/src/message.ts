@@ -28,6 +28,7 @@ import {
     AnkiExportMode,
     RichSubtitleModel,
     BrowserFeatures,
+    Tokenization,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';
 import {
@@ -1044,12 +1045,4 @@ export interface MoveStatisticsOverlayMessage extends Message {
 export interface CloseStatisticsOverlayMessage extends Message {
     readonly command: 'close-statistics-overlay';
     readonly mediaId: string;
-}
-
-export interface FullscreenStatisticsOverlayMessage extends Message {
-    readonly command: 'fullscreen-statistics-overlay';
-}
-
-export interface RestoreStatisticsOverlayMessage extends Message {
-    readonly command: 'restore-statistics-overlay';
 }
