@@ -1,11 +1,11 @@
 import { VideoDataSubtitleTrack } from '@project/common';
 import { Parser } from 'm3u8-parser';
-import { trackFromDef } from './util';
-import { Parser as m3U8Parser } from 'm3u8-parser';
+import { extractExtension, trackFromDef } from './util';
 
 function baseUrlForUrl(url: string) {
     return url.substring(0, url.lastIndexOf('/'));
 }
+
 export function fetchM3U8(url: string): Promise<any> {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
@@ -28,55 +28,58 @@ export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSub
         setTimeout(async () => {
             try {
                 const manifest = await fetchM3U8(url);
+                const subtitleGroups = manifest.mediaGroups?.SUBTITLES;
+
+                if (typeof subtitleGroups !== 'object' || !subtitleGroups) {
+                    resolve([]);
+                    return;
+                }
+
                 const baseUrl = baseUrlForUrl(url);
+                const promises: Promise<VideoDataSubtitleTrack | undefined>[] = [];
 
-                if (manifest.playlists instanceof Array && manifest.playlists.length > 0) {
-                    const subtitleGroup = manifest.mediaGroups?.SUBTITLES;
+                for (const group of Object.values(subtitleGroups)) {
+                    if (typeof group !== 'object' || !group) {
+                        continue;
+                    }
 
-                    if (subtitleGroup && subtitleGroup['sub-main']) {
-                        const tracks = subtitleGroup['sub-main'];
-                        const promises: Promise<VideoDataSubtitleTrack>[] = [];
-
-                        for (const label of Object.keys(tracks)) {
-                            if (label.includes('--forced--')) {
-                                // These tracks are not for the main content and duplicate the language code
-                                // so let's exclude them
-                                // Unfortunately could not find a better way to distinguish them from the real subtitle content
-                                continue;
-                            }
-
-                            const track = tracks[label];
-
-                            if (track && typeof track.language === 'string' && typeof track.uri === 'string') {
-                                const fetchTrack = async () => {
-                                    const subtitleM3U8Url = `${baseUrl}/${track.uri}`;
-                                    const m3U8Response = await fetch(subtitleM3U8Url);
-                                    const parser = new m3U8Parser();
-                                    parser.push(await m3U8Response.text());
-                                    parser.end();
-                                    const firstUri = parser.manifest.segments[0].uri;
-                                    const extension = firstUri.substring(firstUri.lastIndexOf('.') + 1);
-                                    const subtitleBaseUrl = baseUrlForUrl(subtitleM3U8Url);
-                                    const urls = parser.manifest.segments
-                                        .filter((s: any) => !s.discontinuity && s.uri)
-                                        .map((s: any) => `${subtitleBaseUrl}/${s.uri}`);
-                                    return trackFromDef({
-                                        label: label,
-                                        language: track.language,
-                                        url: urls,
-                                        extension: extension,
-                                    });
-                                };
-                                promises.push(fetchTrack());
-                            }
+                    for (const label of Object.keys(group)) {
+                        if (label.includes('--forced--')) {
+                            // These tracks are not for the main content and duplicate the language code
+                            // so let's exclude them
+                            // Unfortunately could not find a better way to distinguish them from the real subtitle content
+                            continue;
                         }
 
-                        resolve(await Promise.all(promises));
-                        return;
+                        const track = (group as any)[label];
+
+                        if (track && typeof track.language === 'string' && typeof track.uri === 'string') {
+                            const fetchTrack = async (): Promise<VideoDataSubtitleTrack | undefined> => {
+                                const subtitleM3U8Url = `${baseUrl}/${track.uri}`;
+                                const subManifest = await fetchM3U8(subtitleM3U8Url);
+                                if (!subManifest.segments?.length) {
+                                    return undefined;
+                                }
+                                const subtitleBaseUrl = baseUrlForUrl(subtitleM3U8Url);
+                                const urls = subManifest.segments
+                                    .filter((s: any) => !s.discontinuity && s.uri)
+                                    .map((s: any) => `${subtitleBaseUrl}/${s.uri}`);
+                                return trackFromDef({
+                                    label: label,
+                                    language: track.language,
+                                    url: urls,
+                                    extension: extractExtension(subManifest.segments[0].uri, 'vtt'),
+                                });
+                            };
+                            promises.push(fetchTrack());
+                        }
                     }
                 }
 
-                reject(new Error('Subtitles not found.'));
+                const tracks = (await Promise.all(promises)).filter(
+                    (t): t is VideoDataSubtitleTrack => t !== undefined
+                );
+                resolve(tracks);
             } catch (e) {
                 reject(e);
             }
