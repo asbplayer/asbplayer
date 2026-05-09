@@ -211,6 +211,7 @@ export default class AppKeyBinder implements KeyBinder {
         disabledGetter: () => boolean,
         timeGetter: () => number,
         subtitlesGetter: () => SubtitleModel[] | undefined,
+        seekableTracksGetter: () => SeekableTracks,
         useCapture?: boolean | undefined
     ): () => void {
         return this.defaultKeyBinder.bindOffsetToSubtitle(
@@ -218,6 +219,7 @@ export default class AppKeyBinder implements KeyBinder {
             disabledGetter,
             timeGetter,
             subtitlesGetter,
+            seekableTracksGetter,
             useCapture
         );
     }

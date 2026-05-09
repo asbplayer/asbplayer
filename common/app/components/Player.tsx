@@ -19,6 +19,7 @@ import {
 import {
     ApplyStrategy,
     AsbplayerSettings,
+    isTrackSeekable,
     SettingsProvider,
     TokenState,
     VideoSubtitleSplitBehavior,
@@ -36,7 +37,6 @@ import Controls, { Point } from './Controls';
 import Grid from '@mui/material/Grid';
 import MediaAdapter, { MediaElement } from '../services/media-adapter';
 import SubtitlePlayer, { DisplaySubtitleModel, minSubtitlePlayerWidth } from './SubtitlePlayer';
-import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
 import VideoChannel from '../services/video-channel';
 import ChromeExtension from '../services/chrome-extension';
 import PlaybackPreferences from '../services/playback-preferences';
@@ -50,6 +50,7 @@ import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
 
 const minVideoPlayerWidth = 300;
+const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
 
 interface StylesProps {
     appBarHidden: boolean;
@@ -212,6 +213,11 @@ const Player = React.memo(function Player({
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
     >(SubtitleCollection.empty<DisplaySubtitleModel>());
+    const seekableSubtitleCollection = useMemo(() => {
+        const collection = new SubtitleCollection(subtitleCollectionOptions);
+        collection.setSubtitles(subtitles.filter((s) => isTrackSeekable(settings.seekableTracks, s.track)));
+        return collection;
+    }, [subtitles, settings.seekableTracks]);
     const subtitleCollectionRef = useRef<SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>>(
         subtitleCollection
     );
@@ -287,20 +293,28 @@ const Player = React.memo(function Player({
         [playbackPreferences, settings.videoSubtitleSplitBehavior]
     );
 
-    const handleOnStartedShowingSubtitle = useCallback(() => {
-        if (
-            !playModes.has(PlayMode.autoPause) ||
-            settings.autoPausePreference !== AutoPausePreference.atStart ||
-            videoFileUrl // Let VideoPlayer do the auto-pausing
-        ) {
-            return;
-        }
+    const handleOnStartedShowingSubtitle = useCallback(
+        (subtitle: SubtitleModel) => {
+            if (
+                !playModes.has(PlayMode.autoPause) ||
+                settings.autoPausePreference !== AutoPausePreference.atStart ||
+                !isTrackSeekable(settings.seekableTracks, subtitle.track) ||
+                videoFileUrl // Let VideoPlayer do the auto-pausing
+            ) {
+                return;
+            }
 
-        pause(clock, mediaAdapter, true);
-    }, [playModes, clock, mediaAdapter, videoFileUrl, settings.autoPausePreference]);
+            pause(clock, mediaAdapter, true);
+        },
+        [playModes, clock, mediaAdapter, videoFileUrl, settings.autoPausePreference, settings.seekableTracks]
+    );
 
     const handleOnWillStopShowingSubtitle = useCallback(
         async (subtitle: SubtitleModel) => {
+            if (!isTrackSeekable(settings.seekableTracks, subtitle.track)) {
+                return;
+            }
+
             resetPendingAutoRepeatTargetTimestamp();
 
             const isAutoPauseAtEndEnabled =
@@ -362,6 +376,7 @@ const Player = React.memo(function Player({
             mediaAdapter,
             videoFileUrl,
             settings.autoPausePreference,
+            settings.seekableTracks,
             seek,
             subtitleCollection,
             resetPendingAutoRepeatTargetTimestamp,
@@ -511,9 +526,8 @@ const Player = React.memo(function Player({
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
-        const options = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
         if (tab) {
-            const newCol = new SubtitleCollection<DisplaySubtitleModel>(options);
+            const newCol = new SubtitleCollection<DisplaySubtitleModel>(subtitleCollectionOptions);
             newCol.setSubtitles(subtitlesRef.current ?? []);
             setSubtitleCollection(newCol);
             subtitleCollectionRef.current = newCol;
@@ -524,7 +538,7 @@ const Player = React.memo(function Player({
         const subtitleAnnotations = new SubtitleAnnotations(
             dictionaryProvider,
             settingsProvider,
-            options,
+            subtitleCollectionOptions,
             mediaId,
             (updatedSubtitles, dictionaryTracks) => {
                 renderRichTextOntoSubtitles(updatedSubtitles, dictionaryTracks);
@@ -956,7 +970,7 @@ const Player = React.memo(function Player({
 
         const interval = setInterval(async () => {
             const timestamp = clock.time(calculateLength());
-            const slice = subtitleCollection.subtitlesAt(timestamp);
+            const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
 
             if (slice.nextToShow && slice.nextToShow.length > 0) {
                 const nextSubtitle = slice.nextToShow[0];
@@ -988,7 +1002,7 @@ const Player = React.memo(function Player({
         }, 100);
 
         return () => clearInterval(interval);
-    }, [subtitles, subtitleCollection, playModes, clock, seek]);
+    }, [subtitles, seekableSubtitleCollection, playModes, clock, settings.seekableTracks, seek]);
 
     useEffect(() => {
         if (!playModes.has(PlayMode.fastForward)) {
@@ -1003,7 +1017,7 @@ const Player = React.memo(function Player({
             if (!playModesRef.current.has(PlayMode.fastForward)) return;
 
             const timestamp = clock.time(calculateLength());
-            const slice = subtitleCollection.subtitlesAt(timestamp);
+            const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
 
             if (
                 slice.showing.length === 0 &&
@@ -1017,7 +1031,15 @@ const Player = React.memo(function Player({
         }, 100);
 
         return () => clearInterval(interval);
-    }, [updatePlaybackRate, subtitleCollection, clock, subtitles, playModes, settings.fastForwardModePlaybackRate]);
+    }, [
+        updatePlaybackRate,
+        seekableSubtitleCollection,
+        clock,
+        subtitles,
+        playModes,
+        settings.fastForwardModePlaybackRate,
+        settings.seekableTracks,
+    ]);
 
     useEffect(() => {
         if (videoPopOut && videoFileUrl && channelId) {

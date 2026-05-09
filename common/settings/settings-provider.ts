@@ -116,7 +116,7 @@ export const defaultSettings: AsbplayerSettings = {
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
-    seekableTracks: [true, false, false],
+    seekableTracks: 1, // First track
     subtitleHtml: SubtitleHtml.remove,
     seekDuration: 3,
     speedChangeStep: 0.1,

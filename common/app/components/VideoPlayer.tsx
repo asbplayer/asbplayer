@@ -28,6 +28,7 @@ import {
     DictionaryTrack,
     TokenState,
     ApplyStrategy,
+    isTrackSeekable,
 } from '@project/common/settings';
 import {
     arrayEquals,
@@ -424,18 +425,23 @@ export default function VideoPlayer({
 
     const autoPauseContext = useMemo(() => {
         const context = new AutoPauseContext();
-        context.onStartedShowing = () => {
+        context.onStartedShowing = (subtitle: SubtitleModel) => {
             if (
                 !playModes.has(PlayMode.autoPause) ||
-                miscSettings.autoPausePreference !== AutoPausePreference.atStart
+                miscSettings.autoPausePreference !== AutoPausePreference.atStart ||
+                !isTrackSeekable(miscSettings.seekableTracks, subtitle.track)
             ) {
                 return;
             }
 
             playerChannel.pause();
         };
-        context.onWillStopShowing = () => {
-            if (!playModes.has(PlayMode.autoPause) || miscSettings.autoPausePreference !== AutoPausePreference.atEnd) {
+        context.onWillStopShowing = (subtitle: SubtitleModel) => {
+            if (
+                !playModes.has(PlayMode.autoPause) ||
+                miscSettings.autoPausePreference !== AutoPausePreference.atEnd ||
+                !isTrackSeekable(miscSettings.seekableTracks, subtitle.track)
+            ) {
                 return;
             }
 
@@ -779,7 +785,8 @@ export default function VideoPlayer({
         const interval = setInterval(() => {
             const now = clock.time(length);
             let showSubtitles: RichSubtitleModel[] = [];
-            const slice = subtitleCollection.subtitlesAt(now, settings.seekableTracks);
+            // TODO deal with autopause
+            const slice = subtitleCollection.subtitlesAt(now);
 
             for (const s of slice.showing) {
                 if (!disabledSubtitleTracks[s.track]) {
@@ -1041,9 +1048,10 @@ export default function VideoPlayer({
             },
             () => false,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => miscSettings.seekableTracks
         );
-    }, [keyBinder, handleOffsetChange, subtitles, clock, length]);
+    }, [keyBinder, handleOffsetChange, subtitles, clock, length, miscSettings.seekableTracks]);
 
     const extractSubtitles = useCallback(() => {
         if (!subtitles || subtitles.length === 0) {
@@ -1589,12 +1597,17 @@ export default function VideoPlayer({
 
     const handleSwipe = useCallback(
         (direction: Direction) => {
-            const subtitle = adjacentSubtitle(direction === 'right', clock.time(length), subtitles);
+            const subtitle = adjacentSubtitle(
+                direction === 'right',
+                clock.time(length),
+                subtitles,
+                miscSettings.seekableTracks
+            );
             if (subtitle) {
                 playerChannel.currentTime(subtitle.start / 1000);
             }
         },
-        [clock, length, subtitles, playerChannel]
+        [clock, length, subtitles, playerChannel, miscSettings.seekableTracks]
     );
 
     useSwipe({
@@ -1727,8 +1740,10 @@ export default function VideoPlayer({
             emptySubtitleTrack: subtitles.length === 0,
             recordingEnabled: true,
             recording: mineIntervalStartTimestamp !== undefined,
-            previousSubtitleTimestamp: adjacentSubtitle(false, timestamp, subtitles)?.originalStart ?? undefined,
-            nextSubtitleTimestamp: adjacentSubtitle(true, timestamp, subtitles)?.originalStart ?? undefined,
+            previousSubtitleTimestamp:
+                adjacentSubtitle(false, timestamp, subtitles, miscSettings.seekableTracks)?.originalStart ?? undefined,
+            nextSubtitleTimestamp:
+                adjacentSubtitle(true, timestamp, subtitles, miscSettings.seekableTracks)?.originalStart ?? undefined,
             currentTimestamp: timestamp,
             postMineAction: settings.clickToMineDefaultAction,
             subtitleDisplaying: showSubtitles.length > 0,

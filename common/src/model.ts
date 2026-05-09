@@ -319,7 +319,9 @@ export enum ControlType {
     playbackRate = 2,
 }
 
-export type SeekableTracks = [boolean, boolean, boolean]; // [firstTrack, secondTrack, thirdTrack]
+// Bitset - if the nth bit is 1 then the nth track is "seekable" where "seekable"
+// means that the track is eligible for seeking, and automatic play mode behaviors
+export type SeekableTracks = number;
 
 export interface BrowserFeatures {
     sidePanel: boolean;

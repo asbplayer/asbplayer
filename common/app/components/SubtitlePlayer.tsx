@@ -494,7 +494,7 @@ export default function SubtitlePlayer({
             const currentSubtitleIndexes: { [index: number]: boolean } = {};
             const timestamp = clock.time(lengthRef.current);
 
-            let slice = subtitleCollectionRef.current.subtitlesAt(timestamp, settings.seekableTracks);
+            let slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
             const showing = slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing;
             let smallestIndex: number | undefined;
 
@@ -640,9 +640,10 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settings.seekableTracks
         );
-    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length]);
+    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, settings.seekableTracks]);
 
     useEffect(() => {
         return keyBinder.bindSeekToSubtitle(

@@ -12,7 +12,14 @@ import Checkbox from '@mui/material/Checkbox';
 import SettingsTextField from './SettingsTextField';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from './LabelWithHoverEffect';
-import { AsbplayerSettings, exportSettings, PauseOnHoverMode, validateSettings } from '../settings';
+import {
+    AsbplayerSettings,
+    exportSettings,
+    isTrackSeekable,
+    PauseOnHoverMode,
+    updateSeekableTracksValue,
+    validateSettings,
+} from '../settings';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SubtitleHtml } from '..';
@@ -206,51 +213,29 @@ const MiscSettingTab: React.FC<Props> = ({
                 <FormControl>
                     <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
                     <FormGroup>
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={seekableTracks[0]}
-                                    onChange={(event) => {
-                                        onSettingChanged('seekableTracks', [
-                                            event.target.checked,
-                                            seekableTracks[1],
-                                            seekableTracks[2],
-                                        ]);
-                                    }}
+                        {[0, 1, 2].map((trackIndex) => {
+                            return (
+                                <FormControlLabel
+                                    key={trackIndex}
+                                    control={
+                                        <Checkbox
+                                            checked={isTrackSeekable(seekableTracks, trackIndex)}
+                                            onChange={(event) => {
+                                                onSettingChanged(
+                                                    'seekableTracks',
+                                                    updateSeekableTracksValue(
+                                                        seekableTracks,
+                                                        trackIndex,
+                                                        event.target.checked
+                                                    )
+                                                );
+                                            }}
+                                        />
+                                    }
+                                    label={t('settings.subtitleTrackChoice', { trackNumber: trackIndex + 1 })}
                                 />
-                            }
-                            label={t('settings.subtitleTrackChoice', { trackNumber: 1 })}
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={seekableTracks[1]}
-                                    onChange={(event) => {
-                                        onSettingChanged('seekableTracks', [
-                                            seekableTracks[0],
-                                            event.target.checked,
-                                            seekableTracks[2],
-                                        ]);
-                                    }}
-                                />
-                            }
-                            label={t('settings.subtitleTrackChoice', { trackNumber: 2 })}
-                        />
-                        <FormControlLabel
-                            control={
-                                <Checkbox
-                                    checked={seekableTracks[2]}
-                                    onChange={(event) => {
-                                        onSettingChanged('seekableTracks', [
-                                            seekableTracks[0],
-                                            seekableTracks[1],
-                                            event.target.checked,
-                                        ]);
-                                    }}
-                                />
-                            }
-                            label={t('settings.subtitleTrackChoice', { trackNumber: 3 })}
-                        />
+                            );
+                        })}
                     </FormGroup>
                 </FormControl>
                 <SettingsTextField

@@ -330,10 +330,7 @@ const settingsSchema = {
             type: 'number',
         },
         seekableTracks: {
-            type: 'array',
-            items: {
-                type: 'boolean',
-            },
+            type: 'number',
         },
         subtitleHtml: {
             type: 'number',

@@ -232,6 +232,7 @@ export default defineBackground(() => {
                 (typeof handler.sender === 'object' && handler.sender.includes(request.sender))
             ) {
                 if (handler.command === null || handler.command === request.message.command) {
+                    console.error('handling ', request);
                     if (handler.handle(request, sender, sendResponse) === true) {
                         return true;
                     }

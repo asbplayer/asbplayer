@@ -55,12 +55,12 @@ import {
 import { adjacentSubtitle } from '@project/common/key-binder';
 import PlayModeManager from '@project/common/app/services/play-mode-manager';
 import {
+    calculateSeekableTracksValue,
     extractAnkiSettings,
-    ApplyStrategy,
+    isTrackSeekable,
     PauseOnHoverMode,
     SettingsProvider,
     SubtitleListPreference,
-    TokenStatus,
 } from '@project/common/settings';
 import { SubtitleSlice } from '@project/common/subtitle-collection';
 import { SubtitleReader } from '@project/common/subtitle-reader';
@@ -137,7 +137,7 @@ export default class Binding {
     recordingPostMineAction?: PostMineAction;
     wasPlayingBeforeRecordingMedia?: boolean;
     postMinePlayback: PostMinePlayback = PostMinePlayback.remember;
-    seekableTracks: SeekableTracks = [true, false, false];
+    seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
     private recordingMediaStartedTimestamp?: number;
     private recordingMediaWithScreenshot: boolean;
     private pausedDueToHover = false;
@@ -214,12 +214,7 @@ export default class Binding {
         this.hasPageScript = hasPageScript;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
-        this.subtitleController = new SubtitleController(
-            video,
-            this.dictionary,
-            this.settings,
-            () => this.seekableTracks
-        );
+        this.subtitleController = new SubtitleController(video, this.dictionary, this.settings);
         this.videoDataSyncController = new VideoDataSyncController(this, this.settings);
         this.controlsController = new ControlsController(video);
         this.dragController = new DragController(video);
@@ -293,6 +288,9 @@ export default class Binding {
                 this.subtitleController.autoPauseContext.onStartedShowing = undefined;
                 if (newModes.has(PlayMode.repeat)) {
                     this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                        if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
+                            return;
+                        }
                         this._resetPendingAutoRepeatTargetTimestamp();
                         this.seek(subtitle.start / 1000);
                     };
@@ -303,12 +301,12 @@ export default class Binding {
                 if (showNotif) this.subtitleController.notification('info.disabledAutoPause');
                 break;
             case PlayMode.condensed:
-                this.subtitleController.onNextToShow = undefined;
+                this.subtitleController.onNextSeekableToShow = undefined;
 
                 if (showNotif) this.subtitleController.notification('info.disabledCondensedPlayback');
                 break;
             case PlayMode.fastForward:
-                this.subtitleController.onSlice = undefined;
+                this.subtitleController.onSeekableSlice = undefined;
                 this.video.playbackRate = 1;
 
                 if (showNotif) this.subtitleController.notification('info.disabledFastForwardPlayback');
@@ -334,14 +332,22 @@ export default class Binding {
     private _enablePlayMode(mode: PlayMode) {
         switch (mode) {
             case PlayMode.autoPause:
-                this.subtitleController.autoPauseContext.onStartedShowing = () => {
-                    if (this.recordingMedia || this.autoPausePreference !== AutoPausePreference.atStart) {
+                this.subtitleController.autoPauseContext.onStartedShowing = (subtitle) => {
+                    if (
+                        this.recordingMedia ||
+                        this.autoPausePreference !== AutoPausePreference.atStart ||
+                        !isTrackSeekable(this.seekableTracks, subtitle.track)
+                    ) {
                         return;
                     }
 
                     this.pause();
                 };
                 this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                    if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
+                        return;
+                    }
+
                     const shouldRepeat = this._playModes.has(PlayMode.repeat);
 
                     if (this.autoPausePreference === AutoPausePreference.atEnd) {
@@ -361,11 +367,12 @@ export default class Binding {
                 break;
             case PlayMode.condensed:
                 let seeking = false;
-                this.subtitleController.onNextToShow = async (subtitle) => {
+                this.subtitleController.onNextSeekableToShow = async (subtitle) => {
                     try {
                         if (
                             this.recordingMedia ||
                             seeking ||
+                            !isTrackSeekable(this.seekableTracks, subtitle.track) ||
                             this.video.paused ||
                             subtitle.start - this.video.currentTime * 1000 <=
                                 this.condensedPlaybackMinimumSkipIntervalMs
@@ -384,7 +391,7 @@ export default class Binding {
                 this.subtitleController.notification('info.enabledCondensedPlayback');
                 break;
             case PlayMode.fastForward:
-                this.subtitleController.onSlice = async (slice: SubtitleSlice<IndexedSubtitleModel>) => {
+                this.subtitleController.onSeekableSlice = async (slice: SubtitleSlice<IndexedSubtitleModel>) => {
                     const subtitlesAreSufficientlyOffsetFromNow = (subtitleEdgeTime: number | undefined) => {
                         return (
                             subtitleEdgeTime &&
@@ -418,6 +425,10 @@ export default class Binding {
                 break;
             case PlayMode.repeat:
                 this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                    if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
+                        return;
+                    }
+
                     const shouldAutoPause =
                         this._playModes.has(PlayMode.autoPause) &&
                         this.autoPausePreference === AutoPausePreference.atEnd &&
@@ -510,7 +521,8 @@ export default class Binding {
             const subtitle = adjacentSubtitle(
                 forward,
                 this.video.currentTime * 1000,
-                this.subtitleController.subtitles
+                this.subtitleController.subtitles,
+                this.seekableTracks
             );
 
             if (subtitle !== null) {
@@ -1074,6 +1086,7 @@ export default class Binding {
         this.subtitleController.surroundingSubtitlesTimeRadius = currentSettings.surroundingSubtitlesTimeRadius;
         this.subtitleController.autoCopyCurrentSubtitle = currentSettings.autoCopyCurrentSubtitle;
         this.subtitleController.dictionaryTrackSettings = currentSettings.dictionaryTracks;
+        this.subtitleController.seekableTracks = currentSettings.seekableTracks;
 
         const convertNetflixRubyChanged =
             this.subtitleController.convertNetflixRuby !== currentSettings.convertNetflixRuby;

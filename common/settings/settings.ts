@@ -46,6 +46,25 @@ export interface MiscSettings {
     readonly pauseOnHoverMode: PauseOnHoverMode;
 }
 
+export const isTrackSeekable = (seekable: SeekableTracks, track: number) => {
+    return ((seekable >> track) & 1) > 0;
+};
+
+export const calculateSeekableTracksValue = (trackIndices: number[]): SeekableTracks => {
+    let val: SeekableTracks = 0;
+    for (const i of trackIndices) {
+        val |= 1 << i;
+    }
+    return val;
+};
+
+export const updateSeekableTracksValue = (seekableTracks: SeekableTracks, trackIndex: number, add: boolean) => {
+    if (add) {
+        return seekableTracks | (1 << trackIndex);
+    }
+    return seekableTracks & ~(1 << trackIndex);
+};
+
 export enum DictionaryTokenSource {
     LOCAL = 0,
     ANKI_WORD = 1,

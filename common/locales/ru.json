@@ -598,7 +598,7 @@
         "ui": "UI",
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
-        "seekableTracks": "Дорожки субтитров, учитываемые для перемотки (горячие клавиши) и автоматической паузы"
+        "seekableTracks": "Subtitle tracks eligible for seeking and play mode behavior"
     },
     "statistics": {
         "title": "Statistics",

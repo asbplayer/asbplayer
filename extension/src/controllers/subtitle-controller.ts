@@ -19,8 +19,10 @@ import {
     SubtitleSettings,
     TextSubtitleSettings,
     allTextSubtitleSettings,
+    calculateSeekableTracksValue,
+    isTrackSeekable,
 } from '@project/common/settings';
-import { SubtitleSlice } from '@project/common/subtitle-collection';
+import { SubtitleCollection, SubtitleCollectionOptions, SubtitleSlice } from '@project/common/subtitle-collection';
 import { renderRichTextOntoSubtitles, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { arrayEquals, computeStyleString, surroundingSubtitles } from '@project/common/util';
 import i18n from 'i18next';
@@ -84,6 +86,13 @@ export default class SubtitleController {
     private subtitleClasses?: string[];
     private notificationElementOverlayHideTimeout?: NodeJS.Timeout;
     subtitleAnnotations: SubtitleAnnotations;
+    /**
+     * Seekable subittle collection is a subtitle collection that contains gap intervals for only "seekable" tracks.
+     * Seekable tracks are eligible for play mode behavior, like condensed mode. This separate collection is needed
+     *  because the gap intervals are used to calculate the next subtitle for condensed mode, and this separate
+     * collection excludes all subtitles that are not configured as "seekable.""
+     */
+    private seekableSubtitleCollection: SubtitleCollection<IndexedSubtitleModel>;
     private bottomSubtitlesElementOverlay: ElementOverlay;
     private topSubtitlesElementOverlay: ElementOverlay;
     private notificationElementOverlay: ElementOverlay;
@@ -103,26 +112,19 @@ export default class SubtitleController {
     refreshCurrentSubtitle: boolean;
     _preCacheDom;
     dictionaryTrackSettings?: DictionaryTrack[];
-    seekableTracks: () => SeekableTracks;
+    autoPauseContext: AutoPauseContext = new AutoPauseContext();
+    _seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
 
-    readonly autoPauseContext: AutoPauseContext = new AutoPauseContext();
-
-    onNextToShow?: (subtitle: SubtitleModel) => void;
-    onSlice?: (subtitle: SubtitleSlice<IndexedSubtitleModel>) => void;
+    onNextSeekableToShow?: (subtitle: SubtitleModel) => void;
+    onSeekableSlice?: (subtitle: SubtitleSlice<IndexedSubtitleModel>) => void;
     onOffsetChange?: () => void;
     onMouseOver?: (event: MouseEvent) => void;
     onMouseOut?: (event: MouseEvent) => void;
 
-    constructor(
-        video: HTMLMediaElement,
-        dictionary: DictionaryProvider,
-        settings: SettingsProvider,
-        seekableTracks: () => SeekableTracks
-    ) {
+    constructor(video: HTMLMediaElement, dictionary: DictionaryProvider, settings: SettingsProvider) {
         this.video = video;
         this.dictionary = dictionary;
         this.settings = settings;
-        this.seekableTracks = seekableTracks;
         this._preCacheDom = false;
         this.showingSubtitles = [];
         this.shouldRenderBottomOverlay = true;
@@ -146,15 +148,21 @@ export default class SubtitleController {
         this.bottomSubtitlesElementOverlay = subtitlesElementOverlay;
         this.topSubtitlesElementOverlay = topSubtitlesElementOverlay;
         this.notificationElementOverlay = notificationElementOverlay;
+        const subtitleCollectionOptions: SubtitleCollectionOptions = {
+            showingCheckRadiusMs: 150,
+            returnLastShown: true,
+            returnNextToShow: true,
+        };
         this.subtitleAnnotations = new SubtitleAnnotations(
             this.dictionary,
             this.settings,
-            { showingCheckRadiusMs: 150 },
+            subtitleCollectionOptions,
             this.video.src,
             (updatedSubtitles) => this._subtitleAnnotationsUpdated(updatedSubtitles),
             () => this.video.currentTime * 1000,
             new VideoFetcher(() => this.video.src)
         );
+        this.seekableSubtitleCollection = new SubtitleCollection(subtitleCollectionOptions);
     }
 
     get subtitles() {
@@ -163,7 +171,17 @@ export default class SubtitleController {
 
     set subtitles(subtitles) {
         this.subtitleAnnotations.setSubtitles(subtitles);
+        this.seekableSubtitleCollection.setSubtitles(
+            subtitles.filter((s) => isTrackSeekable(this._seekableTracks, s.track))
+        );
         this.autoPauseContext.clear();
+    }
+
+    set seekableTracks(seekableTracks: SeekableTracks) {
+        this._seekableTracks = seekableTracks;
+        this.seekableSubtitleCollection.setSubtitles(
+            this.subtitleAnnotations.subtitles.filter((s) => isTrackSeekable(this._seekableTracks, s.track))
+        );
     }
 
     reset() {
@@ -171,6 +189,7 @@ export default class SubtitleController {
         this.subtitleFileNames = undefined;
         this.cacheHtml();
         this.subtitleAnnotations.reset();
+        this.seekableSubtitleCollection.setSubtitles([]);
     }
 
     cacheHtml() {
@@ -400,11 +419,12 @@ export default class SubtitleController {
 
             const showOffset = this.lastOffsetChangeTimestamp > 0 && Date.now() - this.lastOffsetChangeTimestamp < 1000;
             const offset = showOffset ? this._computeOffset() : 0;
-            const slice = this.subtitleAnnotations.subtitlesAt(this.video.currentTime * 1000, this.seekableTracks());
+            const slice = this.subtitleAnnotations.subtitlesAt(this.video.currentTime * 1000);
+            const seekableSlice = this.seekableSubtitleCollection.subtitlesAt(this.video.currentTime * 1000);
 
             const showingSubtitles = this._findShowingSubtitles(slice);
 
-            this.onSlice?.(slice);
+            this.onSeekableSlice?.(seekableSlice);
 
             if (slice.willStopShowing && this._trackEnabled(slice.willStopShowing)) {
                 this.autoPauseContext.willStopShowing(slice.willStopShowing);
@@ -414,8 +434,8 @@ export default class SubtitleController {
                 this.autoPauseContext.startedShowing(slice.startedShowing);
             }
 
-            if (slice.nextToShow && slice.nextToShow.length > 0) {
-                this.onNextToShow?.(slice.nextToShow[0]);
+            if (seekableSlice.nextToShow && seekableSlice.nextToShow.length > 0) {
+                this.onNextSeekableToShow?.(seekableSlice.nextToShow[0]);
             }
 
             const subtitlesAreNew =
@@ -571,8 +591,8 @@ export default class SubtitleController {
         this.bottomSubtitlesElementOverlay.dispose();
         this.topSubtitlesElementOverlay.dispose();
         this.notificationElementOverlay.dispose();
-        this.onNextToShow = undefined;
-        this.onSlice = undefined;
+        this.onNextSeekableToShow = undefined;
+        this.onSeekableSlice = undefined;
         this.onOffsetChange = undefined;
         this.onMouseOver = undefined;
         this.onMouseOut = undefined;

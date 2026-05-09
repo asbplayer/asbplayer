@@ -598,7 +598,7 @@
         "ui": "UI",
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
-        "seekableTracks": "Pistes de sous-titres à considérer pour la recherche (raccourcis) et la mise en pause automatique"
+        "seekableTracks": "Subtitle tracks eligible for seeking and play mode behavior"
     },
     "statistics": {
         "title": "Statistics",
