@@ -1,7 +1,7 @@
 {
     "action": {
         "cancel": "キャンセル",
-        "close": "Close",
+        "close": "閉じる",
         "copy": "コピー",
         "delete": "削除",
         "save": "保存",
@@ -33,8 +33,8 @@
         "gotIt": "分かった",
         "revert": "元に戻す",
         "userGuide": "ユーザーガイド",
-        "search": "Search",
-        "reload": "Reload"
+        "search": "検索",
+        "reload": "再読み込み"
     },
     "about": {
         "title": "asbplayerについて",
@@ -384,12 +384,12 @@
         "layout": "レイアウト",
         "maxImageHeight": "キャプチャの最大高さ",
         "maxImageWidth": "キャプチャの最大幅",
-        "mediaFragmentCaptureFormat": "Capture format",
-        "mediaFragmentFormatScreenshot": "Screenshot",
-        "mediaFragmentFormatVideoClip": "Video clip (local video only)",
-        "mediaFragmentMaxClipLength": "Max clip length",
-        "mediaFragmentTrimEnd": "Clip trim end",
-        "mediaFragmentTrimStart": "Clip trim start",
+        "mediaFragmentCaptureFormat": "キャプチャ形式",
+        "mediaFragmentFormatScreenshot": "スクリーンショット",
+        "mediaFragmentFormatVideoClip": "ビデオクリップ（ローカルビデオのみ）",
+        "mediaFragmentMaxClipLength": "クリップの最大時間",
+        "mediaFragmentTrimEnd": "開始時のカット時間",
+        "mediaFragmentTrimStart": "終了時のカット時間",
         "mining": "マイニング",
         "miningHistoryStorageLimit": "マイニング履歴の保存数上限",
         "clickToMineDefaultAction": "ボタンでマイニングした際のデフォルト動作",
@@ -412,7 +412,7 @@
         "track2Field": "字幕トラック2フィールド",
         "track3Field": "字幕トラック3フィールド",
         "reset": "リセット",
-        "screenshots": "Image capture",
+        "screenshots": "画面キャプチャ",
         "subtitleAppearance": "字幕の表示設定",
         "subtitleBackgroundColor": "字幕の背景色",
         "subtitleBackgroundOpacity": "字幕の背景の透明度",
@@ -471,7 +471,7 @@
         "annotationHelperText": "アノテーション機能は<0>Yomitan API</0>が必要です。",
         "annotationNoExtensionWarn": "単語がブラウザによって削除されないためには、asbplayer拡張機能のインストールをお勧めします。設定をなくさないためには拡張機能をインストールする前に設定のエクスポートもお勧めします。",
         "annotationLocalAnkiHelperText": "単語の成熟度は、Ankiの単語データベースより、ローカルの単語データベースが優先されます。単語を収集するためには、こちらのボタンでインポートするか、字幕にマウスカーソルを重ね、<0>キーボードショートカット</0>を使用することができます。",
-        "manageWords": "My word database",
+        "manageWords": "My単語",
         "buildAnkiCache": "Ankiの単語データベースを再構築",
         "buildAnkiCacheHelperText": "Ankiの単語データベースは、トラックが有効になっておりAnkiが接続可能なときに、メディア再生中に自動的に更新されます。",
         "buildAnkiCacheAnkiEnableHelperText": "習得した単語を収集するためには、<0>検索対象の文章または単語フィールドを設定</0>してください。",
@@ -554,51 +554,51 @@
         "dictionaryImportClipboardNoTokens": "有効な単語が見つかりません",
         "dictionaryImportedMaturity": "インポートされた単語を次のように扱います",
         "applyStrategies": {
-            "add": "Add",
-            "remove": "Remove",
-            "replace": "Replace",
-            "toggle": "Toggle"
+            "add": "追加",
+            "remove": "削除",
+            "replace": "置き換え",
+            "toggle": "切り替え"
         },
         "dictionaryBrowser": {
-            "title": "Word Browser",
-            "searchPlaceholder": "Search by word or lemma",
-            "yomitanWarning": "Yomitan lemma search is unavailable: {{message}}",
-            "bulkStatus": "Maturity",
-            "applyToSelected": "Apply to selected",
-            "deleteSelected": "Delete selected",
-            "updateSelected": "Update {{selectedCount}} selected words",
-            "confirmApplyToSelected": "Are you sure you want to apply the selected changes to {{count}} entries?",
-            "confirmApplyToSelectedDeleteWarning": "Entries that are uncollected with no states will be deleted.",
-            "confirmDeleteSelected": "Are you sure you want to delete {{count}} selected entries?",
-            "results": "Showing {{shown}} of {{total}} entries",
-            "noResults": "No matching words found.",
+            "title": "単語帳",
+            "searchPlaceholder": "単語または見出し語で検索",
+            "yomitanWarning": "Yomitanによる見出し語検索が失敗しました：{{message}}",
+            "bulkStatus": "成熟度",
+            "applyToSelected": "選択した単語に適用",
+            "deleteSelected": "選択した単語を削除",
+            "updateSelected": "{{selectedCount}}の選択した単語を更新",
+            "confirmApplyToSelected": "この更新内容を{{count}}の単語に適用しますか？",
+            "confirmApplyToSelectedDeleteWarning": "未修習で状態がない単語は削除されます。",
+            "confirmDeleteSelected": "{{count}}の単語を削除しますか？",
+            "results": "{{shown}} / {{total}}件を表示中",
+            "noResults": "検索条件に一致する単語は見つかりませんでした。",
             "columns": {
-                "word": "Word",
-                "lemmas": "Lemmas",
-                "source": "Source",
-                "status": "Status",
-                "states": "States",
-                "track": "Track",
-                "cardIds": "Card IDs",
-                "noteIds": "Note IDs",
-                "suspended": "Suspended"
+                "word": "単語",
+                "lemmas": "見出し語",
+                "source": "登録元",
+                "status": "成熟度",
+                "states": "状態",
+                "track": "トラック",
+                "cardIds": "カードID",
+                "noteIds": "ノートID",
+                "suspended": "休止状態"
             },
             "sources": {
-                "local": "Local",
-                "ankiWord": "Anki word",
-                "ankiSentence": "Anki sentence"
+                "local": "ローカル",
+                "ankiWord": "Ankiの単語",
+                "ankiSentence": "Ankiの文章"
             },
             "suspended": {
-                "all": "All",
-                "yes": "Yes",
-                "no": "No",
-                "mixed": "Mixed"
+                "all": "全て",
+                "yes": "休止中",
+                "no": "休止されていない",
+                "mixed": "混在"
             }
         },
         "ui": "UI",
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。",
-        "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts"
+        "seekableTracks": "操作対象の字幕（プレイバック/ショートカット）"
     },
     "statistics": {
         "title": "統計",
