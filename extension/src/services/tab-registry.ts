@@ -212,7 +212,7 @@ export default class TabRegistry {
                 message: {
                     command: 'tabs',
                     tabs: await this.activeVideoElements(),
-                    asbplayers: await this._asbplayerInstances(),
+                    asbplayers: await this.asbplayerInstances(),
                     ackRequested: false,
                 },
             };
@@ -321,7 +321,7 @@ export default class TabRegistry {
         return activeVideoElements;
     }
 
-    private async _asbplayerInstances() {
+    async asbplayerInstances() {
         const asbplayers = await this._asbplayers();
         const asbplayerInstances: AsbplayerInstance[] = [];
 
@@ -333,6 +333,7 @@ export default class TabRegistry {
                 timestamp: asbplayer.timestamp,
                 videoPlayer: asbplayer.videoPlayer,
                 loadedSubtitles: asbplayer.loadedSubtitles ?? false,
+                syncedVideoElement: asbplayer.syncedVideoElement,
             });
         }
 
@@ -396,7 +397,7 @@ export default class TabRegistry {
             message: {
                 command: 'tabs',
                 tabs: await this.activeVideoElements(),
-                asbplayers: await this._asbplayerInstances(),
+                asbplayers: await this.asbplayerInstances(),
                 ackRequested: true,
             },
         };

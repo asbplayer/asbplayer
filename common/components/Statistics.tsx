@@ -54,6 +54,7 @@ export interface MediaInfo {
 }
 
 export interface StatisticsProps {
+    mediaId?: string;
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
     hasSubtitles: boolean;
@@ -1261,6 +1262,7 @@ function TrackSnapshot({
 }
 
 export default function Statistics({
+    mediaId,
     dictionaryProvider,
     settings,
     hasSubtitles,
@@ -1273,7 +1275,6 @@ export default function Statistics({
     sx,
 }: StatisticsProps) {
     const { t } = useTranslation();
-    const [mediaId, setMediaId] = useState<string>();
     const [mediaInfo, setMediaInfo] = useState<MediaInfo>();
     const [statisticsSnapshot, setStatisticsSnapshot] = useState<DictionaryStatisticsSnapshot>();
     const [trackSnapshots, setTrackSnapshots] = useState<DictionaryStatisticsTrackSnapshot[]>();
@@ -1293,7 +1294,6 @@ export default function Statistics({
         const unsubscribeStatistics = dictionaryProvider.onStatisticsSnapshot(
             (snapshot?: DictionaryStatisticsSnapshot) => {
                 if (!snapshot) {
-                    setMediaId(undefined);
                     setMediaInfo(undefined);
                     setStatisticsSnapshot(undefined);
                     setTrackSnapshots([]);
@@ -1301,34 +1301,37 @@ export default function Statistics({
                     return;
                 }
 
-                setMediaId(snapshot.mediaId);
-                if (mediaInfoFetcher) {
-                    mediaInfoFetcher(snapshot.mediaId).then(setMediaInfo);
-                } else {
-                    setMediaInfo(undefined);
-                }
-                setStatisticsSnapshot(snapshot);
-                const nextTrackSnapshots = processDictionaryStatisticsSnapshot(snapshot);
-                setTrackSnapshots(nextTrackSnapshots);
-                if (
-                    nextTrackSnapshots.length &&
-                    nextTrackSnapshots.every(
-                        (trackSnapshot) => trackSnapshot.progress.current >= trackSnapshot.progress.total
-                    )
-                ) {
-                    setGenerationRequested(false);
+                if (mediaId === snapshot.mediaId) {
+                    if (mediaInfoFetcher) {
+                        mediaInfoFetcher(snapshot.mediaId).then(setMediaInfo);
+                    } else {
+                        setMediaInfo(undefined);
+                    }
+                    setStatisticsSnapshot(snapshot);
+                    const nextTrackSnapshots = processDictionaryStatisticsSnapshot(snapshot);
+                    setTrackSnapshots(nextTrackSnapshots);
+                    if (
+                        nextTrackSnapshots.length &&
+                        nextTrackSnapshots.every(
+                            (trackSnapshot) => trackSnapshot.progress.current >= trackSnapshot.progress.total
+                        )
+                    ) {
+                        setGenerationRequested(false);
+                    }
                 }
             }
         );
         const unsubscribeGeneration = dictionaryProvider.onRequestStatisticsGeneration(() => {
             setGenerationRequested(true);
         });
-        void dictionaryProvider.requestStatisticsSnapshot();
+        if (mediaId !== undefined) {
+            void dictionaryProvider.requestStatisticsSnapshot(mediaId);
+        }
         return () => {
             unsubscribeStatistics();
             unsubscribeGeneration();
         };
-    }, [dictionaryProvider, mediaInfoFetcher]);
+    }, [dictionaryProvider, mediaInfoFetcher, mediaId]);
 
     useEffect(() => setSelectedTrackSnapshotIndex(0), [mediaId]);
 
