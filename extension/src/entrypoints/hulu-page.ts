@@ -1,5 +1,5 @@
-import { VideoDataSubtitleTrack } from '@project/common';
-import { extractExtension, trackFromDef } from '@/pages/util';
+import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import { extractExtension, poll, trackFromDef } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
     setTimeout(() => {
@@ -108,42 +108,155 @@ export default defineUnlistedScript(() => {
             return stringified;
         };
 
-        document.addEventListener(
-            'asbplayer-get-synced-data',
-            async () => {
-                let basename = '';
-                let subtitles: VideoDataSubtitleTrack[] = [];
-                let error = '';
+        const legacyDetectorResponse: () => Promise<VideoData> = async () => {
+            let basename = '';
+            let subtitles: VideoDataSubtitleTrack[] = [];
+            let error = '';
 
-                try {
-                    if (basenamePromise !== undefined) {
-                        basename = await basenamePromise;
-                        basenamePromise = undefined;
+            try {
+                if (basenamePromise !== undefined) {
+                    basename = await basenamePromise;
+                    basenamePromise = undefined;
+                }
+
+                if (subtitlesPromise !== undefined) {
+                    subtitles = await subtitlesPromise;
+                    subtitlesPromise = undefined;
+                }
+            } catch (e) {
+                if (e instanceof Error) {
+                    error = e.message;
+                } else {
+                    error = String(e);
+                }
+            }
+
+            return {
+                error: error,
+                basename: basename,
+                subtitles: subtitles,
+            };
+        };
+
+        // Below is the subtitle detection for the hulu.jp as of 2026-5-10. It's implemented as a pure addition
+        // to the code above, so as not to avoid breaking anything that may still be working.
+
+        const extractExtensionFromMimeType = (val: any) => {
+            if (typeof val !== 'string') {
+                return undefined;
+            }
+            // For subtitle files the last part of the mime type should usually be the extension
+            // e.g. text/vtt maps to vtt
+            const parts = val.split('/');
+            return parts[parts.length - 1];
+        };
+
+        const dataByVideoId: Map<string, VideoData> = new Map();
+        let lastVideoId: string | undefined;
+
+        const tryExtractMetadata = async (value: any) => {
+            try {
+                if (typeof value?.ref_id !== 'string' || !(value?.tracks instanceof Array)) {
+                    return;
+                }
+                const videoDataSubtitleTracks: VideoDataSubtitleTrack[] = [];
+                const videoId = value.ref_id;
+
+                for (const track of value.tracks) {
+                    if (typeof track !== 'object') {
+                        continue;
                     }
 
-                    if (subtitlesPromise !== undefined) {
-                        subtitles = await subtitlesPromise;
-                        subtitlesPromise = undefined;
-                    }
-                } catch (e) {
-                    if (e instanceof Error) {
-                        error = e.message;
-                    } else {
-                        error = String(e);
+                    if (
+                        track.kind === 'subtitles' &&
+                        typeof track.src === 'string' &&
+                        typeof track.srclang === 'string'
+                    ) {
+                        const inferredExtensionFromMimeType = extractExtensionFromMimeType(track.type) || 'vtt';
+                        videoDataSubtitleTracks.push(
+                            trackFromDef({
+                                label: track.label || track.srclang || track.src,
+                                url: track.src,
+                                language: track.srclang,
+                                extension: extractExtension(track.src, inferredExtensionFromMimeType),
+                            })
+                        );
                     }
                 }
 
-                const response = {
-                    error: error,
-                    basename: basename,
-                    subtitles: subtitles,
-                };
+                const videoName = new RegExp(`(${videoId}:){0,1}(.+)`).exec(value.name)?.[2];
+                if (videoDataSubtitleTracks.length > 0) {
+                    dataByVideoId.set(videoId, {
+                        basename: videoName || document.title,
+                        subtitles: videoDataSubtitleTracks,
+                    });
+                }
 
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
+                lastVideoId = value?.ref_id;
+            } catch (e) {
+                // ignore
+            }
+        };
+
+        const originalXhrSend = window.XMLHttpRequest.prototype.send;
+        window.XMLHttpRequest.prototype.send = function () {
+            this.addEventListener('load', function () {
+                tryExtractMetadata(this.response);
+            });
+
+            // @ts-ignore
+            originalXhrSend.apply(this, arguments);
+        };
+
+        const videoIdFromUrl = () => {
+            return /watch\/(.+)(\/){0,1}/.exec(new URL(window.location.href).pathname)?.[1];
+        };
+
+        const newDetectorResponse: () => Promise<VideoData | undefined> = async () => {
+            let response: VideoData | undefined;
+
+            const pollPromise = poll(() => {
+                const videoId = videoIdFromUrl() ?? lastVideoId;
+                if (!videoId) {
+                    return false;
+                }
+                response = dataByVideoId.get(videoId);
+                if (response === undefined) {
+                    return false;
+                }
+                return true;
+            });
+
+            await pollPromise;
+            return response;
+        };
+
+        document.addEventListener(
+            'asbplayer-get-synced-data',
+            async () => {
+                let responded = false;
+                const newResponsePromise = newDetectorResponse().then((response) => {
+                    if (response === undefined || responded) {
+                        return;
+                    }
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
+                        })
+                    );
+                    responded = true;
+                });
+                const legacyResponsePromise = legacyDetectorResponse().then((response) => {
+                    if (responded) {
+                        return;
+                    }
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
+                        })
+                    );
+                });
+                await Promise.all([newResponsePromise, legacyResponsePromise]);
             },
             false
         );
