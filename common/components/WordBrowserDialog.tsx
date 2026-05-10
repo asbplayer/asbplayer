@@ -1685,6 +1685,7 @@ export default function WordBrowserDialog({
                                     <TableRow
                                         sx={{
                                             boxShadow: `inset 0 -1px 0 ${theme.palette.divider}`,
+                                            whiteSpace: 'nowrap',
                                         }}
                                     >
                                         <TableCell padding="checkbox">
