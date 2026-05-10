@@ -22,6 +22,7 @@ import { fetchLocalization } from '../services/localization-fetcher';
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
+import { extractExtension } from '@/pages/util';
 
 declare global {
     function cloneInto(obj: any, targetScope: any, options?: any): any;
@@ -614,7 +615,7 @@ export default class VideoDataSyncController {
         // `url` is an array
 
         const firstUri = url[0];
-        const partExtension = firstUri.substring(firstUri.lastIndexOf('.') + 1);
+        const partExtension = extractExtension(firstUri, extension);
         const fileName = `${name}.${partExtension}`;
         const promises = url.map((u) => fetch(u));
         const tracks = [];
