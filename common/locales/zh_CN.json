@@ -598,7 +598,7 @@
         "ui": "界面排版",
         "webSocketInterface": "WebSocket 接口",
         "yomitanHelperText": "Yomitan API 配置说明详见 <0>此处</0>。",
-        "seekableTracks": "Subtitle tracks eligible for keyboard shortcut seeking and play mode behavior"
+        "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts"
     },
     "statistics": {
         "title": "统计数据",
