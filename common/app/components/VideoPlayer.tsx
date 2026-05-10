@@ -785,7 +785,6 @@ export default function VideoPlayer({
         const interval = setInterval(() => {
             const now = clock.time(length);
             let showSubtitles: RichSubtitleModel[] = [];
-            // TODO deal with autopause
             const slice = subtitleCollection.subtitlesAt(now);
 
             for (const s of slice.showing) {
