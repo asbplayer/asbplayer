@@ -571,6 +571,7 @@ export interface PageSettings {
     bandaiChannel: Page;
     amazonPrime: Page;
     hulu: Page;
+    huluJp: Page;
     disneyPlus: Page;
     appsDisneyPlus: Page;
     unext: Page;

@@ -210,6 +210,7 @@ export const defaultSettings: AsbplayerSettings = {
         bandaiChannel: {},
         amazonPrime: {},
         hulu: {},
+        huluJp: {},
         disneyPlus: {},
         appsDisneyPlus: {},
         unext: {},

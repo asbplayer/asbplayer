@@ -53,8 +53,17 @@
             }
         },
         {
+            "key": "huluJp",
+            "host": "www\\.hulu\\.jp",
+            "pageScript": "hulu-jp-page.js",
+            "syncAllowedAtPath": "watch",
+            "autoSync": {
+                "enabled": true
+            }
+        },
+        {
             "key": "hulu",
-            "host": "www\\.hulu\\..+",
+            "host": "www\\.hulu\\.(?!jp)",
             "pageScript": "hulu-page.js",
             "syncAllowedAtPath": "watch",
             "autoSync": {
