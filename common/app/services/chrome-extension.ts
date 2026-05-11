@@ -35,6 +35,7 @@ import {
     SetGlobalStateMessage,
     GetGlobalStateMessage,
     DictionaryBuildAnkiCacheMessage,
+    DictionaryBuildWaniKaniCacheMessage,
     DictionaryGetAllTokensMessage,
     DictionaryGetRecordsMessage,
     DictionaryGetBulkMessage,
@@ -189,6 +190,10 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsDictionaryWaniKani() {
+        return this.installed && gte(this.version, '1.17.0');
     }
 
     get supportsAutoCopyableTrackSetting() {
@@ -665,7 +670,12 @@ export default class ChromeExtension {
         return this._createResponsePromise(messageId);
     }
 
-    async dictionaryGetBulk(profile: string | undefined, track: number, tokens: string[]): Promise<TokenResults> {
+    async dictionaryGetBulk(
+        profile: string | undefined,
+        track: number,
+        tokens: string[],
+        settings?: AsbplayerSettings
+    ): Promise<TokenResults> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryGetBulkMessage> = {
             sender: 'asbplayerv2',
@@ -674,6 +684,7 @@ export default class ChromeExtension {
                 profile,
                 track,
                 tokens,
+                settings,
                 messageId,
             },
         };
@@ -681,7 +692,11 @@ export default class ChromeExtension {
         return await this._createResponsePromise(messageId);
     }
 
-    async dictionaryGetAllTokens(profile: string | undefined, track: number): Promise<TokenResults> {
+    async dictionaryGetAllTokens(
+        profile: string | undefined,
+        track: number,
+        settings?: AsbplayerSettings
+    ): Promise<TokenResults> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryGetAllTokensMessage> = {
             sender: 'asbplayerv2',
@@ -689,6 +704,7 @@ export default class ChromeExtension {
                 command: 'dictionary-get-all-tokens',
                 profile,
                 track,
+                settings,
                 messageId,
             },
         };
@@ -863,6 +879,16 @@ export default class ChromeExtension {
         };
         window.postMessage(command);
         return this._createResponsePromise(messageId, 60000); // Usually <10s
+    }
+
+    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryBuildWaniKaniCacheMessage> = {
+            sender: 'asbplayerv2',
+            message: { command: 'dictionary-build-wanikani-cache', messageId, profile, settings },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId, 60000);
     }
 
     publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {

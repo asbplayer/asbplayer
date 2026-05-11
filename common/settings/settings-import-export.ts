@@ -93,6 +93,9 @@ const dictionaryTrackSchema = {
         dictionaryAnkiTreatSuspended: {
             type: ['string', 'number'],
         },
+        dictionaryWaniKaniApiToken: {
+            type: 'string',
+        },
         dictionaryTokenStyling: {
             type: 'string',
         },

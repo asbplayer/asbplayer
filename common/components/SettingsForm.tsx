@@ -180,6 +180,7 @@ interface Props {
     extensionSupportsPageSettings: boolean;
     extensionSupportsDictionary: boolean;
     extensionSupportsDictionaryBrowser: boolean;
+    extensionSupportsDictionaryWaniKani: boolean;
     extensionSupportsSeekableTrackSetting: boolean;
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
@@ -231,6 +232,7 @@ export default function SettingsForm({
     extensionSupportsPageSettings,
     extensionSupportsDictionary,
     extensionSupportsDictionaryBrowser,
+    extensionSupportsDictionaryWaniKani,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
@@ -255,6 +257,7 @@ export default function SettingsForm({
 }: Props) {
     const supportsDictionary = !extensionInstalled || extensionSupportsDictionary;
     const supportsDictionaryBrowser = !extensionInstalled || extensionSupportsDictionaryBrowser;
+    const supportsDictionaryWaniKani = !extensionInstalled || extensionSupportsDictionaryWaniKani;
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
@@ -469,6 +472,7 @@ export default function SettingsForm({
                     activeProfile={activeProfile}
                     extensionInstalled={extensionInstalled}
                     supportsDictionaryBrowser={supportsDictionaryBrowser}
+                    supportsDictionaryWaniKani={supportsDictionaryWaniKani}
                     supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                     supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                     onSettingChanged={handleSettingChanged}

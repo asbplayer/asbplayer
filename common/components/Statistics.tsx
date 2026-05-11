@@ -7,6 +7,7 @@ import {
     DictionaryStatisticsAnkiTrackSnapshot,
     DictionaryStatisticsFrequencyBucketStatusCounts,
     dictionaryStatisticsComprehensionBands,
+    DictionaryStatisticsWaniKaniTrackSnapshot,
     DictionaryStatisticsSentenceDialogBucket,
     DictionaryStatisticsTrackSnapshot,
     DictionaryStatisticsSentence,
@@ -18,6 +19,7 @@ import {
     DictionaryStatisticsSnapshot,
     processDictionaryStatisticsAnkiTrackSnapshot,
     processDictionaryStatisticsSnapshot,
+    processDictionaryStatisticsWaniKaniTrackSnapshot,
     selectedRewatchSnapshotForTrack,
     sentenceComprehensionPointLabel,
     sentenceComprehensionXAxisLabels,
@@ -684,9 +686,6 @@ function AnkiStatisticsSection({
     dueByTomorrowLabel,
     dueByWeekLabel,
     suspendedCardsLabel,
-    deckFrequencyBreakdownLabel,
-    modelBreakdownLabel,
-    uniqueWordsLabel,
     frequencyLabel,
     unavailableMessage,
     emptyDeckBreakdownMessage,
@@ -700,9 +699,6 @@ function AnkiStatisticsSection({
     dueByTomorrowLabel: string;
     dueByWeekLabel: string;
     suspendedCardsLabel: string;
-    deckFrequencyBreakdownLabel: string;
-    modelBreakdownLabel: string;
-    uniqueWordsLabel: (count: number) => string;
     frequencyLabel: string;
     unavailableMessage: string;
     emptyDeckBreakdownMessage: string;
@@ -850,6 +846,134 @@ function AnkiStatisticsSection({
     );
 }
 
+function WaniKaniStatisticsSection({
+    snapshot,
+    statusLabels,
+    statusColors,
+    title,
+    infoLines,
+    dueByTodayLabel,
+    dueByTomorrowLabel,
+    dueByWeekLabel,
+    frequencyLabel,
+    unavailableMessage,
+    emptyMessage,
+}: {
+    snapshot: DictionaryStatisticsWaniKaniTrackSnapshot;
+    statusLabels: Record<TokenStatus, string>;
+    statusColors: DictionaryStatisticsTrackSnapshot['statusColors'];
+    title: string;
+    infoLines?: string[];
+    dueByTodayLabel: string;
+    dueByTomorrowLabel: string;
+    dueByWeekLabel: string;
+    frequencyLabel: string;
+    unavailableMessage: string;
+    emptyMessage: string;
+}) {
+    const { t } = useTranslation();
+    return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <StatisticsSectionHeading title={title} infoLines={infoLines} />
+
+            {snapshot.available === false ? (
+                <Typography color="text.secondary">{unavailableMessage}</Typography>
+            ) : snapshot.uniqueWords === 0 ? (
+                <Typography color="text.secondary">{emptyMessage}</Typography>
+            ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <StatBoxes
+                        keyPrefix="wanikani"
+                        stats={[
+                            { label: dueByTodayLabel, value: snapshot.dueCounts.today },
+                            { label: dueByTomorrowLabel, value: snapshot.dueCounts.tomorrow },
+                            { label: dueByWeekLabel, value: snapshot.dueCounts.week },
+                            { label: t('statistics.uniqueWords'), value: snapshot.uniqueWords },
+                        ]}
+                    />
+
+                    <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            {frequencyLabel}
+                        </Typography>
+                        {snapshot.frequencyBuckets
+                            .filter((bucket) => bucket.count > 0)
+                            .map((bucket) => {
+                                const bucketLabel =
+                                    bucket.label === 'Unknown' ? statusLabels[TokenStatus.UNKNOWN] : bucket.label;
+
+                                return (
+                                    <Box key={bucket.label} sx={{ mb: 1 }}>
+                                        <Box
+                                            sx={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                mb: 0.5,
+                                            }}
+                                        >
+                                            <Typography variant="body2">{bucketLabel}</Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {countPercentOccurrencesDisplay(
+                                                    bucket.count,
+                                                    snapshot.uniqueWords,
+                                                    bucket.numOccurrences
+                                                )}
+                                            </Typography>
+                                        </Box>
+                                        <FrequencyDistributionBar
+                                            totalPercent={bucket.percent}
+                                            count={bucket.count}
+                                            statusCounts={bucket.statusCounts}
+                                            statusColors={statusColors}
+                                            statusLabels={statusLabels}
+                                            totalConsideredCount={snapshot.uniqueWords}
+                                        />
+                                    </Box>
+                                );
+                            })}
+                    </Box>
+                </Box>
+            )}
+        </Box>
+    );
+}
+
+type ReviewStatisticsSource = 'anki' | 'waniKani';
+
+function ReviewStatisticsSourceSelector({
+    selectedSource,
+    onSelectedSource,
+    ankiLabel,
+    waniKaniLabel,
+}: {
+    selectedSource: ReviewStatisticsSource;
+    onSelectedSource: (source: ReviewStatisticsSource) => void;
+    ankiLabel: string;
+    waniKaniLabel: string;
+}) {
+    const options: { source: ReviewStatisticsSource; label: string }[] = [
+        { source: 'anki', label: ankiLabel },
+        { source: 'waniKani', label: waniKaniLabel },
+    ];
+
+    return (
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            {options.map(({ source, label }) => (
+                <div key={source}>
+                    <Button
+                        variant={selectedSource === source ? 'contained' : 'outlined'}
+                        startIcon={<BarChartIcon />}
+                        onClick={() => onSelectedSource(source)}
+                        size="small"
+                    >
+                        {label}
+                    </Button>
+                </div>
+            ))}
+        </Box>
+    );
+}
+
 function TrackSnapshotSelector({
     selectedIndex,
     onSelectedIndex,
@@ -924,16 +1048,17 @@ function TrackSnapshot({
     const unknownLabel = statusLabels[TokenStatus.UNKNOWN];
     const currentWatchTitle = t('statistics.currentWatch');
     const ankiStatisticsTitle = t('statistics.anki.ankiStatistics');
+    const waniKaniStatisticsTitle = t('statistics.waniKani.waniKaniStatistics');
     const ankiStatisticsInfoLines = useMemo(() => [t('statistics.anki.info.ankiStatistics')], [t]);
+    const waniKaniStatisticsInfoLines = useMemo(() => [t('statistics.waniKani.info.waniKaniStatistics')], [t]);
     const dueByTodayLabel = t('statistics.anki.dueByToday');
     const dueByTomorrowLabel = t('statistics.anki.dueByTomorrow');
     const dueByWeekLabel = t('statistics.anki.dueByWeek');
     const suspendedCardsLabel = t('statistics.anki.suspended');
-    const deckFrequencyBreakdownLabel = t('statistics.anki.deckBreakdown');
-    const modelBreakdownLabel = t('statistics.anki.modelBreakdown');
     const ankiUnavailableMessage = t('statistics.anki.ankiNeedsToBeRunning');
     const emptyDeckBreakdownMessage = t('statistics.anki.noDeckBreakdown');
-    const deckUniqueWordsLabel = useCallback((count: number) => `${count} ${t('statistics.uniqueWords')}`, [t]);
+    const waniKaniUnavailableMessage = t('statistics.waniKani.waniKaniNeedsToBeAvailable');
+    const emptyWaniKaniBreakdownMessage = t('statistics.waniKani.noWaniKaniBreakdown');
 
     const totalSentences = trackSnapshot.progress.total;
     const selectedRewatchSnapshot = selectedRewatchSnapshotForTrack(trackSnapshot, selectedRewatchesByTrack);
@@ -947,6 +1072,17 @@ function TrackSnapshot({
     const projectedComprehension = selectedRewatchSnapshot?.comprehensionPercent ?? 0;
     const miningEnabled = trackSnapshot.progress.current >= trackSnapshot.progress.total;
     const ankiTrackSnapshot = processDictionaryStatisticsAnkiTrackSnapshot(statisticsSnapshot, trackSnapshot.track);
+    const waniKaniTrackSnapshot = processDictionaryStatisticsWaniKaniTrackSnapshot(
+        statisticsSnapshot,
+        trackSnapshot.track
+    );
+    const ankiHasStats = ankiTrackSnapshot.deckSnapshots.length > 0;
+    const waniKaniHasStats = waniKaniTrackSnapshot.uniqueWords > 0;
+    const defaultReviewStatisticsSource: ReviewStatisticsSource =
+        !ankiHasStats && waniKaniHasStats ? 'waniKani' : 'anki';
+    const [selectedReviewStatisticsSource, setSelectedReviewStatisticsSource] = useState<ReviewStatisticsSource>();
+    useEffect(() => setSelectedReviewStatisticsSource(undefined), [trackSnapshot.track, statisticsSnapshot.mediaId]);
+    const reviewStatisticsSource = selectedReviewStatisticsSource ?? defaultReviewStatisticsSource;
     const comprehensionBand = dictionaryStatisticsComprehensionBandForPercent(trackSnapshot.comprehensionPercent);
 
     return (
@@ -1240,23 +1376,44 @@ function TrackSnapshot({
                 </Box>
             </Box>
 
-            <AnkiStatisticsSection
-                snapshot={ankiTrackSnapshot}
-                statusLabels={statusLabels}
-                statusColors={trackSnapshot.statusColors}
-                title={ankiStatisticsTitle}
-                infoLines={ankiStatisticsInfoLines}
-                dueByTodayLabel={dueByTodayLabel}
-                dueByTomorrowLabel={dueByTomorrowLabel}
-                dueByWeekLabel={dueByWeekLabel}
-                suspendedCardsLabel={suspendedCardsLabel}
-                deckFrequencyBreakdownLabel={deckFrequencyBreakdownLabel}
-                modelBreakdownLabel={modelBreakdownLabel}
-                uniqueWordsLabel={deckUniqueWordsLabel}
-                frequencyLabel={t('statistics.frequency')}
-                unavailableMessage={ankiUnavailableMessage}
-                emptyDeckBreakdownMessage={emptyDeckBreakdownMessage}
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <ReviewStatisticsSourceSelector
+                    selectedSource={reviewStatisticsSource}
+                    onSelectedSource={setSelectedReviewStatisticsSource}
+                    ankiLabel={ankiStatisticsTitle}
+                    waniKaniLabel={waniKaniStatisticsTitle}
+                />
+                {reviewStatisticsSource === 'anki' ? (
+                    <AnkiStatisticsSection
+                        snapshot={ankiTrackSnapshot}
+                        statusLabels={statusLabels}
+                        statusColors={trackSnapshot.statusColors}
+                        title={ankiStatisticsTitle}
+                        infoLines={ankiStatisticsInfoLines}
+                        dueByTodayLabel={dueByTodayLabel}
+                        dueByTomorrowLabel={dueByTomorrowLabel}
+                        dueByWeekLabel={dueByWeekLabel}
+                        suspendedCardsLabel={suspendedCardsLabel}
+                        frequencyLabel={t('statistics.frequency')}
+                        unavailableMessage={ankiUnavailableMessage}
+                        emptyDeckBreakdownMessage={emptyDeckBreakdownMessage}
+                    />
+                ) : (
+                    <WaniKaniStatisticsSection
+                        snapshot={waniKaniTrackSnapshot}
+                        statusLabels={statusLabels}
+                        statusColors={trackSnapshot.statusColors}
+                        title={waniKaniStatisticsTitle}
+                        infoLines={waniKaniStatisticsInfoLines}
+                        dueByTodayLabel={dueByTodayLabel}
+                        dueByTomorrowLabel={dueByTomorrowLabel}
+                        dueByWeekLabel={dueByWeekLabel}
+                        frequencyLabel={t('statistics.frequency')}
+                        unavailableMessage={waniKaniUnavailableMessage}
+                        emptyMessage={emptyWaniKaniBreakdownMessage}
+                    />
+                )}
+            </Box>
         </Box>
     );
 }

@@ -11,10 +11,10 @@ import {
     DictionaryStatisticsSentence,
     DictionaryStatisticsSentences,
     DictionaryStatisticsSnapshot,
+    REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
-import { CardStatus } from '@project/common/dictionary-db';
-import { getCardTokenStatus } from '@project/common/subtitle-annotations';
-import { HAS_LETTER_REGEX } from '@project/common/util';
+import { TokenStatusInfo } from '@project/common/dictionary-db';
+import { getTokenStatus, HAS_LETTER_REGEX, MS_PER_DAY, utcStartOfToday } from '@project/common/util';
 
 /**
  * This file along with its consumers can be freely modified without concern to version
@@ -189,6 +189,8 @@ export interface DictionaryStatisticsAnkiDueCounts {
     week: number;
 }
 
+export type DictionaryStatisticsWaniKaniDueCounts = DictionaryStatisticsAnkiDueCounts;
+
 export interface DictionaryStatisticsAnkiDeckModelSnapshot {
     modelName: string;
     uniqueWords: number;
@@ -208,6 +210,13 @@ export interface DictionaryStatisticsAnkiTrackSnapshot {
     progressPercent: number;
     dueCounts: DictionaryStatisticsAnkiDueCounts;
     deckSnapshots: DictionaryStatisticsAnkiDeckSnapshot[];
+}
+
+export interface DictionaryStatisticsWaniKaniTrackSnapshot {
+    available?: boolean;
+    dueCounts: DictionaryStatisticsWaniKaniDueCounts;
+    uniqueWords: number;
+    frequencyBuckets: DictionaryStatisticsFrequencyBucket[];
 }
 
 interface ProcessedTokenSnapshot {
@@ -248,13 +257,17 @@ function emptyAnkiDueCounts(): DictionaryStatisticsAnkiDueCounts {
     };
 }
 
-function hasCardId(status: CardStatus): status is CardStatus & { cardId: number } {
+function hasCardId(status: TokenStatusInfo): status is TokenStatusInfo & { cardId: number } {
     return status.cardId !== undefined;
+}
+
+function hasAssignmentId(status: TokenStatusInfo): status is TokenStatusInfo & { assignmentId: number } {
+    return status.assignmentId !== undefined;
 }
 
 function incrementAnkiDueCounts(
     counts: DictionaryStatisticsAnkiDueCounts,
-    tokenStatuses: (CardStatus & { cardId: number })[],
+    tokenStatuses: (TokenStatusInfo & { cardId: number })[],
     dueByToday: Set<number>,
     dueByTomorrow: Set<number>,
     dueByWeek: Set<number>
@@ -262,6 +275,39 @@ function incrementAnkiDueCounts(
     if (tokenStatuses.some(({ cardId }) => dueByToday.has(cardId))) counts.today += 1;
     if (tokenStatuses.some(({ cardId }) => dueByTomorrow.has(cardId))) counts.tomorrow += 1;
     if (tokenStatuses.some(({ cardId }) => dueByWeek.has(cardId))) counts.week += 1;
+}
+
+function incrementWaniKaniDueCounts(
+    counts: DictionaryStatisticsWaniKaniDueCounts,
+    tokenStatuses: (TokenStatusInfo & { assignmentId: number })[],
+    dueByToday: Set<number>,
+    dueByTomorrow: Set<number>,
+    dueByWeek: Set<number>
+) {
+    if (tokenStatuses.some(({ assignmentId }) => dueByToday.has(assignmentId))) counts.today += 1;
+    if (tokenStatuses.some(({ assignmentId }) => dueByTomorrow.has(assignmentId))) counts.tomorrow += 1;
+    if (tokenStatuses.some(({ assignmentId }) => dueByWeek.has(assignmentId))) counts.week += 1;
+}
+
+function waniKaniDueAssignmentSets(reviewAssignments?: Record<number, string>) {
+    const todayStart = utcStartOfToday();
+    const todayEnd = todayStart.getTime() + (REVIEW_DUES[0] + 1) * MS_PER_DAY;
+    const tomorrowEnd = todayStart.getTime() + (REVIEW_DUES[1] + 1) * MS_PER_DAY;
+    const weekEnd = todayStart.getTime() + REVIEW_DUES[2] * MS_PER_DAY;
+    const dueByToday = new Set<number>();
+    const dueByTomorrow = new Set<number>();
+    const dueByWeek = new Set<number>();
+
+    for (const [assignmentIdString, availableAt] of Object.entries(reviewAssignments ?? {})) {
+        const assignmentId = Number(assignmentIdString);
+        const availableAtTime = Date.parse(availableAt);
+        if (!Number.isFinite(assignmentId) || !Number.isFinite(availableAtTime)) continue;
+        if (availableAtTime < todayEnd) dueByToday.add(assignmentId);
+        if (availableAtTime < tomorrowEnd) dueByTomorrow.add(assignmentId);
+        if (availableAtTime < weekEnd) dueByWeek.add(assignmentId);
+    }
+
+    return { dueByToday, dueByTomorrow, dueByWeek };
 }
 
 function dictionaryTokenForGroupingKey(
@@ -752,7 +798,7 @@ function dictionaryCountsFromRaw(
             numIgnoredTokens += 1;
             continue;
         }
-        const status = getCardTokenStatus(token.statuses, dictionaryAnkiTreatSuspended);
+        const status = getTokenStatus(token.statuses, dictionaryAnkiTreatSuspended);
         if (isTokenStatusKnown(status)) numKnownTokens += 1;
     }
     return { numKnownTokens, numIgnoredTokens };
@@ -1171,7 +1217,7 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
 
         incrementAnkiDueCounts(dueCounts, tokenStatuses, dueByToday, dueByTomorrow, dueByWeek);
 
-        const deckStatuses = new Map<string, (CardStatus & { cardId: number })[]>();
+        const deckStatuses = new Map<string, (TokenStatusInfo & { cardId: number })[]>();
         for (const status of tokenStatuses) {
             const cardInfo = cardsInfo[status.cardId];
             const deckName = cardInfo?.deckName;
@@ -1192,7 +1238,7 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
             incrementAnkiDueCounts(dueCountsForDeck, statuses, dueByToday, dueByTomorrow, dueByWeek);
             deckDueCounts.set(deckName, dueCountsForDeck);
 
-            const modelStatuses = new Map<string, (CardStatus & { cardId: number })[]>();
+            const modelStatuses = new Map<string, (TokenStatusInfo & { cardId: number })[]>();
             for (const status of statuses) {
                 const modelName = cardsInfo[status.cardId]?.modelName;
                 if (!modelName) continue;
@@ -1206,7 +1252,7 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
             const modelSnapshotsForDeck =
                 deckModelTokenSnapshots.get(deckName) ?? new Map<string, ProcessedTokenSnapshot[]>();
             for (const [modelName, statusesForModel] of modelStatuses.entries()) {
-                const tokenStatus = getCardTokenStatus(statusesForModel, dictionaryAnkiTreatSuspended);
+                const tokenStatus = getTokenStatus(statusesForModel, dictionaryAnkiTreatSuspended);
                 const modelTokens = modelSnapshotsForDeck.get(modelName) ?? [];
                 modelTokens.push({
                     status: tokenStatus,
@@ -1247,6 +1293,59 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
             })
             .filter((deckSnapshot) => deckSnapshot.modelSnapshots.length > 0)
             .sort((left, right) => left.deckName.localeCompare(right.deckName)),
+    };
+}
+
+export function processDictionaryStatisticsWaniKaniTrackSnapshot(
+    snapshot: DictionaryStatisticsSnapshot | undefined,
+    track: number
+): DictionaryStatisticsWaniKaniTrackSnapshot {
+    const dueCounts = emptyAnkiDueCounts();
+    const rawTrackSnapshot = snapshot?.snapshots.find((candidate) => candidate.track === track);
+    if (!snapshot || !rawTrackSnapshot) {
+        return {
+            available: snapshot?.waniKani?.available,
+            dueCounts,
+            uniqueWords: 0,
+            frequencyBuckets: [],
+        };
+    }
+
+    const { dueByToday, dueByTomorrow, dueByWeek } = waniKaniDueAssignmentSets(snapshot.waniKani?.reviewAssignments);
+    const sentenceSnapshots = processSentenceSnapshots(rawTrackSnapshot.stats.sentences);
+    const tokens: ProcessedTokenSnapshots = new Map();
+    const waniKaniTokenSnapshots: ProcessedTokenSnapshot[] = [];
+
+    for (const { tokens: sentenceTokens } of sentenceSnapshots) {
+        for (const [tokenKey, token] of sentenceTokens.entries()) {
+            tokens.set(tokenKey, mergeTokenSnapshot(tokens.get(tokenKey), token));
+        }
+    }
+
+    for (const [tokenKey, tokenSnapshot] of tokens.entries()) {
+        if (tokenSnapshot.ignored) continue;
+
+        const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
+        if (!token || token.states.includes(TokenState.IGNORED)) continue;
+
+        const tokenStatuses = token.statuses.filter(hasAssignmentId);
+        if (!tokenStatuses.length) continue;
+
+        incrementWaniKaniDueCounts(dueCounts, tokenStatuses, dueByToday, dueByTomorrow, dueByWeek);
+        waniKaniTokenSnapshots.push({
+            status: getTokenStatus(tokenStatuses, 'NORMAL'),
+            ignored: false,
+            frequency: tokenSnapshot.frequency,
+            numOccurrences: tokenSnapshot.numOccurrences,
+        });
+    }
+
+    const { consideredTokens, frequencyBuckets } = statusCountsAndFrequenciesForSnapshots(waniKaniTokenSnapshots);
+    return {
+        available: snapshot.waniKani?.available,
+        dueCounts,
+        uniqueWords: consideredTokens,
+        frequencyBuckets,
     };
 }
 

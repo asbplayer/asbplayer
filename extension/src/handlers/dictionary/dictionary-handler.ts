@@ -3,6 +3,9 @@ import {
     DictionaryBuildAnkiCacheMessage,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheMessage,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateMessage,
     DictionaryGetAllTokensMessage,
     DictionaryGetRecordsMessage,
     DictionaryImportRecordLocalBulkMessage,
@@ -48,14 +51,16 @@ export default class DictionaryHandler {
         switch (command.message.command) {
             case 'dictionary-get-bulk': {
                 const message = command.message as DictionaryGetBulkMessage;
-                this.dictionaryDB
-                    .getBulk(message.profile, message.track, message.tokens)
+                void this.dictionaryDB
+                    .getBulk(message.profile, message.track, message.tokens, message.settings)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-get-all-tokens': {
                 const message = command.message as DictionaryGetAllTokensMessage;
-                this.dictionaryDB.getAllTokens(message.profile, message.track).then((result) => sendResponse(result));
+                void this.dictionaryDB
+                    .getAllTokens(message.profile, message.track, message.settings)
+                    .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-get-by-lemma-bulk': {
@@ -138,6 +143,38 @@ export default class DictionaryHandler {
                             } satisfies ExtensionToVideoCommand<DictionaryBuildAnkiCacheStateMessage>;
                         });
                     })
+                    .then((result) => sendResponse(result));
+                return true;
+            }
+            case 'dictionary-build-wanikani-cache': {
+                const message = command.message as DictionaryBuildWaniKaniCacheMessage;
+                void this.dictionaryDB
+                    .buildWaniKaniCache(
+                        message.profile,
+                        message.settings,
+                        (state: DictionaryBuildWaniKaniCacheState) => {
+                            const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> =
+                                {
+                                    sender: 'asbplayer-extension-to-player',
+                                    message: { command: 'dictionary-build-wanikani-cache-state', ...state },
+                                };
+                            void this._relayToExtensionContexts(playerMessage);
+                            void this._relayToAsbplayers((asbplayer) => {
+                                if (asbplayer.sidePanel) return;
+                                return playerMessage;
+                            });
+                            void this._relayToVideoElements((videoElement) => {
+                                return {
+                                    sender: 'asbplayer-extension-to-video',
+                                    src: videoElement.src,
+                                    message: {
+                                        command: 'dictionary-build-wanikani-cache-state',
+                                        ...state,
+                                    },
+                                } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
+                            });
+                        }
+                    )
                     .then((result) => sendResponse(result));
                 return true;
             }

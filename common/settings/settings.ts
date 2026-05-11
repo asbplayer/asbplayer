@@ -79,6 +79,7 @@ export enum DictionaryTokenSource {
     LOCAL = 0,
     ANKI_WORD = 1,
     ANKI_SENTENCE = 2,
+    WANIKANI = 3,
 }
 
 /*
@@ -239,6 +240,7 @@ export interface DictionaryTrack {
     readonly dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy;
     readonly dictionaryAnkiMatureCutoff: number;
     readonly dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL';
+    readonly dictionaryWaniKaniApiToken: string;
     readonly dictionaryTokenStyling: TokenStyling;
     readonly dictionaryTokenStylingThickness: number;
     readonly dictionaryColorizeFullyKnownTokens: boolean; // Deprecated in favor of dictionaryTokenStatusConfig
@@ -271,6 +273,7 @@ const dictionaryTrackComparators: {
     dictionaryAnkiSentenceTokenMatchStrategy: (a, b) => a === b,
     dictionaryAnkiMatureCutoff: (a, b) => a === b,
     dictionaryAnkiTreatSuspended: (a, b) => a === b,
+    dictionaryWaniKaniApiToken: (a, b) => a === b,
     dictionaryTokenStyling: (a, b) => a === b,
     dictionaryTokenStylingThickness: (a, b) => a === b,
     dictionaryColorizeFullyKnownTokens: (a, b) => a === b,

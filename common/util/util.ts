@@ -1,7 +1,8 @@
 import sanitize from 'sanitize-filename';
 import { Rgb, SubtitleModel, Tokenization, TokenReading } from '../src/model';
-import { TextSubtitleSettings } from '../settings/settings';
+import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
 import { Progress } from '..';
+import { TokenStatusInfo } from '../dictionary-db';
 
 export function arrayEquals<T>(a: T[], b: T[], equals = (lhs: T, rhs: T) => lhs === rhs): boolean {
     if (a.length !== b.length) {
@@ -24,6 +25,13 @@ export const localizedDate = (timestamp: number) => {
         second: '2-digit',
     });
 };
+
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function utcStartOfToday(): Date {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
 
 export function humanReadableTime(timestamp: number, nearestTenth = false, fullyPadded = false): string {
     const totalSeconds = Math.floor(timestamp / 1000);
@@ -642,6 +650,25 @@ const areTokensEqual = (aToken: any, bToken: any) => {
 
 const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) =>
     arrayEquals(a.pos, b.pos) && a.reading === b.reading;
+
+/**
+ * We prefer the highest status for a given token (e.g. duplicate anki cards)
+ */
+export function getTokenStatus(
+    statuses: TokenStatusInfo[],
+    dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL'
+): TokenStatus {
+    if (statuses.length && dictionaryAnkiTreatSuspended !== 'NORMAL') {
+        const unsuspended = statuses.filter((status) => !status.suspended);
+        if (!unsuspended.length) return dictionaryAnkiTreatSuspended;
+        statuses = unsuspended;
+    }
+    if (statuses.some((c) => c.status === TokenStatus.MATURE)) return TokenStatus.MATURE;
+    if (statuses.some((c) => c.status === TokenStatus.YOUNG)) return TokenStatus.YOUNG;
+    if (statuses.some((c) => c.status === TokenStatus.GRADUATED)) return TokenStatus.GRADUATED;
+    if (statuses.some((c) => c.status === TokenStatus.LEARNING)) return TokenStatus.LEARNING;
+    return TokenStatus.UNKNOWN;
+}
 
 /**
  * An async safe semaphore implementation that preserves FIFO order (within a priority group).

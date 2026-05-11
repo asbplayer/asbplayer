@@ -17,6 +17,8 @@ import {
     DictionaryStatisticsMessage,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateMessage,
     DictionaryDBCommand,
     ExtensionToAsbPlayerCommand,
     DictionaryRequestStatisticsGenerationMessage,
@@ -39,6 +41,8 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
     private readonly _extension: ChromeExtension;
     private buildAnkiCacheStateChangeCallbacks: ((message: DictionaryBuildAnkiCacheState) => void)[];
     private buildAnkiCacheStateChange?: (event: MessageEvent) => void;
+    private buildWaniKaniCacheStateChangeCallbacks: ((message: DictionaryBuildWaniKaniCacheState) => void)[];
+    private buildWaniKaniCacheStateChange?: (event: MessageEvent) => void;
     private ankiCardModifiedCallbacks: (() => void)[];
     private ankiCardModified?: (event: MessageEvent) => void;
     private dictionaryStatisticsCallbacks: ((snapshot?: DictionaryStatisticsSnapshot) => void)[];
@@ -55,6 +59,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
     constructor(extension: ChromeExtension) {
         this._extension = extension;
         this.buildAnkiCacheStateChangeCallbacks = [];
+        this.buildWaniKaniCacheStateChangeCallbacks = [];
         this.ankiCardModifiedCallbacks = [];
         this.dictionaryStatisticsCallbacks = [];
         this.dictionaryStatisticsSnapshotRequestCallbacks = [];
@@ -63,12 +68,12 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         this.dictionaryStatisticsMineSentencesCallbacks = [];
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[]) {
-        return this._extension.dictionaryGetBulk(profile, track, tokens);
+    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
+        return this._extension.dictionaryGetBulk(profile, track, tokens, settings);
     }
 
-    getAllTokens(profile: string | undefined, track: number) {
-        return this._extension.dictionaryGetAllTokens(profile, track);
+    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
+        return this._extension.dictionaryGetAllTokens(profile, track, settings);
     }
 
     getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
@@ -119,6 +124,10 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         return this._extension.buildAnkiCache(profile, settings);
     }
 
+    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
+        return this._extension.buildWaniKaniCache(profile, settings);
+    }
+
     ankiCardWasModified() {
         window.parent.postMessage({
             sender: 'asbplayer-dictionary',
@@ -165,6 +174,27 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
             if (!this.buildAnkiCacheStateChangeCallbacks.length && this.buildAnkiCacheStateChange) {
                 window.parent.removeEventListener('message', this.buildAnkiCacheStateChange);
                 this.buildAnkiCacheStateChange = undefined;
+            }
+        };
+    }
+
+    onBuildWaniKaniCacheStateChange(callback: (message: DictionaryBuildWaniKaniCacheState) => void) {
+        this.buildWaniKaniCacheStateChangeCallbacks.push(callback);
+        if (!this.buildWaniKaniCacheStateChange) {
+            this.buildWaniKaniCacheStateChange = (event: MessageEvent) => {
+                if (event.type !== 'message') return;
+                const data: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = event.data;
+                if (data.sender !== 'asbplayer-extension-to-player') return;
+                if (data.message.command !== 'dictionary-build-wanikani-cache-state') return;
+                this.buildWaniKaniCacheStateChangeCallbacks.forEach((c) => c(data.message));
+            };
+            window.parent.addEventListener('message', this.buildWaniKaniCacheStateChange);
+        }
+        return () => {
+            this._removeCallback(callback, this.buildWaniKaniCacheStateChangeCallbacks);
+            if (!this.buildWaniKaniCacheStateChangeCallbacks.length && this.buildWaniKaniCacheStateChange) {
+                window.parent.removeEventListener('message', this.buildWaniKaniCacheStateChange);
+                this.buildWaniKaniCacheStateChange = undefined;
             }
         };
     }

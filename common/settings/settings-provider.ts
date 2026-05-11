@@ -58,6 +58,7 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
     dictionaryAnkiMatureCutoff: 21,
     dictionaryAnkiTreatSuspended: 'NORMAL',
+    dictionaryWaniKaniApiToken: '',
     dictionaryTokenStyling: TokenStyling.UNDERLINE,
     dictionaryTokenStylingThickness: 3,
     dictionaryColorizeFullyKnownTokens: false,
@@ -503,6 +504,9 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
         if (!dt.dictionaryYomitanParser) (dt as any).dictionaryYomitanParser = defaultTrack.dictionaryYomitanParser;
         if (dt.dictionaryAutoGenerateStatistics === undefined) {
             (dt as any).dictionaryAutoGenerateStatistics = defaultTrack.dictionaryAutoGenerateStatistics;
+        }
+        if (dt.dictionaryWaniKaniApiToken === undefined) {
+            (dt as any).dictionaryWaniKaniApiToken = defaultTrack.dictionaryWaniKaniApiToken;
         }
     }
     while (dictionaryTracks.length < NUM_DICTIONARY_TRACKS) {

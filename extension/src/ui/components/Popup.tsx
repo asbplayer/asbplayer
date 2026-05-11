@@ -230,6 +230,7 @@ const Popup = ({
                             extensionSupportsPageSettings
                             extensionSupportsDictionary
                             extensionSupportsDictionaryBrowser
+                            extensionSupportsDictionaryWaniKani
                             extensionSupportsSeekableTrackSetting
                             extensionSupportsAutoCopyableTrackSetting
                             extensionSupportsDictionaryTokenStatusDisplayAlpha

@@ -5,6 +5,8 @@ import {
     DictionaryStatisticsMessage,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateMessage,
     DictionaryDBCommand,
     ExtensionToAsbPlayerCommand,
     DictionaryRequestStatisticsGenerationMessage,
@@ -39,6 +41,8 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     private readonly dictionaryDB: DictionaryDB;
     private buildAnkiCacheStateChangeCallbacks: ((message: DictionaryBuildAnkiCacheState) => void)[];
     private buildAnkiCacheStateChange?: (event: MessageEvent) => void;
+    private buildWaniKaniCacheStateChangeCallbacks: ((message: DictionaryBuildWaniKaniCacheState) => void)[];
+    private buildWaniKaniCacheStateChange?: (event: MessageEvent) => void;
     private ankiCardModifiedCallbacks: (() => void)[];
     private ankiCardModified?: (event: MessageEvent) => void;
     private dictionaryStatisticsCallbacks: ((snapshot?: DictionaryStatisticsSnapshot) => void)[];
@@ -55,6 +59,7 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     constructor() {
         this.dictionaryDB = new DictionaryDB();
         this.buildAnkiCacheStateChangeCallbacks = [];
+        this.buildWaniKaniCacheStateChangeCallbacks = [];
         this.ankiCardModifiedCallbacks = [];
         this.dictionaryStatisticsCallbacks = [];
         this.dictionaryStatisticsSnapshotRequestCallbacks = [];
@@ -63,12 +68,12 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         this.dictionaryStatisticsMineSentencesCallbacks = [];
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[]) {
-        return this.dictionaryDB.getBulk(profile, track, tokens);
+    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
+        return this.dictionaryDB.getBulk(profile, track, tokens, settings);
     }
 
-    getAllTokens(profile: string | undefined, track: number) {
-        return this.dictionaryDB.getAllTokens(profile, track);
+    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
+        return this.dictionaryDB.getAllTokens(profile, track, settings);
     }
 
     getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
@@ -125,6 +130,16 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         });
     }
 
+    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
+        return this.dictionaryDB.buildWaniKaniCache(profile, settings, (state: DictionaryBuildWaniKaniCacheState) => {
+            const message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
+                sender: 'asbplayer-extension-to-player',
+                message: { command: 'dictionary-build-wanikani-cache-state', ...state },
+            };
+            window.parent.postMessage(message);
+        });
+    }
+
     ankiCardWasModified() {
         window.parent.postMessage({
             sender: 'asbplayer-dictionary',
@@ -172,6 +187,27 @@ export class LocalDictionaryStorage implements DictionaryStorage {
             if (!this.buildAnkiCacheStateChangeCallbacks.length && this.buildAnkiCacheStateChange) {
                 window.parent.removeEventListener('message', this.buildAnkiCacheStateChange);
                 this.buildAnkiCacheStateChange = undefined;
+            }
+        };
+    }
+
+    onBuildWaniKaniCacheStateChange(callback: (message: DictionaryBuildWaniKaniCacheState) => void) {
+        this.buildWaniKaniCacheStateChangeCallbacks.push(callback);
+        if (!this.buildWaniKaniCacheStateChange) {
+            this.buildWaniKaniCacheStateChange = (event: MessageEvent) => {
+                if (event.type !== 'message') return;
+                const data: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = event.data;
+                if (data.sender !== 'asbplayer-extension-to-player') return;
+                if (data.message.command !== 'dictionary-build-wanikani-cache-state') return;
+                this.buildWaniKaniCacheStateChangeCallbacks.forEach((c) => c(data.message));
+            };
+            window.parent.addEventListener('message', this.buildWaniKaniCacheStateChange);
+        }
+        return () => {
+            this._removeCallback(callback, this.buildWaniKaniCacheStateChangeCallbacks);
+            if (!this.buildWaniKaniCacheStateChangeCallbacks.length && this.buildWaniKaniCacheStateChange) {
+                window.parent.removeEventListener('message', this.buildWaniKaniCacheStateChange);
+                this.buildWaniKaniCacheStateChange = undefined;
             }
         };
     }

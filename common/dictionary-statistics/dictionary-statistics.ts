@@ -11,6 +11,8 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 
+export const REVIEW_DUES = [0, 1, 7] as const; // 0 = due today, 1 = due within a day, 7 = due within a week
+
 export interface DictionaryStatisticsSentence {
     text: string;
     start: number;
@@ -28,6 +30,13 @@ export interface DictionaryStatisticsAnkiSnapshot {
     progress?: Progress;
     cardsInfo: Record<number, CardInfo>;
     dueCards: DictionaryStatisticsAnkiDueCardsSnapshot;
+}
+
+export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<number, string>;
+
+export interface DictionaryStatisticsWaniKaniSnapshot {
+    available?: boolean;
+    reviewAssignments: DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot;
 }
 
 export interface DictionaryStatisticsDictionarySnapshot {
@@ -52,6 +61,7 @@ export interface DictionaryStatisticsSnapshot {
     snapshots: DictionaryStatisticsRawTrackSnapshot[];
     settings: AsbplayerSettings;
     anki: DictionaryStatisticsAnkiSnapshot;
+    waniKani?: DictionaryStatisticsWaniKaniSnapshot;
 }
 
 function statusColorsFromConfig(tokenStatusConfig: readonly TokenStatusConfig[]): Record<TokenStatus, string> {
@@ -71,6 +81,7 @@ export class DictionaryStatistics {
     private readonly rawTrackSnapshots: Map<number, DictionaryStatisticsRawTrackSnapshot>;
     private settings: AsbplayerSettings;
     private anki: DictionaryStatisticsAnkiSnapshot;
+    private waniKani: DictionaryStatisticsWaniKaniSnapshot;
     private lastCancelledAt: number;
 
     constructor(settingsProvider: SettingsProvider, dictionaryProvider: DictionaryProvider, mediaId: string) {
@@ -80,6 +91,7 @@ export class DictionaryStatistics {
         this.rawTrackSnapshots = new Map();
         this.settings = defaultSettings;
         this.anki = { cardsInfo: {}, dueCards: {} };
+        this.waniKani = { reviewAssignments: {} };
         this.lastCancelledAt = 0;
     }
 
@@ -91,6 +103,7 @@ export class DictionaryStatistics {
         const startTime = Date.now();
         this.rawTrackSnapshots.clear();
         this.anki = { cardsInfo: {}, dueCards: {} };
+        this.waniKani = { reviewAssignments: {} };
         void this._publish(undefined, startTime);
         this.lastCancelledAt = Date.now();
     }
@@ -139,6 +152,13 @@ export class DictionaryStatistics {
         void this._publish(this._snapshot(), startTime);
     }
 
+    replaceWaniKaniSnapshot(waniKani: DictionaryStatisticsWaniKaniSnapshot): void {
+        const startTime = Date.now();
+        this.waniKani = waniKani;
+        if (!this.hasStatistics()) return;
+        void this._publish(this._snapshot(), startTime);
+    }
+
     async refreshDictionaryTokens(profile: string | undefined): Promise<void> {
         const startTime = Date.now();
         const settings = await this.settingsProvider.getAll();
@@ -148,7 +168,7 @@ export class DictionaryStatistics {
                 if (!dictionaryTrackEnabled(dt)) return;
                 const ts = this.rawTrackSnapshots.get(track);
                 if (!ts) throw new Error(`Track ${track} not initialized for dictionary statistics`);
-                ts.stats.dictionary.tokens = await this.dictionaryProvider.getAllTokens(profile, track);
+                ts.stats.dictionary.tokens = await this.dictionaryProvider.getAllTokens(profile, track, settings);
                 ts.statusColors = statusColorsFromConfig(dt.dictionaryTokenStatusConfig);
                 await this._publish(this._snapshot(), startTime);
             })
@@ -179,6 +199,7 @@ export class DictionaryStatistics {
                 })),
             settings: this.settings,
             anki: this.anki,
+            waniKani: this.waniKani,
         };
     }
 

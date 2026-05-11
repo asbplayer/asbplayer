@@ -1,6 +1,7 @@
 import type {
     AddProfileMessage,
     DictionaryBuildAnkiCacheMessage,
+    DictionaryBuildWaniKaniCacheMessage,
     DictionaryGetAllTokensMessage,
     DictionaryDeleteProfileMessage,
     DictionaryDeleteRecordLocalBulkMessage,
@@ -114,9 +115,9 @@ export default defineContentScript({
                         });
                         break;
                     case 'dictionary-get-bulk': {
-                        const { profile, track, tokens } = command.message as DictionaryGetBulkMessage;
+                        const { profile, track, tokens, settings } = command.message as DictionaryGetBulkMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.getBulk(profile, track, tokens),
+                            response: await dictionaryStorage.getBulk(profile, track, tokens, settings),
                             messageId: command.message.messageId,
                         });
                         break;
@@ -206,10 +207,18 @@ export default defineContentScript({
                         });
                         break;
                     }
-                    case 'dictionary-get-all-tokens': {
-                        const { profile, track } = command.message as DictionaryGetAllTokensMessage;
+                    case 'dictionary-build-wanikani-cache': {
+                        const { profile, settings } = command.message as DictionaryBuildWaniKaniCacheMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.getAllTokens(profile, track),
+                            response: await dictionaryStorage.buildWaniKaniCache(profile, settings),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-get-all-tokens': {
+                        const { profile, track, settings } = command.message as DictionaryGetAllTokensMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.getAllTokens(profile, track, settings),
                             messageId: command.message.messageId,
                         });
                         break;

@@ -14,14 +14,19 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { DictionaryBuildAnkiCacheState } from '@project/common';
+import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
 import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
 import { download, getCurrentTimeString } from '../util';
 
 export interface DictionaryStorage {
-    getBulk: (profile: string | undefined, track: number, tokens: string[]) => Promise<TokenResults>;
-    getAllTokens: (profile: string | undefined, track: number) => Promise<TokenResults>;
+    getBulk: (
+        profile: string | undefined,
+        track: number,
+        tokens: string[],
+        settings?: AsbplayerSettings
+    ) => Promise<TokenResults>;
+    getAllTokens: (profile: string | undefined, track: number, settings?: AsbplayerSettings) => Promise<TokenResults>;
     getByLemmaBulk: (profile: string | undefined, track: number, lemmas: string[]) => Promise<LemmaResults>;
     saveRecordLocalBulk: (
         profile: string | undefined,
@@ -49,9 +54,11 @@ export interface DictionaryStorage {
         tokenKeys: DictionaryTokenKey[]
     ) => Promise<DictionaryRecordDeleteResult>;
     buildAnkiCache: (profile: string | undefined, settings: AsbplayerSettings) => Promise<void>;
+    buildWaniKaniCache: (profile: string | undefined, settings: AsbplayerSettings) => Promise<void>;
     ankiCardWasModified: () => void;
     onAnkiCardModified: (callback: () => void) => () => void;
     onBuildAnkiCacheStateChange: (callback: (message: DictionaryBuildAnkiCacheState) => void) => () => void;
+    onBuildWaniKaniCacheStateChange: (callback: (message: DictionaryBuildWaniKaniCacheState) => void) => () => void;
     publishStatisticsSnapshot: (mediaId: string, snapshot?: DictionaryStatisticsSnapshot) => Promise<void> | void;
     onStatisticsSnapshot: (callback: (snapshot?: DictionaryStatisticsSnapshot) => void) => () => void;
     requestStatisticsSnapshot: (mediaId?: string) => Promise<void> | void;
@@ -72,12 +79,12 @@ export class DictionaryProvider {
         this._storage = storage;
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[]) {
-        return this._storage.getBulk(profile, track, tokens);
+    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
+        return this._storage.getBulk(profile, track, tokens, settings);
     }
 
-    getAllTokens(profile: string | undefined, track: number) {
-        return this._storage.getAllTokens(profile, track);
+    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
+        return this._storage.getAllTokens(profile, track, settings);
     }
 
     getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
@@ -129,6 +136,10 @@ export class DictionaryProvider {
         return this._storage.buildAnkiCache(profile, settings);
     }
 
+    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
+        return this._storage.buildWaniKaniCache(profile, settings);
+    }
+
     ankiCardWasModified() {
         return this._storage.ankiCardWasModified();
     }
@@ -139,6 +150,10 @@ export class DictionaryProvider {
 
     onBuildAnkiCacheStateChange(callback: (message: DictionaryBuildAnkiCacheState) => void) {
         return this._storage.onBuildAnkiCacheStateChange(callback);
+    }
+
+    onBuildWaniKaniCacheStateChange(callback: (message: DictionaryBuildWaniKaniCacheState) => void) {
+        return this._storage.onBuildWaniKaniCacheStateChange(callback);
     }
 
     publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {

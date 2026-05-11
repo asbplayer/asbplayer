@@ -476,8 +476,13 @@
         "buildAnkiCacheHelperText": "Ankiの単語データベースは、トラックが有効になっておりAnkiが接続可能なときに、メディア再生中に自動的に更新されます。",
         "buildAnkiCacheAnkiEnableHelperText": "習得した単語を収集するためには、<0>検索対象の文章または単語フィールドを設定</0>してください。",
         "ankiCacheDependentSettingsHelperText": "「{{field}}」を変更すると、Ankiの単語データベースが無効になり、データベースの再構築が今、または次にメディアを再生するときに実行されます。",
+        "buildWaniKaniCache": "Re-Build WaniKani word database",
+        "buildWaniKaniCacheHelperText": "The WaniKani word database is automatically updated during playback when a track is enabled and a token is configured.",
+        "buildWaniKaniCacheTokenEnableHelperText": "Add a WaniKani API token below to collect your WaniKani vocabulary.",
+        "waniKaniCacheDependentSettingsHelperText": "Changing \"{{field}}\" could invalidate the WaniKani cache, trigger a rebuild now or have it done automatically on your next playback when this track is enabled and a token is configured.",
         "dictionaryLocalWordDatabase": "ローカルの単語データベース",
         "dictionaryAnkiWordDatabase": "Ankiの単語データベース",
+        "dictionaryWaniKaniWordDatabase": "WaniKani word database",
         "dictionaryColorizeSubtitles": "単語の成熟度をもとに字幕を色づけます",
         "dictionaryAutoGenerateStatistics": "統計を自動的に生成",
         "dictionaryColorizeOnHoverOnly": "マウスカーソルを字幕に重ねるときにのみアノテーションを表示",
@@ -519,6 +524,8 @@
         "dictionaryAnkiMatureCutoff": "熟知間隔（日）",
         "dictionaryAnkiTreatSuspended": "休止中のカードを次ように扱います",
         "dictionaryAnkiTreatSuspendedNormal": "普通",
+        "dictionaryWaniKaniSection": "WaniKani",
+        "dictionaryWaniKaniApiToken": "WaniKani API token",
         "dictionaryTokenStyling": "色づけた単語のスタイル",
         "dictionaryTokenStylingText": "テキスト",
         "dictionaryTokenStylingBackground": "背景",
@@ -542,12 +549,20 @@
         "dictionaryTokenStatusReading0": "みしゅうしゅう",
         "dictionaryTokenStateIgnored": "無視",
         "dictionaryBuildAnkiStarted": "変更されたカードをクエリしています",
+        "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "アルファ値",
         "dictionaryBuildAnkiTracks": "Ankiのトラック：{{tracks}}",
+        "dictionaryBuildWaniKaniTrack": "WaniKani track #{{trackNumber}}",
+        "dictionaryBuildWaniKaniTrackCleared": "cleared",
+        "dictionaryBuildWaniKaniTrackNoChanges": "no changes",
         "dictionaryBuildModifiedCards": "{{numCards}}変更されたカード",
+        "dictionaryBuildWaniKaniTokens": "{{numTokens}} imported word(s)",
+        "dictionaryBuildWaniKaniAssignments": "{{numAssignments}} assignment(s)",
+        "dictionaryBuildWaniKaniSubjects": "{{numSubjects}} subject(s)",
         "dictionaryBuildOrphanedCards": "孤立されたトラック「{{tracks}}」から{{numCards}}の削除されたカード",
         "dictionaryBuildInProgress": "データベース構築はすでに進行中です（有効期限： {{time}}）",
         "dictionaryBuildAnkiError": "Ankiの権限取得に失敗しました",
+        "dictionaryBuildWaniKaniTokenInvalidError": "Error connecting to WaniKani. Check the API token for track {{trackNumber}}.",
         "dictionaryBuildYomitanError": "Yomitanへの接続が失敗しました（エラーを無視するにはトラック{{trackNumber}}を無効化にしてください）",
         "dictionaryImportClipboardIgnored": "単語を「無視」として保存する",
         "dictionaryImportClipboardText": "テキストまたは一行に一つの単語を貼り付けてください",
@@ -586,6 +601,7 @@
             "sources": {
                 "local": "ローカル",
                 "ankiWord": "Ankiの単語",
+                "waniKani": "WaniKani",
                 "ankiSentence": "Ankiの文章"
             },
             "suspended": {
@@ -642,6 +658,14 @@
             "noDeckBreakdown": "現在のメディアに一致するAnkiカードは見つかりませんでした。",
             "info": {
                 "ankiStatistics": "メディア内の単語とAnkiカードの照合。"
+            }
+        },
+        "waniKani": {
+            "waniKaniStatistics": "WaniKani statistics",
+            "waniKaniNeedsToBeAvailable": "WaniKani statistics could not be loaded.",
+            "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
+            "info": {
+                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media."
             }
         },
         "info": {

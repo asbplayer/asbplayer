@@ -476,8 +476,13 @@
         "buildAnkiCacheHelperText": "The cache is automatically updated during playback when a track is enabled and Anki is connectable.",
         "buildAnkiCacheAnkiEnableHelperText": "Configure word fields and/or sentence fields to use Anki for known words.",
         "ankiCacheDependentSettingsHelperText": "Changing \"{{field}}\" could invalidate the Anki cache, trigger a rebuild now or have it done automatically on your next playback when this track is enabled and Anki is connectable.",
+        "buildWaniKaniCache": "Re-Build WaniKani word database",
+        "buildWaniKaniCacheHelperText": "The WaniKani word database is automatically updated during playback when a track is enabled and a token is configured.",
+        "buildWaniKaniCacheTokenEnableHelperText": "Add a WaniKani API token below to collect your WaniKani vocabulary.",
+        "waniKaniCacheDependentSettingsHelperText": "Changing \"{{field}}\" could invalidate the WaniKani cache, trigger a rebuild now or have it done automatically on your next playback when this track is enabled and a token is configured.",
         "dictionaryLocalWordDatabase": "Local word database",
         "dictionaryAnkiWordDatabase": "Anki word database",
+        "dictionaryWaniKaniWordDatabase": "WaniKani word database",
         "dictionaryColorizeSubtitles": "Colorize subtitles based on known words",
         "dictionaryAutoGenerateStatistics": "Generate statistics automatically",
         "dictionaryColorizeOnHoverOnly": "On Hover Only",
@@ -519,6 +524,8 @@
         "dictionaryAnkiMatureCutoff": "Mature Anki stability/interval (days)",
         "dictionaryAnkiTreatSuspended": "Treat suspended Anki cards as",
         "dictionaryAnkiTreatSuspendedNormal": "Normal",
+        "dictionaryWaniKaniSection": "WaniKani",
+        "dictionaryWaniKaniApiToken": "WaniKani API token",
         "dictionaryTokenStyling": "Word color style",
         "dictionaryTokenStylingText": "Texto",
         "dictionaryTokenStylingBackground": "Fundo",
@@ -542,12 +549,20 @@
         "dictionaryTokenStatusReading0": "Reading",
         "dictionaryTokenStateIgnored": "Ignored",
         "dictionaryBuildAnkiStarted": "Querying Anki for modified cards",
+        "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",
         "dictionaryBuildAnkiTracks": "Anki track(s): {{tracks}}",
+        "dictionaryBuildWaniKaniTrack": "WaniKani track #{{trackNumber}}",
+        "dictionaryBuildWaniKaniTrackCleared": "cleared",
+        "dictionaryBuildWaniKaniTrackNoChanges": "no changes",
         "dictionaryBuildModifiedCards": "{{numCards}} modified card(s)",
+        "dictionaryBuildWaniKaniTokens": "{{numTokens}} imported word(s)",
+        "dictionaryBuildWaniKaniAssignments": "{{numAssignments}} assignment(s)",
+        "dictionaryBuildWaniKaniSubjects": "{{numSubjects}} subject(s)",
         "dictionaryBuildOrphanedCards": "{{numCards}} deleted card(s) from orphaned track(s): {{tracks}}",
         "dictionaryBuildInProgress": "Build already in progress (expires at {{time}})",
         "dictionaryBuildAnkiError": "Error getting permission from Anki",
+        "dictionaryBuildWaniKaniTokenInvalidError": "Error connecting to WaniKani. Check the API token for track {{trackNumber}}.",
         "dictionaryBuildYomitanError": "Error connecting to Yomitan for track {{trackNumber}} (disable this track to ignore)",
         "dictionaryImportClipboardIgnored": "Mark words as ignored",
         "dictionaryImportClipboardText": "Paste text or one word per line",
@@ -586,6 +601,7 @@
             "sources": {
                 "local": "Local",
                 "ankiWord": "Anki word",
+                "waniKani": "WaniKani",
                 "ankiSentence": "Anki sentence"
             },
             "suspended": {
@@ -642,6 +658,14 @@
             "noDeckBreakdown": "No matching Anki cards were found for this media.",
             "info": {
                 "ankiStatistics": "How your Anki cards match up with the words in this media."
+            }
+        },
+        "waniKani": {
+            "waniKaniStatistics": "WaniKani statistics",
+            "waniKaniNeedsToBeAvailable": "WaniKani statistics could not be loaded.",
+            "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
+            "info": {
+                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media."
             }
         },
         "info": {
