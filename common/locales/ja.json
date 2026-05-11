@@ -428,6 +428,8 @@
         "subtitleAlignment": "字幕の表示位置",
         "subtitleAlignmentBottom": "下部",
         "subtitleAlignmentTop": "上部",
+        "subtitleAboveThumbnail": "字幕をサムネイルの前面に表示",
+        "thumbnailPreview": "プレビューサムネイルを表示",
         "subtitleBlur": "字幕のぼかし",
         "subtitleTrack": "字幕トラック",
         "allSubtitleTracks": "全て",

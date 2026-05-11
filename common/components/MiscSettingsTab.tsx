@@ -77,6 +77,8 @@ const MiscSettingTab: React.FC<Props> = ({
         pauseOnHoverMode,
         webSocketClientEnabled,
         webSocketServerUrl,
+        subtitleAboveThumbnail,
+        thumbnailPreview,
     } = settings;
     const validRegex = useMemo(() => regexIsValid(subtitleRegexFilter), [subtitleRegexFilter]);
     const [webSocketConnectionSucceeded, setWebSocketConnectionSucceeded] = useState<boolean>();
@@ -242,6 +244,31 @@ const MiscSettingTab: React.FC<Props> = ({
                         </FormGroup>
                     </FormControl>
                 )}
+                {insideApp && 
+                    <>
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={thumbnailPreview}
+                                    onChange={(event) => onSettingChanged('thumbnailPreview', !thumbnailPreview)}
+                                />
+                            }
+                            label={t('settings.thumbnailPreview')}
+                            labelPlacement="start"
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={subtitleAboveThumbnail}
+                                    onChange={(event) => onSettingChanged('subtitleAboveThumbnail', !subtitleAboveThumbnail)}
+                                    disabled={!thumbnailPreview}
+                                />
+                            }
+                            label={t('settings.subtitleAboveThumbnail')}
+                            labelPlacement="start"
+                        />
+                    </>
+                }  
                 <SettingsTextField
                     label={t('settings.subtitleRegexFilter')}
                     fullWidth

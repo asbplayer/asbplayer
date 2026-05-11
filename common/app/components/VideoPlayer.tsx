@@ -245,16 +245,16 @@ const useSubtitleContainerStyles = makeStyles(() => ({
 interface SubtitleContainerProps {
     subtitleSettings: SubtitleSettings;
     alignment: SubtitleAlignment;
+    subtitleZIndex: boolean;
     baseOffset: number;
     children: React.ReactNode;
 }
 
 const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProps>(function SubtitleContainer(
-    { subtitleSettings, alignment, baseOffset, children }: SubtitleContainerProps,
+    { subtitleSettings, alignment, baseOffset, children, subtitleZIndex }: SubtitleContainerProps,
     ref
 ) {
     const classes = useSubtitleContainerStyles();
-
     return (
         <div
             ref={ref}
@@ -264,6 +264,7 @@ const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProp
                     ? { bottom: subtitleSettings.subtitlePositionOffset + baseOffset }
                     : { top: subtitleSettings.topSubtitlePositionOffset + baseOffset }),
                 ...(subtitleSettings.subtitlesWidth === -1 ? {} : { width: `${subtitleSettings.subtitlesWidth}%` }),
+                zIndex: subtitleZIndex ? 12 : 0,
             }}
         >
             {children}
@@ -350,6 +351,8 @@ export default function VideoPlayer({
     const { t } = useTranslation();
     const poppingInRef = useRef<boolean>(undefined);
     const videoRef = useRef<ExperimentalHTMLVideoElement>(undefined);
+    const hiddenVideoRef = useRef<HTMLVideoElement | null>(null); // seek preview thumbnail
+    const [hiddenVideoReady, setHiddenVideoReady] = useState(false);
     const [windowWidth, windowHeight] = useWindowSize(true);
     if (videoRef.current) {
         videoRef.current.width = windowWidth;
@@ -361,6 +364,8 @@ export default function VideoPlayer({
     const playing = () => !videoRef.current?.paused || false;
     const [length, setLength] = useState<number>(0);
     const [videoFileName, setVideoFileName] = useState<string>();
+    const [videoWidth, setVideoWidth] = useState<number>(); // width and height are original width and height from metadata
+    const [videoHeight, setVideoHeight] = useState<number>();
     const [offset, setOffset] = useState<number>(0);
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
@@ -410,6 +415,8 @@ export default function VideoPlayer({
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
+    const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 5s
+    const isGeneratingRef = useRef(false); // avoid subsequent calls to generate thumbnail while generating one
 
     useEffect(() => {
         setMiscSettings(settings);
@@ -493,9 +500,14 @@ export default function VideoPlayer({
 
                 if (videoElement.readyState === 4) {
                     notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
+                    setVideoWidth(videoElement.videoWidth);
+                    setVideoHeight(videoElement.videoHeight);
                 } else {
-                    videoElement.onloadeddata = () =>
+                    videoElement.onloadeddata = () => {
                         notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
+                        setVideoWidth(videoElement.videoWidth);
+                        setVideoHeight(videoElement.videoHeight);
+                    }
                     videoElement.ondurationchange = () =>
                         notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
                 }
@@ -521,7 +533,7 @@ export default function VideoPlayer({
                 }
             }
         },
-        [clock, playerChannel, updatePlayerState]
+        [clock, playerChannel, updatePlayerState, videoWidth, videoHeight]
     );
 
     function selectAudioTrack(id: string) {
@@ -725,10 +737,72 @@ export default function VideoPlayer({
             }
 
             const time = progress * length;
+            // get a screenshot of this time when hovered
             playerChannel.currentTime(time / 1000);
         },
         [length, clock, playerChannel]
     );
+
+    const handleSeekPreview = useCallback(
+        (progress: number): string | undefined => {
+            if (!Number.isFinite(length)) {
+                return;
+            }
+
+            if (!hiddenVideoRef.current) {
+                return;
+            }
+
+            const time = progress * length;
+            const video = hiddenVideoRef.current;
+
+            const thumbnailKey = Math.floor(((time / 1000) / 5));
+
+            // cached url found, return url
+            if (thumbnailsRef.current.has(thumbnailKey)) {
+                return (thumbnailsRef.current.get(thumbnailKey));
+            }
+
+            if (isGeneratingRef.current) return;
+            // if not in cache, generate new one in the background
+            isGeneratingRef.current = true;
+
+            const onSeeked = () => {                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth * 0.7;
+                canvas.height = video.videoHeight * 0.7;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+                thumbnailsRef.current.set(thumbnailKey, thumbnailUrl);
+                isGeneratingRef.current = false;
+            };
+            
+            video.addEventListener('seeked', onSeeked, { once: true });
+            video.currentTime = time / 1000;
+            
+            return;
+        },
+        [length, clock]
+    );
+    
+    // load or unload preview thumbnail
+    useEffect(() => {
+        const videoPreview = hiddenVideoRef.current;
+
+        if (!videoPreview) return;
+
+        if (settings.thumbnailPreview) {
+            videoPreview.src = videoFile;
+            videoPreview.load();
+        } else {settings.thumbnailPreview
+            videoPreview.pause();
+            videoPreview.removeAttribute("src");
+            videoPreview.load(); 
+        }
+
+    }, [settings.thumbnailPreview, videoFile, hiddenVideoReady])
 
     const handleSeekByTimestamp = useCallback(
         (timestampMs: number) => {
@@ -1803,8 +1877,27 @@ export default function VideoPlayer({
             />
             {/* Optional blur mask overlay; constrained to the video bounds within the player container */}
             {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
+            {/* this video is for getting the seek preview below */}
+            <video
+                src={videoFile}
+                muted
+                preload="none"
+                autoPlay={false}
+                style={{position: "absolute", left: "-9999px"}}
+                ref={node => {
+                    hiddenVideoRef.current = node;
+                    if (node) {
+                        setHiddenVideoReady(true);
+                    }
+                }}
+            />
             {topSubtitleElements.length > 0 && (
-                <SubtitleContainer alignment={'top'} subtitleSettings={subtitleSettings} baseOffset={0}>
+                <SubtitleContainer 
+                    alignment={'top'} 
+                    subtitleSettings={subtitleSettings}
+                    baseOffset={0}
+                    subtitleZIndex={settings.subtitleAboveThumbnail}
+                >
                     {topSubtitleElements}
                 </SubtitleContainer>
             )}
@@ -1814,11 +1907,14 @@ export default function VideoPlayer({
                     alignment={'bottom'}
                     subtitleSettings={subtitleSettings}
                     baseOffset={baseBottomSubtitleOffset}
+                    subtitleZIndex={settings.subtitleAboveThumbnail}
                 >
                     {bottomSubtitleElements}
                 </SubtitleContainer>
             )}
             <Controls
+                videoWidth={videoWidth}
+                videoHeight={videoHeight}
                 mousePositionRef={mousePositionRef}
                 clock={clock}
                 length={length}
@@ -1838,6 +1934,7 @@ export default function VideoPlayer({
                 popOutEnabled={!isMobile}
                 playModeEnabled={subtitles && subtitles.length > 0}
                 playModes={playModes}
+                previewEnabled={settings.thumbnailPreview}
                 hideSubtitlePlayerToggleEnabled={
                     subtitles?.length > 0 && !popOut && !fullscreen && !notEnoughRoomForSubtitlePlayer
                 }
@@ -1845,6 +1942,7 @@ export default function VideoPlayer({
                 onPlay={handlePlay}
                 onPause={handlePause}
                 onSeek={handleSeek}
+                onSeekPreview={handleSeekPreview}
                 onAudioTrackSelected={handleAudioTrackSelected}
                 onSubtitlesToggle={handleSubtitlesToggle}
                 onFullscreenToggle={handleFullscreenToggle}
