@@ -45,6 +45,7 @@ export interface MiscSettings {
     readonly tabName: string;
     readonly pauseOnHoverMode: PauseOnHoverMode;
     readonly subtitleAboveThumbnail: boolean;
+    readonly thumbnailPreview: boolean;
 }
 
 const isIncludedInBitset = (bitset: number, value: number) => ((bitset >> value) & 1) > 0;
