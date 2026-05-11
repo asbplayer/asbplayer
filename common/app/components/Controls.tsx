@@ -277,15 +277,16 @@ interface ProgressBarProps {
     value: number;
     videoHeight: number | undefined;
     videoWidth: number | undefined;
+    previewEnabled: boolean;
 }
 
-function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth }: ProgressBarProps) {
+function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, previewEnabled }: ProgressBarProps) {
     const classes = useProgressBarStyles();
     const [mouseOver, setMouseOver] = useState(false);
     const containerRef = useRef(null);
     // x position of mouse
     const [hoverX, setHoverX] = useState(0);
-    const [thumbnailSrc, setThumbnailSrc] = useState<string>('');
+    const [thumbnailSrc, setThumbnailSrc] = useState<string | undefined>(undefined);
 
     // calculate width of thumbnail based on aspect ratio of video
     if (videoHeight && videoWidth) {
@@ -337,7 +338,7 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth }: 
         <div className={classes.root}>
 
             {mouseOver && 
-            <div style={{left: hoverX, width: videoWidth?? 145}} className={classes.preview}>
+            <div style={{left: hoverX, width: videoWidth?? 145, display: previewEnabled ? 'block' : 'none'}} className={classes.preview}>
                 <img src={thumbnailSrc} className={classes.thumbnail} style={{width: videoWidth?? 145}} />
             </div>
             }
@@ -549,6 +550,7 @@ interface ControlsProps {
     onClose?: () => void;
     volumeEnabled?: boolean;
     playModes?: Set<PlayMode>;
+    previewEnabled: boolean;
     playModeEnabled?: boolean;
     onPlayMode?: (playMode: PlayMode) => void;
     subtitlesEnabled?: boolean;
@@ -639,6 +641,7 @@ export default function Controls({
     onBlurOverlayToggle,
     videoWidth,
     videoHeight,
+    previewEnabled,
 }: ControlsProps) {
     const classes = useControlStyles();
     const { t } = useTranslation();
@@ -970,6 +973,7 @@ export default function Controls({
                             value={progress * 100} 
                             videoHeight={videoHeight} 
                             videoWidth={videoWidth}
+                            previewEnabled={previewEnabled}
                         />
                         {!hideToolbar && (
                             <Grid container className={classes.gridContainer} direction="row" wrap="nowrap">

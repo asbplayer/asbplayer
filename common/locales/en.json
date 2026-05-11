@@ -429,6 +429,7 @@
         "subtitleAlignmentBottom": "Bottom",
         "subtitleAlignmentTop": "Top",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
+        "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Subtitle blur",
         "subtitleTrack": "Subtitle Track",
         "allSubtitleTracks": "All",

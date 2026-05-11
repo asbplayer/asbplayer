@@ -45,6 +45,7 @@ export interface MiscSettings {
     readonly tabName: string;
     readonly pauseOnHoverMode: PauseOnHoverMode;
     readonly subtitleAboveThumbnail: boolean;
+    readonly thumbnailPreview: boolean;
 }
 
 export const isTrackSeekable = (seekable: SeekableTracks, track: number) => {

@@ -351,7 +351,8 @@ export default function VideoPlayer({
     const { t } = useTranslation();
     const poppingInRef = useRef<boolean>(undefined);
     const videoRef = useRef<ExperimentalHTMLVideoElement>(undefined);
-    const hiddenVideoRef = useRef<HTMLVideoElement>(null); // seek preview thumbnail
+    const hiddenVideoRef = useRef<HTMLVideoElement | null>(null); // seek preview thumbnail
+    const [hiddenVideoReady, setHiddenVideoReady] = useState(false);
     const [windowWidth, windowHeight] = useWindowSize(true);
     if (videoRef.current) {
         videoRef.current.width = windowWidth;
@@ -785,6 +786,23 @@ export default function VideoPlayer({
         },
         [length, clock]
     );
+    
+    // load or unload preview thumbnail
+    useEffect(() => {
+        const videoPreview = hiddenVideoRef.current;
+
+        if (!videoPreview) return;
+
+        if (settings.thumbnailPreview) {
+            videoPreview.src = videoFile;
+            videoPreview.load();
+        } else {settings.thumbnailPreview
+            videoPreview.pause();
+            videoPreview.removeAttribute("src");
+            videoPreview.load(); 
+        }
+
+    }, [settings.thumbnailPreview, videoFile, hiddenVideoReady])
 
     const handleSeekByTimestamp = useCallback(
         (timestampMs: number) => {
@@ -1859,17 +1877,19 @@ export default function VideoPlayer({
             />
             {/* Optional blur mask overlay; constrained to the video bounds within the player container */}
             {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
-            {/* this video is for getting the seek preview */}
-            <MemoryTester />
-            {/* <MemoryTester /> */}
             {/* this video is for getting the seek preview below */}
             <video
                 src={videoFile}
                 muted
-                preload="auto"
+                preload="none"
                 autoPlay={false}
                 style={{position: "absolute", left: "-9999px"}}
-                ref={hiddenVideoRef}
+                ref={node => {
+                    hiddenVideoRef.current = node;
+                    if (node) {
+                        setHiddenVideoReady(true);
+                    }
+                }}
             />
             {topSubtitleElements.length > 0 && (
                 <SubtitleContainer 
@@ -1914,6 +1934,7 @@ export default function VideoPlayer({
                 popOutEnabled={!isMobile}
                 playModeEnabled={subtitles && subtitles.length > 0}
                 playModes={playModes}
+                previewEnabled={settings.thumbnailPreview}
                 hideSubtitlePlayerToggleEnabled={
                     subtitles?.length > 0 && !popOut && !fullscreen && !notEnoughRoomForSubtitlePlayer
                 }
