@@ -332,6 +332,9 @@ const settingsSchema = {
         seekableTracks: {
             type: 'number',
         },
+        autoCopyableTracks: {
+            type: 'number',
+        },
         subtitleHtml: {
             type: 'number',
         },

@@ -49,16 +49,18 @@ import {
     VideoToExtensionCommand,
     IndexedSubtitleModel,
     SaveTokenLocalMessage,
-    SeekableTracks,
     DictionaryBuildAnkiCacheStateMessage,
 } from '@project/common';
 import { adjacentSubtitle } from '@project/common/key-binder';
 import PlayModeManager from '@project/common/app/services/play-mode-manager';
 import {
+    AutoCopyableTracks,
+    calculateAutoCopyableTracksValue,
     calculateSeekableTracksValue,
     extractAnkiSettings,
     isTrackSeekable,
     PauseOnHoverMode,
+    SeekableTracks,
     SettingsProvider,
     SubtitleListPreference,
 } from '@project/common/settings';
@@ -1087,6 +1089,7 @@ export default class Binding {
         this.subtitleController.autoCopyCurrentSubtitle = currentSettings.autoCopyCurrentSubtitle;
         this.subtitleController.dictionaryTrackSettings = currentSettings.dictionaryTracks;
         this.subtitleController.seekableTracks = currentSettings.seekableTracks;
+        this.subtitleController.autoCopyableTracks = currentSettings.autoCopyableTracks;
 
         const convertNetflixRubyChanged =
             this.subtitleController.convertNetflixRuby !== currentSettings.convertNetflixRuby;

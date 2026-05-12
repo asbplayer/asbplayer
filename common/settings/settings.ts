@@ -1,11 +1,4 @@
-import {
-    AnkiExportMode,
-    AutoPausePreference,
-    PostMineAction,
-    PostMinePlayback,
-    SeekableTracks,
-    SubtitleHtml,
-} from '../src/model';
+import { AnkiExportMode, AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '../src/model';
 import { arrayEquals } from '../util';
 
 export enum PauseOnHoverMode {
@@ -19,12 +12,19 @@ export enum VideoSubtitleSplitBehavior {
     autoMaximizeVideo = 'autoMaximizeVideo',
 }
 
+// Bitsets - if the nth bit is 1 then the nth track is "seekable" where "seekable"
+// means that the track is eligible for seeking, and automatic play mode behaviors
+export type SeekableTracks = number;
+// Bitset - same as above
+export type AutoCopyableTracks = number;
+
 export interface MiscSettings {
     readonly themeType: 'dark' | 'light';
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
     readonly seekableTracks: SeekableTracks;
+    readonly autoCopyableTracks: AutoCopyableTracks;
     readonly seekDuration: number;
     readonly speedChangeStep: number;
     readonly fastForwardModePlaybackRate: number;
@@ -46,24 +46,34 @@ export interface MiscSettings {
     readonly pauseOnHoverMode: PauseOnHoverMode;
 }
 
-export const isTrackSeekable = (seekable: SeekableTracks, track: number) => {
-    return ((seekable >> track) & 1) > 0;
-};
-
-export const calculateSeekableTracksValue = (trackIndices: number[]): SeekableTracks => {
-    let val: SeekableTracks = 0;
-    for (const i of trackIndices) {
+const isIncludedInBitset = (bitset: number, value: number) => ((bitset >> value) & 1) > 0;
+const newBitset = (values: number[]) => {
+    let val: number = 0;
+    for (const i of values) {
         val |= 1 << i;
     }
     return val;
 };
-
-export const updateSeekableTracksValue = (seekableTracks: SeekableTracks, trackIndex: number, add: boolean) => {
+const updateBitset = (bitset: number, value: number, add: boolean) => {
     if (add) {
-        return seekableTracks | (1 << trackIndex);
+        return bitset | (1 << value);
     }
-    return seekableTracks & ~(1 << trackIndex);
+    return bitset & ~(1 << value);
 };
+
+export const isTrackSeekable = (seekable: SeekableTracks, track: number) => isIncludedInBitset(seekable, track);
+export const calculateSeekableTracksValue = (trackIndices: number[]): SeekableTracks => newBitset(trackIndices);
+export const updateSeekableTracksValue = (seekableTracks: SeekableTracks, trackIndex: number, add: boolean) =>
+    updateBitset(seekableTracks, trackIndex, add);
+
+export const isTrackAutoCopyable = (autoCopyableTracks: AutoCopyableTracks, track: number) =>
+    isIncludedInBitset(autoCopyableTracks, track);
+export const calculateAutoCopyableTracksValue = (trackIndices: number[]): AutoCopyableTracks => newBitset(trackIndices);
+export const updateAutoCopyableTracksValue = (
+    autoCopyableTracks: AutoCopyableTracks,
+    trackIndex: number,
+    add: boolean
+) => updateBitset(autoCopyableTracks, trackIndex, add);
 
 export enum DictionaryTokenSource {
     LOCAL = 0,

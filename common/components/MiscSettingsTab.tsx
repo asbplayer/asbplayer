@@ -15,8 +15,10 @@ import LabelWithHoverEffect from './LabelWithHoverEffect';
 import {
     AsbplayerSettings,
     exportSettings,
+    isTrackAutoCopyable,
     isTrackSeekable,
     PauseOnHoverMode,
+    updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
     validateSettings,
 } from '../settings';
@@ -48,6 +50,7 @@ interface Props {
     extensionInstalled?: boolean;
     extensionSupportsPauseOnHover?: boolean;
     extensionSupportsSeekableTrackSetting?: boolean;
+    extensionSupportsAutoCopyableTrackSetting?: boolean;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
@@ -59,6 +62,7 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionInstalled,
     extensionSupportsPauseOnHover,
     extensionSupportsSeekableTrackSetting,
+    extensionSupportsAutoCopyableTrackSetting,
 }) => {
     const { t } = useTranslation();
     const {
@@ -68,6 +72,7 @@ const MiscSettingTab: React.FC<Props> = ({
         rememberSubtitleOffset,
         autoCopyCurrentSubtitle,
         seekableTracks,
+        autoCopyableTracks,
         miningHistoryStorageLimit,
         subtitleRegexFilter,
         tabName,
@@ -212,6 +217,36 @@ const MiscSettingTab: React.FC<Props> = ({
                     label={t('settings.autoCopy')}
                     labelPlacement="start"
                 />
+                {(!extensionInstalled || extensionSupportsAutoCopyableTrackSetting) && (
+                    <FormControl>
+                        <FormLabel component="legend">{t('settings.autoCopyableTracks')}</FormLabel>
+                        <FormGroup>
+                            {[0, 1, 2].map((trackIndex) => {
+                                return (
+                                    <FormControlLabel
+                                        key={trackIndex}
+                                        control={
+                                            <Checkbox
+                                                checked={isTrackAutoCopyable(autoCopyableTracks, trackIndex)}
+                                                onChange={(event) => {
+                                                    onSettingChanged(
+                                                        'autoCopyableTracks',
+                                                        updateAutoCopyableTracksValue(
+                                                            autoCopyableTracks,
+                                                            trackIndex,
+                                                            event.target.checked
+                                                        )
+                                                    );
+                                                }}
+                                            />
+                                        }
+                                        label={t('settings.subtitleTrackChoice', { trackNumber: trackIndex + 1 })}
+                                    />
+                                );
+                            })}
+                        </FormGroup>
+                    </FormControl>
+                )}
                 {(!extensionInstalled || extensionSupportsSeekableTrackSetting) && (
                     <FormControl>
                         <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
@@ -242,6 +277,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         </FormGroup>
                     </FormControl>
                 )}
+
                 <SettingsTextField
                     label={t('settings.subtitleRegexFilter')}
                     fullWidth

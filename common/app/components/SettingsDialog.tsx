@@ -114,6 +114,7 @@ export default function SettingsDialog({
                     extensionSupportsDictionary={extension.supportsDictionary}
                     extensionSupportsDictionaryBrowser={extension.supportsDictionaryBrowser}
                     extensionSupportsSeekableTrackSetting={extension.supportsSeekableTrackSetting}
+                    extensionSupportsAutoCopyableTrackSetting={extension.supportsAutoCopyableTrackSetting}
                     extensionSupportsDictionaryTokenStatusDisplayAlpha={
                         extension.supportsDictionaryTokenStatusDisplayAlpha
                     }

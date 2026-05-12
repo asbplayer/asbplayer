@@ -81,6 +81,7 @@ it('validates exported settings', () => {
         surroundingSubtitlesTimeRadius: 10000,
         autoPausePreference: 2,
         seekableTracks: 1,
+        autoCopyableTracks: 1,
         seekDuration: 4,
         speedChangeStep: 0.2,
         fastForwardModePlaybackRate: 3,

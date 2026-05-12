@@ -19,6 +19,7 @@ import {
 import {
     ApplyStrategy,
     AsbplayerSettings,
+    isTrackAutoCopyable,
     isTrackSeekable,
     SettingsProvider,
     TokenState,
@@ -1186,11 +1187,18 @@ const Player = React.memo(function Player({
                 return;
             }
 
-            navigator.clipboard.writeText(subtitles.map((s) => s.text).join('\n')).catch((e) => {
-                // ignore
-            });
+            const text = subtitles
+                .filter((s) => isTrackAutoCopyable(settings.autoCopyableTracks, s.track))
+                .map((s) => s.text)
+                .join('\n');
+
+            if (text) {
+                navigator.clipboard.writeText(text).catch((e) => {
+                    // ignore
+                });
+            }
         },
-        [settings.autoCopyCurrentSubtitle]
+        [settings.autoCopyCurrentSubtitle, settings.autoCopyableTracks]
     );
 
     useEffect(() => {
