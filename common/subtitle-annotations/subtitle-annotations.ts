@@ -1179,7 +1179,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                         ? this.dictionaryProvider.getBulk(profile, track, Array.from(forLemmaFormQuery), settings)
                         : ({} as TokenResults),
                     forAnyFormQuery.size
-                        ? this.dictionaryProvider.getByLemmaBulk(profile, track, Array.from(forAnyFormQuery))
+                        ? this.dictionaryProvider.getByLemmaBulk(profile, track, Array.from(forAnyFormQuery), settings)
                         : ({} as LemmaResults),
                 ]);
                 if (this.shouldCancelBuild) return;

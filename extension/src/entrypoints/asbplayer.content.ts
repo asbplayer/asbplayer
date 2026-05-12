@@ -123,9 +123,9 @@ export default defineContentScript({
                         break;
                     }
                     case 'dictionary-get-by-lemma-bulk': {
-                        const { profile, track, lemmas } = command.message as DictionaryGetByLemmaBulkMessage;
+                        const { profile, track, lemmas, settings } = command.message as DictionaryGetByLemmaBulkMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.getByLemmaBulk(profile, track, lemmas),
+                            response: await dictionaryStorage.getByLemmaBulk(profile, track, lemmas, settings),
                             messageId: command.message.messageId,
                         });
                         break;

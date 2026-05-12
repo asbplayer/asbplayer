@@ -715,7 +715,8 @@ export default class ChromeExtension {
     async dictionaryGetByLemmaBulk(
         profile: string | undefined,
         track: number,
-        lemmas: string[]
+        lemmas: string[],
+        settings?: AsbplayerSettings
     ): Promise<LemmaResults> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryGetByLemmaBulkMessage> = {
@@ -725,6 +726,7 @@ export default class ChromeExtension {
                 profile,
                 track,
                 lemmas,
+                settings,
                 messageId,
             },
         };

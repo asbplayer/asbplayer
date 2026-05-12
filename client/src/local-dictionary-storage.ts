@@ -76,8 +76,8 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         return this.dictionaryDB.getAllTokens(profile, track, settings);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
-        return this.dictionaryDB.getByLemmaBulk(profile, track, lemmas);
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
+        return this.dictionaryDB.getByLemmaBulk(profile, track, lemmas, settings);
     }
 
     saveRecordLocalBulk(

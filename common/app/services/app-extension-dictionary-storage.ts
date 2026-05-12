@@ -76,8 +76,8 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         return this._extension.dictionaryGetAllTokens(profile, track, settings);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
-        return this._extension.dictionaryGetByLemmaBulk(profile, track, lemmas);
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
+        return this._extension.dictionaryGetByLemmaBulk(profile, track, lemmas, settings);
     }
 
     saveRecordLocalBulk(

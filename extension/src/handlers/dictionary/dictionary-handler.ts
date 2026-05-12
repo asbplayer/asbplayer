@@ -66,7 +66,7 @@ export default class DictionaryHandler {
             case 'dictionary-get-by-lemma-bulk': {
                 const message = command.message as DictionaryGetByLemmaBulkMessage;
                 this.dictionaryDB
-                    .getByLemmaBulk(message.profile, message.track, message.lemmas)
+                    .getByLemmaBulk(message.profile, message.track, message.lemmas, message.settings)
                     .then((result) => sendResponse(result));
                 return true;
             }

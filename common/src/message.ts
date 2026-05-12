@@ -829,6 +829,7 @@ export interface DictionaryGetByLemmaBulkMessage extends MessageWithId {
     readonly profile: string | undefined;
     readonly track: number;
     readonly lemmas: string[];
+    readonly settings?: AsbplayerSettings;
 }
 
 export interface DictionarySaveRecordLocalBulkMessage extends MessageWithId {

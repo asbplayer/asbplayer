@@ -124,7 +124,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         return browser.runtime.sendMessage(message);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
         const message: DictionaryDBCommand<DictionaryGetByLemmaBulkMessage> = {
             sender: 'asbplayer-dictionary',
             message: {
@@ -132,6 +132,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
                 profile,
                 track,
                 lemmas,
+                settings,
                 messageId: uuidv4(),
             },
         };

@@ -27,7 +27,12 @@ export interface DictionaryStorage {
         settings?: AsbplayerSettings
     ) => Promise<TokenResults>;
     getAllTokens: (profile: string | undefined, track: number, settings?: AsbplayerSettings) => Promise<TokenResults>;
-    getByLemmaBulk: (profile: string | undefined, track: number, lemmas: string[]) => Promise<LemmaResults>;
+    getByLemmaBulk: (
+        profile: string | undefined,
+        track: number,
+        lemmas: string[],
+        settings?: AsbplayerSettings
+    ) => Promise<LemmaResults>;
     saveRecordLocalBulk: (
         profile: string | undefined,
         localTokenInputs: DictionaryLocalTokenInput[],
@@ -87,8 +92,8 @@ export class DictionaryProvider {
         return this._storage.getAllTokens(profile, track, settings);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
-        return this._storage.getByLemmaBulk(profile, track, lemmas);
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
+        return this._storage.getByLemmaBulk(profile, track, lemmas, settings);
     }
 
     saveRecordLocalBulk(
