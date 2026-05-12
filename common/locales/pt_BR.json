@@ -598,7 +598,8 @@
         "ui": "UI",
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "As instruções para configurar a API do Yomitan estão <0>aqui<0>.",
-        "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts"
+        "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts",
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
     },
     "statistics": {
         "title": "Statistics",

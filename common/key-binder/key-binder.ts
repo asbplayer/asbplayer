@@ -1,6 +1,6 @@
-import { SeekableTracks, SubtitleModel } from '../src/model';
+import { SubtitleModel } from '../src/model';
 import hotkeys from 'hotkeys-js';
-import { isTrackSeekable, KeyBindSet, TokenStatus } from '../settings/settings';
+import { isTrackSeekable, KeyBindSet, SeekableTracks, TokenStatus } from '../settings/settings';
 
 export function adjacentSubtitle(
     forward: boolean,

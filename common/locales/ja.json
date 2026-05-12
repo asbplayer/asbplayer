@@ -598,7 +598,8 @@
         "ui": "UI",
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。",
-        "seekableTracks": "操作対象の字幕トラック（プレイバックモード/ショートカット）"
+        "seekableTracks": "操作対象の字幕トラック（プレイバックモード/ショートカット）",
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
     },
     "statistics": {
         "title": "統計",

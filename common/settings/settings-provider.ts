@@ -117,6 +117,7 @@ export const defaultSettings: AsbplayerSettings = {
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
     seekableTracks: 1, // Bitset with first bit flipped i.e. first track
+    autoCopyableTracks: 1, // Also bitset
     subtitleHtml: SubtitleHtml.remove,
     seekDuration: 3,
     speedChangeStep: 0.1,

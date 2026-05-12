@@ -10,16 +10,19 @@ import {
     HttpPostMessage,
     IndexedSubtitleModel,
     RichSubtitleModel,
-    SeekableTracks,
 } from '@project/common';
 import {
+    AutoCopyableTracks,
     DictionaryTrack,
+    SeekableTracks,
     SettingsProvider,
     SubtitleAlignment,
     SubtitleSettings,
     TextSubtitleSettings,
     allTextSubtitleSettings,
+    calculateAutoCopyableTracksValue,
     calculateSeekableTracksValue,
+    isTrackAutoCopyable,
     isTrackSeekable,
 } from '@project/common/settings';
 import { SubtitleCollection, SubtitleCollectionOptions, SubtitleSlice } from '@project/common/subtitle-collection';
@@ -107,6 +110,7 @@ export default class SubtitleController {
     surroundingSubtitlesCountRadius: number;
     surroundingSubtitlesTimeRadius: number;
     autoCopyCurrentSubtitle: boolean;
+    autoCopyableTracks: AutoCopyableTracks = calculateAutoCopyableTracksValue([0]);
     convertNetflixRuby: boolean;
     subtitleHtml: SubtitleHtml;
     refreshCurrentSubtitle: boolean;
@@ -509,6 +513,7 @@ export default class SubtitleController {
     private _autoCopyToClipboard(subtitles: SubtitleModel[]) {
         if (this.autoCopyCurrentSubtitle && subtitles.length > 0 && document.hasFocus()) {
             const text = subtitles
+                .filter((s) => isTrackAutoCopyable(this.autoCopyableTracks, s.track))
                 .map((s) => s.text)
                 .filter((text) => text !== '')
                 .join('\n');
