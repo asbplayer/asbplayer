@@ -170,7 +170,7 @@ export async function buildWaniKaniCachePipeline(
                 let clearTokens = settingsChanged;
                 let clearResources = false;
 
-                const resetResponse = await waniKani.resets(dataUpdatedAt.resets);
+                const resetResponse = await waniKani.resets({ updatedAfter: dataUpdatedAt.resets });
                 if (_hasConfirmedWaniKaniReset(resetResponse.data)) {
                     dataUpdatedAt = {
                         ...dataUpdatedAt,
@@ -185,9 +185,9 @@ export async function buildWaniKaniCachePipeline(
                     resets: resetResponse.dataUpdatedAt ?? dataUpdatedAt.resets,
                 };
 
-                const spaceRepetitionSystemsResponse = await waniKani.spacedRepetitionSystems(
-                    dataUpdatedAt.spaceRepetitionSystems
-                );
+                const spaceRepetitionSystemsResponse = await waniKani.spacedRepetitionSystems({
+                    updatedAfter: dataUpdatedAt.spaceRepetitionSystems,
+                });
                 const spaceRepetitionSystems = _mergeWaniKaniSpaceRepetitionSystems(
                     prevWaniKaniMeta.spaceRepetitionSystems,
                     spaceRepetitionSystemsResponse.data
@@ -209,14 +209,14 @@ export async function buildWaniKaniCachePipeline(
                           db.waniKaniSubjects.where('[profile+track]').equals([profile, track]).count(),
                       ]).then(([assignmentCount, subjectCount]) => [assignmentCount > 0, subjectCount > 0]);
 
-                const assignmentsResponse = await waniKani.assignments(
-                    ['vocabulary', 'kana_vocabulary'],
-                    hasAssignmentCache ? dataUpdatedAt.assignments : undefined
-                );
-                const subjectsResponse = await waniKani.subjects(
-                    ['vocabulary', 'kana_vocabulary'],
-                    hasSubjectCache ? dataUpdatedAt.subjects : undefined
-                );
+                const assignmentsResponse = await waniKani.assignments({
+                    subjectTypes: ['vocabulary', 'kana_vocabulary'],
+                    updatedAfter: hasAssignmentCache ? dataUpdatedAt.assignments : undefined,
+                });
+                const subjectsResponse = await waniKani.subjects({
+                    types: ['vocabulary', 'kana_vocabulary'],
+                    updatedAfter: hasSubjectCache ? dataUpdatedAt.subjects : undefined,
+                });
 
                 const responseSubjectIds = new Set([
                     ...assignmentsResponse.data.map((assignment) => assignment.data.subject_id),

@@ -594,7 +594,9 @@
                 "status": "Status",
                 "states": "States",
                 "track": "Track",
+                "assignmentIds": "Assignment IDs",
                 "cardIds": "Card IDs",
+                "subjectIds": "Subject IDs",
                 "noteIds": "Note IDs",
                 "suspended": "Suspended"
             },

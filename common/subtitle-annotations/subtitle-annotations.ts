@@ -579,18 +579,13 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         try {
             for (const apiToken of apiTokens) {
                 const waniKani = new WaniKani(apiToken);
-                const assignments = await waniKani.assignments(
-                    ['vocabulary', 'kana_vocabulary'],
-                    undefined,
-                    undefined,
-                    reviewWindowEnd.toISOString()
-                );
+                const assignments = await waniKani.assignments({
+                    subjectTypes: ['vocabulary', 'kana_vocabulary'],
+                    availableBefore: reviewWindowEnd.toISOString(),
+                });
                 for (const assignment of assignments.data) {
-                    const availableAt = assignment.data.available_at;
-                    if (!availableAt || assignment.data.hidden || !assignmentIds.has(assignment.id)) continue;
-                    const availableAtTime = Date.parse(availableAt);
-                    if (!Number.isFinite(availableAtTime) || availableAtTime >= reviewWindowEnd.getTime()) continue;
-                    reviewAssignments[assignment.id] = availableAt;
+                    if (!assignmentIds.has(assignment.id)) continue;
+                    reviewAssignments[assignment.id] = assignment;
                 }
             }
             this.dictionaryStatistics.replaceWaniKaniSnapshot({ available: true, reviewAssignments });

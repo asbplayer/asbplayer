@@ -11,6 +11,7 @@ import {
     DictionaryStatisticsSentence,
     DictionaryStatisticsSentences,
     DictionaryStatisticsSnapshot,
+    DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot,
     REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
 import { TokenStatusInfo } from '@project/common/dictionary-db';
@@ -289,7 +290,7 @@ function incrementWaniKaniDueCounts(
     if (tokenStatuses.some(({ assignmentId }) => dueByWeek.has(assignmentId))) counts.week += 1;
 }
 
-function waniKaniDueAssignmentSets(reviewAssignments?: Record<number, string>) {
+function waniKaniDueAssignmentSets(reviewAssignments?: DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot) {
     const todayStart = utcStartOfToday();
     const todayEnd = todayStart.getTime() + (REVIEW_DUES[0] + 1) * MS_PER_DAY;
     const tomorrowEnd = todayStart.getTime() + (REVIEW_DUES[1] + 1) * MS_PER_DAY;
@@ -298,8 +299,11 @@ function waniKaniDueAssignmentSets(reviewAssignments?: Record<number, string>) {
     const dueByTomorrow = new Set<number>();
     const dueByWeek = new Set<number>();
 
-    for (const [assignmentIdString, availableAt] of Object.entries(reviewAssignments ?? {})) {
+    for (const [assignmentIdString, assignment] of Object.entries(reviewAssignments ?? {})) {
+        if (assignment.data.hidden) continue;
         const assignmentId = Number(assignmentIdString);
+        const availableAt = assignment.data.available_at;
+        if (availableAt === null) continue;
         const availableAtTime = Date.parse(availableAt);
         if (!Number.isFinite(assignmentId) || !Number.isFinite(availableAtTime)) continue;
         if (availableAtTime < todayEnd) dueByToday.add(assignmentId);

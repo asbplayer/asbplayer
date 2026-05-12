@@ -130,39 +130,37 @@ export class WaniKani {
         return this._getJson<WaniKaniUser>(this._url('/user'));
     }
 
-    async resets(updatedAfter?: string): Promise<WaniKaniCollectionResult<WaniKaniReset>> {
-        return this._getPaginated<WaniKaniReset>('/resets', { updated_after: updatedAfter });
+    async resets(options?: { updatedAfter?: string }): Promise<WaniKaniCollectionResult<WaniKaniReset>> {
+        return this._getPaginated<WaniKaniReset>('/resets', { updated_after: options?.updatedAfter });
     }
 
-    async assignments(
-        subjectTypes: WaniKaniSubjectType[],
-        updatedAfter?: string,
-        availableAfter?: string,
-        availableBefore?: string
-    ): Promise<WaniKaniCollectionResult<WaniKaniAssignment>> {
+    async assignments(options?: {
+        subjectTypes?: WaniKaniSubjectType[];
+        updatedAfter?: string;
+        availableBefore?: string;
+    }): Promise<WaniKaniCollectionResult<WaniKaniAssignment>> {
         return this._getPaginated<WaniKaniAssignment>('/assignments', {
-            subject_types: subjectTypes.join(','),
-            updated_after: updatedAfter,
-            available_after: availableAfter,
-            available_before: availableBefore,
+            subject_types: options?.subjectTypes?.join(','),
+            updated_after: options?.updatedAfter,
+            available_before: options?.availableBefore,
         });
     }
 
-    async subjects(
-        types: WaniKaniSubjectType[],
-        updatedAfter?: string
-    ): Promise<WaniKaniCollectionResult<WaniKaniSubject>> {
+    async subjects(options?: {
+        types?: WaniKaniSubjectType[];
+        updatedAfter?: string;
+    }): Promise<WaniKaniCollectionResult<WaniKaniSubject>> {
         return this._getPaginated<WaniKaniSubject>('/subjects', {
-            types: types.join(','),
-            updated_after: updatedAfter,
+            types: options?.types?.join(','),
+            updated_after: options?.updatedAfter,
         });
     }
 
-    async spacedRepetitionSystems(
-        updatedAfter?: string
-    ): Promise<WaniKaniCollectionResult<WaniKaniSpacedRepetitionSystem>> {
+    async spacedRepetitionSystems(options?: {
+        updatedAfter?: string;
+    }): Promise<WaniKaniCollectionResult<WaniKaniSpacedRepetitionSystem>> {
         return this._getPaginated<WaniKaniSpacedRepetitionSystem>('/spaced_repetition_systems', {
-            updated_after: updatedAfter,
+            updated_after: options?.updatedAfter,
         });
     }
 

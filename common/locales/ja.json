@@ -594,7 +594,9 @@
                 "status": "成熟度",
                 "states": "状態",
                 "track": "トラック",
+                "assignmentIds": "Assignment IDs",
                 "cardIds": "カードID",
+                "subjectIds": "Subject IDs",
                 "noteIds": "ノートID",
                 "suspended": "休止状態"
             },

@@ -10,6 +10,7 @@ import {
     TokenStatusConfig,
     TokenStatus,
 } from '@project/common/settings';
+import { WaniKaniAssignment } from '@project/common/wanikani';
 
 export const REVIEW_DUES = [0, 1, 7] as const; // 0 = due today, 1 = due within a day, 7 = due within a week
 
@@ -32,7 +33,7 @@ export interface DictionaryStatisticsAnkiSnapshot {
     dueCards: DictionaryStatisticsAnkiDueCardsSnapshot;
 }
 
-export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<number, string>;
+export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<number, WaniKaniAssignment>;
 
 export interface DictionaryStatisticsWaniKaniSnapshot {
     available?: boolean;

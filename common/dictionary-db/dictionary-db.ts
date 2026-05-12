@@ -230,12 +230,20 @@ export interface DictionaryDeleteProfileResult {
 }
 
 export type DictionaryAnkiCardRecordsByTrack = Record<number, Record<number, DictionaryAnkiCardRecord>>;
-export type DictionaryWaniKaniSubjectStatusRecordsByTrack = Record<number, Record<number, TokenStatusInfo>>;
+export type DictionaryWaniKaniSubjectRecordsByTrack = Record<number, Record<number, DictionaryWaniKaniSubjectRecord>>;
+export interface DictionaryWaniKaniAssignmentRecordWithStatus extends DictionaryWaniKaniAssignmentRecord {
+    status: TokenStatus;
+}
+export type DictionaryWaniKaniAssignmentRecordsByTrack = Record<
+    number,
+    Record<number, DictionaryWaniKaniAssignmentRecordWithStatus>
+>;
 
 export interface DictionaryRecordsResult {
     tokenRecords: DictionaryTokenRecord[];
     ankiCardRecords: DictionaryAnkiCardRecordsByTrack;
-    waniKaniSubjectStatusRecords?: DictionaryWaniKaniSubjectStatusRecordsByTrack;
+    waniKaniSubjectRecords?: DictionaryWaniKaniSubjectRecordsByTrack;
+    waniKaniAssignmentRecords?: DictionaryWaniKaniAssignmentRecordsByTrack;
 }
 
 export interface DictionaryRecordUpdateInput {
@@ -896,7 +904,12 @@ export class DictionaryDB {
                               .filter((r) => r.track === track || r.track === LOCAL_TOKEN_TRACK)
                               .toArray();
                 if (!tokenRecords.length) {
-                    return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectStatusRecords: {} };
+                    return {
+                        tokenRecords: [],
+                        ankiCardRecords: {},
+                        waniKaniSubjectRecords: {},
+                        waniKaniAssignmentRecords: {},
+                    };
                 }
 
                 const ankiCardKeys = Array.from(
@@ -935,15 +948,44 @@ export class DictionaryDB {
                     if (subjectIds) subjectIds.push(...record.subjectIds);
                     else waniKaniSubjectIdsByTrack.set(record.track, [...record.subjectIds]);
                 }
-                const waniKaniSubjectStatusRecords: DictionaryWaniKaniSubjectStatusRecordsByTrack = {};
+                const waniKaniSubjectRecords: DictionaryWaniKaniSubjectRecordsByTrack = {};
+                const waniKaniAssignmentRecords: DictionaryWaniKaniAssignmentRecordsByTrack = {};
                 await Promise.all(
                     Array.from(waniKaniSubjectIdsByTrack.entries()).map(async ([recordTrack, subjectIds]) => {
-                        const subjectStatusMap = await this._waniKaniSubjectStatusMap(profile, recordTrack, subjectIds);
-                        const trackSubjectStatusRecords: Record<number, TokenStatusInfo> = {};
-                        for (const [subjectId, status] of subjectStatusMap.entries()) {
-                            trackSubjectStatusRecords[subjectId] = status;
+                        const uniqueSubjectIds = Array.from(new Set(subjectIds));
+                        const subjectKeys = uniqueSubjectIds.map(
+                            (subjectId) => [subjectId, recordTrack, profile] as const
+                        );
+                        const [subjects, assignments, trackMeta] = await Promise.all([
+                            this.db.waniKaniSubjects.where('[subjectId+track+profile]').anyOf(subjectKeys).toArray(),
+                            this.db.waniKaniAssignments.where('[subjectId+track+profile]').anyOf(subjectKeys).toArray(),
+                            this.db.meta.get([profile, recordTrack]),
+                        ]);
+                        const trackSubjectRecords: Record<number, DictionaryWaniKaniSubjectRecord> = {};
+                        for (const subject of subjects) {
+                            trackSubjectRecords[subject.subjectId] = subject;
                         }
-                        waniKaniSubjectStatusRecords[recordTrack] = trackSubjectStatusRecords;
+
+                        const spaceRepetitionSystemById = new Map<number, WaniKaniSpacedRepetitionSystem>(
+                            trackMeta?.waniKaniMeta.spaceRepetitionSystems.map((system) => [system.id, system]) ?? []
+                        );
+                        const trackAssignmentRecords: Record<number, DictionaryWaniKaniAssignmentRecordWithStatus> = {};
+                        for (const assignment of assignments) {
+                            const subject = trackSubjectRecords[assignment.subjectId];
+                            const spaceRepetitionSystem =
+                                subject === undefined
+                                    ? undefined
+                                    : spaceRepetitionSystemById.get(subject.data.spaced_repetition_system_id);
+                            trackAssignmentRecords[assignment.assignmentId] = {
+                                ...assignment,
+                                status:
+                                    spaceRepetitionSystem === undefined
+                                        ? TokenStatus.UNKNOWN
+                                        : _waniKaniStatusFromSrsStage(assignment.data.srs_stage, spaceRepetitionSystem),
+                            };
+                        }
+                        waniKaniSubjectRecords[recordTrack] = trackSubjectRecords;
+                        waniKaniAssignmentRecords[recordTrack] = trackAssignmentRecords;
                     })
                 );
 
@@ -951,7 +993,12 @@ export class DictionaryDB {
                     record.source === DictionaryTokenSource.LOCAL ? record : { ...record, status: null }
                 );
 
-                return { tokenRecords: normalizedTokenRecords, ankiCardRecords, waniKaniSubjectStatusRecords };
+                return {
+                    tokenRecords: normalizedTokenRecords,
+                    ankiCardRecords,
+                    waniKaniSubjectRecords,
+                    waniKaniAssignmentRecords,
+                };
             }
         );
     }

@@ -38,12 +38,11 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import {
-    DictionaryAnkiCardRecordsByTrack,
     DictionaryAnkiCardRecord,
     DictionaryProvider,
+    DictionaryRecordsResult,
     DictionaryTokenKey,
-    DictionaryTokenRecord,
-    DictionaryWaniKaniSubjectStatusRecordsByTrack,
+    DictionaryWaniKaniAssignmentRecordWithStatus,
     LOCAL_TOKEN_TRACK,
     DictionaryRecordUpdateInput,
     TokenStatusInfo,
@@ -811,14 +810,11 @@ export default function WordBrowserDialog({
     );
     const filterableStates = FILTERABLE_STATES;
     const filterStatusOptions = useMemo(() => filterableTokenStatuses(), []);
-    const [records, setRecords] = useState<{
-        tokenRecords: DictionaryTokenRecord[];
-        ankiCardRecords: DictionaryAnkiCardRecordsByTrack;
-        waniKaniSubjectStatusRecords?: DictionaryWaniKaniSubjectStatusRecordsByTrack;
-    }>({
+    const [records, setRecords] = useState<DictionaryRecordsResult>({
         tokenRecords: [],
         ankiCardRecords: {},
-        waniKaniSubjectStatusRecords: {},
+        waniKaniSubjectRecords: {},
+        waniKaniAssignmentRecords: {},
     });
     const [loading, setLoading] = useState(false);
     const [mutating, setMutating] = useState(false);
@@ -925,7 +921,12 @@ export default function WordBrowserDialog({
         if (open) return;
         loadRequestIdRef.current += 1;
         const initialViewCriteria = defaultViewCriteria();
-        setRecords({ tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectStatusRecords: {} });
+        setRecords({
+            tokenRecords: [],
+            ankiCardRecords: {},
+            waniKaniSubjectRecords: {},
+            waniKaniAssignmentRecords: {},
+        });
         setLoading(false);
         setDraftViewCriteria(initialViewCriteria);
         setAppliedViewCriteria(initialViewCriteria);
@@ -1144,6 +1145,31 @@ export default function WordBrowserDialog({
         [draftViewCriteria.selectedStateFilters, stateLabels]
     );
 
+    const assignmentIdsCardIdsLabel = `${t('settings.dictionaryBrowser.columns.assignmentIds')} / ${t(
+        'settings.dictionaryBrowser.columns.cardIds'
+    )}`;
+    const subjectIdsNoteIdsLabel = `${t('settings.dictionaryBrowser.columns.subjectIds')} / ${t(
+        'settings.dictionaryBrowser.columns.noteIds'
+    )}`;
+
+    const waniKaniAssignmentRecordsBySubjectByTrack = useMemo(() => {
+        const recordsByTrack: Record<number, Record<number, DictionaryWaniKaniAssignmentRecordWithStatus[]>> = {};
+        for (const [trackString, trackAssignmentRecords] of Object.entries(records.waniKaniAssignmentRecords ?? {})) {
+            const recordTrack = Number(trackString);
+            const recordsBySubject: Record<number, DictionaryWaniKaniAssignmentRecordWithStatus[]> = {};
+            for (const assignmentRecord of Object.values(trackAssignmentRecords)) {
+                const subjectAssignmentRecords = recordsBySubject[assignmentRecord.subjectId];
+                if (subjectAssignmentRecords) {
+                    subjectAssignmentRecords.push(assignmentRecord);
+                } else {
+                    recordsBySubject[assignmentRecord.subjectId] = [assignmentRecord];
+                }
+            }
+            recordsByTrack[recordTrack] = recordsBySubject;
+        }
+        return recordsByTrack;
+    }, [records.waniKaniAssignmentRecords]);
+
     const rows = useMemo(() => {
         return records.tokenRecords.map((record) => {
             const trackConfig =
@@ -1157,11 +1183,17 @@ export default function WordBrowserDialog({
             const cardRecords = record.cardIds
                 .map((cardId) => trackCardRecords?.[cardId])
                 .filter((cardRecord): cardRecord is DictionaryAnkiCardRecord => cardRecord !== undefined);
-            const trackWaniKaniSubjectStatusRecords = records.waniKaniSubjectStatusRecords?.[record.track];
-            const waniKaniSubjectStatuses = (record.subjectIds ?? [])
-                .map((subjectId) => trackWaniKaniSubjectStatusRecords?.[subjectId])
-                .filter((status): status is TokenStatusInfo => status !== undefined);
-            const noteIds = dedupeNumbers(cardRecords.map((cardRecord) => cardRecord.noteId));
+            const trackWaniKaniAssignmentRecordsBySubject = waniKaniAssignmentRecordsBySubjectByTrack[record.track];
+            const waniKaniAssignmentRecords = (record.subjectIds ?? []).flatMap(
+                (subjectId) => trackWaniKaniAssignmentRecordsBySubject?.[subjectId] ?? []
+            );
+            const waniKaniSubjectStatuses: TokenStatusInfo[] = waniKaniAssignmentRecords.map((assignmentRecord) => ({
+                assignmentId: assignmentRecord.assignmentId,
+                subjectId: assignmentRecord.subjectId,
+                status: assignmentRecord.status,
+                suspended: false,
+            }));
+            const ankiNoteIds = dedupeNumbers(cardRecords.map((cardRecord) => cardRecord.noteId));
             const status = isAnkiRecord
                 ? getTokenStatus(
                       cardRecords.map((cardRecord) => ({
@@ -1200,7 +1232,11 @@ export default function WordBrowserDialog({
             }
             const lemmasDisplay = formatList(record.lemmas);
             const statesDisplay = formatList(record.states.map((state) => stateLabels[state]));
-            const dedupedCardIds = dedupeNumbers(record.cardIds);
+            const cardIds = isWaniKaniRecord
+                ? dedupeNumbers(waniKaniAssignmentRecords.map((assignmentRecord) => assignmentRecord.assignmentId))
+                : dedupeNumbers(record.cardIds);
+            const noteIds = isWaniKaniRecord ? dedupeNumbers(record.subjectIds ?? []) : ankiNoteIds;
+            const hasExternalIdColumns = isAnkiRecord || isWaniKaniRecord;
 
             return {
                 tokenKey: [record.token, record.source, record.track, record.profile],
@@ -1219,10 +1255,10 @@ export default function WordBrowserDialog({
                 statesDisplay,
                 trackDisplay: record.source === DictionaryTokenSource.LOCAL ? '' : String(record.track + 1),
                 trackSortValue: record.source === DictionaryTokenSource.LOCAL ? LOCAL_TOKEN_TRACK : record.track + 1,
-                cardIds: dedupedCardIds,
-                cardIdsDisplay: isAnkiRecord ? formatList(dedupedCardIds) : '',
+                cardIds,
+                cardIdsDisplay: hasExternalIdColumns ? formatList(cardIds) : '',
                 noteIds,
-                noteIdsDisplay: isAnkiRecord ? formatList(noteIds) : '',
+                noteIdsDisplay: hasExternalIdColumns ? formatList(noteIds) : '',
                 suspendedDisplay,
                 suspendedFilterValue,
                 suspendedSortValue,
@@ -1240,6 +1276,7 @@ export default function WordBrowserDialog({
         theme.palette.success.main,
         theme.palette.warning.dark,
         theme.palette.warning.main,
+        waniKaniAssignmentRecordsBySubjectByTrack,
     ]);
 
     const trackFilterOptions = useMemo(() => {
@@ -1769,7 +1806,7 @@ export default function WordBrowserDialog({
                                         <TableCell>
                                             {renderHeaderCell(
                                                 'cardIds',
-                                                t('settings.dictionaryBrowser.columns.cardIds'),
+                                                assignmentIdsCardIdsLabel,
                                                 'cardIds',
                                                 draftViewCriteria.cardIdFilter.length > 0
                                             )}
@@ -1777,7 +1814,7 @@ export default function WordBrowserDialog({
                                         <TableCell>
                                             {renderHeaderCell(
                                                 'noteIds',
-                                                t('settings.dictionaryBrowser.columns.noteIds'),
+                                                subjectIdsNoteIdsLabel,
                                                 'noteIds',
                                                 draftViewCriteria.noteIdFilter.length > 0
                                             )}
@@ -1911,10 +1948,10 @@ export default function WordBrowserDialog({
                                 )}
                                 {openFilterPopover?.key === 'cardIds' && (
                                     <>
-                                        <FilterHeading>{t('settings.dictionaryBrowser.columns.cardIds')}</FilterHeading>
+                                        <FilterHeading>{assignmentIdsCardIdsLabel}</FilterHeading>
                                         <TextField
                                             autoFocus
-                                            placeholder={t('settings.dictionaryBrowser.columns.cardIds')}
+                                            placeholder={assignmentIdsCardIdsLabel}
                                             value={draftViewCriteria.cardIdFilter}
                                             onChange={(event) =>
                                                 updateDraftTextCriteria('cardIdFilter', event.target.value)
@@ -1934,10 +1971,10 @@ export default function WordBrowserDialog({
                                 )}
                                 {openFilterPopover?.key === 'noteIds' && (
                                     <>
-                                        <FilterHeading>{t('settings.dictionaryBrowser.columns.noteIds')}</FilterHeading>
+                                        <FilterHeading>{subjectIdsNoteIdsLabel}</FilterHeading>
                                         <TextField
                                             autoFocus
-                                            placeholder={t('settings.dictionaryBrowser.columns.noteIds')}
+                                            placeholder={subjectIdsNoteIdsLabel}
                                             value={draftViewCriteria.noteIdFilter}
                                             onChange={(event) =>
                                                 updateDraftTextCriteria('noteIdFilter', event.target.value)
