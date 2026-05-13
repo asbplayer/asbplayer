@@ -200,7 +200,9 @@
         "subtitleFileNotOpen": "Файл субтитров {{fileName}} не открыт.",
         "unknownExtension": "Невозможно определить расширение файла {{fileName}}",
         "unsupportedExtension": "Неподдерживаемое расширение: {{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "Нельзя перетаскивать файлы в сам видеоплеер. Перетащите и отпустите их вне рамки видео."
+        "videoPlayerDragAndDropNotAllowed": "Нельзя перетаскивать файлы в сам видеоплеер. Перетащите и отпустите их вне рамки видео.",
+        "restoreSessionPermissionDenied": "Доступ запрещён. Не удалось восстановить последнюю сессию.",
+        "restoreSessionFailed": "Не удалось восстановить последнюю сессию. Возможно, файлы были перемещены или удалены."
     },
     "extension": {
         "settings": {
@@ -324,7 +326,8 @@
         "extensionUpdateAvailable": "Доступно <1>обновление</1> для расширения.",
         "noSubtitles": "Субтитры отсутствуют",
         "videoElementsDetected": "Загрузите субтитры в видео, чтобы начать использовать asbplayer.",
-        "noVideoElementsDetected": "Видео не обнаружено."
+        "noVideoElementsDetected": "Видео не обнаружено.",
+        "restoreLastSession": "Восстановить последнюю сессию"
     },
     "activeTabPermissionRequest": {
         "title": "Разрешить запись аудио.",

@@ -200,7 +200,9 @@
         "subtitleFileNotOpen": "Arquivo de legenda {{fileName}} não está aberto.",
         "unknownExtension": "Não é possível determinar a extensão de {{fileName}}",
         "unsupportedExtension": "Extensão não suportada: {{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "O player de vídeo não pode receber arquivos arrastados. Solte-os fora do quadro do vídeo."
+        "videoPlayerDragAndDropNotAllowed": "O player de vídeo não pode receber arquivos arrastados. Solte-os fora do quadro do vídeo.",
+        "restoreSessionPermissionDenied": "Permissão negada. Não foi possível restaurar a última sessão.",
+        "restoreSessionFailed": "Não foi possível restaurar a última sessão. Os arquivos podem ter sido movidos ou excluídos."
     },
     "extension": {
         "settings": {
@@ -324,7 +326,8 @@
         "extensionUpdateAvailable": "Uma <1>atualização</1>  para a extensão está disponível.",
         "noSubtitles": "Sem legendas",
         "videoElementsDetected": "Carregar legendas em um vídeo para começar a usar o asbplayer.",
-        "noVideoElementsDetected": "Nenhum vídeo detectado."
+        "noVideoElementsDetected": "Nenhum vídeo detectado.",
+        "restoreLastSession": "Restaurar última sessão"
     },
     "activeTabPermissionRequest": {
         "title": "Habilitar gravação de áudio.",

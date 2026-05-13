@@ -200,7 +200,9 @@
         "subtitleFileNotOpen": "Tekstitystiedosto {{fileName}} ei ole auki.",
         "unknownExtension": "{{fileName}} laajennusta ei voitu määrittää",
         "unsupportedExtension": "Tiedostoa ei tueta {{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "Videosoitinta ei voi vastaanottaa pudotettuja tiedostoja. Pudota sen sijaan videoruudun ulkopuolelle."
+        "videoPlayerDragAndDropNotAllowed": "Videosoitinta ei voi vastaanottaa pudotettuja tiedostoja. Pudota sen sijaan videoruudun ulkopuolelle.",
+        "restoreSessionPermissionDenied": "Käyttöoikeus evätty. Viimeisintä istuntoa ei voitu palauttaa.",
+        "restoreSessionFailed": "Viimeisintä istuntoa ei voitu palauttaa. Tiedostot on ehkä siirretty tai poistettu."
     },
     "extension": {
         "settings": {
@@ -324,7 +326,8 @@
         "extensionUpdateAvailable": "Laajennus <1>päivitys</1> on saatavilla.",
         "noSubtitles": "Ei tekstityksiä",
         "videoElementsDetected": "Lataa tekstitys videon päälle aloittaaksesi asbplayerin käytön.",
-        "noVideoElementsDetected": "Ei havaittuja videoita."
+        "noVideoElementsDetected": "Ei havaittuja videoita.",
+        "restoreLastSession": "Palauta viimeisin istunto"
     },
     "activeTabPermissionRequest": {
         "title": "Ota äänentallennus käyttöön",
