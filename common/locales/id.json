@@ -4,28 +4,28 @@
         "close": "Close",
         "copy": "Salin",
         "delete": "Hapus",
-        "save": "Save",
-        "preview": "Preview",
+        "save": "Simpan",
+        "preview": "Pratinjau",
         "downloadAudio": "Unduh Audio",
         "downloadImage": "Unduh Gambar",
         "downloadSubtitlesAsSrt": "Unduh Takarir sebagai SRT",
-        "bulkExportSubtitles": "Bulk Export Subtitles",
+        "bulkExportSubtitles": "Ekspor Massal Subtitle",
         "jumpTo": "Loncat ke",
         "ok": "OK",
         "mineSubtitle": "Tambang Takarir",
         "openFiles": "Buka Berkas",
-        "importFile": "Import From File",
+        "importFile": "Impor dari File",
         "loadSubtitles": "Muat Takarir",
-        "openApp": "Buka Aplikasi",
-        "openSidePanel": "Buka Panel Samping",
+        "openApp": "App",
+        "openSidePanel": "Side Panel",
         "mine": "Tambang",
         "updateLastCard": "Perbarui Kartu Terakhir",
         "startRecording": "Mulai Rekam",
         "stopRecording": "Hentikan Rekam",
         "importSettings": "Impor Pengaturan",
         "exportSettings": "Ekspor Pengaturan",
-        "importDictionaryLocalRecords": "Import Words",
-        "exportDictionaryLocalRecords": "Export Words",
+        "importDictionaryLocalRecords": "Impor Kosakata",
+        "exportDictionaryLocalRecords": "Ekspor Kosakata",
         "hideOverlay": "Sembunyikan Lapisan Kontrol",
         "openTutorial": "Buka Tutorial",
         "decreaseOffsetButton": "Kurangi offset agar takarir berikutnya berada di posisi saat ini. Tahan untuk mengurangi 100 ms.",
@@ -62,7 +62,7 @@
         "inAndOut": "Aktif dengan lanjut otomatis"
     },
     "videoSubtitleSplitBehavior": {
-        "autoMaximizeVideo": "Auto-maximize local video"
+        "autoMaximizeVideo": "Perbesar video lokal secara otomatis"
     },
     "ankiDialog": {
         "applySelection": "Terapkan Pilihan",
@@ -157,9 +157,9 @@
         "moveBottomSubtitlesDown": "Turunkan subtitle bawah",
         "moveTopSubtitlesUp": "Naikkan subtitle atas",
         "moveTopSubtitlesDown": "Turunkan subtitle atas",
-        "markHoveredToken": "Mark hovered word as {{tokenStatus}}",
-        "toggleHoveredTokenIgnored": "Toggle hovered word as ignored",
-        "openStatistics": "Open statistics"
+        "markHoveredToken": "Tandai kata yang disorot sebagai {{tokenStatus}}",
+        "toggleHoveredTokenIgnored": "Toggle \"abaikan\" untuk kata (hover)",
+        "openStatistics": "Buka statistik"
     },
     "controls": {
         "autoPauseMode": "Jeda Otomatis",
@@ -182,8 +182,8 @@
         "showSubtitlePlayer": "Tampilkan Daftar Takarir",
         "hideSubtitlePlayer": "Sembunyikan Daftar Takarir",
         "currentTimestamp": "Penanda Waktu Saat Ini",
-        "showBlurOverlay": "Show Blur Overlay",
-        "hideBlurOverlay": "Hide Blur Overlay"
+        "showBlurOverlay": "Tampilkan Overlay Blur",
+        "hideBlurOverlay": "Sembunyikan Overlay Blur"
     },
     "copyHistory": {
         "blank": "Kosong",
@@ -297,12 +297,12 @@
         "disabledAutoPause": "Jeda otomatis: Nonaktif",
         "disabledCondensedPlayback": "Pemutaran ringkas: Nonaktif",
         "disabledFastForwardPlayback": "Pemutaran maju cepat: Nonaktif",
-        "disabledAllPlayModes": "All playback modes: Off",
+        "disabledAllPlayModes": "Semua mode pemutaran: Mati",
         "enabledAutoPause": "Jeda otomatis: Aktif",
         "enabledCondensedPlayback": "Pemutaran ringkas: Aktif",
         "enabledFastForwardPlayback": "Pemutaran maju cepat: Aktif",
         "exportedCard": "Kartu diekspor: {{result}}",
-        "cardNotExported": "Card not exported: {{reason}}",
+        "cardNotExported": "Kartu gagal diekspor: {{reason}}",
         "bulkExporting": "Bulk exporting subtitles: {{current}}/{{total}}",
         "bulkExport": {
             "title": "Bulk Export in Progress",
