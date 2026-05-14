@@ -180,9 +180,9 @@ export async function buildWaniKaniCachePipeline(
             try {
                 const currSettingsStr = JSON.stringify(currSettings);
                 const settingsChanged = currSettingsStr !== prevWaniKaniMeta.settings;
-                let dataUpdatedAt = { ...prevWaniKaniMeta.dataUpdatedAt };
+                let dataUpdatedAt: WaniKaniDataUpdatedAt = settingsChanged ? {} : { ...prevWaniKaniMeta.dataUpdatedAt };
                 let clearTokens = settingsChanged;
-                let clearResources = false;
+                let clearResources = settingsChanged;
 
                 const resetResponse = await waniKani.resets({ updatedAfter: dataUpdatedAt.resets });
                 if (_hasConfirmedWaniKaniReset(resetResponse.data)) {
@@ -328,11 +328,20 @@ export async function buildWaniKaniCachePipeline(
                         },
                     });
                 }
-                for (const ts of trackStates.values()) {
+                for (const [track, ts] of trackStates.entries()) {
                     if (ts.subjectsToPut.length) await db.waniKaniSubjects.bulkPut(ts.subjectsToPut);
                     if (ts.assignmentsToPut.length) {
                         await db.waniKaniAssignments.bulkPut(ts.assignmentsToPut);
                     }
+                    const key: DictionaryMetaKey = [profile, track];
+                    const trackMeta = await db.meta.get(key);
+                    if (!trackMeta) continue;
+                    await db.meta.update(key, {
+                        waniKaniMeta: {
+                            ...trackMeta.waniKaniMeta,
+                            spacedRepetitionSystems: ts.spacedRepetitionSystems,
+                        },
+                    });
                 }
                 for (const [track, modifiedTokens] of modifiedTokensByTrack.entries()) {
                     await _gatherModifiedTokensForTrack(db, profile, track, modifiedTokens);
@@ -790,7 +799,6 @@ async function _saveWaniKaniTrackMetadataForDB(
                     ...trackMeta.waniKaniMeta,
                     settings: ts.settings,
                     dataUpdatedAt: ts.dataUpdatedAt,
-                    spacedRepetitionSystems: ts.spacedRepetitionSystems,
                 },
             });
         }

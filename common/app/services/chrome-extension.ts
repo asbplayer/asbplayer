@@ -880,7 +880,7 @@ export default class ChromeExtension {
             message: { command: 'dictionary-build-anki-cache', messageId, profile, settings },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId, 60000); // Usually <10s
+        return this._createResponsePromise(messageId, 300000); // Usually <10s
     }
 
     buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {
@@ -890,7 +890,7 @@ export default class ChromeExtension {
             message: { command: 'dictionary-build-wanikani-cache', messageId, profile, settings },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId, 60000);
+        return this._createResponsePromise(messageId, 300000); // Usually <10s
     }
 
     publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {

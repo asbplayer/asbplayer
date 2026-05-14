@@ -29,7 +29,7 @@ import {
 import { AsbplayerSettings, dictionaryTrackEnabled, TokenStatus } from '@project/common/settings';
 import StatisticsSentenceDetailsDialog from '@project/common/components/StatisticsSentenceDetailsDialog';
 import { Trans, useTranslation } from 'react-i18next';
-import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Button from '@mui/material/Button';
@@ -1081,8 +1081,21 @@ function TrackSnapshot({
     const defaultReviewStatisticsSource: ReviewStatisticsSource =
         !ankiHasStats && waniKaniHasStats ? 'waniKani' : 'anki';
     const [selectedReviewStatisticsSource, setSelectedReviewStatisticsSource] = useState<ReviewStatisticsSource>();
+    const [reviewStatisticsScrollRequest, setReviewStatisticsScrollRequest] = useState(0);
+    const reviewStatisticsSectionRef = useRef<HTMLDivElement | null>(null);
+    const shouldScrollToReviewStatisticsRef = useRef(false);
     useEffect(() => setSelectedReviewStatisticsSource(undefined), [trackSnapshot.track, statisticsSnapshot.mediaId]);
     const reviewStatisticsSource = selectedReviewStatisticsSource ?? defaultReviewStatisticsSource;
+    const handleReviewStatisticsSourceSelected = useCallback((source: ReviewStatisticsSource) => {
+        shouldScrollToReviewStatisticsRef.current = true;
+        setSelectedReviewStatisticsSource(source);
+        setReviewStatisticsScrollRequest((request) => request + 1);
+    }, []);
+    useEffect(() => {
+        if (!shouldScrollToReviewStatisticsRef.current) return;
+        shouldScrollToReviewStatisticsRef.current = false;
+        reviewStatisticsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [reviewStatisticsSource, reviewStatisticsScrollRequest]);
     const comprehensionBand = dictionaryStatisticsComprehensionBandForPercent(trackSnapshot.comprehensionPercent);
 
     return (
@@ -1379,40 +1392,42 @@ function TrackSnapshot({
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <ReviewStatisticsSourceSelector
                     selectedSource={reviewStatisticsSource}
-                    onSelectedSource={setSelectedReviewStatisticsSource}
+                    onSelectedSource={handleReviewStatisticsSourceSelected}
                     ankiLabel={ankiStatisticsTitle}
                     waniKaniLabel={waniKaniStatisticsTitle}
                 />
-                {reviewStatisticsSource === 'anki' ? (
-                    <AnkiStatisticsSection
-                        snapshot={ankiTrackSnapshot}
-                        statusLabels={statusLabels}
-                        statusColors={trackSnapshot.statusColors}
-                        title={ankiStatisticsTitle}
-                        infoLines={ankiStatisticsInfoLines}
-                        dueByTodayLabel={dueByTodayLabel}
-                        dueByTomorrowLabel={dueByTomorrowLabel}
-                        dueByWeekLabel={dueByWeekLabel}
-                        suspendedCardsLabel={suspendedCardsLabel}
-                        frequencyLabel={t('statistics.frequency')}
-                        unavailableMessage={ankiUnavailableMessage}
-                        emptyDeckBreakdownMessage={emptyDeckBreakdownMessage}
-                    />
-                ) : (
-                    <WaniKaniStatisticsSection
-                        snapshot={waniKaniTrackSnapshot}
-                        statusLabels={statusLabels}
-                        statusColors={trackSnapshot.statusColors}
-                        title={waniKaniStatisticsTitle}
-                        infoLines={waniKaniStatisticsInfoLines}
-                        dueByTodayLabel={dueByTodayLabel}
-                        dueByTomorrowLabel={dueByTomorrowLabel}
-                        dueByWeekLabel={dueByWeekLabel}
-                        frequencyLabel={t('statistics.frequency')}
-                        unavailableMessage={waniKaniUnavailableMessage}
-                        emptyMessage={emptyWaniKaniBreakdownMessage}
-                    />
-                )}
+                <Box ref={reviewStatisticsSectionRef}>
+                    {reviewStatisticsSource === 'anki' ? (
+                        <AnkiStatisticsSection
+                            snapshot={ankiTrackSnapshot}
+                            statusLabels={statusLabels}
+                            statusColors={trackSnapshot.statusColors}
+                            title={ankiStatisticsTitle}
+                            infoLines={ankiStatisticsInfoLines}
+                            dueByTodayLabel={dueByTodayLabel}
+                            dueByTomorrowLabel={dueByTomorrowLabel}
+                            dueByWeekLabel={dueByWeekLabel}
+                            suspendedCardsLabel={suspendedCardsLabel}
+                            frequencyLabel={t('statistics.frequency')}
+                            unavailableMessage={ankiUnavailableMessage}
+                            emptyDeckBreakdownMessage={emptyDeckBreakdownMessage}
+                        />
+                    ) : (
+                        <WaniKaniStatisticsSection
+                            snapshot={waniKaniTrackSnapshot}
+                            statusLabels={statusLabels}
+                            statusColors={trackSnapshot.statusColors}
+                            title={waniKaniStatisticsTitle}
+                            infoLines={waniKaniStatisticsInfoLines}
+                            dueByTodayLabel={dueByTodayLabel}
+                            dueByTomorrowLabel={dueByTomorrowLabel}
+                            dueByWeekLabel={dueByWeekLabel}
+                            frequencyLabel={t('statistics.frequency')}
+                            unavailableMessage={waniKaniUnavailableMessage}
+                            emptyMessage={emptyWaniKaniBreakdownMessage}
+                        />
+                    )}
+                </Box>
             </Box>
         </Box>
     );
