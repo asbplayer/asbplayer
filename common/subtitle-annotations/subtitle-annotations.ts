@@ -134,14 +134,18 @@ function tokenStatusResult(
     statuses: TokenStatusInfo[],
     dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL',
     source: DictionaryTokenSource,
+    externalCandidateStatuses?: TokenStatusInfo[],
     token?: string
 ): TokenStatusResult {
+    const statusesForIds = externalCandidateStatuses ?? statuses;
     return {
         status: getTokenStatus(statuses, dictionaryAnkiTreatSuspended),
         source,
         token,
-        cardIds: statuses.flatMap((status) => (status.cardId === undefined ? [] : [status.cardId])),
-        assignmentIds: statuses.flatMap((status) => (status.assignmentId === undefined ? [] : [status.assignmentId])),
+        cardIds: statusesForIds.flatMap((status) => (status.cardId === undefined ? [] : [status.cardId])),
+        assignmentIds: statusesForIds.flatMap((status) =>
+            status.assignmentId === undefined ? [] : [status.assignmentId]
+        ),
     };
 }
 
@@ -150,12 +154,12 @@ function combineTokenStatusResults(
     cmp: (tokenStatuses: TokenStatus[]) => TokenStatus = (tokenStatuses) => Math.max(...tokenStatuses)
 ): ResolvedTokenStatusResult {
     const status = cmp(tokenStatusResults.map((result) => result.status));
-    const selectedResults = tokenStatusResults.filter((result) => result.status === status);
+    const selectedResult = tokenStatusResults.find((result) => result.status === status)!;
     return {
-        status,
-        source: selectedResults[0].source,
-        cardIds: selectedResults.flatMap((result) => result.cardIds ?? []),
-        assignmentIds: selectedResults.flatMap((result) => result.assignmentIds ?? []),
+        status: selectedResult.status,
+        source: selectedResult.source,
+        cardIds: tokenStatusResults.flatMap((result) => result.cardIds ?? []),
+        assignmentIds: tokenStatusResults.flatMap((result) => result.assignmentIds ?? []),
     };
 }
 
@@ -1185,17 +1189,31 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 ]);
                 if (this.shouldCancelBuild) return;
 
-                for (const [token, { states, statuses, source }] of Object.entries(exactFormResultMap)) {
+                for (const [token, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
+                    exactFormResultMap
+                )) {
                     ts.collectedExactForm.set(
                         token,
-                        tokenStatusResult(statuses, ts.dt.dictionaryAnkiTreatSuspended, source)
+                        tokenStatusResult(
+                            statuses,
+                            ts.dt.dictionaryAnkiTreatSuspended,
+                            source,
+                            externalCandidateStatuses
+                        )
                     );
                     if (states.length) ts.tokenStates.set(token, states);
                 }
-                for (const [lemma, { states, statuses, source }] of Object.entries(lemmaFormResultMap)) {
+                for (const [lemma, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
+                    lemmaFormResultMap
+                )) {
                     ts.collectedLemmaForm.set(
                         lemma,
-                        tokenStatusResult(statuses, ts.dt.dictionaryAnkiTreatSuspended, source)
+                        tokenStatusResult(
+                            statuses,
+                            ts.dt.dictionaryAnkiTreatSuspended,
+                            source,
+                            externalCandidateStatuses
+                        )
                     );
                     if (!states.length) continue;
                     const tokenStates = ts.tokenStates.get(lemma);
@@ -1208,12 +1226,13 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     }
                 }
                 for (const [lemma, lemmaResults] of Object.entries(anyFormResultsMap)) {
-                    for (const { states, statuses, source, token } of lemmaResults) {
+                    for (const { states, statuses, externalCandidateStatuses, source, token } of lemmaResults) {
                         const lemmaCollected = ts.collectedAnyForm.get(lemma);
                         const statusResult = tokenStatusResult(
                             statuses,
                             ts.dt.dictionaryAnkiTreatSuspended,
                             source,
+                            externalCandidateStatuses,
                             token
                         );
                         if (lemmaCollected) lemmaCollected.push(statusResult);

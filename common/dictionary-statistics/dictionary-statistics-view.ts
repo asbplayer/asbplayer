@@ -1216,7 +1216,7 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
         const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
         if (!token || token.states.includes(TokenState.IGNORED)) continue;
 
-        const tokenStatuses = token.statuses.filter(hasCardId);
+        const tokenStatuses = (token.externalCandidateStatuses ?? token.statuses).filter(hasCardId);
         if (!tokenStatuses.length) continue;
 
         incrementAnkiDueCounts(dueCounts, tokenStatuses, dueByToday, dueByTomorrow, dueByWeek);
@@ -1333,7 +1333,7 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
         const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
         if (!token || token.states.includes(TokenState.IGNORED)) continue;
 
-        const tokenStatuses = token.statuses.filter(hasAssignmentId);
+        const tokenStatuses = (token.externalCandidateStatuses ?? token.statuses).filter(hasAssignmentId);
         if (!tokenStatuses.length) continue;
 
         incrementWaniKaniDueCounts(dueCounts, tokenStatuses, dueByToday, dueByTomorrow, dueByWeek);

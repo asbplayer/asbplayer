@@ -192,7 +192,12 @@ export interface TokenStatusInfo {
 }
 
 export interface TokenResults {
-    [token: string]: { source: DictionaryTokenSource; statuses: TokenStatusInfo[]; states: TokenState[] };
+    [token: string]: {
+        source: DictionaryTokenSource;
+        statuses: TokenStatusInfo[];
+        externalCandidateStatuses?: TokenStatusInfo[]; // Necessary to allow all ids for stats lookup since pick the best external word source
+        states: TokenState[];
+    };
 }
 
 export interface LemmaResults {
@@ -200,6 +205,7 @@ export interface LemmaResults {
         token: string;
         source: DictionaryTokenSource;
         statuses: TokenStatusInfo[];
+        externalCandidateStatuses?: TokenStatusInfo[]; // Necessary to allow all ids for stats lookup since pick the best external word source
         states: TokenState[];
     }[];
 }
@@ -371,6 +377,17 @@ export class DictionaryDB {
         });
     }
 
+    private _externalStatusesFromRecords(
+        records: _DictionaryTokenRecord[],
+        cardStatusMap: Map<number, TokenStatusInfo>,
+        waniKaniSubjectStatusMap: Map<number, TokenStatusInfo>
+    ): TokenStatusInfo[] {
+        return records.flatMap((record) => {
+            if (record.source === DictionaryTokenSource.LOCAL) return [];
+            return this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap);
+        });
+    }
+
     private _getBestKnownExternalWordToken(
         records: _DictionaryTokenRecord[],
         cardStatusMap: Map<number, TokenStatusInfo>,
@@ -412,22 +429,6 @@ export class DictionaryDB {
             if (val) val.push(record);
             else tokenRecordMap.set(record.token, [record]);
         }
-        const tokenResults: TokenResults = {};
-
-        // Prioritize local tokens
-        for (const [token, tokenRecords] of tokenRecordMap.entries()) {
-            for (const record of tokenRecords) {
-                if (record.source !== DictionaryTokenSource.LOCAL) continue;
-                tokenResults[token] = {
-                    source: record.source,
-                    statuses: [{ status: record.status!, suspended: false }],
-                    states: record.states,
-                };
-                tokenRecordMap.delete(token);
-                break;
-            }
-        }
-        if (!tokenRecordMap.size) return tokenResults;
 
         const [cardStatusMap, waniKaniSubjectStatusMap] = await Promise.all([
             this._cardStatusMap(
@@ -446,6 +447,32 @@ export class DictionaryDB {
             ),
         ]);
 
+        const externalCandidateStatusesByToken = new Map<string, TokenStatusInfo[]>();
+        for (const [token, tokenRecords] of tokenRecordMap.entries()) {
+            externalCandidateStatusesByToken.set(
+                token,
+                this._externalStatusesFromRecords(tokenRecords, cardStatusMap, waniKaniSubjectStatusMap)
+            );
+        }
+
+        const tokenResults: TokenResults = {};
+
+        // Prioritize local tokens
+        for (const [token, tokenRecords] of tokenRecordMap.entries()) {
+            for (const record of tokenRecords) {
+                if (record.source !== DictionaryTokenSource.LOCAL) continue;
+                tokenResults[token] = {
+                    source: record.source,
+                    statuses: [{ status: record.status!, suspended: false }],
+                    externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
+                    states: record.states,
+                };
+                tokenRecordMap.delete(token);
+                break;
+            }
+        }
+        if (!tokenRecordMap.size) return tokenResults;
+
         // If settings is available then we can choose the highest between Anki word and WaniKani.
         // Settings can be unavailable if extension version is this or later but app version hasn't been updated.
         // This is necessary since the results is per token unlike by lemma.
@@ -463,6 +490,7 @@ export class DictionaryDB {
                 tokenResults[token] = {
                     source: candidate.record.source,
                     statuses: candidate.statuses,
+                    externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
                     states: candidate.record.states,
                 };
                 tokenRecordMap.delete(token);
@@ -474,7 +502,12 @@ export class DictionaryDB {
                 for (const record of tokenRecords) {
                     if (record.source !== DictionaryTokenSource.ANKI_WORD) continue;
                     const statuses = this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap);
-                    tokenResults[token] = { source: record.source, statuses, states: record.states };
+                    tokenResults[token] = {
+                        source: record.source,
+                        statuses,
+                        externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
+                        states: record.states,
+                    };
                     tokenRecordMap.delete(token);
                     break;
                 }
@@ -488,6 +521,7 @@ export class DictionaryDB {
                     tokenResults[token] = {
                         source: record.source,
                         statuses: this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap),
+                        externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
                         states: record.states,
                     };
                     tokenRecordMap.delete(token);
@@ -502,7 +536,12 @@ export class DictionaryDB {
             for (const record of tokenRecords) {
                 if (record.source !== DictionaryTokenSource.ANKI_SENTENCE) continue;
                 const statuses = this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap);
-                tokenResults[token] = { source: record.source, statuses, states: record.states };
+                tokenResults[token] = {
+                    source: record.source,
+                    statuses,
+                    externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
+                    states: record.states,
+                };
                 break;
             }
         }
@@ -597,27 +636,6 @@ export class DictionaryDB {
                                 else lemmaRecordMap.set(lemma, [record]);
                             }
                         }
-                        const lemmaResults: LemmaResults = {};
-
-                        // Prioritize local tokens
-                        for (const [lemma, records] of lemmaRecordMap.entries()) {
-                            for (const record of records) {
-                                if (record.source !== DictionaryTokenSource.LOCAL) continue;
-                                let arr = lemmaResults[lemma];
-                                if (!arr) {
-                                    arr = [];
-                                    lemmaResults[lemma] = arr;
-                                }
-                                arr.push({
-                                    token: record.token,
-                                    source: record.source,
-                                    statuses: [{ status: record.status!, suspended: false }],
-                                    states: record.states,
-                                });
-                                lemmaRecordMap.delete(lemma);
-                            }
-                        }
-                        if (!lemmaRecordMap.size) return lemmaResults;
 
                         const [cardStatusMap, waniKaniSubjectStatusMap] = await Promise.all([
                             this._cardStatusMap(
@@ -635,6 +653,37 @@ export class DictionaryDB {
                                 )
                             ),
                         ]);
+
+                        const externalCandidateStatusesByLemma = new Map<string, TokenStatusInfo[]>();
+                        for (const [lemma, tokenRecords] of lemmaRecordMap.entries()) {
+                            externalCandidateStatusesByLemma.set(
+                                lemma,
+                                this._externalStatusesFromRecords(tokenRecords, cardStatusMap, waniKaniSubjectStatusMap)
+                            );
+                        }
+
+                        const lemmaResults: LemmaResults = {};
+
+                        // Prioritize local tokens
+                        for (const [lemma, records] of lemmaRecordMap.entries()) {
+                            for (const record of records) {
+                                if (record.source !== DictionaryTokenSource.LOCAL) continue;
+                                let arr = lemmaResults[lemma];
+                                if (!arr) {
+                                    arr = [];
+                                    lemmaResults[lemma] = arr;
+                                }
+                                arr.push({
+                                    token: record.token,
+                                    source: record.source,
+                                    statuses: [{ status: record.status!, suspended: false }],
+                                    externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
+                                    states: record.states,
+                                });
+                                lemmaRecordMap.delete(lemma);
+                            }
+                        }
+                        if (!lemmaRecordMap.size) return lemmaResults;
 
                         if (settings) {
                             const dictionaryAnkiTreatSuspended =
@@ -686,6 +735,7 @@ export class DictionaryDB {
                                         token: record.token,
                                         source: record.source,
                                         statuses,
+                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
                                         states: record.states,
                                     });
                                     lemmaRecordMap.delete(lemma);
@@ -704,15 +754,15 @@ export class DictionaryDB {
                                         arr = [];
                                         lemmaResults[lemma] = arr;
                                     }
-                                    const statuses = this._statusesFromRecord(
-                                        record,
-                                        cardStatusMap,
-                                        waniKaniSubjectStatusMap
-                                    );
                                     arr.push({
                                         token: record.token,
                                         source: record.source,
-                                        statuses,
+                                        statuses: this._statusesFromRecord(
+                                            record,
+                                            cardStatusMap,
+                                            waniKaniSubjectStatusMap
+                                        ),
+                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
                                         states: record.states,
                                     });
                                     toDelete.add(lemma);
@@ -734,6 +784,7 @@ export class DictionaryDB {
                                             cardStatusMap,
                                             waniKaniSubjectStatusMap
                                         ),
+                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
                                         states: record.states,
                                     });
                                     toDelete.add(lemma);
@@ -758,11 +809,18 @@ export class DictionaryDB {
                                         token: record.token,
                                         source: record.source,
                                         statuses,
+                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
                                         states: record.states,
                                     });
                                 } else {
                                     lemmaResults[lemma] = [
-                                        { token: record.token, source: record.source, statuses, states: record.states },
+                                        {
+                                            token: record.token,
+                                            source: record.source,
+                                            statuses,
+                                            externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
+                                            states: record.states,
+                                        },
                                     ];
                                 }
                             }
