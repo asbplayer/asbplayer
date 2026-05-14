@@ -241,7 +241,6 @@ const useBuildWaniKaniCacheState: () => {
                             })
                         );
                     case DictionaryBuildWaniKaniCacheStateErrorCode.invalidWaniKaniToken:
-                    case DictionaryBuildWaniKaniCacheStateErrorCode.noWaniKaniToken:
                         return t('settings.dictionaryBuildWaniKaniTokenInvalidError', {
                             trackNumber: track + 1,
                         });

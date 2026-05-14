@@ -1305,17 +1305,18 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
     track: number
 ): DictionaryStatisticsWaniKaniTrackSnapshot {
     const dueCounts = emptyAnkiDueCounts();
+    const waniKaniSnapshot = snapshot?.waniKani?.[track];
     const rawTrackSnapshot = snapshot?.snapshots.find((candidate) => candidate.track === track);
     if (!snapshot || !rawTrackSnapshot) {
         return {
-            available: snapshot?.waniKani?.available,
+            available: waniKaniSnapshot?.available,
             dueCounts,
             uniqueWords: 0,
             frequencyBuckets: [],
         };
     }
 
-    const { dueByToday, dueByTomorrow, dueByWeek } = waniKaniDueAssignmentSets(snapshot.waniKani?.reviewAssignments);
+    const { dueByToday, dueByTomorrow, dueByWeek } = waniKaniDueAssignmentSets(waniKaniSnapshot?.reviewAssignments);
     const sentenceSnapshots = processSentenceSnapshots(rawTrackSnapshot.stats.sentences);
     const tokens: ProcessedTokenSnapshots = new Map();
     const waniKaniTokenSnapshots: ProcessedTokenSnapshot[] = [];
@@ -1346,7 +1347,7 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
 
     const { consideredTokens, frequencyBuckets } = statusCountsAndFrequenciesForSnapshots(waniKaniTokenSnapshots);
     return {
-        available: snapshot.waniKani?.available,
+        available: waniKaniSnapshot?.available,
         dueCounts,
         uniqueWords: consideredTokens,
         frequencyBuckets,

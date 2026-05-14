@@ -40,6 +40,8 @@ export interface DictionaryStatisticsWaniKaniSnapshot {
     reviewAssignments: DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot;
 }
 
+export type DictionaryStatisticsWaniKaniSnapshots = Record<number, DictionaryStatisticsWaniKaniSnapshot>;
+
 export interface DictionaryStatisticsDictionarySnapshot {
     tokens: TokenResults;
 }
@@ -62,7 +64,7 @@ export interface DictionaryStatisticsSnapshot {
     snapshots: DictionaryStatisticsRawTrackSnapshot[];
     settings: AsbplayerSettings;
     anki: DictionaryStatisticsAnkiSnapshot;
-    waniKani?: DictionaryStatisticsWaniKaniSnapshot;
+    waniKani?: DictionaryStatisticsWaniKaniSnapshots;
 }
 
 function statusColorsFromConfig(tokenStatusConfig: readonly TokenStatusConfig[]): Record<TokenStatus, string> {
@@ -82,7 +84,7 @@ export class DictionaryStatistics {
     private readonly rawTrackSnapshots: Map<number, DictionaryStatisticsRawTrackSnapshot>;
     private settings: AsbplayerSettings;
     private anki: DictionaryStatisticsAnkiSnapshot;
-    private waniKani: DictionaryStatisticsWaniKaniSnapshot;
+    private waniKani: DictionaryStatisticsWaniKaniSnapshots;
     private lastCancelledAt: number;
 
     constructor(settingsProvider: SettingsProvider, dictionaryProvider: DictionaryProvider, mediaId: string) {
@@ -92,7 +94,7 @@ export class DictionaryStatistics {
         this.rawTrackSnapshots = new Map();
         this.settings = defaultSettings;
         this.anki = { cardsInfo: {}, dueCards: {} };
-        this.waniKani = { reviewAssignments: {} };
+        this.waniKani = {};
         this.lastCancelledAt = 0;
     }
 
@@ -104,7 +106,7 @@ export class DictionaryStatistics {
         const startTime = Date.now();
         this.rawTrackSnapshots.clear();
         this.anki = { cardsInfo: {}, dueCards: {} };
-        this.waniKani = { reviewAssignments: {} };
+        this.waniKani = {};
         void this._publish(undefined, startTime);
         this.lastCancelledAt = Date.now();
     }
@@ -153,9 +155,9 @@ export class DictionaryStatistics {
         void this._publish(this._snapshot(), startTime);
     }
 
-    replaceWaniKaniSnapshot(waniKani: DictionaryStatisticsWaniKaniSnapshot): void {
+    replaceWaniKaniSnapshots(waniKani: DictionaryStatisticsWaniKaniSnapshots): void {
         const startTime = Date.now();
-        this.waniKani = waniKani;
+        this.waniKani = { ...waniKani };
         if (!this.hasStatistics()) return;
         void this._publish(this._snapshot(), startTime);
     }

@@ -33,7 +33,7 @@ import {
     DictionaryWaniKaniSubjectKey,
     DictionaryWaniKaniSubjectRecord,
     _ensureBuildId,
-    _gatherModifiedTokens,
+    _gatherModifiedTokensForTrack,
     _getFromSourceBulk,
     _newWaniKaniMeta,
     _saveRecordBulk,
@@ -55,7 +55,7 @@ interface WaniKaniCacheSettingsDependencies {
 interface WaniKaniTrackStateForDB extends TrackStateForDB {
     assignmentsToPut: DictionaryWaniKaniAssignmentRecord[];
     subjectsToPut: DictionaryWaniKaniSubjectRecord[];
-    spaceRepetitionSystems: WaniKaniSpacedRepetitionSystem[];
+    spacedRepetitionSystems: WaniKaniSpacedRepetitionSystem[];
     numFetchedAssignments: number;
     numFetchedSubjects: number;
     affectedSubjectIds: Set<number>;
@@ -74,6 +74,20 @@ interface WaniKaniTrackStats {
 }
 
 type WaniKaniTrackStatesForDB = Map<number, WaniKaniTrackStateForDB>;
+type ModifiedTokensByTrack = Map<number, Set<string>>;
+
+function _modifiedTokensForTrack(modifiedTokensByTrack: ModifiedTokensByTrack, track: number): Set<string> {
+    let modifiedTokens = modifiedTokensByTrack.get(track);
+    if (!modifiedTokens) {
+        modifiedTokens = new Set();
+        modifiedTokensByTrack.set(track, modifiedTokens);
+    }
+    return modifiedTokens;
+}
+
+function _modifiedTokensArrayForTrack(modifiedTokensByTrack: ModifiedTokensByTrack, track: number): string[] {
+    return Array.from(modifiedTokensByTrack.get(track) ?? []);
+}
 
 export async function buildWaniKaniCachePipeline(
     db: _DictionaryDatabase,
@@ -81,7 +95,7 @@ export async function buildWaniKaniCachePipeline(
     settings: AsbplayerSettings,
     statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void
 ): Promise<void> {
-    const modifiedTokens = new Set<string>();
+    const modifiedTokensByTrack: ModifiedTokensByTrack = new Map();
     const buildId = uuidv4();
     const buildTs = Date.now();
     const activeTracks: DictionaryMetaKey[] = [];
@@ -100,7 +114,7 @@ export async function buildWaniKaniCachePipeline(
             const key: DictionaryMetaKey = [profile, track];
             let prevWaniKaniMeta = _newWaniKaniMeta();
             const existingBuild = await db.transaction('rw', db.meta, async () => {
-                if (await _ensureBuildId(db, key, buildId, 'waniKani', { buildTs })) {
+                if (await _ensureBuildId(db, key, buildId, 'waniKani', { mode: 'claim', buildTs })) {
                     prevWaniKaniMeta = (await db.meta.get(key))!.waniKaniMeta;
                     return;
                 }
@@ -114,7 +128,7 @@ export async function buildWaniKaniCachePipeline(
                     body: {
                         code: DictionaryBuildWaniKaniCacheStateErrorCode.concurrentBuild,
                         track,
-                        modifiedTokens: Array.from(modifiedTokens),
+                        modifiedTokens: _modifiedTokensArrayForTrack(modifiedTokensByTrack, track),
                         data: { expiration },
                     } as DictionaryBuildWaniKaniCacheError,
                 });
@@ -140,7 +154,7 @@ export async function buildWaniKaniCachePipeline(
                 tracksClearedWithoutBuild.add(track);
                 tokenlessMetaUpdates.push({
                     key,
-                    changes: { settings: null, dataUpdatedAt: {}, spaceRepetitionSystems: [] },
+                    changes: { settings: null, dataUpdatedAt: {}, spacedRepetitionSystems: [] },
                 });
                 continue;
             }
@@ -156,7 +170,7 @@ export async function buildWaniKaniCachePipeline(
                         code: DictionaryBuildWaniKaniCacheStateErrorCode.noYomitan,
                         msg: e instanceof Error ? e.message : String(e),
                         track,
-                        modifiedTokens: Array.from(modifiedTokens),
+                        modifiedTokens: _modifiedTokensArrayForTrack(modifiedTokensByTrack, track),
                     } as DictionaryBuildWaniKaniCacheError,
                 });
                 return;
@@ -176,6 +190,7 @@ export async function buildWaniKaniCachePipeline(
                         ...dataUpdatedAt,
                         assignments: undefined,
                         subjects: undefined,
+                        spacedRepetitionSystems: undefined,
                     };
                     clearTokens = true;
                     clearResources = true;
@@ -185,18 +200,18 @@ export async function buildWaniKaniCachePipeline(
                     resets: resetResponse.dataUpdatedAt ?? dataUpdatedAt.resets,
                 };
 
-                const spaceRepetitionSystemsResponse = await waniKani.spacedRepetitionSystems({
-                    updatedAfter: dataUpdatedAt.spaceRepetitionSystems,
+                const spacedRepetitionSystemsResponse = await waniKani.spacedRepetitionSystems({
+                    updatedAfter: dataUpdatedAt.spacedRepetitionSystems,
                 });
-                const spaceRepetitionSystems = _mergeWaniKaniSpaceRepetitionSystems(
-                    prevWaniKaniMeta.spaceRepetitionSystems,
-                    spaceRepetitionSystemsResponse.data
+                const spacedRepetitionSystems = _mergeWaniKaniSpaceRepetitionSystems(
+                    clearResources ? [] : prevWaniKaniMeta.spacedRepetitionSystems,
+                    spacedRepetitionSystemsResponse.data
                 );
-                const spaceRepetitionSystemsChanged = spaceRepetitionSystemsResponse.data.length > 0;
+                const spacedRepetitionSystemsChanged = spacedRepetitionSystemsResponse.data.length > 0;
                 dataUpdatedAt = {
                     ...dataUpdatedAt,
-                    spaceRepetitionSystems:
-                        spaceRepetitionSystemsResponse.dataUpdatedAt ?? dataUpdatedAt.spaceRepetitionSystems,
+                    spacedRepetitionSystems:
+                        spacedRepetitionSystemsResponse.dataUpdatedAt ?? dataUpdatedAt.spacedRepetitionSystems,
                 };
 
                 const existingSubjectIds = clearResources
@@ -223,7 +238,7 @@ export async function buildWaniKaniCachePipeline(
                     ...subjectsResponse.data.map((subject) => subject.id),
                 ]);
                 const affectedSubjectIds =
-                    clearTokens || spaceRepetitionSystemsChanged
+                    clearTokens || spacedRepetitionSystemsChanged
                         ? new Set([...existingSubjectIds, ...responseSubjectIds])
                         : new Set([
                               ...assignmentsResponse.data.map((assignment) => assignment.data.subject_id),
@@ -244,7 +259,7 @@ export async function buildWaniKaniCachePipeline(
                     subjectsToPut: subjectsResponse.data.map((subject) =>
                         _waniKaniSubjectRecord(profile, track, subject)
                     ),
-                    spaceRepetitionSystems,
+                    spacedRepetitionSystems,
                     numFetchedAssignments: assignmentsResponse.data.length,
                     numFetchedSubjects: subjectsResponse.data.length,
                     affectedSubjectIds,
@@ -265,7 +280,7 @@ export async function buildWaniKaniCachePipeline(
                                 : DictionaryBuildWaniKaniCacheStateErrorCode.failedToBuild,
                         msg: e instanceof Error ? e.message : String(e),
                         track,
-                        modifiedTokens: Array.from(modifiedTokens),
+                        modifiedTokens: _modifiedTokensArrayForTrack(modifiedTokensByTrack, track),
                     } as DictionaryBuildWaniKaniCacheError,
                 });
                 return;
@@ -301,7 +316,7 @@ export async function buildWaniKaniCachePipeline(
             ]);
             await db.transaction('rw', db.meta, db.tokens, db.waniKaniSubjects, db.waniKaniAssignments, async () => {
                 await _buildIdHealthCheck(db, buildId, 'waniKani', activeTracks);
-                await _deleteWaniKaniTokensForTracks(db, profile, tracksWithTokensToClear, modifiedTokens);
+                await _deleteWaniKaniTokensForTracks(db, profile, tracksWithTokensToClear, modifiedTokensByTrack);
                 await _deleteWaniKaniResourcesForTracks(db, profile, tracksWithResourcesToClear);
                 for (const { key, changes } of tokenlessMetaUpdates) {
                     const trackMeta = await db.meta.get(key);
@@ -319,10 +334,12 @@ export async function buildWaniKaniCachePipeline(
                         await db.waniKaniAssignments.bulkPut(ts.assignmentsToPut);
                     }
                 }
-                await _gatherModifiedTokens(db, profile, modifiedTokens);
+                for (const [track, modifiedTokens] of modifiedTokensByTrack.entries()) {
+                    await _gatherModifiedTokensForTrack(db, profile, track, modifiedTokens);
+                }
             });
             if (!trackStates.size) {
-                _publishWaniKaniTrackStats(statusUpdates, buildTs, trackStats, Array.from(modifiedTokens));
+                _publishWaniKaniTrackStats(statusUpdates, buildTs, trackStats, modifiedTokensByTrack);
                 return;
             }
         } else if (!trackStates.size) {
@@ -335,7 +352,7 @@ export async function buildWaniKaniCachePipeline(
             buildId,
             trackStates,
             trackStats,
-            modifiedTokens,
+            modifiedTokensByTrack,
             activeTracks,
             buildTs,
             statusUpdates
@@ -346,7 +363,7 @@ export async function buildWaniKaniCachePipeline(
     } catch (e) {
         console.error(e);
         const errorTracks = tracksWithStatus.size ? tracksWithStatus : currentTrack === undefined ? [] : [currentTrack];
-        _publishWaniKaniTrackErrors(statusUpdates, errorTracks, e, modifiedTokens);
+        _publishWaniKaniTrackErrors(statusUpdates, errorTracks, e, modifiedTokensByTrack);
     } finally {
         if (shouldClearBuildIds) await _clearBuildIds(db, activeTracks, buildId, 'waniKani');
     }
@@ -356,7 +373,7 @@ async function _deleteWaniKaniTokensForTracks(
     db: _DictionaryDatabase,
     profile: string,
     tracks: Iterable<number>,
-    modifiedTokens: Set<string>
+    modifiedTokensByTrack: ModifiedTokensByTrack
 ): Promise<void> {
     const trackSet = new Set(tracks);
     if (!trackSet.size) return;
@@ -366,6 +383,7 @@ async function _deleteWaniKaniTokensForTracks(
         .filter((record) => record.source === DictionaryTokenSource.WANIKANI && trackSet.has(record.track))
         .toArray();
     for (const record of existingRecords) {
+        const modifiedTokens = _modifiedTokensForTrack(modifiedTokensByTrack, record.track);
         modifiedTokens.add(record.token);
         for (const lemma of record.lemmas) modifiedTokens.add(lemma);
     }
@@ -461,9 +479,9 @@ function _publishWaniKaniTrackStats(
     statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void,
     buildTs: number,
     trackStats: WaniKaniTrackStats[],
-    modifiedTokens?: string[]
+    modifiedTokensByTrack?: ModifiedTokensByTrack
 ): void {
-    for (const [index, stats] of trackStats.entries()) {
+    for (const stats of trackStats) {
         statusUpdates({
             type: DictionaryBuildWaniKaniCacheStateType.stats,
             body: {
@@ -473,7 +491,9 @@ function _publishWaniKaniTrackStats(
                 numFetchedAssignments: stats.numFetchedAssignments,
                 numFetchedSubjects: stats.numFetchedSubjects,
                 numImportedTokens: stats.numImportedTokens,
-                modifiedTokens: index === trackStats.length - 1 ? modifiedTokens : undefined,
+                modifiedTokens: modifiedTokensByTrack
+                    ? _modifiedTokensArrayForTrack(modifiedTokensByTrack, stats.track)
+                    : undefined,
             } as DictionaryBuildWaniKaniCacheStats,
         });
     }
@@ -483,10 +503,9 @@ function _publishWaniKaniTrackErrors(
     statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void,
     tracks: Iterable<number>,
     error: unknown,
-    modifiedTokens: Set<string>
+    modifiedTokensByTrack: ModifiedTokensByTrack
 ): void {
     const msg = error instanceof Error ? error.message : String(error);
-    const tokens = Array.from(modifiedTokens);
     for (const track of Array.from(new Set(tracks)).sort((lhs, rhs) => lhs - rhs)) {
         statusUpdates({
             type: DictionaryBuildWaniKaniCacheStateType.error,
@@ -494,7 +513,7 @@ function _publishWaniKaniTrackErrors(
                 track,
                 msg,
                 code: DictionaryBuildWaniKaniCacheStateErrorCode.failedToBuild,
-                modifiedTokens: tokens,
+                modifiedTokens: _modifiedTokensArrayForTrack(modifiedTokensByTrack, track),
             } as DictionaryBuildWaniKaniCacheError,
         });
     }
@@ -506,7 +525,7 @@ async function _processWaniKaniTracks(
     buildId: string,
     trackStates: WaniKaniTrackStatesForDB,
     trackStats: WaniKaniTrackStats[],
-    modifiedTokens: Set<string>,
+    modifiedTokensByTrack: ModifiedTokensByTrack,
     activeTracks: DictionaryMetaKey[],
     buildTs: number,
     statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void
@@ -531,7 +550,7 @@ async function _processWaniKaniTracks(
                     buildId,
                     activeTracks,
                     progress,
-                    modifiedTokens,
+                    _modifiedTokensForTrack(modifiedTokensByTrack, track),
                     statusUpdates
                 );
             } catch (e) {
@@ -550,9 +569,9 @@ async function _processWaniKaniTracks(
         await _clearBuildIds(db, activeTracks, buildId, 'waniKani');
         if (error) {
             if (!errorTracks.length) errorTracks = Array.from(trackStates.keys());
-            _publishWaniKaniTrackErrors(statusUpdates, errorTracks, error, modifiedTokens);
+            _publishWaniKaniTrackErrors(statusUpdates, errorTracks, error, modifiedTokensByTrack);
         } else {
-            _publishWaniKaniTrackStats(statusUpdates, buildTs, trackStats, Array.from(modifiedTokens));
+            _publishWaniKaniTrackStats(statusUpdates, buildTs, trackStats, modifiedTokensByTrack);
         }
     }
 }
@@ -686,6 +705,7 @@ async function _buildWaniKaniTokensForTrack(
                 await _saveWaniKaniTokenBatchForDB(
                     db,
                     profile,
+                    track,
                     existingRecords,
                     records,
                     buildId,
@@ -724,6 +744,7 @@ async function _buildWaniKaniTokensForTrack(
 async function _saveWaniKaniTokenBatchForDB(
     db: _DictionaryDatabase,
     profile: string,
+    track: number,
     existingRecords: _DictionaryTokenRecord[],
     records: _DictionaryTokenRecord[],
     buildId: string,
@@ -747,7 +768,7 @@ async function _saveWaniKaniTokenBatchForDB(
             );
         }
         await _saveRecordBulk(db, records);
-        await _gatherModifiedTokens(db, profile, modifiedTokens);
+        await _gatherModifiedTokensForTrack(db, profile, track, modifiedTokens);
     });
 }
 
@@ -769,7 +790,7 @@ async function _saveWaniKaniTrackMetadataForDB(
                     ...trackMeta.waniKaniMeta,
                     settings: ts.settings,
                     dataUpdatedAt: ts.dataUpdatedAt,
-                    spaceRepetitionSystems: ts.spaceRepetitionSystems,
+                    spacedRepetitionSystems: ts.spacedRepetitionSystems,
                 },
             });
         }

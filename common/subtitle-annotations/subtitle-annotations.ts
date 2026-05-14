@@ -553,31 +553,30 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
     private async _refreshWaniKaniStatistics(settings: AsbplayerSettings): Promise<void> {
         if (!this.generateStatistics || this.statisticsBatchProcessedIndex < this._subtitles.length) return;
 
-        const assignmentIds = new Set<number>();
+        const todayStart = utcStartOfToday();
+        const reviewWindowEnd = new Date(todayStart.getTime() + Math.max(...REVIEW_DUES) * MS_PER_DAY);
+        const waniKaniSnapshots: Record<number, DictionaryStatisticsWaniKaniSnapshot> = {};
         for (const ts of this.trackStates) {
             if (!dictionaryStatusCollectionEnabled(ts.dt)) continue;
+
+            const assignmentIds = new Set<number>();
             for (const tokenAssignmentIds of ts.tokenAssignmentIds.values()) {
                 for (const assignmentId of tokenAssignmentIds) assignmentIds.add(assignmentId);
             }
-        }
 
-        if (!assignmentIds.size) {
-            this.dictionaryStatistics.replaceWaniKaniSnapshot({ available: true, reviewAssignments: {} });
-            return;
-        }
+            if (!assignmentIds.size) {
+                waniKaniSnapshots[ts.track] = { available: true, reviewAssignments: {} };
+                continue;
+            }
 
-        const todayStart = utcStartOfToday();
-        const reviewWindowEnd = new Date(todayStart.getTime() + Math.max(...REVIEW_DUES) * MS_PER_DAY);
-        const apiTokens = new Set(
-            settings.dictionaryTracks
-                .filter((dt) => dictionaryStatusCollectionEnabled(dt))
-                .map((dt) => dt.dictionaryWaniKaniApiToken.trim())
-                .filter(Boolean)
-        );
+            const apiToken = settings.dictionaryTracks[ts.track]?.dictionaryWaniKaniApiToken.trim();
+            if (!apiToken) {
+                waniKaniSnapshots[ts.track] = { available: false, reviewAssignments: {} };
+                continue;
+            }
 
-        const reviewAssignments: DictionaryStatisticsWaniKaniSnapshot['reviewAssignments'] = {};
-        try {
-            for (const apiToken of apiTokens) {
+            const reviewAssignments: DictionaryStatisticsWaniKaniSnapshot['reviewAssignments'] = {};
+            try {
                 const waniKani = new WaniKani(apiToken);
                 const assignments = await waniKani.assignments({
                     subjectTypes: ['vocabulary', 'kana_vocabulary'],
@@ -587,12 +586,14 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     if (!assignmentIds.has(assignment.id)) continue;
                     reviewAssignments[assignment.id] = assignment;
                 }
+                waniKaniSnapshots[ts.track] = { available: true, reviewAssignments };
+            } catch (e) {
+                console.error(`Error refreshing WaniKani for Track${ts.track + 1} statistics:`, e);
+                waniKaniSnapshots[ts.track] = { available: false, reviewAssignments: {} };
             }
-            this.dictionaryStatistics.replaceWaniKaniSnapshot({ available: true, reviewAssignments });
-        } catch (e) {
-            console.error('Error refreshing WaniKani for statistics:', e);
-            this.dictionaryStatistics.replaceWaniKaniSnapshot({ available: false, reviewAssignments: {} });
         }
+
+        this.dictionaryStatistics.replaceWaniKaniSnapshots(waniKaniSnapshots);
     }
 
     private async _refreshWaniKani() {
@@ -610,7 +611,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             ) {
                 return;
             }
-            await this.dictionaryProvider.buildWaniKaniCache(profile, settings);
+            if (!this.waniKaniRefreshed) await this.dictionaryProvider.buildWaniKaniCache(profile, settings); // Don't need to poll on tokensModified since users can't mine to it unlike Anki
             await this._refreshWaniKaniStatistics(settings);
         } catch (e) {
             this.waniKaniRefreshed = false;

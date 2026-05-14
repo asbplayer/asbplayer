@@ -33,31 +33,7 @@ export interface WaniKaniDataUpdatedAt {
     assignments?: string;
     subjects?: string;
     resets?: string;
-    spaceRepetitionSystems?: string;
-}
-
-export type WaniKaniAssignmentDataForDB = Pick<WaniKaniAssignment['data'], 'srs_stage' | 'hidden'>;
-
-export type WaniKaniSubjectDataForDB = Pick<
-    WaniKaniSubject['data'],
-    'characters' | 'hidden_at' | 'spaced_repetition_system_id'
->;
-
-export type DictionaryWaniKaniSubjectKey = [number, number, string];
-export interface DictionaryWaniKaniSubjectRecord {
-    profile: string;
-    track: number;
-    subjectId: number;
-    data: WaniKaniSubjectDataForDB;
-}
-
-export type DictionaryWaniKaniAssignmentKey = [number, number, string];
-export interface DictionaryWaniKaniAssignmentRecord {
-    profile: string;
-    track: number;
-    assignmentId: number;
-    subjectId: number;
-    data: WaniKaniAssignmentDataForDB;
+    spacedRepetitionSystems?: string;
 }
 
 export interface AnkiMeta {
@@ -73,7 +49,7 @@ export interface WaniKaniMeta {
     buildId: string | null;
     settings: string | null;
     dataUpdatedAt: WaniKaniDataUpdatedAt;
-    spaceRepetitionSystems: WaniKaniSpacedRepetitionSystem[];
+    spacedRepetitionSystems: WaniKaniSpacedRepetitionSystem[];
 }
 
 type AnkiMetaBuildChanges = Partial<AnkiMeta>;
@@ -121,6 +97,30 @@ export interface DictionaryAnkiCardRecord {
     suspended: boolean;
 }
 
+export type WaniKaniAssignmentDataForDB = Pick<WaniKaniAssignment['data'], 'srs_stage' | 'hidden'>;
+
+export type WaniKaniSubjectDataForDB = Pick<
+    WaniKaniSubject['data'],
+    'characters' | 'hidden_at' | 'spaced_repetition_system_id'
+>;
+
+export type DictionaryWaniKaniSubjectKey = [number, number, string];
+export interface DictionaryWaniKaniSubjectRecord {
+    profile: string;
+    track: number;
+    subjectId: number;
+    data: WaniKaniSubjectDataForDB;
+}
+
+export type DictionaryWaniKaniAssignmentKey = [number, number, string];
+export interface DictionaryWaniKaniAssignmentRecord {
+    profile: string;
+    track: number;
+    assignmentId: number;
+    subjectId: number;
+    data: WaniKaniAssignmentDataForDB;
+}
+
 export type _DictionaryDatabase = DictionaryDatabase;
 class DictionaryDatabase extends Dexie {
     meta!: Dexie.Table<DictionaryMetaRecord, DictionaryMetaKey>;
@@ -166,7 +166,7 @@ class DictionaryDatabase extends Dexie {
                                 buildId: null,
                                 settings: null,
                                 dataUpdatedAt: {},
-                                spaceRepetitionSystems: [],
+                                spacedRepetitionSystems: [],
                             };
                             delete meta.lastBuildStartedAt;
                             delete meta.lastBuildExpiresAt;
@@ -333,18 +333,20 @@ export class DictionaryDB {
             this.db.meta.get([profile, track]),
         ]).then(([assignments, subjects, trackMeta]) => {
             const subjectById = new Map(subjects.map((subject) => [subject.subjectId, subject]));
-            const spaceRepetitionSystemById = new Map(
-                trackMeta!.waniKaniMeta.spaceRepetitionSystems.map((system) => [system.id, system])
+            const spacedRepetitionSystemById = new Map(
+                trackMeta!.waniKaniMeta.spacedRepetitionSystems.map((system) => [system.id, system])
             );
             const subjectStatusMap = new Map<number, TokenStatusInfo>();
             for (const assignment of assignments) {
                 if (assignment.data.hidden) continue;
                 const subject = subjectById.get(assignment.subjectId)!;
-                const spaceRepetitionSystem = spaceRepetitionSystemById.get(subject.data.spaced_repetition_system_id)!;
+                const spacedRepetitionSystem = spacedRepetitionSystemById.get(
+                    subject.data.spaced_repetition_system_id
+                )!;
                 subjectStatusMap.set(assignment.subjectId, {
                     assignmentId: assignment.assignmentId,
                     subjectId: assignment.subjectId,
-                    status: _waniKaniStatusFromSrsStage(assignment.data.srs_stage, spaceRepetitionSystem),
+                    status: _waniKaniStatusFromSrsStage(assignment.data.srs_stage, spacedRepetitionSystem),
                     suspended: false,
                 });
             }
@@ -689,6 +691,7 @@ export class DictionaryDB {
                                     lemmaRecordMap.delete(lemma);
                                 }
                             }
+                            if (!lemmaRecordMap.size) return lemmaResults;
                         } else {
                             // We'll return all the Anki word and WaniKani records for a lemma
                             // so that that dictionaryTokenMatchStrategy has full control.
@@ -1050,22 +1053,25 @@ export class DictionaryDB {
                             trackSubjectRecords[subject.subjectId] = subject;
                         }
 
-                        const spaceRepetitionSystemById = new Map<number, WaniKaniSpacedRepetitionSystem>(
-                            trackMeta?.waniKaniMeta.spaceRepetitionSystems.map((system) => [system.id, system]) ?? []
+                        const spacedRepetitionSystemById = new Map<number, WaniKaniSpacedRepetitionSystem>(
+                            trackMeta?.waniKaniMeta.spacedRepetitionSystems.map((system) => [system.id, system]) ?? []
                         );
                         const trackAssignmentRecords: Record<number, DictionaryWaniKaniAssignmentRecordWithStatus> = {};
                         for (const assignment of assignments) {
                             const subject = trackSubjectRecords[assignment.subjectId];
-                            const spaceRepetitionSystem =
+                            const spacedRepetitionSystem =
                                 subject === undefined
                                     ? undefined
-                                    : spaceRepetitionSystemById.get(subject.data.spaced_repetition_system_id);
+                                    : spacedRepetitionSystemById.get(subject.data.spaced_repetition_system_id);
                             trackAssignmentRecords[assignment.assignmentId] = {
                                 ...assignment,
                                 status:
-                                    spaceRepetitionSystem === undefined
+                                    spacedRepetitionSystem === undefined
                                         ? TokenStatus.UNKNOWN
-                                        : _waniKaniStatusFromSrsStage(assignment.data.srs_stage, spaceRepetitionSystem),
+                                        : _waniKaniStatusFromSrsStage(
+                                              assignment.data.srs_stage,
+                                              spacedRepetitionSystem
+                                          ),
                             };
                         }
                         waniKaniSubjectRecords[recordTrack] = trackSubjectRecords;
@@ -1192,7 +1198,7 @@ export function _newWaniKaniMeta(changes: WaniKaniMetaBuildChanges = {}): WaniKa
         buildId: null,
         settings: null,
         dataUpdatedAt: {},
-        spaceRepetitionSystems: [],
+        spacedRepetitionSystems: [],
         ...changes,
     };
 }
@@ -1277,11 +1283,11 @@ export async function _ensureBuildId(
     key: DictionaryMetaKey,
     nextBuildId: string,
     buildIdSlot: DictionaryBuildIdSlot,
-    options?: { buildTs: number }
+    options: { mode: 'claim'; buildTs: number } | { mode: 'verify' }
 ): Promise<boolean> {
     return db.transaction('rw', db.meta, async () => {
         const trackMeta = await db.meta.where('[profile+track]').equals(key).first();
-        if (!options) return (trackMeta && buildId(trackMeta, buildIdSlot)) === nextBuildId;
+        if (options.mode === 'verify') return (trackMeta && buildId(trackMeta, buildIdSlot)) === nextBuildId;
         const { buildTs } = options;
         const initialExpiration = buildTs + BUILD_MIN_EXPIRATION_MS;
 
@@ -1311,7 +1317,7 @@ export async function _buildIdHealthCheck(
     activeTracks: DictionaryMetaKey[]
 ): Promise<void> {
     for (const metaKey of activeTracks) {
-        if (await _ensureBuildId(db, metaKey, nextBuildId, buildIdSlot)) continue;
+        if (await _ensureBuildId(db, metaKey, nextBuildId, buildIdSlot, { mode: 'verify' })) continue;
         throw new Error(`${buildIdLabel(buildIdSlot)} was corrupted for track ${metaKey[1] + 1}`);
     }
 }
@@ -1378,6 +1384,27 @@ export async function _gatherModifiedTokens(
         });
 }
 
+export async function _gatherModifiedTokensForTrack(
+    db: DictionaryDatabase,
+    profile: string,
+    track: number,
+    modifiedTokens: Set<string>
+): Promise<void> {
+    if (!modifiedTokens.size) return;
+    return db.tokens
+        .where('lemmas')
+        .anyOf(Array.from(modifiedTokens))
+        .distinct()
+        .filter((r) => r.profile === profile && r.track === track)
+        .toArray()
+        .then((records) => {
+            for (const record of records) {
+                modifiedTokens.add(record.token);
+                for (const lemma of record.lemmas) modifiedTokens.add(lemma);
+            }
+        });
+}
+
 function _applyStrategyToStates(currentStates: TokenState[], nextStates: TokenState[], applyStates: ApplyStrategy) {
     const currentStateSet = new Set(currentStates);
     switch (applyStates) {
@@ -1414,9 +1441,9 @@ function _externalWordSourcePriority(source: DictionaryTokenSource): number {
 
 function _waniKaniStatusFromSrsStage(
     srsStage: number,
-    spaceRepetitionSystem: WaniKaniSpacedRepetitionSystem
+    spacedRepetitionSystem: WaniKaniSpacedRepetitionSystem
 ): TokenStatus {
-    const stagePositions = spaceRepetitionSystem.data;
+    const stagePositions = spacedRepetitionSystem.data;
     const youngStagePosition =
         stagePositions.passing_stage_position +
         Math.ceil((stagePositions.burning_stage_position - stagePositions.passing_stage_position) / 2);

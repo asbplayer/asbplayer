@@ -193,7 +193,7 @@ export default class ChromeExtension {
     }
 
     get supportsDictionaryWaniKani() {
-        return this.installed && gte(this.version, '1.17.0');
+        return this.installed && gte(this.version, '1.18.0');
     }
 
     get supportsAutoCopyableTrackSetting() {

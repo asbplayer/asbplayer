@@ -986,10 +986,9 @@ export enum DictionaryBuildAnkiCacheStateErrorCode {
 
 export enum DictionaryBuildWaniKaniCacheStateErrorCode {
     concurrentBuild = 1,
-    noWaniKaniToken = 2,
-    invalidWaniKaniToken = 3,
-    noYomitan = 4,
-    failedToBuild = 5,
+    invalidWaniKaniToken = 2,
+    noYomitan = 3,
+    failedToBuild = 4,
 }
 
 export interface DictionaryBuildAnkiCacheStateErrorTrackNumberData {

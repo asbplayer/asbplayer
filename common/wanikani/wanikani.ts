@@ -192,6 +192,7 @@ export class WaniKani {
     }
 
     private async _getJson<T>(url: string): Promise<T> {
+        let retriedRateLimit = false;
         while (true) {
             const response = await fetch(url, {
                 method: 'GET',
@@ -200,7 +201,8 @@ export class WaniKani {
                     'Wanikani-Revision': WANIKANI_REVISION,
                 },
             });
-            if (response.status === 429) {
+            if (response.status === 429 && !retriedRateLimit) {
+                retriedRateLimit = true;
                 await this._waitForRateLimitReset(response);
                 continue;
             }

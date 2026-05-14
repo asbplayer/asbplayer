@@ -108,7 +108,7 @@ export async function buildAnkiCachePipeline(
             const key: DictionaryMetaKey = [profile, track];
             let prevSettings: string | null = null;
             const existingBuild = await db.transaction('rw', db.meta, async () => {
-                if (await _ensureBuildId(db, key, buildId, 'anki', { buildTs })) {
+                if (await _ensureBuildId(db, key, buildId, 'anki', { mode: 'claim', buildTs })) {
                     prevSettings = (await db.meta.get(key))!.ankiMeta.settings;
                     return;
                 }
