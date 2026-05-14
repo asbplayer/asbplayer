@@ -271,6 +271,12 @@ Frequency information requires at least one rank-based frequency dictionary to b
 If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
 :::
 
+:::note
+If you are using Yomitan frequency-based dictionaries, make sure that
+
+Dictionary index.json should have the field "frequencyMode":"rank-based".
+:::
+
 ### Only show annotations on hover
 
 If enabled, annotations are hidden by default and only appear when you hover over the subtitle text.
