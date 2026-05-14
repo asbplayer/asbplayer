@@ -340,19 +340,28 @@ export class DictionaryDB {
         ]).then(([assignments, subjects, trackMeta]) => {
             const subjectById = new Map(subjects.map((subject) => [subject.subjectId, subject]));
             const spacedRepetitionSystemById = new Map(
-                trackMeta!.waniKaniMeta.spacedRepetitionSystems.map((system) => [system.id, system])
+                trackMeta?.waniKaniMeta.spacedRepetitionSystems.map((system) => [system.id, system]) ?? []
             );
-            const subjectStatusMap = new Map<number, TokenStatusInfo>();
+            const assignmentBySubjectId = new Map<number, DictionaryWaniKaniAssignmentRecord>();
             for (const assignment of assignments) {
-                if (assignment.data.hidden) continue;
-                const subject = subjectById.get(assignment.subjectId)!;
-                const spacedRepetitionSystem = spacedRepetitionSystemById.get(
-                    subject.data.spaced_repetition_system_id
-                )!;
-                subjectStatusMap.set(assignment.subjectId, {
-                    assignmentId: assignment.assignmentId,
-                    subjectId: assignment.subjectId,
-                    status: _waniKaniStatusFromSrsStage(assignment.data.srs_stage, spacedRepetitionSystem),
+                if (!assignment.data.hidden) assignmentBySubjectId.set(assignment.subjectId, assignment);
+            }
+
+            const subjectStatusMap = new Map<number, TokenStatusInfo>();
+            for (const subject of subjectById.values()) {
+                if (subject.data.hidden_at) continue;
+                const assignment = assignmentBySubjectId.get(subject.subjectId);
+                const spacedRepetitionSystem =
+                    assignment === undefined
+                        ? undefined
+                        : spacedRepetitionSystemById.get(subject.data.spaced_repetition_system_id);
+                subjectStatusMap.set(subject.subjectId, {
+                    ...(assignment === undefined ? {} : { assignmentId: assignment.assignmentId }),
+                    subjectId: subject.subjectId,
+                    status:
+                        assignment === undefined || spacedRepetitionSystem === undefined
+                            ? TokenStatus.UNKNOWN
+                            : _waniKaniStatusFromSrsStage(assignment.data.srs_stage, spacedRepetitionSystem),
                     suspended: false,
                 });
             }

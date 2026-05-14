@@ -600,21 +600,10 @@ async function _buildWaniKaniTokensForTrack(
     const importedTokens = new Set<string>();
     if (!affectedSubjectIds.length) return importedTokens;
 
-    const [assignments, subjects] = await Promise.all([
-        db.waniKaniAssignments
-            .where('[subjectId+track+profile]')
-            .anyOf(affectedSubjectIds.map((subjectId) => [subjectId, track, profile]))
-            .toArray(),
-        db.waniKaniSubjects
-            .where('[subjectId+track+profile]')
-            .anyOf(affectedSubjectIds.map((subjectId) => [subjectId, track, profile]))
-            .toArray(),
-    ]);
-    const assignmentBySubjectId = new Map<number, DictionaryWaniKaniAssignmentRecord>();
-    for (const assignment of assignments) {
-        if (assignment.data.hidden) continue;
-        assignmentBySubjectId.set(assignment.subjectId, assignment);
-    }
+    const subjects = await db.waniKaniSubjects
+        .where('[subjectId+track+profile]')
+        .anyOf(affectedSubjectIds.map((subjectId) => [subjectId, track, profile]))
+        .toArray();
     const subjectById = new Map(subjects.map((subject) => [subject.subjectId, subject]));
 
     await inBatches(
@@ -635,11 +624,9 @@ async function _buildWaniKaniTokensForTrack(
             const newSubjectIdsByToken = new Map<string, Set<number>>();
             const subjectsToTokenize: { subjectId: number; characters: string }[] = [];
             for (const subjectId of batch) {
-                const assignment = assignmentBySubjectId.get(subjectId);
                 const subject = subjectById.get(subjectId);
                 const characters = subject?.data.characters?.trim();
-                if (!assignment || subject?.data.hidden_at || !characters || !HAS_LETTER_REGEX.test(characters))
-                    continue;
+                if (subject?.data.hidden_at || !characters || !HAS_LETTER_REGEX.test(characters)) continue;
 
                 subjectsToTokenize.push({ subjectId, characters });
             }

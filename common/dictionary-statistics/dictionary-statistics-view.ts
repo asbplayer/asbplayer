@@ -262,8 +262,12 @@ function hasCardId(status: TokenStatusInfo): status is TokenStatusInfo & { cardI
     return status.cardId !== undefined;
 }
 
-function hasAssignmentId(status: TokenStatusInfo): status is TokenStatusInfo & { assignmentId: number } {
+function hasAssignmentId<T extends TokenStatusInfo>(status: T): status is T & { assignmentId: number } {
     return status.assignmentId !== undefined;
+}
+
+function hasSubjectId(status: TokenStatusInfo): status is TokenStatusInfo & { subjectId: number } {
+    return status.subjectId !== undefined;
 }
 
 function incrementAnkiDueCounts(
@@ -1333,10 +1337,16 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
         const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
         if (!token || token.states.includes(TokenState.IGNORED)) continue;
 
-        const tokenStatuses = (token.externalCandidateStatuses ?? token.statuses).filter(hasAssignmentId);
+        const tokenStatuses = (token.externalCandidateStatuses ?? token.statuses).filter(hasSubjectId);
         if (!tokenStatuses.length) continue;
 
-        incrementWaniKaniDueCounts(dueCounts, tokenStatuses, dueByToday, dueByTomorrow, dueByWeek);
+        incrementWaniKaniDueCounts(
+            dueCounts,
+            tokenStatuses.filter(hasAssignmentId),
+            dueByToday,
+            dueByTomorrow,
+            dueByWeek
+        );
         waniKaniTokenSnapshots.push({
             status: getTokenStatus(tokenStatuses, 'NORMAL'),
             ignored: false,
