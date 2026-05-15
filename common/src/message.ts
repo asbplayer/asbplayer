@@ -821,7 +821,6 @@ export interface DictionaryGetBulkMessage extends MessageWithId {
     readonly profile: string | undefined;
     readonly track: number;
     readonly tokens: string[];
-    readonly settings?: AsbplayerSettings;
 }
 
 export interface DictionaryGetByLemmaBulkMessage extends MessageWithId {
@@ -829,7 +828,6 @@ export interface DictionaryGetByLemmaBulkMessage extends MessageWithId {
     readonly profile: string | undefined;
     readonly track: number;
     readonly lemmas: string[];
-    readonly settings?: AsbplayerSettings;
 }
 
 export interface DictionarySaveRecordLocalBulkMessage extends MessageWithId {
@@ -882,13 +880,12 @@ export interface DictionaryDeleteRecordsMessage extends MessageWithId {
 export interface DictionaryBuildAnkiCacheMessage extends MessageWithId {
     readonly command: 'dictionary-build-anki-cache';
     readonly profile: string | undefined;
-    readonly settings: AsbplayerSettings;
+    readonly settings?: AsbplayerSettings;
 }
 
 export interface DictionaryBuildWaniKaniCacheMessage extends MessageWithId {
     readonly command: 'dictionary-build-wanikani-cache';
     readonly profile: string | undefined;
-    readonly settings: AsbplayerSettings;
 }
 
 export interface DictionaryBuildAnkiCacheStateBody {
@@ -1057,7 +1054,6 @@ export interface DictionaryGetAllTokensMessage extends MessageWithId {
     readonly command: 'dictionary-get-all-tokens';
     readonly profile: string | undefined;
     readonly track: number;
-    readonly settings?: AsbplayerSettings;
 }
 
 export interface DictionaryStatisticsMessage extends Message {

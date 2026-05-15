@@ -171,7 +171,7 @@ export class DictionaryStatistics {
                 if (!dictionaryTrackEnabled(dt)) return;
                 const ts = this.rawTrackSnapshots.get(track);
                 if (!ts) throw new Error(`Track ${track} not initialized for dictionary statistics`);
-                ts.stats.dictionary.tokens = await this.dictionaryProvider.getAllTokens(profile, track, settings);
+                ts.stats.dictionary.tokens = await this.dictionaryProvider.getAllTokens(profile, track);
                 ts.statusColors = statusColorsFromConfig(dt.dictionaryTokenStatusConfig);
                 await this._publish(this._snapshot(), startTime);
             })

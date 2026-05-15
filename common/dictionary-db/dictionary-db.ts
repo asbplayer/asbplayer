@@ -5,6 +5,7 @@ import {
     DictionaryTokenSource,
     DictionaryTrack,
     getFullyKnownTokenStatus,
+    SettingsProvider,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
@@ -269,24 +270,26 @@ export interface DictionaryRecordDeleteResult {
 
 export class DictionaryDB {
     private readonly db: DictionaryDatabase;
+    private readonly settingsProvider: SettingsProvider;
 
-    constructor() {
+    constructor(settingsProvider: SettingsProvider) {
         this.db = new DictionaryDatabase();
+        this.settingsProvider = settingsProvider;
     }
 
-    buildAnkiCache(
+    async buildAnkiCache(
         inputProfile: string | undefined,
-        settings: AsbplayerSettings,
         statusUpdates: (state: DictionaryBuildAnkiCacheState) => void
     ): Promise<void> {
+        const settings = await this.settingsProvider.getAll();
         return buildAnkiCachePipeline(this.db, this._getProfile(inputProfile), settings, statusUpdates);
     }
 
-    buildWaniKaniCache(
+    async buildWaniKaniCache(
         inputProfile: string | undefined,
-        settings: AsbplayerSettings,
         statusUpdates: (state: DictionaryBuildWaniKaniCacheState) => void
     ): Promise<void> {
+        const settings = await this.settingsProvider.getAll();
         return buildWaniKaniCachePipeline(this.db, this._getProfile(inputProfile), settings, statusUpdates);
     }
 
@@ -428,7 +431,7 @@ export class DictionaryDB {
         profile: string,
         track: number,
         records: _DictionaryTokenRecord[],
-        settings: AsbplayerSettings | undefined
+        settings: AsbplayerSettings
     ): Promise<TokenResults> {
         if (!records.length) return {};
 
@@ -482,63 +485,24 @@ export class DictionaryDB {
         }
         if (!tokenRecordMap.size) return tokenResults;
 
-        // If settings is available then we can choose the highest between Anki word and WaniKani.
-        // Settings can be unavailable if extension version is this or later but app version hasn't been updated.
-        // This is necessary since the results is per token unlike by lemma.
-        if (settings) {
-            const dictionaryAnkiTreatSuspended =
-                settings.dictionaryTracks[track]?.dictionaryAnkiTreatSuspended ?? 'NORMAL';
-            for (const [token, tokenRecords] of tokenRecordMap.entries()) {
-                const candidate = this._getBestKnownExternalWordToken(
-                    tokenRecords,
-                    cardStatusMap,
-                    waniKaniSubjectStatusMap,
-                    dictionaryAnkiTreatSuspended
-                );
-                if (!candidate) continue;
-                tokenResults[token] = {
-                    source: candidate.record.source,
-                    statuses: candidate.statuses,
-                    externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
-                    states: candidate.record.states,
-                };
-                tokenRecordMap.delete(token);
-            }
-            if (!tokenRecordMap.size) return tokenResults;
-        } else {
-            // Need to prioritize word cards over sentences
-            for (const [token, tokenRecords] of tokenRecordMap.entries()) {
-                for (const record of tokenRecords) {
-                    if (record.source !== DictionaryTokenSource.ANKI_WORD) continue;
-                    const statuses = this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap);
-                    tokenResults[token] = {
-                        source: record.source,
-                        statuses,
-                        externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
-                        states: record.states,
-                    };
-                    tokenRecordMap.delete(token);
-                    break;
-                }
-            }
-            if (!tokenRecordMap.size) return tokenResults;
-
-            // Then WaniKani vocabulary before sentence cards
-            for (const [token, tokenRecords] of tokenRecordMap.entries()) {
-                for (const record of tokenRecords) {
-                    if (record.source !== DictionaryTokenSource.WANIKANI) continue;
-                    tokenResults[token] = {
-                        source: record.source,
-                        statuses: this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap),
-                        externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
-                        states: record.states,
-                    };
-                    tokenRecordMap.delete(token);
-                    break;
-                }
-            }
-            if (!tokenRecordMap.size) return tokenResults;
+        const dictionaryAnkiTreatSuspended = settings.dictionaryTracks[track]?.dictionaryAnkiTreatSuspended ?? 'NORMAL';
+        for (const [token, tokenRecords] of tokenRecordMap.entries()) {
+            const candidate = this._getBestKnownExternalWordToken(
+                tokenRecords,
+                cardStatusMap,
+                waniKaniSubjectStatusMap,
+                dictionaryAnkiTreatSuspended
+            );
+            if (!candidate) continue;
+            tokenResults[token] = {
+                source: candidate.record.source,
+                statuses: candidate.statuses,
+                externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
+                states: candidate.record.states,
+            };
+            tokenRecordMap.delete(token);
         }
+        if (!tokenRecordMap.size) return tokenResults;
 
         // Finally use sentence cards if needed
         for (const [token, tokenRecords] of tokenRecordMap.entries()) {
@@ -562,12 +526,8 @@ export class DictionaryDB {
      * Get the token status for a profile and track respecting the source priority.
      * External word sources are prioritized by highest status as a user may have abandoned a source.
      */
-    async getBulk(
-        inputProfile: string | undefined,
-        track: number,
-        tokens: string[],
-        settings?: AsbplayerSettings
-    ): Promise<TokenResults> {
+    async getBulk(inputProfile: string | undefined, track: number, tokens: string[]): Promise<TokenResults> {
+        const settings = await this.settingsProvider.getAll();
         if (!tokens.length) return {};
         const profile = this._getProfile(inputProfile);
 
@@ -589,11 +549,8 @@ export class DictionaryDB {
      * Get all tokens for a profile and track respecting the source priority.
      * External word sources are prioritized by highest status as a user may have abandoned a source.
      */
-    async getAllTokens(
-        inputProfile: string | undefined,
-        track: number,
-        settings?: AsbplayerSettings
-    ): Promise<TokenResults> {
+    async getAllTokens(inputProfile: string | undefined, track: number): Promise<TokenResults> {
+        const settings = await this.settingsProvider.getAll();
         const profile = this._getProfile(inputProfile);
 
         return this.db.transaction(
@@ -614,12 +571,8 @@ export class DictionaryDB {
      * Get the token status for a list of lemmas for a profile and track respecting the source priority.
      * External word sources are prioritized by highest status per lemma as a user may have abandoned a source.
      */
-    async getByLemmaBulk(
-        inputProfile: string | undefined,
-        track: number,
-        lemmas: string[],
-        settings?: AsbplayerSettings
-    ): Promise<LemmaResults> {
+    async getByLemmaBulk(inputProfile: string | undefined, track: number, lemmas: string[]): Promise<LemmaResults> {
+        const settings = await this.settingsProvider.getAll();
         if (!lemmas.length) return {};
         const lemmasSet = new Set(lemmas);
         const profile = this._getProfile(inputProfile);
@@ -694,114 +647,62 @@ export class DictionaryDB {
                         }
                         if (!lemmaRecordMap.size) return lemmaResults;
 
-                        if (settings) {
-                            const dictionaryAnkiTreatSuspended =
-                                settings.dictionaryTracks[track]?.dictionaryAnkiTreatSuspended ?? 'NORMAL';
-                            for (const [lemma, records] of lemmaRecordMap.entries()) {
-                                const ankiWordRecords = records.filter(
-                                    (record) => record.source === DictionaryTokenSource.ANKI_WORD
-                                );
-                                const waniKaniRecords = records.filter(
-                                    (record) => record.source === DictionaryTokenSource.WANIKANI
-                                );
-                                const bestAnkiWordStatus = this._getBestKnownExternalWordToken(
-                                    ankiWordRecords,
+                        const dictionaryAnkiTreatSuspended =
+                            settings.dictionaryTracks[track]?.dictionaryAnkiTreatSuspended ?? 'NORMAL';
+                        for (const [lemma, records] of lemmaRecordMap.entries()) {
+                            const ankiWordRecords = records.filter(
+                                (record) => record.source === DictionaryTokenSource.ANKI_WORD
+                            );
+                            const waniKaniRecords = records.filter(
+                                (record) => record.source === DictionaryTokenSource.WANIKANI
+                            );
+                            const bestAnkiWordStatus = this._getBestKnownExternalWordToken(
+                                ankiWordRecords,
+                                cardStatusMap,
+                                waniKaniSubjectStatusMap,
+                                dictionaryAnkiTreatSuspended
+                            )?.status;
+                            const bestWaniKaniStatus = this._getBestKnownExternalWordToken(
+                                waniKaniRecords,
+                                cardStatusMap,
+                                waniKaniSubjectStatusMap,
+                                dictionaryAnkiTreatSuspended
+                            )?.status;
+                            const source =
+                                bestAnkiWordStatus !== undefined && bestWaniKaniStatus !== undefined
+                                    ? bestAnkiWordStatus >= bestWaniKaniStatus
+                                        ? DictionaryTokenSource.ANKI_WORD
+                                        : DictionaryTokenSource.WANIKANI
+                                    : bestAnkiWordStatus !== undefined
+                                      ? DictionaryTokenSource.ANKI_WORD
+                                      : bestWaniKaniStatus !== undefined
+                                        ? DictionaryTokenSource.WANIKANI
+                                        : undefined;
+                            if (source === undefined) continue;
+                            const relevantRecords =
+                                source === DictionaryTokenSource.ANKI_WORD ? ankiWordRecords : waniKaniRecords;
+                            for (const record of relevantRecords) {
+                                let arr = lemmaResults[lemma];
+                                if (!arr) {
+                                    arr = [];
+                                    lemmaResults[lemma] = arr;
+                                }
+                                const statuses = this._statusesFromRecord(
+                                    record,
                                     cardStatusMap,
-                                    waniKaniSubjectStatusMap,
-                                    dictionaryAnkiTreatSuspended
-                                )?.status;
-                                const bestWaniKaniStatus = this._getBestKnownExternalWordToken(
-                                    waniKaniRecords,
-                                    cardStatusMap,
-                                    waniKaniSubjectStatusMap,
-                                    dictionaryAnkiTreatSuspended
-                                )?.status;
-                                const source =
-                                    bestAnkiWordStatus !== undefined && bestWaniKaniStatus !== undefined
-                                        ? bestAnkiWordStatus >= bestWaniKaniStatus
-                                            ? DictionaryTokenSource.ANKI_WORD
-                                            : DictionaryTokenSource.WANIKANI
-                                        : bestAnkiWordStatus !== undefined
-                                          ? DictionaryTokenSource.ANKI_WORD
-                                          : bestWaniKaniStatus !== undefined
-                                            ? DictionaryTokenSource.WANIKANI
-                                            : undefined;
-                                if (source === undefined) continue;
-                                const relevantRecords =
-                                    source === DictionaryTokenSource.ANKI_WORD ? ankiWordRecords : waniKaniRecords;
-                                for (const record of relevantRecords) {
-                                    let arr = lemmaResults[lemma];
-                                    if (!arr) {
-                                        arr = [];
-                                        lemmaResults[lemma] = arr;
-                                    }
-                                    const statuses = this._statusesFromRecord(
-                                        record,
-                                        cardStatusMap,
-                                        waniKaniSubjectStatusMap
-                                    );
-                                    arr.push({
-                                        token: record.token,
-                                        source: record.source,
-                                        statuses,
-                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
-                                        states: record.states,
-                                    });
-                                    lemmaRecordMap.delete(lemma);
-                                }
+                                    waniKaniSubjectStatusMap
+                                );
+                                arr.push({
+                                    token: record.token,
+                                    source: record.source,
+                                    statuses,
+                                    externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
+                                    states: record.states,
+                                });
+                                lemmaRecordMap.delete(lemma);
                             }
-                            if (!lemmaRecordMap.size) return lemmaResults;
-                        } else {
-                            // We'll return all the Anki word and WaniKani records for a lemma
-                            // so that that dictionaryTokenMatchStrategy has full control.
-                            const toDelete = new Set<string>();
-                            for (const [lemma, records] of lemmaRecordMap.entries()) {
-                                for (const record of records) {
-                                    if (record.source !== DictionaryTokenSource.ANKI_WORD) continue;
-                                    let arr = lemmaResults[lemma];
-                                    if (!arr) {
-                                        arr = [];
-                                        lemmaResults[lemma] = arr;
-                                    }
-                                    arr.push({
-                                        token: record.token,
-                                        source: record.source,
-                                        statuses: this._statusesFromRecord(
-                                            record,
-                                            cardStatusMap,
-                                            waniKaniSubjectStatusMap
-                                        ),
-                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
-                                        states: record.states,
-                                    });
-                                    toDelete.add(lemma);
-                                }
-                            }
-                            for (const [lemma, records] of lemmaRecordMap.entries()) {
-                                for (const record of records) {
-                                    if (record.source !== DictionaryTokenSource.WANIKANI) continue;
-                                    let arr = lemmaResults[lemma];
-                                    if (!arr) {
-                                        arr = [];
-                                        lemmaResults[lemma] = arr;
-                                    }
-                                    arr.push({
-                                        token: record.token,
-                                        source: record.source,
-                                        statuses: this._statusesFromRecord(
-                                            record,
-                                            cardStatusMap,
-                                            waniKaniSubjectStatusMap
-                                        ),
-                                        externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
-                                        states: record.states,
-                                    });
-                                    toDelete.add(lemma);
-                                }
-                            }
-                            for (const lemma of toDelete) lemmaRecordMap.delete(lemma);
-                            if (!lemmaRecordMap.size) return lemmaResults;
                         }
+                        if (!lemmaRecordMap.size) return lemmaResults;
 
                         // Finally use sentence cards if needed
                         for (const [lemma, records] of lemmaRecordMap.entries()) {

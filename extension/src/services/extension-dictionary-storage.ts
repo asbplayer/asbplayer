@@ -39,7 +39,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import { ApplyStrategy } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
@@ -95,7 +95,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         this.dictionaryStatisticsMineSentencesCallbacks = [];
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
+    getBulk(profile: string | undefined, track: number, tokens: string[]) {
         const message: DictionaryDBCommand<DictionaryGetBulkMessage> = {
             sender: 'asbplayer-dictionary',
             message: {
@@ -103,14 +103,13 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
                 profile,
                 track,
                 tokens,
-                settings,
                 messageId: uuidv4(),
             },
         };
         return browser.runtime.sendMessage(message);
     }
 
-    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
+    getAllTokens(profile: string | undefined, track: number) {
         const message: DictionaryDBCommand<DictionaryGetAllTokensMessage> = {
             sender: 'asbplayer-dictionary',
             message: {
@@ -118,13 +117,12 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
                 messageId: uuidv4(),
                 profile,
                 track,
-                settings,
             },
         };
         return browser.runtime.sendMessage(message);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
         const message: DictionaryDBCommand<DictionaryGetByLemmaBulkMessage> = {
             sender: 'asbplayer-dictionary',
             message: {
@@ -132,7 +130,6 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
                 profile,
                 track,
                 lemmas,
-                settings,
                 messageId: uuidv4(),
             },
         };
@@ -242,18 +239,18 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         return browser.runtime.sendMessage(message);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
+    buildAnkiCache(profile: string | undefined) {
         const message: DictionaryDBCommand<DictionaryBuildAnkiCacheMessage> = {
             sender: 'asbplayer-dictionary',
-            message: { command: 'dictionary-build-anki-cache', messageId: uuidv4(), profile, settings },
+            message: { command: 'dictionary-build-anki-cache', messageId: uuidv4(), profile },
         };
         return browser.runtime.sendMessage(message);
     }
 
-    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
+    buildWaniKaniCache(profile: string | undefined) {
         const message: DictionaryDBCommand<DictionaryBuildWaniKaniCacheMessage> = {
             sender: 'asbplayer-dictionary',
-            message: { command: 'dictionary-build-wanikani-cache', messageId: uuidv4(), profile, settings },
+            message: { command: 'dictionary-build-wanikani-cache', messageId: uuidv4(), profile },
         };
         return browser.runtime.sendMessage(message);
     }

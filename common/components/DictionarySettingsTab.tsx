@@ -620,7 +620,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
             setBuildingWaniKaniCache(true);
             setBuildWaniKaniCacheState(undefined);
             void ensureStoragePersisted();
-            await dictionaryProvider.buildWaniKaniCache(activeProfile, settings);
+            await dictionaryProvider.buildWaniKaniCache(activeProfile);
         } catch (e) {
             console.error('Failed to send build WaniKani cache message', e);
             dictionaryTracks.forEach((dt, track) => {
@@ -637,7 +637,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
         } finally {
             setBuildingWaniKaniCache(false);
         }
-    }, [dictionaryProvider, dictionaryTracks, settings, activeProfile, setBuildWaniKaniCacheState]);
+    }, [dictionaryProvider, dictionaryTracks, activeProfile, setBuildWaniKaniCacheState]);
 
     useEffect(() => {
         return dictionaryProvider.onBuildWaniKaniCacheStateChange(setBuildWaniKaniCacheState);

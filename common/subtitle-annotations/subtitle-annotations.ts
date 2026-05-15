@@ -511,10 +511,11 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             this.ankiRefreshing = true;
             if (!this.anki) {
                 try {
-                    this.anki = new Anki(await this.settingsProvider.getAll(), this.fetcher);
+                    const settings = await this.settingsProvider.getAll();
+                    this.anki = new Anki(settings, this.fetcher);
                     const permission = (await this.anki.requestPermission()).permission;
                     if (permission !== 'granted') throw new Error(`permission ${permission}`);
-                    await this.dictionaryProvider.buildAnkiCache(profile, await this.settingsProvider.getAll()); // Keep cache updated without user action
+                    await this.dictionaryProvider.buildAnkiCache(profile, settings); // Keep cache updated without user action
                     this.ankiStatisticsRefreshAll = true;
                 } catch (e) {
                     console.warn('Anki permission request failed:', e);
@@ -615,7 +616,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             ) {
                 return;
             }
-            if (!this.waniKaniRefreshed) await this.dictionaryProvider.buildWaniKaniCache(profile, settings); // Don't need to poll on tokensModified since users can't mine to it unlike Anki
+            if (!this.waniKaniRefreshed) await this.dictionaryProvider.buildWaniKaniCache(profile); // Don't need to poll on tokensModified since users can't mine to it unlike Anki
             await this._refreshWaniKaniStatistics(settings);
         } catch (e) {
             this.waniKaniRefreshed = false;
@@ -1119,7 +1120,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
     }
 
     private async _buildTokenAndLemmaMap(profile: string | undefined, subtitles: RichSubtitleModel[]): Promise<void> {
-        const settings = await this.settingsProvider.getAll();
         const eventsPerTrack = new Map<number, string[]>();
         for (const subtitle of subtitles) {
             const eventsForTrack = eventsPerTrack.get(subtitle.track);
@@ -1178,13 +1178,13 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
                 const [exactFormResultMap, lemmaFormResultMap, anyFormResultsMap] = await Promise.all([
                     forExactFormQuery.size
-                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forExactFormQuery), settings)
+                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forExactFormQuery))
                         : ({} as TokenResults),
                     forLemmaFormQuery.size
-                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forLemmaFormQuery), settings)
+                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forLemmaFormQuery))
                         : ({} as TokenResults),
                     forAnyFormQuery.size
-                        ? this.dictionaryProvider.getByLemmaBulk(profile, track, Array.from(forAnyFormQuery), settings)
+                        ? this.dictionaryProvider.getByLemmaBulk(profile, track, Array.from(forAnyFormQuery))
                         : ({} as LemmaResults),
                 ]);
                 if (this.shouldCancelBuild) return;

@@ -68,16 +68,16 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         this.dictionaryStatisticsMineSentencesCallbacks = [];
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
-        return this._extension.dictionaryGetBulk(profile, track, tokens, settings);
+    getBulk(profile: string | undefined, track: number, tokens: string[]) {
+        return this._extension.dictionaryGetBulk(profile, track, tokens);
     }
 
-    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
-        return this._extension.dictionaryGetAllTokens(profile, track, settings);
+    getAllTokens(profile: string | undefined, track: number) {
+        return this._extension.dictionaryGetAllTokens(profile, track);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
-        return this._extension.dictionaryGetByLemmaBulk(profile, track, lemmas, settings);
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
+        return this._extension.dictionaryGetByLemmaBulk(profile, track, lemmas);
     }
 
     saveRecordLocalBulk(
@@ -120,12 +120,12 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         return this._extension.dictionaryDeleteRecords(profile, tokenKeys);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
+    buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings) {
         return this._extension.buildAnkiCache(profile, settings);
     }
 
-    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
-        return this._extension.buildWaniKaniCache(profile, settings);
+    buildWaniKaniCache(profile: string | undefined) {
+        return this._extension.buildWaniKaniCache(profile);
     }
 
     ankiCardWasModified() {

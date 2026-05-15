@@ -20,19 +20,9 @@ import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
 import { download, getCurrentTimeString } from '../util';
 
 export interface DictionaryStorage {
-    getBulk: (
-        profile: string | undefined,
-        track: number,
-        tokens: string[],
-        settings?: AsbplayerSettings
-    ) => Promise<TokenResults>;
-    getAllTokens: (profile: string | undefined, track: number, settings?: AsbplayerSettings) => Promise<TokenResults>;
-    getByLemmaBulk: (
-        profile: string | undefined,
-        track: number,
-        lemmas: string[],
-        settings?: AsbplayerSettings
-    ) => Promise<LemmaResults>;
+    getBulk: (profile: string | undefined, track: number, tokens: string[]) => Promise<TokenResults>;
+    getAllTokens: (profile: string | undefined, track: number) => Promise<TokenResults>;
+    getByLemmaBulk: (profile: string | undefined, track: number, lemmas: string[]) => Promise<LemmaResults>;
     saveRecordLocalBulk: (
         profile: string | undefined,
         localTokenInputs: DictionaryLocalTokenInput[],
@@ -58,8 +48,8 @@ export interface DictionaryStorage {
         profile: string | undefined,
         tokenKeys: DictionaryTokenKey[]
     ) => Promise<DictionaryRecordDeleteResult>;
-    buildAnkiCache: (profile: string | undefined, settings: AsbplayerSettings) => Promise<void>;
-    buildWaniKaniCache: (profile: string | undefined, settings: AsbplayerSettings) => Promise<void>;
+    buildAnkiCache: (profile: string | undefined, settings?: AsbplayerSettings) => Promise<void>;
+    buildWaniKaniCache: (profile: string | undefined) => Promise<void>;
     ankiCardWasModified: () => void;
     onAnkiCardModified: (callback: () => void) => () => void;
     onBuildAnkiCacheStateChange: (callback: (message: DictionaryBuildAnkiCacheState) => void) => () => void;
@@ -84,16 +74,16 @@ export class DictionaryProvider {
         this._storage = storage;
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
-        return this._storage.getBulk(profile, track, tokens, settings);
+    getBulk(profile: string | undefined, track: number, tokens: string[]) {
+        return this._storage.getBulk(profile, track, tokens);
     }
 
-    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
-        return this._storage.getAllTokens(profile, track, settings);
+    getAllTokens(profile: string | undefined, track: number) {
+        return this._storage.getAllTokens(profile, track);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
-        return this._storage.getByLemmaBulk(profile, track, lemmas, settings);
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
+        return this._storage.getByLemmaBulk(profile, track, lemmas);
     }
 
     saveRecordLocalBulk(
@@ -137,12 +127,12 @@ export class DictionaryProvider {
         return this._storage.deleteRecords(profile, tokenKeys);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
+    buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings) {
         return this._storage.buildAnkiCache(profile, settings);
     }
 
-    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
-        return this._storage.buildWaniKaniCache(profile, settings);
+    buildWaniKaniCache(profile: string | undefined) {
+        return this._storage.buildWaniKaniCache(profile);
     }
 
     ankiCardWasModified() {

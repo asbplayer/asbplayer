@@ -52,21 +52,21 @@ export default class DictionaryHandler {
             case 'dictionary-get-bulk': {
                 const message = command.message as DictionaryGetBulkMessage;
                 void this.dictionaryDB
-                    .getBulk(message.profile, message.track, message.tokens, message.settings)
+                    .getBulk(message.profile, message.track, message.tokens)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-get-all-tokens': {
                 const message = command.message as DictionaryGetAllTokensMessage;
                 void this.dictionaryDB
-                    .getAllTokens(message.profile, message.track, message.settings)
+                    .getAllTokens(message.profile, message.track)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-get-by-lemma-bulk': {
                 const message = command.message as DictionaryGetByLemmaBulkMessage;
                 this.dictionaryDB
-                    .getByLemmaBulk(message.profile, message.track, message.lemmas, message.settings)
+                    .getByLemmaBulk(message.profile, message.track, message.lemmas)
                     .then((result) => sendResponse(result));
                 return true;
             }
@@ -122,7 +122,7 @@ export default class DictionaryHandler {
             case 'dictionary-build-anki-cache': {
                 const message = command.message as DictionaryBuildAnkiCacheMessage;
                 this.dictionaryDB
-                    .buildAnkiCache(message.profile, message.settings, async (state: DictionaryBuildAnkiCacheState) => {
+                    .buildAnkiCache(message.profile, async (state: DictionaryBuildAnkiCacheState) => {
                         const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
                             sender: 'asbplayer-extension-to-player',
                             message: { command: 'dictionary-build-anki-cache-state', ...state },
@@ -149,32 +149,27 @@ export default class DictionaryHandler {
             case 'dictionary-build-wanikani-cache': {
                 const message = command.message as DictionaryBuildWaniKaniCacheMessage;
                 void this.dictionaryDB
-                    .buildWaniKaniCache(
-                        message.profile,
-                        message.settings,
-                        (state: DictionaryBuildWaniKaniCacheState) => {
-                            const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> =
-                                {
-                                    sender: 'asbplayer-extension-to-player',
-                                    message: { command: 'dictionary-build-wanikani-cache-state', ...state },
-                                };
-                            void this._relayToExtensionContexts(playerMessage);
-                            void this._relayToAsbplayers((asbplayer) => {
-                                if (asbplayer.sidePanel) return;
-                                return playerMessage;
-                            });
-                            void this._relayToVideoElements((videoElement) => {
-                                return {
-                                    sender: 'asbplayer-extension-to-video',
-                                    src: videoElement.src,
-                                    message: {
-                                        command: 'dictionary-build-wanikani-cache-state',
-                                        ...state,
-                                    },
-                                } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
-                            });
-                        }
-                    )
+                    .buildWaniKaniCache(message.profile, (state: DictionaryBuildWaniKaniCacheState) => {
+                        const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
+                            sender: 'asbplayer-extension-to-player',
+                            message: { command: 'dictionary-build-wanikani-cache-state', ...state },
+                        };
+                        void this._relayToExtensionContexts(playerMessage);
+                        void this._relayToAsbplayers((asbplayer) => {
+                            if (asbplayer.sidePanel) return;
+                            return playerMessage;
+                        });
+                        void this._relayToVideoElements((videoElement) => {
+                            return {
+                                sender: 'asbplayer-extension-to-video',
+                                src: videoElement.src,
+                                message: {
+                                    command: 'dictionary-build-wanikani-cache-state',
+                                    ...state,
+                                },
+                            } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
+                        });
+                    })
                     .then((result) => sendResponse(result));
                 return true;
             }

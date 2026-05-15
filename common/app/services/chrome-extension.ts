@@ -670,12 +670,7 @@ export default class ChromeExtension {
         return this._createResponsePromise(messageId);
     }
 
-    async dictionaryGetBulk(
-        profile: string | undefined,
-        track: number,
-        tokens: string[],
-        settings?: AsbplayerSettings
-    ): Promise<TokenResults> {
+    async dictionaryGetBulk(profile: string | undefined, track: number, tokens: string[]): Promise<TokenResults> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryGetBulkMessage> = {
             sender: 'asbplayerv2',
@@ -684,7 +679,6 @@ export default class ChromeExtension {
                 profile,
                 track,
                 tokens,
-                settings,
                 messageId,
             },
         };
@@ -692,11 +686,7 @@ export default class ChromeExtension {
         return await this._createResponsePromise(messageId);
     }
 
-    async dictionaryGetAllTokens(
-        profile: string | undefined,
-        track: number,
-        settings?: AsbplayerSettings
-    ): Promise<TokenResults> {
+    async dictionaryGetAllTokens(profile: string | undefined, track: number): Promise<TokenResults> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryGetAllTokensMessage> = {
             sender: 'asbplayerv2',
@@ -704,7 +694,6 @@ export default class ChromeExtension {
                 command: 'dictionary-get-all-tokens',
                 profile,
                 track,
-                settings,
                 messageId,
             },
         };
@@ -715,8 +704,7 @@ export default class ChromeExtension {
     async dictionaryGetByLemmaBulk(
         profile: string | undefined,
         track: number,
-        lemmas: string[],
-        settings?: AsbplayerSettings
+        lemmas: string[]
     ): Promise<LemmaResults> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryGetByLemmaBulkMessage> = {
@@ -726,7 +714,6 @@ export default class ChromeExtension {
                 profile,
                 track,
                 lemmas,
-                settings,
                 messageId,
             },
         };
@@ -873,21 +860,30 @@ export default class ChromeExtension {
         return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {
+    buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings): Promise<void> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryBuildAnkiCacheMessage> = {
             sender: 'asbplayerv2',
-            message: { command: 'dictionary-build-anki-cache', messageId, profile, settings },
+            message: {
+                command: 'dictionary-build-anki-cache',
+                messageId,
+                profile,
+                ...(this.supportsDictionaryWaniKani ? {} : { settings }),
+            },
         };
         window.postMessage(command);
         return this._createResponsePromise(messageId, 300000); // Usually <10s
     }
 
-    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {
+    buildWaniKaniCache(profile: string | undefined): Promise<void> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryBuildWaniKaniCacheMessage> = {
             sender: 'asbplayerv2',
-            message: { command: 'dictionary-build-wanikani-cache', messageId, profile, settings },
+            message: {
+                command: 'dictionary-build-wanikani-cache',
+                messageId,
+                profile,
+            },
         };
         window.postMessage(command);
         return this._createResponsePromise(messageId, 300000); // Usually <10s

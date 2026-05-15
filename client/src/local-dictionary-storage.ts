@@ -27,7 +27,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import { ApplyStrategy, SettingsProvider } from '@project/common/settings';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
     | ExtensionToAsbPlayerCommand<T>
@@ -56,8 +56,8 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     private dictionaryStatisticsMineSentencesCallbacks: ((mediaId: string, indexes: number[]) => void)[];
     private dictionaryStatisticsMineSentencesListener?: (event: MessageEvent) => void;
 
-    constructor() {
-        this.dictionaryDB = new DictionaryDB();
+    constructor(settingsProvider: SettingsProvider) {
+        this.dictionaryDB = new DictionaryDB(settingsProvider);
         this.buildAnkiCacheStateChangeCallbacks = [];
         this.buildWaniKaniCacheStateChangeCallbacks = [];
         this.ankiCardModifiedCallbacks = [];
@@ -68,16 +68,16 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         this.dictionaryStatisticsMineSentencesCallbacks = [];
     }
 
-    getBulk(profile: string | undefined, track: number, tokens: string[], settings?: AsbplayerSettings) {
-        return this.dictionaryDB.getBulk(profile, track, tokens, settings);
+    getBulk(profile: string | undefined, track: number, tokens: string[]) {
+        return this.dictionaryDB.getBulk(profile, track, tokens);
     }
 
-    getAllTokens(profile: string | undefined, track: number, settings?: AsbplayerSettings) {
-        return this.dictionaryDB.getAllTokens(profile, track, settings);
+    getAllTokens(profile: string | undefined, track: number) {
+        return this.dictionaryDB.getAllTokens(profile, track);
     }
 
-    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[], settings?: AsbplayerSettings) {
-        return this.dictionaryDB.getByLemmaBulk(profile, track, lemmas, settings);
+    getByLemmaBulk(profile: string | undefined, track: number, lemmas: string[]) {
+        return this.dictionaryDB.getByLemmaBulk(profile, track, lemmas);
     }
 
     saveRecordLocalBulk(
@@ -120,8 +120,8 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         return this.dictionaryDB.deleteRecords(profile, tokenKeys);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
-        return this.dictionaryDB.buildAnkiCache(profile, settings, (state: DictionaryBuildAnkiCacheState) => {
+    buildAnkiCache(profile: string | undefined) {
+        return this.dictionaryDB.buildAnkiCache(profile, (state: DictionaryBuildAnkiCacheState) => {
             const message: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
                 sender: 'asbplayer-extension-to-player',
                 message: { command: 'dictionary-build-anki-cache-state', ...state },
@@ -130,8 +130,8 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         });
     }
 
-    buildWaniKaniCache(profile: string | undefined, settings: AsbplayerSettings) {
-        return this.dictionaryDB.buildWaniKaniCache(profile, settings, (state: DictionaryBuildWaniKaniCacheState) => {
+    buildWaniKaniCache(profile: string | undefined) {
+        return this.dictionaryDB.buildWaniKaniCache(profile, (state: DictionaryBuildWaniKaniCacheState) => {
             const message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
                 sender: 'asbplayer-extension-to-player',
                 message: { command: 'dictionary-build-wanikani-cache-state', ...state },

@@ -115,17 +115,17 @@ export default defineContentScript({
                         });
                         break;
                     case 'dictionary-get-bulk': {
-                        const { profile, track, tokens, settings } = command.message as DictionaryGetBulkMessage;
+                        const { profile, track, tokens } = command.message as DictionaryGetBulkMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.getBulk(profile, track, tokens, settings),
+                            response: await dictionaryStorage.getBulk(profile, track, tokens),
                             messageId: command.message.messageId,
                         });
                         break;
                     }
                     case 'dictionary-get-by-lemma-bulk': {
-                        const { profile, track, lemmas, settings } = command.message as DictionaryGetByLemmaBulkMessage;
+                        const { profile, track, lemmas } = command.message as DictionaryGetByLemmaBulkMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.getByLemmaBulk(profile, track, lemmas, settings),
+                            response: await dictionaryStorage.getByLemmaBulk(profile, track, lemmas),
                             messageId: command.message.messageId,
                         });
                         break;
@@ -200,25 +200,25 @@ export default defineContentScript({
                         break;
                     }
                     case 'dictionary-build-anki-cache': {
-                        const { profile, settings } = command.message as DictionaryBuildAnkiCacheMessage;
+                        const { profile } = command.message as DictionaryBuildAnkiCacheMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.buildAnkiCache(profile, settings),
+                            response: await dictionaryStorage.buildAnkiCache(profile),
                             messageId: command.message.messageId,
                         });
                         break;
                     }
                     case 'dictionary-build-wanikani-cache': {
-                        const { profile, settings } = command.message as DictionaryBuildWaniKaniCacheMessage;
+                        const { profile } = command.message as DictionaryBuildWaniKaniCacheMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.buildWaniKaniCache(profile, settings),
+                            response: await dictionaryStorage.buildWaniKaniCache(profile),
                             messageId: command.message.messageId,
                         });
                         break;
                     }
                     case 'dictionary-get-all-tokens': {
-                        const { profile, track, settings } = command.message as DictionaryGetAllTokensMessage;
+                        const { profile, track } = command.message as DictionaryGetAllTokensMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.getAllTokens(profile, track, settings),
+                            response: await dictionaryStorage.getAllTokens(profile, track),
                             messageId: command.message.messageId,
                         });
                         break;
