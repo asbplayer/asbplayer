@@ -2,9 +2,9 @@ import { Progress, Tokenization } from '@project/common';
 import { CardInfo } from '@project/common/anki';
 import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
 import {
-    AsbplayerSettings,
     defaultSettings,
     dictionaryTrackEnabled,
+    DictionarySettings,
     NUM_TOKEN_STATUSES,
     SettingsProvider,
     TokenStatusConfig,
@@ -62,7 +62,7 @@ export interface DictionaryStatisticsRawTrackSnapshot {
 export interface DictionaryStatisticsSnapshot {
     mediaId: string;
     snapshots: DictionaryStatisticsRawTrackSnapshot[];
-    settings: AsbplayerSettings;
+    settings: DictionarySettings;
     anki: DictionaryStatisticsAnkiSnapshot;
     waniKani?: DictionaryStatisticsWaniKaniSnapshots;
 }
@@ -82,7 +82,7 @@ export class DictionaryStatistics {
     private readonly dictionaryProvider: DictionaryProvider;
     private readonly mediaId: string;
     private readonly rawTrackSnapshots: Map<number, DictionaryStatisticsRawTrackSnapshot>;
-    private settings: AsbplayerSettings;
+    private settings: DictionarySettings;
     private anki: DictionaryStatisticsAnkiSnapshot;
     private waniKani: DictionaryStatisticsWaniKaniSnapshots;
     private lastCancelledAt: number;
@@ -92,7 +92,7 @@ export class DictionaryStatistics {
         this.dictionaryProvider = dictionaryProvider;
         this.mediaId = mediaId;
         this.rawTrackSnapshots = new Map();
-        this.settings = defaultSettings;
+        this.settings = { dictionaryTracks: defaultSettings.dictionaryTracks };
         this.anki = { cardsInfo: {}, dueCards: {} };
         this.waniKani = {};
         this.lastCancelledAt = 0;
@@ -164,7 +164,9 @@ export class DictionaryStatistics {
 
     async refreshDictionaryTokens(profile: string | undefined): Promise<void> {
         const startTime = Date.now();
-        const settings = await this.settingsProvider.getAll();
+        const dictionaryTracks = await this.settingsProvider.getSingle('dictionaryTracks');
+        for (const dt of dictionaryTracks) (dt as any).dictionaryWaniKaniApiToken = '';
+        const settings = { dictionaryTracks };
         this.settings = settings;
         await Promise.all(
             settings.dictionaryTracks.map(async (dt, track) => {
