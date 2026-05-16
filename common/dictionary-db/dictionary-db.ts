@@ -1026,7 +1026,9 @@ export class DictionaryDB {
                         );
                         const trackAssignmentRecords: Record<number, DictionaryWaniKaniAssignmentRecordWithStatus> = {};
                         for (const assignment of assignments) {
+                            if (assignment.data.hidden) continue;
                             const subject = trackSubjectRecords[assignment.subjectId];
+                            if (subject?.data.hidden_at) continue;
                             const spacedRepetitionSystem =
                                 subject === undefined
                                     ? undefined
