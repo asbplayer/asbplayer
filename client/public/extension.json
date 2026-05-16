@@ -63,6 +63,11 @@
             "code": "id",
             "url": "/locales/id.json",
             "version": 10
+        },
+        {
+            "code": "it",
+            "url": "/locales/it.json",
+            "version": 1
         }
     ]
 }

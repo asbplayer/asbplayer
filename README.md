@@ -145,7 +145,8 @@ Thank you to all those who have translated asbplayer:
 **[@825i](https://github.com/825i)** (Finnish),
 **[@Jaybird1291](https://github.com/jaybird1291)** (French),
 **Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**yaacha** (Indonesian)
+**yaacha** (Indonesian),
+**NeriSald** (Italian)
 
 If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue to add it on the [issues page](https://github.com/asbplayer/asbplayer/issues).
 
