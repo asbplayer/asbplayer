@@ -81,9 +81,21 @@ How many milliseconds **before** the target subtitle to start recording audio.
 
 How many milliseconds **after** the target subtitle to stop recording audio.
 
+### Image capture format (website only)
+
+Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+
 ### Max image width/height
 
 Max width/height in pixels of screenshots. `0` means "no limit."
+
+### Clip trim start/end
+
+Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+
+### Max clip length
+
+Specifies the max video clip length. Only available when video clip image capture format is selected.
 
 ### Surrounding subtitles count radius
 
@@ -348,7 +360,7 @@ Restricts Anki searches to the selected decks. If left empty, asbplayer searches
 
 ### Anki word fields
 
-Anki note fields that contain *only* the target word. This is the recommended way to source known-status information from Anki.
+Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
 
 ### Anki sentence fields
 
@@ -463,6 +475,14 @@ When condensed playback is enabled, skip to the next subtitle only if the next s
 
 Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
 
+### Pages
+
+Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+
+#### Target language codes for machine translation (YouTube only)
+
+Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+
 ## [Misc](https://app.asbplayer.dev/?view=settings#misc-settings)
 
 ### Theme
@@ -476,6 +496,14 @@ When enabled, timing offset is "sticky." Subtitles are loaded with the last-used
 ### Auto-copy current subtitle to clipboard
 
 Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+
+### Subtitle tracks eligible for auto-copy
+
+Specifies which tracks will be auto-copied when the `Auto-copy current subtitle to clipboard` setting is enabled.
+
+### Subtitle tracks affected by playback modes and keyboard shortcuts
+
+Specifies which tracks will be considered when using keyboard shorcuts to seek between subtitles, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
 
 ### Always play after invoking 'Seek to beginning of current/previous subtitle'
 
@@ -506,6 +534,10 @@ Note: not all strings have been localized in every language that asbplayer suppo
 ### Auto-pause preference
 
 When auto-pause is enabled, whether to auto-pause at the start or end of subtitles.
+
+### Detect and Display Ruby
+
+When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
 
 ### Auto-pause when mousing over subtitles
 
