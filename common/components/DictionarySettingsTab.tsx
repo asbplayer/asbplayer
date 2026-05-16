@@ -80,6 +80,7 @@ import WordBrowserDialog from './WordBrowserDialog';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
+const maskedDictionaryWaniKaniApiToken = '●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●';
 
 const ankiCacheDependentSettings = new Set<keyof DictionaryTrack>([
     'dictionaryYomitanUrl',
@@ -1581,9 +1582,13 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             </Typography>
                         )}
                         <SettingsTextField
-                            type={showDictionaryWaniKaniApiToken ? 'text' : 'password'}
+                            type="text"
                             label={t('settings.dictionaryWaniKaniApiToken')}
-                            value={selectedDictionary.dictionaryWaniKaniApiToken}
+                            value={
+                                showDictionaryWaniKaniApiToken || !selectedDictionary.dictionaryWaniKaniApiToken
+                                    ? selectedDictionary.dictionaryWaniKaniApiToken
+                                    : maskedDictionaryWaniKaniApiToken
+                            }
                             error={Boolean(dictionaryWaniKaniError)}
                             helperText={
                                 dictionaryWaniKaniError ??
@@ -1606,6 +1611,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             }}
                             slotProps={{
                                 input: {
+                                    readOnly: !showDictionaryWaniKaniApiToken,
                                     endAdornment: (
                                         <InputAdornment position="end">
                                             <Tooltip title="">
