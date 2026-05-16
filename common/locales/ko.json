@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "자막 파일 {{fileName}}이(가) 열려 있지 않습니다.",
         "unknownExtension": "{{fileName}}의 확장자를 확인할 수 없습니다.",
         "unsupportedExtension": "{{extension}} 확장자는 지원되지 않습니다.",
-        "videoPlayerDragAndDropNotAllowed": "동영상 프레임에는 파일을 드롭할 수 없습니다. 화면 밖 영역에 드롭해 주세요."
+        "videoPlayerDragAndDropNotAllowed": "동영상 프레임에는 파일을 드롭할 수 없습니다. 화면 밖 영역에 드롭해 주세요.",
+        "restoreSessionPermissionDenied": "권한이 거부되어 마지막 세션을 복원할 수 없습니다.",
+        "restoreSessionFailed": "마지막 세션을 복원하지 못했습니다. 파일이 이동되었거나 삭제되었을 수 있습니다."
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "새로운  <1>확장 프로그램 업데이트</1>가 있습니다.",
         "noSubtitles": "자막 없음",
         "videoElementsDetected": "asbplayer를 시작하려면 영상에 자막을 추가하세요.",
-        "noVideoElementsDetected": "감지된 영상이 없음"
+        "noVideoElementsDetected": "감지된 영상이 없음",
+        "restoreLastSession": "마지막 세션 복원"
     },
     "activeTabPermissionRequest": {
         "title": "오디오 녹음 활성화",

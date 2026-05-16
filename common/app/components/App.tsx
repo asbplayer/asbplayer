@@ -51,6 +51,7 @@ import { useTranslation } from 'react-i18next';
 import { LocalizedError } from './localized-error';
 import { DisplaySubtitleModel } from './SubtitlePlayer';
 import { useCopyHistory } from '../hooks/use-copy-history';
+import { useFileSession } from '../hooks/use-file-session';
 import { useI18n } from '../hooks/use-i18n';
 import { useAppKeyBinder } from '../hooks/use-app-key-binder';
 import { useAnki } from '../hooks/use-anki';
@@ -60,6 +61,7 @@ import { useAppWebSocketClient } from '../hooks/use-app-web-socket-client';
 import { LoadSubtitlesCommand } from '../../web-socket-client';
 import { ExtensionBridgedCopyHistoryRepository } from '../services/extension-bridged-copy-history-repository';
 import { IndexedDBCopyHistoryRepository } from '../../copy-history';
+import { supportsFileSystemAccess, showFilePicker, requestPermissions, resolveFiles } from '../../file-system-access';
 import { isMobile } from 'react-device-detect';
 import { GlobalState } from '../../global-state';
 import mp3WorkerFactory from '../../audio-clip/mp3-encoder-worker.ts?worker';
@@ -76,9 +78,6 @@ import OneUncollectedSentenceDetailsDialog from '../../components/OneUncollected
 const latestExtensionVersion = '1.16.0';
 const extensionUrl =
     'https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab';
-
-const INPUT_ACCEPT_FILE_EXTENSIONS =
-    '.srt,.ass,.vtt,.sup,.mp3,.m4a,.aac,.flac,.ogg,.wav,.opus,.mkv,.mp4,.avi,.m4v,.webm';
 
 const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     content: {
@@ -98,6 +97,67 @@ const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     }),
 }));
 
+const videoExtensions = ['.mkv', '.mp4', '.m4v', '.avi', '.webm'] as const;
+const audioExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.ogg', '.wav', '.opus', '.m4b'] as const;
+const subtitleExtensions = [
+    '.srt',
+    '.ass',
+    '.vtt',
+    '.sup',
+    '.nfvtt',
+    '.ytxml',
+    '.ytsrv3',
+    '.dfxp',
+    '.ttml2',
+    '.bbjson',
+] as const;
+const inputAcceptFileExtensions = [...subtitleExtensions, ...audioExtensions, ...videoExtensions].join(',');
+
+const VIDEO_EXT_SET = new Set<string>(videoExtensions);
+const AUDIO_EXT_SET = new Set<string>(audioExtensions);
+const SUBTITLE_EXT_SET = new Set<string>(subtitleExtensions);
+
+const getExtension = (fileName: string) => {
+    const index = fileName.lastIndexOf('.');
+    return index === -1 ? '' : fileName.substring(index).toLowerCase();
+};
+
+async function extractDropFileHandles(items: DataTransferItemList): Promise<FileSystemFileHandle[] | undefined> {
+    const handlePromises: Promise<any>[] = [];
+
+    for (let i = 0; i < items.length; ++i) {
+        const item = items[i];
+        if (item.kind !== 'file') {
+            continue;
+        }
+
+        // Persist dropped handles only when the browser exposes getAsFileSystemHandle.
+        const getAsFileSystemHandle = (item as any).getAsFileSystemHandle as (() => Promise<any>) | undefined;
+        if (typeof getAsFileSystemHandle !== 'function') {
+            return undefined;
+        }
+
+        // Capture handle promises synchronously before DataTransfer gets cleared.
+        handlePromises.push(getAsFileSystemHandle.call(item));
+    }
+
+    const handles: FileSystemFileHandle[] = [];
+    for (const handlePromise of handlePromises) {
+        try {
+            const handle = await handlePromise;
+            if (handle?.kind === 'file') {
+                handles.push(handle as FileSystemFileHandle);
+            }
+        } catch (e) {
+            // Best-effort only; if handle access fails, keep loading dropped files normally.
+            console.warn('Failed to read dropped file handle:', e);
+            return undefined;
+        }
+    }
+
+    return handles.length > 0 ? handles : undefined;
+}
+
 function extractSources(files: FileList | File[]): MediaSources {
     let subtitleFiles: File[] = [];
     let audioFile: File | undefined = undefined;
@@ -105,51 +165,28 @@ function extractSources(files: FileList | File[]): MediaSources {
 
     for (let i = 0; i < files.length; ++i) {
         const f = files[i];
-        const extensionStartIndex = f.name.lastIndexOf('.');
+        const extension = getExtension(f.name);
 
-        if (extensionStartIndex === -1) {
+        if (extension === '') {
             throw new LocalizedError('error.unknownExtension', { fileName: f.name });
         }
 
-        const extension = f.name.substring(extensionStartIndex + 1, f.name.length);
-        switch (extension) {
-            case 'ass':
-            case 'srt':
-            case 'vtt':
-            case 'nfvtt':
-            case 'sup':
-            case 'ytxml':
-            case 'ytsrv3':
-            case 'dfxp':
-            case 'ttml2':
-            case 'bbjson':
-                subtitleFiles.push(f);
-                break;
-            case 'mkv':
-            case 'mp4':
-            case 'm4v':
-            case 'avi':
-            case 'webm':
-                if (videoFile) {
-                    throw new LocalizedError('error.onlyOneVideoFile');
-                }
-                videoFile = f;
-                break;
-            case 'mp3':
-            case 'm4a':
-            case 'aac':
-            case 'flac':
-            case 'ogg':
-            case 'wav':
-            case 'opus':
-            case 'm4b':
-                if (videoFile) {
-                    throw new LocalizedError('error.onlyOneAudioFile');
-                }
-                videoFile = f;
-                break;
-            default:
-                throw new LocalizedError('error.unsupportedExtension', { extension });
+        if (SUBTITLE_EXT_SET.has(extension)) {
+            subtitleFiles.push(f);
+        } else if (VIDEO_EXT_SET.has(extension)) {
+            if (videoFile) {
+                throw new LocalizedError('error.onlyOneVideoFile');
+            }
+            videoFile = f;
+        } else if (AUDIO_EXT_SET.has(extension)) {
+            if (videoFile) {
+                throw new LocalizedError('error.onlyOneAudioFile');
+            }
+            videoFile = f;
+        } else {
+            throw new LocalizedError('error.unsupportedExtension', {
+                extension: extension.startsWith('.') ? extension.substring(1) : extension,
+            });
         }
     }
 
@@ -372,6 +409,7 @@ function App({
     const [isSidePanelOpen, setIsSidePanelOpen] = useState<boolean>(false);
     const [statisticsOverlayOpen, setStatisticsOverlayOpen] = useState<boolean>(false);
     const [statisticsOverlayDismissed, setStatisticsOverlayDismissed] = useState<boolean>(false);
+    const { canRestoreLastSession, saveSession: saveFileSession, fetchSession, clearSession } = useFileSession();
     const [lastError, setLastError] = useState<any>();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { subtitleFiles } = sources;
@@ -920,13 +958,12 @@ function App({
 
         return extension.subscribeTabs(onTabs);
     }, [availableTabs, tab, extension, handleError, t]);
-
     const handleTabSelected = useCallback((tab: VideoTabModel) => {
         setTab(tab);
     }, []);
 
     const handleFiles = useCallback(
-        ({ files, flattenSubtitleFiles }: { files: FileList | File[]; flattenSubtitleFiles?: boolean }) => {
+        ({ files, flattenSubtitleFiles }: { files: FileList | File[]; flattenSubtitleFiles?: boolean }): boolean => {
             try {
                 let { subtitleFiles, videoFile } = extractSources(files);
 
@@ -980,13 +1017,74 @@ function App({
                     const subtitleFileName = subtitleFiles[0].name;
                     setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
                 }
+                return true;
             } catch (e) {
                 console.error(e);
                 handleError(e);
+                return false;
             }
         },
         [handleError]
     );
+
+    const persistFileSessionHandles = useCallback(
+        (handles: FileSystemFileHandle[] | undefined) => {
+            if (!handles || handles.length === 0) {
+                return;
+            }
+
+            let videoHandle: FileSystemFileHandle | undefined;
+            const subtitleHandles: FileSystemFileHandle[] = [];
+            for (const handle of handles) {
+                const extension = getExtension(handle.name);
+                if (VIDEO_EXT_SET.has(extension) || AUDIO_EXT_SET.has(extension)) {
+                    videoHandle = handle;
+                } else if (SUBTITLE_EXT_SET.has(extension)) {
+                    subtitleHandles.push(handle);
+                }
+            }
+
+            if (!videoHandle && subtitleHandles.length === 0) {
+                return;
+            }
+
+            // Persist in background so session saving never blocks current file loading.
+            void saveFileSession({ videoHandle, subtitleHandles }).catch((e) => {
+                console.error('Failed to save file session:', e);
+                handleError(e);
+            });
+        },
+        [handleError, saveFileSession]
+    );
+
+    const handleRestoreLastSession = useCallback(async () => {
+        try {
+            const record = await fetchSession();
+            if (!record) return;
+
+            const allHandles = [...(record.videoHandle ? [record.videoHandle] : []), ...record.subtitleHandles];
+
+            const { granted, denied } = await requestPermissions(allHandles);
+            if (denied.length > 0) {
+                handleError(t('error.restoreSessionPermissionDenied'));
+                return;
+            }
+
+            const { files, errors } = await resolveFiles(granted);
+            if (errors.length > 0) {
+                handleError(t('error.restoreSessionFailed'));
+                await clearSession();
+                return;
+            }
+
+            if (!handleFiles({ files })) {
+                await clearSession();
+            }
+        } catch (e) {
+            console.error('Failed to restore last session:', e);
+            handleError(e);
+        }
+    }, [fetchSession, clearSession, handleFiles, handleError, t]);
 
     const handleDirectory = useCallback(
         async (items: DataTransferItemList) => {
@@ -1237,6 +1335,7 @@ function App({
 
             setDragging(false);
             dragEnterRef.current = null;
+            const dataTransfer = e.dataTransfer;
 
             function allDirectories(items: DataTransferItemList) {
                 for (let i = 0; i < items.length; ++i) {
@@ -1248,13 +1347,25 @@ function App({
                 return true;
             }
 
-            if (e.dataTransfer.items && e.dataTransfer.items.length > 0 && allDirectories(e.dataTransfer.items)) {
-                handleDirectory(e.dataTransfer.items);
-            } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                handleFiles({ files: e.dataTransfer.files });
+            if (dataTransfer.items && dataTransfer.items.length > 0 && allDirectories(dataTransfer.items)) {
+                handleDirectory(dataTransfer.items);
+            } else if (dataTransfer.files && dataTransfer.files.length > 0) {
+                // Copy files synchronously; DataTransfer may be cleared after this handler returns.
+                const droppedFiles = Array.from(dataTransfer.files);
+                if (!handleFiles({ files: droppedFiles })) {
+                    return;
+                }
+
+                if (dataTransfer.items && dataTransfer.items.length > 0) {
+                    void extractDropFileHandles(dataTransfer.items)
+                        .then((fileHandles) => persistFileSessionHandles(fileHandles))
+                        .catch((e) => {
+                            console.warn('Failed to collect dropped file handles:', e);
+                        });
+                }
             }
         },
-        [inVideoPlayer, handleError, handleFiles, handleDirectory, ankiDialogOpen, t]
+        [inVideoPlayer, handleError, handleFiles, handleDirectory, ankiDialogOpen, t, persistFileSessionHandles]
     );
 
     const handleFileInputChange = useCallback(() => {
@@ -1266,7 +1377,28 @@ function App({
         }
     }, [handleFiles]);
 
-    const handleFileSelector = useCallback(() => fileInputRef.current?.click(), []);
+    const handleFileSelector = useCallback(async () => {
+        if (supportsFileSystemAccess()) {
+            try {
+                const handles = await showFilePicker({
+                    videoExtensions: [...videoExtensions],
+                    audioExtensions: [...audioExtensions],
+                    subtitleExtensions: [...subtitleExtensions],
+                });
+                if (!handles || handles.length === 0) return;
+                const { files } = await resolveFiles(handles);
+                if (files.length === 0) return;
+                if (handleFiles({ files })) {
+                    persistFileSessionHandles(handles);
+                }
+            } catch (e) {
+                console.error('Failed to pick files via File System Access API:', e);
+                handleError(e);
+            }
+        } else {
+            fileInputRef.current?.click();
+        }
+    }, [handleFiles, handleError, persistFileSessionHandles]);
 
     const handleVideoElementSelected = useCallback(
         async (videoElement: VideoTabModel) => {
@@ -1615,7 +1747,7 @@ function App({
                                 ref={fileInputRef}
                                 onChange={handleFileInputChange}
                                 type="file"
-                                accept={INPUT_ACCEPT_FILE_EXTENSIONS}
+                                accept={inputAcceptFileExtensions}
                                 multiple
                                 hidden
                             />
@@ -1630,8 +1762,10 @@ function App({
                                             dragging={dragging}
                                             appBarHidden={appBarHidden}
                                             videoElements={availableTabs ?? []}
+                                            canRestoreLastSession={canRestoreLastSession}
                                             onFileSelector={handleFileSelector}
                                             onVideoElementSelected={handleVideoElementSelected}
+                                            onRestoreLastSession={handleRestoreLastSession}
                                         />
                                     )}
                                     <DragOverlay

@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "Berkas takarir {{fileName}} belum dibuka.",
         "unknownExtension": "Tidak dapat mengenali ekstensi {{fileName}}",
         "unsupportedExtension": "Ekstensi {{extension}} tidak didukung",
-        "videoPlayerDragAndDropNotAllowed": "Pemutar video tidak dapat menerima berkas yang dijatuhkan langsung. Letakkan di luar bingkai video."
+        "videoPlayerDragAndDropNotAllowed": "Pemutar video tidak dapat menerima berkas yang dijatuhkan langsung. Letakkan di luar bingkai video.",
+        "restoreSessionPermissionDenied": "Izin ditolak. Tidak dapat memulihkan sesi terakhir.",
+        "restoreSessionFailed": "Gagal memulihkan sesi terakhir. File mungkin telah dipindahkan atau dihapus."
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "Tersedia <1>pembaruan</1> untuk ekstensi.",
         "noSubtitles": "Tidak ada takarir",
         "videoElementsDetected": "Muat takarir ke dalam video untuk mulai menggunakan asbplayer.",
-        "noVideoElementsDetected": "Tidak ada video yang terdeteksi."
+        "noVideoElementsDetected": "Tidak ada video yang terdeteksi.",
+        "restoreLastSession": "Pulihkan sesi terakhir"
     },
     "activeTabPermissionRequest": {
         "title": "Aktifkan perekaman audio",

@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "字幕ファイル「{{fileName}} 」が開いていません",
         "unknownExtension": "{{fileName}}の拡張子を確認できません",
         "unsupportedExtension": "対応していない拡張子です：{{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "動画プレイヤーはドロップしたファイルを受け取れません。動画のフレーム外にファイルをドロップしてください。"
+        "videoPlayerDragAndDropNotAllowed": "動画プレイヤーはドロップしたファイルを受け取れません。動画のフレーム外にファイルをドロップしてください。",
+        "restoreSessionPermissionDenied": "権限が拒否されました。前回のセッションを復元できません。",
+        "restoreSessionFailed": "前回のセッションを復元できませんでした。ファイルが移動または削除された可能性があります。"
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "拡張機能の<1>アップデート</1>を公開しました。",
         "noSubtitles": "字幕はありません",
         "videoElementsDetected": "asbplayer を使用するには字幕をロードしてください。",
-        "noVideoElementsDetected": "動画を探知できませんでした。"
+        "noVideoElementsDetected": "動画を探知できませんでした。",
+        "restoreLastSession": "前回のセッションを復元"
     },
     "activeTabPermissionRequest": {
         "title": "音声記録を有効にしてください",

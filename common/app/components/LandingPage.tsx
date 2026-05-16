@@ -1,11 +1,12 @@
 import React from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { makeStyles } from '@mui/styles';
 import gt from 'semver/functions/gt';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import ChromeExtension from '../services/chrome-extension';
 import { useMediaQuery, useTheme, type Theme } from '@mui/material';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
@@ -33,12 +34,15 @@ const useStyles = makeStyles<Theme, StylesProps>((theme) => ({
     browseLink: {
         cursor: 'pointer',
     },
-    videoElementSelectorContainer: {
+    actionsContainer: {
         position: 'absolute',
         bottom: 0,
         left: 0,
         padding: theme.spacing(2),
         width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: theme.spacing(1),
     },
 }));
 
@@ -50,10 +54,12 @@ interface Props {
     dragging: boolean;
     appBarHidden: boolean;
     videoElements: VideoTabModel[];
+    canRestoreLastSession: boolean;
     onFileSelector: React.MouseEventHandler<HTMLAnchorElement> &
         React.MouseEventHandler<HTMLSpanElement> &
         React.MouseEventHandler<HTMLLabelElement>;
     onVideoElementSelected: (videoElement: VideoTabModel) => void;
+    onRestoreLastSession: () => void;
 }
 
 export default function LandingPage({
@@ -64,9 +70,12 @@ export default function LandingPage({
     dragging,
     appBarHidden,
     videoElements,
+    canRestoreLastSession,
     onFileSelector,
     onVideoElementSelected,
+    onRestoreLastSession,
 }: Props) {
+    const { t } = useTranslation();
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const extensionUpdateAvailable = extension.version && gt(latestExtensionVersion, extension.version);
@@ -110,12 +119,20 @@ export default function LandingPage({
                             </Trans>
                         )}
                     </Typography>
-                    {extension.supportsLandingPageStreamingVideoElementSelector && videoElements.length > 0 && (
-                        <div className={classes.videoElementSelectorContainer}>
-                            <VideoElementSelector
-                                videoElements={videoElements}
-                                onVideoElementSelected={onVideoElementSelected}
-                            />
+                    {(canRestoreLastSession ||
+                        (extension.supportsLandingPageStreamingVideoElementSelector && videoElements.length > 0)) && (
+                        <div className={classes.actionsContainer}>
+                            {canRestoreLastSession && (
+                                <Button variant="outlined" color="primary" onClick={onRestoreLastSession} fullWidth>
+                                    {t('landing.restoreLastSession')}
+                                </Button>
+                            )}
+                            {extension.supportsLandingPageStreamingVideoElementSelector && videoElements.length > 0 && (
+                                <VideoElementSelector
+                                    videoElements={videoElements}
+                                    onVideoElementSelected={onVideoElementSelected}
+                                />
+                            )}
                         </div>
                     )}
                 </div>

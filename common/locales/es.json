@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "La pista de subtítulos {{fileName}} no está abierta",
         "unknownExtension": "No pudo determinarse la extensión de {{fileName}}",
         "unsupportedExtension": "Extensión no soportada {{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "El reproductor de video no puede recibir archivos. Arrástralos fuera del cuadro de video."
+        "videoPlayerDragAndDropNotAllowed": "El reproductor de video no puede recibir archivos. Arrástralos fuera del cuadro de video.",
+        "restoreSessionPermissionDenied": "Permiso denegado. No se puede restaurar la última sesión.",
+        "restoreSessionFailed": "No se pudo restaurar la última sesión. Es posible que los archivos se hayan movido o eliminado."
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "Hay una <1>actualización</1> disponible para la extensión.",
         "noSubtitles": "No hay subtítulos",
         "videoElementsDetected": "Carga subtítulos a un video para comenzar a usar asbplayer",
-        "noVideoElementsDetected": "No se detectaron videos"
+        "noVideoElementsDetected": "No se detectaron videos",
+        "restoreLastSession": "Restaurar última sesión"
     },
     "activeTabPermissionRequest": {
         "title": "Habilitar grabación de audio",

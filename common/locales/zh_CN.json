@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "字幕文件 {{fileName}} 未打开。",
         "unknownExtension": "无法识别 {{fileName}} 的文件格式",
         "unsupportedExtension": "不支持该文件格式：{{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "播放器无法接收拖放文件，请拖至视频画面外。"
+        "videoPlayerDragAndDropNotAllowed": "播放器无法接收拖放文件，请拖至视频画面外。",
+        "restoreSessionPermissionDenied": "权限被拒绝，无法恢复上次会话。",
+        "restoreSessionFailed": "恢复上次会话失败，文件可能已被移动或删除。"
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "发现新的 <1>扩展更新</1>。",
         "noSubtitles": "无字幕",
         "videoElementsDetected": "为视频加载字幕以开始使用。",
-        "noVideoElementsDetected": "未检测到视频元素。"
+        "noVideoElementsDetected": "未检测到视频元素。",
+        "restoreLastSession": "恢复上次会话"
     },
     "activeTabPermissionRequest": {
         "title": "开启录音权限",

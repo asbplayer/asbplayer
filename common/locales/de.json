@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "Subtitle file {{fileName}} is not open.",
         "unknownExtension": "Dateityp von {{fileName}} konnte nicht erkannt werden",
         "unsupportedExtension": "Nicht unterstützter Dateityp {{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "Video player cannot receive dropped files. Drop outside of the video frame instead."
+        "videoPlayerDragAndDropNotAllowed": "Video player cannot receive dropped files. Drop outside of the video frame instead.",
+        "restoreSessionPermissionDenied": "Berechtigung verweigert. Letzte Sitzung kann nicht wiederhergestellt werden.",
+        "restoreSessionFailed": "Die letzte Sitzung konnte nicht wiederhergestellt werden. Die Dateien wurden möglicherweise verschoben oder gelöscht."
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "Ein <1>Update</1> ist verfügbar",
         "noSubtitles": "No subtitles",
         "videoElementsDetected": "Load subtitles onto a video to start using asbplayer.",
-        "noVideoElementsDetected": "No videos detected."
+        "noVideoElementsDetected": "No videos detected.",
+        "restoreLastSession": "Letzte Sitzung wiederherstellen"
     },
     "activeTabPermissionRequest": {
         "title": "Enable audio recording",

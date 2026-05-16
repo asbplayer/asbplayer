@@ -203,7 +203,9 @@
         "subtitleFileNotOpen": "Plik napisów {{fileName}} nie jest otwarty.",
         "unknownExtension": "Nie można rozpoznać rozszerzenia {{fileName}}",
         "unsupportedExtension": "Niewspierane rozszerzenie {{extension}}",
-        "videoPlayerDragAndDropNotAllowed": "Odtwarzacz wideo nie może przyjąć upuszczonych plików. Zamiast tego upuść poza ramką wideo."
+        "videoPlayerDragAndDropNotAllowed": "Odtwarzacz wideo nie może przyjąć upuszczonych plików. Zamiast tego upuść poza ramką wideo.",
+        "restoreSessionPermissionDenied": "Odmowa uprawnień. Nie można przywrócić ostatniej sesji.",
+        "restoreSessionFailed": "Nie udało się przywrócić ostatniej sesji. Pliki mogły zostać przeniesione lub usunięte."
     },
     "extension": {
         "settings": {
@@ -327,7 +329,8 @@
         "extensionUpdateAvailable": "Dostępna jest <1>aktualizacja</1> rozszerzenia.",
         "noSubtitles": "Brak napisów",
         "videoElementsDetected": "Załaduj napisy, aby rozpocząć korzystanie z asbplayera.",
-        "noVideoElementsDetected": "Nie wykryto żadnego wideo."
+        "noVideoElementsDetected": "Nie wykryto żadnego wideo.",
+        "restoreLastSession": "Przywróć ostatnią sesję"
     },
     "activeTabPermissionRequest": {
         "title": "Aktywuj nagrywanie audio",
