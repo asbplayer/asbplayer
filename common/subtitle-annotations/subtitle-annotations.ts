@@ -109,7 +109,7 @@ function shouldUseAnyForm(s: TokenMatchStrategy): boolean {
     return s === TokenMatchStrategy.ANY_FORM_COLLECTED;
 }
 
-function shouldUseLemmaGroupingKey(source: DictionaryTokenSource | undefined, dt: DictionaryTrack): boolean {
+function shouldUseLemmasGroupingKey(source: DictionaryTokenSource | undefined, dt: DictionaryTrack): boolean {
     const strategy =
         source === DictionaryTokenSource.ANKI_SENTENCE
             ? dt.dictionaryAnkiSentenceTokenMatchStrategy
@@ -117,16 +117,18 @@ function shouldUseLemmaGroupingKey(source: DictionaryTokenSource | undefined, dt
     return strategy === TokenMatchStrategy.ANY_FORM_COLLECTED || strategy === TokenMatchStrategy.LEMMA_FORM_COLLECTED;
 }
 
-function groupingKeyForToken(
+function groupingKeysForToken(
     trimmedToken: string,
     lemmas: string[],
     source: DictionaryTokenSource | undefined,
     dt: DictionaryTrack
-): string {
-    // if (lemmas.length && shouldUseLemmaGroupingKey(source, dt)) {
-    //     return `lemma:${JSON.stringify(Array.from(new Set(lemmas)).sort())}`;
-    // }
-    return `token:${trimmedToken}`; // Using lemma causes the sentence status to disagree with richText (e.g. "Known sentences" have unknown tokens displayed but they are actually known due to their lemmas).
+): { groupingKey: string; lemmasGroupingKey?: string } {
+    const groupingKey = trimmedToken;
+    let lemmasGroupingKey: string | undefined;
+    if (lemmas.length && shouldUseLemmasGroupingKey(source, dt)) {
+        lemmasGroupingKey = `${JSON.stringify(Array.from(new Set(lemmas)).sort())}`;
+    }
+    return { groupingKey, lemmasGroupingKey };
 }
 
 function tokenStatusResult(
@@ -1357,7 +1359,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                             })),
                             status,
                             states,
-                            groupingKey: groupingKeyForToken(trimmedToken, lemmas, source, ts.dt),
+                            ...groupingKeysForToken(trimmedToken, lemmas, source, ts.dt),
                         };
                         applyExternalCandidateStatuses(token, tokenStatusResult);
                         if (token.status === null) this.erroredCache.add(index);
@@ -1447,13 +1449,22 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 // Build token status
                 if (token.states.includes(TokenState.IGNORED) || !HAS_LETTER_REGEX.test(trimmedToken)) {
                     token.status = getFullyKnownTokenStatus();
-                    token.groupingKey = groupingKeyForToken(trimmedToken, lemmas, undefined, ts.dt);
+                    const { groupingKey, lemmasGroupingKey } = groupingKeysForToken(
+                        trimmedToken,
+                        lemmas,
+                        undefined,
+                        ts.dt
+                    );
+                    token.groupingKey = groupingKey;
+                    token.lemmasGroupingKey = lemmasGroupingKey;
                     continue;
                 }
                 const tokenStatusResult = (await this._tokenStatus(trimmedToken, ts)) ?? { status: null };
                 const source = 'source' in tokenStatusResult ? tokenStatusResult.source : undefined;
                 token.status = tokenStatusResult.status;
-                token.groupingKey = groupingKeyForToken(trimmedToken, lemmas, source, ts.dt);
+                const { groupingKey, lemmasGroupingKey } = groupingKeysForToken(trimmedToken, lemmas, source, ts.dt);
+                token.groupingKey = groupingKey;
+                token.lemmasGroupingKey = lemmasGroupingKey;
                 applyExternalCandidateStatuses(token, tokenStatusResult);
                 if (token.status === null) this.erroredCache.add(index);
                 await this._updateFrequency(token, trimmedToken, index, ts);

@@ -34,6 +34,7 @@ export interface Token {
     readings: TokenReading[];
     frequency?: number | null; // null means no frequency data
     groupingKey?: string; // Stable key for equivalence aggregation
+    lemmasGroupingKey?: string; // Stable key for equivalence aggregation based on lemmas (statistics)
     externalCandidateStatuses?: TokenStatusInfo[];
 }
 
