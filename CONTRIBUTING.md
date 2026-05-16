@@ -30,7 +30,7 @@ Then open a pull request on the [GitHub repository](https://github.com/asbplayer
 
 ## Documentation
 
-Documentation is under the `docs` folder if this repository. When adding new features, please update the documentation as well.
+Documentation is under the `docs` folder in this repository. When adding new features, please update the documentation as well.
 
 ## Development
 
