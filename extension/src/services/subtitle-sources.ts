@@ -6,7 +6,7 @@ export interface JimakuEntry {
     english_name?: string;
     created_at?: string;
     last_updated_at?: string;
-    flags?: number;
+    anime?: boolean;
 }
 
 export interface JimakuFile {
@@ -137,9 +137,12 @@ export class JimakuClient {
         this._minRequestIntervalMs = minRequestIntervalMs;
     }
 
-    async searchEntries(query: string): Promise<JimakuResponse<JimakuEntry[]>> {
+    async searchEntries(query: string, anime?: boolean): Promise<JimakuResponse<JimakuEntry[]>> {
         const searchParams = new URLSearchParams();
         searchParams.set('query', query);
+        if (anime !== undefined) {
+            searchParams.set('anime', `${anime}`);
+        }
         return await this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
     }
 

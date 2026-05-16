@@ -57,6 +57,28 @@ describe('JimakuClient', () => {
         expect(response.rateLimit.resetAfterSeconds).toBe(1.5);
     });
 
+    it('searches entries with anime parameter', async () => {
+        const fetchMock = jest.fn().mockResolvedValue(
+            createResponse({
+                jsonData: [{ id: 999, name: 'Some Drama', flags: 2 }],
+                headers: {
+                    'x-ratelimit-limit': '100',
+                    'x-ratelimit-remaining': '98',
+                    'x-ratelimit-reset-after': '1.0',
+                },
+            })
+        );
+        global.fetch = fetchMock as unknown as typeof fetch;
+        const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
+
+        const response = await client.searchEntries('Some Drama', false);
+
+        expect(fetchMock).toHaveBeenCalledWith('https://jimaku.cc/api/entries/search?query=Some+Drama&anime=false', {
+            headers: { Authorization: 'test-key' },
+        });
+        expect(response.data[0].name).toBe('Some Drama');
+    });
+
     it('requests files with optional filters', async () => {
         const fetchMock = jest.fn().mockResolvedValue(createResponse({ jsonData: [] }));
         global.fetch = fetchMock as unknown as typeof fetch;
