@@ -670,6 +670,19 @@ export function getTokenStatus(
     return TokenStatus.UNKNOWN;
 }
 
+export function dedupeTokenStatusInfos(statuses: TokenStatusInfo[]): TokenStatusInfo[] | undefined {
+    if (!statuses.length) return;
+    const seen = new Set<string>();
+    const deduped: TokenStatusInfo[] = [];
+    for (const status of statuses) {
+        const key = [status.cardId, status.subjectId, status.assignmentId, status.status, status.suspended].join(':');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(status);
+    }
+    return deduped;
+}
+
 /**
  * An async safe semaphore implementation that preserves FIFO order (within a priority group).
  * Priority levels are set with acquire(), higher numbers indicate a higher priority.

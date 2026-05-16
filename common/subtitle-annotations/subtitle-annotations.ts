@@ -52,6 +52,7 @@ import {
     areTokenizationsEqual,
     utcStartOfToday,
     getTokenStatus,
+    dedupeTokenStatusInfos,
 } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan/yomitan';
 
@@ -75,15 +76,13 @@ interface TokenStatusResult {
     status: TokenStatus;
     source: DictionaryTokenSource;
     token?: string; // For any form filtering
-    cardIds?: number[];
-    assignmentIds?: number[];
+    externalCandidateStatuses?: TokenStatusInfo[];
 }
 
 interface ResolvedTokenStatusResult {
     status: TokenStatus;
     source?: DictionaryTokenSource;
-    cardIds?: number[];
-    assignmentIds?: number[];
+    externalCandidateStatuses?: TokenStatusInfo[];
 }
 
 interface TrackState {
@@ -137,15 +136,12 @@ function tokenStatusResult(
     externalCandidateStatuses?: TokenStatusInfo[],
     token?: string
 ): TokenStatusResult {
-    const statusesForIds = externalCandidateStatuses ?? statuses;
+    const candidateStatuses = externalCandidateStatuses ?? statuses;
     return {
         status: getTokenStatus(statuses, dictionaryAnkiTreatSuspended),
         source,
         token,
-        cardIds: statusesForIds.flatMap((status) => (status.cardId === undefined ? [] : [status.cardId])),
-        assignmentIds: statusesForIds.flatMap((status) =>
-            status.assignmentId === undefined ? [] : [status.assignmentId]
-        ),
+        externalCandidateStatuses: candidateStatuses.length ? candidateStatuses : undefined,
     };
 }
 
@@ -158,9 +154,19 @@ function combineTokenStatusResults(
     return {
         status: selectedResult.status,
         source: selectedResult.source,
-        cardIds: tokenStatusResults.flatMap((result) => result.cardIds ?? []),
-        assignmentIds: tokenStatusResults.flatMap((result) => result.assignmentIds ?? []),
+        externalCandidateStatuses: dedupeTokenStatusInfos(
+            tokenStatusResults.flatMap((result) => result.externalCandidateStatuses ?? [])
+        ),
     };
+}
+
+function applyExternalCandidateStatuses(
+    token: Token,
+    tokenStatusResult: ResolvedTokenStatusResult | { status: TokenStatus | null }
+) {
+    if ('externalCandidateStatuses' in tokenStatusResult && tokenStatusResult.externalCandidateStatuses !== undefined) {
+        token.externalCandidateStatuses = tokenStatusResult.externalCandidateStatuses;
+    }
 }
 
 export interface InternalToken extends Token {
@@ -1353,6 +1359,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                             states,
                             groupingKey: groupingKeyForToken(trimmedToken, lemmas, source, ts.dt),
                         };
+                        applyExternalCandidateStatuses(token, tokenStatusResult);
                         if (token.status === null) this.erroredCache.add(index);
                         await this._updateFrequency(token, trimmedToken, index, ts);
                         if (this.shouldCancelBuild) return;
@@ -1447,6 +1454,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 const source = 'source' in tokenStatusResult ? tokenStatusResult.source : undefined;
                 token.status = tokenStatusResult.status;
                 token.groupingKey = groupingKeyForToken(trimmedToken, lemmas, source, ts.dt);
+                applyExternalCandidateStatuses(token, tokenStatusResult);
                 if (token.status === null) this.erroredCache.add(index);
                 await this._updateFrequency(token, trimmedToken, index, ts);
                 if (this.shouldCancelBuild) return;
@@ -1480,22 +1488,28 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         ts: TrackState,
         tokenStatusResult: ResolvedTokenStatusResult
     ): void {
-        if ('cardIds' in tokenStatusResult && tokenStatusResult.cardIds?.length) {
+        const cardIds = tokenStatusResult.externalCandidateStatuses?.flatMap((status) =>
+            status.cardId === undefined ? [] : [status.cardId]
+        );
+        if (cardIds?.length) {
             let tokenCardIds = ts.tokenCardIds.get(token);
             if (!tokenCardIds) {
                 tokenCardIds = new Map();
                 ts.tokenCardIds.set(token, tokenCardIds);
             }
-            for (const cardId of tokenStatusResult.cardIds) tokenCardIds.set(cardId, false);
+            for (const cardId of cardIds) tokenCardIds.set(cardId, false);
         }
 
-        if ('assignmentIds' in tokenStatusResult && tokenStatusResult.assignmentIds?.length) {
+        const assignmentIds = tokenStatusResult.externalCandidateStatuses?.flatMap((status) =>
+            status.assignmentId === undefined ? [] : [status.assignmentId]
+        );
+        if (assignmentIds?.length) {
             let tokenAssignmentIds = ts.tokenAssignmentIds.get(token);
             if (!tokenAssignmentIds) {
                 tokenAssignmentIds = new Set();
                 ts.tokenAssignmentIds.set(token, tokenAssignmentIds);
             }
-            for (const assignmentId of tokenStatusResult.assignmentIds) tokenAssignmentIds.add(assignmentId);
+            for (const assignmentId of assignmentIds) tokenAssignmentIds.add(assignmentId);
         }
     }
 

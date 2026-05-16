@@ -1389,14 +1389,14 @@ function TrackSnapshot({
                 </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box ref={reviewStatisticsSectionRef} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <ReviewStatisticsSourceSelector
                     selectedSource={reviewStatisticsSource}
                     onSelectedSource={handleReviewStatisticsSourceSelected}
                     ankiLabel={ankiStatisticsTitle}
                     waniKaniLabel={waniKaniStatisticsTitle}
                 />
-                <Box ref={reviewStatisticsSectionRef}>
+                <Box>
                     {reviewStatisticsSource === 'anki' ? (
                         <AnkiStatisticsSection
                             snapshot={ankiTrackSnapshot}

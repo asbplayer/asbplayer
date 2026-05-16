@@ -1,5 +1,6 @@
 import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
 import type { OnlineSubtitleSourceConfig } from '../global-state';
+import type { TokenStatusInfo } from '../dictionary-db';
 
 type Profile = { name: string };
 
@@ -33,6 +34,7 @@ export interface Token {
     readings: TokenReading[];
     frequency?: number | null; // null means no frequency data
     groupingKey?: string; // Stable key for equivalence aggregation
+    externalCandidateStatuses?: TokenStatusInfo[];
 }
 
 export interface Tokenization {

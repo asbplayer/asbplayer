@@ -15,7 +15,13 @@ import {
     REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
 import { TokenStatusInfo } from '@project/common/dictionary-db';
-import { getTokenStatus, HAS_LETTER_REGEX, MS_PER_DAY, utcStartOfToday } from '@project/common/util';
+import {
+    dedupeTokenStatusInfos,
+    getTokenStatus,
+    HAS_LETTER_REGEX,
+    MS_PER_DAY,
+    utcStartOfToday,
+} from '@project/common/util';
 
 /**
  * This file along with its consumers can be freely modified without concern to version
@@ -225,6 +231,7 @@ interface ProcessedTokenSnapshot {
     ignored: boolean;
     frequency: number | null;
     numOccurrences: number;
+    externalCandidateStatuses?: TokenStatusInfo[];
 }
 type ProcessedTokenSnapshots = Map<string, ProcessedTokenSnapshot>;
 
@@ -506,6 +513,10 @@ function mergeTokenSnapshot(
                 ? Math.min(prev.frequency, curr.frequency)
                 : (prev.frequency ?? curr.frequency),
         numOccurrences: prev.numOccurrences + curr.numOccurrences,
+        externalCandidateStatuses: dedupeTokenStatusInfos([
+            ...(prev.externalCandidateStatuses ?? []),
+            ...(curr.externalCandidateStatuses ?? []),
+        ]),
     };
 }
 
@@ -525,6 +536,7 @@ function processSentenceSnapshots(sentences: DictionaryStatisticsSentences): Pro
                     ignored: token.states.includes(TokenState.IGNORED),
                     frequency: token.frequency ?? null,
                     numOccurrences: 1,
+                    externalCandidateStatuses: token.externalCandidateStatuses,
                 })
             );
         }
@@ -1218,9 +1230,9 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
         if (tokenSnapshot.ignored) continue;
 
         const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
-        if (!token || token.states.includes(TokenState.IGNORED)) continue;
+        if (token?.states.includes(TokenState.IGNORED)) continue;
 
-        const tokenStatuses = (token.externalCandidateStatuses ?? token.statuses).filter(hasCardId);
+        const tokenStatuses = (tokenSnapshot.externalCandidateStatuses ?? token?.statuses ?? []).filter(hasCardId);
         if (!tokenStatuses.length) continue;
 
         incrementAnkiDueCounts(dueCounts, tokenStatuses, dueByToday, dueByTomorrow, dueByWeek);
@@ -1335,9 +1347,9 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
         if (tokenSnapshot.ignored) continue;
 
         const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
-        if (!token || token.states.includes(TokenState.IGNORED)) continue;
+        if (token?.states.includes(TokenState.IGNORED)) continue;
 
-        const tokenStatuses = (token.externalCandidateStatuses ?? token.statuses).filter(hasSubjectId);
+        const tokenStatuses = (tokenSnapshot.externalCandidateStatuses ?? token?.statuses ?? []).filter(hasSubjectId);
         if (!tokenStatuses.length) continue;
 
         incrementWaniKaniDueCounts(
