@@ -6,6 +6,8 @@ import { coerce, lt, gte } from 'semver';
 const TOKENIZE_BATCH_SIZE = 100; // 1k can cause 1.5GB memory on Yomitan for subtitles, Anki cards may be larger too
 const TERM_ENTRIES_BATCH_SIZE = 10; // 100 is only 10% faster (17s vs 19s for a 23min subtitle)
 const TERM_ENTRIES_DEBOUNCE_MS = 10; // Prevents using too much resources
+const FREQUENCY_MODE_INFERENCE_GROUP_SIZE = 10;
+const FREQUENCY_MODE_INFERENCE_RANK_BASED_MATCHES = 7;
 
 const YEAR_MONTH_REGEX = /(?<year>20\d{2})(?<month>[01]\d)/;
 
@@ -38,6 +40,7 @@ interface TermSource {
     isPrimary: boolean;
 }
 
+type FrequencyMode = 'rank-based' | 'occurrence-based';
 interface TermFrequency {
     index: number;
     headwordIndex: number;
@@ -45,7 +48,7 @@ interface TermFrequency {
     dictionaryIndex: number;
     dictionaryAlias: string;
     hasReading: boolean;
-    frequencyMode?: 'occurrence-based' | 'rank-based' | null;
+    frequencyMode?: FrequencyMode | null;
     frequency: number;
     displayValue: string | null;
     displayValueParsed: boolean;
@@ -77,6 +80,8 @@ export class Yomitan {
     private readonly tokenizeCache: Map<string, TokenPart[][]>;
     private readonly lemmatizeCache: Map<string, string[]>;
     private readonly frequencyCache: Map<string, number | null>;
+    private readonly frequencyModeInferenceData: Map<string, Map<string, number>>;
+    private readonly inferredFrequencyModes: Map<string, FrequencyMode>;
     private readonly lemmaTokenFallback: boolean; // Allow collecting ungrouped segments (no dictionary entry)
     private readonly tokensWereModified?: (token: string) => void;
     private supportsMecab: boolean;
@@ -96,6 +101,8 @@ export class Yomitan {
         this.tokenizeCache = new Map();
         this.lemmatizeCache = new Map();
         this.frequencyCache = new Map();
+        this.frequencyModeInferenceData = new Map();
+        this.inferredFrequencyModes = new Map();
         this.lemmaTokenFallback = options?.lemmaTokenFallback ?? false;
         this.tokensWereModified = options?.tokensWereModified;
         this.supportsMecab = false;
@@ -122,6 +129,8 @@ export class Yomitan {
         this.tokenizeCache.clear();
         this.lemmatizeCache.clear();
         this.frequencyCache.clear();
+        this.frequencyModeInferenceData.clear();
+        this.inferredFrequencyModes.clear();
         this.lastCancelledAt = Date.now();
     }
 
@@ -324,7 +333,7 @@ export class Yomitan {
                     if (!headword.frequencies) continue;
                     for (const f of headword.frequencies) {
                         if (!Number.isFinite(f.frequency) || f.frequency <= 0) continue;
-                        if (f.frequencyMode !== 'rank-based') continue;
+                        if (this.frequencyMode(token, f) !== 'rank-based') continue;
                         minFrequency = minFrequency === null ? f.frequency : Math.min(minFrequency, f.frequency);
                     }
                     break;
@@ -482,7 +491,7 @@ export class Yomitan {
             for (const f of entry.frequencies) {
                 if (!matchingHeadwordIndices.has(f.headwordIndex)) continue;
                 if (!Number.isFinite(f.frequency) || f.frequency <= 0) continue;
-                if (f.frequencyMode !== 'rank-based' && this.supportsTokenizeFrequency) continue; // Exposed with this.supportsTokenizeFrequency
+                if (this.frequencyMode(token, f) !== 'rank-based') continue;
                 minFrequency = minFrequency === null ? f.frequency : Math.min(minFrequency, f.frequency);
             }
         }
@@ -538,6 +547,76 @@ export class Yomitan {
             );
         } finally {
             this.asyncSemaphore.release(semaphoreId);
+        }
+    }
+
+    private frequencyMode(token: string, f: TermFrequency): FrequencyMode | undefined {
+        if (f.frequencyMode) return f.frequencyMode;
+
+        let frequencies = this.frequencyModeInferenceData.get(f.dictionary);
+        if (!frequencies) {
+            frequencies = new Map();
+            this.frequencyModeInferenceData.set(f.dictionary, frequencies);
+        }
+        const existingFrequency = frequencies.get(token);
+        if (existingFrequency === undefined || f.frequency < existingFrequency) frequencies.set(token, f.frequency);
+        return this.inferredFrequencyModes.get(f.dictionary);
+    }
+
+    inferFrequencyModesFromTokenOccurrences(tokenOccurrencesByIndex: Map<number, Map<string, number>>): void {
+        const occurrencesByToken = new Map<string, number>();
+        for (const tokenOccurrences of tokenOccurrencesByIndex.values()) {
+            for (const [token, occurrences] of tokenOccurrences.entries()) {
+                occurrencesByToken.set(token, (occurrencesByToken.get(token) ?? 0) + occurrences);
+            }
+        }
+        for (const [dictionary, frequencies] of this.frequencyModeInferenceData.entries()) {
+            const records: { token: string; frequency: number; occurrences: number }[] = [];
+            for (const [token, frequency] of frequencies.entries()) {
+                const occurrences = occurrencesByToken.get(token);
+                if (occurrences === undefined) continue;
+                records.push({ token, frequency, occurrences });
+            }
+            if (records.length < FREQUENCY_MODE_INFERENCE_GROUP_SIZE * 2) continue;
+            const previousFrequencyMode = this.inferredFrequencyModes.get(dictionary);
+
+            const recordsByOccurrences = [...records].sort(
+                (left, right) => right.occurrences - left.occurrences || left.frequency - right.frequency
+            );
+            const mostOccurringWords = recordsByOccurrences.slice(0, FREQUENCY_MODE_INFERENCE_GROUP_SIZE);
+            const leastOccurringWords = recordsByOccurrences.slice(-FREQUENCY_MODE_INFERENCE_GROUP_SIZE);
+            let rankBasedMatches = 0;
+            for (let i = 0; i < FREQUENCY_MODE_INFERENCE_GROUP_SIZE; i++) {
+                if (mostOccurringWords[i].frequency < leastOccurringWords[i].frequency) ++rankBasedMatches;
+            }
+            const frequencyMode =
+                rankBasedMatches >= FREQUENCY_MODE_INFERENCE_RANK_BASED_MATCHES ? 'rank-based' : 'occurrence-based';
+
+            if (previousFrequencyMode === frequencyMode) continue;
+            console.log(
+                `Inferred '${frequencyMode}' for the '${dictionary}' frequency dictionary (previously ${previousFrequencyMode}) based on:`,
+                {
+                    mostOccurringWords,
+                    leastOccurringWords,
+                }
+            );
+
+            this.inferredFrequencyModes.set(dictionary, frequencyMode);
+            for (const [token, frequency] of frequencies.entries()) {
+                if (frequencyMode === 'rank-based') {
+                    const cachedFrequency = this.frequencyCache.get(token);
+                    this.frequencyCache.set(
+                        token,
+                        cachedFrequency === undefined || cachedFrequency === null
+                            ? frequency
+                            : Math.min(cachedFrequency, frequency)
+                    );
+                    this.tokensWereModified?.(token);
+                } else if (previousFrequencyMode === 'rank-based') {
+                    this.frequencyCache.delete(token);
+                    this.tokensWereModified?.(token);
+                }
+            }
         }
     }
 
