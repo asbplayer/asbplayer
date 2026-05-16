@@ -476,8 +476,13 @@
         "buildAnkiCacheHelperText": "Il database parole Anki viene aggiornato automaticamente durante la riproduzione quando una traccia è abilitata e Anki è raggiungibile.",
         "buildAnkiCacheAnkiEnableHelperText": "<0>Configura i campi parola e/o frase di destinazione</0> per raccogliere le parole conosciute da Anki.",
         "ankiCacheDependentSettingsHelperText": "La modifica di \"{{field}}\" potrebbe invalidare la cache Anki; avvia una ricostruzione ora o lascia che avvenga automaticamente alla prossima riproduzione quando questa traccia è abilitata e Anki è raggiungibile.",
+        "buildWaniKaniCache": "Re-Build WaniKani word database",
+        "buildWaniKaniCacheHelperText": "The WaniKani word database is automatically updated during playback when a track is enabled and a token is configured.",
+        "buildWaniKaniCacheTokenEnableHelperText": "Add a WaniKani API token below to collect your WaniKani vocabulary.",
+        "waniKaniCacheDependentSettingsHelperText": "Changing \"{{field}}\" could invalidate the WaniKani cache, trigger a rebuild now or have it done automatically on your next playback when this track is enabled and a token is configured.",
         "dictionaryLocalWordDatabase": "Database parole locale",
         "dictionaryAnkiWordDatabase": "Database parole Anki",
+        "dictionaryWaniKaniWordDatabase": "WaniKani word database",
         "dictionaryColorizeSubtitles": "Colora i sottotitoli in base alle parole conosciute",
         "dictionaryAutoGenerateStatistics": "Genera statistiche automaticamente",
         "dictionaryColorizeOnHoverOnly": "Mostra annotazioni solo al passaggio del mouse",
@@ -519,6 +524,8 @@
         "dictionaryAnkiMatureCutoff": "Stabilità/intervallo Anki maturo (giorni)",
         "dictionaryAnkiTreatSuspended": "Tratta le carte Anki sospese come",
         "dictionaryAnkiTreatSuspendedNormal": "Normale",
+        "dictionaryWaniKaniSection": "WaniKani",
+        "dictionaryWaniKaniApiToken": "WaniKani API token",
         "dictionaryTokenStyling": "Stile colore parole",
         "dictionaryTokenStylingText": "Testo",
         "dictionaryTokenStylingBackground": "Sfondo",
@@ -542,12 +549,20 @@
         "dictionaryTokenStatusReading0": "Lettura",
         "dictionaryTokenStateIgnored": "Ignorato",
         "dictionaryBuildAnkiStarted": "Interrogazione di Anki per le carte modificate",
+        "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",
         "dictionaryBuildAnkiTracks": "Traccia/e Anki: {{tracks}}",
+        "dictionaryBuildWaniKaniTrack": "WaniKani track #{{trackNumber}}",
+        "dictionaryBuildWaniKaniTrackCleared": "cleared",
+        "dictionaryBuildWaniKaniTrackNoChanges": "no changes",
         "dictionaryBuildModifiedCards": "{{numCards}} carta/e modificata/e",
+        "dictionaryBuildWaniKaniTokens": "{{numTokens}} imported word(s)",
+        "dictionaryBuildWaniKaniAssignments": "{{numAssignments}} assignment(s)",
+        "dictionaryBuildWaniKaniSubjects": "{{numSubjects}} subject(s)",
         "dictionaryBuildOrphanedCards": "{{numCards}} carta/e eliminata/e da traccia/e orfane: {{tracks}}",
         "dictionaryBuildInProgress": "Costruzione già in corso (scade alle {{time}})",
         "dictionaryBuildAnkiError": "Errore durante il recupero dei permessi da Anki",
+        "dictionaryBuildWaniKaniTokenInvalidError": "Error connecting to WaniKani. Check the API token for track {{trackNumber}}.",
         "dictionaryBuildYomitanError": "Errore di connessione a Yomitan per la traccia {{trackNumber}} (disabilita questa traccia per ignorare)",
         "dictionaryImportClipboardIgnored": "Segna le parole come ignorate",
         "dictionaryImportClipboardText": "Incolla testo o una parola per riga",
@@ -579,13 +594,16 @@
                 "status": "Stato",
                 "states": "Stati",
                 "track": "Traccia",
+                "assignmentIds": "Assignment IDs",
                 "cardIds": "Id Carta",
+                "subjectIds": "Subject IDs",
                 "noteIds": "Id Nota",
                 "suspended": "Sospeso"
             },
             "sources": {
                 "local": "Locale",
                 "ankiWord": "Parola Anki",
+                "waniKani": "WaniKani",
                 "ankiSentence": "Frase Anki"
             },
             "suspended": {
@@ -642,6 +660,14 @@
             "noDeckBreakdown": "Nessuna carta Anki corrispondente trovata per questo media.",
             "info": {
                 "ankiStatistics": "Come le tue carte Anki si abbinano alle parole in questo media."
+            }
+        },
+        "waniKani": {
+            "waniKaniStatistics": "WaniKani statistics",
+            "waniKaniNeedsToBeAvailable": "WaniKani statistics could not be loaded.",
+            "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
+            "info": {
+                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media."
             }
         },
         "info": {
