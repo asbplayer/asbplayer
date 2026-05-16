@@ -1180,13 +1180,15 @@ export default function WordBrowserDialog({
                 record.source === DictionaryTokenSource.ANKI_SENTENCE;
             const isWaniKaniRecord = record.source === DictionaryTokenSource.WANIKANI;
             const trackCardRecords = records.ankiCardRecords[record.track];
-            const cardRecords = record.cardIds
-                .map((cardId) => trackCardRecords?.[cardId])
-                .filter((cardRecord): cardRecord is DictionaryAnkiCardRecord => cardRecord !== undefined);
+            const cardRecords = isAnkiRecord
+                ? record.cardIds
+                      .map((cardId) => trackCardRecords?.[cardId])
+                      .filter((cardRecord): cardRecord is DictionaryAnkiCardRecord => cardRecord !== undefined)
+                : [];
             const trackWaniKaniAssignmentRecordsBySubject = waniKaniAssignmentRecordsBySubjectByTrack[record.track];
-            const waniKaniAssignmentRecords = (record.subjectIds ?? []).flatMap(
-                (subjectId) => trackWaniKaniAssignmentRecordsBySubject?.[subjectId] ?? []
-            );
+            const waniKaniAssignmentRecords = isWaniKaniRecord
+                ? record.cardIds.flatMap((subjectId) => trackWaniKaniAssignmentRecordsBySubject?.[subjectId] ?? [])
+                : [];
             const waniKaniSubjectStatuses: TokenStatusInfo[] = waniKaniAssignmentRecords.map((assignmentRecord) => ({
                 assignmentId: assignmentRecord.assignmentId,
                 subjectId: assignmentRecord.subjectId,
@@ -1235,7 +1237,7 @@ export default function WordBrowserDialog({
             const cardIds = isWaniKaniRecord
                 ? dedupeNumbers(waniKaniAssignmentRecords.map((assignmentRecord) => assignmentRecord.assignmentId))
                 : dedupeNumbers(record.cardIds);
-            const noteIds = isWaniKaniRecord ? dedupeNumbers(record.subjectIds ?? []) : ankiNoteIds;
+            const noteIds = isWaniKaniRecord ? dedupeNumbers(record.cardIds) : ankiNoteIds;
             const hasExternalIdColumns = isAnkiRecord || isWaniKaniRecord;
 
             return {

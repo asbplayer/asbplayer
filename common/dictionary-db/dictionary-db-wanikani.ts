@@ -27,7 +27,7 @@ import {
     _buildIdHealthCheck,
     _clearBuildIds,
     DictionaryMetaKey,
-    _DictionaryTokenRecord,
+    DictionaryTokenRecord,
     DictionaryWaniKaniAssignmentKey,
     DictionaryWaniKaniAssignmentRecord,
     DictionaryWaniKaniSubjectKey,
@@ -611,7 +611,7 @@ async function _buildWaniKaniTokensForTrack(
         async (batch) => {
             const batchSubjectIds = new Set(batch);
             const existingRecords = await db.tokens
-                .where('subjectIds')
+                .where('cardIds')
                 .anyOf(batch)
                 .distinct()
                 .filter(
@@ -663,11 +663,11 @@ async function _buildWaniKaniTokensForTrack(
                 DictionaryTokenSource.WANIKANI,
                 Array.from(affectedTokens)
             );
-            const records: _DictionaryTokenRecord[] = [];
+            const records: DictionaryTokenRecord[] = [];
             for (const token of affectedTokens) {
                 const existingRecord = existingRecordByToken.get(token);
                 const subjectIds = new Set(
-                    existingRecord?.subjectIds.filter((subjectId) => !batchSubjectIds.has(subjectId)) ?? []
+                    existingRecord?.cardIds.filter((subjectId) => !batchSubjectIds.has(subjectId)) ?? []
                 );
                 for (const subjectId of newSubjectIdsByToken.get(token) ?? []) subjectIds.add(subjectId);
                 if (!subjectIds.size) {
@@ -691,8 +691,7 @@ async function _buildWaniKaniTokensForTrack(
                     status: null,
                     lemmas,
                     states: existingRecord?.states ?? [],
-                    cardIds: [],
-                    subjectIds: Array.from(subjectIds).sort((lhs, rhs) => lhs - rhs),
+                    cardIds: Array.from(subjectIds).sort((lhs, rhs) => lhs - rhs),
                 });
             }
 
@@ -741,8 +740,8 @@ async function _saveWaniKaniTokenBatchForDB(
     db: _DictionaryDatabase,
     profile: string,
     track: number,
-    existingRecords: _DictionaryTokenRecord[],
-    records: _DictionaryTokenRecord[],
+    existingRecords: DictionaryTokenRecord[],
+    records: DictionaryTokenRecord[],
     buildId: string,
     activeTracks: DictionaryMetaKey[],
     modifiedTokens: Set<string>

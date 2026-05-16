@@ -28,7 +28,7 @@ import {
     DictionaryAnkiCardKey,
     DictionaryAnkiCardRecord,
     DictionaryMetaKey,
-    _DictionaryTokenRecord,
+    DictionaryTokenRecord,
     _ensureBuildId,
     _gatherModifiedTokens,
     _getFromSourceBulk,
@@ -840,7 +840,7 @@ async function _buildTokensForTracks(
                 ts.yomitan.resetCache();
             }
 
-            const records: _DictionaryTokenRecord[] = [];
+            const records: DictionaryTokenRecord[] = [];
             const ankiCards: DictionaryAnkiCardRecord[] = [];
             for (const track of trackStates.keys()) {
                 for (const [source, tokenCardsMap] of partialTokenRecordsByTrack.get(track)!.entries()) {
@@ -870,8 +870,7 @@ async function _buildTokensForTracks(
                             status: ankiTokenStatus,
                             lemmas: val.lemmas,
                             states,
-                            cardIds: Array.from(val.cardIds),
-                            subjectIds: [],
+                            cardIds: Array.from(val.cardIds).sort((lhs, rhs) => lhs - rhs),
                         });
                     }
                 }
@@ -924,7 +923,7 @@ async function _saveTokensForDB(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: Map<number, TrackStateForDB>,
-    records: _DictionaryTokenRecord[],
+    records: DictionaryTokenRecord[],
     ankiCards: DictionaryAnkiCardRecord[],
     modifiedCardsBatch: CardsForDB,
     partialTokenRecordsByTrack: Map<

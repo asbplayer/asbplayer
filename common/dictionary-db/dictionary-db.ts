@@ -74,12 +74,9 @@ export interface DictionaryTokenRecord {
     status: TokenStatus | null;
     lemmas: string[];
     states: TokenState[];
-    cardIds: number[];
-    subjectIds?: number[]; // Guaranteed to exist by db, only here to enforce type safety for the App communicating with an outdated extension
+    cardIds: number[]; // externalIds: used to match tokens with Anki cards or WaniKani subjects (and any future external sources)
 }
-export interface _DictionaryTokenRecord extends DictionaryTokenRecord {
-    subjectIds: number[]; // Match DB invariant with type system, only for use within DictionaryDB and its pipelines
-}
+
 export interface DictionaryLocalTokenInput {
     token: string;
     status: TokenStatus | null;
@@ -125,7 +122,7 @@ export interface DictionaryWaniKaniAssignmentRecord {
 export type _DictionaryDatabase = DictionaryDatabase;
 class DictionaryDatabase extends Dexie {
     meta!: Dexie.Table<DictionaryMetaRecord, DictionaryMetaKey>;
-    tokens!: Dexie.Table<_DictionaryTokenRecord, DictionaryTokenKey>;
+    tokens!: Dexie.Table<DictionaryTokenRecord, DictionaryTokenKey>;
     ankiCards!: Dexie.Table<DictionaryAnkiCardRecord, DictionaryAnkiCardKey>;
     waniKaniSubjects!: Dexie.Table<DictionaryWaniKaniSubjectRecord, DictionaryWaniKaniSubjectKey>;
     waniKaniAssignments!: Dexie.Table<DictionaryWaniKaniAssignmentRecord, DictionaryWaniKaniAssignmentKey>;
@@ -139,42 +136,33 @@ class DictionaryDatabase extends Dexie {
         });
         this.version(2)
             .stores({
-                tokens: '[token+source+track+profile],[profile+token],*lemmas,*cardIds,*subjectIds',
                 waniKaniSubjects: '[subjectId+track+profile],[profile+track]',
                 waniKaniAssignments: '[assignmentId+track+profile],[subjectId+track+profile],[profile+track]',
             })
             .upgrade((tx) => {
-                return Promise.all([
-                    tx
-                        .table('tokens')
-                        .toCollection()
-                        .modify((token) => {
-                            if (!Array.isArray(token.subjectIds)) token.subjectIds = [];
-                        }),
-                    tx
-                        .table('meta')
-                        .toCollection()
-                        .modify((meta) => {
-                            meta.ankiMeta = {
-                                lastBuildStartedAt: meta.lastBuildStartedAt ?? 0,
-                                lastBuildExpiresAt: meta.lastBuildExpiresAt ?? 0,
-                                buildId: meta.buildId ?? null,
-                                settings: meta.settings ?? null,
-                            };
-                            meta.waniKaniMeta = {
-                                lastBuildStartedAt: 0,
-                                lastBuildExpiresAt: 0,
-                                buildId: null,
-                                settings: null,
-                                dataUpdatedAt: {},
-                                spacedRepetitionSystems: [],
-                            };
-                            delete meta.lastBuildStartedAt;
-                            delete meta.lastBuildExpiresAt;
-                            delete meta.buildId;
-                            delete meta.settings;
-                        }),
-                ]);
+                return tx
+                    .table('meta')
+                    .toCollection()
+                    .modify((meta) => {
+                        meta.ankiMeta = {
+                            lastBuildStartedAt: meta.lastBuildStartedAt ?? 0,
+                            lastBuildExpiresAt: meta.lastBuildExpiresAt ?? 0,
+                            buildId: meta.buildId ?? null,
+                            settings: meta.settings ?? null,
+                        };
+                        meta.waniKaniMeta = {
+                            lastBuildStartedAt: 0,
+                            lastBuildExpiresAt: 0,
+                            buildId: null,
+                            settings: null,
+                            dataUpdatedAt: {},
+                            spacedRepetitionSystems: [],
+                        };
+                        delete meta.lastBuildStartedAt;
+                        delete meta.lastBuildExpiresAt;
+                        delete meta.buildId;
+                        delete meta.settings;
+                    });
             });
     }
 }
@@ -373,12 +361,12 @@ export class DictionaryDB {
     }
 
     private _statusesFromRecord(
-        record: _DictionaryTokenRecord,
+        record: DictionaryTokenRecord,
         cardStatusMap: Map<number, TokenStatusInfo>,
         waniKaniSubjectStatusMap: Map<number, TokenStatusInfo>
     ): TokenStatusInfo[] {
         if (record.source === DictionaryTokenSource.WANIKANI) {
-            return record.subjectIds.flatMap((subjectId) => {
+            return record.cardIds.flatMap((subjectId) => {
                 const status = waniKaniSubjectStatusMap.get(subjectId);
                 return status ? [status] : [];
             });
@@ -390,7 +378,7 @@ export class DictionaryDB {
     }
 
     private _externalStatusesFromRecords(
-        records: _DictionaryTokenRecord[],
+        records: DictionaryTokenRecord[],
         cardStatusMap: Map<number, TokenStatusInfo>,
         waniKaniSubjectStatusMap: Map<number, TokenStatusInfo>
     ): TokenStatusInfo[] {
@@ -401,13 +389,13 @@ export class DictionaryDB {
     }
 
     private _getBestKnownExternalWordToken(
-        records: _DictionaryTokenRecord[],
+        records: DictionaryTokenRecord[],
         cardStatusMap: Map<number, TokenStatusInfo>,
         waniKaniSubjectStatusMap: Map<number, TokenStatusInfo>,
         dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL'
-    ): { record: _DictionaryTokenRecord; statuses: TokenStatusInfo[]; status: TokenStatus } | undefined {
+    ): { record: DictionaryTokenRecord; statuses: TokenStatusInfo[]; status: TokenStatus } | undefined {
         let bestCandidate:
-            | { record: _DictionaryTokenRecord; statuses: TokenStatusInfo[]; status: TokenStatus }
+            | { record: DictionaryTokenRecord; statuses: TokenStatusInfo[]; status: TokenStatus }
             | undefined;
         for (const record of records) {
             if (record.source === DictionaryTokenSource.LOCAL) continue;
@@ -430,31 +418,32 @@ export class DictionaryDB {
     private async _tokenResultsFromRecords(
         profile: string,
         track: number,
-        records: _DictionaryTokenRecord[],
+        records: DictionaryTokenRecord[],
         settings: AsbplayerSettings
     ): Promise<TokenResults> {
         if (!records.length) return {};
 
-        const tokenRecordMap = new Map<string, _DictionaryTokenRecord[]>();
+        const tokenRecordMap = new Map<string, DictionaryTokenRecord[]>();
         for (const record of records) {
             const val = tokenRecordMap.get(record.token);
             if (val) val.push(record);
             else tokenRecordMap.set(record.token, [record]);
         }
+        const flattenedRecords = Array.from(tokenRecordMap.values()).flat();
 
         const [cardStatusMap, waniKaniSubjectStatusMap] = await Promise.all([
             this._cardStatusMap(
                 profile,
                 track,
-                Array.from(tokenRecordMap.values()).flatMap((tokenRecords) =>
-                    tokenRecords.flatMap((record) => record.cardIds)
+                flattenedRecords.flatMap((record) =>
+                    record.source === DictionaryTokenSource.WANIKANI ? [] : record.cardIds
                 )
             ),
             this._waniKaniSubjectStatusMap(
                 profile,
                 track,
-                Array.from(tokenRecordMap.values()).flatMap((tokenRecords) =>
-                    tokenRecords.flatMap((record) => record.subjectIds)
+                flattenedRecords.flatMap((record) =>
+                    record.source === DictionaryTokenSource.WANIKANI ? record.cardIds : []
                 )
             ),
         ]);
@@ -589,7 +578,7 @@ export class DictionaryDB {
                     .toArray()
                     .then(async (records) => {
                         if (!records.length) return {};
-                        const lemmaRecordMap = new Map<string, _DictionaryTokenRecord[]>();
+                        const lemmaRecordMap = new Map<string, DictionaryTokenRecord[]>();
                         for (const record of records) {
                             for (const lemma of record.lemmas) {
                                 if (!lemmasSet.has(lemma)) continue;
@@ -598,20 +587,21 @@ export class DictionaryDB {
                                 else lemmaRecordMap.set(lemma, [record]);
                             }
                         }
+                        const flattenedRecords = Array.from(lemmaRecordMap.values()).flat();
 
                         const [cardStatusMap, waniKaniSubjectStatusMap] = await Promise.all([
                             this._cardStatusMap(
                                 profile,
                                 track,
-                                Array.from(lemmaRecordMap.values()).flatMap((records) =>
-                                    records.flatMap((record) => record.cardIds)
+                                flattenedRecords.flatMap((record) =>
+                                    record.source === DictionaryTokenSource.WANIKANI ? [] : record.cardIds
                                 )
                             ),
                             this._waniKaniSubjectStatusMap(
                                 profile,
                                 track,
-                                Array.from(lemmaRecordMap.values()).flatMap((records) =>
-                                    records.flatMap((record) => record.subjectIds)
+                                flattenedRecords.flatMap((record) =>
+                                    record.source === DictionaryTokenSource.WANIKANI ? record.cardIds : []
                                 )
                             ),
                         ]);
@@ -757,7 +747,7 @@ export class DictionaryDB {
                 localTokenInputs.map((l) => l.token)
             );
 
-            const recordsToAdd: _DictionaryTokenRecord[] = [];
+            const recordsToAdd: DictionaryTokenRecord[] = [];
             const tokensToDelete: string[] = [];
             for (const localTokenInput of localTokenInputs) {
                 if (!HAS_LETTER_REGEX.test(localTokenInput.token)) {
@@ -800,7 +790,6 @@ export class DictionaryDB {
                     lemmas: localTokenInput.lemmas,
                     states: localTokenInput.states,
                     cardIds: [],
-                    subjectIds: [],
                 });
             }
             const res = await Promise.all([
@@ -872,7 +861,7 @@ export class DictionaryDB {
                     });
                 });
 
-            const records: _DictionaryTokenRecord[] = [];
+            const records: DictionaryTokenRecord[] = [];
             for (const item of items) {
                 if (!item.token || !HAS_LETTER_REGEX.test(item.token)) continue;
                 if (!item.profile || !profiles.includes(item.profile)) continue;
@@ -902,7 +891,6 @@ export class DictionaryDB {
                     lemmas: item.lemmas,
                     states: item.states,
                     cardIds: [],
-                    subjectIds: [],
                 });
             }
             return { importedTokens: await _saveRecordBulk(this.db, records) };
@@ -970,10 +958,12 @@ export class DictionaryDB {
                 const ankiCardKeys = Array.from(
                     new Map(
                         tokenRecords.flatMap((record) =>
-                            record.cardIds.map((cardId) => [
-                                `${cardId}:${record.track}`,
-                                [cardId, record.track, profile] as const,
-                            ])
+                            record.source === DictionaryTokenSource.WANIKANI
+                                ? []
+                                : record.cardIds.map((cardId) => [
+                                      `${cardId}:${record.track}`,
+                                      [cardId, record.track, profile] as const,
+                                  ])
                         )
                     ).values()
                 );
@@ -998,10 +988,10 @@ export class DictionaryDB {
 
                 const waniKaniSubjectIdsByTrack = new Map<number, number[]>();
                 for (const record of tokenRecords) {
-                    if (record.source !== DictionaryTokenSource.WANIKANI || !record.subjectIds.length) continue;
+                    if (record.source !== DictionaryTokenSource.WANIKANI || !record.cardIds.length) continue;
                     const subjectIds = waniKaniSubjectIdsByTrack.get(record.track);
-                    if (subjectIds) subjectIds.push(...record.subjectIds);
-                    else waniKaniSubjectIdsByTrack.set(record.track, [...record.subjectIds]);
+                    if (subjectIds) subjectIds.push(...record.cardIds);
+                    else waniKaniSubjectIdsByTrack.set(record.track, [...record.cardIds]);
                 }
                 const waniKaniSubjectRecords: DictionaryWaniKaniSubjectRecordsByTrack = {};
                 const waniKaniAssignmentRecords: DictionaryWaniKaniAssignmentRecordsByTrack = {};
@@ -1073,7 +1063,7 @@ export class DictionaryDB {
 
         return this.db.transaction('rw', this.db.tokens, async () => {
             const existingRecords = await this.db.tokens.bulkGet(updates.map((update) => update.tokenKey));
-            const recordsToPut: _DictionaryTokenRecord[] = [];
+            const recordsToPut: DictionaryTokenRecord[] = [];
             const tokenKeysToDelete: DictionaryTokenKey[] = [];
             for (const [index, update] of updates.entries()) {
                 const existingRecord = existingRecords[index];
@@ -1129,7 +1119,7 @@ export async function _getFromSourceBulk(
     track: number,
     source: DictionaryTokenSource,
     tokens: string[]
-): Promise<Map<string, _DictionaryTokenRecord>> {
+): Promise<Map<string, DictionaryTokenRecord>> {
     if (!tokens.length) return new Map();
     return db.tokens
         .where('[token+source+track+profile]')
@@ -1137,7 +1127,7 @@ export async function _getFromSourceBulk(
         .toArray()
         .then((records) => {
             if (!records.length) return new Map();
-            const tokenRecordMap = new Map<string, _DictionaryTokenRecord>();
+            const tokenRecordMap = new Map<string, DictionaryTokenRecord>();
             for (const record of records) tokenRecordMap.set(record.token, record);
             return tokenRecordMap;
         });
@@ -1145,7 +1135,7 @@ export async function _getFromSourceBulk(
 
 export async function _saveRecordBulk(
     db: DictionaryDatabase,
-    records: _DictionaryTokenRecord[]
+    records: DictionaryTokenRecord[]
 ): Promise<DictionaryTokenKey[]> {
     if (!records.length) return [];
     return db.tokens.bulkPut(records, { allKeys: true });
