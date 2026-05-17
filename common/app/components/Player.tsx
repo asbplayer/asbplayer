@@ -8,6 +8,7 @@ import {
     AutoPausePreference,
     CardModel,
     CardTextFieldValues,
+    CopySubtitleMessage,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
@@ -1097,6 +1098,18 @@ const Player = React.memo(function Player({
             forceUseGivenSubtitle?: boolean,
             cardTextFieldValues?: CardTextFieldValues
         ) => {
+            if (tab && forceUseGivenSubtitle) {
+                const message: CopySubtitleMessage = {
+                    command: 'copy-subtitle',
+                    postMineAction,
+                    subtitle,
+                    surroundingSubtitles,
+                    ...(cardTextFieldValues ?? {}),
+                };
+                extension.sendMessageToVideoElement(message, tab.id, tab.src);
+                return;
+            }
+
             if (videoFileUrl) {
                 if (forceUseGivenSubtitle) {
                     channel?.copy(postMineAction, subtitle, surroundingSubtitles, cardTextFieldValues);
@@ -1127,7 +1140,18 @@ const Player = React.memo(function Player({
                 );
             }
         },
-        [channel, onCopy, clock, videoFile, videoFileUrl, subtitleFiles, selectedAudioTrack, playbackRate]
+        [
+            channel,
+            onCopy,
+            clock,
+            extension,
+            tab,
+            videoFile,
+            videoFileUrl,
+            subtitleFiles,
+            selectedAudioTrack,
+            playbackRate,
+        ]
     );
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1468,6 +1492,7 @@ const Player = React.memo(function Player({
                         compressed={videoInWindow || (forceCompressedMode ?? false)}
                         resizable={videoInWindow}
                         showCopyButton={showCopyButton}
+                        enableMultiSelectMining={tab !== undefined}
                         loading={loadingSubtitles}
                         displayHelp={(videoPopOut && videoFile?.name) || undefined}
                         disableKeyEvents={disableKeyEvents}
