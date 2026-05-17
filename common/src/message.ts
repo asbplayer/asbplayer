@@ -880,11 +880,20 @@ export interface DictionaryDeleteRecordsMessage extends MessageWithId {
 export interface DictionaryBuildAnkiCacheMessage extends MessageWithId {
     readonly command: 'dictionary-build-anki-cache';
     readonly profile: string | undefined;
-    readonly settings: AsbplayerSettings;
+    readonly settings?: AsbplayerSettings;
+}
+
+export interface DictionaryBuildWaniKaniCacheMessage extends MessageWithId {
+    readonly command: 'dictionary-build-wanikani-cache';
+    readonly profile: string | undefined;
 }
 
 export interface DictionaryBuildAnkiCacheStateBody {
     modifiedTokens?: string[];
+}
+
+export interface DictionaryBuildWaniKaniCacheStateBody extends DictionaryBuildAnkiCacheStateBody {
+    track: number;
 }
 
 export interface DictionaryBuildAnkiCacheState {
@@ -896,6 +905,15 @@ export interface DictionaryBuildAnkiCacheStateMessage extends DictionaryBuildAnk
     readonly command: 'dictionary-build-anki-cache-state';
 }
 
+export interface DictionaryBuildWaniKaniCacheState {
+    body: DictionaryBuildWaniKaniCacheStateBody;
+    type: DictionaryBuildWaniKaniCacheStateType;
+}
+
+export interface DictionaryBuildWaniKaniCacheStateMessage extends DictionaryBuildWaniKaniCacheState, Message {
+    readonly command: 'dictionary-build-wanikani-cache-state';
+}
+
 export enum DictionaryBuildAnkiCacheStateType {
     start = 0,
     unknown = 1,
@@ -904,7 +922,19 @@ export enum DictionaryBuildAnkiCacheStateType {
     progress = 4,
 }
 
+export enum DictionaryBuildWaniKaniCacheStateType {
+    start = 0,
+    unknown = 1,
+    error = 2,
+    stats = 3,
+    progress = 4,
+}
+
 export interface DictionaryBuildAnkiCacheStart extends DictionaryBuildAnkiCacheStateBody {
+    buildTimestamp: number;
+}
+
+export interface DictionaryBuildWaniKaniCacheStart extends DictionaryBuildWaniKaniCacheStateBody {
     buildTimestamp: number;
 }
 
@@ -921,6 +951,12 @@ export interface DictionaryBuildAnkiCacheProgress extends DictionaryBuildAnkiCac
     forAnkiSync?: boolean;
 }
 
+export interface DictionaryBuildWaniKaniCacheProgress extends DictionaryBuildWaniKaniCacheStateBody {
+    current: number;
+    total: number;
+    buildTimestamp: number;
+}
+
 export interface DictionaryBuildAnkiCacheStats extends DictionaryBuildAnkiCacheStateBody {
     buildTimestamp: number;
     tracksToBuild?: number[];
@@ -929,12 +965,27 @@ export interface DictionaryBuildAnkiCacheStats extends DictionaryBuildAnkiCacheS
     modifiedCards?: number;
 }
 
+export interface DictionaryBuildWaniKaniCacheStats extends DictionaryBuildWaniKaniCacheStateBody {
+    buildTimestamp: number;
+    numFetchedAssignments?: number;
+    numFetchedSubjects?: number;
+    numImportedTokens?: number;
+    isTokensCleared?: boolean;
+}
+
 export enum DictionaryBuildAnkiCacheStateErrorCode {
     concurrentBuild = 1,
     noAnki = 2,
     noYomitan = 3,
     failedToSyncTrackStates = 4,
     failedToBuild = 5,
+}
+
+export enum DictionaryBuildWaniKaniCacheStateErrorCode {
+    concurrentBuild = 1,
+    invalidWaniKaniToken = 2,
+    noYomitan = 3,
+    failedToBuild = 4,
 }
 
 export interface DictionaryBuildAnkiCacheStateErrorTrackNumberData {
@@ -953,6 +1004,14 @@ export interface DictionaryBuildAnkiCacheStateError extends DictionaryBuildAnkiC
     code: DictionaryBuildAnkiCacheStateErrorCode;
     msg?: string;
     data?: DictionaryBuildAnkiCacheStateErrorData;
+}
+
+export type DictionaryBuildWaniKaniCacheStateErrorData = DictionaryBuildAnkiCacheStateErrorBuildExpirationData;
+
+export interface DictionaryBuildWaniKaniCacheStateError extends DictionaryBuildWaniKaniCacheStateBody {
+    code: DictionaryBuildWaniKaniCacheStateErrorCode;
+    msg?: string;
+    data?: DictionaryBuildWaniKaniCacheStateErrorData;
 }
 
 export interface SaveTokenLocalMessage extends Message {

@@ -1,6 +1,7 @@
 import type {
     AddProfileMessage,
     DictionaryBuildAnkiCacheMessage,
+    DictionaryBuildWaniKaniCacheMessage,
     DictionaryGetAllTokensMessage,
     DictionaryDeleteProfileMessage,
     DictionaryDeleteRecordLocalBulkMessage,
@@ -199,9 +200,17 @@ export default defineContentScript({
                         break;
                     }
                     case 'dictionary-build-anki-cache': {
-                        const { profile, settings } = command.message as DictionaryBuildAnkiCacheMessage;
+                        const { profile } = command.message as DictionaryBuildAnkiCacheMessage;
                         sendMessageToPlayer({
-                            response: await dictionaryStorage.buildAnkiCache(profile, settings),
+                            response: await dictionaryStorage.buildAnkiCache(profile),
+                            messageId: command.message.messageId,
+                        });
+                        break;
+                    }
+                    case 'dictionary-build-wanikani-cache': {
+                        const { profile } = command.message as DictionaryBuildWaniKaniCacheMessage;
+                        sendMessageToPlayer({
+                            response: await dictionaryStorage.buildWaniKaniCache(profile),
                             messageId: command.message.messageId,
                         });
                         break;

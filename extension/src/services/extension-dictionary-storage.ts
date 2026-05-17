@@ -4,6 +4,9 @@ import {
     DictionaryBuildAnkiCacheMessage,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheMessage,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateMessage,
     DictionaryGetAllTokensMessage,
     DictionaryGetRecordsMessage,
     DictionaryDBCommand,
@@ -36,7 +39,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import { ApplyStrategy } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
@@ -51,6 +54,10 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
     private buildAnkiCacheStateChangeCallbacks: ((message: DictionaryBuildAnkiCacheState) => void)[];
     private buildAnkiCacheStateChange?: (
         message: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage>
+    ) => void;
+    private buildWaniKaniCacheStateChangeCallbacks: ((message: DictionaryBuildWaniKaniCacheState) => void)[];
+    private buildWaniKaniCacheStateChange?: (
+        message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage>
     ) => void;
     private ankiCardModifiedCallbacks: (() => void)[];
     private ankiCardModified?: (
@@ -79,6 +86,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
 
     constructor() {
         this.buildAnkiCacheStateChangeCallbacks = [];
+        this.buildWaniKaniCacheStateChangeCallbacks = [];
         this.ankiCardModifiedCallbacks = [];
         this.dictionaryStatisticsCallbacks = [];
         this.dictionaryStatisticsSnapshotRequestCallbacks = [];
@@ -231,10 +239,18 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         return browser.runtime.sendMessage(message);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
+    buildAnkiCache(profile: string | undefined) {
         const message: DictionaryDBCommand<DictionaryBuildAnkiCacheMessage> = {
             sender: 'asbplayer-dictionary',
-            message: { command: 'dictionary-build-anki-cache', messageId: uuidv4(), profile, settings },
+            message: { command: 'dictionary-build-anki-cache', messageId: uuidv4(), profile },
+        };
+        return browser.runtime.sendMessage(message);
+    }
+
+    buildWaniKaniCache(profile: string | undefined) {
+        const message: DictionaryDBCommand<DictionaryBuildWaniKaniCacheMessage> = {
+            sender: 'asbplayer-dictionary',
+            message: { command: 'dictionary-build-wanikani-cache', messageId: uuidv4(), profile },
         };
         return browser.runtime.sendMessage(message);
     }
@@ -288,6 +304,27 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
             if (!this.buildAnkiCacheStateChangeCallbacks.length && this.buildAnkiCacheStateChange) {
                 browser.runtime.onMessage.removeListener(this.buildAnkiCacheStateChange);
                 this.buildAnkiCacheStateChange = undefined;
+            }
+        };
+    }
+
+    onBuildWaniKaniCacheStateChange(callback: (message: DictionaryBuildWaniKaniCacheState) => void) {
+        this.buildWaniKaniCacheStateChangeCallbacks.push(callback);
+        if (!this.buildWaniKaniCacheStateChange) {
+            this.buildWaniKaniCacheStateChange = (
+                message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage>
+            ) => {
+                if (message.sender !== 'asbplayer-extension-to-player') return;
+                if (message.message.command !== 'dictionary-build-wanikani-cache-state') return;
+                this.buildWaniKaniCacheStateChangeCallbacks.forEach((c) => c(message.message));
+            };
+            browser.runtime.onMessage.addListener(this.buildWaniKaniCacheStateChange);
+        }
+        return () => {
+            this._removeCallback(callback, this.buildWaniKaniCacheStateChangeCallbacks);
+            if (!this.buildWaniKaniCacheStateChangeCallbacks.length && this.buildWaniKaniCacheStateChange) {
+                browser.runtime.onMessage.removeListener(this.buildWaniKaniCacheStateChange);
+                this.buildWaniKaniCacheStateChange = undefined;
             }
         };
     }

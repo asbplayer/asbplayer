@@ -113,6 +113,7 @@ export default function SettingsDialog({
                     extensionSupportsPageSettings={extension.supportsPageSettings}
                     extensionSupportsDictionary={extension.supportsDictionary}
                     extensionSupportsDictionaryBrowser={extension.supportsDictionaryBrowser}
+                    extensionSupportsDictionaryWaniKani={extension.supportsDictionaryWaniKani}
                     extensionSupportsSeekableTrackSetting={extension.supportsSeekableTrackSetting}
                     extensionSupportsAutoCopyableTrackSetting={extension.supportsAutoCopyableTrackSetting}
                     extensionSupportsDictionaryTokenStatusDisplayAlpha={

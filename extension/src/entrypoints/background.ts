@@ -169,7 +169,7 @@ export default defineBackground(() => {
     );
     const imageCapturer = new ImageCapturer(settings);
     const cardPublisher = new CardPublisher(settings);
-    const dictionaryDB = new DictionaryDB();
+    const dictionaryDB = new DictionaryDB(settings);
 
     const handlers: CommandHandler[] = [
         new VideoHeartbeatHandler(tabRegistry),

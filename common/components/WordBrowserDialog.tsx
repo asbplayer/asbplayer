@@ -38,13 +38,14 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import {
-    DictionaryAnkiCardRecordsByTrack,
     DictionaryAnkiCardRecord,
     DictionaryProvider,
+    DictionaryRecordsResult,
     DictionaryTokenKey,
-    DictionaryTokenRecord,
+    DictionaryWaniKaniAssignmentRecordWithStatus,
     LOCAL_TOKEN_TRACK,
     DictionaryRecordUpdateInput,
+    TokenStatusInfo,
 } from '@project/common/dictionary-db';
 import {
     ApplyStrategy,
@@ -54,8 +55,7 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { getCardTokenStatus } from '@project/common/subtitle-annotations';
-import { normalizeForSearch } from '@project/common/util';
+import { getTokenStatus, normalizeForSearch } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import Box from '@mui/material/Box';
 
@@ -71,6 +71,7 @@ interface Props {
     dictionaryProvider: DictionaryProvider;
     activeProfile?: string;
     dictionaryTracks: DictionaryTrack[];
+    supportsDictionaryWaniKani: boolean;
     onClose: () => void;
 }
 
@@ -260,12 +261,15 @@ function filterableTokenStatuses() {
     return statuses;
 }
 
-function filterableTokenSources() {
-    return [
+function filterableTokenSources(supportsDictionaryWaniKani: boolean) {
+    const sources = [
         DictionaryTokenSource.LOCAL,
         DictionaryTokenSource.ANKI_WORD,
+        DictionaryTokenSource.WANIKANI,
         DictionaryTokenSource.ANKI_SENTENCE,
     ] as DictionaryTokenSource[];
+    if (!supportsDictionaryWaniKani) sources.splice(sources.indexOf(DictionaryTokenSource.WANIKANI), 1);
+    return sources;
 }
 
 const FILTERABLE_STATES: readonly TokenState[] = [TokenState.IGNORED];
@@ -312,7 +316,7 @@ function autoRefreshCriteriaEqual(lhs: AutoRefreshViewCriteria, rhs: AutoRefresh
         Object.keys(lhs.selectedTrackFilters).every(
             (track) => lhs.selectedTrackFilters[Number(track)] === rhs.selectedTrackFilters[Number(track)]
         ) &&
-        filterableTokenSources().every(
+        filterableTokenSources(true).every(
             (source) => lhs.selectedSourceFilters[source] === rhs.selectedSourceFilters[source]
         ) &&
         filterableTokenStatuses().every(
@@ -788,6 +792,7 @@ export default function WordBrowserDialog({
     dictionaryProvider,
     activeProfile,
     dictionaryTracks,
+    supportsDictionaryWaniKani,
     onClose,
 }: Props) {
     const { t } = useTranslation();
@@ -799,15 +804,17 @@ export default function WordBrowserDialog({
         [dictionaryTracks]
     );
     const yomitanVersionPromiseRef = useRef<Promise<TrackError[]> | undefined>(undefined);
-    const filterableSources = useMemo(() => filterableTokenSources(), []);
+    const filterableSources = useMemo(
+        () => filterableTokenSources(supportsDictionaryWaniKani),
+        [supportsDictionaryWaniKani]
+    );
     const filterableStates = FILTERABLE_STATES;
     const filterStatusOptions = useMemo(() => filterableTokenStatuses(), []);
-    const [records, setRecords] = useState<{
-        tokenRecords: DictionaryTokenRecord[];
-        ankiCardRecords: DictionaryAnkiCardRecordsByTrack;
-    }>({
+    const [records, setRecords] = useState<DictionaryRecordsResult>({
         tokenRecords: [],
         ankiCardRecords: {},
+        waniKaniSubjectRecords: {},
+        waniKaniAssignmentRecords: {},
     });
     const [loading, setLoading] = useState(false);
     const [mutating, setMutating] = useState(false);
@@ -914,7 +921,12 @@ export default function WordBrowserDialog({
         if (open) return;
         loadRequestIdRef.current += 1;
         const initialViewCriteria = defaultViewCriteria();
-        setRecords({ tokenRecords: [], ankiCardRecords: {} });
+        setRecords({
+            tokenRecords: [],
+            ankiCardRecords: {},
+            waniKaniSubjectRecords: {},
+            waniKaniAssignmentRecords: {},
+        });
         setLoading(false);
         setDraftViewCriteria(initialViewCriteria);
         setAppliedViewCriteria(initialViewCriteria);
@@ -1100,6 +1112,7 @@ export default function WordBrowserDialog({
         () => ({
             [DictionaryTokenSource.LOCAL]: t('settings.dictionaryBrowser.sources.local'),
             [DictionaryTokenSource.ANKI_WORD]: t('settings.dictionaryBrowser.sources.ankiWord'),
+            [DictionaryTokenSource.WANIKANI]: t('settings.dictionaryBrowser.sources.waniKani'),
             [DictionaryTokenSource.ANKI_SENTENCE]: t('settings.dictionaryBrowser.sources.ankiSentence'),
         }),
         [t]
@@ -1132,34 +1145,76 @@ export default function WordBrowserDialog({
         [draftViewCriteria.selectedStateFilters, stateLabels]
     );
 
+    const assignmentIdsCardIdsLabel = `${t('settings.dictionaryBrowser.columns.assignmentIds')} / ${t(
+        'settings.dictionaryBrowser.columns.cardIds'
+    )}`;
+    const subjectIdsNoteIdsLabel = `${t('settings.dictionaryBrowser.columns.subjectIds')} / ${t(
+        'settings.dictionaryBrowser.columns.noteIds'
+    )}`;
+
+    const waniKaniAssignmentRecordsBySubjectByTrack = useMemo(() => {
+        const recordsByTrack: Record<number, Record<number, DictionaryWaniKaniAssignmentRecordWithStatus[]>> = {};
+        for (const [trackString, trackAssignmentRecords] of Object.entries(records.waniKaniAssignmentRecords ?? {})) {
+            const recordTrack = Number(trackString);
+            const recordsBySubject: Record<number, DictionaryWaniKaniAssignmentRecordWithStatus[]> = {};
+            for (const assignmentRecord of Object.values(trackAssignmentRecords)) {
+                const subjectAssignmentRecords = recordsBySubject[assignmentRecord.subjectId];
+                if (subjectAssignmentRecords) {
+                    subjectAssignmentRecords.push(assignmentRecord);
+                } else {
+                    recordsBySubject[assignmentRecord.subjectId] = [assignmentRecord];
+                }
+            }
+            recordsByTrack[recordTrack] = recordsBySubject;
+        }
+        return recordsByTrack;
+    }, [records.waniKaniAssignmentRecords]);
+
     const rows = useMemo(() => {
         return records.tokenRecords.map((record) => {
             const trackConfig =
                 record.track === LOCAL_TOKEN_TRACK ? defaultDictionaryTrack : dictionaryTracks[record.track];
-            const treatSuspended = trackConfig?.dictionaryAnkiTreatSuspended ?? false;
+            const treatSuspended = trackConfig?.dictionaryAnkiTreatSuspended ?? 'NORMAL';
+            const isAnkiRecord =
+                record.source === DictionaryTokenSource.ANKI_WORD ||
+                record.source === DictionaryTokenSource.ANKI_SENTENCE;
+            const isWaniKaniRecord = record.source === DictionaryTokenSource.WANIKANI;
             const trackCardRecords = records.ankiCardRecords[record.track];
-            const cardRecords = record.cardIds
-                .map((cardId) => trackCardRecords?.[cardId])
-                .filter((cardRecord): cardRecord is DictionaryAnkiCardRecord => cardRecord !== undefined);
-            const noteIds = dedupeNumbers(cardRecords.map((cardRecord) => cardRecord.noteId));
-            const status =
-                record.source === DictionaryTokenSource.LOCAL
-                    ? record.status!
-                    : getCardTokenStatus(
-                          cardRecords.map((cardRecord) => ({
-                              cardId: cardRecord.cardId,
-                              status: cardRecord.status,
-                              suspended: cardRecord.suspended,
-                          })),
-                          treatSuspended
-                      );
+            const cardRecords = isAnkiRecord
+                ? record.cardIds
+                      .map((cardId) => trackCardRecords?.[cardId])
+                      .filter((cardRecord): cardRecord is DictionaryAnkiCardRecord => cardRecord !== undefined)
+                : [];
+            const trackWaniKaniAssignmentRecordsBySubject = waniKaniAssignmentRecordsBySubjectByTrack[record.track];
+            const waniKaniAssignmentRecords = isWaniKaniRecord
+                ? record.cardIds.flatMap((subjectId) => trackWaniKaniAssignmentRecordsBySubject?.[subjectId] ?? [])
+                : [];
+            const waniKaniSubjectStatuses: TokenStatusInfo[] = waniKaniAssignmentRecords.map((assignmentRecord) => ({
+                assignmentId: assignmentRecord.assignmentId,
+                subjectId: assignmentRecord.subjectId,
+                status: assignmentRecord.status,
+                suspended: false,
+            }));
+            const ankiNoteIds = dedupeNumbers(cardRecords.map((cardRecord) => cardRecord.noteId));
+            const status = isAnkiRecord
+                ? getTokenStatus(
+                      cardRecords.map((cardRecord) => ({
+                          cardId: cardRecord.cardId,
+                          status: cardRecord.status,
+                          suspended: cardRecord.suspended,
+                      })),
+                      treatSuspended
+                  )
+                : isWaniKaniRecord
+                  ? getTokenStatus(waniKaniSubjectStatuses, 'NORMAL')
+                  : record.status!;
             const suspendedValues = Array.from(new Set(cardRecords.map((cardRecord) => cardRecord.suspended)));
             let suspendedDisplay = '';
             let suspendedFilterValue: SuspendedFilter = 'all';
             let suspendedSortValue = -1;
             let suspendedColor: string | undefined;
 
-            if (record.source !== DictionaryTokenSource.LOCAL) {
+            if (isAnkiRecord) {
                 if (!suspendedValues.length || suspendedValues.every((value) => !value)) {
                     suspendedDisplay = t('settings.dictionaryBrowser.suspended.no');
                     suspendedFilterValue = 'no';
@@ -1179,7 +1234,11 @@ export default function WordBrowserDialog({
             }
             const lemmasDisplay = formatList(record.lemmas);
             const statesDisplay = formatList(record.states.map((state) => stateLabels[state]));
-            const dedupedCardIds = dedupeNumbers(record.cardIds);
+            const cardIds = isWaniKaniRecord
+                ? dedupeNumbers(waniKaniAssignmentRecords.map((assignmentRecord) => assignmentRecord.assignmentId))
+                : dedupeNumbers(record.cardIds);
+            const noteIds = isWaniKaniRecord ? dedupeNumbers(record.cardIds) : ankiNoteIds;
+            const hasExternalIdColumns = isAnkiRecord || isWaniKaniRecord;
 
             return {
                 tokenKey: [record.token, record.source, record.track, record.profile],
@@ -1198,10 +1257,10 @@ export default function WordBrowserDialog({
                 statesDisplay,
                 trackDisplay: record.source === DictionaryTokenSource.LOCAL ? '' : String(record.track + 1),
                 trackSortValue: record.source === DictionaryTokenSource.LOCAL ? LOCAL_TOKEN_TRACK : record.track + 1,
-                cardIds: dedupedCardIds,
-                cardIdsDisplay: record.source === DictionaryTokenSource.LOCAL ? '' : formatList(dedupedCardIds),
+                cardIds,
+                cardIdsDisplay: hasExternalIdColumns ? formatList(cardIds) : '',
                 noteIds,
-                noteIdsDisplay: record.source === DictionaryTokenSource.LOCAL ? '' : formatList(noteIds),
+                noteIdsDisplay: hasExternalIdColumns ? formatList(noteIds) : '',
                 suspendedDisplay,
                 suspendedFilterValue,
                 suspendedSortValue,
@@ -1219,6 +1278,7 @@ export default function WordBrowserDialog({
         theme.palette.success.main,
         theme.palette.warning.dark,
         theme.palette.warning.main,
+        waniKaniAssignmentRecordsBySubjectByTrack,
     ]);
 
     const trackFilterOptions = useMemo(() => {
@@ -1306,10 +1366,13 @@ export default function WordBrowserDialog({
             if (includedTrackFilters.length > 0 && !includedTrackFilters.includes(row.trackSortValue)) return false;
             if (excludedTrackFilters.includes(row.trackSortValue)) return false;
             if (appliedViewCriteria.suspendedFilter !== 'all') {
-                if (row.source === DictionaryTokenSource.LOCAL) {
-                    if (appliedViewCriteria.suspendedFilter !== 'no') return false;
-                } else {
+                if (
+                    row.source === DictionaryTokenSource.ANKI_WORD ||
+                    row.source === DictionaryTokenSource.ANKI_SENTENCE
+                ) {
                     if (row.suspendedFilterValue !== appliedViewCriteria.suspendedFilter) return false;
+                } else {
+                    if (appliedViewCriteria.suspendedFilter !== 'no') return false;
                 }
             }
             if (cardIdFilterTerms.length && !cardIdFilterTerms.some((term) => row.cardIdsDisplay.includes(term))) {
@@ -1745,7 +1808,7 @@ export default function WordBrowserDialog({
                                         <TableCell>
                                             {renderHeaderCell(
                                                 'cardIds',
-                                                t('settings.dictionaryBrowser.columns.cardIds'),
+                                                assignmentIdsCardIdsLabel,
                                                 'cardIds',
                                                 draftViewCriteria.cardIdFilter.length > 0
                                             )}
@@ -1753,7 +1816,7 @@ export default function WordBrowserDialog({
                                         <TableCell>
                                             {renderHeaderCell(
                                                 'noteIds',
-                                                t('settings.dictionaryBrowser.columns.noteIds'),
+                                                subjectIdsNoteIdsLabel,
                                                 'noteIds',
                                                 draftViewCriteria.noteIdFilter.length > 0
                                             )}
@@ -1887,10 +1950,10 @@ export default function WordBrowserDialog({
                                 )}
                                 {openFilterPopover?.key === 'cardIds' && (
                                     <>
-                                        <FilterHeading>{t('settings.dictionaryBrowser.columns.cardIds')}</FilterHeading>
+                                        <FilterHeading>{assignmentIdsCardIdsLabel}</FilterHeading>
                                         <TextField
                                             autoFocus
-                                            placeholder={t('settings.dictionaryBrowser.columns.cardIds')}
+                                            placeholder={assignmentIdsCardIdsLabel}
                                             value={draftViewCriteria.cardIdFilter}
                                             onChange={(event) =>
                                                 updateDraftTextCriteria('cardIdFilter', event.target.value)
@@ -1910,10 +1973,10 @@ export default function WordBrowserDialog({
                                 )}
                                 {openFilterPopover?.key === 'noteIds' && (
                                     <>
-                                        <FilterHeading>{t('settings.dictionaryBrowser.columns.noteIds')}</FilterHeading>
+                                        <FilterHeading>{subjectIdsNoteIdsLabel}</FilterHeading>
                                         <TextField
                                             autoFocus
-                                            placeholder={t('settings.dictionaryBrowser.columns.noteIds')}
+                                            placeholder={subjectIdsNoteIdsLabel}
                                             value={draftViewCriteria.noteIdFilter}
                                             onChange={(event) =>
                                                 updateDraftTextCriteria('noteIdFilter', event.target.value)

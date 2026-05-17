@@ -50,6 +50,7 @@ import {
     IndexedSubtitleModel,
     SaveTokenLocalMessage,
     DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheStateMessage,
 } from '@project/common';
 import { adjacentSubtitle } from '@project/common/key-binder';
 import PlayModeManager from '@project/common/app/services/play-mode-manager';
@@ -863,6 +864,11 @@ export default class Binding {
                         const state = request.message as DictionaryBuildAnkiCacheStateMessage;
                         this.subtitleController.subtitleAnnotations.buildAnkiCacheStateChange(state);
                         break;
+                    case 'dictionary-build-wanikani-cache-state': {
+                        const state = request.message as DictionaryBuildWaniKaniCacheStateMessage;
+                        this.subtitleController.subtitleAnnotations.buildWaniKaniCacheStateChange(state);
+                        break;
+                    }
                     case 'notify-error':
                         const notifyErrorMessage = request.message as NotifyErrorMessage;
                         this.subtitleController.notification('info.error', { message: notifyErrorMessage.message });

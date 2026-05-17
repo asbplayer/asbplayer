@@ -14,7 +14,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { DictionaryBuildAnkiCacheState } from '@project/common';
+import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
 import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
 import { download, getCurrentTimeString } from '../util';
@@ -48,10 +48,12 @@ export interface DictionaryStorage {
         profile: string | undefined,
         tokenKeys: DictionaryTokenKey[]
     ) => Promise<DictionaryRecordDeleteResult>;
-    buildAnkiCache: (profile: string | undefined, settings: AsbplayerSettings) => Promise<void>;
+    buildAnkiCache: (profile: string | undefined, settings?: AsbplayerSettings) => Promise<void>;
+    buildWaniKaniCache: (profile: string | undefined) => Promise<void>;
     ankiCardWasModified: () => void;
     onAnkiCardModified: (callback: () => void) => () => void;
     onBuildAnkiCacheStateChange: (callback: (message: DictionaryBuildAnkiCacheState) => void) => () => void;
+    onBuildWaniKaniCacheStateChange: (callback: (message: DictionaryBuildWaniKaniCacheState) => void) => () => void;
     publishStatisticsSnapshot: (mediaId: string, snapshot?: DictionaryStatisticsSnapshot) => Promise<void> | void;
     onStatisticsSnapshot: (callback: (snapshot?: DictionaryStatisticsSnapshot) => void) => () => void;
     requestStatisticsSnapshot: (mediaId?: string) => Promise<void> | void;
@@ -125,8 +127,12 @@ export class DictionaryProvider {
         return this._storage.deleteRecords(profile, tokenKeys);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
+    buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings) {
         return this._storage.buildAnkiCache(profile, settings);
+    }
+
+    buildWaniKaniCache(profile: string | undefined) {
+        return this._storage.buildWaniKaniCache(profile);
     }
 
     ankiCardWasModified() {
@@ -139,6 +145,10 @@ export class DictionaryProvider {
 
     onBuildAnkiCacheStateChange(callback: (message: DictionaryBuildAnkiCacheState) => void) {
         return this._storage.onBuildAnkiCacheStateChange(callback);
+    }
+
+    onBuildWaniKaniCacheStateChange(callback: (message: DictionaryBuildWaniKaniCacheState) => void) {
+        return this._storage.onBuildWaniKaniCacheStateChange(callback);
     }
 
     publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {

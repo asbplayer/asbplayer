@@ -5,6 +5,8 @@ import {
     DictionaryStatisticsMessage,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateMessage,
     DictionaryDBCommand,
     ExtensionToAsbPlayerCommand,
     DictionaryRequestStatisticsGenerationMessage,
@@ -25,7 +27,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import { ApplyStrategy, SettingsProvider } from '@project/common/settings';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
     | ExtensionToAsbPlayerCommand<T>
@@ -39,6 +41,8 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     private readonly dictionaryDB: DictionaryDB;
     private buildAnkiCacheStateChangeCallbacks: ((message: DictionaryBuildAnkiCacheState) => void)[];
     private buildAnkiCacheStateChange?: (event: MessageEvent) => void;
+    private buildWaniKaniCacheStateChangeCallbacks: ((message: DictionaryBuildWaniKaniCacheState) => void)[];
+    private buildWaniKaniCacheStateChange?: (event: MessageEvent) => void;
     private ankiCardModifiedCallbacks: (() => void)[];
     private ankiCardModified?: (event: MessageEvent) => void;
     private dictionaryStatisticsCallbacks: ((snapshot?: DictionaryStatisticsSnapshot) => void)[];
@@ -52,9 +56,10 @@ export class LocalDictionaryStorage implements DictionaryStorage {
     private dictionaryStatisticsMineSentencesCallbacks: ((mediaId: string, indexes: number[]) => void)[];
     private dictionaryStatisticsMineSentencesListener?: (event: MessageEvent) => void;
 
-    constructor() {
-        this.dictionaryDB = new DictionaryDB();
+    constructor(settingsProvider: SettingsProvider) {
+        this.dictionaryDB = new DictionaryDB(settingsProvider);
         this.buildAnkiCacheStateChangeCallbacks = [];
+        this.buildWaniKaniCacheStateChangeCallbacks = [];
         this.ankiCardModifiedCallbacks = [];
         this.dictionaryStatisticsCallbacks = [];
         this.dictionaryStatisticsSnapshotRequestCallbacks = [];
@@ -115,11 +120,21 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         return this.dictionaryDB.deleteRecords(profile, tokenKeys);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings) {
-        return this.dictionaryDB.buildAnkiCache(profile, settings, (state: DictionaryBuildAnkiCacheState) => {
+    buildAnkiCache(profile: string | undefined) {
+        return this.dictionaryDB.buildAnkiCache(profile, (state: DictionaryBuildAnkiCacheState) => {
             const message: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
                 sender: 'asbplayer-extension-to-player',
                 message: { command: 'dictionary-build-anki-cache-state', ...state },
+            };
+            window.parent.postMessage(message);
+        });
+    }
+
+    buildWaniKaniCache(profile: string | undefined) {
+        return this.dictionaryDB.buildWaniKaniCache(profile, (state: DictionaryBuildWaniKaniCacheState) => {
+            const message: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
+                sender: 'asbplayer-extension-to-player',
+                message: { command: 'dictionary-build-wanikani-cache-state', ...state },
             };
             window.parent.postMessage(message);
         });
@@ -172,6 +187,27 @@ export class LocalDictionaryStorage implements DictionaryStorage {
             if (!this.buildAnkiCacheStateChangeCallbacks.length && this.buildAnkiCacheStateChange) {
                 window.parent.removeEventListener('message', this.buildAnkiCacheStateChange);
                 this.buildAnkiCacheStateChange = undefined;
+            }
+        };
+    }
+
+    onBuildWaniKaniCacheStateChange(callback: (message: DictionaryBuildWaniKaniCacheState) => void) {
+        this.buildWaniKaniCacheStateChangeCallbacks.push(callback);
+        if (!this.buildWaniKaniCacheStateChange) {
+            this.buildWaniKaniCacheStateChange = (event: MessageEvent) => {
+                if (event.type !== 'message') return;
+                const data: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = event.data;
+                if (data.sender !== 'asbplayer-extension-to-player') return;
+                if (data.message.command !== 'dictionary-build-wanikani-cache-state') return;
+                this.buildWaniKaniCacheStateChangeCallbacks.forEach((c) => c(data.message));
+            };
+            window.parent.addEventListener('message', this.buildWaniKaniCacheStateChange);
+        }
+        return () => {
+            this._removeCallback(callback, this.buildWaniKaniCacheStateChangeCallbacks);
+            if (!this.buildWaniKaniCacheStateChangeCallbacks.length && this.buildWaniKaniCacheStateChange) {
+                window.parent.removeEventListener('message', this.buildWaniKaniCacheStateChange);
+                this.buildWaniKaniCacheStateChange = undefined;
             }
         };
     }

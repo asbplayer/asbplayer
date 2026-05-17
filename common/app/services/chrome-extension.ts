@@ -35,6 +35,7 @@ import {
     SetGlobalStateMessage,
     GetGlobalStateMessage,
     DictionaryBuildAnkiCacheMessage,
+    DictionaryBuildWaniKaniCacheMessage,
     DictionaryGetAllTokensMessage,
     DictionaryGetRecordsMessage,
     DictionaryGetBulkMessage,
@@ -189,6 +190,10 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsDictionaryWaniKani() {
+        return this.installed && gte(this.version, '1.18.0');
     }
 
     get supportsAutoCopyableTrackSetting() {
@@ -855,14 +860,33 @@ export default class ChromeExtension {
         return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {
+    buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings): Promise<void> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryBuildAnkiCacheMessage> = {
             sender: 'asbplayerv2',
-            message: { command: 'dictionary-build-anki-cache', messageId, profile, settings },
+            message: {
+                command: 'dictionary-build-anki-cache',
+                messageId,
+                profile,
+                ...(this.supportsDictionaryWaniKani ? {} : { settings }),
+            },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId, 60000); // Usually <10s
+        return this._createResponsePromise(messageId, 300000); // Usually <10s
+    }
+
+    buildWaniKaniCache(profile: string | undefined): Promise<void> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryBuildWaniKaniCacheMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-build-wanikani-cache',
+                messageId,
+                profile,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId, 300000); // Usually <10s
     }
 
     publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {

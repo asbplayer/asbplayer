@@ -14,6 +14,7 @@ interface Props {
     fetcher: Fetcher;
     dictionaryStorage: DictionaryStorage;
     settingsStorage: AppSettingsStorage;
+    settingsProvider: SettingsProvider;
     globalStateProvider: GlobalStateProvider;
     extension: ChromeExtension;
 }
@@ -24,11 +25,11 @@ const RootApp = ({
     logoUrl,
     dictionaryStorage,
     settingsStorage,
+    settingsProvider,
     globalStateProvider,
     fetcher,
 }: Props) => {
     const dictionaryProvider = useMemo(() => new DictionaryProvider(dictionaryStorage), [dictionaryStorage]);
-    const settingsProvider = useMemo(() => new SettingsProvider(settingsStorage), [settingsStorage]);
     const [settings, setSettings] = useState<AsbplayerSettings>();
     const [globalState, setGlobalState] = useState<GlobalState>();
 

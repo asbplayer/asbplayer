@@ -2,14 +2,17 @@ import { Progress, Tokenization } from '@project/common';
 import { CardInfo } from '@project/common/anki';
 import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
 import {
-    AsbplayerSettings,
     defaultSettings,
     dictionaryTrackEnabled,
+    DictionarySettings,
     NUM_TOKEN_STATUSES,
     SettingsProvider,
     TokenStatusConfig,
     TokenStatus,
 } from '@project/common/settings';
+import { WaniKaniAssignment } from '@project/common/wanikani';
+
+export const REVIEW_DUES = [0, 1, 7] as const; // 0 = due today, 1 = due within a day, 7 = due within a week
 
 export interface DictionaryStatisticsSentence {
     text: string;
@@ -29,6 +32,15 @@ export interface DictionaryStatisticsAnkiSnapshot {
     cardsInfo: Record<number, CardInfo>;
     dueCards: DictionaryStatisticsAnkiDueCardsSnapshot;
 }
+
+export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<number, WaniKaniAssignment>;
+
+export interface DictionaryStatisticsWaniKaniSnapshot {
+    available?: boolean;
+    reviewAssignments: DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot;
+}
+
+export type DictionaryStatisticsWaniKaniSnapshots = Record<number, DictionaryStatisticsWaniKaniSnapshot>;
 
 export interface DictionaryStatisticsDictionarySnapshot {
     tokens: TokenResults;
@@ -50,8 +62,9 @@ export interface DictionaryStatisticsRawTrackSnapshot {
 export interface DictionaryStatisticsSnapshot {
     mediaId: string;
     snapshots: DictionaryStatisticsRawTrackSnapshot[];
-    settings: AsbplayerSettings;
+    settings: DictionarySettings;
     anki: DictionaryStatisticsAnkiSnapshot;
+    waniKani?: DictionaryStatisticsWaniKaniSnapshots;
 }
 
 function statusColorsFromConfig(tokenStatusConfig: readonly TokenStatusConfig[]): Record<TokenStatus, string> {
@@ -69,8 +82,9 @@ export class DictionaryStatistics {
     private readonly dictionaryProvider: DictionaryProvider;
     private readonly mediaId: string;
     private readonly rawTrackSnapshots: Map<number, DictionaryStatisticsRawTrackSnapshot>;
-    private settings: AsbplayerSettings;
+    private settings: DictionarySettings;
     private anki: DictionaryStatisticsAnkiSnapshot;
+    private waniKani: DictionaryStatisticsWaniKaniSnapshots;
     private lastCancelledAt: number;
 
     constructor(settingsProvider: SettingsProvider, dictionaryProvider: DictionaryProvider, mediaId: string) {
@@ -78,8 +92,9 @@ export class DictionaryStatistics {
         this.dictionaryProvider = dictionaryProvider;
         this.mediaId = mediaId;
         this.rawTrackSnapshots = new Map();
-        this.settings = defaultSettings;
+        this.settings = { dictionaryTracks: defaultSettings.dictionaryTracks };
         this.anki = { cardsInfo: {}, dueCards: {} };
+        this.waniKani = {};
         this.lastCancelledAt = 0;
     }
 
@@ -91,6 +106,7 @@ export class DictionaryStatistics {
         const startTime = Date.now();
         this.rawTrackSnapshots.clear();
         this.anki = { cardsInfo: {}, dueCards: {} };
+        this.waniKani = {};
         void this._publish(undefined, startTime);
         this.lastCancelledAt = Date.now();
     }
@@ -139,9 +155,18 @@ export class DictionaryStatistics {
         void this._publish(this._snapshot(), startTime);
     }
 
+    replaceWaniKaniSnapshots(waniKani: DictionaryStatisticsWaniKaniSnapshots): void {
+        const startTime = Date.now();
+        this.waniKani = { ...waniKani };
+        if (!this.hasStatistics()) return;
+        void this._publish(this._snapshot(), startTime);
+    }
+
     async refreshDictionaryTokens(profile: string | undefined): Promise<void> {
         const startTime = Date.now();
-        const settings = await this.settingsProvider.getAll();
+        const dictionaryTracks = await this.settingsProvider.getSingle('dictionaryTracks');
+        for (const dt of dictionaryTracks) (dt as any).dictionaryWaniKaniApiToken = '';
+        const settings = { dictionaryTracks };
         this.settings = settings;
         await Promise.all(
             settings.dictionaryTracks.map(async (dt, track) => {
@@ -179,6 +204,7 @@ export class DictionaryStatistics {
                 })),
             settings: this.settings,
             anki: this.anki,
+            waniKani: this.waniKani,
         };
     }
 
