@@ -26,6 +26,10 @@ Assisted-by: Claude:claude-3-opus
 
 Make sure the pre-merge checks are passing:
 
+## Documentation
+
+Documentation is under the `docs` folder in this repository. When adding new features, please update the documentation as well.
+
 ```bash
 yarn run verify
 ```
