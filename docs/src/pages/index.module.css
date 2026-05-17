@@ -1,13 +1,4 @@
-@font-face {
-    font-family: 'Roboto';
-    src: url('/fonts/Roboto-Regular.ttf');
-}
-
 :root {
-    --ifm-font-family-base:
-        Roboto, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif,
-        BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol';
     --asbplayer-color: #ff3f78;
 }
 
@@ -91,13 +82,13 @@
 }
 
 .textSelectable {
-  background: #44f;
+    background: #44f;
 }
 
 .video {
-  box-shadow: 0 0 16px #111;
-  width: 100%;
-  object-fit: contain;
+    box-shadow: 0 0 16px #111;
+    width: 100%;
+    object-fit: contain;
 }
 
 @media screen and (max-width: 996px) {
