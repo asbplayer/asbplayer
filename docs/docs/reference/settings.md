@@ -322,6 +322,8 @@ Controls how asbplayer matches a subtitle word against your known words.
 - **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
 - **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
 
+When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, **Match across language scripts** controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+
 ### Card choice priority
 
 If multiple Anki cards match a word, this controls which card is used to determine the word's status:
@@ -334,6 +336,8 @@ If multiple Anki cards match a word, this controls which card is used to determi
 ### Sentence field search strategy
 
 Controls how asbplayer searches your configured **Anki sentence fields**, it has the same options as **Word field search strategy**.
+
+When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, **Match across language scripts** controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
 
 :::tip
 Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.

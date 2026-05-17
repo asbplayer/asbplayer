@@ -227,6 +227,7 @@ export interface DictionaryTrack {
     readonly dictionaryColorizeOnHoverOnly: boolean; // Currently applies to both colorization and reading annotations, named in case we want to separate later
     readonly dictionaryHighlightOnHover: boolean;
     readonly dictionaryTokenMatchStrategy: TokenMatchStrategy;
+    readonly dictionaryMatchAcrossScripts: boolean;
     readonly dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority;
     readonly dictionaryYomitanUrl: string;
     readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
@@ -260,6 +261,7 @@ const dictionaryTrackComparators: {
     dictionaryColorizeOnHoverOnly: (a, b) => a === b,
     dictionaryHighlightOnHover: (a, b) => a === b,
     dictionaryTokenMatchStrategy: (a, b) => a === b,
+    dictionaryMatchAcrossScripts: (a, b) => a === b,
     dictionaryTokenMatchStrategyPriority: (a, b) => a === b,
     dictionaryYomitanUrl: (a, b) => a === b,
     dictionaryYomitanParser: (a, b) => a === b,
