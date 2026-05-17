@@ -492,6 +492,7 @@
         "dictionaryTokenMatchStrategyLemmaOrExactFormCollected": "見出し語か同じ語形が対象",
         "dictionaryTokenMatchStrategyLemmaFormCollected": "見出し語のみが対象",
         "dictionaryTokenMatchStrategyExactFormCollected": "同じ語形のみが対象",
+        "dictionaryMatchAcrossScripts": "Match across language scripts",
         "dictionaryTokenMatchStrategyPriority": "カードの優先基準",
         "dictionaryTokenMatchStrategyPriorityExact": "同じ語形がフィールドに含まれている",
         "dictionaryTokenMatchStrategyPriorityLemma": "見出しごがフィールドに含まれている",
