@@ -14,7 +14,7 @@ import {
     DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot,
     REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
-import { TokenStatusInfo } from '@project/common/dictionary-db';
+import { TokenStatusInfo, WaniKaniTokenStatusInfo } from '@project/common/dictionary-db';
 import {
     dedupeTokenStatusInfos,
     getTokenStatus,
@@ -269,12 +269,17 @@ function hasCardId(status: TokenStatusInfo): status is TokenStatusInfo & { cardI
     return status.cardId !== undefined;
 }
 
-function hasAssignmentId<T extends TokenStatusInfo>(status: T): status is T & { assignmentId: number } {
-    return status.assignmentId !== undefined;
+type WaniKaniTokenStatus = TokenStatusInfo & { waniKani: WaniKaniTokenStatusInfo };
+type WaniKaniAssignmentTokenStatus = TokenStatusInfo & {
+    waniKani: WaniKaniTokenStatusInfo & { assignmentId: number };
+};
+
+function hasWaniKani(status: TokenStatusInfo): status is WaniKaniTokenStatus {
+    return status.waniKani !== undefined;
 }
 
-function hasSubjectId(status: TokenStatusInfo): status is TokenStatusInfo & { subjectId: number } {
-    return status.subjectId !== undefined;
+function hasAssignmentId(status: WaniKaniTokenStatus): status is WaniKaniAssignmentTokenStatus {
+    return status.waniKani.assignmentId !== undefined;
 }
 
 function incrementAnkiDueCounts(
@@ -291,14 +296,14 @@ function incrementAnkiDueCounts(
 
 function incrementWaniKaniDueCounts(
     counts: DictionaryStatisticsWaniKaniDueCounts,
-    tokenStatuses: (TokenStatusInfo & { assignmentId: number })[],
+    tokenStatuses: WaniKaniAssignmentTokenStatus[],
     dueByToday: Set<number>,
     dueByTomorrow: Set<number>,
     dueByWeek: Set<number>
 ) {
-    if (tokenStatuses.some(({ assignmentId }) => dueByToday.has(assignmentId))) counts.today += 1;
-    if (tokenStatuses.some(({ assignmentId }) => dueByTomorrow.has(assignmentId))) counts.tomorrow += 1;
-    if (tokenStatuses.some(({ assignmentId }) => dueByWeek.has(assignmentId))) counts.week += 1;
+    if (tokenStatuses.some(({ waniKani }) => dueByToday.has(waniKani.assignmentId))) counts.today += 1;
+    if (tokenStatuses.some(({ waniKani }) => dueByTomorrow.has(waniKani.assignmentId))) counts.tomorrow += 1;
+    if (tokenStatuses.some(({ waniKani }) => dueByWeek.has(waniKani.assignmentId))) counts.week += 1;
 }
 
 function waniKaniDueAssignmentSets(reviewAssignments?: DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot) {
@@ -1363,7 +1368,7 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
         const token = dictionaryTokenForGroupingKey(tokenKey, rawTrackSnapshot.stats.dictionary.tokens);
         if (token?.states.includes(TokenState.IGNORED)) continue;
 
-        const tokenStatuses = (tokenSnapshot.externalCandidateStatuses ?? token?.statuses ?? []).filter(hasSubjectId);
+        const tokenStatuses = (tokenSnapshot.externalCandidateStatuses ?? token?.statuses ?? []).filter(hasWaniKani);
         if (!tokenStatuses.length) continue;
 
         incrementWaniKaniDueCounts(

@@ -30,18 +30,18 @@ export const BUILD_MIN_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
  */
 export const LOCAL_TOKEN_TRACK = -1; // null cannot be used in Dexie indexes
 
-export interface WaniKaniDataUpdatedAt {
-    assignments?: string;
-    subjects?: string;
-    resets?: string;
-    spacedRepetitionSystems?: string;
-}
-
 export interface AnkiMeta {
     lastBuildStartedAt: number;
     lastBuildExpiresAt: number;
     buildId: string | null;
     settings: string | null;
+}
+
+export interface WaniKaniDataUpdatedAt {
+    assignments?: string;
+    subjects?: string;
+    resets?: string;
+    spacedRepetitionSystems?: string;
 }
 
 export interface WaniKaniMeta {
@@ -95,14 +95,11 @@ export interface DictionaryAnkiCardRecord {
     suspended: boolean;
 }
 
-export type WaniKaniAssignmentDataForDB = Pick<WaniKaniAssignment['data'], 'srs_stage' | 'hidden'>;
-
+export type DictionaryWaniKaniSubjectKey = [number, number, string];
 export type WaniKaniSubjectDataForDB = Pick<
     WaniKaniSubject['data'],
-    'characters' | 'hidden_at' | 'spaced_repetition_system_id'
+    'characters' | 'hidden_at' | 'level' | 'spaced_repetition_system_id'
 >;
-
-export type DictionaryWaniKaniSubjectKey = [number, number, string];
 export interface DictionaryWaniKaniSubjectRecord {
     profile: string;
     track: number;
@@ -111,6 +108,7 @@ export interface DictionaryWaniKaniSubjectRecord {
 }
 
 export type DictionaryWaniKaniAssignmentKey = [number, number, string];
+export type WaniKaniAssignmentDataForDB = Pick<WaniKaniAssignment['data'], 'srs_stage' | 'hidden' | 'available_at'>;
 export interface DictionaryWaniKaniAssignmentRecord {
     profile: string;
     track: number;
@@ -172,10 +170,16 @@ export interface TrackStateForDB {
     yomitan: Yomitan;
 }
 
+export interface WaniKaniTokenStatusInfo {
+    subjectId: number;
+    subjectLevel: number;
+    assignmentId: number | undefined;
+    availableAt: string | null | undefined;
+}
+
 export interface TokenStatusInfo {
     cardId?: number;
-    subjectId?: number;
-    assignmentId?: number;
+    waniKani?: WaniKaniTokenStatusInfo;
     status: TokenStatus;
     suspended: boolean;
 }
@@ -347,8 +351,12 @@ export class DictionaryDB {
                         ? undefined
                         : spacedRepetitionSystemById.get(subject.data.spaced_repetition_system_id);
                 subjectStatusMap.set(subject.subjectId, {
-                    ...(assignment === undefined ? {} : { assignmentId: assignment.assignmentId }),
-                    subjectId: subject.subjectId,
+                    waniKani: {
+                        subjectId: subject.subjectId,
+                        subjectLevel: subject.data.level,
+                        assignmentId: assignment?.assignmentId,
+                        availableAt: assignment?.data.available_at,
+                    },
                     status:
                         assignment === undefined || spacedRepetitionSystem === undefined
                             ? TokenStatus.UNKNOWN
@@ -516,9 +524,9 @@ export class DictionaryDB {
      * External word sources are prioritized by highest status as a user may have abandoned a source.
      */
     async getBulk(inputProfile: string | undefined, track: number, tokens: string[]): Promise<TokenResults> {
-        const settings = await this.settingsProvider.getAll();
         if (!tokens.length) return {};
         const profile = this._getProfile(inputProfile);
+        const settings = await this.settingsProvider.getAll();
 
         return this.db.transaction(
             'r',
@@ -539,8 +547,8 @@ export class DictionaryDB {
      * External word sources are prioritized by highest status as a user may have abandoned a source.
      */
     async getAllTokens(inputProfile: string | undefined, track: number): Promise<TokenResults> {
-        const settings = await this.settingsProvider.getAll();
         const profile = this._getProfile(inputProfile);
+        const settings = await this.settingsProvider.getAll();
 
         return this.db.transaction(
             'r',
@@ -561,10 +569,10 @@ export class DictionaryDB {
      * External word sources are prioritized by highest status per lemma as a user may have abandoned a source.
      */
     async getByLemmaBulk(inputProfile: string | undefined, track: number, lemmas: string[]): Promise<LemmaResults> {
-        const settings = await this.settingsProvider.getAll();
         if (!lemmas.length) return {};
         const lemmasSet = new Set(lemmas);
         const profile = this._getProfile(inputProfile);
+        const settings = await this.settingsProvider.getAll();
 
         return this.db.transaction(
             'r',

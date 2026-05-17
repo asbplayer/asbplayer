@@ -1558,7 +1558,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         }
 
         const assignmentIds = tokenStatusResult.externalCandidateStatuses?.flatMap((status) =>
-            status.assignmentId === undefined ? [] : [status.assignmentId]
+            status.waniKani?.assignmentId === undefined ? [] : [status.waniKani.assignmentId]
         );
         if (assignmentIds?.length) {
             let tokenAssignmentIds = ts.tokenAssignmentIds.get(token);

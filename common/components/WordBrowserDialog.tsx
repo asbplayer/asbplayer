@@ -1189,12 +1189,23 @@ export default function WordBrowserDialog({
             const waniKaniAssignmentRecords = isWaniKaniRecord
                 ? record.cardIds.flatMap((subjectId) => trackWaniKaniAssignmentRecordsBySubject?.[subjectId] ?? [])
                 : [];
-            const waniKaniSubjectStatuses: TokenStatusInfo[] = waniKaniAssignmentRecords.map((assignmentRecord) => ({
-                assignmentId: assignmentRecord.assignmentId,
-                subjectId: assignmentRecord.subjectId,
-                status: assignmentRecord.status,
-                suspended: false,
-            }));
+            const trackWaniKaniSubjectRecords = records.waniKaniSubjectRecords?.[record.track];
+            const waniKaniSubjectStatuses: TokenStatusInfo[] = waniKaniAssignmentRecords.flatMap((assignmentRecord) => {
+                const subjectRecord = trackWaniKaniSubjectRecords?.[assignmentRecord.subjectId];
+                if (!subjectRecord) return [];
+                return [
+                    {
+                        waniKani: {
+                            assignmentId: assignmentRecord.assignmentId,
+                            availableAt: assignmentRecord.data.available_at,
+                            subjectId: assignmentRecord.subjectId,
+                            subjectLevel: subjectRecord.data.level,
+                        },
+                        status: assignmentRecord.status,
+                        suspended: false,
+                    },
+                ];
+            });
             const ankiNoteIds = dedupeNumbers(cardRecords.map((cardRecord) => cardRecord.noteId));
             const status = isAnkiRecord
                 ? getTokenStatus(

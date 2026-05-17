@@ -459,6 +459,7 @@ function _waniKaniAssignmentRecord(
         data: {
             srs_stage: assignment.data.srs_stage,
             hidden: assignment.data.hidden,
+            available_at: assignment.data.available_at,
         },
     };
 }
@@ -475,6 +476,7 @@ function _waniKaniSubjectRecord(
         data: {
             characters: subject.data.characters,
             hidden_at: subject.data.hidden_at,
+            level: subject.data.level,
             spaced_repetition_system_id: subject.data.spaced_repetition_system_id,
         },
     };

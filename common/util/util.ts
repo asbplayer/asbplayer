@@ -676,7 +676,15 @@ export function dedupeTokenStatusInfos(statuses: TokenStatusInfo[]): TokenStatus
     const seen = new Set<string>();
     const deduped: TokenStatusInfo[] = [];
     for (const status of statuses) {
-        const key = [status.cardId, status.subjectId, status.assignmentId, status.status, status.suspended].join(':');
+        const key = JSON.stringify([
+            status.cardId,
+            status.waniKani?.subjectId,
+            status.waniKani?.subjectLevel,
+            status.waniKani?.assignmentId,
+            status.waniKani?.availableAt,
+            status.status,
+            status.suspended,
+        ]);
         if (seen.has(key)) continue;
         seen.add(key);
         deduped.push(status);
