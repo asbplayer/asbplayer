@@ -1,23 +1,127 @@
+@font-face {
+    font-family: 'Roboto';
+    src: url('/fonts/Roboto-Regular.ttf');
+}
+
+:root {
+    --ifm-font-family-base:
+        Roboto, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif,
+        BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol';
+    --asbplayer-color: #ff3f78;
+}
+
 .heroBanner {
-  padding: 4rem 0;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  flex-grow: 1;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
 }
 
 .heroTitle {
-  color: #ff3f78;
-}
-
-@media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem;
-  }
+    color: var(--asbplayer-color);
+    text-wrap: nowrap;
 }
 
 .buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.storeButtons {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+}
+
+.storeButtons img {
+    height: 48px;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.linksSection {
+    display: flex;
+    flex-direction: column;
+    margin: 2rem;
+    gap: 1.25rem;
+    flex-grow: 1;
+    justify-content: space-between;
+    font-size: 1.1em;
+    align-items: center;
+}
+
+.linksSection a {
+    color: var(--ifm-color-gray-900);
+    text-decoration: none;
+}
+
+.linksSubsection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.appLink {
+    display: flex;
+    flex-wrap: nowrap;
+    height: 2.5rem;
+    align-items: center;
+    font-size: 1em;
+    gap: 0.5rem;
+    border: 1px solid var(--asbplayer-color);
+    border-radius: 6px;
+    padding: 12px;
+    color: var(--asbplayer-color);
+}
+
+.appLink:hover {
+    background: var(--asbplayer-color);
+    color: white;
+}
+
+.appLink img {
+    max-height: 120%;
+}
+
+.appLink span {
+    text-wrap: nowrap;
+}
+
+.textSelectable {
+  background: #44f;
+}
+
+.video {
+  box-shadow: 0 0 16px #111;
+  width: 100%;
+  object-fit: contain;
+}
+
+@media screen and (max-width: 996px) {
+    .heroBanner {
+        padding: 2rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .storeButtons {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 400px) {
+    .appLink {
+        font-size: 0.9em;
+    }
+
+    .linksSection {
+        font-size: 0.9em;
+    }
+
+    .storeButtons img {
+        height: 32px;
+    }
 }
