@@ -290,15 +290,9 @@ Shows a rank-based frequency value below words (when available). This is useful 
 - **Never**: disable frequency.
 
 :::tip
-Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance.
+Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
 
 If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
-:::
-
-:::note
-If you are using Yomitan frequency-based dictionaries, make sure that
-
-Dictionary index.json should have the field "frequencyMode":"rank-based".
 :::
 
 ### Only show annotations on hover

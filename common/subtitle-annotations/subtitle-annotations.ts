@@ -95,6 +95,7 @@ interface TrackState {
     tokenCardIds: Map<string, Map<number, boolean>>;
     tokenAssignmentIds: Map<string, Set<number>>;
     tokenStates: Map<string, TokenState[]>;
+    indexTokenOccurrences: Map<number, Map<string, number>>;
 }
 
 function shouldUseExactForm(s: TokenMatchStrategy): boolean {
@@ -889,6 +890,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         let buildWasCancelled = false;
         let updateThresholds = false;
         let statisticsBatching = false;
+        let builtNewTokenization = false;
         try {
             this.annotationsBuilding = true;
             if (this.profile === null) {
@@ -910,6 +912,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     tokenCardIds: new Map(),
                     tokenAssignmentIds: new Map(),
                     tokenStates: new Map(),
+                    indexTokenOccurrences: new Map(),
                 }));
                 if (this.generateStatistics === undefined) {
                     this.generateStatistics = this._shouldAutoGenerateStatistics(this.trackStates.map((ts) => ts.dt));
@@ -1021,6 +1024,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                                 ) {
                                     return;
                                 }
+                                builtNewTokenization = true;
                                 const updatedSubtitles: RichSubtitleModel[] = [];
                                 if (tokenizationModel) {
                                     const { tokenization, reconstructedText } = tokenizationModel;
@@ -1031,6 +1035,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                                     subtitle.text = reconstructedText;
                                     subtitle.__tokenized = true;
                                     updatedSubtitles.push(subtitle);
+                                    this._recordTokenOccurrences(index, reconstructedText, tokenization, ts);
                                     if (generatingStatistics) {
                                         const sentence = { ...subtitle };
                                         renderRichTextOntoSubtitles(
@@ -1103,6 +1108,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 for (const track of this.tokenRequestFailedForTracks) resetYomitan(this.trackStates[track]);
                 this.tokenRequestFailedForTracks.clear();
             } else if (!this.shouldCancelBuild) {
+                if (builtNewTokenization) this._inferFrequencyModesFromTokenOccurrences();
                 this.initialized = true;
                 if (statisticsBatching) {
                     this.statisticsBatchProcessedIndex = annotationsEndIndex;
@@ -1130,6 +1136,28 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             this.annotationsBuilding = false;
         }
         return !buildWasCancelled;
+    }
+
+    private _recordTokenOccurrences(
+        index: number,
+        reconstructedText: string,
+        tokenization: Tokenization,
+        ts: TrackState
+    ): void {
+        const tokenOccurrences = new Map<string, number>();
+        for (const token of tokenization.tokens) {
+            const tokenText = reconstructedText.substring(token.pos[0], token.pos[1]).trim();
+            if (!HAS_LETTER_REGEX.test(tokenText)) continue;
+            tokenOccurrences.set(tokenText, (tokenOccurrences.get(tokenText) ?? 0) + 1);
+        }
+        ts.indexTokenOccurrences.set(index, tokenOccurrences);
+    }
+
+    private _inferFrequencyModesFromTokenOccurrences(): void {
+        for (const ts of this.trackStates) {
+            if (!dictionaryTrackEnabled(ts.dt) || !ts.yt) continue;
+            ts.yt.inferFrequencyModesFromTokenOccurrences(ts.indexTokenOccurrences);
+        }
     }
 
     private async _buildTokenAndLemmaMap(profile: string | undefined, subtitles: RichSubtitleModel[]): Promise<void> {
