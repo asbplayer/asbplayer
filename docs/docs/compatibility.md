@@ -28,20 +28,26 @@ sidebar_position: 7
 
 ### Streaming services and subtitle detection
 
-| Service        |                                                                                      Compatibility                                                                                       |
-| -------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| Netflix        |                                                                                            ✓                                                                                             |
-| YouTube        |                                                                                            ✓                                                                                             |
-| Disney Plus    |                                           Seeking/timing is completely broken ([issue](https://github.com/asbplayer/asbplayer/issues/576))                                            |
-| Hulu           |                                                                                            ✓                                                                                             |
-| TVer           |                                                                                            ✓                                                                                             |
-| Bandai Channel |                                                                                            ✓                                                                                             |
-| Amazon Prime   |                                                                            Timing sometimes off by 30 seconds                                                                            |
-| Emby/Jellyfin  |                                                                Configure custom domains from the page-specific settings.                                                                 |
-| Rakuten Viki   |                                                                                            ✓                                                                                             |
-| osnplus        |                                             Compatibility with osnplus is currently unknown. Reach out if you have more information on this.                                             |
-| Plex           | Supports external subtitles. As for internal subtitles, first select them from Plex UI to make them selectable from asbplayer. Configure custom domains from the page-specific settings. |
-| BiliBili       |                                                                                            ✓                                                                                             |
-| NRK TV         |                                                                                            ✓                                                                                             |
-| HBO Max        |                                                                                            ✓                                                                                             |
-| Yle Areena     |                                                                                            ✓                                                                                             |
+| Service                 |                                                                                      Compatibility                                                                                       |
+| ----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| Netflix                 |                                                                                            ✓                                                                                             |
+| YouTube                 |                                                                                            ✓                                                                                             |
+| Disney Plus             |                                             Seeking/timing is completely broken ([issue](https://github.com/asbplayer/asbplayer/issues/576))                                             |
+| Hulu                    |                                                                                            ✓                                                                                             |
+| Hulu JP                 |                                                                                            ✓                                                                                             |
+| TVer                    |                                                                                            ✓                                                                                             |
+| Bandai Channel          |                                                                                            ✓                                                                                             |
+| Amazon Prime            |                                                                            Timing sometimes off by 30 seconds                                                                            |
+| Emby/Jellyfin           |                                                                Configure custom domains from the page-specific settings.                                                                 |
+| Rakuten Viki            |                                                                                            ✓                                                                                             |
+| osnplus                 |                                             Compatibility with osnplus is currently unknown. Reach out if you have more information on this.                                             |
+| Plex                    | Supports external subtitles. As for internal subtitles, first select them from Plex UI to make them selectable from asbplayer. Configure custom domains from the page-specific settings. |
+| BiliBili                |                                                                                            ✓                                                                                             |
+| NRK TV                  |                                                                                            ✓                                                                                             |
+| HBO Max                 |                                                             See [issue](https://github.com/asbplayer/asbplayer/issues/1006)                                                              |
+| Yle Areena              |                                                                                            ✓                                                                                             |
+| iWantTFC                |                                                                                            ✓                                                                                             |
+| Stemio                  |                                                              See [issue](https://github.com/asbplayer/asbplayer/issues/800)                                                              |
+| Comprehensible Japanese |                                                                                            ✓                                                                                             |
+| SVT Play                |                                                                                            ✓                                                                                             |
+| UR Play                 |                                                                                            ✓                                                                                             |
