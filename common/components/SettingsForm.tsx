@@ -181,6 +181,7 @@ interface Props {
     extensionSupportsDictionary: boolean;
     extensionSupportsDictionaryBrowser: boolean;
     extensionSupportsDictionaryWaniKani: boolean;
+    extensionSupportsDictionaryMatchAcrossScripts: boolean;
     extensionSupportsSeekableTrackSetting: boolean;
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
@@ -233,6 +234,7 @@ export default function SettingsForm({
     extensionSupportsDictionary,
     extensionSupportsDictionaryBrowser,
     extensionSupportsDictionaryWaniKani,
+    extensionSupportsDictionaryMatchAcrossScripts,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
@@ -258,6 +260,7 @@ export default function SettingsForm({
     const supportsDictionary = !extensionInstalled || extensionSupportsDictionary;
     const supportsDictionaryBrowser = !extensionInstalled || extensionSupportsDictionaryBrowser;
     const supportsDictionaryWaniKani = !extensionInstalled || extensionSupportsDictionaryWaniKani;
+    const supportsDictionaryMatchAcrossScripts = !extensionInstalled || extensionSupportsDictionaryMatchAcrossScripts;
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
@@ -473,6 +476,7 @@ export default function SettingsForm({
                     extensionInstalled={extensionInstalled}
                     supportsDictionaryBrowser={supportsDictionaryBrowser}
                     supportsDictionaryWaniKani={supportsDictionaryWaniKani}
+                    supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
                     supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                     supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                     onSettingChanged={handleSettingChanged}

@@ -45,6 +45,9 @@ const dictionaryTrackSchema = {
         dictionaryTokenMatchStrategy: {
             type: 'string',
         },
+        dictionaryMatchAcrossScripts: {
+            type: 'boolean',
+        },
         dictionaryTokenMatchStrategyPriority: {
             type: 'string',
         },

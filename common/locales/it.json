@@ -492,6 +492,7 @@
         "dictionaryTokenMatchStrategyLemmaOrExactFormCollected": "Lemma o forma esatta raccolta",
         "dictionaryTokenMatchStrategyLemmaFormCollected": "Forma lemma raccolta",
         "dictionaryTokenMatchStrategyExactFormCollected": "Forma esatta raccolta",
+        "dictionaryMatchAcrossScripts": "Match across language scripts",
         "dictionaryTokenMatchStrategyPriority": "Priorità nella scelta della carta",
         "dictionaryTokenMatchStrategyPriorityExact": "Il campo contiene la forma esatta",
         "dictionaryTokenMatchStrategyPriorityLemma": "Il campo contiene il lemma",

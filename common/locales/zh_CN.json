@@ -492,6 +492,7 @@
         "dictionaryTokenMatchStrategyLemmaOrExactFormCollected": "匹配词元或完全匹配",
         "dictionaryTokenMatchStrategyLemmaFormCollected": "仅匹配词元（原形）",
         "dictionaryTokenMatchStrategyExactFormCollected": "仅完全匹配原文",
+        "dictionaryMatchAcrossScripts": "Match across language scripts",
         "dictionaryTokenMatchStrategyPriority": "卡片匹配优先级",
         "dictionaryTokenMatchStrategyPriorityExact": "优先匹配包含原文的卡片",
         "dictionaryTokenMatchStrategyPriorityLemma": "优先匹配包含词元的卡片",

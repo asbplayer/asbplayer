@@ -342,6 +342,7 @@ interface Props {
     extensionInstalled: boolean;
     supportsDictionaryBrowser: boolean;
     supportsDictionaryWaniKani: boolean;
+    supportsDictionaryMatchAcrossScripts: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -357,6 +358,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     extensionInstalled,
     supportsDictionaryBrowser,
     supportsDictionaryWaniKani,
+    supportsDictionaryMatchAcrossScripts,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
     onSettingChanged,
@@ -397,6 +399,17 @@ const DictionarySettingsTab: React.FC<Props> = ({
     ].some(
         (s) => s === TokenMatchStrategy.ANY_FORM_COLLECTED || s === TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED
     );
+    const showMatchAcrossScriptsForStrategy = (strategy: TokenMatchStrategy) =>
+        supportsDictionaryMatchAcrossScripts &&
+        (strategy === TokenMatchStrategy.ANY_FORM_COLLECTED ||
+            strategy === TokenMatchStrategy.LEMMA_FORM_COLLECTED ||
+            strategy === TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED);
+    const showWordMatchAcrossScripts = showMatchAcrossScriptsForStrategy(
+        selectedDictionary.dictionaryTokenMatchStrategy
+    );
+    const showSentenceMatchAcrossScripts = showMatchAcrossScriptsForStrategy(
+        selectedDictionary.dictionaryAnkiSentenceTokenMatchStrategy
+    );
     const selectedDictionaryShowThickness =
         selectedDictionary.dictionaryTokenStyling === TokenStyling.UNDERLINE ||
         selectedDictionary.dictionaryTokenStyling === TokenStyling.OVERLINE ||
@@ -421,6 +434,25 @@ const DictionarySettingsTab: React.FC<Props> = ({
         waniKaniUserInfoRequest.current = undefined;
         setWaniKaniUserInfo(undefined);
     }, []);
+    const renderDictionaryMatchAcrossScripts = () => (
+        <SwitchLabelWithHoverEffect
+            control={
+                <Switch
+                    checked={selectedDictionary.dictionaryMatchAcrossScripts}
+                    onChange={(e) => {
+                        const newTracks = [...dictionaryTracks];
+                        newTracks[selectedDictionaryTrack] = {
+                            ...newTracks[selectedDictionaryTrack],
+                            dictionaryMatchAcrossScripts: e.target.checked,
+                        };
+                        onSettingChanged('dictionaryTracks', newTracks);
+                    }}
+                />
+            }
+            label={t('settings.dictionaryMatchAcrossScripts')}
+            labelPlacement="start"
+        />
+    );
     const requestDictionaryWaniKaniUserInfo = useCallback(
         async (apiToken: string) => {
             const trimmedApiToken = apiToken.trim();
@@ -1132,6 +1164,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         />
                     </RadioGroup>
                 </FormControl>
+                {showWordMatchAcrossScripts && renderDictionaryMatchAcrossScripts()}
                 {showTokenMatchStrategyPriority && (
                     <FormControl>
                         <FormLabel component="legend">{t('settings.dictionaryTokenMatchStrategyPriority')}</FormLabel>
@@ -1302,6 +1335,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         />
                     </RadioGroup>
                 </FormControl>
+                {showSentenceMatchAcrossScripts && renderDictionaryMatchAcrossScripts()}
                 <SettingsSection ref={yomitanSectionRef}>{t('settings.dictionaryYomitanSection')}</SettingsSection>
                 {dictionaryYomitanUrlError && (
                     <Alert severity="info">
