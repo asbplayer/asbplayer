@@ -71,6 +71,12 @@ const config: Config = {
           position: "right",
           "aria-label": "GitHub repository",
         },
+        {
+          href: "https://discord.gg/ad7VAQru7m",
+          className: "header-discord-link",
+          position: "right",
+          "aria-label": "Discord server",
+        },
       ],
     },
     footer: {
