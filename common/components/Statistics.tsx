@@ -448,6 +448,7 @@ function StatisticsSectionSubHeading({ children }: { children: React.ReactNode }
 
 interface SentenceStatsPanelProps {
     title: string;
+    infoLines?: string[];
     totalSentences: number;
     sentenceBuckets: DictionaryStatisticsSentenceBuckets;
     uncollectedLabel: string;
@@ -466,6 +467,7 @@ interface SentenceStatsPanelProps {
     globalKnownCount: number;
     onOpenSentenceBucketDetails: (bucket: DictionaryStatisticsSentenceDialogBucket) => void;
     headerAction?: ReactNode;
+    sentenceFiltersPosition: 'top' | 'bottom';
     emptyMessage?: string;
 }
 
@@ -529,6 +531,7 @@ function StatBoxes({ keyPrefix, stats }: StatBoxesProps) {
 
 function SentenceStatsPanel({
     title,
+    infoLines,
     totalSentences,
     sentenceBuckets,
     uncollectedLabel,
@@ -546,6 +549,7 @@ function SentenceStatsPanel({
     globalKnownLabel,
     globalKnownCount,
     headerAction,
+    sentenceFiltersPosition,
     emptyMessage,
     onOpenSentenceBucketDetails,
 }: SentenceStatsPanelProps) {
@@ -618,6 +622,43 @@ function SentenceStatsPanel({
 
     const comprehensionBand = dictionaryStatisticsComprehensionBandForPercent(comprehensionPercent);
 
+    const sentenceFilterRows = (
+        <>
+            {renderSentenceBucketRow(
+                { kind: 'allKnown' },
+                knownSentencesLabel,
+                sentenceBuckets.allKnown.count,
+                sentenceBuckets.allKnown.entries
+            )}
+            {uncollectedSentenceBuckets.map(({ bucket, label, count, entries }, index) => (
+                <Box key={label} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {renderSentenceBucketRow(bucket, label, count, entries)}
+                    {unknownSentenceBuckets[index] !== undefined &&
+                        renderSentenceBucketRow(
+                            unknownSentenceBuckets[index].bucket,
+                            unknownSentenceBuckets[index].label,
+                            unknownSentenceBuckets[index].count,
+                            unknownSentenceBuckets[index].entries
+                        )}
+                </Box>
+            ))}
+        </>
+    );
+
+    const statRows = (
+        <>
+            <StatRow
+                label={comprehensionLabel}
+                value={percentDisplay(comprehensionPercent)}
+                valueSx={{ color: comprehensionBand.color, fontWeight: 600 }}
+            />
+            <StatRow label={knownWordsLabel} value={`${knownWordsCount} · ${percentDisplay(knownWordsPercent)}`} />
+            <StatRow label={globalKnownLabel} value={`${globalKnownCount}`} />
+            <StatRow label={uniqueWordsPerSentenceLabel} value={averageDisplay(uniqueWordsPerSentence)} />
+            <StatRow label={knownWordsPerSentenceLabel} value={averageDisplay(knownWordsPerSentence)} />
+        </>
+    );
+
     return (
         <Box
             sx={{
@@ -630,7 +671,10 @@ function SentenceStatsPanel({
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'flex-start' }}>
-                    <StatisticsSectionSubHeading>{title}</StatisticsSectionSubHeading>
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                        <StatisticsSectionSubHeading>{title}</StatisticsSectionSubHeading>
+                        {infoLines !== undefined && <StatisticsInfoTooltip label={title} lines={infoLines} />}
+                    </Box>
                 </Box>
                 {headerAction && <Box sx={{ mb: 1.5 }}>{headerAction}</Box>}
                 {emptyMessage ? (
@@ -639,36 +683,9 @@ function SentenceStatsPanel({
                     </Typography>
                 ) : (
                     <>
-                        <StatRow
-                            label={comprehensionLabel}
-                            value={percentDisplay(comprehensionPercent)}
-                            valueSx={{ color: comprehensionBand.color, fontWeight: 600 }}
-                        />
-                        <StatRow
-                            label={knownWordsLabel}
-                            value={`${knownWordsCount} · ${percentDisplay(knownWordsPercent)}`}
-                        />
-                        <StatRow label={globalKnownLabel} value={`${globalKnownCount}`} />
-                        <StatRow label={uniqueWordsPerSentenceLabel} value={averageDisplay(uniqueWordsPerSentence)} />
-                        <StatRow label={knownWordsPerSentenceLabel} value={averageDisplay(knownWordsPerSentence)} />
-                        {renderSentenceBucketRow(
-                            { kind: 'allKnown' },
-                            knownSentencesLabel,
-                            sentenceBuckets.allKnown.count,
-                            sentenceBuckets.allKnown.entries
-                        )}
-                        {uncollectedSentenceBuckets.map(({ bucket, label, count, entries }, index) => (
-                            <Box key={label} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {renderSentenceBucketRow(bucket, label, count, entries)}
-                                {unknownSentenceBuckets[index] !== undefined &&
-                                    renderSentenceBucketRow(
-                                        unknownSentenceBuckets[index].bucket,
-                                        unknownSentenceBuckets[index].label,
-                                        unknownSentenceBuckets[index].count,
-                                        unknownSentenceBuckets[index].entries
-                                    )}
-                            </Box>
-                        ))}
+                        {sentenceFiltersPosition === 'top' && sentenceFilterRows}
+                        {statRows}
+                        {sentenceFiltersPosition === 'bottom' && sentenceFilterRows}
                     </>
                 )}
             </Box>
@@ -1035,13 +1052,8 @@ function TrackSnapshot({
         () => [t('statistics.info.wordDistribution'), t('statistics.info.occurrences'), t('statistics.info.frequency')],
         [t]
     );
-    const sentenceStatisticsInfoLines = useMemo(
-        () => [
-            t('statistics.info.sentenceStatistics'),
-            `${t('statistics.projectedRewatch')}: ${t('statistics.info.projectedRewatch')}`,
-        ],
-        [t]
-    );
+    const sentenceStatisticsInfoLines = useMemo(() => [t('statistics.info.sentenceStatistics')], [t]);
+    const projectedRewatchInfoLines = useMemo(() => [t('statistics.info.projectedRewatch')], [t]);
     const uniqueWordsPerSentenceLabel = t('statistics.uniqueWordsPerSentence');
     const knownWordsPerSentenceLabel = t('statistics.knownWordsPerSentence');
     const uncollectedLabel = statusLabels[TokenStatus.UNCOLLECTED];
@@ -1301,6 +1313,7 @@ function TrackSnapshot({
                         comprehensionPercent={trackSnapshot.comprehensionPercent}
                         globalKnownLabel={t('statistics.globalKnownWords')}
                         globalKnownCount={trackSnapshot.numDictionaryKnownTokens}
+                        sentenceFiltersPosition="top"
                         onOpenSentenceBucketDetails={(bucket) => {
                             const bucketData = sentenceDialogBucketData(bucket, trackSnapshot.sentenceBuckets, {
                                 knownSentencesLabel: t('statistics.knownSentences'),
@@ -1321,6 +1334,7 @@ function TrackSnapshot({
                 <Box>
                     <SentenceStatsPanel
                         title={t('statistics.projectedRewatch')}
+                        infoLines={projectedRewatchInfoLines}
                         totalSentences={totalSentences}
                         sentenceBuckets={projectedSentenceBuckets}
                         uncollectedLabel={uncollectedLabel}
@@ -1358,6 +1372,7 @@ function TrackSnapshot({
                                 </TextField>
                             ) : undefined
                         }
+                        sentenceFiltersPosition="bottom"
                         emptyMessage={maxRewatches === 0 ? t('statistics.noMoreRewatches') : undefined}
                         onOpenSentenceBucketDetails={(bucket) => {
                             if (selectedRewatchSnapshot === undefined) return;

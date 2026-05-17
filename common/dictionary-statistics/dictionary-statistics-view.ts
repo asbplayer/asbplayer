@@ -836,6 +836,22 @@ function dictionaryCountsFromRaw(
     return { numKnownTokens, numIgnoredTokens };
 }
 
+function promoteTokenStatus(status: TokenStatus): TokenStatus {
+    return Math.min(status + 1, fullyKnownTokenStatus) as TokenStatus;
+}
+
+function promoteProjectedStatuses(
+    tokenEntries: [string, ProcessedTokenSnapshot][],
+    projectedStatuses: Map<string, TokenStatus>
+) {
+    for (const [tokenKey, token] of tokenEntries) {
+        if (token.ignored) continue;
+        const currentStatus = projectedStatuses.get(tokenKey) ?? token.status;
+        if (currentStatus <= TokenStatus.UNCOLLECTED || currentStatus >= fullyKnownTokenStatus) continue;
+        projectedStatuses.set(tokenKey, promoteTokenStatus(currentStatus));
+    }
+}
+
 function rewatchSnapshotsFromRaw(
     dictionaryKnownTokens: number,
     tokens: ProcessedTokenSnapshots,
@@ -844,14 +860,12 @@ function rewatchSnapshotsFromRaw(
     consideredTokens: number
 ): DictionaryStatisticsRewatchSnapshot[] {
     const tokenEntries = Array.from(tokens.entries());
-    const projectedStatuses = new Map<string, TokenStatus>(
-        tokenEntries
-            .filter(([, token]) => token.status === TokenStatus.UNKNOWN)
-            .map(([tokenKey]) => [tokenKey, TokenStatus.LEARNING])
-    );
+    const projectedStatuses = new Map<string, TokenStatus>();
     const rewatchSnapshots: DictionaryStatisticsRewatchSnapshot[] = [];
 
     while (true) {
+        promoteProjectedStatuses(tokenEntries, projectedStatuses);
+
         const tokensToPromote = new Set<string>();
         for (const sentenceSnapshot of sentenceSnapshots) {
             const evaluated = evaluateSentenceSnapshot(sentenceSnapshot, projectedStatuses);
@@ -866,8 +880,8 @@ function rewatchSnapshotsFromRaw(
 
         for (const tokenKey of Array.from(tokensToPromote).sort()) {
             const currentStatus = projectedStatuses.get(tokenKey) ?? tokens.get(tokenKey)?.status;
-            if (currentStatus !== undefined && currentStatus < TokenStatus.LEARNING) {
-                projectedStatuses.set(tokenKey, TokenStatus.LEARNING);
+            if (currentStatus !== undefined && currentStatus < fullyKnownTokenStatus) {
+                projectedStatuses.set(tokenKey, Math.max(promoteTokenStatus(currentStatus), TokenStatus.LEARNING));
             }
         }
 
