@@ -143,6 +143,7 @@ export default class Binding {
     seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
     private recordingMediaStartedTimestamp?: number;
     private recordingMediaWithScreenshot: boolean;
+    private _lastMinedSubtitle: SubtitleModel | undefined;
     private pausedDueToHover = false;
     private _playModes: Set<PlayMode> = new Set([PlayMode.normal]);
     private _seekDuration = 3;
@@ -1263,7 +1264,13 @@ export default class Binding {
 
         const mediaTimestamp = subtitleTimestampWithDelay(subtitle, this.imageDelay);
 
-        if (this.takeScreenshot) {
+        const isSameSubtitleAsPrevious =
+            !isBulkExport &&
+            this._lastMinedSubtitle !== undefined &&
+            this._lastMinedSubtitle.start === subtitle.start &&
+            this._lastMinedSubtitle.end === subtitle.end;
+
+        if (this.takeScreenshot && !isSameSubtitleAsPrevious) {
             await this._prepareScreenshot();
         }
 
@@ -1272,7 +1279,7 @@ export default class Binding {
             return;
         }
 
-        if (this.recordMedia) {
+        if (this.recordMedia && !isSameSubtitleAsPrevious) {
             this.recordingState = RecordingState.requested;
             this.recordingPostMineAction = postMineAction;
             this.wasPlayingBeforeRecordingMedia = !this.video.paused;
@@ -1282,6 +1289,8 @@ export default class Binding {
             this.seek(start / 1000);
             await this.play();
         }
+
+        this._lastMinedSubtitle = subtitle;
 
         if (!text || subtitle.text.includes(text.trim())) {
             text = extractText(subtitle, surroundingSubtitles);
@@ -1310,6 +1319,7 @@ export default class Binding {
                 word,
                 customFieldValues,
                 isBulkExport,
+                useCachedMedia: isSameSubtitleAsPrevious,
                 ...this._imageCaptureParams,
             },
             src: this.video.src,
@@ -1438,6 +1448,10 @@ export default class Binding {
         };
 
         browser.runtime.sendMessage(command);
+    }
+
+    clearMediaCache() {
+        this._lastMinedSubtitle = undefined;
     }
 
     seek(timestamp: number) {

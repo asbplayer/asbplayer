@@ -2,6 +2,7 @@ import {
     ActiveProfileMessage,
     AnkiDialogSettings,
     AnkiDialogSettingsMessage,
+    AnkiUiBridgeClearMediaCacheMessage,
     AnkiUiBridgeExportedMessage,
     AnkiUiBridgeRerecordMessage,
     AnkiUiBridgeResumeMessage,
@@ -266,6 +267,9 @@ export default class AnkiUiController {
                         return;
                     case 'dismissedQuickSelectFtue':
                         globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                        return;
+                    case 'clear-media-cache':
+                        context.clearMediaCache();
                         return;
                     case 'exported':
                         const exportedMessage = message as AnkiUiBridgeExportedMessage;

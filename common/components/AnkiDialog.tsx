@@ -22,6 +22,7 @@ import IconButton from '@mui/material/IconButton';
 import RestoreIcon from '@mui/icons-material/Restore';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
+import LayersClearIcon from '@mui/icons-material/LayersClear';
 import Slider from '@mui/material/Slider';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from './Tooltip';
@@ -187,6 +188,7 @@ interface AnkiDialogProps {
     card: CardModel;
     onProceed: (params: ExportParams) => void;
     onRerecord?: () => void;
+    onClearMediaCache?: () => void;
     onCancel: () => void;
     onOpenSettings?: () => void;
     onCopyToClipboard: (blob: Blob) => void;
@@ -217,6 +219,7 @@ const AnkiDialog = ({
     onCancel,
     onOpenSettings,
     onRerecord,
+    onClearMediaCache,
     onCopyToClipboard,
     settings,
     anki,
@@ -814,6 +817,13 @@ const AnkiDialog = ({
                             activeProfile={activeProfile}
                             onSetActiveProfile={onSetActiveProfile}
                         />
+                    )}
+                    {onClearMediaCache && (
+                        <Tooltip title={t('ankiDialog.clearMediaCache')!}>
+                            <IconButton edge="end" onClick={onClearMediaCache}>
+                                <LayersClearIcon />
+                            </IconButton>
+                        </Tooltip>
                     )}
                     {onOpenSettings && (
                         <TutorialBubble

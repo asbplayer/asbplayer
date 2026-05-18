@@ -80,6 +80,7 @@
         "openInAnki": "Anki에서 열기",
         "rerecord": "다시 녹화",
         "rerecordAndApplySelection": "선택한 시간 범위 녹음하기",
+        "clearMediaCache": "Clear cached media",
         "resetSlider": "리셋",
         "rewind": "되감기",
         "searchInAnki": "Anki에서 써치",

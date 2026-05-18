@@ -3,6 +3,7 @@ import ImageCapturer from '@/services/image-capturer';
 import VideoHeartbeatHandler from '@/handlers/video/video-heartbeat-handler';
 import RecordMediaHandler from '@/handlers/video/record-media-handler';
 import RerecordMediaHandler from '@/handlers/video/rerecord-media-handler';
+import MediaCache from '@/services/media-cache';
 import StartRecordingMediaHandler from '@/handlers/video/start-recording-media-handler';
 import StopRecordingMediaHandler from '@/handlers/video/stop-recording-media-handler';
 import ToggleSubtitlesHandler from '@/handlers/video/toggle-subtitles-handler';
@@ -169,12 +170,13 @@ export default defineBackground(() => {
     );
     const imageCapturer = new ImageCapturer(settings);
     const cardPublisher = new CardPublisher(settings);
+    const mediaCache = new MediaCache();
     const dictionaryDB = new DictionaryDB(settings);
 
     const handlers: CommandHandler[] = [
         new VideoHeartbeatHandler(tabRegistry),
-        new RecordMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
-        new RerecordMediaHandler(settings, audioRecorder, cardPublisher),
+        new RecordMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings, mediaCache),
+        new RerecordMediaHandler(settings, audioRecorder, cardPublisher, mediaCache),
         new StartRecordingMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
         new StopRecordingMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
         new TakeScreenshotHandler(imageCapturer, cardPublisher),
