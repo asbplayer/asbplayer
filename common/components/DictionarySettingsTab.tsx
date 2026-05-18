@@ -425,6 +425,8 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const [waniKaniUserInfo, setWaniKaniUserInfo] = useState<WaniKaniUser>();
     const [pendingDictionaryWaniKaniApiToken, setPendingDictionaryWaniKaniApiToken] = useState<string>();
     const [showDictionaryWaniKaniApiToken, setShowDictionaryWaniKaniApiToken] = useState(false);
+    const dictionaryWaniKaniApiTokenVisible =
+        showDictionaryWaniKaniApiToken || !selectedDictionary.dictionaryWaniKaniApiToken;
     const waniKaniUserInfoRequestId = useRef(0);
     const waniKaniUserInfoApiToken = useRef<string | undefined>(undefined);
     const waniKaniUserInfoRequest = useRef<{ apiToken: string; promise: Promise<WaniKaniUser> } | undefined>(undefined);
@@ -1619,7 +1621,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             type="text"
                             label={t('settings.dictionaryWaniKaniApiToken')}
                             value={
-                                showDictionaryWaniKaniApiToken || !selectedDictionary.dictionaryWaniKaniApiToken
+                                dictionaryWaniKaniApiTokenVisible
                                     ? selectedDictionary.dictionaryWaniKaniApiToken
                                     : maskedDictionaryWaniKaniApiToken
                             }
@@ -1645,7 +1647,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             }}
                             slotProps={{
                                 input: {
-                                    readOnly: !showDictionaryWaniKaniApiToken,
+                                    readOnly: !dictionaryWaniKaniApiTokenVisible,
                                     endAdornment: (
                                         <InputAdornment position="end">
                                             <Tooltip title="">
@@ -1655,7 +1657,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     }
                                                     onMouseDown={(event) => event.preventDefault()}
                                                 >
-                                                    {showDictionaryWaniKaniApiToken ? (
+                                                    {dictionaryWaniKaniApiTokenVisible ? (
                                                         <VisibilityOffIcon />
                                                     ) : (
                                                         <VisibilityIcon />

@@ -934,14 +934,13 @@ function processDictionaryStatisticsTrackSnapshot(
 ): DictionaryStatisticsTrackSnapshot {
     const { dictionary, sentences } = trackSnapshot.stats;
     const sentenceSnapshots = processSentenceSnapshots(sentences, 'surface');
-    const aggregateSentenceSnapshots = processSentenceSnapshots(sentences, 'lemma');
     const dictionaryCounts = dictionaryCountsFromRaw(
         dictionary,
         snapshot.settings.dictionaryTracks[trackSnapshot.track]?.dictionaryAnkiTreatSuspended ?? 'NORMAL'
     );
 
-    const aggregateTokens = mergeSentenceTokenSnapshots(aggregateSentenceSnapshots);
     const sentenceTokens = mergeSentenceTokenSnapshots(sentenceSnapshots);
+    const sentenceTokenCounts = statusCountsAndFrequencies(sentenceTokens);
 
     const {
         statusCounts,
@@ -950,11 +949,10 @@ function processDictionaryStatisticsTrackSnapshot(
         numIgnoredTokens,
         numIgnoredOccurrences,
         numKnownTokens,
-    } = statusCountsAndFrequencies(aggregateTokens);
+    } = sentenceTokenCounts;
     const evaluatedSentenceSnapshots = sentenceSnapshots.map((sentenceSnapshot) =>
         evaluateSentenceSnapshot(sentenceSnapshot)
     );
-    const sentenceTokenCounts = statusCountsAndFrequencies(sentenceTokens);
     const currentSentenceTotals = sentenceTotals(evaluatedSentenceSnapshots);
     const { averageWordsPerSentence, averageKnownWordsPerSentence } = sentenceAveragesFromTotals(currentSentenceTotals);
     const currentSentenceBuckets = buildSentenceBucketData(evaluatedSentenceSnapshots, sentenceTokens);
@@ -976,7 +974,7 @@ function processDictionaryStatisticsTrackSnapshot(
         statusColors: trackSnapshot.statusColors,
         numDictionaryKnownTokens: dictionaryCounts.numKnownTokens,
         numDictionaryIgnoredTokens: dictionaryCounts.numIgnoredTokens,
-        numUniqueTokens: aggregateTokens.size,
+        numUniqueTokens: sentenceTokens.size,
         consideredTokens,
         numIgnoredTokens,
         numIgnoredOccurrences,
