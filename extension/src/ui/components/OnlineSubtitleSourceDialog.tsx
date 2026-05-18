@@ -11,6 +11,8 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import CloseIcon from '@mui/icons-material/Close';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
@@ -34,6 +36,8 @@ interface Props {
     detectedTitleHint?: string;
     jimakuApiKey: string;
     onJimakuApiKeyChange: (jimakuApiKey: string) => void;
+    jimakuSearchCategory: 'anime' | 'drama' | 'both';
+    onJimakuSearchCategoryChange: (category: 'anime' | 'drama' | 'both') => void;
 }
 
 const SUPPORTED_JIMAKU_EXTENSIONS = ['.srt', '.ass'];
@@ -85,6 +89,8 @@ export default function OnlineSubtitleSourceDialog({
     detectedTitleHint,
     jimakuApiKey,
     onJimakuApiKeyChange,
+    jimakuSearchCategory,
+    onJimakuSearchCategoryChange,
 }: Props) {
     const { t } = useTranslation();
     const [searching, setSearching] = useState(false);
@@ -130,14 +136,18 @@ export default function OnlineSubtitleSourceDialog({
 
         try {
             const client = new JimakuClient({ apiKey: jimakuApiKey });
-            const [animeResult, dramaResult] = await Promise.all([
-                client.searchEntries(query),
-                client.searchEntries(query, false),
-            ]);
+            const requests: Promise<{ data: { id: number; name: string }[] }>[] = [];
+            if (jimakuSearchCategory === 'anime' || jimakuSearchCategory === 'both') {
+                requests.push(client.searchEntries(query));
+            }
+            if (jimakuSearchCategory === 'drama' || jimakuSearchCategory === 'both') {
+                requests.push(client.searchEntries(query, false));
+            }
+            const results = await Promise.all(requests);
 
             // Merge and deduplicate by entry id
             const seen = new Set<number>();
-            const mergedEntries = [...animeResult.data, ...dramaResult.data].filter((entry) => {
+            const mergedEntries = results.flatMap((r) => r.data).filter((entry) => {
                 if (seen.has(entry.id)) {
                     return false;
                 }
@@ -249,6 +259,21 @@ export default function OnlineSubtitleSourceDialog({
                                 },
                             }}
                         />
+                    <ToggleButtonGroup
+                        value={jimakuSearchCategory}
+                        exclusive
+                        size="small"
+                        fullWidth
+                        onChange={(_, value) => {
+                            if (value !== null) {
+                                onJimakuSearchCategoryChange(value);
+                            }
+                        }}
+                    >
+                        <ToggleButton value="anime">{t('onlineSubtitleSources.categoryAnime')}</ToggleButton>
+                        <ToggleButton value="drama">{t('onlineSubtitleSources.categoryDrama')}</ToggleButton>
+                        <ToggleButton value="both">{t('onlineSubtitleSources.categoryBoth')}</ToggleButton>
+                    </ToggleButtonGroup>
                     </Box>
 
                     <TextField

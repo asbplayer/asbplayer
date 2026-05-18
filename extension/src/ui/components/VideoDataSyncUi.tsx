@@ -111,6 +111,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
     const [hideRememberTrackPreferenceToggle, setHideRememberTrackPreferenceToggle] = useState<boolean>();
     const [onlineSubtitleSourceConfig, setOnlineSubtitleSourceConfig] = useState<OnlineSubtitleSourceConfig>({
         jimakuApiKey: '',
+        jimakuSearchCategory: 'both',
     });
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
     const [onlineDialogTrackNumber, setOnlineDialogTrackNumber] = useState<number>();
@@ -440,6 +441,8 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     detectedTitleHint={detectedTitleHint}
                     jimakuApiKey={onlineSubtitleSourceConfig.jimakuApiKey}
                     onJimakuApiKeyChange={(jimakuApiKey) => handleOnlineSubtitleSourceConfigChanged({ jimakuApiKey })}
+                    jimakuSearchCategory={onlineSubtitleSourceConfig.jimakuSearchCategory}
+                    onJimakuSearchCategoryChange={(jimakuSearchCategory) => handleOnlineSubtitleSourceConfigChanged({ jimakuSearchCategory })}
                 />
                 <input
                     ref={fileInputRef}

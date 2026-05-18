@@ -11,6 +11,7 @@ export enum AnnotationTutorialState {
 
 export interface OnlineSubtitleSourceConfig {
     jimakuApiKey: string;
+    jimakuSearchCategory: 'anime' | 'drama' | 'both';
 }
 
 export const initialGlobalState: GlobalState = {
@@ -19,6 +20,7 @@ export const initialGlobalState: GlobalState = {
     ftueAnnotation: AnnotationTutorialState.hasNotSeen,
     onlineSubtitleSourceConfig: {
         jimakuApiKey: '',
+        jimakuSearchCategory: 'both',
     },
 };
 
