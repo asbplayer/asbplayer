@@ -99,6 +99,7 @@ export default function OnlineSubtitleSourceDialog({
 
     const [query, setQuery] = useState('');
     const [lastQuery, setLastQuery] = useState<string>();
+    const [lastSearchCategory, setLastSearchCategory] = useState<string>();
     const [jimakuEntries, setJimakuEntries] = useState<{ id: number; name: string }[]>([]);
     const [jimakuSelectedEntry, setJimakuSelectedEntry] = useState<JimakuEntry>();
     const [jimakuFiles, setJimakuFiles] = useState<OnlineSubtitleImportCandidate[]>();
@@ -111,7 +112,7 @@ export default function OnlineSubtitleSourceDialog({
         searching ||
         query.trim().length === 0 ||
         jimakuApiKey.trim().length === 0 ||
-        lastQuery === query ||
+        (lastQuery === query && lastSearchCategory === jimakuSearchCategory) ||
         loadingFiles;
 
     const resetState = useCallback(() => {
@@ -156,6 +157,7 @@ export default function OnlineSubtitleSourceDialog({
             });
 
             setLastQuery(query);
+            setLastSearchCategory(jimakuSearchCategory);
             setJimakuEntries(mergedEntries.map((entry) => ({ id: entry.id, name: entry.name })));
             setJimakuSelectedEntry(undefined);
             setJimakuFiles(undefined);
@@ -164,7 +166,7 @@ export default function OnlineSubtitleSourceDialog({
         } finally {
             setSearching(false);
         }
-    }, [jimakuApiKey, query]);
+    }, [jimakuApiKey, query, jimakuSearchCategory]);
 
     const handleLoadJimakuFiles = useCallback(
         async (entry: JimakuEntry) => {
