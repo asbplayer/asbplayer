@@ -333,7 +333,7 @@ export class Yomitan {
                     if (!headword.frequencies) continue;
                     for (const f of headword.frequencies) {
                         if (!Number.isFinite(f.frequency) || f.frequency <= 0) continue;
-                        if (this.frequencyMode(token, f) !== 'rank-based') continue;
+                        if (this.resolveFrequencyMode(token, f) !== 'rank-based') continue;
                         minFrequency = minFrequency === null ? f.frequency : Math.min(minFrequency, f.frequency);
                     }
                     break;
@@ -491,7 +491,7 @@ export class Yomitan {
             for (const f of entry.frequencies) {
                 if (!matchingHeadwordIndices.has(f.headwordIndex)) continue;
                 if (!Number.isFinite(f.frequency) || f.frequency <= 0) continue;
-                if (this.frequencyMode(token, f) !== 'rank-based') continue;
+                if (this.resolveFrequencyMode(token, f) !== 'rank-based') continue;
                 minFrequency = minFrequency === null ? f.frequency : Math.min(minFrequency, f.frequency);
             }
         }
@@ -550,7 +550,7 @@ export class Yomitan {
         }
     }
 
-    private frequencyMode(token: string, f: TermFrequency): FrequencyMode | undefined {
+    private resolveFrequencyMode(token: string, f: TermFrequency): FrequencyMode | undefined {
         if (f.frequencyMode) return f.frequencyMode;
 
         let frequencies = this.frequencyModeInferenceData.get(f.dictionary);
