@@ -95,7 +95,7 @@ export default class VideoSelectController {
         subtitleFiles?: SubtitleFile[]
     ) {
         if (targetSrc !== undefined) {
-            var binding = this._bindings.find((b) => b.video.src === targetSrc);
+            var binding = this._bindings.find((b) => b.registeredVideoSrc === targetSrc);
 
             if (binding !== undefined && binding.subscribed) {
                 if (subtitleFiles !== undefined) {
@@ -131,7 +131,7 @@ export default class VideoSelectController {
         const tabImageDataUrl = (await browser.runtime.sendMessage(captureVisibleTabCommand)) as string;
         const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b) => {
             return {
-                src: b.video.src,
+                src: b.registeredVideoSrc,
                 imageDataUrl: await b.cropAndResize(tabImageDataUrl),
             };
         });
@@ -158,7 +158,8 @@ export default class VideoSelectController {
                     client.updateState({ open: false });
                     this._frame.hide();
                     const binding = this._bindings.find(
-                        (b) => b.video.src === (message as VideoSelectModeConfirmMessage).selectedVideoElementSrc
+                        (b) =>
+                            b.registeredVideoSrc === (message as VideoSelectModeConfirmMessage).selectedVideoElementSrc
                     );
                     if (binding !== undefined) {
                         if (this._subtitleFiles === undefined) {

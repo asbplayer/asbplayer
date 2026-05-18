@@ -116,7 +116,10 @@ export class MobileVideoOverlayController {
             sender: Browser.runtime.MessageSender,
             sendResponse: (response?: any) => void
         ) => {
-            if (message.sender !== 'asbplayer-mobile-overlay-to-video' || message.src !== this._context.video.src) {
+            if (
+                message.sender !== 'asbplayer-mobile-overlay-to-video' ||
+                message.src !== this._context.registeredVideoSrc
+            ) {
                 return;
             }
 
@@ -153,7 +156,7 @@ export class MobileVideoOverlayController {
                 command: 'update-mobile-overlay-model',
                 model,
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(command);
     }
@@ -243,7 +246,7 @@ export class MobileVideoOverlayController {
         const height = smallScreen ? 64 : 108;
         const tooltips = !smallScreen;
         const width = Math.min(window.innerWidth, 410);
-        const src = encodeURIComponent(this._context.video.src);
+        const src = encodeURIComponent(this._context.registeredVideoSrc);
 
         return { width, height, anchor, src, tooltips };
     }

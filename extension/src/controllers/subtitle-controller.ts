@@ -38,6 +38,7 @@ import {
 } from '../services/element-overlay';
 import { v4 as uuidv4 } from 'uuid';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import Binding from '@/services/binding';
 
 const BOUNDING_BOX_PADDING = 25;
 
@@ -74,7 +75,7 @@ class VideoFetcher implements Fetcher {
 }
 
 export default class SubtitleController {
-    private readonly video: HTMLMediaElement;
+    private readonly context: Binding;
     private readonly dictionary: DictionaryProvider;
     private readonly settings: SettingsProvider;
 
@@ -125,8 +126,8 @@ export default class SubtitleController {
     onMouseOver?: (event: MouseEvent) => void;
     onMouseOut?: (event: MouseEvent) => void;
 
-    constructor(video: HTMLMediaElement, dictionary: DictionaryProvider, settings: SettingsProvider) {
-        this.video = video;
+    constructor(context: Binding, dictionary: DictionaryProvider, settings: SettingsProvider) {
+        this.context = context;
         this.dictionary = dictionary;
         this.settings = settings;
         this._preCacheDom = false;
@@ -161,10 +162,10 @@ export default class SubtitleController {
             this.dictionary,
             this.settings,
             subtitleCollectionOptions,
-            this.video.src,
+            this.context.registeredVideoSrc,
             (updatedSubtitles) => this._subtitleAnnotationsUpdated(updatedSubtitles),
-            () => this.video.currentTime * 1000,
-            new VideoFetcher(() => this.video.src)
+            () => this.context.video.currentTime * 1000,
+            new VideoFetcher(() => this.context.registeredVideoSrc)
         );
         this.seekableSubtitleCollection = new SubtitleCollection(subtitleCollectionOptions);
     }
@@ -319,7 +320,7 @@ export default class SubtitleController {
 
     private _elementOverlayParams() {
         const subtitleOverlayParams: ElementOverlayParams = {
-            targetElement: this.video,
+            targetElement: this.context.video,
             nonFullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
             nonFullscreenContentClassName: 'asbplayer-subtitles',
             fullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
@@ -330,7 +331,7 @@ export default class SubtitleController {
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
         const topSubtitleOverlayParams: ElementOverlayParams = {
-            targetElement: this.video,
+            targetElement: this.context.video,
             nonFullscreenContainerClassName: 'asbplayer-subtitles-container-top',
             nonFullscreenContentClassName: 'asbplayer-subtitles',
             fullscreenContainerClassName: 'asbplayer-subtitles-container-top',
@@ -343,7 +344,7 @@ export default class SubtitleController {
         const notificationOverlayParams: ElementOverlayParams =
             this._getSubtitleTrackAlignment(0) === 'bottom'
                 ? {
-                      targetElement: this.video,
+                      targetElement: this.context.video,
                       nonFullscreenContainerClassName: 'asbplayer-notification-container-top',
                       nonFullscreenContentClassName: 'asbplayer-notification',
                       fullscreenContainerClassName: 'asbplayer-notification-container-top',
@@ -354,7 +355,7 @@ export default class SubtitleController {
                       onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
                   }
                 : {
-                      targetElement: this.video,
+                      targetElement: this.context.video,
                       nonFullscreenContainerClassName: 'asbplayer-notification-container-bottom',
                       nonFullscreenContentClassName: 'asbplayer-notification',
                       fullscreenContainerClassName: 'asbplayer-notification-container-bottom',
@@ -398,7 +399,7 @@ export default class SubtitleController {
                 command: 'subtitlesUpdated',
                 updatedSubtitles,
             },
-            src: this.video.src,
+            src: this.context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(command);
     }
@@ -423,8 +424,8 @@ export default class SubtitleController {
 
             const showOffset = this.lastOffsetChangeTimestamp > 0 && Date.now() - this.lastOffsetChangeTimestamp < 1000;
             const offset = showOffset ? this._computeOffset() : 0;
-            const slice = this.subtitleAnnotations.subtitlesAt(this.video.currentTime * 1000);
-            const seekableSlice = this.seekableSubtitleCollection.subtitlesAt(this.video.currentTime * 1000);
+            const slice = this.subtitleAnnotations.subtitlesAt(this.context.video.currentTime * 1000);
+            const seekableSlice = this.seekableSubtitleCollection.subtitlesAt(this.context.video.currentTime * 1000);
 
             const showingSubtitles = this._findShowingSubtitles(slice);
 
@@ -525,7 +526,7 @@ export default class SubtitleController {
                         command: 'copy-to-clipboard',
                         dataUrl: `data:,${encodeURIComponent(text)}`,
                     },
-                    src: this.video.src,
+                    src: this.context.registeredVideoSrc,
                 };
 
                 browser.runtime.sendMessage(command);
@@ -549,7 +550,7 @@ export default class SubtitleController {
                         const className = this.subtitleClasses?.[subtitle.track] ?? '';
                         const imageScale =
                             ((this.subtitleSettings?.imageBasedSubtitleScaleFactor ?? 1) *
-                                this.video.getBoundingClientRect().width) /
+                                this.context.video.getBoundingClientRect().width) /
                             subtitle.textImage.screen.width;
                         const width = imageScale * subtitle.textImage.image.width;
 
@@ -624,7 +625,7 @@ export default class SubtitleController {
     }
 
     currentSubtitle(): [IndexedSubtitleModel | null, SubtitleModel[] | null] {
-        const now = 1000 * this.video.currentTime;
+        const now = 1000 * this.context.video.currentTime;
         let subtitle = null;
         let index = null;
 
@@ -685,7 +686,7 @@ export default class SubtitleController {
                     command: 'offset',
                     value: offset,
                 },
-                src: this.video.src,
+                src: this.context.registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);

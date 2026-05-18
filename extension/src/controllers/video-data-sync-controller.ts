@@ -350,7 +350,7 @@ export default class VideoDataSyncController {
                         message: {
                             command: 'open-asbplayer-settings',
                         },
-                        src: this._context.video.src,
+                        src: this._context.registeredVideoSrc,
                     };
                     browser.runtime.sendMessage(openSettingsCommand);
                     return;
@@ -364,7 +364,7 @@ export default class VideoDataSyncController {
                         message: {
                             command: 'settings-updated',
                         },
-                        src: this._context.video.src,
+                        src: this._context.registeredVideoSrc,
                     };
                     browser.runtime.sendMessage(settingsUpdatedCommand);
                     return;

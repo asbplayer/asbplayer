@@ -173,7 +173,7 @@ export default class KeyBindings {
                     message: {
                         command: 'toggle-subtitles',
                     },
-                    src: context.video.src,
+                    src: context.registeredVideoSrc,
                 };
 
                 browser.runtime.sendMessage(toggleSubtitlesCommand);
@@ -251,7 +251,7 @@ export default class KeyBindings {
                     message: {
                         command: 'open-statistics',
                     },
-                    src: context.video.src,
+                    src: context.registeredVideoSrc,
                 };
 
                 browser.runtime.sendMessage(command);
@@ -270,7 +270,7 @@ export default class KeyBindings {
                         command: 'toggleSubtitleTrackInList',
                         track: track,
                     },
-                    src: context.video.src,
+                    src: context.registeredVideoSrc,
                 };
                 browser.runtime.sendMessage(command);
             },
@@ -347,7 +347,7 @@ export default class KeyBindings {
                             message: {
                                 command: 'settings-updated',
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
@@ -374,7 +374,7 @@ export default class KeyBindings {
                             message: {
                                 command: 'settings-updated',
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         browser.runtime.sendMessage(settingsUpdatedCommand);
                     })

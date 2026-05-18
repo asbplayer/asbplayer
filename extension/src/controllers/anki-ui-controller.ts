@@ -190,7 +190,7 @@ export default class AnkiUiController {
 
     private async _client(context: Binding) {
         this.frame.fetchOptions = {
-            videoSrc: context.video.src,
+            videoSrc: context.registeredVideoSrc,
             allowedFetchUrl: this._settings!.ankiConnectUrl,
         };
         this.frame.language = await context.settings.getSingle('language');
@@ -218,7 +218,7 @@ export default class AnkiUiController {
                                 command: 'open-asbplayer-settings',
                                 tutorial: this._inTutorial,
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         browser.runtime.sendMessage(openSettingsCommand);
                         return;
@@ -230,7 +230,7 @@ export default class AnkiUiController {
                                 command: 'copy-to-clipboard',
                                 dataUrl: copyToClipboardMessage.dataUrl,
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         browser.runtime.sendMessage(copyToClipboardCommand);
                         return;
@@ -243,7 +243,7 @@ export default class AnkiUiController {
                                 base64,
                                 extension,
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
                         client.sendMessage({
@@ -259,7 +259,7 @@ export default class AnkiUiController {
                                 message: {
                                     command: 'settings-updated',
                                 },
-                                src: context.video.src,
+                                src: context.registeredVideoSrc,
                             };
                             browser.runtime.sendMessage(settingsUpdatedCommand);
                         });
@@ -275,7 +275,7 @@ export default class AnkiUiController {
                                 message: {
                                     command: 'settings-updated',
                                 },
-                                src: context.video.src,
+                                src: context.registeredVideoSrc,
                             };
                             browser.runtime.sendMessage(settingsUpdatedCommand);
                         });
@@ -284,7 +284,7 @@ export default class AnkiUiController {
                         const cardUpdatedDialogCommand: VideoToExtensionCommand<CardUpdatedDialogMessage> = {
                             sender: 'asbplayer-video',
                             message: message as CardUpdatedDialogMessage,
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         browser.runtime.sendMessage(cardUpdatedDialogCommand);
                         return;
@@ -292,7 +292,7 @@ export default class AnkiUiController {
                         const cardExportedDialogCommand: VideoToExtensionCommand<CardExportedDialogMessage> = {
                             sender: 'asbplayer-video',
                             message: message as CardExportedDialogMessage,
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
                         browser.runtime.sendMessage(cardExportedDialogCommand);
                         return;
