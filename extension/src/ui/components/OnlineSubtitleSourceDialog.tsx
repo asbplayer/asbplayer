@@ -137,27 +137,14 @@ export default function OnlineSubtitleSourceDialog({
 
         try {
             const client = new JimakuClient({ apiKey: jimakuApiKey });
-            const requests: Promise<{ data: { id: number; name: string }[] }>[] = [];
-            if (jimakuSearchCategory === 'anime') {
-                requests.push(client.searchEntries(query));
-            } else {
-                requests.push(client.searchEntries(query, false));
-            }
-            const results = await Promise.all(requests);
-
-            // Merge and deduplicate by entry id
-            const seen = new Set<number>();
-            const mergedEntries = results.flatMap((r) => r.data).filter((entry) => {
-                if (seen.has(entry.id)) {
-                    return false;
-                }
-                seen.add(entry.id);
-                return true;
-            });
+            const result =
+                jimakuSearchCategory === 'anime'
+                    ? await client.searchEntries(query)
+                    : await client.searchEntries(query, false);
 
             setLastQuery(query);
             setLastSearchCategory(jimakuSearchCategory);
-            setJimakuEntries(mergedEntries.map((entry) => ({ id: entry.id, name: entry.name })));
+            setJimakuEntries(result.data.map((entry) => ({ id: entry.id, name: entry.name })));
             setJimakuSelectedEntry(undefined);
             setJimakuFiles(undefined);
         } catch (e) {
