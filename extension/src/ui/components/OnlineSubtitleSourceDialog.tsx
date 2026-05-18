@@ -36,8 +36,8 @@ interface Props {
     detectedTitleHint?: string;
     jimakuApiKey: string;
     onJimakuApiKeyChange: (jimakuApiKey: string) => void;
-    jimakuSearchCategory: 'anime' | 'drama' | 'both';
-    onJimakuSearchCategoryChange: (category: 'anime' | 'drama' | 'both') => void;
+    jimakuSearchCategory: 'anime' | 'drama';
+    onJimakuSearchCategoryChange: (category: 'anime' | 'drama') => void;
 }
 
 const SUPPORTED_JIMAKU_EXTENSIONS = ['.srt', '.ass'];
@@ -138,10 +138,9 @@ export default function OnlineSubtitleSourceDialog({
         try {
             const client = new JimakuClient({ apiKey: jimakuApiKey });
             const requests: Promise<{ data: { id: number; name: string }[] }>[] = [];
-            if (jimakuSearchCategory === 'anime' || jimakuSearchCategory === 'both') {
+            if (jimakuSearchCategory === 'anime') {
                 requests.push(client.searchEntries(query));
-            }
-            if (jimakuSearchCategory === 'drama' || jimakuSearchCategory === 'both') {
+            } else {
                 requests.push(client.searchEntries(query, false));
             }
             const results = await Promise.all(requests);
@@ -274,7 +273,6 @@ export default function OnlineSubtitleSourceDialog({
                     >
                         <ToggleButton value="anime">{t('onlineSubtitleSources.categoryAnime')}</ToggleButton>
                         <ToggleButton value="drama">{t('onlineSubtitleSources.categoryDrama')}</ToggleButton>
-                        <ToggleButton value="both">{t('onlineSubtitleSources.categoryBoth')}</ToggleButton>
                     </ToggleButtonGroup>
                     </Box>
 
