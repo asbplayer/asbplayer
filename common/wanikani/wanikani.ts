@@ -137,12 +137,10 @@ export class WaniKani {
     async assignments(options?: {
         subjectTypes?: WaniKaniSubjectType[];
         updatedAfter?: string;
-        availableBefore?: string;
     }): Promise<WaniKaniCollectionResult<WaniKaniAssignment>> {
         return this._getPaginated<WaniKaniAssignment>('/assignments', {
             subject_types: options?.subjectTypes?.join(','),
             updated_after: options?.updatedAfter,
-            available_before: options?.availableBefore,
         });
     }
 

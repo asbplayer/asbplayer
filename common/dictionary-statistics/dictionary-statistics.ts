@@ -1,6 +1,10 @@
 import { Progress, Tokenization } from '@project/common';
 import { CardInfo } from '@project/common/anki';
-import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
+import type {
+    DictionaryProvider,
+    DictionaryWaniKaniAssignmentRecordWithStatus,
+    TokenResults,
+} from '@project/common/dictionary-db';
 import {
     defaultSettings,
     dictionaryTrackEnabled,
@@ -10,7 +14,6 @@ import {
     TokenStatusConfig,
     TokenStatus,
 } from '@project/common/settings';
-import { WaniKaniAssignment } from '@project/common/wanikani';
 
 export const REVIEW_DUES = [0, 1, 7] as const; // 0 = due today, 1 = due within a day, 7 = due within a week
 
@@ -33,7 +36,10 @@ export interface DictionaryStatisticsAnkiSnapshot {
     dueCards: DictionaryStatisticsAnkiDueCardsSnapshot;
 }
 
-export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<number, WaniKaniAssignment>;
+export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<
+    number,
+    DictionaryWaniKaniAssignmentRecordWithStatus
+>;
 
 export interface DictionaryStatisticsWaniKaniSnapshot {
     available?: boolean;
@@ -165,7 +171,6 @@ export class DictionaryStatistics {
     async refreshDictionaryTokens(profile: string | undefined): Promise<void> {
         const startTime = Date.now();
         const dictionaryTracks = await this.settingsProvider.getSingle('dictionaryTracks');
-        for (const dt of dictionaryTracks) (dt as any).dictionaryWaniKaniApiToken = '';
         const settings = { dictionaryTracks };
         this.settings = settings;
         await Promise.all(
