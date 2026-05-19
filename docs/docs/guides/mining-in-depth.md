@@ -4,6 +4,7 @@ sidebar_position: 3
 
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 import ImageIcon from '@site/src/components/ImageIcon';
+import LayersClearIcon from '@site/src/components/LayersClearIcon';
 
 # Mining in-depth
 
@@ -45,6 +46,23 @@ Any of the text fields - sentence, definition, word, custom fields, source, URL,
 ### Image field
 
 For local files, clicking the **Preview Button** <ImageIcon /> on the **Image Field** can be used to change the video timestamp from which the screenshot is extracted.
+
+### Media caching
+
+When you mine the same subtitle multiple times, asbplayer automatically reuses the audio recording and screenshot from the previous mine instead of re-recording them. This is useful when:
+
+- You want to adjust text fields or definitions while keeping the same media
+- You're creating multiple cards from the same subtitle with different words highlighted
+- You want to update a card without waiting for re-recording
+
+If you've trimmed the audio or made other adjustments and want to re-record the full, original subtitle with fresh media, use the **Clear Cached Media** button <LayersClearIcon /> in the dialog toolbar. This will:
+
+1. Clear the cached audio and screenshot
+2. Re-record the complete, untrimmed subtitle
+3. Reset the timeline to show the full subtitle range
+4. Cache the new recording for subsequent mines
+
+The cache is maintained separately for each video and browser tab, so mining the same subtitle in different tabs or videos won't interfere with each other.
 
 ## Exporting cards
 
