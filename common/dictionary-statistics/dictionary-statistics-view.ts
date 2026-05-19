@@ -911,29 +911,28 @@ function tokenStatusesForProjection(
     return tokenSnapshot.externalCandidateStatuses ?? token?.externalCandidateStatuses ?? token?.statuses ?? [];
 }
 
+function sortAnkiCardIdsByDue(cardIds: number[], cardsInfo: DictionaryStatisticsSnapshot['anki']['cardsInfo']) {
+    return [...cardIds].sort((left, right) => {
+        const leftDue = cardsInfo[left]?.due ?? Number.POSITIVE_INFINITY;
+        const rightDue = cardsInfo[right]?.due ?? Number.POSITIVE_INFINITY;
+        return leftDue - rightDue || left - right;
+    });
+}
+
 function sortedUnknownAnkiCardIds(
     tokenEntries: [string, ProcessedTokenSnapshot][],
     dictionaryTokens: DictionaryStatisticsDictionaryTokens,
     cardsInfo: DictionaryStatisticsSnapshot['anki']['cardsInfo']
 ) {
-    const unknownCards = new Map<number, { cardId: number; due: number }>();
-
+    const unknownCards = new Set<number>();
     for (const [tokenKey, tokenSnapshot] of tokenEntries) {
         if (tokenSnapshot.ignored) continue;
-
         for (const status of tokenStatusesForProjection(tokenKey, tokenSnapshot, dictionaryTokens).filter(hasCardId)) {
             if (status.status !== TokenStatus.UNKNOWN) continue;
-
-            const due = cardsInfo[status.cardId]?.due ?? Number.POSITIVE_INFINITY;
-            const current = unknownCards.get(status.cardId);
-            if (current === undefined || due < current.due)
-                unknownCards.set(status.cardId, { cardId: status.cardId, due });
+            unknownCards.add(status.cardId);
         }
     }
-
-    return Array.from(unknownCards.values())
-        .sort((left, right) => left.due - right.due || left.cardId - right.cardId)
-        .map(({ cardId }) => cardId);
+    return sortAnkiCardIdsByDue(Array.from(unknownCards), cardsInfo);
 }
 
 interface ProjectionOptions {
@@ -1195,9 +1194,11 @@ function processDictionaryStatisticsTrackSnapshot(
     const aggregateTokenEntries = Array.from(aggregateTokens.entries());
     const sentenceFilterTokenEntries = Array.from(sentenceFilterTokens.entries());
     const cardsInfo = snapshot.anki.cardsInfo ?? {};
+    const snapshotUnknownAnkiCardIds = snapshot.anki.unknownCards?.[trackSnapshot.track];
     const unknownAnkiCardIds =
-        snapshot.anki.unknownCards?.[trackSnapshot.track] ??
-        sortedUnknownAnkiCardIds(aggregateTokenEntries, dictionary.tokens, cardsInfo);
+        snapshotUnknownAnkiCardIds === undefined
+            ? sortedUnknownAnkiCardIds(aggregateTokenEntries, dictionary.tokens, cardsInfo)
+            : sortAnkiCardIdsByDue(snapshotUnknownAnkiCardIds, cardsInfo);
     const requestedAnkiUnknownCards = projection.ankiUnknownCards ?? 0;
     const ankiUnknownCards = Number.isFinite(requestedAnkiUnknownCards)
         ? Math.max(0, Math.min(unknownAnkiCardIds.length, Math.floor(requestedAnkiUnknownCards)))

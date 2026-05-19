@@ -32,7 +32,13 @@ import {
     TokenStatus,
     TokenStyling,
 } from '@project/common/settings';
-import { TokenStatusInfo, DictionaryProvider, LemmaResults, TokenResults } from '@project/common/dictionary-db';
+import {
+    TokenStatusInfo,
+    DictionaryProvider,
+    LemmaResults,
+    TokenResults,
+    DictionaryRecordsResult,
+} from '@project/common/dictionary-db';
 import {
     DictionaryStatistics,
     DictionaryStatisticsAnkiDueCardsSnapshot,
@@ -709,35 +715,19 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         }
     }
 
-    private async _unknownAnkiCardsSnapshot(profile: string | undefined) {
-        const records = await this.dictionaryProvider.getRecords(profile, undefined);
-        const unknownCardIdsByTrack = new Map<number, Set<number>>();
-        const allUnknownCardIds = new Set<number>();
+    private async _unknownAnkiCardsSnapshot(records: DictionaryRecordsResult) {
+        const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
+        const unknownCards: NonNullable<DictionaryStatisticsAnkiSnapshot['unknownCards']> = {};
         for (const [trackString, cardRecords] of Object.entries(records.ankiCardRecords)) {
             const track = Number(trackString);
             for (const cardRecord of Object.values(cardRecords)) {
                 if (cardRecord.status !== TokenStatus.UNKNOWN) continue;
-                const cardIds = unknownCardIdsByTrack.get(track);
-                if (cardIds) cardIds.add(cardRecord.cardId);
-                else unknownCardIdsByTrack.set(track, new Set([cardRecord.cardId]));
-                allUnknownCardIds.add(cardRecord.cardId);
+                let cardIds = unknownCards[track];
+                if (cardIds) cardIds.push(cardRecord.cardId);
+                else unknownCards[track] = [cardRecord.cardId];
+                cardsInfo[cardRecord.cardId] = cardRecord.data;
             }
         }
-        if (!allUnknownCardIds.size) return { cardsInfo: {}, unknownCards: {} };
-
-        const cardsInfoRes = await this.anki!.cardsInfo(Array.from(allUnknownCardIds));
-        const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
-        for (const cardInfo of cardsInfoRes) cardsInfo[cardInfo.cardId] = cardInfo;
-
-        const unknownCards: NonNullable<DictionaryStatisticsAnkiSnapshot['unknownCards']> = {};
-        for (const [track, cardIds] of unknownCardIdsByTrack.entries()) {
-            unknownCards[track] = Array.from(cardIds).sort((left, right) => {
-                const leftDue = cardsInfo[left]?.due ?? Number.POSITIVE_INFINITY;
-                const rightDue = cardsInfo[right]?.due ?? Number.POSITIVE_INFINITY;
-                return leftDue - rightDue || left - right;
-            });
-        }
-
         return { cardsInfo, unknownCards };
     }
 
@@ -758,10 +748,14 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         }
         if (!this.generateStatistics) return;
 
-        const getCardsInfo = async (cardIds: number[]) => {
-            const cardsInfoArr = await this.anki!.cardsInfo(cardIds);
+        const getCardsInfo = async (cardIds: Set<number>, records: DictionaryRecordsResult) => {
             const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
-            for (const cardInfo of cardsInfoArr) cardsInfo[cardInfo.cardId] = cardInfo;
+            for (const cardRecords of Object.values(records.ankiCardRecords)) {
+                for (const cardRecord of Object.values(cardRecords)) {
+                    if (!cardIds.has(cardRecord.cardId)) continue;
+                    cardsInfo[cardRecord.cardId] = cardRecord.data;
+                }
+            }
             for (const cardId of cardIds) cardIdsMap.set(cardId, true);
             for (const ts of this.trackStates) {
                 for (const tokenCardIds of ts.tokenCardIds.values()) {
@@ -777,14 +771,15 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         try {
             if (!this.anki) throw new Error('Anki not initialized');
 
-            const cardIds: number[] = [];
+            const cardIds = new Set<number>();
             if (refreshNewOnly) {
                 for (const [cardId, queried] of cardIdsMap) {
-                    if (!queried) cardIds.push(cardId);
+                    if (!queried) cardIds.add(cardId);
                 }
-                if (!cardIds.length) return;
+                if (!cardIds.size) return;
 
-                const cardsInfo = await getCardsInfo(cardIds);
+                const records = await this.dictionaryProvider.getRecords(profile, undefined);
+                const cardsInfo = await getCardsInfo(cardIds, records);
                 this.dictionaryStatistics.updateAnkiSnapshot({
                     available: true,
                     progress: {
@@ -795,9 +790,10 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     cardsInfo,
                 });
             } else {
-                for (const cardId of cardIdsMap.keys()) cardIds.push(cardId);
-                const unknownAnkiCardsSnapshot = await this._unknownAnkiCardsSnapshot(profile);
-                if (!cardIds.length) {
+                const records = await this.dictionaryProvider.getRecords(profile, undefined);
+                for (const cardId of cardIdsMap.keys()) cardIds.add(cardId);
+                const unknownAnkiCardsSnapshot = await this._unknownAnkiCardsSnapshot(records);
+                if (!cardIds.size) {
                     this.dictionaryStatistics.replaceAnkiSnapshot({
                         available: true,
                         cardsInfo: unknownAnkiCardsSnapshot.cardsInfo,
@@ -807,7 +803,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     return;
                 }
 
-                const cardsInfo = await getCardsInfo(cardIds);
+                const cardsInfo = await getCardsInfo(cardIds, records);
                 const dueCards: DictionaryStatisticsAnkiDueCardsSnapshot = {};
                 for (const due of REVIEW_DUES) dueCards[due] = await this.anki.findCardsDueBy(due, fields, decks);
                 this.dictionaryStatistics.replaceAnkiSnapshot({

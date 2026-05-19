@@ -15,6 +15,7 @@ import { Yomitan } from '@project/common/yomitan/yomitan';
 import Dexie from 'dexie';
 import { buildAnkiCachePipeline } from '@project/common/dictionary-db';
 import { buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
+import { CardInfo } from '@project/common/anki';
 
 /**
  * This file only contains the public interface functions and types.
@@ -85,6 +86,7 @@ export interface DictionaryLocalTokenInput {
 }
 
 export type DictionaryAnkiCardKey = [number, number, string];
+export type CardInfoForDB = Pick<CardInfo, 'deckName' | 'modelName' | 'due'>;
 export interface DictionaryAnkiCardRecord {
     profile: string;
     track: number;
@@ -93,6 +95,7 @@ export interface DictionaryAnkiCardRecord {
     modifiedAt: number;
     status: TokenStatus;
     suspended: boolean;
+    data: CardInfoForDB;
 }
 
 export type DictionaryWaniKaniSubjectKey = [number, number, string];
@@ -146,7 +149,7 @@ class DictionaryDatabase extends Dexie {
                             lastBuildStartedAt: meta.lastBuildStartedAt ?? 0,
                             lastBuildExpiresAt: meta.lastBuildExpiresAt ?? 0,
                             buildId: meta.buildId ?? null,
-                            settings: meta.settings ?? null,
+                            settings: null, // Force a rebuild since we added fields to DictionaryAnkiCardRecord
                         };
                         meta.waniKaniMeta = {
                             lastBuildStartedAt: 0,

@@ -1,6 +1,6 @@
 import { Progress, Tokenization } from '@project/common';
-import { CardInfo } from '@project/common/anki';
 import type {
+    CardInfoForDB,
     DictionaryProvider,
     DictionaryWaniKaniAssignmentRecordWithStatus,
     TokenResults,
@@ -28,12 +28,12 @@ export interface DictionaryStatisticsSentence {
 }
 
 export type DictionaryStatisticsAnkiDueCardsSnapshot = Record<number, number[]>; // [0, [...]] due today, [7, [...]] due within a week
-export type DictionaryStatisticsAnkiUnknownCardsSnapshot = Record<number, number[]>; // Unknown card ids per track, sorted by due date
+export type DictionaryStatisticsAnkiUnknownCardsSnapshot = Record<number, number[]>; // Unknown card ids per track
 
 export interface DictionaryStatisticsAnkiSnapshot {
     available?: boolean;
     progress?: Progress;
-    cardsInfo: Record<number, CardInfo>;
+    cardsInfo: Record<number, CardInfoForDB>;
     dueCards: DictionaryStatisticsAnkiDueCardsSnapshot;
     unknownCards?: DictionaryStatisticsAnkiUnknownCardsSnapshot;
 }
