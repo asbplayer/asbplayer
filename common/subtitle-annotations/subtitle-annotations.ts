@@ -564,7 +564,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             const decks = Array.from(allDecksSet);
 
             await this._checkAnkiRecentlyModifiedCards(profile, fields, decks);
-            await this._refreshAnkiStatistics(cardIdsMap, fields, decks);
+            await this._refreshAnkiStatistics(profile, cardIdsMap, fields, decks);
         } finally {
             this.ankiRefreshing = false;
         }
@@ -663,7 +663,44 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         }
     }
 
-    private async _refreshAnkiStatistics(cardIdsMap: Map<number, boolean>, fields: string[], decks: string[]) {
+    private async _unknownAnkiCardsSnapshot(profile: string | undefined) {
+        const records = await this.dictionaryProvider.getRecords(profile, undefined);
+        const unknownCardIdsByTrack = new Map<number, Set<number>>();
+        const allUnknownCardIds = new Set<number>();
+        for (const [trackString, cardRecords] of Object.entries(records.ankiCardRecords)) {
+            const track = Number(trackString);
+            for (const cardRecord of Object.values(cardRecords)) {
+                if (cardRecord.status !== TokenStatus.UNKNOWN) continue;
+                const cardIds = unknownCardIdsByTrack.get(track);
+                if (cardIds) cardIds.add(cardRecord.cardId);
+                else unknownCardIdsByTrack.set(track, new Set([cardRecord.cardId]));
+                allUnknownCardIds.add(cardRecord.cardId);
+            }
+        }
+        if (!allUnknownCardIds.size) return { cardsInfo: {}, unknownCards: {} };
+
+        const cardsInfoRes = await this.anki!.cardsInfo(Array.from(allUnknownCardIds));
+        const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
+        for (const cardInfo of cardsInfoRes) cardsInfo[cardInfo.cardId] = cardInfo;
+
+        const unknownCards: NonNullable<DictionaryStatisticsAnkiSnapshot['unknownCards']> = {};
+        for (const [track, cardIds] of unknownCardIdsByTrack.entries()) {
+            unknownCards[track] = Array.from(cardIds).sort((left, right) => {
+                const leftDue = cardsInfo[left]?.due ?? Number.POSITIVE_INFINITY;
+                const rightDue = cardsInfo[right]?.due ?? Number.POSITIVE_INFINITY;
+                return leftDue - rightDue || left - right;
+            });
+        }
+
+        return { cardsInfo, unknownCards };
+    }
+
+    private async _refreshAnkiStatistics(
+        profile: string | undefined,
+        cardIdsMap: Map<number, boolean>,
+        fields: string[],
+        decks: string[]
+    ) {
         if (this.statisticsBatchProcessedIndex < this._subtitles.length) return; // Will need to re-query anki as tokens are processed.
         let refreshNewOnly = true;
         if (this.ankiStatisticsRefreshAll) {
@@ -713,11 +750,13 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 });
             } else {
                 for (const cardId of cardIdsMap.keys()) cardIds.push(cardId);
+                const unknownAnkiCardsSnapshot = await this._unknownAnkiCardsSnapshot(profile);
                 if (!cardIds.length) {
                     this.dictionaryStatistics.replaceAnkiSnapshot({
                         available: true,
-                        cardsInfo: {},
+                        cardsInfo: unknownAnkiCardsSnapshot.cardsInfo,
                         dueCards: {},
+                        unknownCards: unknownAnkiCardsSnapshot.unknownCards,
                     });
                     return;
                 }
@@ -732,8 +771,9 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                         total: cardIdsMap.size,
                         startedAt,
                     },
-                    cardsInfo,
+                    cardsInfo: { ...unknownAnkiCardsSnapshot.cardsInfo, ...cardsInfo },
                     dueCards,
+                    unknownCards: unknownAnkiCardsSnapshot.unknownCards,
                 });
             }
         } catch (e) {

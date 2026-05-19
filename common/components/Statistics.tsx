@@ -17,6 +17,9 @@ import {
     percent,
     percentDisplay,
     DictionaryStatisticsSnapshot,
+    DictionaryStatisticsRewatchProjection,
+    DictionaryStatisticsRewatchProjectionsByTrack,
+    DictionaryStatisticsRewatchSnapshot,
     processDictionaryStatisticsAnkiTrackSnapshot,
     processDictionaryStatisticsSnapshot,
     processDictionaryStatisticsWaniKaniTrackSnapshot,
@@ -38,6 +41,7 @@ import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography, { type TypographyProps } from '@mui/material/Typography';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -50,6 +54,8 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import Link from '@mui/material/Link';
+import { WaniKani, type WaniKaniUser } from '@project/common/wanikani';
+import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 
 export interface MediaInfo {
     sourceString: string;
@@ -467,6 +473,8 @@ interface SentenceStatsPanelProps {
     globalKnownCount: number;
     onOpenSentenceBucketDetails: (bucket: DictionaryStatisticsSentenceDialogBucket) => void;
     headerAction?: ReactNode;
+    extraStats?: ReactNode;
+    hideStats?: boolean;
     sentenceFiltersPosition: 'top' | 'bottom';
     emptyMessage?: string;
 }
@@ -529,6 +537,219 @@ function StatBoxes({ keyPrefix, stats }: StatBoxesProps) {
     );
 }
 
+const maxWaniKaniLevelFallback = 60;
+
+function clampIntegerInput(value: string, min: number, max: number) {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) return min;
+    return Math.max(min, Math.min(max, parsed));
+}
+
+function useWaniKaniUserInfo(apiToken: string) {
+    const [userInfo, setUserInfo] = useState<WaniKaniUser>();
+    const [error, setError] = useState<string>();
+
+    useEffect(() => {
+        const trimmedApiToken = apiToken.trim();
+        setUserInfo(undefined);
+        setError(undefined);
+        if (!trimmedApiToken) return;
+
+        let canceled = false;
+        void new WaniKani(trimmedApiToken)
+            .user()
+            .then((user) => {
+                if (!canceled) setUserInfo(user);
+            })
+            .catch((error) => {
+                if (!canceled) setError(error instanceof Error ? error.message : String(error));
+            });
+
+        return () => {
+            canceled = true;
+        };
+    }, [apiToken]);
+
+    return { userInfo, error };
+}
+
+type KnowledgeStatsSnapshot = Pick<DictionaryStatisticsRewatchSnapshot, 'ankiDeckStats' | 'waniKaniStats'>;
+
+function KnowledgeStats({ snapshot }: { snapshot: KnowledgeStatsSnapshot }) {
+    const { t } = useTranslation();
+
+    if (!snapshot.ankiDeckStats.length && snapshot.waniKaniStats === undefined) return null;
+
+    return (
+        <Stack spacing={1} sx={{ mt: 0.5 }}>
+            {snapshot.ankiDeckStats.length > 0 && (
+                <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                        {t('statistics.anki.knownDeckWords')}
+                    </Typography>
+                    <Stack spacing={0.5}>
+                        {snapshot.ankiDeckStats.map((deckStats) => (
+                            <StatRow
+                                key={deckStats.deckName}
+                                label={deckStats.deckName}
+                                value={`${deckStats.knownWords} / ${deckStats.totalWords}`}
+                            />
+                        ))}
+                    </Stack>
+                </Box>
+            )}
+            {snapshot.waniKaniStats !== undefined && (
+                <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                        {t('statistics.waniKani.projectedWords')}
+                    </Typography>
+                    <StatRow
+                        label={
+                            snapshot.waniKaniStats.level === undefined
+                                ? t('statistics.waniKani.currentKnowledge')
+                                : t('statistics.waniKani.projectedLevel', { level: snapshot.waniKaniStats.level })
+                        }
+                        value={`${snapshot.waniKaniStats.knownWords} / ${snapshot.waniKaniStats.totalWords}`}
+                    />
+                </Box>
+            )}
+        </Stack>
+    );
+}
+
+function ProjectedRewatchControls({
+    rewatchSnapshots,
+    selectedRewatch,
+    totalUnknownAnkiCards,
+    projection,
+    waniKaniApiToken,
+    onSelectedRewatchChanged,
+    onProjectionChanged,
+}: {
+    rewatchSnapshots: DictionaryStatisticsTrackSnapshot['rewatchSnapshots'];
+    selectedRewatch: number;
+    totalUnknownAnkiCards: number;
+    projection: DictionaryStatisticsRewatchProjection;
+    waniKaniApiToken: string;
+    onSelectedRewatchChanged: (rewatch: number) => void;
+    onProjectionChanged: (projection: DictionaryStatisticsRewatchProjection) => void;
+}) {
+    const { t } = useTranslation();
+    const { userInfo: waniKaniUserInfo, error: waniKaniUserInfoError } = useWaniKaniUserInfo(waniKaniApiToken);
+    const ankiUnknownCards = projection.ankiUnknownCards ?? 0;
+    const ankiLearningOrAboveIsMature = projection.ankiLearningOrAboveIsMature ?? false;
+    const waniKaniLevel = projection.waniKaniLevel;
+    const maxWaniKaniLevel = waniKaniUserInfo?.data.subscription.max_level_granted ?? maxWaniKaniLevelFallback;
+    const waniKaniHelperText = waniKaniUserInfo
+        ? `${waniKaniUserInfo.data.username}: ${waniKaniUserInfo.data.level}/${maxWaniKaniLevel}`
+        : waniKaniUserInfoError;
+
+    const updateProjection = useCallback(
+        (patch: DictionaryStatisticsRewatchProjection) => onProjectionChanged({ ...projection, ...patch }),
+        [onProjectionChanged, projection]
+    );
+
+    return (
+        <Box
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 1,
+            }}
+        >
+            <TextField
+                select
+                fullWidth
+                size="small"
+                value={selectedRewatch}
+                label={t('statistics.rewatchSelect')}
+                onChange={(event) => onSelectedRewatchChanged(Number(event.target.value))}
+            >
+                {rewatchSnapshots.map((rewatchSnapshot) => (
+                    <MenuItem key={rewatchSnapshot.rewatch} value={rewatchSnapshot.rewatch}>
+                        {t('statistics.rewatchOption', {
+                            rewatch: rewatchSnapshot.rewatch,
+                        })}
+                    </MenuItem>
+                ))}
+            </TextField>
+            <Box
+                sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                    gap: 1,
+                }}
+            >
+                <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    label={t('statistics.anki.projectNewCards')}
+                    value={ankiUnknownCards}
+                    helperText={t('statistics.anki.projectNewCardsHelper', {
+                        count: totalUnknownAnkiCards,
+                    })}
+                    onChange={(event) =>
+                        updateProjection({
+                            ankiUnknownCards: clampIntegerInput(event.target.value, 0, totalUnknownAnkiCards),
+                        })
+                    }
+                    slotProps={{
+                        htmlInput: {
+                            min: 0,
+                            max: totalUnknownAnkiCards,
+                            inputMode: 'numeric',
+                            pattern: '[0-9]*',
+                        },
+                    }}
+                />
+                <TextField
+                    type="number"
+                    size="small"
+                    fullWidth
+                    label={t('statistics.waniKani.projectLevel')}
+                    value={waniKaniLevel ?? ''}
+                    helperText={waniKaniHelperText}
+                    error={Boolean(waniKaniUserInfoError)}
+                    onChange={(event) => {
+                        if (event.target.value === '') {
+                            updateProjection({ waniKaniLevel: undefined });
+                            return;
+                        }
+
+                        updateProjection({
+                            waniKaniLevel: clampIntegerInput(event.target.value, 1, maxWaniKaniLevel),
+                        });
+                    }}
+                    slotProps={{
+                        htmlInput: {
+                            min: 1,
+                            max: maxWaniKaniLevel,
+                            inputMode: 'numeric',
+                            pattern: '[0-9]*',
+                        },
+                    }}
+                />
+            </Box>
+            <SwitchLabelWithHoverEffect
+                control={
+                    <Switch
+                        checked={ankiLearningOrAboveIsMature}
+                        onChange={(event) =>
+                            updateProjection({
+                                ankiLearningOrAboveIsMature: event.target.checked,
+                            })
+                        }
+                    />
+                }
+                label={t('statistics.anki.projectReviewedCards')}
+                labelPlacement="start"
+                sx={{ width: '100%', mt: -0.25 }}
+            />
+        </Box>
+    );
+}
+
 function SentenceStatsPanel({
     title,
     infoLines,
@@ -549,6 +770,8 @@ function SentenceStatsPanel({
     globalKnownLabel,
     globalKnownCount,
     headerAction,
+    extraStats,
+    hideStats,
     sentenceFiltersPosition,
     emptyMessage,
     onOpenSentenceBucketDetails,
@@ -677,7 +900,7 @@ function SentenceStatsPanel({
                     </Box>
                 </Box>
                 {headerAction && <Box sx={{ mb: 1.5 }}>{headerAction}</Box>}
-                {emptyMessage ? (
+                {hideStats ? null : emptyMessage ? (
                     <Typography typography="body2" color="text.secondary">
                         {emptyMessage}
                     </Typography>
@@ -685,6 +908,7 @@ function SentenceStatsPanel({
                     <>
                         {sentenceFiltersPosition === 'top' && sentenceFilterRows}
                         {statRows}
+                        {extraStats}
                         {sentenceFiltersPosition === 'bottom' && sentenceFilterRows}
                     </>
                 )}
@@ -1025,13 +1249,17 @@ function TrackSnapshot({
     trackSnapshot,
     statisticsSnapshot,
     selectedRewatchesByTrack,
+    rewatchProjection,
     onSelectedRewatchChanged,
+    onRewatchProjectionChanged,
     onSentenceDialogState,
 }: {
     trackSnapshot: DictionaryStatisticsTrackSnapshot;
     statisticsSnapshot: DictionaryStatisticsSnapshot;
     selectedRewatchesByTrack: Record<number, number>;
+    rewatchProjection: DictionaryStatisticsRewatchProjection;
     onSelectedRewatchChanged: (track: number, rewatch: number) => void;
+    onRewatchProjectionChanged: (track: number, projection: DictionaryStatisticsRewatchProjection) => void;
     onSentenceDialogState: (state: SentenceDialogState) => void;
 }) {
     const { t } = useTranslation();
@@ -1053,7 +1281,14 @@ function TrackSnapshot({
         [t]
     );
     const sentenceStatisticsInfoLines = useMemo(() => [t('statistics.info.sentenceStatistics')], [t]);
-    const projectedRewatchInfoLines = useMemo(() => [t('statistics.info.projectedRewatch')], [t]);
+    const projectedRewatchInfoLines = useMemo(
+        () => [
+            `${t('statistics.rewatchSelect')}: ${t('statistics.info.projectedRewatch')}`,
+            `${t('settings.anki')}: ${t('statistics.anki.info.projectedCards')}`,
+            `${t('settings.dictionaryWaniKaniSection')}: ${t('statistics.waniKani.info.projectedLevel')}`,
+        ],
+        [t]
+    );
     const uniqueWordsPerSentenceLabel = t('statistics.uniqueWordsPerSentence');
     const knownWordsPerSentenceLabel = t('statistics.knownWordsPerSentence');
     const uncollectedLabel = statusLabels[TokenStatus.UNCOLLECTED];
@@ -1071,10 +1306,11 @@ function TrackSnapshot({
     const emptyDeckBreakdownMessage = t('statistics.anki.noDeckBreakdown');
     const waniKaniUnavailableMessage = t('statistics.waniKani.waniKaniNeedsToBeAvailable');
     const emptyWaniKaniBreakdownMessage = t('statistics.waniKani.noWaniKaniBreakdown');
+    const dictionaryWaniKaniApiToken =
+        statisticsSnapshot.settings.dictionaryTracks[trackSnapshot.track]?.dictionaryWaniKaniApiToken ?? '';
 
     const totalSentences = trackSnapshot.progress.total;
     const selectedRewatchSnapshot = selectedRewatchSnapshotForTrack(trackSnapshot, selectedRewatchesByTrack);
-    const maxRewatches = trackSnapshot.rewatchSnapshots.length;
     const projectedSentenceBuckets = selectedRewatchSnapshot?.sentenceBuckets ?? emptySentenceBuckets;
     const projectedKnownCount = selectedRewatchSnapshot?.numKnownTokens ?? 0;
     const projectedGlobalKnownCount = selectedRewatchSnapshot?.numDictionaryKnownTokens ?? 0;
@@ -1082,6 +1318,11 @@ function TrackSnapshot({
     const projectedAverageKnownWordsPerSentence = selectedRewatchSnapshot?.averageKnownWordsPerSentence ?? 0;
     const projectedKnownPercent = selectedRewatchSnapshot?.knownPercent ?? 0;
     const projectedComprehension = selectedRewatchSnapshot?.comprehensionPercent ?? 0;
+    const hasProjectedKnowledge =
+        (rewatchProjection.ankiUnknownCards ?? 0) > 0 ||
+        (rewatchProjection.ankiLearningOrAboveIsMature ?? false) ||
+        (rewatchProjection.waniKaniLevel !== undefined && rewatchProjection.waniKaniLevel > 0);
+    const hideProjectedStats = selectedRewatchSnapshot?.rewatch === 0 && !hasProjectedKnowledge;
     const miningEnabled = trackSnapshot.progress.current >= trackSnapshot.progress.total;
     const ankiTrackSnapshot = processDictionaryStatisticsAnkiTrackSnapshot(statisticsSnapshot, trackSnapshot.track);
     const waniKaniTrackSnapshot = processDictionaryStatisticsWaniKaniTrackSnapshot(
@@ -1313,6 +1554,7 @@ function TrackSnapshot({
                         comprehensionPercent={trackSnapshot.comprehensionPercent}
                         globalKnownLabel={t('statistics.globalKnownWords')}
                         globalKnownCount={trackSnapshot.numDictionaryKnownTokens}
+                        extraStats={<KnowledgeStats snapshot={trackSnapshot} />}
                         sentenceFiltersPosition="top"
                         onOpenSentenceBucketDetails={(bucket) => {
                             const bucketData = sentenceDialogBucketData(bucket, trackSnapshot.sentenceBuckets, {
@@ -1333,7 +1575,7 @@ function TrackSnapshot({
                 </Box>
                 <Box>
                     <SentenceStatsPanel
-                        title={t('statistics.projectedRewatch')}
+                        title={t('statistics.projected')}
                         infoLines={projectedRewatchInfoLines}
                         totalSentences={totalSentences}
                         sentenceBuckets={projectedSentenceBuckets}
@@ -1353,27 +1595,28 @@ function TrackSnapshot({
                         globalKnownCount={projectedGlobalKnownCount}
                         headerAction={
                             selectedRewatchSnapshot !== undefined ? (
-                                <TextField
-                                    select
-                                    fullWidth
-                                    size="small"
-                                    value={selectedRewatchSnapshot.rewatch}
-                                    onChange={(event) =>
-                                        onSelectedRewatchChanged(trackSnapshot.track, Number(event.target.value))
+                                <ProjectedRewatchControls
+                                    rewatchSnapshots={trackSnapshot.rewatchSnapshots}
+                                    selectedRewatch={selectedRewatchSnapshot.rewatch}
+                                    totalUnknownAnkiCards={trackSnapshot.totalUnknownAnkiCards}
+                                    projection={rewatchProjection}
+                                    waniKaniApiToken={dictionaryWaniKaniApiToken}
+                                    onSelectedRewatchChanged={(rewatch) =>
+                                        onSelectedRewatchChanged(trackSnapshot.track, rewatch)
                                     }
-                                >
-                                    {trackSnapshot.rewatchSnapshots.map((rewatchSnapshot) => (
-                                        <MenuItem key={rewatchSnapshot.rewatch} value={rewatchSnapshot.rewatch}>
-                                            {t('statistics.rewatchOption', {
-                                                rewatch: rewatchSnapshot.rewatch,
-                                            })}
-                                        </MenuItem>
-                                    ))}
-                                </TextField>
+                                    onProjectionChanged={(projection) =>
+                                        onRewatchProjectionChanged(trackSnapshot.track, projection)
+                                    }
+                                />
                             ) : undefined
                         }
+                        extraStats={
+                            selectedRewatchSnapshot !== undefined ? (
+                                <KnowledgeStats snapshot={selectedRewatchSnapshot} />
+                            ) : undefined
+                        }
+                        hideStats={hideProjectedStats}
                         sentenceFiltersPosition="bottom"
-                        emptyMessage={maxRewatches === 0 ? t('statistics.noMoreRewatches') : undefined}
                         onOpenSentenceBucketDetails={(bucket) => {
                             if (selectedRewatchSnapshot === undefined) return;
                             const bucketData = sentenceDialogBucketData(
@@ -1464,13 +1707,22 @@ export default function Statistics({
     const { t } = useTranslation();
     const [mediaInfo, setMediaInfo] = useState<MediaInfo>();
     const [statisticsSnapshot, setStatisticsSnapshot] = useState<DictionaryStatisticsSnapshot>();
-    const [trackSnapshots, setTrackSnapshots] = useState<DictionaryStatisticsTrackSnapshot[]>();
+    const [statisticsSnapshotLoaded, setStatisticsSnapshotLoaded] = useState(false);
     const [selectedTrackSnapshotIndex, setSelectedTrackSnapshotIndex] = useState<number>(0);
     const [generationRequested, setGenerationRequested] = useState(false);
     const [selectedRewatchesByTrack, setSelectedRewatchesByTrack] = useState<Record<number, number>>({});
+    const [rewatchProjectionsByTrack, setRewatchProjectionsByTrack] =
+        useState<DictionaryStatisticsRewatchProjectionsByTrack>({});
     const [sentenceDialogState, setSentenceDialogState] = useState<SentenceDialogState>();
+    const trackSnapshots = useMemo(
+        () =>
+            statisticsSnapshotLoaded
+                ? processDictionaryStatisticsSnapshot(statisticsSnapshot, rewatchProjectionsByTrack)
+                : undefined,
+        [statisticsSnapshot, statisticsSnapshotLoaded, rewatchProjectionsByTrack]
+    );
     const hasSnapshots = trackSnapshots && trackSnapshots.length > 0;
-    const loadingSnapshots = trackSnapshots === undefined;
+    const loadingSnapshots = !statisticsSnapshotLoaded;
     const allTrackProgressComplete = useMemo(
         () => hasSnapshots && trackSnapshots.every((s) => s.progress.current >= s.progress.total),
         [hasSnapshots, trackSnapshots]
@@ -1478,12 +1730,21 @@ export default function Statistics({
     const isGenerating = generationRequested && (!hasSnapshots || !allTrackProgressComplete);
 
     useEffect(() => {
+        setMediaInfo(undefined);
+        setStatisticsSnapshot(undefined);
+        setStatisticsSnapshotLoaded(false);
+        setSelectedTrackSnapshotIndex(0);
+        setSelectedRewatchesByTrack({});
+        setRewatchProjectionsByTrack({});
+    }, [mediaId]);
+
+    useEffect(() => {
         const unsubscribeStatistics = dictionaryProvider.onStatisticsSnapshot(
             (snapshot?: DictionaryStatisticsSnapshot) => {
                 if (!snapshot) {
                     setMediaInfo(undefined);
                     setStatisticsSnapshot(undefined);
-                    setTrackSnapshots([]);
+                    setStatisticsSnapshotLoaded(true);
                     setGenerationRequested(false);
                     return;
                 }
@@ -1495,16 +1756,7 @@ export default function Statistics({
                         setMediaInfo(undefined);
                     }
                     setStatisticsSnapshot(snapshot);
-                    const nextTrackSnapshots = processDictionaryStatisticsSnapshot(snapshot);
-                    setTrackSnapshots(nextTrackSnapshots);
-                    if (
-                        nextTrackSnapshots.length &&
-                        nextTrackSnapshots.every(
-                            (trackSnapshot) => trackSnapshot.progress.current >= trackSnapshot.progress.total
-                        )
-                    ) {
-                        setGenerationRequested(false);
-                    }
+                    setStatisticsSnapshotLoaded(true);
                 }
             }
         );
@@ -1520,7 +1772,9 @@ export default function Statistics({
         };
     }, [dictionaryProvider, mediaInfoFetcher, mediaId]);
 
-    useEffect(() => setSelectedTrackSnapshotIndex(0), [mediaId]);
+    useEffect(() => {
+        if (allTrackProgressComplete) setGenerationRequested(false);
+    }, [allTrackProgressComplete]);
 
     const handleGenerate = useCallback(() => {
         setGenerationRequested(true);
@@ -1539,6 +1793,12 @@ export default function Statistics({
     const handleSelectedRewatchChanged = useCallback((track: number, rewatch: number) => {
         setSelectedRewatchesByTrack((current) => ({ ...current, [track]: rewatch }));
     }, []);
+    const handleRewatchProjectionChanged = useCallback(
+        (track: number, projection: DictionaryStatisticsRewatchProjection) => {
+            setRewatchProjectionsByTrack((current) => ({ ...current, [track]: projection }));
+        },
+        []
+    );
     const handleCloseSentenceBucketDetails = useCallback(() => setSentenceDialogState(undefined), []);
     const handleSeekSentence = useCallback(
         (sentence: DictionaryStatisticsSentence) => {
@@ -1662,8 +1922,10 @@ export default function Statistics({
                             trackSnapshot={trackSnapshot}
                             statisticsSnapshot={statisticsSnapshot}
                             onSelectedRewatchChanged={handleSelectedRewatchChanged}
+                            onRewatchProjectionChanged={handleRewatchProjectionChanged}
                             onSentenceDialogState={setSentenceDialogState}
                             selectedRewatchesByTrack={selectedRewatchesByTrack}
+                            rewatchProjection={rewatchProjectionsByTrack[trackSnapshot.track] ?? {}}
                         />
                     )}
                 </Box>

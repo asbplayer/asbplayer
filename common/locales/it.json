@@ -644,6 +644,7 @@
         "occurrences": "Occorrenze",
         "sentenceStatistics": "Statistiche frasi",
         "currentWatch": "Visione corrente",
+        "projected": "Projected",
         "projectedRewatch": "Revisione proiettata",
         "rewatchSelect": "Revisione",
         "rewatchOption": "Revisione #{{rewatch}}",
@@ -662,18 +663,28 @@
             "suspended": "Sospese",
             "deckBreakdown": "Ripartizione per deck",
             "modelBreakdown": "Ripartizione per modello",
+            "projectNewCards": "Treat upcoming new cards as mature",
+            "projectNewCardsHelper": "{{count}} new cards",
+            "projectReviewedCards": "Treat all reviewed cards as mature",
+            "knownDeckWords": "Anki known words",
             "ankiNeedsToBeRunning": "Anki deve essere in esecuzione per caricare le statistiche.",
             "noDeckBreakdown": "Nessuna carta Anki corrispondente trovata per questo media.",
             "info": {
-                "ankiStatistics": "Come le tue carte Anki si abbinano alle parole in questo media."
+                "ankiStatistics": "Come le tue carte Anki si abbinano alle parole in questo media.",
+                "projectedCards": "Preview your stats by treating past cards or new cards (by due date) as Mature."
             }
         },
         "waniKani": {
             "waniKaniStatistics": "WaniKani statistics",
+            "projectLevel": "WaniKani level",
+            "projectedWords": "WaniKani known words",
+            "projectedLevel": "Level {{level}}",
+            "currentKnowledge": "Current WaniKani",
             "waniKaniNeedsToBeAvailable": "WaniKani statistics could not be loaded.",
             "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
             "info": {
-                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media."
+                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media.",
+                "projectedLevel": "Preview your stats by treating all words at this level as Mature."
             }
         },
         "info": {

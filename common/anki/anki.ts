@@ -249,7 +249,7 @@ export interface CardInfo {
     ord: number;
     type: number;
     queue: number;
-    due: number;
+    due: number; // This cannot be used to get the due date because it's relative to the Anki db creation time which AnkiConnect doesn't expose
     reps: number;
     lapses: number;
     left: number;

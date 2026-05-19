@@ -644,6 +644,7 @@
         "occurrences": "出现次数",
         "sentenceStatistics": "句子挖掘价值分析",
         "currentWatch": "当前首刷",
+        "projected": "Projected",
         "projectedRewatch": "预计二刷",
         "rewatchSelect": "选择重播轮次",
         "rewatchOption": "第 {{rewatch}} 次重播",
@@ -662,18 +663,28 @@
             "suspended": "被暂停卡片",
             "deckBreakdown": "牌组分布",
             "modelBreakdown": "笔记类型占比",
+            "projectNewCards": "Treat upcoming new cards as mature",
+            "projectNewCardsHelper": "{{count}} new cards",
+            "projectReviewedCards": "Treat all reviewed cards as mature",
+            "knownDeckWords": "Anki known words",
             "ankiNeedsToBeRunning": "需保持 Anki 运行以加载统计数据。",
             "noDeckBreakdown": "未在 Anki 中检索到属于此媒体的卡片。",
             "info": {
-                "ankiStatistics": "分析当前视频词汇在 Anki 库中的收录情况。"
+                "ankiStatistics": "分析当前视频词汇在 Anki 库中的收录情况。",
+                "projectedCards": "Preview your stats by treating past cards or new cards (by due date) as Mature."
             }
         },
         "waniKani": {
             "waniKaniStatistics": "WaniKani statistics",
+            "projectLevel": "WaniKani level",
+            "projectedWords": "WaniKani known words",
+            "projectedLevel": "Level {{level}}",
+            "currentKnowledge": "Current WaniKani",
             "waniKaniNeedsToBeAvailable": "WaniKani statistics could not be loaded.",
             "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
             "info": {
-                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media."
+                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media.",
+                "projectedLevel": "Preview your stats by treating all words at this level as Mature."
             }
         },
         "info": {

@@ -644,6 +644,7 @@
         "occurrences": "Occurrences",
         "sentenceStatistics": "Sentence statistics",
         "currentWatch": "Current watch",
+        "projected": "Projected",
         "projectedRewatch": "Projected rewatch",
         "rewatchSelect": "Rewatch",
         "rewatchOption": "Rewatch #{{rewatch}}",
@@ -662,18 +663,28 @@
             "suspended": "Suspended",
             "deckBreakdown": "Deck breakdown",
             "modelBreakdown": "Model breakdown",
+            "projectNewCards": "Treat upcoming new cards as mature",
+            "projectNewCardsHelper": "{{count}} new cards",
+            "projectReviewedCards": "Treat all reviewed cards as mature",
+            "knownDeckWords": "Anki known words",
             "ankiNeedsToBeRunning": "Anki needs to be running to load statistics.",
             "noDeckBreakdown": "No matching Anki cards were found for this media.",
             "info": {
-                "ankiStatistics": "How your Anki cards match up with the words in this media."
+                "ankiStatistics": "How your Anki cards match up with the words in this media.",
+                "projectedCards": "Preview your stats by treating past cards or new cards (by due date) as Mature." 
             }
         },
         "waniKani": {
             "waniKaniStatistics": "WaniKani statistics",
+            "projectLevel": "WaniKani level",
+            "projectedWords": "WaniKani known words",
+            "projectedLevel": "Level {{level}}",
+            "currentKnowledge": "Current WaniKani",
             "waniKaniNeedsToBeAvailable": "WaniKani statistics could not be loaded.",
             "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
             "info": {
-                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media."
+                "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media.",
+                "projectedLevel": "Preview your stats by treating all words at this level as Mature."
             }
         },
         "info": {
@@ -683,7 +694,7 @@
             "frequency": "Frequency: The rank-based frequency from your frequency dictionaries.",
             "occurrences": "Occurrences: The total number of times a word appears.",
             "sentenceStatistics": "How easily this content can be mined.",
-            "projectedRewatch": "Assumes all i+1 uncollected sentences were mined from the previous watch."
+            "projectedRewatch": "Assumes all i+1 uncollected sentences were mined from the previous watch and promotes all word status up one level each rewatch."
         }
     },
     "subtitlePlayer": {

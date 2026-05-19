@@ -28,12 +28,14 @@ export interface DictionaryStatisticsSentence {
 }
 
 export type DictionaryStatisticsAnkiDueCardsSnapshot = Record<number, number[]>; // [0, [...]] due today, [7, [...]] due within a week
+export type DictionaryStatisticsAnkiUnknownCardsSnapshot = Record<number, number[]>; // Unknown card ids per track, sorted by due date
 
 export interface DictionaryStatisticsAnkiSnapshot {
     available?: boolean;
     progress?: Progress;
     cardsInfo: Record<number, CardInfo>;
     dueCards: DictionaryStatisticsAnkiDueCardsSnapshot;
+    unknownCards?: DictionaryStatisticsAnkiUnknownCardsSnapshot;
 }
 
 export type DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot = Record<
