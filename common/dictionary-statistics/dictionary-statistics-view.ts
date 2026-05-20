@@ -11,7 +11,7 @@ import {
     DictionaryStatisticsSentence,
     DictionaryStatisticsSentences,
     DictionaryStatisticsSnapshot,
-    DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot,
+    DictionaryStatisticsWaniKaniSnapshot,
     REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
 import { TokenStatusInfo, WaniKaniTokenStatusInfo } from '@project/common/dictionary-db';
@@ -153,12 +153,17 @@ export interface DictionaryStatisticsSentenceBuckets {
 }
 
 export interface DictionaryStatisticsRewatchProjection {
-    ankiUnknownCards?: number;
+    ankiUnknownCardsByDeck?: Record<string, number>;
     ankiLearningOrAboveIsMature?: boolean;
     waniKaniLevel?: number;
 }
 
 export type DictionaryStatisticsRewatchProjectionsByTrack = Record<number, DictionaryStatisticsRewatchProjection>;
+
+export interface DictionaryStatisticsAnkiUnknownCardsByDeck {
+    deckName: string;
+    totalUnknownCards: number;
+}
 
 export interface DictionaryStatisticsAnkiDeckProjectionStats {
     deckName: string;
@@ -213,6 +218,7 @@ export interface DictionaryStatisticsTrackSnapshot {
     waniKaniStats?: DictionaryStatisticsWaniKaniProjectionStats;
     rewatchSnapshots: DictionaryStatisticsRewatchSnapshot[];
     totalUnknownAnkiCards: number;
+    unknownAnkiCardsByDeck: DictionaryStatisticsAnkiUnknownCardsByDeck[];
 }
 
 export interface DictionaryStatisticsAnkiDueCounts {
@@ -335,25 +341,26 @@ function incrementWaniKaniDueCounts(
     if (tokenStatuses.some(({ waniKani }) => dueByWeek.has(waniKani.assignmentId))) counts.week += 1;
 }
 
-function waniKaniDueAssignmentSets(reviewAssignments?: DictionaryStatisticsWaniKaniReviewAssignmentsSnapshot) {
+function waniKaniDueAssignmentSets(waniKaniSnapshot?: DictionaryStatisticsWaniKaniSnapshot) {
+    const dueByToday = new Set<number>();
+    const dueByTomorrow = new Set<number>();
+    const dueByWeek = new Set<number>();
+    if (!waniKaniSnapshot) return { dueByToday, dueByTomorrow, dueByWeek };
+
     const todayStart = utcStartOfToday();
     const todayEnd = todayStart.getTime() + (REVIEW_DUES[0] + 1) * MS_PER_DAY;
     const tomorrowEnd = todayStart.getTime() + (REVIEW_DUES[1] + 1) * MS_PER_DAY;
     const weekEnd = todayStart.getTime() + REVIEW_DUES[2] * MS_PER_DAY;
-    const dueByToday = new Set<number>();
-    const dueByTomorrow = new Set<number>();
-    const dueByWeek = new Set<number>();
-
-    for (const [assignmentIdString, assignment] of Object.entries(reviewAssignments ?? {})) {
+    for (const assignment of waniKaniSnapshot.assignments) {
         if (assignment.data.hidden) continue;
-        const assignmentId = Number(assignmentIdString);
+        if (waniKaniSnapshot.subjects[assignment.subjectId]?.data.hidden_at) continue;
         const availableAt = assignment.data.available_at;
-        if (availableAt === null) continue;
+        if (availableAt === null || availableAt === undefined) continue;
         const availableAtTime = Date.parse(availableAt);
-        if (!Number.isFinite(assignmentId) || !Number.isFinite(availableAtTime)) continue;
-        if (availableAtTime < todayEnd) dueByToday.add(assignmentId);
-        if (availableAtTime < tomorrowEnd) dueByTomorrow.add(assignmentId);
-        if (availableAtTime < weekEnd) dueByWeek.add(assignmentId);
+        if (!Number.isFinite(availableAtTime)) continue;
+        if (availableAtTime < todayEnd) dueByToday.add(assignment.assignmentId);
+        if (availableAtTime < tomorrowEnd) dueByTomorrow.add(assignment.assignmentId);
+        if (availableAtTime < weekEnd) dueByWeek.add(assignment.assignmentId);
     }
 
     return { dueByToday, dueByTomorrow, dueByWeek };
@@ -920,19 +927,57 @@ function sortAnkiCardIdsByDue(cardIds: number[], cardsInfo: DictionaryStatistics
 }
 
 function sortedUnknownAnkiCardIds(
-    tokenEntries: [string, ProcessedTokenSnapshot][],
-    dictionaryTokens: DictionaryStatisticsDictionaryTokens,
+    cardsStatus: DictionaryStatisticsSnapshot['anki']['cardsStatus'],
     cardsInfo: DictionaryStatisticsSnapshot['anki']['cardsInfo']
 ) {
-    const unknownCards = new Set<number>();
-    for (const [tokenKey, tokenSnapshot] of tokenEntries) {
-        if (tokenSnapshot.ignored) continue;
-        for (const status of tokenStatusesForProjection(tokenKey, tokenSnapshot, dictionaryTokens).filter(hasCardId)) {
-            if (status.status !== TokenStatus.UNKNOWN) continue;
-            unknownCards.add(status.cardId);
-        }
+    if (cardsStatus === undefined) return [];
+    const unknownCards = Object.entries(cardsStatus).flatMap(([cardId, status]) =>
+        status === TokenStatus.UNKNOWN ? [Number(cardId)] : []
+    );
+    return sortAnkiCardIdsByDue(unknownCards, cardsInfo);
+}
+
+interface UnknownAnkiCardsByDeck extends DictionaryStatisticsAnkiUnknownCardsByDeck {
+    cardIds: number[];
+}
+
+function groupUnknownAnkiCardIdsByDeck(
+    cardIds: number[],
+    cardsInfo: DictionaryStatisticsSnapshot['anki']['cardsInfo']
+): UnknownAnkiCardsByDeck[] {
+    const cardsByDeck = new Map<string, number[]>();
+    for (const cardId of cardIds) {
+        const deckName = cardsInfo[cardId]?.deckName;
+        if (!deckName) continue;
+
+        const deckCardIds = cardsByDeck.get(deckName);
+        if (deckCardIds) deckCardIds.push(cardId);
+        else cardsByDeck.set(deckName, [cardId]);
     }
-    return sortAnkiCardIdsByDue(Array.from(unknownCards), cardsInfo);
+
+    return Array.from(cardsByDeck.entries())
+        .map(([deckName, cardIds]) => ({ deckName, cardIds, totalUnknownCards: cardIds.length }))
+        .sort((left, right) => left.deckName.localeCompare(right.deckName));
+}
+
+function clampedProjectedAnkiUnknownCards(value: number | undefined, total: number) {
+    const requestedCards = value ?? 0;
+    return Number.isFinite(requestedCards) ? Math.max(0, Math.min(total, Math.floor(requestedCards))) : 0;
+}
+
+function projectedUnknownAnkiCardIds(
+    unknownAnkiCardsByDeck: UnknownAnkiCardsByDeck[],
+    projection: DictionaryStatisticsRewatchProjection
+) {
+    return new Set(
+        unknownAnkiCardsByDeck.flatMap(({ deckName, cardIds, totalUnknownCards }) => {
+            const count = clampedProjectedAnkiUnknownCards(
+                projection.ankiUnknownCardsByDeck?.[deckName],
+                totalUnknownCards
+            );
+            return cardIds.slice(0, count);
+        })
+    );
 }
 
 interface ProjectionOptions {
@@ -1194,15 +1239,9 @@ function processDictionaryStatisticsTrackSnapshot(
     const aggregateTokenEntries = Array.from(aggregateTokens.entries());
     const sentenceFilterTokenEntries = Array.from(sentenceFilterTokens.entries());
     const cardsInfo = snapshot.anki.cardsInfo ?? {};
-    const snapshotUnknownAnkiCardIds = snapshot.anki.unknownCards?.[trackSnapshot.track];
-    const unknownAnkiCardIds =
-        snapshotUnknownAnkiCardIds === undefined
-            ? sortedUnknownAnkiCardIds(aggregateTokenEntries, dictionary.tokens, cardsInfo)
-            : sortAnkiCardIdsByDue(snapshotUnknownAnkiCardIds, cardsInfo);
-    const requestedAnkiUnknownCards = projection.ankiUnknownCards ?? 0;
-    const ankiUnknownCards = Number.isFinite(requestedAnkiUnknownCards)
-        ? Math.max(0, Math.min(unknownAnkiCardIds.length, Math.floor(requestedAnkiUnknownCards)))
-        : 0;
+    const unknownAnkiCardIds = sortedUnknownAnkiCardIds(snapshot.anki.cardsStatus, cardsInfo);
+    const unknownAnkiCardsByDeck = groupUnknownAnkiCardIdsByDeck(unknownAnkiCardIds, cardsInfo);
+    const projectedAnkiCardIds = projectedUnknownAnkiCardIds(unknownAnkiCardsByDeck, projection);
     const waniKaniLevel =
         projection.waniKaniLevel !== undefined &&
         Number.isFinite(projection.waniKaniLevel) &&
@@ -1221,13 +1260,13 @@ function processDictionaryStatisticsTrackSnapshot(
     });
     const aggregateProjectedData = projectionData(aggregateTokenEntries, {
         ...projectionOptions,
-        ankiCardIds: new Set(unknownAnkiCardIds.slice(0, ankiUnknownCards)),
+        ankiCardIds: projectedAnkiCardIds,
         ankiLearningOrAboveIsMature: projection.ankiLearningOrAboveIsMature ?? false,
         waniKaniLevel,
     });
     const sentenceFilterProjectedData = projectionData(sentenceFilterTokenEntries, {
         ...projectionOptions,
-        ankiCardIds: new Set(unknownAnkiCardIds.slice(0, ankiUnknownCards)),
+        ankiCardIds: projectedAnkiCardIds,
         ankiLearningOrAboveIsMature: projection.ankiLearningOrAboveIsMature ?? false,
         waniKaniLevel,
     });
@@ -1291,6 +1330,10 @@ function processDictionaryStatisticsTrackSnapshot(
         waniKaniStats: currentKnowledgeData.waniKaniStats,
         rewatchSnapshots,
         totalUnknownAnkiCards: unknownAnkiCardIds.length,
+        unknownAnkiCardsByDeck: unknownAnkiCardsByDeck.map(({ deckName, totalUnknownCards }) => ({
+            deckName,
+            totalUnknownCards,
+        })),
     };
 }
 
@@ -1659,7 +1702,7 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
         };
     }
 
-    const { dueByToday, dueByTomorrow, dueByWeek } = waniKaniDueAssignmentSets(waniKaniSnapshot?.reviewAssignments);
+    const { dueByToday, dueByTomorrow, dueByWeek } = waniKaniDueAssignmentSets(waniKaniSnapshot);
     const sentenceSnapshots = processSentenceSnapshots(rawTrackSnapshot.stats.sentences, 'lemma');
     const tokens = mergeSentenceTokenSnapshots(sentenceSnapshots);
     const waniKaniTokenSnapshots: ProcessedTokenSnapshot[] = [];

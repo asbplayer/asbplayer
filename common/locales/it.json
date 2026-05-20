@@ -655,6 +655,7 @@
         "noMoreRewatches": "Non ci sarà più estrazione dopo tutte le frasi i+1 di questa sessione.",
         "totalSentences": "Totale frasi",
         "knownSentences": "Frasi conosciute",
+        "projectMature": "Treat upcoming as mature",
         "anki": {
             "ankiStatistics": "Statistiche Anki",
             "dueByToday": "In scadenza oggi",
@@ -663,15 +664,14 @@
             "suspended": "Sospese",
             "deckBreakdown": "Ripartizione per deck",
             "modelBreakdown": "Ripartizione per modello",
-            "projectNewCards": "Treat upcoming new cards as mature",
-            "projectNewCardsHelper": "{{count}} new cards",
+            "newCardsCount": "{{count}} new cards",
             "projectReviewedCards": "Treat all reviewed cards as mature",
             "knownDeckWords": "Anki known words",
             "ankiNeedsToBeRunning": "Anki deve essere in esecuzione per caricare le statistiche.",
             "noDeckBreakdown": "Nessuna carta Anki corrispondente trovata per questo media.",
             "info": {
                 "ankiStatistics": "Come le tue carte Anki si abbinano alle parole in questo media.",
-                "projectedCards": "Preview your stats by treating past cards or new cards (by due date) as Mature."
+                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature."
             }
         },
         "waniKani": {
@@ -684,7 +684,7 @@
             "noWaniKaniBreakdown": "No matching WaniKani vocabulary was found for this media.",
             "info": {
                 "waniKaniStatistics": "How your upcoming WaniKani reviews match up with the words in this media.",
-                "projectedLevel": "Preview your stats by treating all words at this level as Mature."
+                "projectedLevel": "Preview your stats by treating all words at or below a level as Mature."
             }
         },
         "info": {

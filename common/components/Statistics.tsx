@@ -20,6 +20,7 @@ import {
     DictionaryStatisticsRewatchProjection,
     DictionaryStatisticsRewatchProjectionsByTrack,
     DictionaryStatisticsRewatchSnapshot,
+    DictionaryStatisticsAnkiUnknownCardsByDeck,
     processDictionaryStatisticsAnkiTrackSnapshot,
     processDictionaryStatisticsSnapshot,
     processDictionaryStatisticsWaniKaniTrackSnapshot,
@@ -539,6 +540,10 @@ function StatBoxes({ keyPrefix, stats }: StatBoxesProps) {
 
 const maxWaniKaniLevelFallback = 60;
 
+function hasProjectedAnkiUnknownCards(projection: DictionaryStatisticsRewatchProjection) {
+    return Object.values(projection.ankiUnknownCardsByDeck ?? {}).some((count) => count > 0);
+}
+
 function clampIntegerInput(value: string, min: number, max: number) {
     const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed)) return min;
@@ -620,7 +625,9 @@ function KnowledgeStats({ snapshot }: { snapshot: KnowledgeStatsSnapshot }) {
 function ProjectedRewatchControls({
     rewatchSnapshots,
     selectedRewatch,
-    totalUnknownAnkiCards,
+    unknownAnkiCardsByDeck,
+    ankiAvailable,
+    waniKaniAvailable,
     projection,
     waniKaniApiToken,
     onSelectedRewatchChanged,
@@ -628,25 +635,40 @@ function ProjectedRewatchControls({
 }: {
     rewatchSnapshots: DictionaryStatisticsTrackSnapshot['rewatchSnapshots'];
     selectedRewatch: number;
-    totalUnknownAnkiCards: number;
+    unknownAnkiCardsByDeck: DictionaryStatisticsAnkiUnknownCardsByDeck[];
+    ankiAvailable: boolean;
+    waniKaniAvailable: boolean;
     projection: DictionaryStatisticsRewatchProjection;
     waniKaniApiToken: string;
     onSelectedRewatchChanged: (rewatch: number) => void;
     onProjectionChanged: (projection: DictionaryStatisticsRewatchProjection) => void;
 }) {
     const { t } = useTranslation();
-    const { userInfo: waniKaniUserInfo, error: waniKaniUserInfoError } = useWaniKaniUserInfo(waniKaniApiToken);
-    const ankiUnknownCards = projection.ankiUnknownCards ?? 0;
+    const { userInfo: waniKaniUserInfo, error: waniKaniUserInfoError } = useWaniKaniUserInfo(
+        waniKaniAvailable ? waniKaniApiToken : ''
+    );
+    const projectedAnkiUnknownCardsByDeck = projection.ankiUnknownCardsByDeck ?? {};
     const ankiLearningOrAboveIsMature = projection.ankiLearningOrAboveIsMature ?? false;
-    const waniKaniLevel = projection.waniKaniLevel;
+    const waniKaniLevel = projection.waniKaniLevel ?? 0;
     const maxWaniKaniLevel = waniKaniUserInfo?.data.subscription.max_level_granted ?? maxWaniKaniLevelFallback;
     const waniKaniHelperText = waniKaniUserInfo
-        ? `${waniKaniUserInfo.data.username}: ${waniKaniUserInfo.data.level}/${maxWaniKaniLevel}`
-        : waniKaniUserInfoError;
+        ? ` (${waniKaniUserInfo.data.username}: ${waniKaniUserInfo.data.level}/${maxWaniKaniLevel})`
+        : '';
 
     const updateProjection = useCallback(
         (patch: DictionaryStatisticsRewatchProjection) => onProjectionChanged({ ...projection, ...patch }),
         [onProjectionChanged, projection]
+    );
+
+    const updateProjectedAnkiUnknownCardsByDeck = useCallback(
+        (deckName: string, value: string, totalUnknownCards: number) => {
+            const count = clampIntegerInput(value, 0, totalUnknownCards);
+            const ankiUnknownCardsByDeck = { ...(projection.ankiUnknownCardsByDeck ?? {}) };
+            if (count > 0) ankiUnknownCardsByDeck[deckName] = count;
+            else delete ankiUnknownCardsByDeck[deckName];
+            updateProjection({ ankiUnknownCardsByDeck });
+        },
+        [projection.ankiUnknownCardsByDeck, updateProjection]
     );
 
     return (
@@ -673,79 +695,90 @@ function ProjectedRewatchControls({
                     </MenuItem>
                 ))}
             </TextField>
-            <Box
-                sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-                    gap: 1,
-                }}
-            >
-                <TextField
-                    type="number"
-                    size="small"
-                    fullWidth
-                    label={t('statistics.anki.projectNewCards')}
-                    value={ankiUnknownCards}
-                    helperText={t('statistics.anki.projectNewCardsHelper', {
-                        count: totalUnknownAnkiCards,
-                    })}
-                    onChange={(event) =>
-                        updateProjection({
-                            ankiUnknownCards: clampIntegerInput(event.target.value, 0, totalUnknownAnkiCards),
-                        })
+            {ankiAvailable && (
+                <SwitchLabelWithHoverEffect
+                    control={
+                        <Switch
+                            checked={ankiLearningOrAboveIsMature}
+                            onChange={(event) =>
+                                updateProjection({
+                                    ankiLearningOrAboveIsMature: event.target.checked,
+                                })
+                            }
+                        />
                     }
-                    slotProps={{
-                        htmlInput: {
-                            min: 0,
-                            max: totalUnknownAnkiCards,
-                            inputMode: 'numeric',
-                            pattern: '[0-9]*',
-                        },
-                    }}
+                    label={t('statistics.anki.projectReviewedCards')}
+                    labelPlacement="start"
+                    sx={{ width: '100%', mt: -0.25 }}
                 />
-                <TextField
-                    type="number"
-                    size="small"
-                    fullWidth
-                    label={t('statistics.waniKani.projectLevel')}
-                    value={waniKaniLevel ?? ''}
-                    helperText={waniKaniHelperText}
-                    error={Boolean(waniKaniUserInfoError)}
-                    onChange={(event) => {
-                        if (event.target.value === '') {
-                            updateProjection({ waniKaniLevel: undefined });
-                            return;
-                        }
-
-                        updateProjection({
-                            waniKaniLevel: clampIntegerInput(event.target.value, 1, maxWaniKaniLevel),
-                        });
+            )}
+            {(ankiAvailable || waniKaniAvailable) && (
+                <Typography variant="caption" color="text.secondary">
+                    {t('statistics.projectMature')}
+                </Typography>
+            )}
+            {ankiAvailable && unknownAnkiCardsByDeck.length > 0 && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                    <Stack spacing={1}>
+                        {unknownAnkiCardsByDeck.map(({ deckName, totalUnknownCards }) => (
+                            <TextField
+                                key={deckName}
+                                type="number"
+                                size="small"
+                                fullWidth
+                                label={`${deckName} (${t('statistics.anki.newCardsCount', { count: totalUnknownCards })})`}
+                                value={projectedAnkiUnknownCardsByDeck[deckName] ?? 0}
+                                onChange={(event) =>
+                                    updateProjectedAnkiUnknownCardsByDeck(
+                                        deckName,
+                                        event.target.value,
+                                        totalUnknownCards
+                                    )
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        max: totalUnknownCards,
+                                        inputMode: 'numeric',
+                                        pattern: '[0-9]*',
+                                    },
+                                }}
+                            />
+                        ))}
+                    </Stack>
+                </Box>
+            )}
+            {waniKaniAvailable && (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
                     }}
-                    slotProps={{
-                        htmlInput: {
-                            min: 1,
-                            max: maxWaniKaniLevel,
-                            inputMode: 'numeric',
-                            pattern: '[0-9]*',
-                        },
-                    }}
-                />
-            </Box>
-            <SwitchLabelWithHoverEffect
-                control={
-                    <Switch
-                        checked={ankiLearningOrAboveIsMature}
+                >
+                    <TextField
+                        type="number"
+                        size="small"
+                        fullWidth
+                        label={`${t('statistics.waniKani.projectLevel')}${waniKaniHelperText}`}
+                        value={waniKaniLevel}
+                        helperText={waniKaniUserInfoError}
+                        error={Boolean(waniKaniUserInfoError)}
                         onChange={(event) =>
                             updateProjection({
-                                ankiLearningOrAboveIsMature: event.target.checked,
+                                waniKaniLevel: clampIntegerInput(event.target.value, 0, maxWaniKaniLevel),
                             })
                         }
+                        slotProps={{
+                            htmlInput: {
+                                min: 0,
+                                max: maxWaniKaniLevel,
+                                inputMode: 'numeric',
+                                pattern: '[0-9]*',
+                            },
+                        }}
                     />
-                }
-                label={t('statistics.anki.projectReviewedCards')}
-                labelPlacement="start"
-                sx={{ width: '100%', mt: -0.25 }}
-            />
+                </Box>
+            )}
         </Box>
     );
 }
@@ -1318,17 +1351,20 @@ function TrackSnapshot({
     const projectedAverageKnownWordsPerSentence = selectedRewatchSnapshot?.averageKnownWordsPerSentence ?? 0;
     const projectedKnownPercent = selectedRewatchSnapshot?.knownPercent ?? 0;
     const projectedComprehension = selectedRewatchSnapshot?.comprehensionPercent ?? 0;
-    const hasProjectedKnowledge =
-        (rewatchProjection.ankiUnknownCards ?? 0) > 0 ||
-        (rewatchProjection.ankiLearningOrAboveIsMature ?? false) ||
-        (rewatchProjection.waniKaniLevel !== undefined && rewatchProjection.waniKaniLevel > 0);
-    const hideProjectedStats = selectedRewatchSnapshot?.rewatch === 0 && !hasProjectedKnowledge;
-    const miningEnabled = trackSnapshot.progress.current >= trackSnapshot.progress.total;
     const ankiTrackSnapshot = processDictionaryStatisticsAnkiTrackSnapshot(statisticsSnapshot, trackSnapshot.track);
     const waniKaniTrackSnapshot = processDictionaryStatisticsWaniKaniTrackSnapshot(
         statisticsSnapshot,
         trackSnapshot.track
     );
+    const ankiAvailable = ankiTrackSnapshot.available === true;
+    const waniKaniAvailable = waniKaniTrackSnapshot.available === true;
+    const hasProjectedKnowledge =
+        (ankiAvailable &&
+            (hasProjectedAnkiUnknownCards(rewatchProjection) ||
+                (rewatchProjection.ankiLearningOrAboveIsMature ?? false))) ||
+        (waniKaniAvailable && rewatchProjection.waniKaniLevel !== undefined && rewatchProjection.waniKaniLevel > 0);
+    const hideProjectedStats = selectedRewatchSnapshot?.rewatch === 0 && !hasProjectedKnowledge;
+    const miningEnabled = trackSnapshot.progress.current >= trackSnapshot.progress.total;
     const ankiHasStats = ankiTrackSnapshot.deckSnapshots.length > 0;
     const waniKaniHasStats = waniKaniTrackSnapshot.uniqueWords > 0;
     const defaultReviewStatisticsSource: ReviewStatisticsSource =
@@ -1598,7 +1634,9 @@ function TrackSnapshot({
                                 <ProjectedRewatchControls
                                     rewatchSnapshots={trackSnapshot.rewatchSnapshots}
                                     selectedRewatch={selectedRewatchSnapshot.rewatch}
-                                    totalUnknownAnkiCards={trackSnapshot.totalUnknownAnkiCards}
+                                    unknownAnkiCardsByDeck={trackSnapshot.unknownAnkiCardsByDeck}
+                                    ankiAvailable={ankiAvailable}
+                                    waniKaniAvailable={waniKaniAvailable}
                                     projection={rewatchProjection}
                                     waniKaniApiToken={dictionaryWaniKaniApiToken}
                                     onSelectedRewatchChanged={(rewatch) =>

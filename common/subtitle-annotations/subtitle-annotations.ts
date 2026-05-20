@@ -5,6 +5,7 @@ import {
     DictionaryBuildAnkiCacheStateType,
     DictionaryBuildWaniKaniCacheState,
     DictionaryBuildWaniKaniCacheStateError,
+    DictionaryBuildWaniKaniCacheStateErrorCode,
     DictionaryBuildWaniKaniCacheStateType,
     Fetcher,
     RichSubtitleModel,
@@ -32,13 +33,7 @@ import {
     TokenStatus,
     TokenStyling,
 } from '@project/common/settings';
-import {
-    TokenStatusInfo,
-    DictionaryProvider,
-    LemmaResults,
-    TokenResults,
-    DictionaryRecordsResult,
-} from '@project/common/dictionary-db';
+import { TokenStatusInfo, DictionaryProvider, LemmaResults, TokenResults } from '@project/common/dictionary-db';
 import {
     DictionaryStatistics,
     DictionaryStatisticsAnkiDueCardsSnapshot,
@@ -52,10 +47,8 @@ import {
     HAS_LETTER_REGEX,
     inBatches,
     iterateOverStringInBlocks,
-    MS_PER_DAY,
     ONLY_ASCII_LETTERS_REGEX,
     areTokenizationsEqual,
-    utcStartOfToday,
     getTokenStatus,
     dedupeTokenStatusInfos,
     isKanaOnly,
@@ -71,7 +64,7 @@ const TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL = 1000;
 let tokenCacheRefreshInterval = TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL;
 const YOMITAN_RETRY_DELAY = 10000;
 const ANKI_REFRESH_INTERVAL = 10000; // We need to poll in-case the user mines to Anki outside of asbplayer (e.g directly from Yomitan), local requests so no rate concerns
-const WANIKANI_REFRESH_INTERVAL = 60000; // Only until the first successful refresh since users can't mine to it and it's an external server
+const WANIKANI_REFRESH_INTERVAL = 10000; // Only until the first successful refresh since users can't mine to it and it's an external server
 
 const ASB_TOKEN_CLASS = 'asb-token';
 const ASB_TOKEN_HIGHLIGHT_CLASS = 'asb-token-highlight';
@@ -100,8 +93,6 @@ interface TrackState {
     collectedExactForm: Map<string, TokenStatusResult>;
     collectedLemmaForm: Map<string, TokenStatusResult>;
     collectedAnyForm: Map<string, TokenStatusResult[]>;
-    tokenCardIds: Map<string, Map<number, boolean>>;
-    tokenAssignmentIds: Map<string, Set<number>>;
     tokenStates: Map<string, TokenState[]>;
     indexTokenOccurrences: Map<number, Map<string, number>>;
 }
@@ -299,18 +290,22 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
     private tokenToIndexesCache: Map<string, Set<number>>;
     private tokensForRefresh: Set<string>;
     private externalTokenReadings: Map<string, Map<number, TokenReading[]>>;
-    private ankiLastRefresh: number;
-    private ankiRefreshTrigger: boolean;
-    private ankiRefreshing: boolean;
-    private ankiRecentlyModifiedCardIds: Set<number>;
-    private ankiRecentlyModifiedFirstCheck: boolean;
-    private ankiStatisticsRefreshAll: boolean;
-    private ankiStatisticsRefreshNew: boolean;
-    private waniKaniRefreshing: boolean;
-    private waniKaniRefreshed: boolean;
-    private waniKaniStatisticsRefreshed: boolean;
-    private waniKaniStatisticsRefreshTrigger: boolean;
-    private waniKaniLastRefresh: number;
+    private ankiState: {
+        recentlyModifiedCardIds: Set<number>;
+        recentlyModifiedFirstCheck: boolean;
+        refreshing: boolean;
+        refreshed: boolean;
+        lastRefresh: number;
+        triggerRefresh: boolean;
+        statisticsRefreshed: boolean;
+    };
+    private waniKaniState: {
+        refreshing: boolean;
+        refreshed: boolean;
+        lastRefresh: number;
+        triggerRefresh: boolean;
+        statisticsRefreshed: boolean;
+    };
     private annotationsLastRefresh: number;
     private annotationsBuilding: boolean;
     private annotationsBuildingCurrentIndexes: Set<number>;
@@ -358,18 +353,22 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         this.tokenToIndexesCache = new Map();
         this.tokensForRefresh = new Set();
         this.externalTokenReadings = new Map();
-        this.ankiLastRefresh = Date.now();
-        this.ankiRefreshTrigger = false;
-        this.ankiRefreshing = false;
-        this.ankiRecentlyModifiedCardIds = new Set();
-        this.ankiRecentlyModifiedFirstCheck = true;
-        this.ankiStatisticsRefreshAll = false;
-        this.ankiStatisticsRefreshNew = false;
-        this.waniKaniRefreshing = false;
-        this.waniKaniRefreshed = false;
-        this.waniKaniStatisticsRefreshed = false;
-        this.waniKaniStatisticsRefreshTrigger = false;
-        this.waniKaniLastRefresh = Date.now();
+        this.ankiState = {
+            recentlyModifiedCardIds: new Set(),
+            recentlyModifiedFirstCheck: true,
+            refreshing: false,
+            refreshed: false,
+            lastRefresh: Date.now(),
+            triggerRefresh: false,
+            statisticsRefreshed: false,
+        };
+        this.waniKaniState = {
+            refreshing: false,
+            refreshed: false,
+            lastRefresh: Date.now(),
+            triggerRefresh: false,
+            statisticsRefreshed: false,
+        };
         this.annotationsLastRefresh = Date.now();
         this.annotationsBuilding = false;
         this.annotationsBuildingCurrentIndexes = new Set();
@@ -448,14 +447,16 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         this.statisticsBatchProcessedIndex = 0;
         this.statisticsProcessedSubtitleIndexesByTrack.clear();
         this.generateStatisticsRequested = false;
-        this.ankiRefreshTrigger = false;
-        this.ankiRecentlyModifiedCardIds.clear();
-        this.ankiRecentlyModifiedFirstCheck = true;
-        this.ankiStatisticsRefreshAll = false;
-        this.ankiStatisticsRefreshNew = false;
-        this.waniKaniRefreshed = false;
-        this.waniKaniStatisticsRefreshed = false;
-        this.waniKaniStatisticsRefreshTrigger = false;
+        this.ankiState.recentlyModifiedCardIds.clear();
+        this.ankiState.recentlyModifiedFirstCheck = true;
+        this.ankiState.refreshed = false;
+        this.ankiState.lastRefresh = Date.now();
+        this.ankiState.triggerRefresh = false;
+        this.ankiState.statisticsRefreshed = false;
+        this.waniKaniState.refreshed = false;
+        this.waniKaniState.lastRefresh = Date.now();
+        this.waniKaniState.triggerRefresh = false;
+        this.waniKaniState.statisticsRefreshed = false;
         this.annotationsLastRefresh = Date.now();
         this._subtitles.forEach(untokenize);
         this.buildLowerThreshold = 0;
@@ -511,6 +512,12 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         this.tokensWereModified(state.body?.modifiedTokens ?? []);
         if (state.type === DictionaryBuildAnkiCacheStateType.error) {
             const body = state.body as DictionaryBuildAnkiCacheStateError;
+            if (
+                body?.code === DictionaryBuildAnkiCacheStateErrorCode.noAnki ||
+                body?.code === DictionaryBuildAnkiCacheStateErrorCode.noYomitan
+            ) {
+                this.ankiState.statisticsRefreshed = false;
+            }
             if (body) {
                 console.error(
                     `Dictionary Anki cache build error (${body.code} - ${body.msg}): ${JSON.stringify(body.data ?? {})}`
@@ -519,27 +526,35 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 console.error(`Dictionary Anki cache build error: Unknown error`);
             }
             if (body?.code !== DictionaryBuildAnkiCacheStateErrorCode.concurrentBuild) {
-                this.ankiRecentlyModifiedCardIds.clear();
-                this.ankiRecentlyModifiedFirstCheck = false;
+                this.ankiState.recentlyModifiedCardIds.clear();
+                this.ankiState.recentlyModifiedFirstCheck = false;
             }
+        } else if (state.type === DictionaryBuildAnkiCacheStateType.stats) {
+            this.ankiState.statisticsRefreshed = false;
         }
     }
 
     buildWaniKaniCacheStateChange(state: DictionaryBuildWaniKaniCacheState) {
         this.tokensWereModified(state.body.modifiedTokens ?? []);
         if (state.type === DictionaryBuildWaniKaniCacheStateType.error) {
-            this.waniKaniRefreshed = false;
             const body = state.body as DictionaryBuildWaniKaniCacheStateError;
+            if (
+                body?.code === DictionaryBuildWaniKaniCacheStateErrorCode.invalidWaniKaniToken ||
+                body?.code === DictionaryBuildWaniKaniCacheStateErrorCode.noYomitan
+            ) {
+                this.waniKaniState.statisticsRefreshed = false;
+            }
             console.error(
                 `Dictionary WaniKani cache build error (${body.code} - ${body.msg}): ${JSON.stringify(body.data ?? {})}`
             );
         } else if (state.type === DictionaryBuildWaniKaniCacheStateType.stats) {
-            this.waniKaniRefreshed = true;
+            this.waniKaniState.statisticsRefreshed = false;
         }
     }
 
     ankiCardWasModified() {
-        this.ankiRefreshTrigger = true;
+        this.ankiState.triggerRefresh = true;
+        this.ankiState.statisticsRefreshed = false;
     }
 
     hoverOnly(track: number) {
@@ -569,36 +584,55 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         this.generateStatistics = true;
     }
 
+    private async _checkAnkiRecentlyModifiedCards(profile: string | undefined, fields: string[], decks: string[]) {
+        try {
+            if (!this.anki) throw new Error('Anki not initialized');
+            const cardIds = await this.anki.findRecentlyEditedOrReviewedCards(1, fields, decks); // Can't efficiently poll suspended status
+            if (
+                cardIds.length === this.ankiState.recentlyModifiedCardIds.size &&
+                cardIds.every((cardId) => this.ankiState.recentlyModifiedCardIds.has(cardId))
+            ) {
+                if (this.ankiState.recentlyModifiedFirstCheck) this.ankiState.recentlyModifiedFirstCheck = false;
+                return;
+            }
+            this.ankiState.recentlyModifiedCardIds = new Set(cardIds);
+            if (this.ankiState.recentlyModifiedFirstCheck) {
+                this.ankiState.recentlyModifiedFirstCheck = false;
+                return;
+            }
+            await this.dictionaryProvider.buildAnkiCache(profile, await this.settingsProvider.getAll());
+            this.ankiState.triggerRefresh = true;
+            this.ankiState.statisticsRefreshed = false;
+        } catch (e) {
+            console.error(`Error checking Anki recently modified cards:`, e);
+            this.anki = undefined;
+            this.ankiState.recentlyModifiedCardIds.clear();
+            this.ankiState.recentlyModifiedFirstCheck = false;
+        }
+    }
+
     private async _refreshAnki() {
         if (this.profile === null || !this.trackStates.length) return;
         const profile = this.profile;
 
-        if (this.ankiRefreshing) return;
+        if (this.ankiState.refreshing) return;
         try {
-            this.ankiRefreshing = true;
+            this.ankiState.refreshing = true;
             if (!this.anki) {
                 try {
                     const settings = await this.settingsProvider.getAll();
                     this.anki = new Anki(settings, this.fetcher);
                     const permission = (await this.anki.requestPermission()).permission;
                     if (permission !== 'granted') throw new Error(`permission ${permission}`);
-                    await this.dictionaryProvider.buildAnkiCache(profile, settings); // Keep cache updated without user action
-                    this.ankiStatisticsRefreshAll = true;
                 } catch (e) {
                     console.warn('Anki permission request failed:', e);
                     this.anki = undefined;
                 }
             }
 
-            const cardIdsMap = new Map<number, boolean>();
             const allFieldsSet = new Set<string>();
             for (const ts of this.trackStates) {
                 if (!dictionaryStatusCollectionEnabled(ts.dt)) continue;
-                for (const tokenCardIds of ts.tokenCardIds.values()) {
-                    for (const [cardId, queried] of tokenCardIds.entries()) {
-                        cardIdsMap.set(cardId, queried && cardIdsMap.get(cardId) !== false);
-                    }
-                }
                 for (const field of ts.dt.dictionaryAnkiWordFields.concat(ts.dt.dictionaryAnkiSentenceFields)) {
                     allFieldsSet.add(field);
                 }
@@ -615,62 +649,71 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             }
             const decks = Array.from(allDecksSet);
 
+            if (this.anki && !this.ankiState.refreshed) {
+                await this.dictionaryProvider.buildAnkiCache(profile, await this.settingsProvider.getAll()); // Keep cache updated without user action
+                this.ankiState.refreshed = true;
+            }
             await this._checkAnkiRecentlyModifiedCards(profile, fields, decks);
-            await this._refreshAnkiStatistics(profile, cardIdsMap, fields, decks);
+            await this._refreshAnkiStatistics(profile, fields, decks);
+        } catch (e) {
+            console.warn('Anki refresh failed:', e);
+            this.ankiState.refreshed = false;
         } finally {
-            this.ankiRefreshing = false;
+            this.ankiState.refreshing = false;
         }
     }
 
-    private async _refreshWaniKaniStatistics(profile: string | undefined): Promise<void> {
-        if (!this.generateStatistics || this.statisticsBatchProcessedIndex < this._subtitles.length) return;
+    private async _refreshAnkiStatistics(profile: string | undefined, fields: string[], decks: string[]) {
+        if (!this.generateStatistics) return;
+        if (this.ankiState.statisticsRefreshed) return;
 
-        const todayStart = utcStartOfToday();
-        const reviewWindowEnd = new Date(todayStart.getTime() + Math.max(...REVIEW_DUES) * MS_PER_DAY);
-        const waniKaniSnapshots: Record<number, DictionaryStatisticsWaniKaniSnapshot> = {};
-        this.waniKaniStatisticsRefreshed = true;
-        for (const ts of this.trackStates) {
-            if (!dictionaryStatusCollectionEnabled(ts.dt)) continue;
+        const startedAt = Date.now();
+        try {
+            if (!this.anki) throw new Error('Anki not initialized');
 
-            const assignmentIds = new Set<number>();
-            for (const tokenAssignmentIds of ts.tokenAssignmentIds.values()) {
-                for (const assignmentId of tokenAssignmentIds) assignmentIds.add(assignmentId);
-            }
-            if (!assignmentIds.size) {
-                waniKaniSnapshots[ts.track] = { available: true, reviewAssignments: {} };
-                continue;
-            }
-
-            const reviewAssignments: DictionaryStatisticsWaniKaniSnapshot['reviewAssignments'] = {};
-            try {
-                const assignments =
-                    (await this.dictionaryProvider.getRecords(profile, ts.track)).waniKaniAssignmentRecords?.[
-                        ts.track
-                    ] ?? {};
-                for (const assignment of Object.values(assignments)) {
-                    if (!assignmentIds.has(assignment.assignmentId)) continue;
-                    if (assignment.data.hidden || !assignment.data.available_at) continue;
-                    const availableAtTime = Date.parse(assignment.data.available_at);
-                    if (!Number.isFinite(availableAtTime) || availableAtTime >= reviewWindowEnd.getTime()) continue;
-                    reviewAssignments[assignment.assignmentId] = assignment;
+            const ankiCardRecords = (await this.dictionaryProvider.getRecords(profile, undefined)).ankiCardRecords;
+            const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
+            const cardsStatus: NonNullable<DictionaryStatisticsAnkiSnapshot['cardsStatus']> = {};
+            for (const cardRecords of Object.values(ankiCardRecords)) {
+                for (const cardRecord of Object.values(cardRecords)) {
+                    cardsInfo[cardRecord.cardId] = cardRecord.data;
+                    cardsStatus[cardRecord.cardId] = cardRecord.status;
                 }
-                waniKaniSnapshots[ts.track] = { available: true, reviewAssignments };
-            } catch (e) {
-                this.waniKaniStatisticsRefreshed = false;
-                console.error(`Error refreshing WaniKani for Track${ts.track + 1} statistics:`, e);
-                waniKaniSnapshots[ts.track] = { available: false, reviewAssignments: {} };
             }
+            const dueCards: DictionaryStatisticsAnkiDueCardsSnapshot = {};
+            for (const due of REVIEW_DUES) dueCards[due] = await this.anki.findCardsDueBy(due, fields, decks);
+            const totalCards = Object.keys(cardsStatus).length;
+            this.dictionaryStatistics.replaceAnkiSnapshot({
+                available: true,
+                progress: {
+                    current: totalCards,
+                    total: totalCards,
+                    startedAt,
+                },
+                cardsInfo,
+                cardsStatus,
+                dueCards,
+            });
+            this.ankiState.statisticsRefreshed = true;
+        } catch (e) {
+            console.error('Error refreshing Anki for statistics:', e);
+            this.anki = undefined;
+            this.dictionaryStatistics.replaceAnkiSnapshot({
+                available: false,
+                cardsInfo: {},
+                cardsStatus: {},
+                dueCards: {},
+            });
         }
-        this.dictionaryStatistics.replaceWaniKaniSnapshots(waniKaniSnapshots);
     }
 
     private async _refreshWaniKani() {
         if (this.profile === null || !this.trackStates.length) return;
         const profile = this.profile;
 
-        if (this.waniKaniRefreshing) return;
+        if (this.waniKaniState.refreshing) return;
         try {
-            this.waniKaniRefreshing = true;
+            this.waniKaniState.refreshing = true;
             if (
                 !this.trackStates.some(
                     (ts) => dictionaryStatusCollectionEnabled(ts.dt) && ts.dt.dictionaryWaniKaniApiToken.trim()
@@ -678,160 +721,42 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             ) {
                 return;
             }
-            if (!this.waniKaniRefreshed) await this.dictionaryProvider.buildWaniKaniCache(profile); // Don't need to poll on tokensModified since users can't mine to it unlike Anki
-            if (!this.waniKaniStatisticsRefreshed) await this._refreshWaniKaniStatistics(profile);
+            if (!this.waniKaniState.refreshed) {
+                await this.dictionaryProvider.buildWaniKaniCache(profile); // Don't need to poll on tokensModified since users can't mine to it unlike Anki
+                this.waniKaniState.refreshed = true;
+            }
+            await this._refreshWaniKaniStatistics(profile);
         } catch (e) {
-            this.waniKaniRefreshed = false;
-            this.waniKaniStatisticsRefreshed = false;
+            this.waniKaniState.refreshed = false;
             console.warn('WaniKani refresh failed:', e);
         } finally {
-            this.waniKaniRefreshing = false;
+            this.waniKaniState.refreshing = false;
         }
     }
 
-    private async _checkAnkiRecentlyModifiedCards(profile: string | undefined, fields: string[], decks: string[]) {
-        try {
-            if (!this.anki) throw new Error('Anki not initialized');
-            const cardIds = await this.anki.findRecentlyEditedOrReviewedCards(1, fields, decks); // Can't efficiently poll suspended status
-            if (
-                cardIds.length === this.ankiRecentlyModifiedCardIds.size &&
-                cardIds.every((cardId) => this.ankiRecentlyModifiedCardIds.has(cardId))
-            ) {
-                if (this.ankiRecentlyModifiedFirstCheck) this.ankiRecentlyModifiedFirstCheck = false;
-                return;
-            }
-            this.ankiRecentlyModifiedCardIds = new Set(cardIds);
-            if (this.ankiRecentlyModifiedFirstCheck) {
-                this.ankiRecentlyModifiedFirstCheck = false;
-                return;
-            }
-            await this.dictionaryProvider.buildAnkiCache(profile, await this.settingsProvider.getAll());
-            this.ankiStatisticsRefreshAll = true;
-        } catch (e) {
-            console.error(`Error checking Anki recently modified cards:`, e);
-            this.anki = undefined;
-            this.ankiRecentlyModifiedCardIds.clear();
-            this.ankiRecentlyModifiedFirstCheck = false;
-        }
-    }
-
-    private async _unknownAnkiCardsSnapshot(records: DictionaryRecordsResult) {
-        const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
-        const unknownCards: NonNullable<DictionaryStatisticsAnkiSnapshot['unknownCards']> = {};
-        for (const [trackString, cardRecords] of Object.entries(records.ankiCardRecords)) {
-            const track = Number(trackString);
-            for (const cardRecord of Object.values(cardRecords)) {
-                if (cardRecord.status !== TokenStatus.UNKNOWN) continue;
-                let cardIds = unknownCards[track];
-                if (cardIds) cardIds.push(cardRecord.cardId);
-                else unknownCards[track] = [cardRecord.cardId];
-                cardsInfo[cardRecord.cardId] = cardRecord.data;
-            }
-        }
-        return { cardsInfo, unknownCards };
-    }
-
-    private async _refreshAnkiStatistics(
-        profile: string | undefined,
-        cardIdsMap: Map<number, boolean>,
-        fields: string[],
-        decks: string[]
-    ) {
-        if (this.statisticsBatchProcessedIndex < this._subtitles.length) return; // Will need to re-query anki as tokens are processed.
-        let refreshNewOnly = true;
-        if (this.ankiStatisticsRefreshAll) {
-            this.ankiStatisticsRefreshAll = false;
-            this.ankiStatisticsRefreshNew = false;
-            refreshNewOnly = false;
-        } else if (this.ankiStatisticsRefreshNew) {
-            this.ankiStatisticsRefreshNew = false;
-        }
+    private async _refreshWaniKaniStatistics(profile: string | undefined): Promise<void> {
         if (!this.generateStatistics) return;
+        if (this.waniKaniState.statisticsRefreshed) return;
 
-        const getCardsInfo = async (cardIds: Set<number>, records: DictionaryRecordsResult) => {
-            const cardsInfo: DictionaryStatisticsAnkiSnapshot['cardsInfo'] = {};
-            for (const cardRecords of Object.values(records.ankiCardRecords)) {
-                for (const cardRecord of Object.values(cardRecords)) {
-                    if (!cardIds.has(cardRecord.cardId)) continue;
-                    cardsInfo[cardRecord.cardId] = cardRecord.data;
-                }
-            }
-            for (const cardId of cardIds) cardIdsMap.set(cardId, true);
-            for (const ts of this.trackStates) {
-                for (const tokenCardIds of ts.tokenCardIds.values()) {
-                    for (const cardId of cardIds) {
-                        if (tokenCardIds.has(cardId)) tokenCardIds.set(cardId, true);
-                    }
-                }
-            }
-            return cardsInfo;
-        };
+        const waniKaniSnapshots: Record<number, DictionaryStatisticsWaniKaniSnapshot> = {};
+        for (const ts of this.trackStates) {
+            if (!dictionaryStatusCollectionEnabled(ts.dt)) continue;
 
-        const startedAt = Date.now();
-        try {
-            if (!this.anki) throw new Error('Anki not initialized');
-
-            const cardIds = new Set<number>();
-            if (refreshNewOnly) {
-                for (const [cardId, queried] of cardIdsMap) {
-                    if (!queried) cardIds.add(cardId);
-                }
-                if (!cardIds.size) return;
-
-                const records = await this.dictionaryProvider.getRecords(profile, undefined);
-                const cardsInfo = await getCardsInfo(cardIds, records);
-                this.dictionaryStatistics.updateAnkiSnapshot({
+            try {
+                const records = await this.dictionaryProvider.getRecords(profile, ts.track);
+                waniKaniSnapshots[ts.track] = {
                     available: true,
-                    progress: {
-                        current: Array.from(cardIdsMap.values()).filter((queried) => queried).length,
-                        total: cardIdsMap.size,
-                        startedAt,
-                    },
-                    cardsInfo,
-                });
-            } else {
-                const records = await this.dictionaryProvider.getRecords(profile, undefined);
-                for (const cardId of cardIdsMap.keys()) cardIds.add(cardId);
-                const unknownAnkiCardsSnapshot = await this._unknownAnkiCardsSnapshot(records);
-                if (!cardIds.size) {
-                    this.dictionaryStatistics.replaceAnkiSnapshot({
-                        available: true,
-                        cardsInfo: unknownAnkiCardsSnapshot.cardsInfo,
-                        dueCards: {},
-                        unknownCards: unknownAnkiCardsSnapshot.unknownCards,
-                    });
-                    return;
-                }
-
-                const cardsInfo = await getCardsInfo(cardIds, records);
-                const dueCards: DictionaryStatisticsAnkiDueCardsSnapshot = {};
-                for (const due of REVIEW_DUES) dueCards[due] = await this.anki.findCardsDueBy(due, fields, decks);
-                this.dictionaryStatistics.replaceAnkiSnapshot({
-                    available: true,
-                    progress: {
-                        current: Array.from(cardIdsMap.values()).filter((queried) => queried).length,
-                        total: cardIdsMap.size,
-                        startedAt,
-                    },
-                    cardsInfo: { ...unknownAnkiCardsSnapshot.cardsInfo, ...cardsInfo },
-                    dueCards,
-                    unknownCards: unknownAnkiCardsSnapshot.unknownCards,
-                });
-            }
-        } catch (e) {
-            console.error('Error refreshing Anki for statistics:', e);
-            this.anki = undefined;
-            this.dictionaryStatistics.replaceAnkiSnapshot({
-                available: false,
-                cardsInfo: {},
-                dueCards: {},
-            });
-            for (const ts of this.trackStates) {
-                for (const tokenCardIds of ts.tokenCardIds.values()) {
-                    for (const cardId of tokenCardIds.keys()) tokenCardIds.set(cardId, false);
-                }
+                    assignments: Object.values(records.waniKaniAssignmentRecords?.[ts.track] ?? {}),
+                    subjects: records.waniKaniSubjectRecords?.[ts.track] ?? {},
+                };
+            } catch (e) {
+                console.error(`Error refreshing WaniKani for Track${ts.track + 1} statistics:`, e);
+                waniKaniSnapshots[ts.track] = { available: false, assignments: [], subjects: {} };
             }
         }
+        this.waniKaniState.statisticsRefreshed = true;
+        if (!Object.keys(waniKaniSnapshots).length) return;
+        this.dictionaryStatistics.replaceWaniKaniSnapshots(waniKaniSnapshots);
     }
 
     private _shouldAutoGenerateStatistics(dictionaryTracks: DictionaryTrack[]) {
@@ -922,21 +847,21 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 this.annotationsLastRefresh = Date.now();
             }
             if (
-                (this.ankiRefreshTrigger || Date.now() - this.ankiLastRefresh >= ANKI_REFRESH_INTERVAL) &&
-                !this.ankiRefreshing
+                (this.ankiState.triggerRefresh || Date.now() - this.ankiState.lastRefresh >= ANKI_REFRESH_INTERVAL) &&
+                !this.ankiState.refreshing
             ) {
                 void this._refreshAnki();
-                this.ankiLastRefresh = Date.now();
-                this.ankiRefreshTrigger = false;
+                this.ankiState.lastRefresh = Date.now();
+                this.ankiState.triggerRefresh = false;
             }
             if (
-                (this.waniKaniStatisticsRefreshTrigger ||
-                    Date.now() - this.waniKaniLastRefresh >= WANIKANI_REFRESH_INTERVAL) &&
-                !this.waniKaniRefreshing
+                (this.waniKaniState.triggerRefresh ||
+                    Date.now() - this.waniKaniState.lastRefresh >= WANIKANI_REFRESH_INTERVAL) &&
+                !this.waniKaniState.refreshing
             ) {
                 void this._refreshWaniKani();
-                this.waniKaniLastRefresh = Date.now();
-                this.waniKaniStatisticsRefreshTrigger = false;
+                this.waniKaniState.lastRefresh = Date.now();
+                this.waniKaniState.triggerRefresh = false;
             }
         }, 100);
     }
@@ -975,10 +900,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             this.annotationsBuilding = true;
             if (this.profile === null) {
                 const profile = (await this.settingsProvider.activeProfile())?.name;
-                if (this.profile === null) {
-                    this.profile = profile;
-                    this.ankiRefreshTrigger = true;
-                }
+                if (this.profile === null) this.profile = profile;
             }
             const profile = this.profile;
             if (!this.trackStates.length) {
@@ -990,8 +912,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     collectedExactForm: new Map(),
                     collectedLemmaForm: new Map(),
                     collectedAnyForm: new Map(),
-                    tokenCardIds: new Map(),
-                    tokenAssignmentIds: new Map(),
                     tokenStates: new Map(),
                     indexTokenOccurrences: new Map(),
                 }));
@@ -1042,8 +962,8 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                         this.statisticsProcessedSubtitleIndexesByTrack.set(ts.track, new Set());
                     }
                     void this.dictionaryStatistics.refreshDictionaryTokens(profile); // Init with dictionary token state
-                    this.ankiRefreshTrigger = true;
-                    this.ankiStatisticsRefreshAll = true;
+                    this.ankiState.triggerRefresh = true;
+                    this.waniKaniState.triggerRefresh = true;
                     tokenCacheRefreshInterval = TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL;
                 }
             }
@@ -1204,9 +1124,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     this.statisticsBatchProcessedIndex = annotationsEndIndex;
                     if (annotationsEndIndex >= this.subtitles.length) {
                         this.generateStatisticsRequested = false;
-                        this.ankiRefreshTrigger = true;
-                        this.waniKaniStatisticsRefreshTrigger = true;
-                        this.waniKaniStatisticsRefreshed = false;
                     }
                 }
             }
@@ -1220,9 +1137,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 tokensRefreshed.every((token) => this.tokensForRefresh.has(token))
             ) {
                 this.tokensForRefresh.clear();
-                this.ankiStatisticsRefreshAll = true;
-                this.waniKaniStatisticsRefreshTrigger = true;
-                this.waniKaniStatisticsRefreshed = false;
             }
             this.shouldCancelBuild = false;
             this.annotationsBuilding = false;
@@ -1282,8 +1196,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     ts.collectedExactForm.delete(token);
                     ts.collectedLemmaForm.delete(token);
                     ts.collectedAnyForm.delete(token);
-                    ts.tokenCardIds.delete(token);
-                    ts.tokenAssignmentIds.delete(token);
                     ts.tokenStates.delete(token);
                 }
 
@@ -1384,13 +1296,9 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                         }
                     }
                 }
-                if (forExactFormQuery.size || forLemmaFormQuery.size || forAnyFormQuery.size) {
-                    this.ankiStatisticsRefreshNew = true;
-                }
             } catch (e) {
                 console.error(`Error building token and lemma map for track ${track}:`, e);
                 resetYomitan(ts);
-                this.ankiStatisticsRefreshNew = true; // In case of partial updates
             }
         }
     }
@@ -1617,36 +1525,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         }
     }
 
-    private _recordTokenStatusIdentifiers(
-        token: string,
-        ts: TrackState,
-        tokenStatusResult: ResolvedTokenStatusResult
-    ): void {
-        const cardIds = tokenStatusResult.externalCandidateStatuses?.flatMap((status) =>
-            status.cardId === undefined ? [] : [status.cardId]
-        );
-        if (cardIds?.length) {
-            let tokenCardIds = ts.tokenCardIds.get(token);
-            if (!tokenCardIds) {
-                tokenCardIds = new Map();
-                ts.tokenCardIds.set(token, tokenCardIds);
-            }
-            for (const cardId of cardIds) tokenCardIds.set(cardId, false);
-        }
-
-        const assignmentIds = tokenStatusResult.externalCandidateStatuses?.flatMap((status) =>
-            status.waniKani?.assignmentId === undefined ? [] : [status.waniKani.assignmentId]
-        );
-        if (assignmentIds?.length) {
-            let tokenAssignmentIds = ts.tokenAssignmentIds.get(token);
-            if (!tokenAssignmentIds) {
-                tokenAssignmentIds = new Set();
-                ts.tokenAssignmentIds.set(token, tokenAssignmentIds);
-            }
-            for (const assignmentId of assignmentIds) tokenAssignmentIds.add(assignmentId);
-        }
-    }
-
     private async _tokenStatus(trimmedToken: string, ts: TrackState): Promise<ResolvedTokenStatusResult | null> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot calculate token status');
         let tokenStatusResult: ResolvedTokenStatusResult | null;
@@ -1670,7 +1548,6 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             default:
                 throw new Error(`Unknown strategy priority: ${ts.dt.dictionaryTokenMatchStrategyPriority}`);
         }
-        if (tokenStatusResult) this._recordTokenStatusIdentifiers(trimmedToken, ts, tokenStatusResult);
         return tokenStatusResult;
     }
 
