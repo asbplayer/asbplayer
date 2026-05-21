@@ -314,6 +314,10 @@ async function _getAnkiCardsByNoteIdBulk(
         });
 }
 
+function isAnkiSource(source: DictionaryTokenSource): boolean {
+    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.ANKI_SENTENCE;
+}
+
 /**
  * There are five scenarios where tokens/cards need to be deleted:
  * 1. The card was removed from Anki (handled by _syncTrackStatesWithAnki())
@@ -341,7 +345,7 @@ async function _deleteCardBulk(
                     .where('cardIds')
                     .anyOf(orphanedCardIds)
                     .distinct()
-                    .filter((r) => r.track === track && r.profile === profile)
+                    .filter((r) => r.track === track && r.profile === profile && isAnkiSource(r.source))
                     .modify((record, ref) => {
                         const remainingCardIds = record.cardIds.filter((id) => !cardIdsSet.has(id));
                         if (remainingCardIds.length === record.cardIds.length) return;
@@ -949,7 +953,7 @@ async function _saveTokensForDB(
             .where('cardIds')
             .anyOf(Array.from(modifiedCardsBatch.keys()))
             .distinct()
-            .filter((r) => trackStates.has(r.track) && r.profile === profile)
+            .filter((r) => trackStates.has(r.track) && r.profile === profile && isAnkiSource(r.source))
             .modify((record, ref) => {
                 // We want tokens that were not updated but refers to updated cards (e.g. field value changed, different tokens)
                 if (partialTokenRecordsByTrack.get(record.track)!.get(record.source)!.has(record.token)) return;

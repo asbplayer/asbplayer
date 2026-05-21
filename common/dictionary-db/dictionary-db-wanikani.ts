@@ -14,7 +14,6 @@ import {
     WaniKani,
     WaniKaniApiError,
     WaniKaniAssignment,
-    WaniKaniReset,
     WaniKaniSpacedRepetitionSystem,
     WaniKaniSubject,
 } from '@project/common/wanikani';
@@ -46,6 +45,7 @@ import {
  * If adding/removing fields here, add/remove the UI helperText in the settings tab.
  */
 interface WaniKaniCacheSettingsDependencies {
+    version?: number; // Bump to force a cache rebuild when needed
     dictionaryYomitanUrl: string;
     dictionaryYomitanParser: string;
     dictionaryYomitanScanLength: number;
@@ -156,7 +156,7 @@ export async function buildWaniKaniCachePipeline(
                     key,
                     changes: { settings: null, dataUpdatedAt: {}, spacedRepetitionSystems: [] },
                 });
-                continue;
+                continue; // Explicitly clear cache for no WaniKani token
             }
 
             const yomitan = new Yomitan(dt);
@@ -176,16 +176,16 @@ export async function buildWaniKaniCachePipeline(
                 return;
             }
 
-            const waniKani = new WaniKani(currSettings.dictionaryWaniKaniApiToken);
             try {
                 const currSettingsStr = JSON.stringify(currSettings);
                 const settingsChanged = currSettingsStr !== prevWaniKaniMeta.settings;
                 let dataUpdatedAt: WaniKaniDataUpdatedAt = settingsChanged ? {} : { ...prevWaniKaniMeta.dataUpdatedAt };
                 let clearTokens = settingsChanged;
                 let clearResources = settingsChanged;
+                const waniKani = new WaniKani(currSettings.dictionaryWaniKaniApiToken); // We only perform work based on changes since the last build using updateAfter
 
-                const resetResponse = await waniKani.resets({ updatedAfter: dataUpdatedAt.resets });
-                if (_hasConfirmedWaniKaniReset(resetResponse.data)) {
+                const resetResponse = await waniKani.resets({ updatedAfter: dataUpdatedAt.resets }); // Resets clear the cache like settings changes regardless if they were confirmed
+                if (resetResponse.totalCount) {
                     dataUpdatedAt = {
                         ...dataUpdatedAt,
                         assignments: undefined,
@@ -214,15 +214,23 @@ export async function buildWaniKaniCachePipeline(
                         spacedRepetitionSystemsResponse.dataUpdatedAt ?? dataUpdatedAt.spacedRepetitionSystems,
                 };
 
-                const existingSubjectIds = clearResources
-                    ? new Set<number>()
-                    : await _getWaniKaniSubjectIdsForTrack(db, profile, track);
-                const [hasAssignmentCache, hasSubjectCache] = clearResources
-                    ? [false, false]
-                    : await Promise.all([
-                          db.waniKaniAssignments.where('[profile+track]').equals([profile, track]).count(),
-                          db.waniKaniSubjects.where('[profile+track]').equals([profile, track]).count(),
-                      ]).then(([assignmentCount, subjectCount]) => [assignmentCount > 0, subjectCount > 0]);
+                const { existingSubjectIds, hasAssignmentCache, hasSubjectCache } = clearResources
+                    ? { existingSubjectIds: new Set<number>(), hasAssignmentCache: false, hasSubjectCache: false }
+                    : await db
+                          .transaction('r', db.waniKaniSubjects, db.waniKaniAssignments, () =>
+                              Promise.all([
+                                  db.waniKaniSubjects.where('[profile+track]').equals([profile, track]).toArray(),
+                                  db.waniKaniAssignments.where('[profile+track]').equals([profile, track]).toArray(),
+                              ])
+                          )
+                          .then(([subjects, assignments]) => ({
+                              existingSubjectIds: new Set([
+                                  ...subjects.map((subject) => subject.subjectId),
+                                  ...assignments.map((a) => a.subjectId),
+                              ]),
+                              hasAssignmentCache: assignments.length > 0,
+                              hasSubjectCache: subjects.length > 0,
+                          }));
 
                 const assignmentsResponse = await waniKani.assignments({
                     subjectTypes: ['vocabulary', 'kana_vocabulary'],
@@ -240,10 +248,7 @@ export async function buildWaniKaniCachePipeline(
                 const affectedSubjectIds =
                     clearTokens || spacedRepetitionSystemsChanged
                         ? new Set([...existingSubjectIds, ...responseSubjectIds])
-                        : new Set([
-                              ...assignmentsResponse.data.map((assignment) => assignment.data.subject_id),
-                              ...subjectsResponse.data.map((subject) => subject.id),
-                          ]);
+                        : responseSubjectIds;
                 dataUpdatedAt = {
                     ...dataUpdatedAt,
                     assignments: assignmentsResponse.dataUpdatedAt ?? dataUpdatedAt.assignments,
@@ -299,7 +304,7 @@ export async function buildWaniKaniCachePipeline(
         for (const track of tracksClearedWithoutBuild) {
             if (!trackStates.has(track)) trackStats.push({ track, isTokensCleared: true });
         }
-        _sortWaniKaniTrackStats(trackStats);
+        trackStats.sort((lhs, rhs) => lhs.track - rhs.track);
 
         if (trackStates.size || tracksClearedWithoutBuild.size || tokenlessMetaUpdates.length) {
             const tracksWithTokensToClear = new Set([
@@ -421,18 +426,6 @@ async function _deleteWaniKaniResourcesForTracks(
     await Promise.all([db.waniKaniSubjects.bulkDelete(subjectKeys), db.waniKaniAssignments.bulkDelete(assignmentKeys)]);
 }
 
-async function _getWaniKaniSubjectIdsForTrack(
-    db: _DictionaryDatabase,
-    profile: string,
-    track: number
-): Promise<Set<number>> {
-    const [subjects, assignments] = await Promise.all([
-        db.waniKaniSubjects.where('[profile+track]').equals([profile, track]).toArray(),
-        db.waniKaniAssignments.where('[profile+track]').equals([profile, track]).toArray(),
-    ]);
-    return new Set([...subjects.map((subject) => subject.subjectId), ...assignments.map((a) => a.subjectId)]);
-}
-
 function _mergeWaniKaniSpaceRepetitionSystems(
     existing: WaniKaniSpacedRepetitionSystem[],
     updated: WaniKaniSpacedRepetitionSystem[]
@@ -440,10 +433,6 @@ function _mergeWaniKaniSpaceRepetitionSystems(
     const systemsById = new Map(existing.map((system) => [system.id, system]));
     for (const system of updated) systemsById.set(system.id, system);
     return Array.from(systemsById.values()).sort((lhs, rhs) => lhs.id - rhs.id);
-}
-
-function _hasConfirmedWaniKaniReset(resets: WaniKaniReset[]): boolean {
-    return resets.some((reset) => reset.data.confirmed_at !== null);
 }
 
 function _waniKaniAssignmentRecord(
@@ -480,10 +469,6 @@ function _waniKaniSubjectRecord(
             spaced_repetition_system_id: subject.data.spaced_repetition_system_id,
         },
     };
-}
-
-function _sortWaniKaniTrackStats(trackStats: WaniKaniTrackStats[]): void {
-    trackStats.sort((lhs, rhs) => lhs.track - rhs.track);
 }
 
 function _publishWaniKaniTrackStats(
@@ -568,8 +553,7 @@ async function _processWaniKaniTracks(
                 errorTracks = [track];
                 throw e;
             }
-            const stats = trackStats.find((stats) => stats.track === track);
-            if (stats) stats.numImportedTokens = importedTokens.size;
+            trackStats.find((stats) => stats.track === track)!.numImportedTokens = importedTokens.size;
         }
 
         await _saveWaniKaniTrackMetadataForDB(db, profile, buildId, activeTracks, trackStates);
@@ -601,6 +585,7 @@ async function _buildWaniKaniTokensForTrack(
     const affectedSubjectIds = Array.from(ts.affectedSubjectIds);
     const importedTokens = new Set<string>();
     if (!affectedSubjectIds.length) return importedTokens;
+    const waniKaniTokenStatus = null; // Calculate when getting due to certain settings
 
     const subjects = await db.waniKaniSubjects
         .where('[subjectId+track+profile]')
@@ -628,29 +613,27 @@ async function _buildWaniKaniTokensForTrack(
             for (const subjectId of batch) {
                 const subject = subjectById.get(subjectId);
                 const characters = subject?.data.characters?.trim();
-                if (subject?.data.hidden_at || !characters || !HAS_LETTER_REGEX.test(characters)) continue;
-
+                if (subject?.data.hidden_at || !characters) continue;
                 subjectsToTokenize.push({ subjectId, characters });
             }
 
             if (subjectsToTokenize.length) {
                 await ts.yomitan.tokenizeBulk(subjectsToTokenize.map((subject) => subject.characters));
-            }
-            for (const { subjectId, characters } of subjectsToTokenize) {
-                const tokens = new Set<string>();
-                for (const tokenParts of await ts.yomitan.tokenize(characters)) {
-                    const token = tokenParts
-                        .map((part) => part.text)
-                        .join('')
-                        .trim();
-                    if (!token || !HAS_LETTER_REGEX.test(token)) continue;
-                    tokens.add(token);
-                }
-
-                for (const token of tokens) {
-                    const subjectIds = newSubjectIdsByToken.get(token);
-                    if (subjectIds) subjectIds.add(subjectId);
-                    else newSubjectIdsByToken.set(token, new Set([subjectId]));
+                for (const { subjectId, characters } of subjectsToTokenize) {
+                    const tokens = new Set<string>();
+                    for (const tokenParts of await ts.yomitan.tokenize(characters)) {
+                        const token = tokenParts
+                            .map((part) => part.text)
+                            .join('')
+                            .trim();
+                        if (!HAS_LETTER_REGEX.test(token)) continue;
+                        tokens.add(token);
+                    }
+                    for (const token of tokens) {
+                        const subjectIds = newSubjectIdsByToken.get(token);
+                        if (subjectIds) subjectIds.add(subjectId);
+                        else newSubjectIdsByToken.set(token, new Set([subjectId]));
+                    }
                 }
             }
 
@@ -668,20 +651,17 @@ async function _buildWaniKaniTokensForTrack(
             const records: DictionaryTokenRecord[] = [];
             for (const token of affectedTokens) {
                 const existingRecord = existingRecordByToken.get(token);
-                const subjectIds = new Set(
-                    existingRecord?.cardIds.filter((subjectId) => !batchSubjectIds.has(subjectId)) ?? []
-                );
+                const subjectIds = new Set(existingRecord?.cardIds.filter((id) => !batchSubjectIds.has(id)) ?? []);
                 for (const subjectId of newSubjectIdsByToken.get(token) ?? []) subjectIds.add(subjectId);
                 if (!subjectIds.size) {
                     importedTokens.delete(token);
                     continue;
                 }
 
-                const lemmas =
-                    (await ts.yomitan.lemmatize(token))?.filter((lemma) => HAS_LETTER_REGEX.test(lemma)) ?? [];
+                const lemmas = (await ts.yomitan.lemmatize(token)) ?? [];
                 if (!lemmas.length) {
                     importedTokens.delete(token);
-                    continue;
+                    continue; // Not a valid dictionary entry
                 }
 
                 importedTokens.add(token);
@@ -690,12 +670,13 @@ async function _buildWaniKaniTokensForTrack(
                     track,
                     source: DictionaryTokenSource.WANIKANI,
                     token,
-                    status: null,
+                    status: waniKaniTokenStatus,
                     lemmas,
                     states: existingRecord?.states ?? [],
                     cardIds: Array.from(subjectIds).sort((lhs, rhs) => lhs - rhs),
                 });
             }
+            ts.yomitan.resetCache();
 
             const batchModifiedTokens = new Set<string>();
             if (existingRecords.length || records.length) {
@@ -722,7 +703,6 @@ async function _buildWaniKaniTokensForTrack(
                 Array.from(batchModifiedTokens),
                 statusUpdates
             );
-            ts.yomitan.resetCache();
         },
         { batchSize: 100 }
     );
@@ -732,8 +712,8 @@ async function _buildWaniKaniTokensForTrack(
 
 /**
  * There are five scenarios where WaniKani tokens need to be deleted:
- * 1. The WaniKani-dependent settings changed (handled by clearTokens)
- * 2. A confirmed WaniKani reset was detected (handled by clearTokens/clearResources)
+ * 1. The WaniKani-dependent settings changed (handled by clearTokens/clearResources)
+ * 2. A WaniKani reset was detected (handled by clearTokens/clearResources)
  * 3. An assignment was hidden or moved to a token-ineligible state (handled by affectedSubjectIds)
  * 4. A subject was hidden or its characters no longer tokenize the same way (handled by affectedSubjectIds)
  * 5. Based on track settings such as no WaniKani token (handled by tracksClearedWithoutBuild)
