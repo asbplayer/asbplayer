@@ -7,6 +7,7 @@ import IconButton from '@mui/material/IconButton';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
+import DownloadIcon from '@mui/icons-material/Download';
 import { AudioClip } from '../audio-clip';
 import { useTranslation } from 'react-i18next';
 import Badge from '@mui/material/Badge';
@@ -69,6 +70,20 @@ export default function AudioField({
 
     audioActionElement = (
         <>
+            <Tooltip title={t('action.downloadAudio')!}>
+                <span>
+                    <IconButton
+                        disabled={audioClip?.error !== undefined}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            audioClip.download();
+                        }}
+                        edge="end"
+                    >
+                        <DownloadIcon />
+                    </IconButton>
+                </span>
+            </Tooltip>
             <IconButton disabled={audioClip?.error !== undefined} onClick={() => {}} edge="end">
                 {playing && <PauseIcon />}
                 {!playing && <PlayArrowIcon />}

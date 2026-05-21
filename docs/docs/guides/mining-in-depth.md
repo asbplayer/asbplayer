@@ -38,6 +38,14 @@ A **slider** at the bottom of the dialog can be used to change the selected time
 - For local files, the audio clip will also be automatically updated.
 - For streaming video, the audio clip can be re-recorded with the selected time range.
 
+### Audio field
+
+The **Audio Field** displays the recorded audio clip and provides three action buttons:
+
+- **Play/Pause** — preview the audio clip directly in the dialog.
+- **Re-record** — re-record the audio using the currently selected time range (streaming video only; shown when a re-record callback is available).
+- **Download** — download the audio clip as a file to your device.
+
 ### Text fields
 
 Any of the text fields - sentence, definition, word, custom fields, source, URL, tags - can be edited. Typically, a separate dictionary app is used to fill out the definition field.
