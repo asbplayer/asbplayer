@@ -64,6 +64,7 @@ const TOKEN_CACHE_BATCH_SIZE = 1; // Processing more than 1 at a time is slower
 const TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL = 10000;
 const TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL = 1000;
 let tokenCacheRefreshInterval = TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL;
+const YOMITAN_RETRY_DELAY = 10000;
 const ANKI_REFRESH_INTERVAL = 10000; // We need to poll in-case the user mines to Anki outside of asbplayer (e.g directly from Yomitan), local requests so no rate concerns
 const WANIKANI_REFRESH_INTERVAL = 60000; // Only until the first successful refresh since users can't mine to it and it's an external server
 
@@ -90,6 +91,7 @@ interface TrackState {
     track: number;
     dt: DictionaryTrack;
     yt: Yomitan | undefined;
+    ytLastResetAt: number;
     collectedExactForm: Map<string, TokenStatusResult>;
     collectedLemmaForm: Map<string, TokenStatusResult>;
     collectedAnyForm: Map<string, TokenStatusResult[]>;
@@ -214,6 +216,7 @@ function originalTokenization(tokenization: Tokenization | undefined): Tokenizat
 }
 
 function resetYomitan(ts: TrackState) {
+    ts.ytLastResetAt = Date.now();
     if (!ts.yt) return;
     ts.yt.resetCache();
     ts.yt = undefined;
@@ -888,6 +891,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         if (!this.subtitles.length) return true;
         if (this.annotationsBuilding) return false;
         let tokensRefreshed: string[] = [];
+        let skipTracks: number[] = [];
         let buildWasCancelled = false;
         let updateThresholds = false;
         let statisticsBatching = false;
@@ -907,6 +911,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     track,
                     dt,
                     yt: undefined,
+                    ytLastResetAt: 0,
                     collectedExactForm: new Map(),
                     collectedLemmaForm: new Map(),
                     collectedAnyForm: new Map(),
@@ -924,6 +929,10 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
             for (const ts of this.trackStates) {
                 if (!dictionaryTrackEnabled(ts.dt) || ts.yt) continue;
+                if (Date.now() - ts.ytLastResetAt < YOMITAN_RETRY_DELAY) {
+                    skipTracks.push(ts.track);
+                    continue;
+                }
                 try {
                     const yt = new Yomitan(ts.dt, this.fetcher, {
                         lemmaTokenFallback: true,
@@ -935,6 +944,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     ts.yt = yt;
                 } catch (e) {
                     console.error(`YomitanTrack${ts.track + 1} version request failed:`, e);
+                    resetYomitan(ts);
                 }
             }
 
@@ -962,8 +972,12 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     tokenCacheRefreshInterval = TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL;
                 }
             }
-            const subtitles = this.subtitles.slice(annotationsStartIndex, annotationsEndIndex);
-            if (!subtitles.length) return true;
+            const subtitles = !skipTracks.length
+                ? this.subtitles.slice(annotationsStartIndex, annotationsEndIndex)
+                : this.subtitles
+                      .slice(annotationsStartIndex, annotationsEndIndex)
+                      .filter((s) => !skipTracks.includes(s.track));
+            if (!subtitles.length) return !skipTracks.length;
 
             if (this.refreshCache.size || this.tokensForRefresh.size) {
                 const existingIndexes = new Set(subtitles.map((s) => s.index));
@@ -1097,7 +1111,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 void this.dictionaryStatistics.refreshDictionaryTokens(profile);
             }
 
-            if (this.shouldCancelBuild) {
+            if (this.shouldCancelBuild || skipTracks.length) {
                 buildWasCancelled = true;
                 tokensRefreshed = [];
                 updateThresholds = false;
@@ -1108,7 +1122,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 updateThresholds = false;
                 for (const track of this.tokenRequestFailedForTracks) resetYomitan(this.trackStates[track]);
                 this.tokenRequestFailedForTracks.clear();
-            } else if (!this.shouldCancelBuild) {
+            } else if (!this.shouldCancelBuild && !skipTracks.length) {
                 if (builtNewTokenization) this._inferFrequencyModesFromTokenOccurrences();
                 this.initialized = true;
                 if (statisticsBatching) {

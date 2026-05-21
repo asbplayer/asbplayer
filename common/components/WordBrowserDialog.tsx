@@ -754,7 +754,7 @@ const BulkUpdateDialog: React.FC<{
                             count: selectedRows.length,
                         })}
                     </Typography>
-                    {bulkStatus === TokenStatus.UNCOLLECTED && (
+                    {(bulkStatus === TokenStatus.UNCOLLECTED || bulkIgnoredState === 'exclude') && (
                         <Alert severity="warning" sx={{ mt: 2 }}>
                             {t('settings.dictionaryBrowser.confirmApplyToSelectedDeleteWarning')}
                         </Alert>
