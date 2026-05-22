@@ -95,6 +95,9 @@ export interface DictionaryAnkiCardRecord {
     modifiedAt: number;
     status: TokenStatus;
     suspended: boolean;
+    data?: CardInfoForDB;
+}
+export interface _DictionaryAnkiCardRecord extends DictionaryAnkiCardRecord {
     data: CardInfoForDB;
 }
 
@@ -124,7 +127,7 @@ export type _DictionaryDatabase = DictionaryDatabase;
 class DictionaryDatabase extends Dexie {
     meta!: Dexie.Table<DictionaryMetaRecord, DictionaryMetaKey>;
     tokens!: Dexie.Table<DictionaryTokenRecord, DictionaryTokenKey>;
-    ankiCards!: Dexie.Table<DictionaryAnkiCardRecord, DictionaryAnkiCardKey>;
+    ankiCards!: Dexie.Table<_DictionaryAnkiCardRecord, DictionaryAnkiCardKey>;
     waniKaniSubjects!: Dexie.Table<DictionaryWaniKaniSubjectRecord, DictionaryWaniKaniSubjectKey>;
     waniKaniAssignments!: Dexie.Table<DictionaryWaniKaniAssignmentRecord, DictionaryWaniKaniAssignmentKey>;
 

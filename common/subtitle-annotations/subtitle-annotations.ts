@@ -676,10 +676,22 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             const cardsStatus: NonNullable<DictionaryStatisticsAnkiSnapshot['cardsStatus']> = {};
             for (const cardRecords of Object.values(ankiCardRecords)) {
                 for (const cardRecord of Object.values(cardRecords)) {
-                    cardsInfo[cardRecord.cardId] = cardRecord.data;
+                    cardsInfo[cardRecord.cardId] = cardRecord.data!;
                     cardsStatus[cardRecord.cardId] = cardRecord.status;
                 }
             }
+
+            // Fallback to requesting from Anki if extension and therefore the db hasn't been updated
+            if (Object.keys(cardsInfo).length && !Object.values(cardsInfo)[0]) {
+                for (const cardInfo of await this.anki.cardsInfo(Object.keys(cardsInfo).map((id) => parseInt(id)))) {
+                    cardsInfo[cardInfo.cardId] = {
+                        deckName: cardInfo.deckName,
+                        modelName: cardInfo.modelName,
+                        due: cardInfo.due,
+                    };
+                }
+            }
+
             const dueCards: DictionaryStatisticsAnkiDueCardsSnapshot = {};
             for (const due of REVIEW_DUES) dueCards[due] = await this.anki.findCardsDueBy(due, fields, decks);
             const totalCards = Object.keys(cardsStatus).length;

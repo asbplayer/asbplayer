@@ -26,7 +26,7 @@ import {
     _buildIdHealthCheck,
     _clearBuildIds,
     DictionaryAnkiCardKey,
-    DictionaryAnkiCardRecord,
+    _DictionaryAnkiCardRecord,
     DictionaryMetaKey,
     DictionaryTokenRecord,
     _ensureBuildId,
@@ -296,7 +296,7 @@ async function _getAnkiCardsByNoteIdBulk(
     db: _DictionaryDatabase,
     profile: string,
     noteIds: number[]
-): Promise<Map<number, DictionaryAnkiCardRecord[]>> {
+): Promise<Map<number, _DictionaryAnkiCardRecord[]>> {
     if (!noteIds.length) return new Map();
     return db.ankiCards
         .where('[profile+noteId]')
@@ -304,7 +304,7 @@ async function _getAnkiCardsByNoteIdBulk(
         .toArray()
         .then((ankiCards) => {
             if (!ankiCards.length) return new Map();
-            const cardRecordsByNoteId = new Map<number, DictionaryAnkiCardRecord[]>();
+            const cardRecordsByNoteId = new Map<number, _DictionaryAnkiCardRecord[]>();
             for (const ankiCard of ankiCards) {
                 const val = cardRecordsByNoteId.get(ankiCard.noteId);
                 if (val) val.push(ankiCard);
@@ -851,7 +851,7 @@ async function _buildTokensForTracks(
             }
 
             const records: DictionaryTokenRecord[] = [];
-            const ankiCards: DictionaryAnkiCardRecord[] = [];
+            const ankiCards: _DictionaryAnkiCardRecord[] = [];
             for (const track of trackStates.keys()) {
                 for (const [source, tokenCardsMap] of partialTokenRecordsByTrack.get(track)!.entries()) {
                     const tokenRecordMap = await _getFromSourceBulk(
@@ -935,7 +935,7 @@ async function _saveTokensForDB(
     profile: string,
     trackStates: Map<number, TrackStateForDB>,
     records: DictionaryTokenRecord[],
-    ankiCards: DictionaryAnkiCardRecord[],
+    ankiCards: _DictionaryAnkiCardRecord[],
     modifiedCardsBatch: CardsForDB,
     partialTokenRecordsByTrack: Map<
         number,
