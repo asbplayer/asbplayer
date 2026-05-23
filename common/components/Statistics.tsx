@@ -445,9 +445,15 @@ function StatisticsSectionHeading({ title, infoLines }: { title: string; infoLin
     );
 }
 
-function StatisticsSectionSubHeading({ children }: { children: React.ReactNode }) {
+function StatisticsSectionSubHeading({
+    children,
+    marginBottom = 1,
+}: {
+    children: React.ReactNode;
+    marginBottom?: number;
+}) {
     return (
-        <Typography variant="body1" sx={{ mb: 1, fontWeight: 500 }}>
+        <Typography variant="body1" sx={{ mb: marginBottom, fontWeight: 500 }}>
             {children}
         </Typography>
     );
@@ -559,20 +565,10 @@ function useWaniKaniUserInfo(apiToken: string) {
         setUserInfo(undefined);
         setError(undefined);
         if (!trimmedApiToken) return;
-
-        let canceled = false;
         void new WaniKani(trimmedApiToken)
             .user()
-            .then((user) => {
-                if (!canceled) setUserInfo(user);
-            })
-            .catch((error) => {
-                if (!canceled) setError(error instanceof Error ? error.message : String(error));
-            });
-
-        return () => {
-            canceled = true;
-        };
+            .then((user) => setUserInfo(user))
+            .catch((e) => setError(e instanceof Error ? e.message : String(e)));
     }, [apiToken]);
 
     return { userInfo, error };
@@ -927,8 +923,8 @@ function SentenceStatsPanel({
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'flex-start' }}>
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                        <StatisticsSectionSubHeading>{title}</StatisticsSectionSubHeading>
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                        <StatisticsSectionSubHeading marginBottom={0}>{title}</StatisticsSectionSubHeading>
                         {infoLines !== undefined && <StatisticsInfoTooltip label={title} lines={infoLines} />}
                     </Box>
                 </Box>
