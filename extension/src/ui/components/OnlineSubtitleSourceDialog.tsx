@@ -16,7 +16,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { JimakuClient, JimakuEntry } from '@/services/subtitle-sources';
 import IconButton from '@mui/material/IconButton';
@@ -103,6 +103,7 @@ export default function OnlineSubtitleSourceDialog({
     const [jimakuEntries, setJimakuEntries] = useState<{ id: number; name: string }[]>([]);
     const [jimakuSelectedEntry, setJimakuSelectedEntry] = useState<JimakuEntry>();
     const [jimakuFiles, setJimakuFiles] = useState<OnlineSubtitleImportCandidate[]>();
+    const resultsCache = useRef<Map<string, { anime: JimakuEntry[]; drama: JimakuEntry[] }>>(new Map());
 
     const normalizedDetectedTitleHint = useMemo(
         () => normalizeDetectedTitleHint(detectedTitleHint),
@@ -130,12 +131,39 @@ export default function OnlineSubtitleSourceDialog({
         }
     }, [open, normalizedDetectedTitleHint, resetState]);
 
+    useEffect(() => {
+        resultsCache.current.clear();
+    }, [query]);
+
+    const prevCategoryRef = useRef(jimakuSearchCategory);
+    useEffect(() => {
+        if (prevCategoryRef.current !== jimakuSearchCategory && lastQuery !== undefined) {
+            handleSearchJimaku();
+        }
+        prevCategoryRef.current = jimakuSearchCategory;
+    }, [jimakuSearchCategory]);
+
     const handleSearchJimaku = useCallback(async () => {
         setError(undefined);
         setSearching(true);
         setFilterString('');
 
         try {
+            const cacheKey = query.trim();
+            const cached = resultsCache.current.get(cacheKey);
+            if (cached) {
+                const cachedResult = jimakuSearchCategory === 'anime' ? cached.anime : cached.drama;
+                if (cachedResult.length > 0) {
+                    setLastQuery(query);
+                    setLastSearchCategory(jimakuSearchCategory);
+                    setJimakuEntries(cachedResult.map((entry) => ({ id: entry.id, name: entry.name })));
+                    setJimakuSelectedEntry(undefined);
+                    setJimakuFiles(undefined);
+                    setSearching(false);
+                    return;
+                }
+            }
+
             const client = new JimakuClient({ apiKey: jimakuApiKey });
             const result =
                 jimakuSearchCategory === 'anime'
@@ -145,6 +173,13 @@ export default function OnlineSubtitleSourceDialog({
             setLastQuery(query);
             setLastSearchCategory(jimakuSearchCategory);
             setJimakuEntries(result.data.map((entry) => ({ id: entry.id, name: entry.name })));
+            const cacheEntry = resultsCache.current.get(cacheKey) ?? { anime: [], drama: [] };
+            if (jimakuSearchCategory === 'anime') {
+                cacheEntry.anime = result.data;
+            } else {
+                cacheEntry.drama = result.data;
+            }
+            resultsCache.current.set(cacheKey, cacheEntry);
             setJimakuSelectedEntry(undefined);
             setJimakuFiles(undefined);
         } catch (e) {
@@ -252,6 +287,7 @@ export default function OnlineSubtitleSourceDialog({
                         exclusive
                         size="small"
                         fullWidth
+                        sx={{ '& .MuiToggleButton-root': { py: 0 } }}
                         onChange={(_, value) => {
                             if (value !== null) {
                                 onJimakuSearchCategoryChange(value);
