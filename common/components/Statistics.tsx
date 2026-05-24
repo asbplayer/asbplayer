@@ -42,9 +42,11 @@ import IconButton from '@mui/material/IconButton';
 import LinearProgress from '@mui/material/LinearProgress';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
+import Popover from '@mui/material/Popover';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography, { type TypographyProps } from '@mui/material/Typography';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import Tooltip from '@mui/material/Tooltip';
@@ -479,6 +481,7 @@ interface SentenceStatsPanelProps {
     globalKnownLabel: string;
     globalKnownCount: number;
     onOpenSentenceBucketDetails: (bucket: DictionaryStatisticsSentenceDialogBucket) => void;
+    headerEndAction?: ReactNode;
     headerAction?: ReactNode;
     extraStats?: ReactNode;
     hideStats?: boolean;
@@ -618,28 +621,96 @@ function KnowledgeStats({ snapshot }: { snapshot: KnowledgeStatsSnapshot }) {
     );
 }
 
-function ProjectedRewatchControls({
+function ProjectedRewatchSelect({
     rewatchSnapshots,
     selectedRewatch,
+    onSelectedRewatchChanged,
+}: {
+    rewatchSnapshots: DictionaryStatisticsTrackSnapshot['rewatchSnapshots'];
+    selectedRewatch: number;
+    onSelectedRewatchChanged: (rewatch: number) => void;
+}) {
+    const { t } = useTranslation();
+    return (
+        <TextField
+            select
+            fullWidth
+            size="small"
+            value={selectedRewatch}
+            label={t('statistics.rewatchSelect')}
+            onChange={(event) => onSelectedRewatchChanged(Number(event.target.value))}
+            sx={{ minWidth: 132 }}
+        >
+            {rewatchSnapshots.map((rewatchSnapshot) => (
+                <MenuItem key={rewatchSnapshot.rewatch} value={rewatchSnapshot.rewatch}>
+                    {t('statistics.rewatchOption', {
+                        rewatch: rewatchSnapshot.rewatch,
+                    })}
+                </MenuItem>
+            ))}
+        </TextField>
+    );
+}
+
+function ProjectedPopoverButton({
+    label,
+    open,
+    onClick,
+}: {
+    label: string;
+    open: boolean;
+    onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+}) {
+    return (
+        <Button
+            variant="outlined"
+            size="small"
+            fullWidth
+            aria-haspopup="dialog"
+            aria-expanded={open ? 'true' : undefined}
+            endIcon={<ArrowDropDownIcon fontSize="small" />}
+            onClick={onClick}
+            sx={(theme) => ({
+                justifyContent: 'space-between',
+                minWidth: 0,
+                textTransform: 'none',
+                color: 'text.primary',
+                borderColor: theme.palette.mode === 'light' ? 'rgba(0, 0, 0, 0.23)' : 'rgba(255, 255, 255, 0.23)',
+                '&:hover': {
+                    borderColor: 'text.primary',
+                    backgroundColor: 'action.hover',
+                },
+                '& .MuiButton-endIcon': {
+                    color: 'action.active',
+                },
+            })}
+        >
+            <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {label}
+            </Box>
+        </Button>
+    );
+}
+
+type ProjectedPopoverSource = 'anki' | 'waniKani';
+
+function ProjectedProjectionControls({
     unknownAnkiCardsByDeck,
     ankiAvailable,
     waniKaniAvailable,
     projection,
     waniKaniApiToken,
-    onSelectedRewatchChanged,
     onProjectionChanged,
 }: {
-    rewatchSnapshots: DictionaryStatisticsTrackSnapshot['rewatchSnapshots'];
-    selectedRewatch: number;
     unknownAnkiCardsByDeck: DictionaryStatisticsAnkiUnknownCardsByDeck[];
     ankiAvailable: boolean;
     waniKaniAvailable: boolean;
     projection: DictionaryStatisticsRewatchProjection;
     waniKaniApiToken: string;
-    onSelectedRewatchChanged: (rewatch: number) => void;
     onProjectionChanged: (projection: DictionaryStatisticsRewatchProjection) => void;
 }) {
     const { t } = useTranslation();
+    const [openPopover, setOpenPopover] = useState<{ source: ProjectedPopoverSource; anchorEl: HTMLElement }>();
     const { userInfo: waniKaniUserInfo, error: waniKaniUserInfoError } = useWaniKaniUserInfo(
         waniKaniAvailable ? waniKaniApiToken : ''
     );
@@ -667,90 +738,107 @@ function ProjectedRewatchControls({
         [projection.ankiUnknownCardsByDeck, updateProjection]
     );
 
+    const openProjectionPopover = useCallback(
+        (source: ProjectedPopoverSource) => (event: MouseEvent<HTMLButtonElement>) =>
+            setOpenPopover({ source, anchorEl: event.currentTarget }),
+        []
+    );
+    const closeProjectionPopover = useCallback(() => setOpenPopover(undefined), []);
+    const ankiPopoverOpen = openPopover?.source === 'anki';
+    const waniKaniPopoverOpen = openPopover?.source === 'waniKani';
+
+    if (!ankiAvailable && !waniKaniAvailable) return null;
+
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
-            }}
-        >
-            <TextField
-                select
-                fullWidth
-                size="small"
-                value={selectedRewatch}
-                label={t('statistics.rewatchSelect')}
-                onChange={(event) => onSelectedRewatchChanged(Number(event.target.value))}
-            >
-                {rewatchSnapshots.map((rewatchSnapshot) => (
-                    <MenuItem key={rewatchSnapshot.rewatch} value={rewatchSnapshot.rewatch}>
-                        {t('statistics.rewatchOption', {
-                            rewatch: rewatchSnapshot.rewatch,
-                        })}
-                    </MenuItem>
-                ))}
-            </TextField>
-            {ankiAvailable && (
-                <SwitchLabelWithHoverEffect
-                    control={
-                        <Switch
-                            checked={ankiLearningOrAboveIsMature}
-                            onChange={(event) =>
-                                updateProjection({
-                                    ankiLearningOrAboveIsMature: event.target.checked,
-                                })
-                            }
+        <>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {ankiAvailable && (
+                    <Box sx={{ flex: '1 1 120px', minWidth: 0 }}>
+                        <ProjectedPopoverButton
+                            label={t('settings.anki')}
+                            open={ankiPopoverOpen}
+                            onClick={openProjectionPopover('anki')}
                         />
-                    }
-                    label={t('statistics.anki.projectReviewedCards')}
-                    labelPlacement="start"
-                    sx={{ width: '100%', mt: -0.25 }}
-                />
-            )}
-            {(ankiAvailable || waniKaniAvailable) && (
-                <Typography variant="caption" color="text.secondary">
-                    {t('statistics.projectMature')}
-                </Typography>
-            )}
-            {ankiAvailable && unknownAnkiCardsByDeck.length > 0 && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                    <Stack spacing={1}>
-                        {unknownAnkiCardsByDeck.map(({ deckName, totalUnknownCards }) => (
-                            <TextField
-                                key={deckName}
-                                type="number"
-                                size="small"
-                                fullWidth
-                                label={`${deckName} (${t('statistics.anki.newCardsCount', { count: totalUnknownCards })})`}
-                                value={projectedAnkiUnknownCardsByDeck[deckName] ?? 0}
+                    </Box>
+                )}
+                {waniKaniAvailable && (
+                    <Box sx={{ flex: '1 1 120px', minWidth: 0 }}>
+                        <ProjectedPopoverButton
+                            label={t('settings.dictionaryWaniKaniSection')}
+                            open={waniKaniPopoverOpen}
+                            onClick={openProjectionPopover('waniKani')}
+                        />
+                    </Box>
+                )}
+            </Box>
+            <Popover
+                disableEnforceFocus={true}
+                open={ankiPopoverOpen}
+                anchorEl={ankiPopoverOpen ? openPopover.anchorEl : undefined}
+                onClose={closeProjectionPopover}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                PaperProps={{ sx: { p: 1.5, width: 320, maxWidth: 'calc(100vw - 32px)' } }}
+            >
+                <Stack spacing={1.5}>
+                    <Typography variant="body1">{t('statistics.projectMature')}</Typography>
+                    {unknownAnkiCardsByDeck.length > 0 && (
+                        <Stack spacing={1}>
+                            {unknownAnkiCardsByDeck.map(({ deckName, totalUnknownCards }) => (
+                                <TextField
+                                    key={deckName}
+                                    type="number"
+                                    size="small"
+                                    fullWidth
+                                    label={`${deckName} (${t('statistics.anki.newCardsCount', { count: totalUnknownCards })})`}
+                                    value={projectedAnkiUnknownCardsByDeck[deckName] ?? 0}
+                                    onChange={(event) =>
+                                        updateProjectedAnkiUnknownCardsByDeck(
+                                            deckName,
+                                            event.target.value,
+                                            totalUnknownCards
+                                        )
+                                    }
+                                    slotProps={{
+                                        htmlInput: {
+                                            min: 0,
+                                            max: totalUnknownCards,
+                                            inputMode: 'numeric',
+                                            pattern: '[0-9]*',
+                                        },
+                                    }}
+                                />
+                            ))}
+                        </Stack>
+                    )}
+                    <SwitchLabelWithHoverEffect
+                        control={
+                            <Switch
+                                checked={ankiLearningOrAboveIsMature}
                                 onChange={(event) =>
-                                    updateProjectedAnkiUnknownCardsByDeck(
-                                        deckName,
-                                        event.target.value,
-                                        totalUnknownCards
-                                    )
+                                    updateProjection({
+                                        ankiLearningOrAboveIsMature: event.target.checked,
+                                    })
                                 }
-                                slotProps={{
-                                    htmlInput: {
-                                        min: 0,
-                                        max: totalUnknownCards,
-                                        inputMode: 'numeric',
-                                        pattern: '[0-9]*',
-                                    },
-                                }}
                             />
-                        ))}
-                    </Stack>
-                </Box>
-            )}
-            {waniKaniAvailable && (
-                <Box
-                    sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                    }}
-                >
+                        }
+                        label={t('statistics.anki.projectReviewedCards')}
+                        labelPlacement="start"
+                        sx={{ width: '100%', mt: -0.25 }}
+                    />
+                </Stack>
+            </Popover>
+            <Popover
+                disableEnforceFocus={true}
+                open={waniKaniPopoverOpen}
+                anchorEl={waniKaniPopoverOpen ? openPopover.anchorEl : undefined}
+                onClose={closeProjectionPopover}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                PaperProps={{ sx: { p: 1.5, width: 320, maxWidth: 'calc(100vw - 32px)' } }}
+            >
+                <Stack spacing={1.5}>
+                    <Typography variant="body1">{t('statistics.projectMature')}</Typography>
                     <TextField
                         type="number"
                         size="small"
@@ -773,9 +861,9 @@ function ProjectedRewatchControls({
                             },
                         }}
                     />
-                </Box>
-            )}
-        </Box>
+                </Stack>
+            </Popover>
+        </>
     );
 }
 
@@ -798,6 +886,7 @@ function SentenceStatsPanel({
     comprehensionPercent,
     globalKnownLabel,
     globalKnownCount,
+    headerEndAction,
     headerAction,
     extraStats,
     hideStats,
@@ -922,13 +1011,24 @@ function SentenceStatsPanel({
             }}
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'flex-start' }}>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 1,
+                        alignItems: 'flex-start',
+                        flexWrap: 'wrap',
+                    }}
+                >
                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
                         <StatisticsSectionSubHeading marginBottom={0}>{title}</StatisticsSectionSubHeading>
                         {infoLines !== undefined && <StatisticsInfoTooltip label={title} lines={infoLines} />}
                     </Box>
+                    {headerEndAction && (
+                        <Box sx={{ flex: { xs: '1 1 100%', sm: '0 0 132px' }, minWidth: 132 }}>{headerEndAction}</Box>
+                    )}
                 </Box>
-                {headerAction && <Box sx={{ mb: 1.5 }}>{headerAction}</Box>}
+                {headerAction && <Box>{headerAction}</Box>}
                 {hideStats ? null : emptyMessage ? (
                     <Typography typography="body2" color="text.secondary">
                         {emptyMessage}
@@ -1625,19 +1725,25 @@ function TrackSnapshot({
                         comprehensionPercent={projectedComprehension}
                         globalKnownLabel={t('statistics.globalKnownWords')}
                         globalKnownCount={projectedGlobalKnownCount}
-                        headerAction={
+                        headerEndAction={
                             selectedRewatchSnapshot !== undefined ? (
-                                <ProjectedRewatchControls
+                                <ProjectedRewatchSelect
                                     rewatchSnapshots={trackSnapshot.rewatchSnapshots}
                                     selectedRewatch={selectedRewatchSnapshot.rewatch}
+                                    onSelectedRewatchChanged={(rewatch) =>
+                                        onSelectedRewatchChanged(trackSnapshot.track, rewatch)
+                                    }
+                                />
+                            ) : undefined
+                        }
+                        headerAction={
+                            selectedRewatchSnapshot !== undefined && (ankiAvailable || waniKaniAvailable) ? (
+                                <ProjectedProjectionControls
                                     unknownAnkiCardsByDeck={trackSnapshot.unknownAnkiCardsByDeck}
                                     ankiAvailable={ankiAvailable}
                                     waniKaniAvailable={waniKaniAvailable}
                                     projection={rewatchProjection}
                                     waniKaniApiToken={dictionaryWaniKaniApiToken}
-                                    onSelectedRewatchChanged={(rewatch) =>
-                                        onSelectedRewatchChanged(trackSnapshot.track, rewatch)
-                                    }
                                     onProjectionChanged={(projection) =>
                                         onRewatchProjectionChanged(trackSnapshot.track, projection)
                                     }

@@ -655,7 +655,7 @@
         "noMoreRewatches": "There will be no more mining after all i+1 sentences this session.",
         "totalSentences": "Total sentences",
         "knownSentences": "Known sentences",
-        "projectMature": "Treat upcoming as mature",
+        "projectMature": "Treat upcoming material as mature",
         "anki": {
             "ankiStatistics": "Anki statistics",
             "dueByToday": "Due by today",
