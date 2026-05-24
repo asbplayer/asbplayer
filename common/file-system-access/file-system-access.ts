@@ -5,7 +5,8 @@
  */
 
 export function supportsFileSystemAccess(): boolean {
-    return typeof window !== 'undefined' && 'showOpenFilePicker' in window;
+    return false;
+    // return typeof window !== 'undefined' && 'showOpenFilePicker' in window;
 }
 
 export async function requestPermissions(
