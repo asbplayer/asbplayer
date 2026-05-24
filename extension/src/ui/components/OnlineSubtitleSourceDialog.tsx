@@ -252,7 +252,7 @@ export default function OnlineSubtitleSourceDialog({
             <DialogContent>
                 <Stack spacing={2}>
                     {error && <Alert severity="error">{error}</Alert>}
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <TextField
                             autoFocus
                             margin="dense"
@@ -282,21 +282,21 @@ export default function OnlineSubtitleSourceDialog({
                                 },
                             }}
                         />
-                    <ToggleButtonGroup
-                        value={jimakuSearchCategory}
-                        exclusive
-                        size="small"
-                        fullWidth
-                        sx={{ '& .MuiToggleButton-root': { py: 0 } }}
-                        onChange={(_, value) => {
-                            if (value !== null) {
-                                onJimakuSearchCategoryChange(value);
-                            }
-                        }}
-                    >
-                        <ToggleButton value="anime">{t('onlineSubtitleSources.categoryAnime')}</ToggleButton>
-                        <ToggleButton value="drama">{t('onlineSubtitleSources.categoryDrama')}</ToggleButton>
-                    </ToggleButtonGroup>
+                        <ToggleButtonGroup
+                            value={jimakuSearchCategory}
+                            exclusive
+                            size="small"
+                            fullWidth
+                            sx={{ mt: 1, mb: 0.5, height: 56 }}
+                            onChange={(_, value) => {
+                                if (value !== null) {
+                                    onJimakuSearchCategoryChange(value);
+                                }
+                            }}
+                        >
+                            <ToggleButton value="anime">{t('onlineSubtitleSources.categoryAnime')}</ToggleButton>
+                            <ToggleButton value="drama">{t('onlineSubtitleSources.categoryDrama')}</ToggleButton>
+                        </ToggleButtonGroup>
                     </Box>
 
                     <TextField
