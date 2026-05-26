@@ -7,9 +7,10 @@ export function extractExtension(url: string, fallback: string) {
 }
 
 export function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
-    return new Promise<boolean>(async (resolve, reject) => {
+    return new Promise<boolean>(async (resolve) => {
         if (test()) {
             resolve(true);
+            return;
         }
 
         const t0 = Date.now();
@@ -51,7 +52,7 @@ export const trackId = (def: VideoDataSubtitleTrackDef) => {
 export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, timeout?: number) {
     setTimeout(() => {
         const subtitlesByPath: SubtitlesByPath = {};
-        let basename = '';
+        const basenameByPath: { [key: string]: string } = {};
         let trackDataRequestHandled = false;
 
         if (onJson !== undefined) {
@@ -80,19 +81,20 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
                         }
                     },
                     (theBasename) => {
-                        basename = theBasename;
+                        basenameByPath[window.location.pathname] = theBasename;
                         basenameFound = true;
                     }
                 );
 
                 if (trackDataRequestHandled && (tracksFound || basenameFound)) {
                     // Only notify additional tracks after the initial request for track info
+                    const currentPath = window.location.pathname;
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-synced-data', {
                             detail: {
                                 error: '',
-                                basename: basename,
-                                subtitles: subtitlesByPath[window.location.pathname],
+                                basename: basenameByPath[currentPath] ?? '',
+                                subtitles: subtitlesByPath[currentPath],
                             },
                         })
                     );
@@ -103,9 +105,15 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
         }
 
         function garbageCollect() {
+            const currentPath = window.location.pathname;
             for (const path of Object.keys(subtitlesByPath)) {
-                if (path !== window.location.pathname) {
+                if (path !== currentPath) {
                     delete subtitlesByPath[path];
+                }
+            }
+            for (const path of Object.keys(basenameByPath)) {
+                if (path !== currentPath) {
+                    delete basenameByPath[path];
                 }
             }
         }
@@ -113,29 +121,32 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
         document.addEventListener(
             'asbplayer-get-synced-data',
             async () => {
+                // Pin the pathname at request-start time so async onRequest
+                // callbacks resolving after a soft-navigation still file their
+                // tracks and basename under the path they were fetched for.
+                const requestPath = window.location.pathname;
+
                 onRequest?.(
                     (track) => {
-                        const path = window.location.pathname;
-
-                        if (typeof subtitlesByPath[path] === 'undefined') {
-                            subtitlesByPath[path] = [];
+                        if (typeof subtitlesByPath[requestPath] === 'undefined') {
+                            subtitlesByPath[requestPath] = [];
                         }
 
                         const newId = trackId(track);
 
-                        if (subtitlesByPath[path].find((s) => s.id === newId) === undefined) {
-                            subtitlesByPath[path].push({ id: newId, ...track });
+                        if (subtitlesByPath[requestPath].find((s) => s.id === newId) === undefined) {
+                            subtitlesByPath[requestPath].push({ id: newId, ...track });
                         }
                     },
                     (theBasename) => {
-                        basename = theBasename;
-                        if (!trackDataRequestHandled) {
+                        basenameByPath[requestPath] = theBasename;
+                        if (!trackDataRequestHandled && requestPath === window.location.pathname) {
                             // Notify basename even if still waiting for subtitle track info
                             document.dispatchEvent(
                                 new CustomEvent('asbplayer-synced-data', {
                                     detail: {
                                         error: '',
-                                        basename: basename,
+                                        basename: theBasename,
                                         subtitles: undefined,
                                     },
                                 })
@@ -144,19 +155,22 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
                     }
                 );
 
-                const ready = () =>
-                    (!waitForBasename || basename !== '') && window.location.pathname in subtitlesByPath;
+                const ready = () => {
+                    const path = window.location.pathname;
+                    return (!waitForBasename || (basenameByPath[path] ?? '') !== '') && path in subtitlesByPath;
+                };
 
                 if (!ready()) {
                     await poll(ready, timeout);
                 }
 
+                const currentPath = window.location.pathname;
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {
                         detail: {
                             error: '',
-                            basename: basename,
-                            subtitles: subtitlesByPath[window.location.pathname] ?? [],
+                            basename: basenameByPath[currentPath] ?? '',
+                            subtitles: subtitlesByPath[currentPath] ?? [],
                         },
                     })
                 );
