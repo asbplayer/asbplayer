@@ -84,6 +84,41 @@ export enum DictionaryTokenSource {
     WANIKANI = 3,
 }
 
+export function dictionaryTokenSourcePriority(source: DictionaryTokenSource): number {
+    switch (source) {
+        case DictionaryTokenSource.LOCAL:
+            return 3;
+        case DictionaryTokenSource.ANKI_WORD:
+        case DictionaryTokenSource.WANIKANI:
+            return 2;
+        case DictionaryTokenSource.ANKI_SENTENCE:
+            return 1;
+        default:
+            throw new Error(`Unsupported DictionaryTokenSource: ${source}`);
+    }
+}
+
+export type AnkiSource = DictionaryTokenSource.ANKI_WORD | DictionaryTokenSource.ANKI_SENTENCE;
+export function isAnkiSource(source: DictionaryTokenSource): source is AnkiSource {
+    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.ANKI_SENTENCE;
+}
+
+export type ExternalWordSource = DictionaryTokenSource.ANKI_WORD | DictionaryTokenSource.WANIKANI;
+export function isExternalWordSource(source: DictionaryTokenSource): source is ExternalWordSource {
+    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.WANIKANI;
+}
+
+export function externalWordSourcePriority(source: ExternalWordSource): number {
+    switch (source) {
+        case DictionaryTokenSource.ANKI_WORD:
+            return 2;
+        case DictionaryTokenSource.WANIKANI:
+            return 1;
+        default:
+            throw new Error(`Unsupported DictionaryTokenSource: ${source}`);
+    }
+}
+
 /*
 These are all the possible scenarios which can result in a match. We don't need to support every possible combination,
 as some are not useful or inconsistent. Inconsistent meaning the order the user collects forms affects what future forms

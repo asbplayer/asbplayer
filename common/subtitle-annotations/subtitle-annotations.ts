@@ -23,7 +23,10 @@ import {
     DictionaryTokenSource,
     DictionaryTrack,
     dictionaryTrackEnabled,
+    dictionaryTokenSourcePriority,
+    externalWordSourcePriority,
     getFullyKnownTokenStatus,
+    isExternalWordSource,
     SettingsProvider,
     TokenFrequencyAnnotation,
     TokenMatchStrategy,
@@ -52,6 +55,7 @@ import {
     getTokenStatus,
     dedupeTokenStatusInfos,
     isKanaOnly,
+    normalizeToken,
 } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan/yomitan';
 
@@ -129,9 +133,15 @@ function shouldUseLemmasGroupingKey(source: DictionaryTokenSource | undefined, d
  *   - Never match across scripts, downside is if kanji is collected kana will need to be collected too.
  *   - Essentially a strict mode where the user needs to collect all script forms of a word.
  */
-async function lemmatizeForScript(trimmedToken: string, ts: TrackState): Promise<string[] | undefined> {
-    const lemmas = await ts.yt!.lemmatize(trimmedToken);
-    return lemmas === undefined ? undefined : lemmasForScript(trimmedToken, lemmas, ts.dt);
+async function lemmatizeForScript(
+    trimmedToken: string,
+    ts: TrackState,
+    normalize = true
+): Promise<string[] | undefined> {
+    const rawLemmas = await ts.yt!.lemmatize(trimmedToken);
+    if (!rawLemmas) return;
+    const lemmas = lemmasForScript(trimmedToken, rawLemmas, ts.dt);
+    return normalize ? lemmas.map(normalizeToken) : lemmas;
 }
 function lemmasForScript(trimmedToken: string, lemmas: string[], dt: DictionaryTrack): string[] {
     const tokenIsKanaOnly = isKanaOnly(trimmedToken);
@@ -140,13 +150,13 @@ function lemmasForScript(trimmedToken: string, lemmas: string[], dt: DictionaryT
 }
 function getAnyFormStatusResults(
     trimmedToken: string,
-    lemmas: string[],
+    normalizedLemmas: string[],
     ts: TrackState,
     sourceMatches: (source: DictionaryTokenSource) => boolean
 ): TokenStatusResult[] {
     const anyFormStatusResults: TokenStatusResult[] = [];
-    for (const lemma of lemmas) {
-        const statusResults = ts.collectedAnyForm.get(lemma);
+    for (const normalizedLemma of normalizedLemmas) {
+        const statusResults = ts.collectedAnyForm.get(normalizedLemma);
         if (!statusResults) continue;
         for (const statusResult of statusResults) {
             if (!sourceMatches(statusResult.source)) continue;
@@ -160,6 +170,82 @@ function getAnyFormStatusResults(
         }
     }
     return anyFormStatusResults;
+}
+
+function compareTokenStatusResults(left: TokenStatusResult, right: TokenStatusResult): number {
+    const sourcePriority = dictionaryTokenSourcePriority(left.source) - dictionaryTokenSourcePriority(right.source);
+    if (sourcePriority !== 0) return sourcePriority;
+    const statusPriority = left.status - right.status;
+    if (statusPriority !== 0) return statusPriority;
+    if (isExternalWordSource(left.source) && isExternalWordSource(right.source)) {
+        return externalWordSourcePriority(left.source) - externalWordSourcePriority(right.source);
+    }
+    return 0;
+}
+
+function mergeTokenStatusResults(left: TokenStatusResult, right: TokenStatusResult): TokenStatusResult {
+    return {
+        ...(compareTokenStatusResults(left, right) >= 0 ? left : right),
+        externalCandidateStatuses: dedupeTokenStatusInfos([
+            ...(left.externalCandidateStatuses ?? []),
+            ...(right.externalCandidateStatuses ?? []),
+        ]),
+    };
+}
+
+function addCollectedAnyFormStatus(
+    collection: Map<string, TokenStatusResult[]>,
+    lemma: string,
+    statusResult: TokenStatusResult
+) {
+    const normalizedLemma = normalizeToken(lemma);
+    const statusResults = collection.get(normalizedLemma);
+    if (!statusResults) {
+        collection.set(normalizedLemma, [statusResult]);
+        return;
+    }
+    const duplicateIndex = statusResults.findIndex((r) => r.token === statusResult.token);
+    if (duplicateIndex === -1) {
+        statusResults.push(statusResult);
+    } else {
+        statusResults[duplicateIndex] = mergeTokenStatusResults(statusResults[duplicateIndex], statusResult);
+    }
+}
+
+function setTokenStates(collection: Map<string, TokenState[]>, normalizedLookupKey: string, states: TokenState[]) {
+    if (!states.length) return;
+    const tokenStates = collection.get(normalizedLookupKey);
+    if (!tokenStates) {
+        collection.set(normalizedLookupKey, states);
+        return;
+    }
+    for (const state of states) {
+        if (!tokenStates.includes(state)) tokenStates.push(state);
+    }
+}
+
+function addTokenIndex(collection: Map<string, Set<number>>, normalizedLookupKey: string, index: number) {
+    const indexes = collection.get(normalizedLookupKey);
+    if (indexes) indexes.add(index);
+    else collection.set(normalizedLookupKey, new Set([index]));
+}
+
+function addLookupQuery(queryMap: Map<string, string[]>, lookupKey: string, collection: Map<string, unknown>) {
+    const normalizedLookupKey = normalizeToken(lookupKey);
+    const queries = queryMap.get(normalizedLookupKey);
+    if (queries) {
+        if (!queries.includes(lookupKey)) queries.push(lookupKey); // Send all original forms for backwards compatibility with older extension db lookups
+        return;
+    }
+    if (!collection.has(normalizedLookupKey)) queryMap.set(normalizedLookupKey, [lookupKey]);
+}
+
+function tokenMatchesLookupKey(normalizedToken: string, normalizedLookupKey: string): boolean {
+    return normalizedToken === normalizedLookupKey;
+}
+
+function tokenMatchesAnyLookupKey(normalizedToken: string, normalizedLookupKeys: string[]): boolean {
+    return normalizedLookupKeys.some((lookupKey) => tokenMatchesLookupKey(normalizedToken, lookupKey));
 }
 
 function groupingKeysForToken(
@@ -505,7 +591,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
     }
 
     tokensWereModified(modifiedTokens: string[]) {
-        for (const token of modifiedTokens) this.tokensForRefresh.add(token);
+        for (const token of modifiedTokens) this.tokensForRefresh.add(normalizeToken(token));
     }
 
     buildAnkiCacheStateChange(state: DictionaryBuildAnkiCacheState) {
@@ -576,8 +662,8 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         const lemmas = await ts.yt.lemmatize(token);
         if (!lemmas) return;
         await this.dictionaryProvider.saveRecordLocalBulk(profile, [{ token, status, lemmas, states }], applyStates);
-        this.tokensForRefresh.add(token);
-        for (const lemma of lemmas) this.tokensForRefresh.add(lemma);
+        this.tokensForRefresh.add(normalizeToken(token));
+        for (const lemma of lemmas) this.tokensForRefresh.add(normalizeToken(lemma));
     }
 
     requestStatisticsGeneration() {
@@ -944,7 +1030,8 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     const yt = new Yomitan(ts.dt, this.fetcher, {
                         lemmaTokenFallback: true,
                         tokensWereModified: (token) => {
-                            for (const index of this.tokenToIndexesCache.get(token) ?? []) this.refreshCache.add(index);
+                            const indexes = this.tokenToIndexesCache.get(normalizeToken(token)) ?? [];
+                            for (const index of indexes) this.refreshCache.add(index);
                         },
                     });
                     await yt.version();
@@ -1211,25 +1298,25 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     ts.tokenStates.delete(token);
                 }
 
-                const forExactFormQuery = new Set<string>();
-                const forLemmaFormQuery = new Set<string>();
-                const forAnyFormQuery = new Set<string>();
+                const forExactFormQuery = new Map<string, string[]>();
+                const forLemmaFormQuery = new Map<string, string[]>();
+                const forAnyFormQuery = new Map<string, string[]>();
                 for (const tokenParts of tokenizeBulkRes) {
                     const token = tokenParts
                         .map((p) => p.text)
                         .join('')
                         .trim();
-                    if (shouldQueryExactForm && !ts.collectedExactForm.has(token)) forExactFormQuery.add(token);
+                    if (shouldQueryExactForm) addLookupQuery(forExactFormQuery, token, ts.collectedExactForm);
                     if (shouldQueryLemmaForm || shouldQueryAnyForm) {
-                        const lemmas = (await lemmatizeForScript(token, ts)) ?? [];
+                        const lemmas = (await lemmatizeForScript(token, ts, false)) ?? [];
                         if (shouldQueryLemmaForm) {
                             for (const lemma of lemmas) {
-                                if (!ts.collectedLemmaForm.has(lemma)) forLemmaFormQuery.add(lemma);
+                                addLookupQuery(forLemmaFormQuery, lemma, ts.collectedLemmaForm);
                             }
                         }
                         if (shouldQueryAnyForm) {
                             for (const lemma of lemmas) {
-                                if (!ts.collectedAnyForm.has(lemma)) forAnyFormQuery.add(lemma);
+                                addLookupQuery(forAnyFormQuery, lemma, ts.collectedAnyForm);
                             }
                         }
                     }
@@ -1238,13 +1325,17 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
                 const [exactFormResultMap, lemmaFormResultMap, anyFormResultsMap] = await Promise.all([
                     forExactFormQuery.size
-                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forExactFormQuery))
+                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forExactFormQuery.values()).flat())
                         : ({} as TokenResults),
                     forLemmaFormQuery.size
-                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forLemmaFormQuery))
+                        ? this.dictionaryProvider.getBulk(profile, track, Array.from(forLemmaFormQuery.values()).flat())
                         : ({} as TokenResults),
                     forAnyFormQuery.size
-                        ? this.dictionaryProvider.getByLemmaBulk(profile, track, Array.from(forAnyFormQuery))
+                        ? this.dictionaryProvider.getByLemmaBulk(
+                              profile,
+                              track,
+                              Array.from(forAnyFormQuery.values()).flat()
+                          )
                         : ({} as LemmaResults),
                 ]);
                 if (this.shouldCancelBuild) return;
@@ -1252,60 +1343,49 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 for (const [token, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
                     exactFormResultMap
                 )) {
-                    ts.collectedExactForm.set(
-                        token,
-                        tokenStatusResult(
-                            statuses,
-                            ts.dt.dictionaryAnkiTreatSuspended,
-                            source,
-                            externalCandidateStatuses
-                        )
+                    const normalizedToken = normalizeToken(token);
+                    const statusResult = tokenStatusResult(
+                        statuses,
+                        ts.dt.dictionaryAnkiTreatSuspended,
+                        source,
+                        externalCandidateStatuses
                     );
-                    if (states.length) ts.tokenStates.set(token, states);
+                    const existing = ts.collectedExactForm.get(normalizedToken);
+                    ts.collectedExactForm.set(
+                        normalizedToken,
+                        existing ? mergeTokenStatusResults(existing, statusResult) : statusResult
+                    );
+                    setTokenStates(ts.tokenStates, normalizedToken, states);
                 }
                 for (const [lemma, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
                     lemmaFormResultMap
                 )) {
-                    ts.collectedLemmaForm.set(
-                        lemma,
-                        tokenStatusResult(
-                            statuses,
-                            ts.dt.dictionaryAnkiTreatSuspended,
-                            source,
-                            externalCandidateStatuses
-                        )
+                    const normalizedLemma = normalizeToken(lemma);
+                    const statusResult = tokenStatusResult(
+                        statuses,
+                        ts.dt.dictionaryAnkiTreatSuspended,
+                        source,
+                        externalCandidateStatuses
                     );
-                    if (!states.length) continue;
-                    const tokenStates = ts.tokenStates.get(lemma);
-                    if (tokenStates) {
-                        for (const state of states) {
-                            if (!tokenStates.includes(state)) tokenStates.push(state);
-                        }
-                    } else {
-                        ts.tokenStates.set(lemma, states);
-                    }
+                    const existing = ts.collectedLemmaForm.get(normalizedLemma);
+                    ts.collectedLemmaForm.set(
+                        normalizedLemma,
+                        existing ? mergeTokenStatusResults(existing, statusResult) : statusResult
+                    );
+                    setTokenStates(ts.tokenStates, normalizedLemma, states);
                 }
                 for (const [lemma, lemmaResults] of Object.entries(anyFormResultsMap)) {
                     for (const { states, statuses, externalCandidateStatuses, source, token } of lemmaResults) {
-                        const lemmaCollected = ts.collectedAnyForm.get(lemma);
+                        const normalizedToken = normalizeToken(token);
                         const statusResult = tokenStatusResult(
                             statuses,
                             ts.dt.dictionaryAnkiTreatSuspended,
                             source,
                             externalCandidateStatuses,
-                            token
+                            normalizedToken
                         );
-                        if (lemmaCollected) lemmaCollected.push(statusResult);
-                        else ts.collectedAnyForm.set(lemma, [statusResult]);
-                        if (!states.length) continue;
-                        const tokenStates = ts.tokenStates.get(token);
-                        if (tokenStates) {
-                            for (const state of states) {
-                                if (!tokenStates.includes(state)) tokenStates.push(state);
-                            }
-                        } else {
-                            ts.tokenStates.set(token, states);
-                        }
+                        addCollectedAnyFormStatus(ts.collectedAnyForm, lemma, statusResult);
+                        setTokenStates(ts.tokenStates, normalizedToken, states);
                     }
                 }
             } catch (e) {
@@ -1370,10 +1450,9 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     promise = promise.then(async () => {
                         const tokenText = fullText.substring(existingToken.pos[0], existingToken.pos[1]);
                         const trimmedToken = tokenText.trim();
+                        const normalizedToken = normalizeToken(trimmedToken);
 
-                        const tokenToIndexes = this.tokenToIndexesCache.get(trimmedToken);
-                        if (tokenToIndexes) tokenToIndexes.add(index);
-                        else this.tokenToIndexesCache.set(trimmedToken, new Set([index]));
+                        addTokenIndex(this.tokenToIndexesCache, normalizedToken, index);
                         const lemmas = await ts.yt!.lemmatize(trimmedToken);
                         if (this.shouldCancelBuild) return;
                         if (!lemmas) {
@@ -1381,17 +1460,13 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                             this.erroredCache.add(index);
                             return;
                         }
-                        for (const lemma of lemmas) {
-                            const lemmaToIndexes = this.tokenToIndexesCache.get(lemma);
-                            if (lemmaToIndexes) lemmaToIndexes.add(index);
-                            else this.tokenToIndexesCache.set(lemma, new Set([index]));
-                        }
+                        for (const l of lemmas) addTokenIndex(this.tokenToIndexesCache, normalizeToken(l), index);
 
-                        const states = ts.tokenStates.get(trimmedToken) ?? [];
+                        const states = ts.tokenStates.get(normalizedToken) ?? [];
                         const tokenStatusResult =
                             states.includes(TokenState.IGNORED) || !HAS_LETTER_REGEX.test(trimmedToken)
                                 ? { status: getFullyKnownTokenStatus() }
-                                : ((await this._tokenStatus(trimmedToken, ts)) ?? { status: null });
+                                : ((await this._tokenStatus(trimmedToken, normalizedToken, ts)) ?? { status: null });
                         const status = tokenStatusResult.status;
                         const source = 'source' in tokenStatusResult ? tokenStatusResult.source : undefined;
                         const token: Token = {
@@ -1445,11 +1520,12 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 const tokenText = tokenParts.map((p) => p.text).join('');
                 reconstructedTextParts.push(tokenText);
                 const trimmedToken = tokenText.trim();
+                const normalizedToken = normalizeToken(trimmedToken);
 
                 // Build token
                 const token: InternalToken = {
                     pos: [baseIndex + currentOffset, baseIndex + currentOffset + tokenText.length],
-                    states: ts.tokenStates.get(trimmedToken) ?? [],
+                    states: ts.tokenStates.get(normalizedToken) ?? [],
                     __internal: true, // This token was generated by this class
                     readings: [],
                 };
@@ -1473,9 +1549,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     }
                 }
 
-                const tokenToIndexes = this.tokenToIndexesCache.get(trimmedToken);
-                if (tokenToIndexes) tokenToIndexes.add(index);
-                else this.tokenToIndexesCache.set(trimmedToken, new Set([index]));
+                addTokenIndex(this.tokenToIndexesCache, normalizedToken, index);
                 const lemmas = await ts.yt.lemmatize(trimmedToken);
                 if (this.shouldCancelBuild) return;
                 if (!lemmas) {
@@ -1483,11 +1557,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     token.status = null;
                     continue;
                 }
-                for (const lemma of lemmas) {
-                    const lemmaToIndexes = this.tokenToIndexesCache.get(lemma);
-                    if (lemmaToIndexes) lemmaToIndexes.add(index);
-                    else this.tokenToIndexesCache.set(lemma, new Set([index]));
-                }
+                for (const lemma of lemmas) addTokenIndex(this.tokenToIndexesCache, normalizeToken(lemma), index);
 
                 // Build token status
                 if (token.states.includes(TokenState.IGNORED) || !HAS_LETTER_REGEX.test(trimmedToken)) {
@@ -1502,7 +1572,9 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                     token.lemmasGroupingKey = lemmasGroupingKey;
                     continue;
                 }
-                const tokenStatusResult = (await this._tokenStatus(trimmedToken, ts)) ?? { status: null };
+                const tokenStatusResult = (await this._tokenStatus(trimmedToken, normalizedToken, ts)) ?? {
+                    status: null,
+                };
                 const source = 'source' in tokenStatusResult ? tokenStatusResult.source : undefined;
                 token.status = tokenStatusResult.status;
                 const { groupingKey, lemmasGroupingKey } = groupingKeysForToken(trimmedToken, lemmas, source, ts.dt);
@@ -1537,24 +1609,34 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         }
     }
 
-    private async _tokenStatus(trimmedToken: string, ts: TrackState): Promise<ResolvedTokenStatusResult | null> {
+    private async _tokenStatus(
+        trimmedToken: string,
+        normalizedToken: string,
+        ts: TrackState
+    ): Promise<ResolvedTokenStatusResult | null> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot calculate token status');
         let tokenStatusResult: ResolvedTokenStatusResult | null;
         switch (ts.dt.dictionaryTokenMatchStrategyPriority) {
             case TokenMatchStrategyPriority.EXACT:
-                tokenStatusResult = await this._handlePriorityExact(trimmedToken, ts);
+                tokenStatusResult = await this._handlePriorityExact(trimmedToken, normalizedToken, ts);
                 break;
             case TokenMatchStrategyPriority.LEMMA:
-                tokenStatusResult = await this._handlePriorityLemma(trimmedToken, ts);
+                tokenStatusResult = await this._handlePriorityLemma(trimmedToken, normalizedToken, ts);
                 break;
             case TokenMatchStrategyPriority.BEST_KNOWN:
-                tokenStatusResult = await this._handlePriorityKnown(trimmedToken, ts, (tokenStatuses) =>
-                    Math.max(...tokenStatuses)
+                tokenStatusResult = await this._handlePriorityKnown(
+                    trimmedToken,
+                    normalizedToken,
+                    ts,
+                    (tokenStatuses) => Math.max(...tokenStatuses)
                 );
                 break;
             case TokenMatchStrategyPriority.LEAST_KNOWN:
-                tokenStatusResult = await this._handlePriorityKnown(trimmedToken, ts, (tokenStatuses) =>
-                    Math.min(...tokenStatuses)
+                tokenStatusResult = await this._handlePriorityKnown(
+                    trimmedToken,
+                    normalizedToken,
+                    ts,
+                    (tokenStatuses) => Math.min(...tokenStatuses)
                 );
                 break;
             default:
@@ -1565,10 +1647,11 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
     private async _handlePriorityExact(
         trimmedToken: string,
+        normalizedToken: string,
         ts: TrackState
     ): Promise<ResolvedTokenStatusResult | null> {
         if (shouldUseExactForm(ts.dt.dictionaryTokenMatchStrategy)) {
-            const tokenStatusResult = ts.collectedExactForm.get(trimmedToken);
+            const tokenStatusResult = ts.collectedExactForm.get(normalizedToken);
             if (tokenStatusResult && tokenStatusResult.source !== DictionaryTokenSource.ANKI_SENTENCE) {
                 return tokenStatusResult;
             }
@@ -1597,15 +1680,17 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 (source) => source !== DictionaryTokenSource.ANKI_SENTENCE
             );
             if (anyFormStatusResults.length) {
-                const exactMatches = anyFormStatusResults.filter((r) => r.token === trimmedToken);
+                const exactMatches = anyFormStatusResults.filter((r) =>
+                    tokenMatchesLookupKey(r.token!, normalizedToken)
+                );
                 if (exactMatches.length) return combineTokenStatusResults(exactMatches);
-                const lemmaMatches = anyFormStatusResults.filter((r) => lemmas.includes(r.token!));
+                const lemmaMatches = anyFormStatusResults.filter((r) => tokenMatchesAnyLookupKey(r.token!, lemmas));
                 if (lemmaMatches.length) return combineTokenStatusResults(lemmaMatches);
                 return combineTokenStatusResults(anyFormStatusResults);
             }
         }
         if (shouldUseExactForm(ts.dt.dictionaryAnkiSentenceTokenMatchStrategy)) {
-            const tokenStatusResult = ts.collectedExactForm.get(trimmedToken);
+            const tokenStatusResult = ts.collectedExactForm.get(normalizedToken);
             if (tokenStatusResult?.source === DictionaryTokenSource.ANKI_SENTENCE) return tokenStatusResult;
         }
         if (shouldUseLemmaForm(ts.dt.dictionaryAnkiSentenceTokenMatchStrategy)) {
@@ -1632,9 +1717,11 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 (source) => source === DictionaryTokenSource.ANKI_SENTENCE
             );
             if (anyFormStatusResults.length) {
-                const exactMatches = anyFormStatusResults.filter((r) => r.token === trimmedToken);
+                const exactMatches = anyFormStatusResults.filter((r) =>
+                    tokenMatchesLookupKey(r.token!, normalizedToken)
+                );
                 if (exactMatches.length) return combineTokenStatusResults(exactMatches);
-                const lemmaMatches = anyFormStatusResults.filter((r) => lemmas.includes(r.token!));
+                const lemmaMatches = anyFormStatusResults.filter((r) => tokenMatchesAnyLookupKey(r.token!, lemmas));
                 if (lemmaMatches.length) return combineTokenStatusResults(lemmaMatches);
                 return combineTokenStatusResults(anyFormStatusResults);
             }
@@ -1644,6 +1731,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
     private async _handlePriorityLemma(
         trimmedToken: string,
+        normalizedToken: string,
         ts: TrackState
     ): Promise<ResolvedTokenStatusResult | null> {
         if (shouldUseLemmaForm(ts.dt.dictionaryTokenMatchStrategy)) {
@@ -1660,7 +1748,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             if (lemmaStatusResults.length) return combineTokenStatusResults(lemmaStatusResults);
         }
         if (shouldUseExactForm(ts.dt.dictionaryTokenMatchStrategy)) {
-            const tokenStatusResult = ts.collectedExactForm.get(trimmedToken);
+            const tokenStatusResult = ts.collectedExactForm.get(normalizedToken);
             if (tokenStatusResult && tokenStatusResult.source !== DictionaryTokenSource.ANKI_SENTENCE) {
                 return tokenStatusResult;
             }
@@ -1676,9 +1764,11 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 (source) => source !== DictionaryTokenSource.ANKI_SENTENCE
             );
             if (anyFormStatusResults.length) {
-                const lemmaMatches = anyFormStatusResults.filter((r) => lemmas.includes(r.token!));
+                const lemmaMatches = anyFormStatusResults.filter((r) => tokenMatchesAnyLookupKey(r.token!, lemmas));
                 if (lemmaMatches.length) return combineTokenStatusResults(lemmaMatches);
-                const exactMatches = anyFormStatusResults.filter((r) => r.token === trimmedToken);
+                const exactMatches = anyFormStatusResults.filter((r) =>
+                    tokenMatchesLookupKey(r.token!, normalizedToken)
+                );
                 if (exactMatches.length) return combineTokenStatusResults(exactMatches);
                 return combineTokenStatusResults(anyFormStatusResults);
             }
@@ -1697,7 +1787,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             if (lemmaStatusResults.length) return combineTokenStatusResults(lemmaStatusResults);
         }
         if (shouldUseExactForm(ts.dt.dictionaryAnkiSentenceTokenMatchStrategy)) {
-            const tokenStatusResult = ts.collectedExactForm.get(trimmedToken);
+            const tokenStatusResult = ts.collectedExactForm.get(normalizedToken);
             if (tokenStatusResult?.source === DictionaryTokenSource.ANKI_SENTENCE) return tokenStatusResult;
         }
         if (shouldUseAnyForm(ts.dt.dictionaryAnkiSentenceTokenMatchStrategy)) {
@@ -1711,9 +1801,11 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 (source) => source === DictionaryTokenSource.ANKI_SENTENCE
             );
             if (anyFormStatusResults.length) {
-                const lemmaMatches = anyFormStatusResults.filter((r) => lemmas.includes(r.token!));
+                const lemmaMatches = anyFormStatusResults.filter((r) => tokenMatchesAnyLookupKey(r.token!, lemmas));
                 if (lemmaMatches.length) return combineTokenStatusResults(lemmaMatches);
-                const exactMatches = anyFormStatusResults.filter((r) => r.token === trimmedToken);
+                const exactMatches = anyFormStatusResults.filter((r) =>
+                    tokenMatchesLookupKey(r.token!, normalizedToken)
+                );
                 if (exactMatches.length) return combineTokenStatusResults(exactMatches);
                 return combineTokenStatusResults(anyFormStatusResults);
             }
@@ -1723,13 +1815,14 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
     private async _handlePriorityKnown(
         trimmedToken: string,
+        normalizedToken: string,
         ts: TrackState,
         cmp: (tokenStatuses: TokenStatus[]) => TokenStatus
     ): Promise<ResolvedTokenStatusResult | null> {
         const tokenStatusResults: TokenStatusResult[] = [];
 
         if (shouldUseExactForm(ts.dt.dictionaryTokenMatchStrategy)) {
-            const tokenStatusResult = ts.collectedExactForm.get(trimmedToken);
+            const tokenStatusResult = ts.collectedExactForm.get(normalizedToken);
             if (tokenStatusResult && tokenStatusResult.source !== DictionaryTokenSource.ANKI_SENTENCE) {
                 tokenStatusResults.push(tokenStatusResult);
             }
@@ -1761,7 +1854,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         if (tokenStatusResults.length) return combineTokenStatusResults(tokenStatusResults, cmp);
 
         if (shouldUseExactForm(ts.dt.dictionaryAnkiSentenceTokenMatchStrategy)) {
-            const tokenStatusResult = ts.collectedExactForm.get(trimmedToken);
+            const tokenStatusResult = ts.collectedExactForm.get(normalizedToken);
             if (tokenStatusResult?.source === DictionaryTokenSource.ANKI_SENTENCE) {
                 tokenStatusResults.push(tokenStatusResult);
             }

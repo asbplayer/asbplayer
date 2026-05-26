@@ -693,6 +693,15 @@ export function dedupeTokenStatusInfos(statuses: TokenStatusInfo[]): TokenStatus
 }
 
 /**
+ * Normalize a string for dictionary lookup, currently only by case folding.
+ * If normalization expands from just case folding then the entire annotation and db logic will need
+ * to be revisited since Dexie supports case folding natively through anyOfIgnoreCase() but nothing custom.
+ */
+export function normalizeToken(value: string): string {
+    return value.toLowerCase();
+}
+
+/**
  * An async safe semaphore implementation that preserves FIFO order (within a priority group).
  * Priority levels are set with acquire(), higher numbers indicate a higher priority.
  * It uses an id for release to allow multiple releases (e.g try/finally with early releases).

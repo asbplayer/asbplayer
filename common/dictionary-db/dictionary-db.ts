@@ -4,12 +4,15 @@ import {
     AsbplayerSettings,
     DictionaryTokenSource,
     DictionaryTrack,
+    ExternalWordSource,
+    externalWordSourcePriority,
     getFullyKnownTokenStatus,
+    isExternalWordSource,
     SettingsProvider,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, HAS_LETTER_REGEX } from '@project/common/util';
+import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
 import { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan/yomitan';
 import Dexie from 'dexie';
@@ -20,6 +23,9 @@ import { CardInfo } from '@project/common/anki';
 /**
  * This file only contains the public interface functions and types.
  * Functions/types with a leading underscore are considered private to the db and its pipelines/helper functions, even if exported.
+ *
+ * IMPORTANT: You cannot use runtime exports (e.g functions) from this file freely in the rest of the codebase as it will prevent
+ * the extension from building correctly if it eventually gets compiled into a content script.
  */
 
 export const BUILD_MIN_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
@@ -409,21 +415,27 @@ export class DictionaryDB {
         dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL'
     ): { record: DictionaryTokenRecord; statuses: TokenStatusInfo[]; status: TokenStatus } | undefined {
         let bestCandidate:
-            | { record: DictionaryTokenRecord; statuses: TokenStatusInfo[]; status: TokenStatus }
+            | {
+                  record: DictionaryTokenRecord & { source: ExternalWordSource };
+                  statuses: TokenStatusInfo[];
+                  status: TokenStatus;
+              }
             | undefined;
         for (const record of records) {
-            if (record.source === DictionaryTokenSource.LOCAL) continue;
-            if (record.source === DictionaryTokenSource.ANKI_SENTENCE) continue;
+            if (!isExternalWordSource(record.source)) continue;
             const statuses = this._statusesFromRecord(record, cardStatusMap, waniKaniSubjectStatusMap);
             const status = getTokenStatus(statuses, dictionaryAnkiTreatSuspended);
             if (
                 bestCandidate === undefined ||
                 status > bestCandidate.status ||
                 (status === bestCandidate.status &&
-                    _externalWordSourcePriority(record.source) >
-                        _externalWordSourcePriority(bestCandidate.record.source))
+                    externalWordSourcePriority(record.source) > externalWordSourcePriority(bestCandidate.record.source))
             ) {
-                bestCandidate = { record, statuses, status };
+                bestCandidate = {
+                    record: record as DictionaryTokenRecord & { source: ExternalWordSource },
+                    statuses,
+                    status,
+                };
             }
         }
         return bestCandidate;
@@ -539,9 +551,9 @@ export class DictionaryDB {
             [this.db.tokens, this.db.ankiCards, this.db.waniKaniAssignments, this.db.waniKaniSubjects, this.db.meta],
             async () => {
                 const records = await this.db.tokens
-                    .where('[profile+token]')
-                    .anyOf(tokens.map((token) => [profile, token]))
-                    .filter((r) => r.track === track || r.track === LOCAL_TOKEN_TRACK)
+                    .where('token')
+                    .anyOfIgnoreCase(tokens)
+                    .filter((r) => (r.track === track || r.track === LOCAL_TOKEN_TRACK) && r.profile === profile)
                     .toArray();
                 return this._tokenResultsFromRecords(profile, track, records, settings);
             }
@@ -576,7 +588,7 @@ export class DictionaryDB {
      */
     async getByLemmaBulk(inputProfile: string | undefined, track: number, lemmas: string[]): Promise<LemmaResults> {
         if (!lemmas.length) return {};
-        const lemmasSet = new Set(lemmas);
+        const normalizedLemmasSet = new Set(lemmas.map(normalizeToken));
         const profile = this._getProfile(inputProfile);
         const settings = await this.settingsProvider.getAll();
 
@@ -586,7 +598,7 @@ export class DictionaryDB {
             async () => {
                 return this.db.tokens
                     .where('lemmas')
-                    .anyOf(lemmas)
+                    .anyOfIgnoreCase(lemmas)
                     .distinct()
                     .filter((r) => (r.track === track || r.track === LOCAL_TOKEN_TRACK) && r.profile === profile)
                     .toArray()
@@ -595,7 +607,7 @@ export class DictionaryDB {
                         const lemmaRecordMap = new Map<string, DictionaryTokenRecord[]>();
                         for (const record of records) {
                             for (const lemma of record.lemmas) {
-                                if (!lemmasSet.has(lemma)) continue;
+                                if (!normalizedLemmasSet.has(normalizeToken(lemma))) continue;
                                 const val = lemmaRecordMap.get(lemma);
                                 if (val) val.push(record);
                                 else lemmaRecordMap.set(lemma, [record]);
@@ -1313,7 +1325,7 @@ export async function _gatherModifiedTokens(
     if (!modifiedTokens.size) return;
     return db.tokens
         .where('lemmas')
-        .anyOf(Array.from(modifiedTokens))
+        .anyOfIgnoreCase(Array.from(modifiedTokens))
         .distinct()
         .filter((r) => r.profile === profile)
         .toArray()
@@ -1334,7 +1346,7 @@ export async function _gatherModifiedTokensForTrack(
     if (!modifiedTokens.size) return;
     return db.tokens
         .where('lemmas')
-        .anyOf(Array.from(modifiedTokens))
+        .anyOfIgnoreCase(Array.from(modifiedTokens))
         .distinct()
         .filter((r) => r.profile === profile && r.track === track)
         .toArray()
@@ -1366,17 +1378,6 @@ function _applyStrategyToStates(currentStates: TokenState[], nextStates: TokenSt
             return Array.from(currentStateSet).sort((lhs, rhs) => lhs - rhs);
         default:
             throw new Error(`Unsupported applyStates value: "${applyStates}"`);
-    }
-}
-
-function _externalWordSourcePriority(source: DictionaryTokenSource): number {
-    switch (source) {
-        case DictionaryTokenSource.ANKI_WORD:
-            return 2;
-        case DictionaryTokenSource.WANIKANI:
-            return 1;
-        default:
-            return 0;
     }
 }
 

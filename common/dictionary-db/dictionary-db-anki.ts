@@ -14,6 +14,7 @@ import {
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
     DictionaryTrack,
+    isAnkiSource,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
@@ -312,10 +313,6 @@ async function _getAnkiCardsByNoteIdBulk(
             }
             return cardRecordsByNoteId;
         });
-}
-
-function isAnkiSource(source: DictionaryTokenSource): boolean {
-    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.ANKI_SENTENCE;
 }
 
 /**
