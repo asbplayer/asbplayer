@@ -77,6 +77,8 @@ export default class VideoDataSyncController {
     private _emptySubtitle: VideoDataSubtitleTrack;
     private _syncedData?: VideoData;
     private _wasPaused?: boolean;
+    private _playBlocker?: () => void;
+    private _openedPathname?: string;
     private _fullscreenElement?: Element;
     private _activeElement?: Element;
     private _autoSyncAttempted: boolean = false;
@@ -115,6 +117,8 @@ export default class VideoDataSyncController {
 
         this._dataReceivedListener = undefined;
         this._syncedData = undefined;
+        this._cleanupPlayBlocker();
+        this._openedPathname = undefined;
     }
 
     updateSettings({ streamingAutoSync, streamingLastLanguagesSynced }: AsbplayerSettings) {
@@ -138,9 +142,28 @@ export default class VideoDataSyncController {
         }
     }
 
+    get pickerVisible(): boolean {
+        return !this._frame.hidden;
+    }
+
+    get openedPathname(): string | undefined {
+        return this._openedPathname;
+    }
+
     async requestSubtitles() {
         if (!this._context.hasPageScript) {
             return;
+        }
+
+        // While the picker is open on the same path, skip refresh so cyclic
+        // player events do not clobber an in-progress user selection. On a
+        // true soft-navigation, dismiss the stale picker and continue.
+        if (this.pickerVisible) {
+            if (this._openedPathname !== undefined && window.location.pathname !== this._openedPathname) {
+                this._hideAndResume();
+            } else {
+                return;
+            }
         }
 
         const pageDelegate = await currentPageDelegate();
@@ -296,6 +319,7 @@ export default class VideoDataSyncController {
     }
 
     private async _setSyncedData(data: VideoData) {
+        const wasLoading = this._syncedData?.subtitles === undefined;
         this._syncedData = data;
 
         if (this._syncedData?.subtitles !== undefined && (await this._canAutoSync())) {
@@ -303,22 +327,21 @@ export default class VideoDataSyncController {
                 this._autoSyncAttempted = true;
                 const subs = this._matchLastSyncedWithAvailableTracks();
 
-                if (subs.completeMatch) {
+                if (subs.completeMatch && this._frame.hidden) {
                     const autoSelectedTracks: VideoDataSubtitleTrack[] = subs.autoSelectedTracks;
                     await this._syncData(autoSelectedTracks);
-
-                    if (!this._frame.hidden) {
-                        this._hideAndResume();
-                    }
-                } else {
+                } else if (!subs.completeMatch && this._frame.hidden) {
                     const shouldPrompt = await this._settings.getSingle('streamingAutoSyncPromptOnFailure');
 
                     if (shouldPrompt) {
                         await this.show({ reason: VideoDataUiOpenReason.failedToAutoLoadPreferredTrack });
                     }
+                } else if (this._frame.clientIfLoaded !== undefined && wasLoading) {
+                    // Picker is open in loading state. Populate it now that tracks have arrived.
+                    this._frame.clientIfLoaded.updateState(await this._buildModel({}));
                 }
             }
-        } else if (this._frame.clientIfLoaded !== undefined) {
+        } else if (this._frame.clientIfLoaded !== undefined && (this._frame.hidden || wasLoading)) {
             this._frame.clientIfLoaded.updateState(await this._buildModel({}));
         }
     }
@@ -391,6 +414,11 @@ export default class VideoDataSyncController {
                     return;
                 }
 
+                if ('cancel' === message.command) {
+                    this._hideAndResume();
+                    return;
+                }
+
                 let dataWasSynced = true;
 
                 if ('confirm' === message.command) {
@@ -433,8 +461,19 @@ export default class VideoDataSyncController {
     }
 
     private _prepareShow() {
+        this._openedPathname = window.location.pathname;
         this._wasPaused = this._wasPaused ?? this._context.video.paused;
         this._context.pause();
+
+        // Some players (e.g. Hulu) call video.play() on an internal timer that
+        // ignores the picker being open. Re-pause on any play event until the
+        // picker is dismissed.
+        if (!this._playBlocker) {
+            this._playBlocker = () => {
+                this._context.video.pause();
+            };
+            this._context.video.addEventListener('play', this._playBlocker);
+        }
 
         if (document.fullscreenElement) {
             this._fullscreenElement = document.fullscreenElement;
@@ -450,7 +489,16 @@ export default class VideoDataSyncController {
         this._context.mobileVideoOverlayController.forceHide = true;
     }
 
+    private _cleanupPlayBlocker() {
+        if (this._playBlocker) {
+            this._context.video.removeEventListener('play', this._playBlocker);
+            this._playBlocker = undefined;
+        }
+    }
+
     private _hideAndResume() {
+        this._cleanupPlayBlocker();
+        this._openedPathname = undefined;
         this._context.keyBindings.bind(this._context);
         this._context.subtitleController.forceHideSubtitles = false;
         this._context.mobileVideoOverlayController.forceHide = false;

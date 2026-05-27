@@ -679,6 +679,17 @@ export default class Binding {
         if (this.hasPageScript) {
             this.videoChangeListener = () => {
                 this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
+
+                // Cyclic player events (e.g. Hulu's periodic loadedmetadata during blob
+                // URL rotation while paused) fire this listener without an actual video
+                // change. Skip refresh only when the picker is open on the same path.
+                if (
+                    this.videoDataSyncController.pickerVisible &&
+                    this.videoDataSyncController.openedPathname === window.location.pathname
+                ) {
+                    return;
+                }
+
                 this.videoDataSyncController.requestSubtitles();
                 this._resetSubtitles();
             };
