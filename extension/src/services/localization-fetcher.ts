@@ -12,33 +12,16 @@ export interface Localization {
     strings: any;
 }
 
-const deepMerge = (base: any, override: any): any => {
-    const result = { ...base };
-    for (const key of Object.keys(override)) {
-        if (typeof override[key] === 'object' && override[key] !== null && typeof base[key] === 'object' && base[key] !== null) {
-            result[key] = deepMerge(base[key], override[key]);
-        } else {
-            result[key] = override[key];
-        }
-    }
-    return result;
-};
-
 export const fetchLocalization = async (lang: string): Promise<Localization> => {
     if (import.meta.env.MODE === 'development') {
         return (await bundledStringsForLang(lang)) ?? (await bundledStringsForLang('en'))!;
     }
 
-    const bundled = (await bundledStringsForLang(lang)) ?? (await bundledStringsForLang('en'))!;
-    const cached = await cachedStringsForLang(lang);
-
-    if (!cached) {
-        return bundled;
-    }
-
-    // Use bundled as the base so new keys are always available,
-    // then overlay cached strings (which may have newer remote translations).
-    return { lang: cached.lang, strings: deepMerge(bundled.strings, cached.strings) };
+    return (
+        (await cachedStringsForLang(lang)) ??
+        (await bundledStringsForLang(lang)) ??
+        (await bundledStringsForLang('en'))!
+    );
 };
 
 export const fetchSupportedLanguages = async (): Promise<string[]> => {

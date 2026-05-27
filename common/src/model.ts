@@ -130,7 +130,7 @@ export interface AnkiDialogSettings extends AnkiSettings {
 }
 
 export interface AnkiUiState extends CardTextFieldValues {
-    readonly type: 'initial' | 'resume';
+    readonly type: 'initial' | 'resume' | 'cardSelect';
     readonly open: boolean;
     readonly canRerecord: boolean;
     readonly settings: AnkiDialogSettings;
@@ -150,6 +150,10 @@ export interface AnkiUiState extends CardTextFieldValues {
 
 export interface AnkiUiInitialState extends AnkiUiState {
     readonly type: 'initial';
+}
+
+export interface AnkiUiCardSelectState extends AnkiUiState {
+    readonly type: 'cardSelect';
 }
 
 export interface AnkiUiResumeState extends AnkiUiState {

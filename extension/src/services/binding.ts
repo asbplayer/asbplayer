@@ -69,7 +69,6 @@ import {
     surroundingSubtitlesAroundInterval,
 } from '@project/common/util';
 import AnkiUiController from '../controllers/anki-ui-controller';
-import CardSelectController from '../controllers/card-select-controller';
 import ControlsController from '../controllers/controls-controller';
 import DragController from '../controllers/drag-controller';
 import { MobileGestureController } from '../controllers/mobile-gesture-controller';
@@ -154,7 +153,6 @@ export default class Binding {
     readonly controlsController: ControlsController;
     readonly dragController: DragController;
     readonly ankiUiController: AnkiUiController;
-    readonly cardSelectController: CardSelectController;
     readonly notificationController: NotificationController;
     readonly mobileVideoOverlayController: MobileVideoOverlayController;
     readonly mobileGestureController: MobileGestureController;
@@ -214,7 +212,6 @@ export default class Binding {
         this.dragController = new DragController(video);
         this.keyBindings = new KeyBindings();
         this.ankiUiController = new AnkiUiController();
-        this.cardSelectController = new CardSelectController();
         this.notificationController = new NotificationController(this);
         this.mobileVideoOverlayController = new MobileVideoOverlayController(this, OffsetAnchor.top);
         this.subtitleController.onOffsetChange = () => this.mobileVideoOverlayController.updateModel();
@@ -862,7 +859,7 @@ export default class Binding {
                         break;
                     case 'show-card-select-ui':
                         const showCardSelectUiMessage = request.message as ShowCardSelectUiMessage;
-                        this.cardSelectController.show(this, showCardSelectUiMessage);
+                        this.ankiUiController.showCardSelect(this, showCardSelectUiMessage);
                         break;
                     case 'show-anki-ui-after-rerecord':
                         const showAnkiUiAfterRerecordMessage = request.message as ShowAnkiUiAfterRerecordMessage;
@@ -1056,13 +1053,14 @@ export default class Binding {
         this.subtitleController.refresh();
 
         this.videoDataSyncController.updateSettings(currentSettings);
-        const ankiDialogSettings = {
-            ...extractAnkiSettings(currentSettings),
-            themeType: currentSettings.themeType,
-            lastSelectedAnkiExportMode: currentSettings.lastSelectedAnkiExportMode,
-        };
-        this.ankiUiController.updateSettings(ankiDialogSettings, this.settings);
-        this.cardSelectController.updateSettings(ankiDialogSettings);
+        this.ankiUiController.updateSettings(
+            {
+                ...extractAnkiSettings(currentSettings),
+                themeType: currentSettings.themeType,
+                lastSelectedAnkiExportMode: currentSettings.lastSelectedAnkiExportMode,
+            },
+            this.settings
+        );
         this.postMinePlayback = currentSettings.postMiningPlaybackState;
         this.keyBindings.setKeyBindSet(this, currentSettings.keyBindSet);
 

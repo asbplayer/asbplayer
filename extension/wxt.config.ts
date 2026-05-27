@@ -107,7 +107,6 @@ export default defineConfig({
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'anki-ui.js',
-                        'card-select-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',
                         'video-data-sync-ui.js',
