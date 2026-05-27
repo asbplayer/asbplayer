@@ -1684,6 +1684,7 @@ function App({
                                 onAnki={handleAnki}
                             />
                             <StatisticsDrawer
+                                mediaId={extension.id}
                                 open={statisticsOpen}
                                 settings={settings}
                                 dictionaryProvider={dictionaryProvider}
