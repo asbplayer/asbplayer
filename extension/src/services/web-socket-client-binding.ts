@@ -124,7 +124,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
     };
     client.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
         return new Promise<void>((resolve) => {
-            // Publish the command to all active video elements
+            // Publish the command to the active tab video element
             browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 tabRegistry.publishCommandToVideoElements((videoElement) => {
                     if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
