@@ -119,6 +119,11 @@ export function externalWordSourcePriority(source: ExternalWordSource): number {
     }
 }
 
+export type WordSource = DictionaryTokenSource.LOCAL | ExternalWordSource;
+export function isWordSource(source: DictionaryTokenSource): source is WordSource {
+    return source === DictionaryTokenSource.LOCAL || isExternalWordSource(source);
+}
+
 /*
 These are all the possible scenarios which can result in a match. We don't need to support every possible combination,
 as some are not useful or inconsistent. Inconsistent meaning the order the user collects forms affects what future forms
