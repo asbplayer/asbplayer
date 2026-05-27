@@ -1,151 +1,129 @@
-import { VideoDataSubtitleTrack } from '@project/common';
-import { extractExtension, trackFromDef } from '@/pages/util';
+import { VideoDataSubtitleTrackDef } from '@project/common';
+import { extractExtension, inferTracks, poll } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
-    setTimeout(() => {
-        function isObject(val: any) {
-            return typeof val === 'object' && !Array.isArray(val) && val !== null;
+    const tracksByEntityId = new Map<string, VideoDataSubtitleTrackDef[]>();
+
+    function entityIdFromEabId(eabId: unknown): string | undefined {
+        if (typeof eabId !== 'string') {
+            return undefined;
         }
+        const m = eabId.match(/^EAB::([0-9a-fA-F-]+)/);
+        return m ? m[1] : undefined;
+    }
 
-        function extractSubtitleTracks(value: any) {
-            const subtitles = [];
-            if (isObject(value.transcripts_urls?.webvtt)) {
-                const urls = value.transcripts_urls.webvtt;
+    function entityIdFromPathname(pathname: string): string | undefined {
+        const m = pathname.match(/^\/watch\/([0-9a-fA-F-]+)/);
+        return m ? m[1] : undefined;
+    }
 
-                for (const language of Object.keys(urls)) {
-                    const url = urls[language];
-
-                    if (typeof url === 'string') {
-                        if (subtitles.find((s) => s.label === s.language) === undefined) {
-                            subtitles.push(
-                                trackFromDef({
+    const originalFetch = window.fetch;
+    window.fetch = function (...args) {
+        // @ts-ignore
+        const promise = originalFetch.apply(this, args);
+        const input = args[0];
+        const url =
+            typeof input === 'string'
+                ? input
+                : input instanceof Request
+                  ? input.url
+                  : input instanceof URL
+                    ? input.href
+                    : '';
+        if (url.includes('play.hulu.com/v6/playlist')) {
+            promise
+                .then((response) => response.clone().json())
+                .then((json) => {
+                    // Key by entityId from the response itself. Hulu sometimes fires
+                    // the next video's playlist before updating window.location, so
+                    // the URL is not a reliable identifier at fetch time.
+                    const entityId = entityIdFromEabId(json?.content_eab_id);
+                    if (!entityId) {
+                        return;
+                    }
+                    const urls = json?.transcripts_urls?.webvtt;
+                    const tracks: VideoDataSubtitleTrackDef[] = [];
+                    if (urls && typeof urls === 'object' && !Array.isArray(urls)) {
+                        for (const language of Object.keys(urls)) {
+                            const u = urls[language];
+                            if (typeof u === 'string') {
+                                tracks.push({
                                     label: language,
                                     language: language.toLowerCase(),
-                                    url: url,
-                                    extension: extractExtension(url, 'vtt'),
-                                })
-                            );
+                                    url: u,
+                                    extension: extractExtension(u, 'vtt'),
+                                });
+                            }
                         }
                     }
-                }
+                    tracksByEntityId.set(entityId, tracks);
+                })
+                .catch(() => {});
+        }
+        return promise;
+    };
+
+    function basenameFromDOM(): string | undefined {
+        for (const pm of document.querySelectorAll('[data-testid="player-metadata"]')) {
+            const text = (pm.textContent || '').trim();
+            if (text.startsWith('UP NEXT')) {
+                continue;
             }
 
-            return subtitles;
-        }
-
-        let playlistController: AbortController | undefined;
-
-        function fetchPlaylistAndExtractSubtitles(payload: any): Promise<VideoDataSubtitleTrack[]> {
-            playlistController?.abort();
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    playlistController?.abort();
-                    playlistController = new AbortController();
-                    fetch('https://play.hulu.com/v6/playlist', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'content-type': 'application/json' },
-                        body: payload,
-                        signal: playlistController.signal,
-                    })
-                        .then((response) => response.json())
-                        .then((json) => resolve(extractSubtitleTracks(json)))
-                        .catch(reject);
-                }, 0);
-            });
-        }
-
-        function extractBasename(payload: any) {
-            if (payload?.items instanceof Array && payload.items.length > 0) {
-                const item = payload.items[0];
-                if (item.series_name && item.season_short_display_name && item.number && item.name) {
-                    return `${item.series_name}.${item.season_short_display_name}.E${item.number} - ${item.name}`;
-                }
-
-                return item.name ?? '';
+            const series = pm.querySelector('span')?.textContent?.trim();
+            if (!series) {
+                continue;
             }
 
-            return '';
-        }
-
-        let upnextController: AbortController | undefined;
-
-        function fetchUpNextAndExtractBasename(eabId: string): Promise<string> {
-            upnextController?.abort();
-            return new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    upnextController?.abort();
-                    upnextController = new AbortController();
-                    fetch(
-                        `https://discover.hulu.com/content/v3/browse/upnext?current_eab=${encodeURIComponent(
-                            eabId
-                        )}&referral_host=www.hulu.com&schema=4`,
-                        { signal: upnextController.signal }
-                    )
-                        .then((response) => response.json())
-                        .then((json) => resolve(extractBasename(json)))
-                        .catch(reject);
-                }, 0);
-            });
-        }
-
-        let subtitlesPromise: Promise<VideoDataSubtitleTrack[]> | undefined;
-        let basenamePromise: Promise<string> | undefined;
-
-        const originalStringify = JSON.stringify;
-        JSON.stringify = function (value) {
-            // @ts-ignore
-            const stringified = originalStringify.apply(this, arguments);
-            if (
-                typeof value?.content_eab_id === 'string' &&
-                typeof value?.playback === 'object' &&
-                value?.playback !== null
-            ) {
-                subtitlesPromise = fetchPlaylistAndExtractSubtitles(stringified);
-                basenamePromise = fetchUpNextAndExtractBasename(value.content_eab_id);
+            const divs = Array.from(pm.querySelectorAll('div')).map((d) => (d.textContent || '').trim());
+            const seasonEpIdx = divs.findIndex((t) => /^S\d+\s+E\d+$/.test(t));
+            if (seasonEpIdx === -1) {
+                return series;
             }
 
-            return stringified;
-        };
+            const seasonEp = divs[seasonEpIdx].replace(/\s+/g, '.');
+            const title = divs[seasonEpIdx + 2];
+            if (!title || title === '•' || title === '-') {
+                return `${series}.${seasonEp}`;
+            }
+            return `${series}.${seasonEp} - ${title}`;
+        }
+        return undefined;
+    }
 
-        document.addEventListener(
-            'asbplayer-get-synced-data',
-            async () => {
-                let basename = '';
-                let subtitles: VideoDataSubtitleTrack[] = [];
-                let error = '';
+    inferTracks({
+        onRequest: async (addTrack, setBasename) => {
+            const entityId = entityIdFromPathname(window.location.pathname);
+            if (!entityId) {
+                return;
+            }
 
-                try {
-                    if (basenamePromise !== undefined) {
-                        basename = await basenamePromise;
-                        basenamePromise = undefined;
-                    }
+            // Wait for Hulu's own /v6/playlist response to be observed by the fetch wrapper.
+            await poll(() => tracksByEntityId.has(entityId));
+            const tracks = tracksByEntityId.get(entityId);
+            if (!tracks) {
+                return;
+            }
 
-                    if (subtitlesPromise !== undefined) {
-                        subtitles = await subtitlesPromise;
-                        subtitlesPromise = undefined;
-                    }
-                } catch (e) {
-                    if (e instanceof Error) {
-                        error = e.message;
-                    } else {
-                        error = String(e);
-                    }
-                }
+            // Wait briefly for the DOM-driven basename to appear.
+            let basename: string | undefined;
+            await poll(() => {
+                basename = basenameFromDOM();
+                return basename !== undefined;
+            }, 5000);
 
-                const response = {
-                    error: error,
-                    basename: basename,
-                    subtitles: subtitles,
-                };
+            // Bail if the user has soft-navigated to a different video since this request started.
+            if (entityIdFromPathname(window.location.pathname) !== entityId) {
+                return;
+            }
 
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
-            },
-            false
-        );
-    }, 0);
+            if (basename) {
+                setBasename(basename);
+            }
+            for (const track of tracks) {
+                addTrack(track);
+            }
+        },
+        waitForBasename: false,
+    });
 });
