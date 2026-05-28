@@ -1,6 +1,14 @@
 import { Fetcher, HttpFetcher, Progress } from '@project/common';
 import { DictionaryTrack } from '@project/common/settings';
-import { AsyncSemaphore, fromBatches, HAS_LETTER_REGEX, inBatches, isKanaOnly } from '@project/common/util';
+import {
+    AsyncSemaphore,
+    fromBatches,
+    HAS_LETTER_REGEX,
+    inBatches,
+    isKanaOnly,
+    NEWLINES_REGEX,
+    STERM_AND_NEWLINES_REGEX,
+} from '@project/common/util';
 import { coerce, lt, gte } from 'semver';
 
 const TOKENIZE_BATCH_SIZE = 100; // 1k can cause 1.5GB memory on Yomitan for subtitles, Anki cards may be larger too
@@ -150,7 +158,7 @@ export class Yomitan {
     ): Promise<TokenPart[][]> {
         return this.tokenizeBulk(
             text
-                .split(/(?:\p{STerm}|\r?\n)+/u)
+                .split(STERM_AND_NEWLINES_REGEX)
                 .map((p) => p.trim())
                 .filter((p) => HAS_LETTER_REGEX.test(p)),
             statusUpdates,
@@ -174,7 +182,10 @@ export class Yomitan {
         if (!Array.isArray(res)) throw new Error(`Unexpected Yomitan tokenize response: ${JSON.stringify(res)}`);
         const tokenizeResults = this.filterDictionaries(res, this.dt.dictionaryYomitanParser);
 
-        for (const tokenizeResult of tokenizeResults) this.cacheFromTokenize(tokenizeResult, tokens); // Requires this.filterDictionaries to ensure one tokenizeResult per index
+        const newlines: { text: string; index: number }[] = [];
+        for (const m of text.matchAll(NEWLINES_REGEX)) newlines.push({ text: m[0], index: m.index });
+
+        for (const tokenizeResult of tokenizeResults) this.cacheFromTokenize(tokenizeResult, tokens, newlines); // Requires this.filterDictionaries to ensure one tokenizeResult per index
         this.tokenizeCache.set(text, tokens);
         return tokens;
     }
@@ -193,6 +204,7 @@ export class Yomitan {
                     const tokensByText: TokenPart[][][] = [];
                     const textsToFetch: string[] = [];
                     const fetchedTextIndices: number[] = [];
+                    const newlinesByText: { text: string; index: number }[][] = [];
                     for (const [index, text] of texts.entries()) {
                         const tokensForText = this.tokenizeCache.get(text);
                         if (tokensForText) {
@@ -201,6 +213,9 @@ export class Yomitan {
                         }
                         textsToFetch.push(text);
                         fetchedTextIndices.push(index);
+                        const newlines: { text: string; index: number }[] = [];
+                        for (const m of text.matchAll(NEWLINES_REGEX)) newlines.push({ text: m[0], index: m.index });
+                        newlinesByText.push(newlines);
                     }
                     if (!textsToFetch.length) return tokensByText.flat();
 
@@ -225,7 +240,7 @@ export class Yomitan {
                     // Requires this.filterDictionaries to ensure one tokenizeResult per index
                     for (const tokenizeResult of tokenizeResults) {
                         const tokensForText: TokenPart[][] = [];
-                        this.cacheFromTokenize(tokenizeResult, tokensForText);
+                        this.cacheFromTokenize(tokenizeResult, tokensForText, newlinesByText[tokenizeResult.index]);
                         this.tokenizeCache.set(textsToFetch[tokenizeResult.index], tokensForText);
                         tokensByText[fetchedTextIndices[tokenizeResult.index]] = tokensForText;
                     }
@@ -309,15 +324,26 @@ export class Yomitan {
         return results;
     }
 
-    private cacheFromTokenize(tokenizeResult: TokenizeResult, tokensForText: TokenPartResult[][]): void {
+    private cacheFromTokenize(
+        tokenizeResult: TokenizeResult,
+        tokensForText: TokenPartResult[][],
+        newlines: { text: string; index: number }[]
+    ): void {
+        let currIndex = 0;
         for (const tokenParts of tokenizeResult.content) {
-            tokensForText.push(tokenParts);
             const tokenPart = tokenParts[0];
-            if (!tokenPart) return;
-            const token = tokenParts
-                .map((p) => p.text)
-                .join('')
-                .trim();
+            if (!tokenPart) continue;
+
+            const tokenText = tokenParts.map((p) => p.text).join('');
+            currIndex += tokenText.length;
+            while (newlines.length && newlines[0].index < currIndex) {
+                const { text } = newlines.shift()!;
+                if (tokenText.includes(text)) continue; // scanning-parser includes newlines
+                tokensForText.push([{ text, reading: '' }]);
+                currIndex += text.length;
+            }
+            tokensForText.push(tokenParts);
+            const token = tokenText.trim();
 
             if (!this.lemmatizeCache.has(token)) this.extractLemmaFromMecab(token, tokenPart);
 
@@ -326,6 +352,10 @@ export class Yomitan {
                 if (!this.lemmatizeCache.has(token)) this.extractLemmas(token, headwords);
                 if (!this.frequencyCache.has(token)) this.extractFrequencyFromTokenize(token, headwords);
             }
+        }
+        while (newlines.length) {
+            const { text } = newlines.shift()!;
+            tokensForText.push([{ text, reading: '' }]);
         }
     }
 

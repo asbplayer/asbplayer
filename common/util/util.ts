@@ -418,6 +418,10 @@ export function isNumeric(str: string) {
 
 export const HAS_LETTER_REGEX = /\p{L}/u;
 
+export const NEWLINES_REGEX = /\r?\n/g;
+
+export const STERM_AND_NEWLINES_REGEX = /(?:\p{STerm}|\r?\n)+/u;
+
 export const ONLY_ASCII_LETTERS_REGEX = /^[a-z]+$/i;
 
 const KANA_ONLY_REGEX =
