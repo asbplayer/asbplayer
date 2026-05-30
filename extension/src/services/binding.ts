@@ -127,6 +127,8 @@ const startAudioRecordingErrorResponse: (e: any) => StartRecordingResponse = (e:
 };
 
 export default class Binding {
+    private readonly _fallbackVideoSrc = uuidv4();
+
     subscribed: boolean = false;
 
     ankiUiSavedState?: AnkiUiSavedState;
@@ -213,7 +215,7 @@ export default class Binding {
 
     constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string) {
         this.video = video;
-        this._registeredVideoSrc = video.src || uuidv4();
+        this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
         this.hasPageScript = hasPageScript;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
@@ -676,9 +678,7 @@ export default class Binding {
 
         if (this.hasPageScript) {
             this.videoChangeListener = () => {
-                if (this.video.src) {
-                    this._updateRegisteredVideoSrc(this.video.src);
-                }
+                this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
                 this.videoDataSyncController.requestSubtitles();
                 this._resetSubtitles();
             };
@@ -686,9 +686,7 @@ export default class Binding {
         }
 
         this.heartbeatInterval = setInterval(() => {
-            if (this.video.src) {
-                this._updateRegisteredVideoSrc(this.video.src);
-            }
+            this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
 
             const command: VideoToExtensionCommand<VideoHeartbeatMessage> = {
                 sender: 'asbplayer-video',
