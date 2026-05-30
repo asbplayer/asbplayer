@@ -135,14 +135,6 @@ export default function OnlineSubtitleSourceDialog({
         resultsCache.current.clear();
     }, [query]);
 
-    const prevCategoryRef = useRef(jimakuSearchCategory);
-    useEffect(() => {
-        if (prevCategoryRef.current !== jimakuSearchCategory && lastQuery !== undefined) {
-            handleSearchJimaku();
-        }
-        prevCategoryRef.current = jimakuSearchCategory;
-    }, [jimakuSearchCategory]);
-
     const handleSearchJimaku = useCallback(async () => {
         setError(undefined);
         setSearching(true);
@@ -188,6 +180,18 @@ export default function OnlineSubtitleSourceDialog({
             setSearching(false);
         }
     }, [jimakuApiKey, query, jimakuSearchCategory]);
+
+    const prevCategoryRef = useRef(jimakuSearchCategory);
+    const lastQueryRef = useRef(lastQuery);
+    lastQueryRef.current = lastQuery;
+    const handleSearchJimakuRef = useRef(handleSearchJimaku);
+    handleSearchJimakuRef.current = handleSearchJimaku;
+    useEffect(() => {
+        if (prevCategoryRef.current !== jimakuSearchCategory && lastQueryRef.current !== undefined) {
+            handleSearchJimakuRef.current?.();
+        }
+        prevCategoryRef.current = jimakuSearchCategory;
+    }, [jimakuSearchCategory]);
 
     const handleLoadJimakuFiles = useCallback(
         async (entry: JimakuEntry) => {

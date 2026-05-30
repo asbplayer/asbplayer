@@ -712,6 +712,9 @@
         "entries": "検索結果",
         "noEntries": "検索結果はありません",
         "availableFiles": "ファイル",
-        "noFiles": "ファイルはありません"
+        "noFiles": "ファイルはありません",
+        "searchCategory": "Search category",
+        "categoryAnime": "Anime",
+        "categoryDrama": "Drama"
     }
 }
