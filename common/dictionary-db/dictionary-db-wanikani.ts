@@ -621,7 +621,9 @@ async function _buildWaniKaniTokensForTrack(
                 await ts.yomitan.tokenizeBulk(subjectsToTokenize.map((subject) => subject.characters));
                 for (const { subjectId, characters } of subjectsToTokenize) {
                     const tokens = new Set<string>();
-                    for (const tokenParts of await ts.yomitan.tokenize(characters)) {
+                    const tokenizeRes = await ts.yomitan.tokenize(characters);
+                    ts.yomitan.verifyTokenizeResult(characters, tokenizeRes);
+                    for (const tokenParts of tokenizeRes) {
                         const token = tokenParts
                             .map((part) => part.text)
                             .join('')

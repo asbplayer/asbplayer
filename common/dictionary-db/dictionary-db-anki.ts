@@ -826,7 +826,9 @@ async function _buildTokensForTracks(
                             const tokenCardsMap = sourceTokensMap.get(source)!;
                             const field = card.fields.get(ankiField);
                             if (!field) continue;
-                            for (const tokenParts of await ts.yomitan.tokenize(field)) {
+                            const tokenizeRes = await ts.yomitan.tokenize(field);
+                            ts.yomitan.verifyTokenizeResult(field, tokenizeRes);
+                            for (const tokenParts of tokenizeRes) {
                                 const trimmedToken = tokenParts
                                     .map((p) => p.text)
                                     .join('')

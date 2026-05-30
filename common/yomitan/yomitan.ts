@@ -359,6 +359,14 @@ export class Yomitan {
         }
     }
 
+    verifyTokenizeResult(originalText: string, tokenizeRes: TokenPart[][]): void {
+        const originalTextFromTokenize = tokenizeRes.map((t) => t.map((p) => p.text).join('')).join('');
+        if (originalTextFromTokenize === originalText) return;
+        throw new Error(
+            `Tokenize result does not match the original text:\n${originalText}\n--->\n${originalTextFromTokenize}`
+        );
+    }
+
     private extractLemmaFromMecab(token: string, tokenPart: TokenPartResult): void {
         if (!this.getSupportsMecabLemma()) return;
         const lemmas: string[] = [];

@@ -1629,6 +1629,8 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             if (!ts.yt) throw new Error(`Yomitan not initialized for Track${ts.track + 1}`);
             const tokenizeRes = await ts.yt.tokenize(fullText);
             if (this.shouldCancelBuild) return;
+            ts.yt.verifyTokenizeResult(fullText, tokenizeRes);
+
             const tokens: Token[] = [];
             let currentOffset = 0;
             let reconstructedTextParts = [];
