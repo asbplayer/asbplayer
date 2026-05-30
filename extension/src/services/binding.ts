@@ -95,12 +95,23 @@ import { pgsParserWorkerFactory } from './pgs-parser-worker-factory';
 import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-provider';
 import { ExtensionDictionaryStorage } from './extension-dictionary-storage';
 import { HoveredToken } from '@project/common/subtitle-annotations';
+import { createVideoChangeHandler } from './video-change-handler';
+import { isDisneyPlusPageConfigKey } from './disney-plus-mse-offset';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
     netflix = (e as CustomEvent).detail;
 });
 document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
+
+// Disney+ pushes its true content time (ms) here, since video.currentTime is
+// per-MediaSource relative time and does not reflect content position.
+let disneyPlusContentTimeMs: number | undefined;
+let disneyPlusContentTimeAt: number | undefined;
+document.addEventListener('asbplayer-disney-plus-time', (e) => {
+    disneyPlusContentTimeMs = (e as CustomEvent).detail;
+    disneyPlusContentTimeAt = performance.now();
+});
 
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 
@@ -189,6 +200,7 @@ export default class Binding {
     private playListener?: EventListener;
     private pauseListener?: EventListener;
     private seekedListener?: EventListener;
+    private disneyPlusTimeUpdateListener?: EventListener;
     private playbackRateListener?: EventListener;
     private videoChangeListener?: EventListener;
     private canPlayListener?: EventListener;
@@ -211,13 +223,29 @@ export default class Binding {
     private unsubscribeStatisticsSubtitleMine?: () => void;
 
     private readonly frameId?: string;
+    private readonly pageConfigKey?: string;
+    private _mseBaseOffsetMs: number = 0;
 
-    constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string) {
+    get contentTimeMs(): number {
+        if (this._isDisneyPlus() && disneyPlusContentTimeMs !== undefined) {
+            // Disney+: video.currentTime is unreliable; use the player's true content
+            // time pushed from the page script, interpolated while playing.
+            const elapsed = this.video.paused
+                ? 0
+                : (performance.now() - (disneyPlusContentTimeAt ?? 0)) * this.video.playbackRate;
+            return disneyPlusContentTimeMs + elapsed;
+        }
+
+        return this.video.currentTime * 1000 - this._mseBaseOffsetMs;
+    }
+
+    constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string, pageConfigKey?: string) {
         this.video = video;
         this.hasPageScript = hasPageScript;
+        this.pageConfigKey = pageConfigKey;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
-        this.subtitleController = new SubtitleController(video, this.dictionary, this.settings);
+        this.subtitleController = new SubtitleController(video, this.dictionary, this.settings, () => this.contentTimeMs);
         this.videoDataSyncController = new VideoDataSyncController(this, this.settings);
         this.controlsController = new ControlsController(video);
         this.dragController = new DragController(video);
@@ -377,7 +405,7 @@ export default class Binding {
                             seeking ||
                             !isTrackSeekable(this.seekableTracks, subtitle.track) ||
                             this.video.paused ||
-                            subtitle.start - this.video.currentTime * 1000 <=
+                            subtitle.start - this.contentTimeMs <=
                                 this.condensedPlaybackMinimumSkipIntervalMs
                         ) {
                             return;
@@ -398,7 +426,7 @@ export default class Binding {
                     const subtitlesAreSufficientlyOffsetFromNow = (subtitleEdgeTime: number | undefined) => {
                         return (
                             subtitleEdgeTime &&
-                            Math.abs(subtitleEdgeTime - this.video.currentTime * 1000) >
+                            Math.abs(subtitleEdgeTime - this.contentTimeMs) >
                                 this.fastForwardPlaybackMinimumGapMs
                         );
                     };
@@ -511,6 +539,7 @@ export default class Binding {
 
     _bind() {
         this._notifyReady();
+        this._mseBaseOffsetMs = this._detectMseBaseOffset();
         this._subscribe();
         this._refreshSettings().then(() => {
             this.videoDataSyncController.requestSubtitles();
@@ -523,7 +552,7 @@ export default class Binding {
         const seek = (forward: boolean) => {
             const subtitle = adjacentSubtitle(
                 forward,
-                this.video.currentTime * 1000,
+                this.contentTimeMs,
                 this.subtitleController.subtitles,
                 this.seekableTracks
             );
@@ -543,7 +572,7 @@ export default class Binding {
             message: {
                 command: 'ready',
                 duration: this.video.duration,
-                currentTime: this.video.currentTime,
+                currentTime: this.contentTimeMs / 1000,
                 paused: this.video.paused,
                 audioTracks: undefined,
                 selectedAudioTrack: undefined,
@@ -599,7 +628,7 @@ export default class Binding {
                 sender: 'asbplayer-video',
                 message: {
                     command: 'currentTime',
-                    value: this.video.currentTime,
+                    value: this.contentTimeMs / 1000,
                     echo: false,
                 },
                 src: this.video.src,
@@ -645,6 +674,34 @@ export default class Binding {
         this.video.addEventListener('seeked', this.seekedListener);
         this.video.addEventListener('ratechange', this.playbackRateListener);
 
+        if (this._isDisneyPlus()) {
+            // Disney+ does not fire 'seeked' on player-API seeks, and its video.currentTime
+            // is not content time, so the asbplayer player clock cannot self-sync from those.
+            // Push the true content time on timeupdate (throttled) to keep the subtitle list
+            // highlight aligned. Uses the same 'currentTime' command as seekedListener.
+            let lastContentTimeSent = 0;
+            this.disneyPlusTimeUpdateListener = () => {
+                const now = performance.now();
+
+                if (now - lastContentTimeSent < 500) {
+                    return;
+                }
+
+                lastContentTimeSent = now;
+                const command: VideoToExtensionCommand<CurrentTimeFromVideoMessage> = {
+                    sender: 'asbplayer-video',
+                    message: {
+                        command: 'currentTime',
+                        value: this.contentTimeMs / 1000,
+                        echo: false,
+                    },
+                    src: this.video.src,
+                };
+                browser.runtime.sendMessage(command);
+            };
+            this.video.addEventListener('timeupdate', this.disneyPlusTimeUpdateListener);
+        }
+
         this.subtitleController.onMouseOver = (mouseEvent: MouseEvent) => {
             if (this.pauseOnHoverMode !== PauseOnHoverMode.disabled && !this.video.paused) {
                 this.video.pause();
@@ -672,11 +729,12 @@ export default class Binding {
         this.subtitleController.onMouseOut = (mouseEvent: MouseEvent) => this.hoveredToken.handleMouseOut(mouseEvent);
 
         if (this.hasPageScript) {
-            this.videoChangeListener = () => {
+            this.videoChangeListener = createVideoChangeHandler(this.video, () => {
                 this._updateRegisteredVideoSrc(this.video.src || undefined);
+                this._mseBaseOffsetMs = this._detectMseBaseOffset();
                 this.videoDataSyncController.requestSubtitles();
                 this._resetSubtitles();
-            };
+            });
             this.video.addEventListener('loadedmetadata', this.videoChangeListener);
         }
 
@@ -842,7 +900,7 @@ export default class Binding {
                             initialTimestampInterval: [cardMessage.subtitle.start, cardMessage.subtitle.end],
                             lastAppliedTimestampIntervalToText: [cardMessage.subtitle.start, cardMessage.subtitle.end],
                             lastAppliedTimestampIntervalToAudio: [cardMessage.subtitle.start, cardMessage.subtitle.end],
-                            dialogRequestedTimestamp: this.video.currentTime * 1000,
+                            dialogRequestedTimestamp: this.contentTimeMs,
                         };
                         this.mobileVideoOverlayController.updateModel();
                         break;
@@ -1164,6 +1222,11 @@ export default class Binding {
             this.seekedListener = undefined;
         }
 
+        if (this.disneyPlusTimeUpdateListener) {
+            this.video.removeEventListener('timeupdate', this.disneyPlusTimeUpdateListener);
+            this.disneyPlusTimeUpdateListener = undefined;
+        }
+
         if (this.playbackRateListener) {
             this.video.removeEventListener('ratechange', this.playbackRateListener);
             this.playbackRateListener = undefined;
@@ -1230,7 +1293,7 @@ export default class Binding {
                 ankiUiState: this.ankiUiSavedState,
                 ...this._imageCaptureParams,
                 subtitleFileName: this.subtitleFileName(),
-                mediaTimestamp: this.video.currentTime * 1000,
+                mediaTimestamp: this.contentTimeMs,
             },
             src: this.video.src,
         };
@@ -1276,10 +1339,15 @@ export default class Binding {
             this.recordingState = RecordingState.requested;
             this.recordingPostMineAction = postMineAction;
             this.wasPlayingBeforeRecordingMedia = !this.video.paused;
-            this.recordingMediaStartedTimestamp = this.video.currentTime * 1000;
+            this.recordingMediaStartedTimestamp = this.contentTimeMs;
             this.recordingMediaWithScreenshot = this.takeScreenshot;
             const start = Math.max(0, subtitle.start - this.audioPaddingStart);
             this.seek(start / 1000);
+
+            if (this._isDisneyPlus()) {
+                await this._waitForDisneyPlusSeek(start / 1000);
+            }
+
             await this.play();
         }
 
@@ -1287,7 +1355,7 @@ export default class Binding {
             text = extractText(subtitle, surroundingSubtitles);
         }
 
-        const imageDelay = Math.max(0, mediaTimestamp - this.video.currentTime * 1000);
+        const imageDelay = Math.max(0, mediaTimestamp - this.contentTimeMs);
 
         const command: VideoToExtensionCommand<RecordMediaAndForwardSubtitleMessage> = {
             sender: 'asbplayer-video',
@@ -1329,7 +1397,7 @@ export default class Binding {
         }
 
         if (this.recordingState === RecordingState.started) {
-            const currentTimestamp = this.video.currentTime * 1000;
+            const currentTimestamp = this.contentTimeMs;
             const command: VideoToExtensionCommand<StopRecordingMediaMessage> = {
                 sender: 'asbplayer-video',
                 message: {
@@ -1356,7 +1424,7 @@ export default class Binding {
                 await this._prepareScreenshot();
             }
 
-            const timestamp = this.video.currentTime * 1000;
+            const timestamp = this.contentTimeMs;
 
             if (this.recordMedia) {
                 this.recordingState = RecordingState.requested;
@@ -1418,8 +1486,14 @@ export default class Binding {
         const audioPaddingStart = noSubtitles ? 0 : this.audioPaddingStart;
         const audioPaddingEnd = noSubtitles ? 0 : this.audioPaddingEnd;
         this.recordingState = RecordingState.requested;
-        this.recordingMediaStartedTimestamp = this.video.currentTime * 1000;
-        this.seek(Math.max(0, start - audioPaddingStart) / 1000);
+        this.recordingMediaStartedTimestamp = this.contentTimeMs;
+        const rerecordSeekTargetSec = Math.max(0, start - audioPaddingStart) / 1000;
+        this.seek(rerecordSeekTargetSec);
+
+        if (this._isDisneyPlus()) {
+            await this._waitForDisneyPlusSeek(rerecordSeekTargetSec);
+        }
+
         await this.play();
 
         const command: VideoToExtensionCommand<RerecordMediaMessage> = {
@@ -1447,14 +1521,27 @@ export default class Binding {
                     detail: timestamp * 1000,
                 })
             );
+        } else if (this._isDisneyPlus()) {
+            // Disney+ ignores direct video.currentTime writes; drive the player API
+            // instead. detail is absolute content time in milliseconds.
+            document.dispatchEvent(
+                new CustomEvent('asbplayer-disney-plus-seek', {
+                    detail: timestamp * 1000,
+                })
+            );
         } else {
-            seekWithNudge(this.video, timestamp);
+            seekWithNudge(this.video, timestamp + this._mseBaseOffsetMs / 1000);
         }
     }
 
     async play() {
         if (netflix) {
             await this._playNetflix();
+            return;
+        }
+
+        if (this._isDisneyPlus()) {
+            await this._playDisneyPlus();
             return;
         }
 
@@ -1502,9 +1589,51 @@ export default class Binding {
         });
     }
 
+    _playDisneyPlus() {
+        document.dispatchEvent(new CustomEvent('asbplayer-disney-plus-play'));
+
+        // If already playing, the play/playing events won't fire, so resolve immediately
+        // to avoid hanging (e.g. during mining where the video is already playing).
+        if (!this.video.paused) {
+            return Promise.resolve(undefined);
+        }
+
+        return new Promise((resolve) => {
+            const listener = () => {
+                this.video.removeEventListener('play', listener);
+                this.video.removeEventListener('playing', listener);
+                resolve(undefined);
+            };
+
+            this.video.addEventListener('play', listener);
+            this.video.addEventListener('playing', listener);
+        });
+    }
+
+    // Disney+ player-API seeks are async and do not fire 'seeked', so wait until the
+    // player's content time reaches the target before recording. Otherwise mined audio
+    // is captured from the pre-seek position.
+    private async _waitForDisneyPlusSeek(targetSec: number, timeoutMs = 3000) {
+        const targetMs = targetSec * 1000;
+        const startWait = performance.now();
+
+        while (performance.now() - startWait < timeoutMs) {
+            if (Math.abs(this.contentTimeMs - targetMs) < 700) {
+                return;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+    }
+
     pause() {
         if (netflix) {
             document.dispatchEvent(new CustomEvent('asbplayer-netflix-pause'));
+            return;
+        }
+
+        if (this._isDisneyPlus()) {
+            document.dispatchEvent(new CustomEvent('asbplayer-disney-plus-pause'));
             return;
         }
 
@@ -1575,7 +1704,8 @@ export default class Binding {
                     convertNetflixRuby: convertNetflixRuby,
                     pgsParserWorkerFactory: pgsParserWorkerFactory,
                 });
-                const offset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
+                const userOffset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
+                const offset = userOffset;
                 const subtitles = await reader.subtitles(files, flatten);
 
                 // Order is important: sync with tab first, then update our subtitle controller
@@ -1679,6 +1809,24 @@ export default class Binding {
             src,
         };
         browser.runtime.sendMessage(command);
+    }
+
+    private _isDisneyPlus(): boolean {
+        return isDisneyPlusPageConfigKey(this.pageConfigKey);
+    }
+
+    private _detectMseBaseOffset(): number {
+        if (!this.video.src.startsWith('blob:') || (isFinite(this.video.duration) && !isNaN(this.video.duration))) {
+            return 0;
+        }
+        if (this.video.seekable.length === 0) {
+            return 0;
+        }
+        const offsetSeconds = this.video.currentTime - this.video.seekable.start(0);
+        if (offsetSeconds > 0.5 && offsetSeconds < 86400) {
+            return Math.round(offsetSeconds * 1000);
+        }
+        return 0;
     }
 
     private _captureStream(): Promise<MediaStream> {
