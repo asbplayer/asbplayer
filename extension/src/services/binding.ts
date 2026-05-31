@@ -136,6 +136,7 @@ export default class Binding {
 
     private _synced: boolean;
     private _syncedTimestamp?: number;
+    private _lastSyncedLocation?: string;
 
     recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
@@ -680,13 +681,17 @@ export default class Binding {
             this.videoChangeListener = () => {
                 this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
 
-                // Cyclic player events (e.g. Hulu's periodic loadedmetadata during blob
-                // URL rotation while paused) fire this listener without an actual video
-                // change. Skip refresh only when the picker is open on the same path.
+                // Player events (e.g. Hulu blob URL rotation) can fire loadedmetadata
+                // without an actual video change. Skip refresh when the picker is open
+                // here or subtitles are already synced for it.
                 if (
                     this.videoDataSyncController.pickerVisible &&
-                    this.videoDataSyncController.openedPathname === window.location.pathname
+                    this.videoDataSyncController.openedLocation === window.location.href
                 ) {
+                    return;
+                }
+
+                if (this._synced && this._lastSyncedLocation === window.location.href) {
                     return;
                 }
 
@@ -1228,6 +1233,7 @@ export default class Binding {
 
         this._notifyVideoDisappeared(this._registeredVideoSrc);
         this._registeredVideoSrc = '';
+        this._lastSyncedLocation = undefined;
     }
 
     async _takeScreenshot() {
@@ -1643,6 +1649,7 @@ export default class Binding {
         this.ankiUiSavedState = undefined;
         this._synced = true;
         this._syncedTimestamp = Date.now();
+        this._lastSyncedLocation = window.location.href;
 
         if (this.video.paused) {
             this.mobileVideoOverlayController.show();
@@ -1674,6 +1681,7 @@ export default class Binding {
         this.ankiUiSavedState = undefined;
         this._synced = false;
         this._syncedTimestamp = undefined;
+        this._lastSyncedLocation = undefined;
         this.mobileVideoOverlayController.disposeOverlay();
     }
 

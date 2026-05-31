@@ -78,7 +78,7 @@ export default class VideoDataSyncController {
     private _syncedData?: VideoData;
     private _wasPaused?: boolean;
     private _playBlocker?: () => void;
-    private _openedPathname?: string;
+    private _openedLocation?: string;
     private _fullscreenElement?: Element;
     private _activeElement?: Element;
     private _autoSyncAttempted: boolean = false;
@@ -118,7 +118,7 @@ export default class VideoDataSyncController {
         this._dataReceivedListener = undefined;
         this._syncedData = undefined;
         this._cleanupPlayBlocker();
-        this._openedPathname = undefined;
+        this._openedLocation = undefined;
     }
 
     updateSettings({ streamingAutoSync, streamingLastLanguagesSynced }: AsbplayerSettings) {
@@ -146,8 +146,8 @@ export default class VideoDataSyncController {
         return !this._frame.hidden;
     }
 
-    get openedPathname(): string | undefined {
-        return this._openedPathname;
+    get openedLocation(): string | undefined {
+        return this._openedLocation;
     }
 
     async requestSubtitles() {
@@ -155,11 +155,11 @@ export default class VideoDataSyncController {
             return;
         }
 
-        // While the picker is open on the same path, skip refresh so cyclic
+        // While the picker is open on the same location, skip refresh so
         // player events do not clobber an in-progress user selection. On a
         // true soft-navigation, dismiss the stale picker and continue.
         if (this.pickerVisible) {
-            if (this.openedPathname !== undefined && window.location.pathname !== this.openedPathname) {
+            if (this.openedLocation !== undefined && window.location.href !== this.openedLocation) {
                 this._hideAndResume();
             } else {
                 return;
@@ -461,7 +461,7 @@ export default class VideoDataSyncController {
     }
 
     private _prepareShow() {
-        this._openedPathname = window.location.pathname;
+        this._openedLocation = window.location.href;
         this._wasPaused = this._wasPaused ?? this._context.video.paused;
         this._context.pause();
 
@@ -498,7 +498,7 @@ export default class VideoDataSyncController {
 
     private _hideAndResume() {
         this._cleanupPlayBlocker();
-        this._openedPathname = undefined;
+        this._openedLocation = undefined;
         this._context.keyBindings.bind(this._context);
         this._context.subtitleController.forceHideSubtitles = false;
         this._context.mobileVideoOverlayController.forceHide = false;
