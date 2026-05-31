@@ -159,7 +159,7 @@ export default class VideoDataSyncController {
         // player events do not clobber an in-progress user selection. On a
         // true soft-navigation, dismiss the stale picker and continue.
         if (this.pickerVisible) {
-            if (this._openedPathname !== undefined && window.location.pathname !== this._openedPathname) {
+            if (this.openedPathname !== undefined && window.location.pathname !== this.openedPathname) {
                 this._hideAndResume();
             } else {
                 return;
@@ -327,22 +327,22 @@ export default class VideoDataSyncController {
                 this._autoSyncAttempted = true;
                 const subs = this._matchLastSyncedWithAvailableTracks();
 
-                if (subs.completeMatch && this._frame.hidden) {
+                if (subs.completeMatch && !this.pickerVisible) {
                     const autoSelectedTracks: VideoDataSubtitleTrack[] = subs.autoSelectedTracks;
                     await this._syncData(autoSelectedTracks);
-                } else if (!subs.completeMatch && this._frame.hidden) {
+                } else if (!subs.completeMatch && !this.pickerVisible) {
                     const shouldPrompt = await this._settings.getSingle('streamingAutoSyncPromptOnFailure');
 
                     if (shouldPrompt) {
                         await this.show({ reason: VideoDataUiOpenReason.failedToAutoLoadPreferredTrack });
                     }
-                } else if (this._frame.clientIfLoaded !== undefined && wasLoading) {
+                } else if (wasLoading) {
                     // Picker is open in loading state. Populate it now that tracks have arrived.
-                    this._frame.clientIfLoaded.updateState(await this._buildModel({}));
+                    this._frame.clientIfLoaded?.updateState(await this._buildModel({}));
                 }
             }
-        } else if (this._frame.clientIfLoaded !== undefined && (this._frame.hidden || wasLoading)) {
-            this._frame.clientIfLoaded.updateState(await this._buildModel({}));
+        } else if (!this.pickerVisible || wasLoading) {
+            this._frame.clientIfLoaded?.updateState(await this._buildModel({}));
         }
     }
 
@@ -470,7 +470,7 @@ export default class VideoDataSyncController {
         // picker is dismissed.
         if (!this._playBlocker) {
             this._playBlocker = () => {
-                this._context.video.pause();
+                this._context.pause();
             };
             this._context.video.addEventListener('play', this._playBlocker);
         }
