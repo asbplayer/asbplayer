@@ -59,6 +59,15 @@ export default defineConfig({
             }
             paths.push('content-scripts/video.css');
         },
+        'entrypoints:found': (wxt: Wxt, entrypoints: { name: string; inputPath: string; type: string }[]) => {
+            const testFiles = entrypoints.filter((e) => e.inputPath.endsWith('.test.ts'));
+            for (const test of testFiles) {
+                wxt.logger.info(`Excluding test file from entrypoints: ${test.inputPath}`);
+            }
+            const filtered = entrypoints.filter((e) => !e.inputPath.endsWith('.test.ts'));
+            entrypoints.length = 0;
+            entrypoints.push(...filtered);
+        },
     },
     manifest: ({ browser, mode }) => {
         const version = '1.18.0';
@@ -108,6 +117,7 @@ export default defineConfig({
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'hulu-jp-page.js',
+                        'jwplayer-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',

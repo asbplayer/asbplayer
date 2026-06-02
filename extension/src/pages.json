@@ -228,6 +228,15 @@
             "key": "archive",
             "host": "archive\\.org",
             "searchShadowRootsForVideoElements": true
+        },
+        {
+            "key": "jwPlayer",
+            "host": "(vidwish\\.live|watching\\.onl|vidcloud\\..+|megaplay\\.buzz)",
+            "pageScript": "jwplayer-page.js",
+            "syncAllowedAtPath": ".*",
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }
