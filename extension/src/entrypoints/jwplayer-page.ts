@@ -274,5 +274,27 @@ export default defineUnlistedScript(() => {
                 log('JW Player not detected within timeout');
             }
         })();
+
+        // Re-register the JW Player iframe URL with the background script on a
+        // short interval so the Referer/Origin rewrite remains in effect for
+        // long-running sessions. The background script expires stale entries.
+        const heartbeat = setInterval(() => {
+            if (disposed) {
+                return;
+            }
+            try {
+                browser.runtime.sendMessage({
+                    command: 'asbplayer-register-jwplayer-frame',
+                    url: window.location.href,
+                });
+            } catch {
+                // ignore
+            }
+        }, 30_000);
+        const clearHeartbeat = () => {
+            clearInterval(heartbeat);
+        };
+        window.addEventListener('pagehide', clearHeartbeat, { once: true });
+        window.addEventListener('beforeunload', clearHeartbeat, { once: true });
     }, 0);
 });
