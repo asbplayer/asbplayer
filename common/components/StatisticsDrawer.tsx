@@ -8,18 +8,10 @@ interface Props extends StatisticsProps {
     onClose: () => void;
 }
 
-const StatisticsDrawer: React.FC<Props> = ({
-    open,
-    showBackButton,
-    drawerWidth,
-    onClose,
-    sx,
-    contentPadding = 2,
-    ...statisticsProps
-}) => {
+const StatisticsDrawer: React.FC<Props> = ({ open, showBackButton, drawerWidth, onClose, sx, ...statisticsProps }) => {
     return (
         <Drawer open={open} showBackButton={showBackButton} drawerWidth={drawerWidth} onClose={onClose}>
-            <Statistics {...statisticsProps} contentPadding={contentPadding} sx={{ width: '100%', ...sx, p: 0 }} />
+            <Statistics {...statisticsProps} sx={{ width: '100%', ...sx }} />
         </Drawer>
     );
 };
