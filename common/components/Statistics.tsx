@@ -75,6 +75,7 @@ export interface StatisticsProps {
     onSeekWasRequested?: (mediaId: string) => Promise<void>;
     onMineWasRequested?: (mediaId: string) => Promise<void>;
     mediaInfoFetcher?: (mediaId: string) => Promise<MediaInfo>;
+    contentPadding?: number;
     sx?: SxProps<Theme>;
 }
 
@@ -1842,6 +1843,7 @@ export default function Statistics({
     onViewAnnotationSettings,
     onSeekWasRequested,
     onMineWasRequested,
+    contentPadding = 0,
     sx,
 }: StatisticsProps) {
     const { t } = useTranslation();
@@ -2021,8 +2023,21 @@ export default function Statistics({
             )}
 
             {hasSnapshots && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'row' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, px: contentPadding, pb: contentPadding }}>
+                    <Box
+                        sx={{
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 1,
+                            display: 'flex',
+                            flexDirection: 'row',
+                            backgroundColor: 'background.paper',
+                            backgroundImage: 'var(--Paper-overlay, none)',
+                            mx: contentPadding === 0 ? 0 : -contentPadding,
+                            px: contentPadding,
+                            py: contentPadding / 2,
+                        }}
+                    >
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, pt: 0.5, flexGrow: 1 }}>
                             {mediaInfo?.sourceString && <Typography variant="h5">{mediaInfo?.sourceString}</Typography>}
                             {trackSnapshots.length > 0 && (
