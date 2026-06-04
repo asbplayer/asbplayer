@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Zawsze kontynuuj odtwarzanie po uruchomieniu 'Przewiń do początku obecnych/poprzednich napisów'",
         "anki": "Anki",
         "ankiConnectUrl": "URL Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Pole na audio",
         "audioPaddingEnd": "Padding audio z końca",
         "audioPaddingStart": "Padding audio z początku",

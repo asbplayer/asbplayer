@@ -369,7 +369,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     anki,
 }) => {
     const { t } = useTranslation();
-    const { ankiConnectUrl, dictionaryTracks } = settings;
+    const { ankiConnectUrl, ankiConnectApiKey, dictionaryTracks } = settings;
     const initialDictionaryTracksRef = useRef(dictionaryTracks);
     const [selectedDictionaryTrack, setSelectedDictionaryTrack] = useState<number>(0);
     const selectedDictionary = dictionaryTracks[selectedDictionaryTrack];
@@ -602,7 +602,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 const modelNames = await anki.modelNames(ankiConnectUrl);
                 const allFieldNamesSet = new Set<string>();
                 for (const modelName of modelNames) {
-                    const fieldNames = await anki.modelFieldNames(modelName);
+                    const fieldNames = await anki.modelFieldNames(modelName, ankiConnectUrl);
                     for (const fieldName of fieldNames) {
                         allFieldNamesSet.add(fieldName);
                     }
@@ -614,7 +614,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 setAnkiError(e instanceof Error ? e.message : String(e));
             }
         })();
-    }, [anki, ankiConnectUrl]);
+    }, [anki, ankiConnectUrl, ankiConnectApiKey]);
 
     const yomitanSectionRef = useRef<HTMLSpanElement | null>(null);
     const handleYomitanHelperTextClicked = () => {

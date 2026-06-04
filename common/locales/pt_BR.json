@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Sempre reproduzir depois de invocar 'Vai para o início da legenda atual'",
         "anki": "Anki",
         "ankiConnectUrl": "URL do Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Campo de áudio",
         "audioPaddingEnd": "Fim do preenchimento de áudio",
         "audioPaddingStart": "Início do preenchimento de áudio",

@@ -8,12 +8,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import TutorialBubble from './TutorialBubble';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import NoteTypeTutorialBubble from './NoteTypeTutorialBubble';
 import ListField from './ListField';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
+import Tooltip from '@mui/material/Tooltip';
 import {
     AnkiFieldSettings,
     AnkiFieldUiModel,
@@ -27,6 +30,7 @@ import { Anki, exportCard } from '../anki';
 import Stack from '@mui/material/Stack';
 
 const defaultDeckName = 'Sentences';
+const maskedAnkiConnectApiKey = '●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●';
 
 const defaultNoteType = {
     modelName: 'Sentence Card',
@@ -141,8 +145,9 @@ const AnkiSettingsTab: React.FC<Props> = ({
 
     const [deckNames, setDeckNames] = useState<string[]>();
     const [modelNames, setModelNames] = useState<string[]>();
-    const [allFieldNames, setAllFieldNames] = useState<string[]>();
     const [ankiConnectUrlError, setAnkiConnectUrlError] = useState<string>();
+    const [ankiConnectApiKeyRequired, setAnkiConnectApiKeyRequired] = useState<boolean>(false);
+    const [showAnkiConnectApiKey, setShowAnkiConnectApiKey] = useState<boolean>(false);
     const [fieldNames, setFieldNames] = useState<string[]>();
 
     const handleAddCustomField = useCallback(
@@ -168,6 +173,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
 
     const {
         ankiConnectUrl,
+        ankiConnectApiKey,
         deck,
         noteType,
         sentenceField,
@@ -187,35 +193,35 @@ const AnkiSettingsTab: React.FC<Props> = ({
     } = settings;
 
     const requestAnkiConnect = useCallback(async () => {
+        let apiKeyRequired = false;
+        const detectApiKeyRequired = (result: any) => {
+            if (Anki.requiresApiKey(result)) apiKeyRequired = true;
+        };
+
         try {
             if (insideApp) {
                 try {
-                    await anki.requestPermission(ankiConnectUrl);
+                    detectApiKeyRequired(await anki.requestPermission(ankiConnectUrl));
                 } catch (e) {
                     // Request permission can give confusing errors due to AnkiConnect's implementation (or the implementation not existing in the case of Android).
                     // Furthermore, "request permission" should hardly ever work since recent Chrome security policies require the origin of the asbplayer app to
                     // be specified manually in the AnkiConnect settings anyway.
                     // So fallback to using the "version" endpoint if the above fails.
-                    await anki.version(ankiConnectUrl);
+                    detectApiKeyRequired(e);
+                    detectApiKeyRequired(await anki.version(ankiConnectUrl));
                 }
             } else {
                 // Extension does not need to be allowed explicitly by AnkiConnect
-                await anki.version(ankiConnectUrl);
+                detectApiKeyRequired(await anki.version(ankiConnectUrl));
             }
 
+            setAnkiConnectApiKeyRequired(apiKeyRequired);
             setDeckNames(await anki.deckNames(ankiConnectUrl));
             const modelNames = await anki.modelNames(ankiConnectUrl);
             setModelNames(modelNames);
-            const allFieldNamesSet = new Set<string>();
-            for (const modelName of modelNames) {
-                const fieldNames = await anki.modelFieldNames(modelName);
-                for (const fieldName of fieldNames) {
-                    allFieldNamesSet.add(fieldName);
-                }
-            }
-            setAllFieldNames(Array.from(allFieldNamesSet).sort((a, b) => a.localeCompare(b)));
             setAnkiConnectUrlError(undefined);
         } catch (e) {
+            setAnkiConnectApiKeyRequired(apiKeyRequired || Anki.requiresApiKey(e));
             console.error(e);
             setDeckNames(undefined);
             setModelNames(undefined);
@@ -245,7 +251,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
             canceled = true;
             clearTimeout(timeout);
         };
-    }, [anki, ankiConnectUrl, requestAnkiConnect]);
+    }, [anki, ankiConnectUrl, ankiConnectApiKey, requestAnkiConnect]);
 
     useEffect(() => {
         if (!noteType || ankiConnectUrlError) {
@@ -285,7 +291,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
         return () => {
             canceled = true;
         };
-    }, [anki, noteType, ankiConnectUrl, ankiConnectUrlError]);
+    }, [anki, noteType, ankiConnectUrl, ankiConnectApiKey, ankiConnectUrlError]);
 
     const handleAnkiFieldOrderChange = useCallback(
         (direction: Direction, models: AnkiFieldUiModel[], index: number) => {
@@ -393,6 +399,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
     }, [tutorialStep, settings, isMobile, testCard, onTutorialStepChanged]);
 
     const ankiFieldModels = sortedAnkiFieldModels(settings);
+    const ankiConnectApiKeyVisible = showAnkiConnectApiKey || !ankiConnectApiKey;
 
     return (
         <Stack spacing={1}>
@@ -412,6 +419,9 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     color="primary"
                     onChange={(event) => onSettingChanged('ankiConnectUrl', event.target.value)}
                     slotProps={{
+                        formHelperText: {
+                            sx: { ml: 0 },
+                        },
                         input: {
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -424,6 +434,32 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     }}
                 />
             </AnkiConnectTutorialBubble>
+            {(ankiConnectApiKey || ankiConnectApiKeyRequired) && (
+                <SettingsTextField
+                    label={t('settings.ankiConnectApiKey')}
+                    value={ankiConnectApiKeyVisible ? ankiConnectApiKey : maskedAnkiConnectApiKey}
+                    type="text"
+                    color="primary"
+                    onChange={(event) => onSettingChanged('ankiConnectApiKey', event.target.value)}
+                    slotProps={{
+                        input: {
+                            readOnly: !ankiConnectApiKeyVisible,
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <Tooltip title="">
+                                        <IconButton
+                                            onClick={() => setShowAnkiConnectApiKey((showKey) => !showKey)}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                        >
+                                            {ankiConnectApiKeyVisible ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                        </IconButton>
+                                    </Tooltip>
+                                </InputAdornment>
+                            ),
+                        },
+                    }}
+                />
+            )}
             {insideApp && (
                 <FormHelperText>
                     <Trans

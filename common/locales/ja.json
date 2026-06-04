@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "「今の、または前の字幕冒頭に移動」の実行後、再生する",
         "anki": "Anki",
         "ankiConnectUrl": "AnkiConnect の URL",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "音声フィールド",
         "audioPaddingEnd": "音声の余白終了",
         "audioPaddingStart": "音声の余白開始",

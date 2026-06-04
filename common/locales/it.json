@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Riproduci sempre (togli pausa) dopo aver usato la scorciatoia precedente",
         "anki": "Anki",
         "ankiConnectUrl": "URL di Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Campo audio",
         "audioPaddingEnd": "Padding audio finale",
         "audioPaddingStart": "Padding audio iniziale",

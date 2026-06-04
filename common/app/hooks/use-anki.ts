@@ -9,6 +9,9 @@ class SettingsAccessor {
     get ankiConnectUrl() {
         return this.settings.ankiConnectUrl;
     }
+    get ankiConnectApiKey() {
+        return this.settings.ankiConnectApiKey;
+    }
     get deck() {
         return this.settings.deck;
     }

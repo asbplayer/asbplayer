@@ -705,7 +705,9 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
 
     settingsUpdated(settings: AsbplayerSettings) {
         let settingsAreEqual =
-            (!this.anki || this.anki.ankiConnectUrl === settings.ankiConnectUrl) &&
+            (!this.anki ||
+                (this.anki.ankiConnectUrl === settings.ankiConnectUrl &&
+                    this.anki.ankiConnectApiKey === settings.ankiConnectApiKey)) &&
             this.trackStates.length === settings.dictionaryTracks.length;
         for (const [index, dt] of settings.dictionaryTracks.entries()) {
             const ts = this.trackStates[index];

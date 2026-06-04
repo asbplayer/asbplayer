@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Toujours lancer la lecture après avoir invoqué \"Aller au début du sous-titre actuel/précédent\"",
         "anki": "Anki",
         "ankiConnectUrl": "URL de connexion Anki",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Champ audio",
         "audioPaddingEnd": "Marge audio de début",
         "audioPaddingStart": "Marge audio de fin",

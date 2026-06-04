@@ -571,6 +571,7 @@ export default class VideoChannel {
     ankiSettings(settings: AnkiSettings) {
         const {
             ankiConnectUrl,
+            ankiConnectApiKey,
             deck,
             noteType,
             sentenceField,
@@ -604,6 +605,7 @@ export default class VideoChannel {
             command: 'ankiSettings',
             value: {
                 ankiConnectUrl,
+                ankiConnectApiKey,
                 deck,
                 noteType,
                 sentenceField,

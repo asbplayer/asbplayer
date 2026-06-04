@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Selalu putar (buka jeda) setelah menggunakan pintasan di atas",
         "anki": "Anki",
         "ankiConnectUrl": "URL Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Kolom Audio",
         "audioPaddingEnd": "Batas Akhir Audio",
         "audioPaddingStart": "Batas Awal Audio",

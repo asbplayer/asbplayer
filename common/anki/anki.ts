@@ -281,6 +281,10 @@ export class Anki {
         return this.settingsProvider.ankiConnectUrl;
     }
 
+    get ankiConnectApiKey() {
+        return this.settingsProvider.ankiConnectApiKey;
+    }
+
     async deckNames(ankiConnectUrl?: string): Promise<string[]> {
         const response = await this._executeAction('deckNames', null, ankiConnectUrl);
         return response.result;
@@ -457,6 +461,14 @@ export class Anki {
     async version(ankiConnectUrl?: string) {
         const response = await this._executeAction('version', null, ankiConnectUrl);
         return response.result;
+    }
+
+    static requiresApiKey(result: any): boolean {
+        if (result === null || result === undefined) return false;
+        if (result instanceof Error) return Anki.requiresApiKey(result.message);
+        if (typeof result === 'string') return result.toLowerCase().includes('valid api key must be provided');
+        if (typeof result !== 'object') return false;
+        return result.requireApikey === true || result.requireApiKey === true || Anki.requiresApiKey(result.error);
     }
 
     async export({
@@ -739,6 +751,10 @@ export class Anki {
             action: action,
             version: 6,
         };
+
+        if (this.settingsProvider.ankiConnectApiKey) {
+            body['key'] = this.settingsProvider.ankiConnectApiKey;
+        }
 
         if (params) {
             body['params'] = params;

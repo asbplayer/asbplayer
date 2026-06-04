@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "‘현재/이전 자막으로 이동’ 후 자동 재생",
         "anki": "Anki",
         "ankiConnectUrl": "Anki 연결 URL",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "오디오 필드",
         "audioPaddingEnd": "오디오 종료 지점 여백 시간",
         "audioPaddingStart": "오디오 시작 지점 여백 시간",

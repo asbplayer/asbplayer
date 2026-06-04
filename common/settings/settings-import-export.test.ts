@@ -31,6 +31,7 @@ it('validates last languages synced', () => {
 it('validates exported settings', () => {
     validateSettings({
         ankiConnectUrl: 'http://127.0.0.1:8765',
+        ankiConnectApiKey: '',
         deck: 'Sentences',
         noteType: 'Sentence',
         sentenceField: '表面',

@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Always play (unpause) after invoking above shortcut",
         "anki": "Anki",
         "ankiConnectUrl": "Anki Connect URL",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Audio Field",
         "audioPaddingEnd": "Audio Padding End",
         "audioPaddingStart": "Audio Padding Start",

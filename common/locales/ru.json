@@ -356,6 +356,7 @@
         "alwaysPlayOnSubtitleRepeat": "Всегда воспроизводить после вызова 'Перемотать к началу текущего/предыдущего субтитра'",
         "anki": "Anki",
         "ankiConnectUrl": "URL Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Поле аудио",
         "audioPaddingEnd": "Отступ аудио в конце",
         "audioPaddingStart": "Отступ аудио в начале",

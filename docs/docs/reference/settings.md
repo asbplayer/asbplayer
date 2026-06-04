@@ -12,6 +12,10 @@ import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
 URL to the AnkiConnect server running as on addon inside Anki.
 
+### AnkiConnect API Key
+
+API key configured in AnkiConnect when API key protection is enabled.
+
 ### Deck
 
 Anki deck where cards are sent.

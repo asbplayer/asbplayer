@@ -194,6 +194,9 @@ const settingsSchema = {
         ankiConnectUrl: {
             type: 'string',
         },
+        ankiConnectApiKey: {
+            type: 'string',
+        },
         deck: {
             type: 'string',
         },

@@ -208,6 +208,7 @@
         "settings.addCustomField": "\"Field\" refers to an Anki card field.",
         "settings.alwaysPlayOnSubtitleRepeat": "Label for setting that indicates whether asbplayer should always automatically play (i.e. unpause if paused) after using the shortcut which seeks to the beginning of the current or last subtitle.",
         "settings.anki": "Section heading for Anki-related settings.",
+        "settings.ankiConnectApiKey": "The API key configured in AnkiConnect when API key protection is enabled.",
         "settings.ankiConnectUrl": "The URL that is used to contact Anki Connect. Anki Connect is an Anki add-on that allows asbplayer to communicate with Anki to create and manipulate flashcards.",
         "settings.audioField": "The field of the Anki card that will be populated with audio extracted from the video.",
         "settings.audioPaddingEnd": "How much padding to add to the end of audio recordings. E.g. if the \"padding end\" is 1 second, then the audio recording for a particular subtitle will continue for 1 second after the subtitle ends.",
