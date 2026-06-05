@@ -433,6 +433,7 @@
         "subtitleAlignmentTop": "Góra",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
+        "timestampPreview": "Show preview timestamps",
         "subtitleBlur": "Rozmycie napisów",
         "subtitleTrack": "Subtitle Track",
         "allSubtitleTracks": "All",

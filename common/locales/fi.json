@@ -433,6 +433,7 @@
         "subtitleAlignmentTop": "Ylhäällä",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
+        "timestampPreview": "Show preview timestamps",
         "subtitleBlur": "Tekstityksen sumennus",
         "subtitleTrack": "Tekstitysraita",
         "allSubtitleTracks": "Kaikki",

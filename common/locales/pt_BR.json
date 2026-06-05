@@ -433,6 +433,7 @@
         "subtitleAlignmentTop": "Superior",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
+        "timestampPreview": "Show preview timestamps",
         "subtitleBlur": "Desfoque de legenda",
         "subtitleTrack": "Faixa de Legenda",
         "allSubtitleTracks": "Todos",

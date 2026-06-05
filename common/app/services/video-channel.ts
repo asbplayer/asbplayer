@@ -665,6 +665,7 @@ export default class VideoChannel {
             pauseOnHoverMode,
             lastSelectedAnkiExportMode,
             thumbnailPreview,
+            timestampPreview,
             subtitleAboveThumbnail,
         } = settings;
         const message: MiscSettingsToVideoMessage = {
@@ -696,6 +697,7 @@ export default class VideoChannel {
                 pauseOnHoverMode,
                 lastSelectedAnkiExportMode,
                 thumbnailPreview,
+                timestampPreview,
                 subtitleAboveThumbnail,
             },
         };
