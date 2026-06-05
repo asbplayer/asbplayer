@@ -47,6 +47,13 @@ import PlaybackRateInput from '../../components/PlaybackRateInput';
 import VideoElementFavicon from './VideoElementFavicon';
 import PlayModeSelector from '../../components/PlayModeSelector';
 import TimeDisplay from '../../components/TimeDisplay';
+import {
+    centeredProgressBarPreviewLeft,
+    clampProgressBarPreviewLeft,
+    formatProgressTimestamp,
+    progressBarProgress,
+    progressBarTrackWidth,
+} from './progress-bar';
 
 const useControlStyles = makeStyles<Theme>((theme) => ({
     container: {
@@ -203,6 +210,31 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         height: 79,
         borderRadius: 5,
     },
+    timestampPreview: {
+        position: 'absolute',
+        top: -36,
+        height: 24,
+        padding: '1px 8px',
+        boxSizing: 'border-box',
+        border: '1px solid rgba(255, 255, 255, 0.16)',
+        borderRadius: 5,
+        backgroundColor: 'rgba(24, 24, 24, 0.94)',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 13,
+        fontWeight: 600,
+        fontVariantNumeric: 'tabular-nums',
+        letterSpacing: 0,
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+        zIndex: 2,
+        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+    },
+    timestampPreviewWithThumbnail: {
+        top: -120,
+    },
     fillContainer: {
         background: 'rgba(30,30,30,0.7)',
         width: '100%',
@@ -275,15 +307,27 @@ interface ProgressBarProps {
     onSeek: (progress: number) => void;
     onSeekPreview?: (progress: number) => string | undefined;
     value: number;
+    length: number;
     videoHeight: number | undefined;
     videoWidth: number | undefined;
     previewEnabled: boolean;
+    timestampPreviewEnabled: boolean;
 }
 
-function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, previewEnabled }: ProgressBarProps) {
+function ProgressBar({
+    onSeek,
+    onSeekPreview,
+    value,
+    length,
+    videoHeight,
+    videoWidth,
+    previewEnabled,
+    timestampPreviewEnabled,
+}: ProgressBarProps) {
     const classes = useProgressBarStyles();
     const [mouseOver, setMouseOver] = useState(false);
-    const containerRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoverState, setHoverState] = useState({ progress: 0, trackWidth: 0 });
     // x position of mouse
     const [hoverX, setHoverX] = useState(0);
     const [thumbnailSrc, setThumbnailSrc] = useState<string | undefined>(undefined);
@@ -293,13 +337,25 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, pr
         videoWidth = Math.round((videoWidth / videoHeight) * 79);
     }
 
+    const thumbnailPreviewEnabled = previewEnabled && onSeekPreview !== undefined;
+    const thumbnailWidth = videoWidth ?? 145;
+    const timestampPreviewWidth = length >= 3600000 ? 88 : 64;
+    const hoverTimestamp = timestampPreviewEnabled ? formatProgressTimestamp(hoverState.progress, length) : undefined;
+    const timestampPreviewClassName = thumbnailPreviewEnabled
+        ? classes.timestampPreview + ' ' + classes.timestampPreviewWithThumbnail
+        : classes.timestampPreview;
+    const timestampPreviewLeft = thumbnailPreviewEnabled
+        ? clampProgressBarPreviewLeft(
+              hoverX + (thumbnailWidth - timestampPreviewWidth) / 2,
+              hoverState.trackWidth,
+              timestampPreviewWidth
+          )
+        : centeredProgressBarPreviewLeft(hoverState.progress, hoverState.trackWidth, timestampPreviewWidth);
+
     const handleClick = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            // Account for margins by subtracting 10 from left/right sides
-            const width = rect.right - rect.left - 20;
-            const progress = Math.min(1, Math.max(0, (e.pageX - rect.left - 10) / width));
-            onSeek(progress);
+            onSeek(progressBarProgress(e.pageX, rect));
         },
         [onSeek]
     );
@@ -307,15 +363,14 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, pr
     const handleMouseOver = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             setMouseOver(true);
-            if (onSeekPreview == undefined) return;
             const rect = e.currentTarget.getBoundingClientRect();
-            // Account for margins by subtracting 10 from left/right sides
-            const width = rect.right - rect.left - 20;
-            const progress = Math.min(1, Math.max(0, (e.pageX - rect.left - 10) / width));
-            const positionInPixels = progress * width;
+            const trackWidth = progressBarTrackWidth(rect);
+            const progress = progressBarProgress(e.pageX, rect);
+            setHoverState({ progress, trackWidth });
             // subtract to center the mouse in the center of the preview box
-            setHoverX(positionInPixels - 145 / 2 + 10);
+            setHoverX(progress * trackWidth - 145 / 2 + 10);
 
+            if (onSeekPreview == undefined) return;
             const previewSrc = onSeekPreview(progress);
             if (previewSrc) {
                 setThumbnailSrc(previewSrc);
@@ -336,6 +391,18 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, pr
 
     return (
         <div className={classes.root}>
+            {mouseOver && hoverTimestamp && (
+                <div
+                    aria-hidden="true"
+                    style={{
+                        left: timestampPreviewLeft,
+                        width: timestampPreviewWidth,
+                    }}
+                    className={timestampPreviewClassName}
+                >
+                    {hoverTimestamp}
+                </div>
+            )}
             {mouseOver && (
                 <div
                     style={{ left: hoverX, width: videoWidth ?? 145, display: previewEnabled ? 'block' : 'none' }}
@@ -575,6 +642,7 @@ interface ControlsProps {
     onBlurOverlayToggle?: () => void;
     videoWidth?: number | undefined;
     videoHeight?: number | undefined;
+    timestampPreviewEnabled?: boolean;
 }
 
 export default function Controls({
@@ -634,6 +702,7 @@ export default function Controls({
     videoWidth,
     videoHeight,
     previewEnabled,
+    timestampPreviewEnabled = false,
 }: ControlsProps) {
     const classes = useControlStyles();
     const { t } = useTranslation();
@@ -963,9 +1032,11 @@ export default function Controls({
                             onSeekPreview={onSeekPreview}
                             onSeek={handleSeek}
                             value={progress * 100}
+                            length={length}
                             videoHeight={videoHeight}
                             videoWidth={videoWidth}
                             previewEnabled={previewEnabled}
+                            timestampPreviewEnabled={timestampPreviewEnabled}
                         />
                         {!hideToolbar && (
                             <Grid container className={classes.gridContainer} direction="row" wrap="nowrap">

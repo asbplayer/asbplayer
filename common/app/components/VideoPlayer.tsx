@@ -1997,6 +1997,7 @@ export default function VideoPlayer({
                 onLoadFiles={popOut ? undefined : handleLoadFiles}
                 blurOverlayEnabled={blurOverlayVisible}
                 onBlurOverlayToggle={handleBlurOverlayToggle}
+                timestampPreviewEnabled={!isMobile}
             />
         </div>
     );
