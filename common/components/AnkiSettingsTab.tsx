@@ -30,7 +30,7 @@ import { Anki, exportCard } from '../anki';
 import Stack from '@mui/material/Stack';
 
 const defaultDeckName = 'Sentences';
-const maskedAnkiConnectApiKey = '●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●';
+const maskApiToken = (apiToken: string) => '●'.repeat(Array.from(apiToken).length);
 
 const defaultNoteType = {
     modelName: 'Sentence Card',
@@ -147,7 +147,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
     const [modelNames, setModelNames] = useState<string[]>();
     const [ankiConnectUrlError, setAnkiConnectUrlError] = useState<string>();
     const [ankiConnectApiKeyRequired, setAnkiConnectApiKeyRequired] = useState<boolean>(false);
-    const [showAnkiConnectApiKey, setShowAnkiConnectApiKey] = useState<boolean>(false);
+    const [showAnkiConnectApiKey, setShowAnkiConnectApiKey] = useState<boolean>(() => !settings.ankiConnectApiKey);
     const [fieldNames, setFieldNames] = useState<string[]>();
 
     const handleAddCustomField = useCallback(
@@ -437,10 +437,11 @@ const AnkiSettingsTab: React.FC<Props> = ({
             {(ankiConnectApiKey || ankiConnectApiKeyRequired) && (
                 <SettingsTextField
                     label={t('settings.ankiConnectApiKey')}
-                    value={ankiConnectApiKeyVisible ? ankiConnectApiKey : maskedAnkiConnectApiKey}
+                    value={ankiConnectApiKeyVisible ? ankiConnectApiKey : maskApiToken(ankiConnectApiKey)}
                     type="text"
                     color="primary"
                     onChange={(event) => onSettingChanged('ankiConnectApiKey', event.target.value)}
+                    sx={{ '& input': { fontFamily: 'monospace' } }}
                     slotProps={{
                         input: {
                             readOnly: !ankiConnectApiKeyVisible,
