@@ -369,6 +369,7 @@
         "fastForwardModePlaybackRate": "Fast-forward mode playback rate",
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Copy mined subtitles to clipboard",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "Ensure that {{origin}} is in the webCorsOriginList in your AnkiConnect settings as in this <0>video</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Deck",

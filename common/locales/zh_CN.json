@@ -369,6 +369,7 @@
         "fastForwardModePlaybackRate": "快进模式播放速度",
         "coloringStrategy": "高亮染色策略",
         "copyOnMine": "挖掘时将字幕复制至剪贴板",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "请确保将 {{origin}} 添加至 AnkiConnect 的 webCorsOriginalList 设置中。",
         "customCssField": "自定义样式: {{styleKey}}",
         "deck": "甲板",

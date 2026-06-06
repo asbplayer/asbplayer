@@ -176,6 +176,7 @@ export const defaultSettings: AsbplayerSettings = {
     },
     recordWithAudioPlayback: true,
     preferMp3: true,
+    alwaysUseSubtitleForSentence: false,
     tabName: 'asbplayer',
     miningHistoryStorageLimit: 25,
     clickToMineDefaultAction: PostMineAction.showAnkiDialog,
