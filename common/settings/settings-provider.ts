@@ -17,6 +17,7 @@ import {
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     getFullyKnownTokenStatus,
+    TokenPitchAccentAnnotation,
 } from '.';
 import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
@@ -52,6 +53,7 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryYomitanScanLength: 16,
     dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,
     dictionaryDisplayIgnoredTokenReadings: false,
+    dictionaryTokenPitchAccentAnnotation: TokenPitchAccentAnnotation.NEVER,
     dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.NEVER,
     dictionaryAnkiDecks: [],
     dictionaryAnkiWordFields: [],
@@ -514,6 +516,9 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
         }
         if (dt.dictionaryMatchAcrossScripts === undefined) {
             (dt as any).dictionaryMatchAcrossScripts = defaultTrack.dictionaryMatchAcrossScripts;
+        }
+        if (dt.dictionaryTokenPitchAccentAnnotation === undefined) {
+            (dt as any).dictionaryTokenPitchAccentAnnotation = defaultTrack.dictionaryTokenPitchAccentAnnotation;
         }
     }
     while (dictionaryTracks.length < NUM_DICTIONARY_TRACKS) {

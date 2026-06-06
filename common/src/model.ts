@@ -1,6 +1,7 @@
 import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
 import type { OnlineSubtitleSourceConfig } from '../global-state';
 import type { TokenStatusInfo } from '../dictionary-db';
+import { PitchAccentPosition } from '../yomitan/yomitan';
 
 type Profile = { name: string };
 
@@ -33,6 +34,7 @@ export interface Token {
     status?: TokenStatus | null; // null means "error"
     readings: TokenReading[];
     frequency?: number | null; // null means no frequency data
+    pitchAccent?: PitchAccentPosition | null; // null means no pitch accent data
     groupingKey?: string; // Stable key for equivalence aggregation
     lemmasGroupingKey?: string; // Stable key for equivalence aggregation based on lemmas (statistics)
     externalCandidateStatuses?: TokenStatusInfo[];

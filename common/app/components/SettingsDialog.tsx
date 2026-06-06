@@ -115,6 +115,9 @@ export default function SettingsDialog({
                     extensionSupportsDictionaryBrowser={extension.supportsDictionaryBrowser}
                     extensionSupportsDictionaryWaniKani={extension.supportsDictionaryWaniKani}
                     extensionSupportsDictionaryMatchAcrossScripts={extension.supportsDictionaryMatchAcrossScripts}
+                    extensionSupportsDictionaryTokenPitchAccentAnnotation={
+                        extension.supportsDictionaryTokenPitchAccentAnnotation
+                    }
                     extensionSupportsSeekableTrackSetting={extension.supportsSeekableTrackSetting}
                     extensionSupportsAutoCopyableTrackSetting={extension.supportsAutoCopyableTrackSetting}
                     extensionSupportsDictionaryTokenStatusDisplayAlpha={
