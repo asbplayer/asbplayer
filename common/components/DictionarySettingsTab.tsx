@@ -1672,7 +1672,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     sx: { ml: 0 },
                                 },
                                 input: {
-                                    readOnly: !dictionaryWaniKaniApiTokenVisible,
+                                    disabled: !dictionaryWaniKaniApiTokenVisible,
                                     endAdornment: (
                                         <InputAdornment position="end">
                                             <Tooltip title="">

@@ -444,7 +444,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     sx={{ '& input': { fontFamily: 'monospace' } }}
                     slotProps={{
                         input: {
-                            readOnly: !ankiConnectApiKeyVisible,
+                            disabled: !ankiConnectApiKeyVisible,
                             endAdornment: (
                                 <InputAdornment position="end">
                                     <Tooltip title="">
