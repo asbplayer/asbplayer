@@ -109,11 +109,11 @@
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-text {
+.asb-subtitles:hover .asbplayer-subtitle-text {
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-rich {
+.asb-subtitles:hover .asbplayer-subtitle-rich {
     display: inline;
 }
 

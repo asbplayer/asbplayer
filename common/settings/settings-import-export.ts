@@ -129,7 +129,87 @@ const dictionaryTrackSchema = {
                 required: ['display', 'color', 'alpha'],
             },
         },
+        dictionaryTokenAnnotationConfig: {
+            type: 'object',
+            properties: {
+                video: {
+                    type: 'object',
+                    properties: {
+                        color: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                        reading: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                        frequency: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                        pitchAccent: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                    },
+                    required: ['color', 'reading', 'frequency', 'pitchAccent'],
+                },
+                subtitlePlayer: {
+                    type: 'object',
+                    properties: {
+                        color: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                        reading: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                        frequency: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                        pitchAccent: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' } },
+                            required: ['onHoverEnabled'],
+                        },
+                    },
+                    required: ['color', 'reading', 'frequency', 'pitchAccent'],
+                },
+            },
+            required: ['video', 'subtitlePlayer'],
+        },
     },
+    required: [
+        'dictionaryColorizeSubtitles',
+        'dictionaryColorizeOnHoverOnly',
+        'dictionaryHighlightOnHover',
+        'dictionaryTokenMatchStrategy',
+        'dictionaryTokenMatchStrategyPriority',
+        'dictionaryYomitanUrl',
+        'dictionaryYomitanScanLength',
+        'dictionaryTokenReadingAnnotation',
+        'dictionaryDisplayIgnoredTokenReadings',
+        'dictionaryTokenFrequencyAnnotation',
+        'dictionaryAnkiDecks',
+        'dictionaryAnkiWordFields',
+        'dictionaryAnkiSentenceFields',
+        'dictionaryAnkiSentenceTokenMatchStrategy',
+        'dictionaryAnkiMatureCutoff',
+        'dictionaryAnkiTreatSuspended',
+        'dictionaryTokenStyling',
+        'dictionaryTokenStylingThickness',
+        'dictionaryColorizeFullyKnownTokens',
+        'dictionaryTokenStatusColors',
+    ],
 };
 const textSubtitleSettingsSchema = {
     id: '/TextSubtitleSettings',

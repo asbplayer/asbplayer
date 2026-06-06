@@ -219,6 +219,98 @@ export function areTokenStatusConfigsEqual(a: TokenStatusConfig, b: TokenStatusC
     return true;
 }
 
+export interface TokenAnnotationConfigOptions {
+    onHoverEnabled: boolean;
+}
+
+export interface TokenAnnotationConfig {
+    color: TokenAnnotationConfigOptions;
+    reading: TokenAnnotationConfigOptions;
+    frequency: TokenAnnotationConfigOptions;
+    pitchAccent: TokenAnnotationConfigOptions;
+}
+
+export interface TokenAnnotationConfigs {
+    video: TokenAnnotationConfig;
+    subtitlePlayer: TokenAnnotationConfig;
+}
+
+const tokenAnnotationConfigOptionsComparators: {
+    [K in keyof TokenAnnotationConfigOptions]: (
+        a: TokenAnnotationConfigOptions[K],
+        b: TokenAnnotationConfigOptions[K]
+    ) => boolean;
+} = {
+    onHoverEnabled: (a, b) => a === b,
+};
+
+export function compareTokenAnnotationConfigOptionsField<K extends keyof TokenAnnotationConfigOptions>(
+    key: K,
+    a: TokenAnnotationConfigOptions,
+    b: TokenAnnotationConfigOptions
+): boolean {
+    return tokenAnnotationConfigOptionsComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationConfigOptionsEqual(
+    a: TokenAnnotationConfigOptions,
+    b: TokenAnnotationConfigOptions
+): boolean {
+    if (a === b) return true;
+    for (const key in tokenAnnotationConfigOptionsComparators) {
+        if (!compareTokenAnnotationConfigOptionsField(key as keyof TokenAnnotationConfigOptions, a, b)) return false;
+    }
+    return true;
+}
+
+const tokenAnnotationConfigComparators: {
+    [K in keyof TokenAnnotationConfig]: (a: TokenAnnotationConfig[K], b: TokenAnnotationConfig[K]) => boolean;
+} = {
+    color: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    reading: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    frequency: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    pitchAccent: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+};
+
+export function compareTokenAnnotationConfigField<K extends keyof TokenAnnotationConfig>(
+    key: K,
+    a: TokenAnnotationConfig,
+    b: TokenAnnotationConfig
+): boolean {
+    return tokenAnnotationConfigComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationConfigEqual(a: TokenAnnotationConfig, b: TokenAnnotationConfig): boolean {
+    if (a === b) return true;
+    for (const key in tokenAnnotationConfigComparators) {
+        if (!compareTokenAnnotationConfigField(key as keyof TokenAnnotationConfig, a, b)) return false;
+    }
+    return true;
+}
+
+const tokenAnnotationConfigsComparators: {
+    [K in keyof TokenAnnotationConfigs]: (a: TokenAnnotationConfigs[K], b: TokenAnnotationConfigs[K]) => boolean;
+} = {
+    video: (a, b) => areTokenAnnotationConfigEqual(a, b),
+    subtitlePlayer: (a, b) => areTokenAnnotationConfigEqual(a, b),
+};
+
+export function compareTokenAnnotationConfigsField<K extends keyof TokenAnnotationConfigs>(
+    key: K,
+    a: TokenAnnotationConfigs,
+    b: TokenAnnotationConfigs
+): boolean {
+    return tokenAnnotationConfigsComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationConfigsEqual(a: TokenAnnotationConfigs, b: TokenAnnotationConfigs): boolean {
+    if (a === b) return true;
+    for (const target in tokenAnnotationConfigsComparators) {
+        if (!compareTokenAnnotationConfigsField(target as keyof TokenAnnotationConfigs, a, b)) return false;
+    }
+    return true;
+}
+
 export enum TokenState {
     IGNORED = 0, // If ever adding more states, they should go last (if adding colors for states, use a separate array from dictionaryTokenStatusColors indexed by TokenState)
 }
@@ -273,10 +365,45 @@ export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack): boolean 
     );
 }
 
+export function getEnabledAnnotations(dt: DictionaryTrack | undefined): EnabledAnnotations {
+    if (!dt) return { color: false, reading: false, frequency: false, pitchAccent: false };
+    return {
+        color: dt.dictionaryColorizeSubtitles,
+        reading:
+            dt.dictionaryTokenReadingAnnotation !== TokenReadingAnnotation.NEVER ||
+            dt.dictionaryDisplayIgnoredTokenReadings,
+        frequency: dt.dictionaryTokenFrequencyAnnotation !== TokenFrequencyAnnotation.NEVER,
+        pitchAccent: dt.dictionaryTokenPitchAccentAnnotation !== TokenPitchAccentAnnotation.NEVER,
+    };
+}
+
+export interface EnabledAnnotations {
+    color: boolean;
+    reading: boolean;
+    frequency: boolean;
+    pitchAccent: boolean;
+}
+
+export function getEnabledAnnotationsForHover(
+    enabledAnnotations: EnabledAnnotations,
+    dt: DictionaryTrack | undefined,
+    target: keyof TokenAnnotationConfigs,
+    onHoverEnabled: boolean
+): EnabledAnnotations {
+    if (!dt) return { color: false, reading: false, frequency: false, pitchAccent: false };
+    const c = dt.dictionaryTokenAnnotationConfig[target];
+    return {
+        color: enabledAnnotations.color && c.color.onHoverEnabled === onHoverEnabled,
+        reading: enabledAnnotations.reading && c.reading.onHoverEnabled === onHoverEnabled,
+        frequency: enabledAnnotations.frequency && c.frequency.onHoverEnabled === onHoverEnabled,
+        pitchAccent: enabledAnnotations.pitchAccent && c.pitchAccent.onHoverEnabled === onHoverEnabled,
+    };
+}
+
 export interface DictionaryTrack {
     readonly dictionaryColorizeSubtitles: boolean;
     readonly dictionaryAutoGenerateStatistics: boolean;
-    readonly dictionaryColorizeOnHoverOnly: boolean; // Currently applies to both colorization and reading annotations, named in case we want to separate later
+    readonly dictionaryColorizeOnHoverOnly: boolean; // Deprecated in favor of dictionaryTokenAnnotationConfig.video
     readonly dictionaryHighlightOnHover: boolean;
     readonly dictionaryTokenMatchStrategy: TokenMatchStrategy;
     readonly dictionaryMatchAcrossScripts: boolean;
@@ -300,6 +427,7 @@ export interface DictionaryTrack {
     readonly dictionaryColorizeFullyKnownTokens: boolean; // Deprecated in favor of dictionaryTokenStatusConfig
     readonly dictionaryTokenStatusColors: string[]; // Deprecated in favor of dictionaryTokenStatusConfig
     readonly dictionaryTokenStatusConfig: TokenStatusConfig[]; // Indexed by TokenStatus (if adding config for states, use a separate array indexed by TokenState)
+    readonly dictionaryTokenAnnotationConfig: TokenAnnotationConfigs;
 }
 
 export interface DictionarySettings {
@@ -335,6 +463,7 @@ const dictionaryTrackComparators: {
     dictionaryColorizeFullyKnownTokens: (a, b) => a === b,
     dictionaryTokenStatusColors: (a, b) => arrayEquals(a, b),
     dictionaryTokenStatusConfig: (a, b) => arrayEquals(a, b, areTokenStatusConfigsEqual),
+    dictionaryTokenAnnotationConfig: (a, b) => areTokenAnnotationConfigsEqual(a, b),
 };
 
 export function compareDTField<K extends keyof DictionaryTrack>(

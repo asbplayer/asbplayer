@@ -22,7 +22,7 @@ import {
     extractText,
 } from '@project/common/util';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import { getAnnotationsHtml, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -267,8 +267,10 @@ const SubtitleRow = React.memo(function SubtitleRow({
     ) : (
         <span
             ref={textRef}
-            className={disabledClassName}
-            dangerouslySetInnerHTML={{ __html: subtitle.richText ?? subtitle.text }}
+            className={`${disabledClassName} asb-subtitles`.trim()}
+            dangerouslySetInnerHTML={{
+                __html: getAnnotationsHtml(subtitle.text, subtitle.richText, subtitle.richTextOnHover),
+            }}
             data-track={subtitle.track}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}

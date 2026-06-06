@@ -18,6 +18,7 @@ import {
     TokenFrequencyAnnotation,
     getFullyKnownTokenStatus,
     TokenPitchAccentAnnotation,
+    TokenAnnotationConfigs,
 } from '.';
 import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
@@ -74,6 +75,20 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
         { display: true, color: '#0000FF', alpha: 'FF' },
         { display: false, color: '#FFFFFF', alpha: 'FF' },
     ],
+    dictionaryTokenAnnotationConfig: {
+        video: {
+            color: { onHoverEnabled: false },
+            reading: { onHoverEnabled: false },
+            frequency: { onHoverEnabled: false },
+            pitchAccent: { onHoverEnabled: true },
+        },
+        subtitlePlayer: {
+            color: { onHoverEnabled: false },
+            reading: { onHoverEnabled: false },
+            frequency: { onHoverEnabled: false },
+            pitchAccent: { onHoverEnabled: true },
+        },
+    },
 };
 
 export const defaultSettings: AsbplayerSettings = {
@@ -469,6 +484,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
     const defaultTrack = defaultSettings.dictionaryTracks[0];
     const fullyKnownStatus = getFullyKnownTokenStatus();
     for (const dt of dictionaryTracks) {
+        // Ensure dictionaryTokenStatusColors exists and has the correct length
         if (!dt.dictionaryTokenStatusColors) (dt as any).dictionaryTokenStatusColors = [];
         while (dt.dictionaryTokenStatusColors.length < NUM_TOKEN_STATUSES) {
             const color = defaultTrack.dictionaryTokenStatusColors[dt.dictionaryTokenStatusColors.length];
@@ -478,6 +494,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenStatusColors.pop();
         }
 
+        // Ensure dictionaryTokenStatusConfig exists and has the correct length
         if (!dt.dictionaryTokenStatusConfig) (dt as any).dictionaryTokenStatusConfig = [];
         while (dt.dictionaryTokenStatusConfig.length < NUM_TOKEN_STATUSES) {
             const config = {
@@ -490,7 +507,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenStatusConfig.pop();
         }
 
-        // Migrate to config, both are updated on settings change
+        // Migrate dictionaryTokenStatusColors to dictionaryTokenStatusConfig, both are updated on settings change
         for (let i = 0; i < NUM_TOKEN_STATUSES; ++i) {
             if (dt.dictionaryTokenStatusConfig[i].color !== dt.dictionaryTokenStatusColors[i]) {
                 dt.dictionaryTokenStatusConfig[i] = {
@@ -503,6 +520,30 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenStatusConfig[fullyKnownStatus] = {
                 ...dt.dictionaryTokenStatusConfig[fullyKnownStatus],
                 display: dt.dictionaryColorizeFullyKnownTokens,
+            };
+        }
+
+        // Migrate dictionaryColorizeOnHoverOnly to dictionaryTokenAnnotationConfig
+        if (!dt.dictionaryTokenAnnotationConfig) {
+            (dt as any).dictionaryTokenAnnotationConfig = {
+                video: {
+                    color: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.color },
+                    reading: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.reading },
+                    frequency: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.frequency },
+                    pitchAccent: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.pitchAccent },
+                },
+                subtitlePlayer: {
+                    color: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.color },
+                    reading: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.reading },
+                    frequency: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.frequency },
+                    pitchAccent: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.pitchAccent },
+                },
+            };
+            (dt.dictionaryTokenAnnotationConfig as TokenAnnotationConfigs).video = {
+                ...(dt.dictionaryTokenAnnotationConfig as TokenAnnotationConfigs).video,
+                color: { onHoverEnabled: dt.dictionaryColorizeOnHoverOnly },
+                reading: { onHoverEnabled: dt.dictionaryColorizeOnHoverOnly },
+                frequency: { onHoverEnabled: dt.dictionaryColorizeOnHoverOnly },
             };
         }
 

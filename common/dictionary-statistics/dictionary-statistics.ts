@@ -25,6 +25,7 @@ export interface DictionaryStatisticsSentence {
     track: number;
     index: number;
     richText?: string;
+    richTextOnHover?: string;
     tokenization?: Tokenization;
 }
 

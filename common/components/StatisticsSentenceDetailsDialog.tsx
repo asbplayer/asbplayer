@@ -11,6 +11,7 @@ import {
     percentDisplay,
     sortDictionaryStatisticsSentenceBucketEntries,
 } from '@project/common/dictionary-statistics';
+import { getAnnotationsHtml } from '@project/common/subtitle-annotations';
 import { timeDurationDisplay } from '@project/common/util';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -160,8 +161,9 @@ const Sentence: React.FC<SentenceProps> = React.memo(function Sentence({
                         }}
                     >
                         <span
+                            className="asb-subtitles"
                             dangerouslySetInnerHTML={{
-                                __html: sentence.richText ?? sentence.text,
+                                __html: getAnnotationsHtml(sentence.text, sentence.richText, sentence.richTextOnHover),
                             }}
                         />
                     </Box>
@@ -367,7 +369,16 @@ export default function StatisticsSentenceDetailsDialog({
                 {sortedEntries.length === 0 ? (
                     <Typography color="text.secondary">{t('statistics.sentenceDetailsEmpty')}</Typography>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1,
+                            '& .asb-token-highlight:hover': {
+                                backgroundColor: 'rgb(0, 123, 255)',
+                            },
+                        }}
+                    >
                         {sortedEntries.map((entry) => {
                             const isHighlighted = activeHighlightedSentenceIndex === entry.sentence.index;
                             return (

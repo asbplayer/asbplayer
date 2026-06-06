@@ -43,6 +43,11 @@ import {
     TextSubtitleSettings,
     TokenStatus,
     DictionaryTrack,
+    TokenAnnotationConfig,
+    TokenAnnotationConfigs,
+    getEnabledAnnotations,
+    EnabledAnnotations,
+    getEnabledAnnotationsForHover,
 } from '@project/common/settings';
 import { Anki } from '../anki';
 import { WaniKani, WaniKaniUser } from '../wanikani';
@@ -76,13 +81,59 @@ import {
     percentToHex2,
 } from '../util';
 import DictionaryImport from './DictionaryImport';
-import { applyTokenStyle, InternalToken } from '../subtitle-annotations';
+import { applyTokenStyle, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
 import WordBrowserDialog from './WordBrowserDialog';
+import '../app/components/subtitles.css';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
 const waniKaniApiTokenSetupUrl = 'https://docs.asbplayer.dev/docs/guides/annotation#setup';
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
+
+// These values show all digits with an increasing number of digits
+const statusFrequencies = {
+    [TokenStatus.MATURE]: 1,
+    [TokenStatus.YOUNG]: 23,
+    [TokenStatus.GRADUATED]: 456,
+    [TokenStatus.LEARNING]: 7890,
+    [TokenStatus.UNKNOWN]: 12345,
+    [TokenStatus.UNCOLLECTED]: 678901,
+};
+
+// The Japanese localization should use the correct pitch accent rather than the demo
+const readingPitchAccents: Record<string, string> = {
+    じゅくち: 'HLL',
+    みじゅく: 'LHH',
+    がくしゅうかんりょう: 'LHHHHHHH',
+    がくしゅうちゅう: 'LHHHHH',
+    しんき: 'HLL',
+    みしゅうしゅう: 'LHHHH',
+};
+
+// These are demo values of the main pitch patterns
+const statusPitchAccents = {
+    [TokenStatus.MATURE]: 'LHHHHHHHHHHHHHHHHHHH',
+    [TokenStatus.YOUNG]: 'HLLLLLLLLLLLLLLLLLLL',
+    [TokenStatus.GRADUATED]: 'LHHLLLLLLLLLLLLLLLLLL',
+    [TokenStatus.LEARNING]: 'LHHHHHHHHHHHHHHHHHHH',
+    [TokenStatus.UNKNOWN]: 'HLLLLLLLLLLLLLLLLLLL',
+    [TokenStatus.UNCOLLECTED]: 'LHLLLLLLLLLLLLLLLLLL',
+};
+
+const tokenAnnotationTargetLabelKeys: Record<keyof TokenAnnotationConfigs, string> = {
+    video: 'settings.dictionaryTokenAnnotationTargetVideo',
+    subtitlePlayer: 'settings.dictionaryTokenAnnotationTargetSubtitlePlayer',
+};
+
+const tokenAnnotationHoverLabelKeys: Record<keyof TokenAnnotationConfig, string> = {
+    color: 'settings.dictionaryTokenAnnotationHoverColor',
+    reading: 'settings.dictionaryTokenAnnotationHoverReading',
+    frequency: 'settings.dictionaryTokenAnnotationHoverFrequency',
+    pitchAccent: 'settings.dictionaryTokenAnnotationHoverPitchAccent',
+};
+
+const tokenAnnotationTargetKeys = Object.keys(tokenAnnotationTargetLabelKeys) as (keyof TokenAnnotationConfigs)[];
+const tokenAnnotationHoverKeys = Object.keys(tokenAnnotationHoverLabelKeys) as (keyof TokenAnnotationConfig)[];
 
 const ankiCacheDependentSettings = new Set<keyof DictionaryTrack>([
     'dictionaryYomitanUrl',
@@ -346,6 +397,7 @@ interface Props {
     supportsDictionaryWaniKani: boolean;
     supportsDictionaryMatchAcrossScripts: boolean;
     supportsDictionaryTokenPitchAccentAnnotation: boolean;
+    supportsDictionaryTokenAnnotationConfig: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -363,6 +415,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     supportsDictionaryWaniKani,
     supportsDictionaryMatchAcrossScripts,
     supportsDictionaryTokenPitchAccentAnnotation,
+    supportsDictionaryTokenAnnotationConfig,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
     onSettingChanged,
@@ -422,6 +475,32 @@ const DictionarySettingsTab: React.FC<Props> = ({
         if (selectedDictionary.dictionaryColorizeFullyKnownTokens) return;
         return getFullyKnownTokenStatus();
     }, [selectedDictionary.dictionaryColorizeFullyKnownTokens]);
+    const updateDictionaryTokenAnnotationConfig = useCallback(
+        (dictionaryTokenAnnotationConfig: DictionaryTrack['dictionaryTokenAnnotationConfig']) => {
+            const newTracks = [...dictionaryTracks];
+            newTracks[selectedDictionaryTrack] = {
+                ...newTracks[selectedDictionaryTrack],
+                dictionaryTokenAnnotationConfig,
+            };
+            onSettingChanged('dictionaryTracks', newTracks);
+        },
+        [dictionaryTracks, onSettingChanged, selectedDictionaryTrack]
+    );
+    const updateDictionaryTokenHoverAnnotation = useCallback(
+        (target: keyof TokenAnnotationConfigs, annotation: keyof TokenAnnotationConfig, onHoverEnabled: boolean) => {
+            updateDictionaryTokenAnnotationConfig({
+                ...selectedDictionary.dictionaryTokenAnnotationConfig,
+                [target]: {
+                    ...selectedDictionary.dictionaryTokenAnnotationConfig[target],
+                    [annotation]: {
+                        ...selectedDictionary.dictionaryTokenAnnotationConfig[target][annotation],
+                        onHoverEnabled,
+                    },
+                },
+            });
+        },
+        [selectedDictionary.dictionaryTokenAnnotationConfig, updateDictionaryTokenAnnotationConfig]
+    );
 
     const [dictionaryYomitanUrlError, setDictionaryYomitanUrlError] = useState<string>();
     const [dictionaryYomitanMecabError, setDictionaryYomitanMecabError] = useState<React.ReactNode>();
@@ -1164,40 +1243,55 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         />
                     </RadioGroup>
                 </FormControl>
-                <SwitchLabelWithHoverEffect
-                    control={
-                        <Switch
-                            checked={selectedDictionary.dictionaryColorizeOnHoverOnly}
-                            onChange={(e) => {
-                                const newTracks = [...dictionaryTracks];
-                                newTracks[selectedDictionaryTrack] = {
-                                    ...newTracks[selectedDictionaryTrack],
-                                    dictionaryColorizeOnHoverOnly: e.target.checked,
-                                };
-                                onSettingChanged('dictionaryTracks', newTracks);
-                            }}
+                {!supportsDictionaryTokenAnnotationConfig && (
+                    <>
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={selectedDictionary.dictionaryColorizeOnHoverOnly}
+                                    onChange={(e) => {
+                                        const onHoverEnabled = e.target.checked;
+                                        const newTracks = [...dictionaryTracks];
+                                        newTracks[selectedDictionaryTrack] = {
+                                            ...newTracks[selectedDictionaryTrack],
+                                            dictionaryColorizeOnHoverOnly: onHoverEnabled,
+                                            dictionaryTokenAnnotationConfig: {
+                                                ...newTracks[selectedDictionaryTrack].dictionaryTokenAnnotationConfig,
+                                                video: {
+                                                    ...newTracks[selectedDictionaryTrack]
+                                                        .dictionaryTokenAnnotationConfig.video,
+                                                    color: { onHoverEnabled },
+                                                    reading: { onHoverEnabled },
+                                                    frequency: { onHoverEnabled },
+                                                },
+                                            },
+                                        };
+                                        onSettingChanged('dictionaryTracks', newTracks);
+                                    }}
+                                />
+                            }
+                            label={t('settings.dictionaryColorizeOnHoverOnly')}
+                            labelPlacement="start"
                         />
-                    }
-                    label={t('settings.dictionaryColorizeOnHoverOnly')}
-                    labelPlacement="start"
-                />
-                <SwitchLabelWithHoverEffect
-                    control={
-                        <Switch
-                            checked={selectedDictionary.dictionaryHighlightOnHover}
-                            onChange={(e) => {
-                                const newTracks = [...dictionaryTracks];
-                                newTracks[selectedDictionaryTrack] = {
-                                    ...newTracks[selectedDictionaryTrack],
-                                    dictionaryHighlightOnHover: e.target.checked,
-                                };
-                                onSettingChanged('dictionaryTracks', newTracks);
-                            }}
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={selectedDictionary.dictionaryHighlightOnHover}
+                                    onChange={(e) => {
+                                        const newTracks = [...dictionaryTracks];
+                                        newTracks[selectedDictionaryTrack] = {
+                                            ...newTracks[selectedDictionaryTrack],
+                                            dictionaryHighlightOnHover: e.target.checked,
+                                        };
+                                        onSettingChanged('dictionaryTracks', newTracks);
+                                    }}
+                                />
+                            }
+                            label={t('settings.dictionaryHighlightOnHover')}
+                            labelPlacement="start"
                         />
-                    }
-                    label={t('settings.dictionaryHighlightOnHover')}
-                    labelPlacement="start"
-                />
+                    </>
+                )}
                 <SettingsSection>{t('settings.coloringStrategy')}</SettingsSection>
                 <FormControl>
                     <FormLabel component="legend">{t('settings.dictionaryTokenMatchStrategy')}</FormLabel>
@@ -1915,6 +2009,58 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         }}
                     />
                 )}
+                {supportsDictionaryTokenAnnotationConfig && (
+                    <Stack spacing={1}>
+                        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+                            <SwitchLabelWithHoverEffect
+                                control={
+                                    <Switch
+                                        checked={selectedDictionary.dictionaryHighlightOnHover}
+                                        onChange={(e) => {
+                                            const newTracks = [...dictionaryTracks];
+                                            newTracks[selectedDictionaryTrack] = {
+                                                ...newTracks[selectedDictionaryTrack],
+                                                dictionaryHighlightOnHover: e.target.checked,
+                                            };
+                                            onSettingChanged('dictionaryTracks', newTracks);
+                                        }}
+                                    />
+                                }
+                                label={t('settings.dictionaryHighlightOnHover')}
+                                labelPlacement="start"
+                            />
+                        </Stack>
+                        {tokenAnnotationHoverKeys.map((annotation) => (
+                            <Stack key={annotation} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                <Typography sx={{ minWidth: 110 }}>
+                                    {t(tokenAnnotationHoverLabelKeys[annotation])}
+                                </Typography>
+                                {tokenAnnotationTargetKeys.map((target) => (
+                                    <LabelWithHoverEffect
+                                        key={target}
+                                        control={
+                                            <Checkbox
+                                                checked={
+                                                    selectedDictionary.dictionaryTokenAnnotationConfig[target][
+                                                        annotation
+                                                    ].onHoverEnabled
+                                                }
+                                                onChange={(e) =>
+                                                    updateDictionaryTokenHoverAnnotation(
+                                                        target,
+                                                        annotation,
+                                                        e.target.checked
+                                                    )
+                                                }
+                                            />
+                                        }
+                                        label={t(tokenAnnotationTargetLabelKeys[target])}
+                                    />
+                                ))}
+                            </Stack>
+                        ))}
+                    </Stack>
+                )}
                 {supportsDictionaryTokenStatusDisplayAlpha ? (
                     <Stack spacing={1}>
                         {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
@@ -1933,24 +2079,80 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 };
                                 onSettingChanged('dictionaryTracks', newTracks);
                             };
+
+                            // Create a dummy token for previewing the styles
                             const localizedMaturity = t(`settings.dictionaryTokenStatus${tokenStatus}`);
                             const localizedReading = t(`settings.dictionaryTokenStatusReading${tokenStatus}`);
-                            const frequency =
-                                tokenStatus === TokenStatus.MATURE
-                                    ? 1
-                                    : tokenStatus === TokenStatus.YOUNG
-                                      ? 23
-                                      : tokenStatus === TokenStatus.GRADUATED
-                                        ? 456
-                                        : tokenStatus === TokenStatus.LEARNING
-                                          ? 7890
-                                          : tokenStatus === TokenStatus.UNKNOWN
-                                            ? 12345
-                                            : 678901;
-                            const displayingDictionaryTrack: DictionaryTrack = {
-                                ...selectedDictionary,
-                                dictionaryColorizeSubtitles: true,
+                            const token: InternalToken = {
+                                pos: [0, localizedMaturity.length],
+                                status: tokenStatus,
+                                states: [],
+                                readings: [
+                                    {
+                                        pos: [0, localizedMaturity.length],
+                                        reading: localizedReading,
+                                    },
+                                ],
+                                frequency: statusFrequencies[tokenStatus],
+                                pitchAccent: readingPitchAccents[localizedReading] ?? statusPitchAccents[tokenStatus],
+                                __internal: true,
                             };
+
+                            const dt = selectedDictionary;
+
+                            // We want to enable hover semantics if hover is enabled either for video or subtitlePlayer for previews
+                            const enabledAnnotations = getEnabledAnnotations(dt);
+                            const enabledVideoUnhover = getEnabledAnnotationsForHover(
+                                enabledAnnotations,
+                                dt,
+                                'video',
+                                false
+                            );
+                            const enabledPlayerUnhover = getEnabledAnnotationsForHover(
+                                enabledAnnotations,
+                                dt,
+                                'subtitlePlayer',
+                                false
+                            );
+                            const enabledUnhover: EnabledAnnotations = {
+                                color: enabledVideoUnhover.color && enabledPlayerUnhover.color,
+                                reading: enabledVideoUnhover.reading && enabledPlayerUnhover.reading,
+                                frequency: enabledVideoUnhover.frequency && enabledPlayerUnhover.frequency,
+                                pitchAccent: enabledVideoUnhover.pitchAccent && enabledPlayerUnhover.pitchAccent,
+                            };
+                            const richText = Object.values(enabledUnhover).some((v) => v)
+                                ? applyTokenStyle(
+                                      localizedMaturity,
+                                      token,
+                                      {},
+                                      {
+                                          dt,
+                                          enabledAnnotations: enabledUnhover,
+                                          allowAsciiReading: true,
+                                      }
+                                  )
+                                : undefined;
+
+                            // If either video or player has hover enabled, then we need hover semantics
+                            const richTextOnHover =
+                                Object.values(
+                                    getEnabledAnnotationsForHover(enabledAnnotations, dt, 'video', true)
+                                ).some((v) => v) ||
+                                Object.values(
+                                    getEnabledAnnotationsForHover(enabledAnnotations, dt, 'subtitlePlayer', true)
+                                ).some((v) => v)
+                                    ? applyTokenStyle(
+                                          localizedMaturity,
+                                          token,
+                                          {},
+                                          {
+                                              dt,
+                                              enabledAnnotations,
+                                              allowAsciiReading: true,
+                                          }
+                                      )
+                                    : undefined;
+
                             return (
                                 <Stack
                                     key={i}
@@ -1974,6 +2176,9 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 fontSize: '0.5em',
                                                 lineHeight: 1,
                                             },
+                                            '& .asb-token-highlight:hover': {
+                                                backgroundColor: 'rgb(0, 123, 255)',
+                                            },
                                         }}
                                         spacing={1}
                                     >
@@ -1993,24 +2198,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         >
                                             <div
                                                 style={{ padding: theme.spacing(1) }}
+                                                className="asb-subtitles"
                                                 dangerouslySetInnerHTML={{
-                                                    __html: applyTokenStyle(
+                                                    __html: getAnnotationsHtml(
                                                         localizedMaturity,
-                                                        {
-                                                            pos: [0, localizedMaturity.length],
-                                                            status: tokenStatus,
-                                                            states: [],
-                                                            readings: [
-                                                                {
-                                                                    pos: [0, localizedMaturity.length],
-                                                                    reading: localizedReading,
-                                                                },
-                                                            ],
-                                                            frequency,
-                                                            __internal: true,
-                                                        } as InternalToken,
-                                                        {},
-                                                        { allowAsciiReading: true, dt: displayingDictionaryTrack }
+                                                        richText,
+                                                        richTextOnHover
                                                     ),
                                                 }}
                                             />

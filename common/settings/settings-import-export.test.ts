@@ -198,6 +198,20 @@ it('validates exported settings', () => {
                     { display: true, color: '#0000FF', alpha: 'FF' },
                     { display: false, color: '#FFFFFF', alpha: 'FF' },
                 ],
+                dictionaryTokenAnnotationConfig: {
+                    video: {
+                        color: { onHoverEnabled: false },
+                        reading: { onHoverEnabled: false },
+                        frequency: { onHoverEnabled: false },
+                        pitchAccent: { onHoverEnabled: false },
+                    },
+                    subtitlePlayer: {
+                        color: { onHoverEnabled: false },
+                        reading: { onHoverEnabled: false },
+                        frequency: { onHoverEnabled: false },
+                        pitchAccent: { onHoverEnabled: false },
+                    },
+                },
             },
             {
                 dictionaryColorizeSubtitles: false,
@@ -233,6 +247,20 @@ it('validates exported settings', () => {
                     { display: true, color: '#0000FF', alpha: 'FF' },
                     { display: true, color: '#FFFFFF', alpha: 'FF' },
                 ],
+                dictionaryTokenAnnotationConfig: {
+                    video: {
+                        color: { onHoverEnabled: true },
+                        reading: { onHoverEnabled: true },
+                        frequency: { onHoverEnabled: true },
+                        pitchAccent: { onHoverEnabled: true },
+                    },
+                    subtitlePlayer: {
+                        color: { onHoverEnabled: false },
+                        reading: { onHoverEnabled: false },
+                        frequency: { onHoverEnabled: false },
+                        pitchAccent: { onHoverEnabled: false },
+                    },
+                },
             },
             {
                 dictionaryColorizeSubtitles: false,
@@ -268,6 +296,20 @@ it('validates exported settings', () => {
                     { display: true, color: '#FF0000', alpha: 'FF' },
                     { display: false, color: '#FFFF00', alpha: '00' },
                 ],
+                dictionaryTokenAnnotationConfig: {
+                    video: {
+                        color: { onHoverEnabled: true },
+                        reading: { onHoverEnabled: false },
+                        frequency: { onHoverEnabled: false },
+                        pitchAccent: { onHoverEnabled: false },
+                    },
+                    subtitlePlayer: {
+                        color: { onHoverEnabled: true },
+                        reading: { onHoverEnabled: true },
+                        frequency: { onHoverEnabled: true },
+                        pitchAccent: { onHoverEnabled: true },
+                    },
+                },
             },
         ],
     });

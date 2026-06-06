@@ -26,7 +26,11 @@ import {
     isTrackSeekable,
 } from '@project/common/settings';
 import { SubtitleCollection, SubtitleCollectionOptions, SubtitleSlice } from '@project/common/subtitle-collection';
-import { renderRichTextOntoSubtitles, SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import {
+    renderRichTextOntoSubtitles,
+    getAnnotationsHtml,
+    SubtitleAnnotations,
+} from '@project/common/subtitle-annotations';
 import { arrayEquals, computeStyleString, surroundingSubtitles } from '@project/common/util';
 import i18n from 'i18next';
 import {
@@ -539,7 +543,7 @@ export default class SubtitleController {
     }
 
     private _buildSubtitlesHtml(subtitles: IndexedSubtitleModel[]) {
-        if (this.dictionaryTrackSettings) renderRichTextOntoSubtitles(subtitles, this.dictionaryTrackSettings);
+        if (this.dictionaryTrackSettings) renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings);
 
         return subtitles.map((subtitle) => {
             return {
@@ -564,7 +568,12 @@ export default class SubtitleController {
                             </div>
                         `;
                     } else {
-                        return this._buildTextHtml(subtitle.text, subtitle.track, subtitle.richText);
+                        return this._buildTextHtml(
+                            subtitle.text,
+                            subtitle.track,
+                            subtitle.richText,
+                            subtitle.richTextOnHover
+                        );
                     }
                 },
                 key: String(subtitle.index),
@@ -572,11 +581,10 @@ export default class SubtitleController {
         });
     }
 
-    private _buildTextHtml(text: string, track?: number, richText?: string) {
-        if (richText && this.subtitleAnnotations.hoverOnly(track!)) {
-            return `<span data-track="${track!}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(track)}"><span class="asbplayer-subtitle-text">${text}</span><span class="asbplayer-subtitle-rich">${richText}</span></span>`;
-        }
-        return `<span data-track="${track ?? 0}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(track)}">${richText ?? text}</span>`;
+    private _buildTextHtml(text: string, track?: number, richText?: string, richTextOnHover?: string) {
+        return `<span data-track="${track ?? 0}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(
+            track
+        )}">${getAnnotationsHtml(text, richText, richTextOnHover)}</span>`;
     }
 
     unbind() {
