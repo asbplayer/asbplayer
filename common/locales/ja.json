@@ -204,7 +204,7 @@
         "unknownExtension": "{{fileName}}の拡張子を確認できません",
         "unsupportedExtension": "対応していない拡張子です：{{extension}}",
         "videoPlayerDragAndDropNotAllowed": "動画プレイヤーはドロップしたファイルを受け取れません。動画のフレーム外にファイルをドロップしてください。",
-        "restoreSessionFailed": "前回のセッションを復元できませんでした。ファイルが移動または削除された可能性があります。"
+        "restoreSessionFailed": "前回のセッションの復元に失敗しました。"
     },
     "extension": {
         "settings": {
@@ -355,7 +355,7 @@
         "alwaysPlayOnSubtitleRepeat": "「今の、または前の字幕冒頭に移動」の実行後、再生する",
         "anki": "Anki",
         "ankiConnectUrl": "AnkiConnect の URL",
-        "ankiConnectApiKey": "Anki Connect API Key",
+        "ankiConnectApiKey": "Anki Connect の API キー",
         "audioField": "音声フィールド",
         "audioPaddingEnd": "音声の余白終了",
         "audioPaddingStart": "音声の余白開始",
