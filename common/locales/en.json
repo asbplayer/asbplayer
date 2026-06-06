@@ -213,6 +213,8 @@
             "autoLoadDetectedSubs": "Auto-load detected subtitles",
             "autoLoadDetectedSubsFailure": "Prompt on failure to auto-load subtitles",
             "cleanScreenshot": "Clean screenshot when mining",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "Condensed playback minimum skip interval",
             "cropScreenshot": "Crop screenshot when mining",
             "displaySubtitles": "Display subtitles",

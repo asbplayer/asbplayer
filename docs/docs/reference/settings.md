@@ -487,6 +487,22 @@ When mining a subtitle, take a screenshot for inclusion in the flashcrd.
 
 When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
 
+### Hide elements during clean screenshots
+
+asbplayer's clean screenshot only hides asbplayer's own UI (subtitles, controls, etc.). Overlays drawn by _other_ extensions — for example a dictionary pop-up such as [Yomitan](https://yomitan.wiki/)'s — are not asbplayer's to hide, so they can end up in the screenshot.
+
+This setting lets you list the CSS selectors of such elements, one per line. asbplayer temporarily applies `display: none` to anything matching while it captures a clean screenshot, then restores it immediately afterward. It is only used when **Clean screenshot when mining** is enabled.
+
+To find a selector, right-click the overlay and choose _Inspect_, then write a selector that matches it (for example a class selector like `.yomitan-popup`).
+
+:::warning Yomitan's pop-up requires an extra step
+
+By default Yomitan renders its pop-up inside a closed shadow DOM (the **"Use a secure container around popups"** option, found under the **Security** section of Yomitan's settings after clicking **More…**), which page-side scripts such as asbplayer cannot reach — so a selector like `.yomitan-popup` will match nothing until you turn it off.
+
+That option is a security feature. Rather than disabling it globally, use a [Yomitan profile](https://yomitan.wiki/) with a URL condition to effectively whitelist only the sites you mine from: create a profile whose condition matches those domains, turn the option off in that profile, and leave it on everywhere else.
+
+:::
+
 ### Screenshot capture delay
 
 How long to wait after the target subtitle appears before taking the screenshot.

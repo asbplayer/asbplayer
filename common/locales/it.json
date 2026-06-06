@@ -213,6 +213,8 @@
             "autoLoadDetectedSubs": "Carica automaticamente i sottotitoli rilevati",
             "autoLoadDetectedSubsFailure": "Chiedi in caso di errore nel caricamento automatico dei sottotitoli",
             "cleanScreenshot": "Screenshot pulito durante l'estrazione",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "Intervallo minimo di salto per la riproduzione condensata",
             "cropScreenshot": "Ritaglia lo screenshot durante l'estrazione",
             "displaySubtitles": "Mostra sottotitoli",

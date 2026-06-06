@@ -31,3 +31,17 @@ Configure Yomitan:
 ## Mine with **Yomitan** as usual
 
 Mining sentences using Yomitan will create cards with word definition, image, and audio already provided. A truly one-click mining flow can be achieved if the proxy's `POST_MINE_ACTION` is `2` (update last card).
+
+## Keep the Yomitan pop-up out of screenshots
+
+Because you mine by clicking inside Yomitan's pop-up, the pop-up is usually still on screen when asbplayer captures its screenshot — so it ends up baked into the image. asbplayer's **Clean screenshot when mining** option only hides asbplayer's own UI, not overlays drawn by other extensions.
+
+To hide the pop-up, use the **Hide elements during clean screenshots** setting (under **Settings → Streaming video → Mining**) and add Yomitan's pop-up selector:
+
+```
+.yomitan-popup
+```
+
+This requires turning off Yomitan's **"Use a secure container around popups"** option (under the **Security** section of Yomitan's settings, after clicking **More…**), which otherwise keeps the pop-up out of reach of page-side scripts such as asbplayer.
+
+That option is a security feature, so rather than disabling it globally, use a [Yomitan profile](https://yomitan.wiki/) with a URL condition to effectively whitelist only the sites you mine from: create a profile whose condition matches those domains, turn the option off in that profile, and leave it on everywhere else.

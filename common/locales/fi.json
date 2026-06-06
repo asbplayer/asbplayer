@@ -213,6 +213,8 @@
             "autoLoadDetectedSubs": "Lataa automaattisesti havaitut tekstitykset",
             "autoLoadDetectedSubsFailure": "Kysy tekstityksen automaattisen lataamisen epäonnistumisesta",
             "cleanScreenshot": "Puhdista kuvakaappaus louhinnassa",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "Tiivistetty toiston minimiaika väliin",
             "cropScreenshot": "Rajaa kuvakaappausta louhimassa",
             "displaySubtitles": "Näytä tekstitykset",

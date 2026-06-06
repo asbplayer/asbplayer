@@ -213,6 +213,8 @@
             "autoLoadDetectedSubs": "Muat otomatis takarir yang terdeteksi",
             "autoLoadDetectedSubsFailure": "Tampilkan peringatan jika gagal memuat takarir secara otomatis",
             "cleanScreenshot": "Bersihkan tangkapan layar saat menambang",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "Interval lompatan minimum untuk pemutaran ringkas",
             "cropScreenshot": "Potong tangkapan layar saat menambang",
             "displaySubtitles": "Tampilkan takarir",

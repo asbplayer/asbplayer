@@ -505,6 +505,9 @@ const settingsSchema = {
         streamingCleanScreenshot: {
             type: 'boolean',
         },
+        streamingScreenshotHiddenSelectors: {
+            type: 'string',
+        },
         streamingCropScreenshot: {
             type: 'boolean',
         },
