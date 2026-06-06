@@ -66,6 +66,9 @@ const dictionaryTrackSchema = {
         dictionaryDisplayIgnoredTokenReadings: {
             type: 'boolean',
         },
+        dictionaryTokenPitchAccentAnnotation: {
+            type: 'string',
+        },
         dictionaryTokenFrequencyAnnotation: {
             type: 'string',
         },

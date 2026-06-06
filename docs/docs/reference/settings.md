@@ -285,6 +285,25 @@ If enabled, readings will always be shown for words you marked as **ignored**.
 Typically ignoring is used for proper nouns such as names and places or words that you don't want to measure your knowledge against.
 :::
 
+### Display pitch accent (Japanese)
+
+:::note
+Pitch accent can only be marked on kana and so it's dependent on readings being displayed as furigana controlled by the [Display word readings](#display-word-readings) setting.
+:::
+
+Shows pitch accent on readings for Japanese on furigana or the kana itself based on the configured **Word color style**.
+
+- **Always**: show pitch accent for all eligible words.
+- **Learning or below**: show pitch accent only for words at **Learning**, **Unknown**, or **Uncollected** status.
+- **Unknown or below**: show pitch accent only for **Unknown** or **Uncollected** words.
+- **Never**: disable pitch accent.
+
+:::tip
+The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+
+Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+:::
+
 ### Display word frequency
 
 Shows a rank-based frequency value below words (when available). This is useful for prioritizing which words are worth spending time learning.

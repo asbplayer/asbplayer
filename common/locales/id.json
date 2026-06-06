@@ -517,6 +517,7 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "Unknown or below",
         "dictionaryTokenReadingAnnotationNever": "Never",
         "dictionaryDisplayIgnoredTokenReadings": "Display readings for ignored words",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
         "dictionaryTokenFrequencyAnnotation": "Display word frequency",
         "dictionaryTokenFrequencyAnnotationAlways": "Always",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "Uncollected only",

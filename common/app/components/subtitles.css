@@ -22,6 +22,58 @@
     display: revert !important; /* Safari doesn't support 'ruby-text' */
 }
 
+.asb-pitch-accent {
+    --asb-pitch-accent-thickness: 0.1em;
+    --asb-pitch-accent-lift: 0.1em; /* Extra space to clear dakuten */
+    --asb-pitch-accent-color: #000000ff;
+    display: inline-block;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.asb-pitch-accent-mora {
+    display: inline-block;
+    position: relative;
+    padding: 0 0.12ch;
+    line-height: 1;
+}
+
+.asb-pitch-accent-mora::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--asb-pitch-accent-thickness);
+    background: var(--asb-pitch-accent-color);
+    pointer-events: none;
+}
+
+.asb-pitch-accent-mora-high::after {
+    top: calc(-1 * var(--asb-pitch-accent-lift));
+}
+
+.asb-pitch-accent-mora-low::after {
+    bottom: 0;
+}
+
+.asb-pitch-accent-line {
+    display: inline-block;
+    width: var(--asb-pitch-accent-thickness);
+    height: calc(1em + var(--asb-pitch-accent-lift));
+    margin: 0 calc(var(--asb-pitch-accent-thickness) / -2);
+    position: relative;
+    vertical-align: bottom;
+    line-height: 0;
+}
+
+.asb-pitch-accent-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--asb-pitch-accent-color);
+    pointer-events: none;
+}
+
 .asb-frequency {
     ruby-position: under;
 }

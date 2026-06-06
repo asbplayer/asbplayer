@@ -36,6 +36,7 @@ import {
     TokenStatus,
     TokenStyling,
     isWordSource,
+    TokenPitchAccentAnnotation,
 } from '@project/common/settings';
 import { TokenStatusInfo, DictionaryProvider, LemmaResults, TokenResults } from '@project/common/dictionary-db';
 import {
@@ -56,7 +57,12 @@ import {
     getTokenStatus,
     dedupeTokenStatusInfos,
     isKanaOnly,
+    getKanaMoras,
+    isKanaMoraPitchHigh,
     normalizeToken,
+    isAttachedParticlePitchHigh,
+    PitchAccentContext,
+    clearPitchAccentContext,
 } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan/yomitan';
 
@@ -76,6 +82,11 @@ const ASB_TOKEN_HIGHLIGHT_CLASS = 'asb-token-highlight';
 const ASB_READING_CLASS = 'asb-reading';
 const ASB_FREQUENCY_CLASS = 'asb-frequency';
 // const ASB_FREQUENCY_HOVER_CLASS = 'asb-frequency-hover';
+const ASB_PITCH_ACCENT_CLASS = 'asb-pitch-accent';
+const ASB_PITCH_ACCENT_MORA_CLASS = 'asb-pitch-accent-mora';
+const ASB_PITCH_ACCENT_MORA_HIGH_CLASS = 'asb-pitch-accent-mora-high';
+const ASB_PITCH_ACCENT_MORA_LOW_CLASS = 'asb-pitch-accent-mora-low';
+const ASB_PITCH_ACCENT_LINE_CLASS = 'asb-pitch-accent-line';
 
 /**
  * Contains all information specific to a track
@@ -1420,6 +1431,21 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
             try {
                 if (!ts.yt) continue;
                 const tokenizeBulkRes = await ts.yt.tokenizeBulk(texts);
+                if (
+                    ts.dt.dictionaryTokenPitchAccentAnnotation !== TokenPitchAccentAnnotation.NEVER &&
+                    !ts.yt.getSupportsBulkPitchAccent() &&
+                    ts.yt.getSupportsTermEntriesBulk() &&
+                    this.initialized &&
+                    !this.generateStatisticsRequested
+                ) {
+                    const tokenTexts = tokenizeBulkRes.map((tokenParts) =>
+                        tokenParts
+                            .map((p) => p.text)
+                            .join('')
+                            .trim()
+                    );
+                    await ts.yt.termEntriesBulk(tokenTexts, true);
+                }
                 if (!dictionaryStatusCollectionEnabled(ts.dt)) continue; // Still want to bulk tokenize if TokenReadingAnnotation.ALWAYS but no coloring
                 if (this.shouldCancelBuild) return;
 
@@ -1597,6 +1623,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                         }
                         if (token.status === null) this.erroredCache.add(index);
                         await this._updateFrequency(token, trimmedToken, index, ts);
+                        await this._updatePitchAccent(token, trimmedToken, index, ts);
                         if (this.shouldCancelBuild) return;
 
                         reconstructedTextParts.push(tokenText);
@@ -1705,6 +1732,7 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 }
                 if (token.status === null) this.erroredCache.add(index);
                 await this._updateFrequency(token, trimmedToken, index, ts);
+                await this._updatePitchAccent(token, trimmedToken, index, ts);
                 if (this.shouldCancelBuild) return;
             }
 
@@ -1726,6 +1754,29 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
         if (ano === TokenFrequencyAnnotation.UNCOLLECTED_ONLY && token.status !== TokenStatus.UNCOLLECTED) return;
         if (this.initialized || ts.yt.getSupportsBulkFrequency()) {
             token.frequency = await ts.yt.frequency(trimmedToken);
+        } else {
+            this.refreshCache.add(index);
+        }
+    }
+
+    private async _updatePitchAccent(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
+        if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token pitch accent');
+        switch (ts.dt.dictionaryTokenPitchAccentAnnotation) {
+            case TokenPitchAccentAnnotation.ALWAYS:
+                break;
+            case TokenPitchAccentAnnotation.LEARNING_OR_BELOW:
+                if (token.status == null || token.status > TokenStatus.LEARNING) return;
+                break;
+            case TokenPitchAccentAnnotation.UNKNOWN_OR_BELOW:
+                if (token.status == null || token.status > TokenStatus.UNKNOWN) return;
+                break;
+            case TokenPitchAccentAnnotation.NEVER:
+                return;
+            default:
+                throw new Error(`Unknown TokenPitchAccentAnnotation: ${ts.dt.dictionaryTokenPitchAccentAnnotation}`);
+        }
+        if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkPitchAccent()) {
+            token.pitchAccent = await ts.yt.pitchAccent(trimmedToken);
         } else {
             this.refreshCache.add(index);
         }
@@ -1927,14 +1978,16 @@ const computeRichText = (fullText: string, tokenization: Tokenization, dt?: Dict
     if (!tokenization.tokens.length) return;
 
     const parts: string[] = [];
+    const prevPitch: PitchAccentContext = {}; // Context from the previous token to correctly determine pitch for attached particle
     iterateOverStringInBlocks(
         fullText,
         (_, blockIndex) => tokenization.tokens[blockIndex],
         (left, right, token?: Token) => {
             if (token === undefined) {
+                clearPitchAccentContext(prevPitch);
                 parts.push(fullText.substring(left, right));
             } else {
-                parts.push(applyTokenStyle(fullText, token, false, dt));
+                parts.push(applyTokenStyle(fullText, token, prevPitch, { allowAsciiReading: false, dt }));
             }
         }
     );
@@ -1944,9 +1997,18 @@ const computeRichText = (fullText: string, tokenization: Tokenization, dt?: Dict
 const ERROR_STYLE = `style="text-decoration: line-through red 3px;"`;
 const LOGIC_ERROR_STYLE = `style="text-decoration: line-through red 3px double;"`;
 
-export const applyTokenStyle = (fullText: string, token: Token, allowAsciiReading: boolean, dt?: DictionaryTrack) => {
+export const applyTokenStyle = (
+    fullText: string,
+    token: Token,
+    prevPitch: PitchAccentContext,
+    options: {
+        allowAsciiReading: boolean;
+        dt?: DictionaryTrack;
+    }
+) => {
+    const { dt } = options;
     const tokenText = applyFrequencyAnnotation(
-        applyReadingAnnotation(fullText, token, allowAsciiReading, dt),
+        applyReadingAnnotation(fullText.substring(token.pos[0], token.pos[1]), token, prevPitch, options),
         token,
         dt
     );
@@ -1960,7 +2022,7 @@ export const applyTokenStyle = (fullText: string, token: Token, allowAsciiReadin
         ? `<span class="${ASB_TOKEN_CLASS}${dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : ''}"`
         : '<span';
     const config = dt.dictionaryTokenStatusConfig[token.status!];
-    if (!config.display) return `${s}>${tokenText}</span>`;
+    if (!config.display || token.pitchAccent != null) return `${s}>${tokenText}</span>`; // Colorize the pitch accent annotation only
 
     const c = `${config.color}${config.alpha}`;
     const t = dt.dictionaryTokenStylingThickness;
@@ -1979,13 +2041,28 @@ export const applyTokenStyle = (fullText: string, token: Token, allowAsciiReadin
     }
 };
 
-const applyReadingAnnotation = (fullText: string, token: Token, allowAsciiReading: boolean, dt?: DictionaryTrack) => {
-    const tokenText = fullText.substring(token.pos[0], token.pos[1]);
-    if (!token.readings.length || !HAS_LETTER_REGEX.test(tokenText)) {
+const applyReadingAnnotation = (
+    tokenText: string,
+    token: Token,
+    prevPitch: PitchAccentContext,
+    options: {
+        allowAsciiReading: boolean;
+        dt?: DictionaryTrack;
+    }
+) => {
+    const { allowAsciiReading, dt } = options;
+    if (!HAS_LETTER_REGEX.test(tokenText)) {
+        clearPitchAccentContext(prevPitch);
         return tokenText; // Prevent 。 -> まる
     }
     if (ONLY_ASCII_LETTERS_REGEX.test(tokenText) && !allowAsciiReading) {
+        clearPitchAccentContext(prevPitch);
         return tokenText; // Prevent english words from getting readings
+    }
+    if (!token.readings.length) {
+        if (isKanaOnly(tokenText)) return applyPitchAccentAnnotation(tokenText, token, prevPitch, dt, tokenText);
+        clearPitchAccentContext(prevPitch);
+        return tokenText;
     }
 
     // Only apply skip logic for tokens generated by this class i.e. marked __internal: true
@@ -1996,31 +2073,124 @@ const applyReadingAnnotation = (fullText: string, token: Token, allowAsciiReadin
                 ? TokenReadingAnnotation.ALWAYS
                 : TokenReadingAnnotation.NEVER
             : dt.dictionaryTokenReadingAnnotation;
-        if (ano === TokenReadingAnnotation.NEVER) return tokenText;
+        if (ano === TokenReadingAnnotation.NEVER) {
+            clearPitchAccentContext(prevPitch);
+            return tokenText;
+        }
         if (token.status !== undefined && token.status !== null) {
             if (
                 (ano === TokenReadingAnnotation.LEARNING_OR_BELOW && token.status > TokenStatus.LEARNING) ||
                 (ano === TokenReadingAnnotation.UNKNOWN_OR_BELOW && token.status > TokenStatus.UNKNOWN)
             ) {
+                clearPitchAccentContext(prevPitch);
                 return tokenText;
             }
         }
     }
 
+    // We want to use a single reading for the entire token if we're applying pitch accent annotations.
+    // e.g. 飛び切り readings would be `と き ` so make it contiguous as `とびきり` so connecting and reading pitch is easier
+    const tokenForDisplay = { ...token };
+    if (token.pitchAccent != null) {
+        tokenForDisplay.readings = [{ pos: [0, tokenText.length], reading: '' }];
+        iterateOverStringInBlocks(
+            tokenText,
+            (_, blockIndex) => token.readings[blockIndex],
+            (left, right, reading?: TokenReading) => {
+                if (reading === undefined) tokenForDisplay.readings[0].reading += tokenText.substring(left, right);
+                else tokenForDisplay.readings[0].reading += reading.reading;
+            }
+        );
+    }
+
     const parts: string[] = [];
     iterateOverStringInBlocks(
         tokenText,
-        (_, blockIndex) => token.readings[blockIndex],
+        (_, blockIndex) => tokenForDisplay.readings[blockIndex],
         (left, right, reading?: TokenReading) => {
             if (reading === undefined) {
                 parts.push(tokenText.substring(left, right));
             } else {
                 const part = tokenText.substring(reading.pos[0], reading.pos[1]);
-                parts.push(`<ruby class="${ASB_READING_CLASS}">${part}<rt>${reading.reading}</rt></ruby>`);
+                const readingText = applyPitchAccentAnnotation(reading.reading, token, prevPitch, dt);
+                parts.push(`<ruby class="${ASB_READING_CLASS}">${part}<rt>${readingText}</rt></ruby>`);
             }
         }
     );
     return parts.join('');
+};
+
+const applyPitchAccentAnnotation = (
+    readingText: string,
+    token: Token,
+    prevPitch: PitchAccentContext,
+    dt?: DictionaryTrack,
+    attachedParticleCandidateText?: string
+) => {
+    if (!HAS_LETTER_REGEX.test(readingText) || !dt) {
+        clearPitchAccentContext(prevPitch);
+        return readingText;
+    }
+
+    const pitchAccentColor = () => {
+        if (token.status == null || !dt.dictionaryColorizeSubtitles) return '#000000FF';
+        const config = dt.dictionaryTokenStatusConfig[token.status];
+        if (!config.display) return '#000000FF';
+        return `${config.color}${config.alpha}`;
+    };
+
+    if (prevPitch.prevMoras !== undefined && prevPitch.prevPitchAccent !== undefined) {
+        const pitchHigh = isAttachedParticlePitchHigh(attachedParticleCandidateText, prevPitch);
+        if (pitchHigh !== null) {
+            prevPitch.prevMoras = undefined;
+            prevPitch.prevPitchAccent = undefined;
+            const html = pitchAccentHtml(getKanaMoras(readingText), pitchAccentColor(), () => pitchHigh, prevPitch);
+            prevPitch.prevPitchHigh = undefined; // Draw vertical line for attached particles if pitched changed from previous token
+            return html;
+        }
+    }
+
+    if (token.pitchAccent == null) {
+        clearPitchAccentContext(prevPitch);
+        return readingText;
+    }
+
+    const moras = getKanaMoras(readingText);
+    prevPitch.prevMoras = moras;
+    prevPitch.prevPitchAccent = token.pitchAccent;
+    prevPitch.prevPitchHigh = undefined; // Only attached particles care about the change from the previous pitch
+    const html = pitchAccentHtml(
+        moras,
+        pitchAccentColor(),
+        (i) => isKanaMoraPitchHigh(i, token.pitchAccent!),
+        prevPitch
+    );
+    if (!attachedParticleCandidateText) prevPitch.prevPitchHigh = undefined; // For furigana we don't want the vertical line since it won't be connected to the particle
+    return html;
+};
+
+const pitchAccentHtml = (
+    moras: string[],
+    color: string,
+    pitchHigh: (index: number) => boolean,
+    prevPitch: PitchAccentContext
+) => {
+    const parts: string[] = [];
+    let prevHigh = prevPitch.prevPitchHigh;
+    for (let i = 0; i < moras.length; i++) {
+        const high = pitchHigh(i);
+        if (prevHigh !== undefined && prevHigh !== high) {
+            parts.push(`<span class="${ASB_PITCH_ACCENT_LINE_CLASS}"></span>`);
+        }
+        prevHigh = high;
+        parts.push(
+            `<span class="${ASB_PITCH_ACCENT_MORA_CLASS} ${
+                high ? ASB_PITCH_ACCENT_MORA_HIGH_CLASS : ASB_PITCH_ACCENT_MORA_LOW_CLASS
+            }">${moras[i]}</span>`
+        );
+    }
+    prevPitch.prevPitchHigh = prevHigh;
+    return `<span class="${ASB_PITCH_ACCENT_CLASS}" style="--asb-pitch-accent-color: ${color};">${parts.join('')}</span>`;
 };
 
 const applyFrequencyAnnotation = (tokenText: string, token: Token, dt?: DictionaryTrack) => {

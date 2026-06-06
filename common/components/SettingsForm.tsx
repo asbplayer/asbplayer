@@ -182,6 +182,7 @@ interface Props {
     extensionSupportsDictionaryBrowser: boolean;
     extensionSupportsDictionaryWaniKani: boolean;
     extensionSupportsDictionaryMatchAcrossScripts: boolean;
+    extensionSupportsDictionaryTokenPitchAccentAnnotation: boolean;
     extensionSupportsSeekableTrackSetting: boolean;
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
@@ -235,6 +236,7 @@ export default function SettingsForm({
     extensionSupportsDictionaryBrowser,
     extensionSupportsDictionaryWaniKani,
     extensionSupportsDictionaryMatchAcrossScripts,
+    extensionSupportsDictionaryTokenPitchAccentAnnotation,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
@@ -263,6 +265,8 @@ export default function SettingsForm({
     const supportsDictionaryMatchAcrossScripts = !extensionInstalled || extensionSupportsDictionaryMatchAcrossScripts;
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
+    const supportsDictionaryTokenPitchAccentAnnotation =
+        !extensionInstalled || extensionSupportsDictionaryTokenPitchAccentAnnotation;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const theme = useTheme();
     const smallScreen = useMediaQuery(theme.breakpoints.down(500)) && !forceVerticalTabs;
@@ -477,6 +481,7 @@ export default function SettingsForm({
                     supportsDictionaryBrowser={supportsDictionaryBrowser}
                     supportsDictionaryWaniKani={supportsDictionaryWaniKani}
                     supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
+                    supportsDictionaryTokenPitchAccentAnnotation={supportsDictionaryTokenPitchAccentAnnotation}
                     supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                     supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                     onSettingChanged={handleSettingChanged}

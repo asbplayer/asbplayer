@@ -517,6 +517,7 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "新規以下",
         "dictionaryTokenReadingAnnotationNever": "表示しない",
         "dictionaryDisplayIgnoredTokenReadings": "無視した単語の読み方を表示",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
         "dictionaryTokenFrequencyAnnotation": "単語頻度を表示",
         "dictionaryTokenFrequencyAnnotationAlways": "いつも",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "未収集のみ",
