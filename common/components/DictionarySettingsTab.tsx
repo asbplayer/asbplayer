@@ -81,7 +81,7 @@ import WordBrowserDialog from './WordBrowserDialog';
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
 const waniKaniApiTokenSetupUrl = 'https://docs.asbplayer.dev/docs/guides/annotation#setup';
-const maskApiToken = (apiToken: string) => '●'.repeat(Array.from(apiToken).length);
+const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
 
 const ankiCacheDependentSettings = new Set<keyof DictionaryTrack>([
     'dictionaryYomitanUrl',

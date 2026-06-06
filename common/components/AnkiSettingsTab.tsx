@@ -30,7 +30,7 @@ import { Anki, exportCard } from '../anki';
 import Stack from '@mui/material/Stack';
 
 const defaultDeckName = 'Sentences';
-const maskApiToken = (apiToken: string) => '●'.repeat(Array.from(apiToken).length);
+const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
 
 const defaultNoteType = {
     modelName: 'Sentence Card',
