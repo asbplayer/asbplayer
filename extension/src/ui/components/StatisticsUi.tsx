@@ -76,6 +76,7 @@ const StatisticsUi = () => {
                     dictionaryProvider={dictionaryProvider}
                     settings={settings}
                     hasSubtitles={mediaIdWithSubtitles !== undefined}
+                    contentPadding={1}
                     onSeekWasRequested={uiTabRegistry.focusTabForMediaId}
                     onMineWasRequested={uiTabRegistry.focusTabForMediaId}
                     onViewAnnotationSettings={handleViewAnnotationSettings}
