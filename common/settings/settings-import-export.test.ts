@@ -6,7 +6,6 @@ import {
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     VideoSubtitleSplitBehavior,
-    TokenPitchAccentAnnotation,
 } from './settings';
 import { validateSettings } from './settings-import-export';
 import { defaultSettings } from './settings-provider';
@@ -177,7 +176,6 @@ it('validates exported settings', () => {
                 dictionaryYomitanScanLength: 16,
                 dictionaryTokenReadingAnnotation: TokenReadingAnnotation.UNKNOWN_OR_BELOW,
                 dictionaryDisplayIgnoredTokenReadings: true,
-                dictionaryTokenPitchAccentAnnotation: TokenPitchAccentAnnotation.UNKNOWN_OR_BELOW,
                 dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.ALWAYS,
                 dictionaryAnkiDecks: ['Default'],
                 dictionaryAnkiWordFields: ['Word', 'Expression'],
@@ -199,18 +197,58 @@ it('validates exported settings', () => {
                     { display: false, color: '#FFFFFF', alpha: 'FF' },
                 ],
                 dictionaryTokenAnnotationConfig: {
+                    colorizeEnabled: true,
                     video: {
                         color: { onHoverEnabled: false },
                         reading: { onHoverEnabled: false },
                         frequency: { onHoverEnabled: false },
-                        pitchAccent: { onHoverEnabled: false },
+                        pitchAccent: { onHoverEnabled: true },
                     },
                     subtitlePlayer: {
                         color: { onHoverEnabled: false },
                         reading: { onHoverEnabled: false },
                         frequency: { onHoverEnabled: false },
-                        pitchAccent: { onHoverEnabled: false },
+                        pitchAccent: { onHoverEnabled: true },
                     },
+                    onStatuses: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
+                    onStates: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
                 },
             },
             {
@@ -226,7 +264,6 @@ it('validates exported settings', () => {
                 dictionaryYomitanScanLength: 12,
                 dictionaryTokenReadingAnnotation: TokenReadingAnnotation.ALWAYS,
                 dictionaryDisplayIgnoredTokenReadings: false,
-                dictionaryTokenPitchAccentAnnotation: TokenPitchAccentAnnotation.ALWAYS,
                 dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.UNCOLLECTED_ONLY,
                 dictionaryAnkiDecks: [],
                 dictionaryAnkiWordFields: [],
@@ -248,6 +285,7 @@ it('validates exported settings', () => {
                     { display: true, color: '#FFFFFF', alpha: 'FF' },
                 ],
                 dictionaryTokenAnnotationConfig: {
+                    colorizeEnabled: false,
                     video: {
                         color: { onHoverEnabled: true },
                         reading: { onHoverEnabled: true },
@@ -260,6 +298,45 @@ it('validates exported settings', () => {
                         frequency: { onHoverEnabled: false },
                         pitchAccent: { onHoverEnabled: false },
                     },
+                    onStatuses: [
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                    ],
+                    onStates: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
                 },
             },
             {
@@ -275,7 +352,6 @@ it('validates exported settings', () => {
                 dictionaryYomitanScanLength: 8,
                 dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,
                 dictionaryDisplayIgnoredTokenReadings: true,
-                dictionaryTokenPitchAccentAnnotation: TokenPitchAccentAnnotation.NEVER,
                 dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.NEVER,
                 dictionaryAnkiDecks: [],
                 dictionaryAnkiWordFields: [],
@@ -297,8 +373,9 @@ it('validates exported settings', () => {
                     { display: false, color: '#FFFF00', alpha: '00' },
                 ],
                 dictionaryTokenAnnotationConfig: {
+                    colorizeEnabled: false,
                     video: {
-                        color: { onHoverEnabled: true },
+                        color: { onHoverEnabled: false },
                         reading: { onHoverEnabled: false },
                         frequency: { onHoverEnabled: false },
                         pitchAccent: { onHoverEnabled: false },
@@ -309,6 +386,45 @@ it('validates exported settings', () => {
                         frequency: { onHoverEnabled: true },
                         pitchAccent: { onHoverEnabled: true },
                     },
+                    onStatuses: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
+                    onStates: [
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                    ],
                 },
             },
         ],

@@ -182,7 +182,6 @@ interface Props {
     extensionSupportsDictionaryBrowser: boolean;
     extensionSupportsDictionaryWaniKani: boolean;
     extensionSupportsDictionaryMatchAcrossScripts: boolean;
-    extensionSupportsDictionaryTokenPitchAccentAnnotation: boolean;
     extensionSupportsDictionaryTokenAnnotationConfig: boolean;
     extensionSupportsSeekableTrackSetting: boolean;
     extensionSupportsAutoCopyableTrackSetting: boolean;
@@ -237,7 +236,6 @@ export default function SettingsForm({
     extensionSupportsDictionaryBrowser,
     extensionSupportsDictionaryWaniKani,
     extensionSupportsDictionaryMatchAcrossScripts,
-    extensionSupportsDictionaryTokenPitchAccentAnnotation,
     extensionSupportsDictionaryTokenAnnotationConfig,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
@@ -267,8 +265,6 @@ export default function SettingsForm({
     const supportsDictionaryMatchAcrossScripts = !extensionInstalled || extensionSupportsDictionaryMatchAcrossScripts;
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
-    const supportsDictionaryTokenPitchAccentAnnotation =
-        !extensionInstalled || extensionSupportsDictionaryTokenPitchAccentAnnotation;
     const supportsDictionaryTokenAnnotationConfig =
         !extensionInstalled || extensionSupportsDictionaryTokenAnnotationConfig;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
@@ -485,7 +481,6 @@ export default function SettingsForm({
                     supportsDictionaryBrowser={supportsDictionaryBrowser}
                     supportsDictionaryWaniKani={supportsDictionaryWaniKani}
                     supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
-                    supportsDictionaryTokenPitchAccentAnnotation={supportsDictionaryTokenPitchAccentAnnotation}
                     supportsDictionaryTokenAnnotationConfig={supportsDictionaryTokenAnnotationConfig}
                     supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                     supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}

@@ -200,10 +200,6 @@ export default class ChromeExtension {
         return this.installed && gte(this.version, '1.19.0');
     }
 
-    get supportsDictionaryTokenPitchAccentAnnotation() {
-        return this.installed && gte(this.version, '1.19.0');
-    }
-
     get supportsDictionaryMatchAcrossScripts() {
         return this.installed && gte(this.version, '1.18.0');
     }

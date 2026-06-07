@@ -17,8 +17,8 @@ import {
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     getFullyKnownTokenStatus,
-    TokenPitchAccentAnnotation,
-    TokenAnnotationConfigs,
+    TokenStatus,
+    TokenState,
 } from '.';
 import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
@@ -41,6 +41,33 @@ const defaultSubtitleTextSettings = {
     subtitleBlur: false,
 };
 
+function makeDefaultDictionaryTokenAnnotationConfigs() {
+    return {
+        colorizeEnabled: false,
+        video: {
+            color: { onHoverEnabled: false },
+            reading: { onHoverEnabled: false },
+            frequency: { onHoverEnabled: false },
+            pitchAccent: { onHoverEnabled: true },
+        },
+        subtitlePlayer: {
+            color: { onHoverEnabled: false },
+            reading: { onHoverEnabled: false },
+            frequency: { onHoverEnabled: false },
+            pitchAccent: { onHoverEnabled: true },
+        },
+        onStatuses: [
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+        ],
+        onStates: [{ reading: false, frequency: false, pitchAccent: false }],
+    };
+}
+
 const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryColorizeSubtitles: false,
     dictionaryAutoGenerateStatistics: false,
@@ -54,7 +81,6 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryYomitanScanLength: 16,
     dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,
     dictionaryDisplayIgnoredTokenReadings: false,
-    dictionaryTokenPitchAccentAnnotation: TokenPitchAccentAnnotation.NEVER,
     dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.NEVER,
     dictionaryAnkiDecks: [],
     dictionaryAnkiWordFields: [],
@@ -75,20 +101,7 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
         { display: true, color: '#0000FF', alpha: 'FF' },
         { display: false, color: '#FFFFFF', alpha: 'FF' },
     ],
-    dictionaryTokenAnnotationConfig: {
-        video: {
-            color: { onHoverEnabled: false },
-            reading: { onHoverEnabled: false },
-            frequency: { onHoverEnabled: false },
-            pitchAccent: { onHoverEnabled: true },
-        },
-        subtitlePlayer: {
-            color: { onHoverEnabled: false },
-            reading: { onHoverEnabled: false },
-            frequency: { onHoverEnabled: false },
-            pitchAccent: { onHoverEnabled: true },
-        },
-    },
+    dictionaryTokenAnnotationConfig: makeDefaultDictionaryTokenAnnotationConfigs(),
 };
 
 export const defaultSettings: AsbplayerSettings = {
@@ -262,6 +275,7 @@ export const defaultSettings: AsbplayerSettings = {
 
 export const NUM_DICTIONARY_TRACKS = defaultSettings.dictionaryTracks.length;
 export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenStatusColors.length;
+export const NUM_TOKEN_STATES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStates.length;
 
 export interface AnkiFieldUiModel {
     key: string;
@@ -523,28 +537,64 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             };
         }
 
-        // Migrate dictionaryColorizeOnHoverOnly to dictionaryTokenAnnotationConfig
+        // Ensure dictionaryTokenAnnotationConfig exists
         if (!dt.dictionaryTokenAnnotationConfig) {
-            (dt as any).dictionaryTokenAnnotationConfig = {
-                video: {
-                    color: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.color },
-                    reading: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.reading },
-                    frequency: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.frequency },
-                    pitchAccent: { ...defaultTrack.dictionaryTokenAnnotationConfig.video.pitchAccent },
-                },
-                subtitlePlayer: {
-                    color: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.color },
-                    reading: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.reading },
-                    frequency: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.frequency },
-                    pitchAccent: { ...defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer.pitchAccent },
-                },
-            };
-            (dt.dictionaryTokenAnnotationConfig as TokenAnnotationConfigs).video = {
-                ...(dt.dictionaryTokenAnnotationConfig as TokenAnnotationConfigs).video,
-                color: { onHoverEnabled: dt.dictionaryColorizeOnHoverOnly },
-                reading: { onHoverEnabled: dt.dictionaryColorizeOnHoverOnly },
-                frequency: { onHoverEnabled: dt.dictionaryColorizeOnHoverOnly },
-            };
+            const config = makeDefaultDictionaryTokenAnnotationConfigs();
+
+            // Migrate dictionaryColorizeOnHoverOnly to dictionaryTokenAnnotationConfig
+            config.video.color.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
+            config.video.reading.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
+            config.video.frequency.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
+
+            // Migrate dictionaryTokenReadingAnnotation to dictionaryTokenAnnotationConfig
+            if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.ALWAYS) {
+                config.onStatuses.forEach((s) => (s.reading = true));
+                config.onStates[TokenState.IGNORED].reading = true;
+            } else if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.LEARNING_OR_BELOW) {
+                for (let tokenStatus: TokenStatus = 0; tokenStatus <= TokenStatus.LEARNING; ++tokenStatus) {
+                    config.onStatuses[tokenStatus].reading = true;
+                }
+            } else if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.UNKNOWN_OR_BELOW) {
+                for (let tokenStatus: TokenStatus = 0; tokenStatus <= TokenStatus.UNKNOWN; ++tokenStatus) {
+                    config.onStatuses[tokenStatus].reading = true;
+                }
+            }
+            if (dt.dictionaryDisplayIgnoredTokenReadings) config.onStates[TokenState.IGNORED].reading = true;
+
+            // Migrate dictionaryTokenFrequencyAnnotation to dictionaryTokenAnnotationConfig
+            if (dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.ALWAYS) {
+                config.onStatuses.forEach((s) => (s.frequency = true));
+                config.onStates[TokenState.IGNORED].frequency = true;
+            } else if (dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.UNCOLLECTED_ONLY) {
+                config.onStatuses[TokenStatus.UNCOLLECTED].frequency = true;
+            }
+
+            (dt as any).dictionaryTokenAnnotationConfig = config;
+        }
+        if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled !== dt.dictionaryColorizeSubtitles) {
+            dt.dictionaryTokenAnnotationConfig.colorizeEnabled = dt.dictionaryColorizeSubtitles;
+        }
+
+        // Ensure dictionaryTokenAnnotationConfig has the correct length
+        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length < NUM_TOKEN_STATUSES) {
+            dt.dictionaryTokenAnnotationConfig.onStatuses.push({
+                reading: false,
+                frequency: false,
+                pitchAccent: false,
+            });
+        }
+        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length > NUM_TOKEN_STATUSES) {
+            dt.dictionaryTokenAnnotationConfig.onStatuses.pop();
+        }
+        while (dt.dictionaryTokenAnnotationConfig.onStates.length < NUM_TOKEN_STATES) {
+            dt.dictionaryTokenAnnotationConfig.onStates.push({
+                reading: false,
+                frequency: false,
+                pitchAccent: false,
+            });
+        }
+        while (dt.dictionaryTokenAnnotationConfig.onStates.length > NUM_TOKEN_STATES) {
+            dt.dictionaryTokenAnnotationConfig.onStates.pop();
         }
 
         // Default for new settings
@@ -557,9 +607,6 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
         }
         if (dt.dictionaryMatchAcrossScripts === undefined) {
             (dt as any).dictionaryMatchAcrossScripts = defaultTrack.dictionaryMatchAcrossScripts;
-        }
-        if (dt.dictionaryTokenPitchAccentAnnotation === undefined) {
-            (dt as any).dictionaryTokenPitchAccentAnnotation = defaultTrack.dictionaryTokenPitchAccentAnnotation;
         }
     }
     while (dictionaryTracks.length < NUM_DICTIONARY_TRACKS) {

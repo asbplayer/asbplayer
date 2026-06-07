@@ -66,9 +66,6 @@ const dictionaryTrackSchema = {
         dictionaryDisplayIgnoredTokenReadings: {
             type: 'boolean',
         },
-        dictionaryTokenPitchAccentAnnotation: {
-            type: 'string',
-        },
         dictionaryTokenFrequencyAnnotation: {
             type: 'string',
         },
@@ -132,6 +129,9 @@ const dictionaryTrackSchema = {
         dictionaryTokenAnnotationConfig: {
             type: 'object',
             properties: {
+                colorizeEnabled: {
+                    type: 'boolean',
+                },
                 video: {
                     type: 'object',
                     properties: {
@@ -184,8 +184,32 @@ const dictionaryTrackSchema = {
                     },
                     required: ['color', 'reading', 'frequency', 'pitchAccent'],
                 },
+                onStatuses: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            reading: { type: 'boolean' },
+                            frequency: { type: 'boolean' },
+                            pitchAccent: { type: 'boolean' },
+                        },
+                        required: ['reading', 'frequency', 'pitchAccent'],
+                    },
+                },
+                onStates: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            reading: { type: 'boolean' },
+                            frequency: { type: 'boolean' },
+                            pitchAccent: { type: 'boolean' },
+                        },
+                        required: ['reading', 'frequency', 'pitchAccent'],
+                    },
+                },
             },
-            required: ['video', 'subtitlePlayer'],
+            required: ['colorizeEnabled', 'video', 'subtitlePlayer', 'onStatuses', 'onStates'],
         },
     },
     required: [
