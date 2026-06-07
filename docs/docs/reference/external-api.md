@@ -105,7 +105,7 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
 
 ### `get-bound-media`
 
-Returns every `<video>` element asbplayer is currently tracking, keyed by tab and `src`.
+Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
 
 #### Request
 
@@ -127,28 +127,23 @@ Returns every `<video>` element asbplayer is currently tracking, keyed by tab an
     "messageId": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
     "body": {
         "media": [{
-            // ID of the tab the video element lives in
-            "tabId": 123,
-            // The video element's src; serves as the media's identifier
-            "src": "https://example.com/video.mp4",
-            // Title of the tab
-            "title": "Example video",
-            // Favicon of the tab
+            // Identifier for the media
+            "id": "a1b2c3d4e5f6",
+            // Type of media: "streaming" or "local"
+            "type": "streaming",
+            // Display title for the media, if available
+            "title": "Title of the Video",
+            // Favicon of the tab containing the media, if available
             "faviconUrl": "https://example.com/favicon.ico",
-            // Whether the video element is subscribed to extension messages
-            "subscribed": true,
-            // Whether subtitles have been synced to the video element
-            "synced": true,
-            // Whether a non-empty subtitle track is loaded
-            "loadedSubtitles": true,
-            // When syncing occurred (epoch milliseconds), if synced
-            "syncedTimestamp": 1717000000000,
-            // Whether the tab is the active tab of its window
-            "active": true,
-            // Whether the tab is the active tab of the currently focused window
-            "focused": true,
-            // Whether the tab has been discarded (unloaded from memory) - acting on it may fail
-            "discarded": false
+            // Subtitle tracks currently loaded for this media. Empty if none are loaded.
+            "loadedSubtitles": [{
+                // Track number
+                "trackNumber": 0,
+                // File name of the subtitle track
+                "fileName": "subtitles.srt"
+            }],
+            // Whether the media's tab is the active tab of its window
+            "active": true
         }]
     }
 }
