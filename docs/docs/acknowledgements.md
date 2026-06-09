@@ -52,7 +52,8 @@ We epecially acknowledge the wonderful humans below.
 [@jprostko](https://github.com/jprostko),
 [@rodrigo-suarezmajor](https://github.com/rodrigo-suarezmajor),
 [@Roka20012](https://github.com/Roka20012),
-[@RonzyOnGIT](https://github.com/RonzyOnGIT)
+[@RonzyOnGIT](https://github.com/RonzyOnGIT),
+[@Dr-TNineS](https://github.com/Dr-TNineS)
 
 ## Translators
 
