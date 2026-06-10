@@ -212,6 +212,8 @@
             "autoLoadDetectedSubs": "字幕を探知したら自動的にロードする",
             "autoLoadDetectedSubsFailure": "字幕の自動ロードに失敗した時、字幕トラックウィンドウを表示",
             "cleanScreenshot": "マイニング時のスクリーンショットを綺麗にする",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "短縮プレイバックでスキップする時間の最小値",
             "cropScreenshot": "マイニング時のスクリーンショットをクロッピングする",
             "displaySubtitles": "字幕表示オン/オフ",

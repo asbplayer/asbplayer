@@ -212,6 +212,8 @@
             "autoLoadDetectedSubs": "자동 감지된 자막 불러오기",
             "autoLoadDetectedSubsFailure": "자동 로드 자막에 실패한 프롬프트",
             "cleanScreenshot": "자막 추출시 화면 요소 없이 스크린샷 캡처",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "건너 뛰기 모드 실핼중 최소 건너뛰기 간격",
             "cropScreenshot": "자막 추출시 스크린샷에서 불필요한 영역 제거",
             "displaySubtitles": "자막 표시",
