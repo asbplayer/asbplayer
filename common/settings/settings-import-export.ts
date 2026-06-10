@@ -137,23 +137,23 @@ const dictionaryTrackSchema = {
                     properties: {
                         color: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                         reading: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                         frequency: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                         pitchAccent: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                     },
                     required: ['color', 'reading', 'frequency', 'pitchAccent'],
@@ -163,23 +163,23 @@ const dictionaryTrackSchema = {
                     properties: {
                         color: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                         reading: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                         frequency: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                         pitchAccent: {
                             type: 'object',
-                            properties: { onHoverEnabled: { type: 'boolean' } },
-                            required: ['onHoverEnabled'],
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
                         },
                     },
                     required: ['color', 'reading', 'frequency', 'pitchAccent'],

@@ -45,10 +45,9 @@ import {
     TokenState,
     DictionaryTrack,
     TokenAnnotationTriggerOptions,
-    getEnabledAnnotations,
     EnabledAnnotations,
-    getEnabledAnnotationsForHover,
     TokenAnnotationConfigTarget,
+    tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import { Anki } from '../anki';
 import { WaniKani, WaniKaniUser } from '../wanikani';
@@ -82,7 +81,7 @@ import {
     percentToHex2,
 } from '../util';
 import DictionaryImport from './DictionaryImport';
-import { applyTokenStyle, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
+import { applyTokenStyle, getAnnotationsForRender, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
 import WordBrowserDialog from './WordBrowserDialog';
 import '../app/components/subtitles.css';
 
@@ -123,6 +122,7 @@ const statusPitchAccents = {
 
 type DictionaryTokenAnnotationConfig = DictionaryTrack['dictionaryTokenAnnotationConfig'];
 type TokenAnnotationHoverKey = keyof EnabledAnnotations;
+type TokenAnnotationSizeKey = Exclude<TokenAnnotationHoverKey, 'color'>;
 type TokenAnnotationTriggerKey = keyof TokenAnnotationTriggerOptions;
 type TokenAnnotationSelection = {
     statuses: TokenStatus[];
@@ -140,6 +140,11 @@ const tokenAnnotationHoverOptions: { annotation: TokenAnnotationHoverKey; labelK
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenAnnotationHoverReading' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenAnnotationHoverFrequency' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationHoverPitchAccent' },
+];
+const tokenAnnotationSizeOptions: { annotation: TokenAnnotationSizeKey; labelKey: string }[] = [
+    { annotation: 'reading', labelKey: 'settings.dictionaryTokenAnnotationReadingSize' },
+    { annotation: 'frequency', labelKey: 'settings.dictionaryTokenAnnotationFrequencySize' },
+    { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationPitchAccentSize' },
 ];
 const tokenAnnotationTriggerOptions: { annotation: TokenAnnotationTriggerKey; labelKey: string }[] = [
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenReadingAnnotation' },
@@ -223,6 +228,22 @@ const withTokenAnnotationsHoverEnabled = (
             withTokenAnnotationHoverEnabled(updatedConfig, target, annotation, onHoverEnabled),
         config
     );
+
+const withTokenAnnotationSize = (
+    config: DictionaryTokenAnnotationConfig,
+    target: TokenAnnotationConfigTarget,
+    annotation: TokenAnnotationSizeKey,
+    size: number
+): DictionaryTokenAnnotationConfig => ({
+    ...config,
+    [target]: {
+        ...config[target],
+        [annotation]: {
+            ...config[target][annotation],
+            size,
+        },
+    },
+});
 
 const withTokenAnnotationSelection = (
     config: DictionaryTokenAnnotationConfig,
@@ -535,6 +556,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const { ankiConnectUrl, ankiConnectApiKey, dictionaryTracks } = settings;
     const initialDictionaryTracksRef = useRef(dictionaryTracks);
     const [selectedDictionaryTrack, setSelectedDictionaryTrack] = useState<number>(0);
+    const [tokenAnnotationTarget, setTokenAnnotationTarget] = useState<TokenAnnotationConfigTarget>('video');
     const selectedDictionary = dictionaryTracks[selectedDictionaryTrack];
 
     const getHelperTextForCacheSettingsDependencies = useCallback(
@@ -630,6 +652,14 @@ const DictionarySettingsTab: React.FC<Props> = ({
         (target: TokenAnnotationConfigTarget, annotation: TokenAnnotationHoverKey, onHoverEnabled: boolean) => {
             updateDictionaryTokenAnnotationConfig((config) =>
                 withTokenAnnotationHoverEnabled(config, target, annotation, onHoverEnabled)
+            );
+        },
+        [updateDictionaryTokenAnnotationConfig]
+    );
+    const updateDictionaryTokenAnnotationSize = useCallback(
+        (target: TokenAnnotationConfigTarget, annotation: TokenAnnotationSizeKey, size: number) => {
+            updateDictionaryTokenAnnotationConfig((config) =>
+                withTokenAnnotationSize(config, target, annotation, size)
             );
         },
         [updateDictionaryTokenAnnotationConfig]
@@ -2145,31 +2175,73 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 labelPlacement="start"
                             />
                         </Stack>
+                        <RadioGroup
+                            row
+                            value={tokenAnnotationTarget}
+                            onChange={(e) => setTokenAnnotationTarget(e.target.value as TokenAnnotationConfigTarget)}
+                            sx={{ justifyContent: 'center' }}
+                        >
+                            {tokenAnnotationTargets.map(({ target, labelKey }) => (
+                                <LabelWithHoverEffect
+                                    key={target}
+                                    control={<Radio />}
+                                    label={t(labelKey)}
+                                    value={target}
+                                />
+                            ))}
+                        </RadioGroup>
                         {tokenAnnotationHoverOptions.map(({ annotation, labelKey }) => (
+                            <SwitchLabelWithHoverEffect
+                                key={annotation}
+                                control={
+                                    <Switch
+                                        checked={
+                                            selectedDictionary.dictionaryTokenAnnotationConfig[tokenAnnotationTarget][
+                                                annotation
+                                            ].onHoverEnabled
+                                        }
+                                        onChange={(e) =>
+                                            updateDictionaryTokenHoverAnnotation(
+                                                tokenAnnotationTarget,
+                                                annotation,
+                                                e.target.checked
+                                            )
+                                        }
+                                    />
+                                }
+                                label={t(labelKey)}
+                                labelPlacement="start"
+                            />
+                        ))}
+                        {tokenAnnotationSizeOptions.map(({ annotation, labelKey }) => (
                             <Stack key={annotation} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                                 <Typography sx={{ minWidth: 110 }}>{t(labelKey)}</Typography>
-                                {tokenAnnotationTargets.map(({ target, labelKey: targetLabelKey }) => (
-                                    <LabelWithHoverEffect
-                                        key={target}
-                                        control={
-                                            <Checkbox
-                                                checked={
-                                                    selectedDictionary.dictionaryTokenAnnotationConfig[target][
-                                                        annotation
-                                                    ].onHoverEnabled
-                                                }
-                                                onChange={(e) =>
-                                                    updateDictionaryTokenHoverAnnotation(
-                                                        target,
-                                                        annotation,
-                                                        e.target.checked
-                                                    )
-                                                }
-                                            />
-                                        }
-                                        label={t(targetLabelKey)}
-                                    />
-                                ))}
+                                <TextField
+                                    type="number"
+                                    size="small"
+                                    value={
+                                        selectedDictionary.dictionaryTokenAnnotationConfig[tokenAnnotationTarget][
+                                            annotation
+                                        ].size
+                                    }
+                                    onChange={(e) =>
+                                        updateDictionaryTokenAnnotationSize(
+                                            tokenAnnotationTarget,
+                                            annotation,
+                                            Number(e.target.value)
+                                        )
+                                    }
+                                    slotProps={{
+                                        htmlInput: {
+                                            min: 0.1,
+                                            step: 0.1,
+                                        },
+                                        input: {
+                                            endAdornment: <InputAdornment position="end">em</InputAdornment>,
+                                        },
+                                    }}
+                                    sx={{ width: 150 }}
+                                />
                             </Stack>
                         ))}
                     </Stack>
@@ -2212,59 +2284,35 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             };
 
                             const dt = selectedDictionary;
+                            const ta = getAnnotationsForRender(dt, tokenAnnotationTarget);
 
-                            // We want to enable hover semantics if hover is enabled either for video or subtitlePlayer for previews
-                            const enabledAnnotations = getEnabledAnnotations(dt);
-                            const enabledVideoUnhover = getEnabledAnnotationsForHover(
-                                enabledAnnotations,
-                                dt,
-                                'video',
-                                false
-                            );
-                            const enabledPlayerUnhover = getEnabledAnnotationsForHover(
-                                enabledAnnotations,
-                                dt,
-                                'subtitlePlayer',
-                                false
-                            );
-                            const enabledUnhover: EnabledAnnotations = {
-                                color: enabledVideoUnhover.color && enabledPlayerUnhover.color,
-                                reading: enabledVideoUnhover.reading && enabledPlayerUnhover.reading,
-                                frequency: enabledVideoUnhover.frequency && enabledPlayerUnhover.frequency,
-                                pitchAccent: enabledVideoUnhover.pitchAccent && enabledPlayerUnhover.pitchAccent,
-                            };
-                            const richText = Object.values(enabledUnhover).some((enabled) => enabled)
+                            const richText = ta.isRichTextEnabled
                                 ? applyTokenStyle(
                                       localizedMaturity,
                                       token,
                                       {},
                                       {
                                           dt,
-                                          enabledAnnotations: enabledUnhover,
+                                          enabledAnnotations: ta.richTextEnabledAnnotations,
                                           allowAsciiReading: true,
                                       }
                                   )
                                 : undefined;
 
-                            // If either video or player has hover enabled, then we need hover semantics
-                            const richTextOnHover =
-                                Object.values(
-                                    getEnabledAnnotationsForHover(enabledAnnotations, dt, 'video', true)
-                                ).some((enabled) => enabled) ||
-                                Object.values(
-                                    getEnabledAnnotationsForHover(enabledAnnotations, dt, 'subtitlePlayer', true)
-                                ).some((enabled) => enabled)
-                                    ? applyTokenStyle(
-                                          localizedMaturity,
-                                          token,
-                                          {},
-                                          {
-                                              dt,
-                                              enabledAnnotations,
-                                              allowAsciiReading: true,
-                                          }
-                                      )
-                                    : undefined;
+                            const richTextOnHover = ta.isRichTextOnHoverEnabled
+                                ? applyTokenStyle(
+                                      localizedMaturity,
+                                      token,
+                                      {},
+                                      {
+                                          dt,
+                                          enabledAnnotations: ta.richTextOnHoverEnabledAnnotations,
+                                          allowAsciiReading: true,
+                                      }
+                                  )
+                                : undefined;
+
+                            const previewAnnotationConfig = dt.dictionaryTokenAnnotationConfig[tokenAnnotationTarget];
 
                             return (
                                 <Stack
@@ -2275,22 +2323,9 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     <Stack
                                         sx={{
                                             width: '100%',
-                                            '& .asb-reading': {
-                                                rubyPosition: 'over',
-                                            },
-                                            '& .asb-reading rt': {
-                                                fontSize: '0.5em',
-                                                lineHeight: 1,
-                                            },
-                                            '& .asb-frequency': {
-                                                rubyPosition: 'under',
-                                            },
-                                            '& .asb-frequency rt': {
-                                                fontSize: '0.5em',
-                                                lineHeight: 1,
-                                            },
+                                            ...tokenAnnotationStyleValues(previewAnnotationConfig),
                                             '& .asb-token-highlight:hover': {
-                                                backgroundColor: 'rgb(0, 123, 255)',
+                                                backgroundColor: 'rgb(0, 123, 255)', // Necessary so highlight works without focus
                                             },
                                         }}
                                         spacing={1}

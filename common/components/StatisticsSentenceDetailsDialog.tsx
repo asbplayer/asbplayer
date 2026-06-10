@@ -31,6 +31,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import SortIcon from '@mui/icons-material/Sort';
 import Toolbar from '@mui/material/Toolbar';
+import { DictionaryTrack, TokenAnnotationConfig, tokenAnnotationStyleValues } from '@project/common/settings';
 import '../app/components/subtitles.css';
 
 interface Props {
@@ -40,6 +41,7 @@ interface Props {
     entries: DictionaryStatisticsSentenceBucketEntry[];
     totalSentences: number;
     miningEnabled: boolean;
+    dictionaryTracks: DictionaryTrack[];
     highlightedSentenceIndex?: number;
     miningDisabledReason?: string;
     onClose: () => void;
@@ -60,6 +62,7 @@ interface SentenceProps {
     highlighted: boolean;
     mineTooltip: string;
     miningEnabled: boolean;
+    tokenAnnotationConfig?: TokenAnnotationConfig;
     maximumDisplayedTimestamp: number;
     onSeekToSentence: (sentence: DictionaryStatisticsSentence) => void;
     onMineSentence: (sentence: DictionaryStatisticsSentence) => void;
@@ -71,6 +74,7 @@ const Sentence: React.FC<SentenceProps> = React.memo(function Sentence({
     small,
     highlighted,
     miningEnabled,
+    tokenAnnotationConfig,
     mineTooltip,
     maximumDisplayedTimestamp,
     onSeekToSentence,
@@ -156,12 +160,11 @@ const Sentence: React.FC<SentenceProps> = React.memo(function Sentence({
                             minWidth: 0,
                             overflowWrap: 'anywhere',
                             whiteSpace: 'pre-wrap',
-                            '& .asb-frequency rt': { fontSize: '0.5em' },
-                            '& .asb-frequency-hover rt': { fontSize: '0.5em' },
                         }}
                     >
                         <span
                             className="asb-subtitles"
+                            style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
                             dangerouslySetInnerHTML={{
                                 __html: getAnnotationsHtml(sentence.text, sentence.richText, sentence.richTextOnHover),
                             }}
@@ -213,6 +216,7 @@ export default function StatisticsSentenceDetailsDialog({
     entries,
     totalSentences,
     miningEnabled,
+    dictionaryTracks,
     highlightedSentenceIndex,
     miningDisabledReason,
     onClose,
@@ -381,6 +385,7 @@ export default function StatisticsSentenceDetailsDialog({
                     >
                         {sortedEntries.map((entry) => {
                             const isHighlighted = activeHighlightedSentenceIndex === entry.sentence.index;
+                            const dictionaryTrack = dictionaryTracks[entry.sentence.track];
                             return (
                                 <Sentence
                                     key={entry.sentence.index}
@@ -391,6 +396,9 @@ export default function StatisticsSentenceDetailsDialog({
                                     maximumDisplayedTimestamp={maximumDisplayedTimestamp}
                                     mineTooltip={mineTooltip!}
                                     miningEnabled={miningEnabled}
+                                    tokenAnnotationConfig={
+                                        dictionaryTrack.dictionaryTokenAnnotationConfig.subtitlePlayer
+                                    }
                                     onMineSentence={onMineSentence}
                                     onSeekToSentence={onSeekToSentence}
                                 />

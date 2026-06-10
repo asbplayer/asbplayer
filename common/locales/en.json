@@ -548,6 +548,9 @@
         "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
         "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
         "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "Colorize fully known words",
         "dictionaryTokenStatus5": "Mature",
         "dictionaryTokenStatusReading5": "Reading",
@@ -679,7 +682,7 @@
             "noDeckBreakdown": "No matching Anki cards were found for this media.",
             "info": {
                 "ankiStatistics": "How your Anki cards match up with the words in this media.",
-                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature." 
+                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature."
             }
         },
         "waniKani": {
@@ -697,7 +700,7 @@
         },
         "info": {
             "comprehension": "How many unique words are known, weighted by status and occurrences.",
-            "globalKnownWords": "How many words are known including locally stored words and Anki.",
+            "globalKnownWords": "How many words are known from locally stored words and external sources.",
             "wordDistribution": "How unique words are distributed across status and frequency.",
             "frequency": "Frequency: The rank-based frequency from your frequency dictionaries.",
             "occurrences": "Occurrences: The total number of times a word appears.",

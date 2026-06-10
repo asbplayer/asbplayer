@@ -1951,9 +1951,22 @@ export const getAnnotationsHtml = (text: string, richText: string | undefined, r
     return `<span class="asbplayer-subtitle-text">${richText ?? text}</span><span class="asbplayer-subtitle-rich">${richTextOnHover}</span>`;
 };
 
+export const getAnnotationsForRender = (dt: DictionaryTrack, target: TokenAnnotationConfigTarget) => {
+    const enabledAnnotations = getEnabledAnnotations(dt);
+    const enabledAnnotationsUnhover = getEnabledAnnotationsForHover(enabledAnnotations, dt, target, false);
+    const enabledAnnotationsHover = getEnabledAnnotationsForHover(enabledAnnotations, dt, target, true);
+    return {
+        dt,
+        isRichTextEnabled: Object.values(enabledAnnotationsUnhover).some((v) => v),
+        richTextEnabledAnnotations: enabledAnnotationsUnhover, // Hide annotations configured to appear only on hover
+        isRichTextOnHoverEnabled: Object.values(enabledAnnotationsHover).some((v) => v),
+        richTextOnHoverEnabledAnnotations: enabledAnnotations, // Show all enabled annotations on hover
+    };
+};
+
 export const renderRichTextOntoSubtitles = (
     subtitles: RichSubtitleModel[],
-    hoverTarget: TokenAnnotationConfigTarget,
+    tokenAnnotationTarget: TokenAnnotationConfigTarget,
     dictionaryTracks: DictionaryTrack[] | undefined
 ) => {
     if (dictionaryTracks?.length !== defaultSettings.dictionaryTracks.length) {
@@ -1964,18 +1977,7 @@ export const renderRichTextOntoSubtitles = (
         return;
     }
 
-    const trackAnnotations = dictionaryTracks.map((dt) => {
-        const enabledAnnotations = getEnabledAnnotations(dt);
-        const enabledAnnotationsUnhover = getEnabledAnnotationsForHover(enabledAnnotations, dt, hoverTarget, false);
-        const enabledAnnotationsHover = getEnabledAnnotationsForHover(enabledAnnotations, dt, hoverTarget, true);
-        return {
-            dt,
-            isRichTextEnabled: Object.values(enabledAnnotationsUnhover).some((v) => v),
-            richTextEnabledAnnotations: enabledAnnotationsUnhover, // Hide annotations configured to appear only on hover
-            isRichTextOnHoverEnabled: Object.values(enabledAnnotationsHover).some((v) => v),
-            richTextOnHoverEnabledAnnotations: enabledAnnotations, // Show all enabled annotations on hover
-        };
-    });
+    const trackAnnotations = dictionaryTracks.map((dt) => getAnnotationsForRender(dt, tokenAnnotationTarget));
     const allowAsciiReading = false; // Allowing is only for preview purposes for status names to show reading
 
     for (const subtitle of subtitles) {
@@ -2160,9 +2162,9 @@ const applyPitchAccentAnnotation = (
     }
 
     const pitchAccentColor = () => {
-        if (token.status == null || !ss.enabledAnnotations.color) return '#000000FF';
+        if (token.status == null || !ss.enabledAnnotations.color) return 'currentColor';
         const config = ss.dt.dictionaryTokenStatusConfig[token.status];
-        if (!config.display) return '#000000FF';
+        if (!config.display) return 'currentColor';
         return `${config.color}${config.alpha}`;
     };
 

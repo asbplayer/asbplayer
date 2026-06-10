@@ -227,6 +227,7 @@ export interface TokenAnnotationTriggerOptions {
 
 export interface TokenAnnotationConfigOptions {
     onHoverEnabled: boolean;
+    size: number;
 }
 
 export interface TokenAnnotationConfig {
@@ -234,6 +235,17 @@ export interface TokenAnnotationConfig {
     reading: TokenAnnotationConfigOptions;
     frequency: TokenAnnotationConfigOptions;
     pitchAccent: TokenAnnotationConfigOptions;
+}
+
+export type TokenAnnotationStyleValues = Record<string, string>;
+
+export function tokenAnnotationStyleValues(config?: TokenAnnotationConfig): TokenAnnotationStyleValues {
+    if (config === undefined) return {};
+    return {
+        '--asb-reading-size': `${config.reading.size}em`,
+        '--asb-frequency-size': `${config.frequency.size}em`,
+        '--asb-pitch-accent-size': `${config.pitchAccent.size}em`,
+    };
 }
 
 export interface TokenAnnotationConfigs {
@@ -285,6 +297,7 @@ const tokenAnnotationConfigOptionsComparators: {
     ) => boolean;
 } = {
     onHoverEnabled: (a, b) => a === b,
+    size: (a, b) => a === b,
 };
 
 export function compareTokenAnnotationConfigOptionsField<K extends keyof TokenAnnotationConfigOptions>(
