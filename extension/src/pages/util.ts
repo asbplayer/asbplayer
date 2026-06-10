@@ -2,8 +2,9 @@ import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/comm
 
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];
-    const dotIndex = path.lastIndexOf('.');
-    return dotIndex === -1 ? fallback : path.substring(dotIndex + 1);
+    const filename = path.substring(path.lastIndexOf('/') + 1);
+    const dotIndex = filename.lastIndexOf('.');
+    return dotIndex === -1 ? fallback : filename.substring(dotIndex + 1);
 }
 
 export function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {

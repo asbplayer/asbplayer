@@ -141,6 +141,12 @@ it('provides default values for unpopulated, nested settings', async () => {
         ...defaultSettings.ankiFieldSettings,
         url: { order: 12 },
     });
+
+    storage.setData({ streamingPages: { netflix: { additionalHosts: ['example.com'] } } });
+    expect(await provider.getSingle('streamingPages')).toEqual({
+        ...defaultSettings.streamingPages,
+        netflix: { additionalHosts: ['example.com'] },
+    });
 });
 
 it('removes corresponding field settings when custom anki fields are removed', async () => {

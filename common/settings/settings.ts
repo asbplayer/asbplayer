@@ -649,6 +649,7 @@ export interface PageSettings {
     svtplay: Page;
     urplay: Page;
     archive: Page;
+    jwPlayer: Page;
 }
 
 export interface StreamingVideoSettings {

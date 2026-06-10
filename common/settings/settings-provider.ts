@@ -14,6 +14,7 @@ import {
     TokenMatchStrategy,
     TokenStyling,
     DictionaryTrack,
+    PageSettings,
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     getFullyKnownTokenStatus,
@@ -235,6 +236,7 @@ export const defaultSettings: AsbplayerSettings = {
         svtplay: {},
         urplay: {},
         archive: {},
+        jwPlayer: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
@@ -531,6 +533,8 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     let newKeyBindSet: any = {};
     let ankiFieldSettingsModified = false;
     let newAnkiFieldSettings: any = {};
+    let streamingPagesModified = false;
+    let newStreamingPages: any = {};
 
     if (settings.keyBindSet !== undefined) {
         const keyBindSet = settings.keyBindSet;
@@ -562,11 +566,31 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
         }
     }
 
-    if (!ankiFieldSettingsModified && !keyBindSetModified) {
+    if (settings.streamingPages !== undefined) {
+        const streamingPages = settings.streamingPages;
+
+        for (const key of Object.keys(defaultSettings.streamingPages)) {
+            const pageKey = key as keyof PageSettings;
+
+            if (streamingPages[pageKey] === undefined) {
+                newStreamingPages[pageKey] = defaultSettings.streamingPages[pageKey];
+                streamingPagesModified = true;
+            } else {
+                newStreamingPages[pageKey] = streamingPages[pageKey];
+            }
+        }
+    }
+
+    if (!ankiFieldSettingsModified && !keyBindSetModified && !streamingPagesModified) {
         return settings;
     }
 
-    return { ...settings, ...{ ankiFieldSettings: newAnkiFieldSettings }, ...{ keyBindSet: newKeyBindSet } };
+    return {
+        ...settings,
+        ...(ankiFieldSettingsModified ? { ankiFieldSettings: newAnkiFieldSettings } : {}),
+        ...(keyBindSetModified ? { keyBindSet: newKeyBindSet } : {}),
+        ...(streamingPagesModified ? { streamingPages: newStreamingPages } : {}),
+    };
 };
 
 type SettingsKey = keyof AsbplayerSettings;

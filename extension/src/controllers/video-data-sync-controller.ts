@@ -636,7 +636,9 @@ export default class VideoDataSyncController {
         }
 
         if (typeof url === 'string') {
-            const response = await fetch(url)
+            const isJwPlayer = (await currentPageDelegate())?.config?.key === 'jwPlayer';
+            const fetchOptions: RequestInit | undefined = isJwPlayer ? { credentials: 'include' } : undefined;
+            const response = await fetch(url, fetchOptions)
                 .catch((error) => this._reportError(error.message))
                 .finally(() => {
                     if (localFile) {
@@ -665,7 +667,9 @@ export default class VideoDataSyncController {
         const firstUri = url[0];
         const partExtension = extractExtension(firstUri, extension);
         const fileName = `${name}.${partExtension}`;
-        const promises = url.map((u) => fetch(u));
+        const isJwPlayer = (await currentPageDelegate())?.config?.key === 'jwPlayer';
+        const fetchOptions: RequestInit | undefined = isJwPlayer ? { credentials: 'include' } : undefined;
+        const promises = url.map((u) => fetch(u, fetchOptions));
         const tracks = [];
         let totalPromises = promises.length;
         let finishedPromises = 0;
