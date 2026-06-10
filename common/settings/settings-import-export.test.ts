@@ -199,16 +199,16 @@ it('validates exported settings', () => {
                 dictionaryTokenAnnotationConfig: {
                     colorizeEnabled: true,
                     video: {
-                        color: { onHoverEnabled: false },
-                        reading: { onHoverEnabled: false },
-                        frequency: { onHoverEnabled: false },
-                        pitchAccent: { onHoverEnabled: true },
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.3 },
+                        pitchAccent: { onHoverEnabled: true, size: 1 },
                     },
                     subtitlePlayer: {
-                        color: { onHoverEnabled: false },
-                        reading: { onHoverEnabled: false },
-                        frequency: { onHoverEnabled: false },
-                        pitchAccent: { onHoverEnabled: true },
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.5 },
+                        pitchAccent: { onHoverEnabled: true, size: 1 },
                     },
                     onStatuses: [
                         {
@@ -287,16 +287,16 @@ it('validates exported settings', () => {
                 dictionaryTokenAnnotationConfig: {
                     colorizeEnabled: false,
                     video: {
-                        color: { onHoverEnabled: true },
-                        reading: { onHoverEnabled: true },
-                        frequency: { onHoverEnabled: true },
-                        pitchAccent: { onHoverEnabled: true },
+                        color: { onHoverEnabled: true, size: 1 },
+                        reading: { onHoverEnabled: true, size: 0.5 },
+                        frequency: { onHoverEnabled: true, size: 0.3 },
+                        pitchAccent: { onHoverEnabled: true, size: 1 },
                     },
                     subtitlePlayer: {
-                        color: { onHoverEnabled: false },
-                        reading: { onHoverEnabled: false },
-                        frequency: { onHoverEnabled: false },
-                        pitchAccent: { onHoverEnabled: false },
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.5 },
+                        pitchAccent: { onHoverEnabled: false, size: 1 },
                     },
                     onStatuses: [
                         {
@@ -375,16 +375,16 @@ it('validates exported settings', () => {
                 dictionaryTokenAnnotationConfig: {
                     colorizeEnabled: false,
                     video: {
-                        color: { onHoverEnabled: false },
-                        reading: { onHoverEnabled: false },
-                        frequency: { onHoverEnabled: false },
-                        pitchAccent: { onHoverEnabled: false },
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.3 },
+                        pitchAccent: { onHoverEnabled: false, size: 1 },
                     },
                     subtitlePlayer: {
-                        color: { onHoverEnabled: true },
-                        reading: { onHoverEnabled: true },
-                        frequency: { onHoverEnabled: true },
-                        pitchAccent: { onHoverEnabled: true },
+                        color: { onHoverEnabled: true, size: 1 },
+                        reading: { onHoverEnabled: true, size: 0.5 },
+                        frequency: { onHoverEnabled: true, size: 0.5 },
+                        pitchAccent: { onHoverEnabled: true, size: 1 },
                     },
                     onStatuses: [
                         {

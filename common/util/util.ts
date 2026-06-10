@@ -349,20 +349,24 @@ export function download(blob: Blob, name: string) {
     a.remove();
 }
 
-export function computeStyles({
-    subtitleColor,
-    subtitleSize,
-    subtitleThickness,
-    subtitleOutlineThickness,
-    subtitleOutlineColor,
-    subtitleShadowThickness,
-    subtitleShadowColor,
-    subtitleBackgroundOpacity,
-    subtitleBackgroundColor,
-    subtitleFontFamily,
-    subtitleCustomStyles,
-}: TextSubtitleSettings) {
+export function computeStyles(
+    {
+        subtitleColor,
+        subtitleSize,
+        subtitleThickness,
+        subtitleOutlineThickness,
+        subtitleOutlineColor,
+        subtitleShadowThickness,
+        subtitleShadowColor,
+        subtitleBackgroundOpacity,
+        subtitleBackgroundColor,
+        subtitleFontFamily,
+        subtitleCustomStyles,
+    }: TextSubtitleSettings,
+    values: { [key: string]: string | number } = {}
+) {
     const styles: { [key: string]: any } = {
+        ...values,
         color: subtitleColor,
         fontSize: `${subtitleSize}px`,
         fontWeight: String(subtitleThickness),
@@ -535,8 +539,11 @@ function kebabize(str: string) {
     return kebabized;
 }
 
-export function computeStyleString(styleSettings: TextSubtitleSettings) {
-    const stylesMap = computeStyles(styleSettings);
+export function computeStyleString(
+    styleSettings: TextSubtitleSettings,
+    values: { [key: string]: string | number } = {}
+) {
+    const stylesMap = computeStyles(styleSettings, values);
     const styleList = [];
 
     for (const [key, value] of Object.entries(stylesMap)) {

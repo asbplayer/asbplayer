@@ -2093,6 +2093,7 @@ export default function Statistics({
                     entries={sentenceDialogState.entries}
                     totalSentences={sentenceDialogState.totalSentences}
                     miningEnabled={sentenceDialogState.miningEnabled}
+                    dictionaryTracks={settings.dictionaryTracks}
                     highlightedSentenceIndex={sentenceDialogState.highlightedSentenceIndex}
                     miningDisabledReason={t('statistics.miningDisabledUntilComplete')}
                     onClose={handleCloseSentenceBucketDetails}

@@ -1670,7 +1670,7 @@ export default function VideoPlayer({
         setAlertDisableAutoHide(false);
         setAlertOpen(false);
     }, []);
-    const trackStyles = useSubtitleStyles(subtitleSettings, trackCount ?? 1);
+    const trackStyles = useSubtitleStyles(subtitleSettings, trackCount ?? 1, settings.dictionaryTracks, 'video');
 
     const getSubtitleHtml = useCallback(
         (subtitle: RichSubtitleModel) =>

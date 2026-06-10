@@ -25,7 +25,7 @@ import {
     RequestSubtitlesResponse,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
-import { AsbplayerSettings, Profile, SettingsProvider } from '@project/common/settings';
+import { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
 import { ExportParams } from '@project/common/anki';
@@ -253,7 +253,12 @@ function Content(props: ContentProps) {
     );
 }
 
-function AppStatisticsOverlay({ dictionaryProvider, mediaId, ...rest }: StatisticsOverlayProps & { mediaId: string }) {
+function AppStatisticsOverlay({
+    dictionaryProvider,
+    mediaId,
+    dictionaryTracks,
+    ...rest
+}: StatisticsOverlayProps & { mediaId: string; dictionaryTracks: DictionaryTrack[] }) {
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
@@ -270,7 +275,7 @@ function AppStatisticsOverlay({ dictionaryProvider, mediaId, ...rest }: Statisti
     }, []);
 
     const [oneUncollectedSentenceDetailsDialogState, setOneUncollectedSentenceDetailsDialogState] = useState<
-        Omit<ComponentProps<typeof OneUncollectedSentenceDetailsDialog>, 'onClose'>
+        Omit<ComponentProps<typeof OneUncollectedSentenceDetailsDialog>, 'dictionaryTracks' | 'onClose'>
     >({
         open: false,
         entries: [],
@@ -298,6 +303,7 @@ function AppStatisticsOverlay({ dictionaryProvider, mediaId, ...rest }: Statisti
                 {...oneUncollectedSentenceDetailsDialogState}
                 mediaId={mediaId}
                 dictionaryProvider={dictionaryProvider}
+                dictionaryTracks={dictionaryTracks}
                 onClose={() => setOneUncollectedSentenceDetailsDialogState((s) => ({ ...s, open: false }))}
             />
         </>
@@ -1807,6 +1813,7 @@ function App({
                                             open={statisticsOverlayOpen}
                                             mediaId={extension.id}
                                             dictionaryProvider={dictionaryProvider}
+                                            dictionaryTracks={settings.dictionaryTracks}
                                             onOpenStatistics={handleOpenStatistics}
                                             onReceivedSnapshot={handleReceivedStatisticsSnapshot}
                                             onSnapshotCleared={handleStatisticsOverlaySnapshotCleared}

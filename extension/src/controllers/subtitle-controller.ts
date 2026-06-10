@@ -24,6 +24,7 @@ import {
     calculateSeekableTracksValue,
     isTrackAutoCopyable,
     isTrackSeekable,
+    tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import { SubtitleCollection, SubtitleCollectionOptions, SubtitleSlice } from '@project/common/subtitle-collection';
 import {
@@ -278,7 +279,11 @@ export default class SubtitleController {
     }
 
     private _computeStyles(settings: SubtitleSettings) {
-        return allTextSubtitleSettings(settings).map((s) => computeStyleString(s));
+        return allTextSubtitleSettings(settings).map((s, track) => {
+            const dt = this.dictionaryTrackSettings?.[track];
+            const annotationStyleValues = tokenAnnotationStyleValues(dt?.dictionaryTokenAnnotationConfig.video);
+            return computeStyleString(s, annotationStyleValues);
+        });
     }
 
     private _computeClasses(settings: SubtitleSettings) {
