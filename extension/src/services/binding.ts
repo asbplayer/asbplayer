@@ -66,6 +66,7 @@ import {
 import { SubtitleSlice } from '@project/common/subtitle-collection';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import {
+    buildSubtitleTracks,
     extractText,
     seekWithNudge,
     sourceString,
@@ -712,6 +713,10 @@ export default class Binding {
                     synced: this._synced,
                     syncedTimestamp: this._syncedTimestamp,
                     loadedSubtitles: this.subtitleController.subtitles.length > 0,
+                    subtitleTracks: buildSubtitleTracks(
+                        this.subtitleController.subtitles,
+                        this.subtitleController.subtitleFileNames ?? []
+                    ),
                 },
                 src: this._registeredVideoSrc,
             };

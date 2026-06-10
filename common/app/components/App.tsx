@@ -1148,6 +1148,7 @@ function App({
         if (inVideoPlayer) {
             extension.videoPlayer = true;
             extension.loadedSubtitles = false;
+            extension.setSubtitleTracks([], []);
             extension.syncedVideoElement = undefined;
             extension.startHeartbeat();
             return undefined;
@@ -1234,6 +1235,10 @@ function App({
         const unsubscribe = extension.subscribe(onMessage);
         extension.videoPlayer = false;
         extension.loadedSubtitles = subtitles.length > 0;
+        extension.setSubtitleTracks(
+            subtitles,
+            sources.subtitleFiles.map((f) => f.name)
+        );
         extension.syncedVideoElement = tab;
         extension.startHeartbeat();
         return unsubscribe;
@@ -1243,6 +1248,7 @@ function App({
         supportsDictionaryStatistics,
         inVideoPlayer,
         sources.videoFileUrl,
+        sources.subtitleFiles,
         statisticsOverlayOpen,
         tab,
         handleFiles,

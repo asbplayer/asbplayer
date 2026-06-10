@@ -14,6 +14,7 @@ import type { DictionaryStatisticsSnapshot } from '../dictionary-statistics';
 import {
     RectModel,
     SubtitleModel,
+    SubtitleTrack,
     AudioTrackModel,
     AnkiUiSavedState,
     ConfirmedVideoDataSubtitleTrack,
@@ -53,6 +54,7 @@ export interface AsbplayerInstance {
     timestamp: number;
     videoPlayer: boolean;
     loadedSubtitles: boolean;
+    subtitleTracks?: SubtitleTrack[];
     syncedVideoElement?: VideoTabModel;
 }
 
@@ -64,6 +66,7 @@ export interface AsbplayerHeartbeatMessage extends Message {
     readonly sidePanel?: boolean;
     readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
     readonly syncedVideoElement?: VideoTabModel;
 }
 
@@ -75,6 +78,7 @@ export interface AckTabsMessage extends Message {
     readonly sidePanel?: boolean;
     readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
     readonly syncedVideoElement?: VideoTabModel;
 }
 
@@ -91,6 +95,7 @@ export interface VideoHeartbeatMessage extends Message {
     readonly synced: boolean;
     readonly syncedTimestamp?: number;
     readonly loadedSubtitles: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
 }
 
 export interface VideoDisappearedMessage extends Message {

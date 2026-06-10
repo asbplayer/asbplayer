@@ -1,5 +1,5 @@
 import sanitize from 'sanitize-filename';
-import { Rgb, SubtitleModel, Tokenization, TokenReading } from '../src/model';
+import { Rgb, SubtitleModel, SubtitleTrack, Tokenization, TokenReading } from '../src/model';
 import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
 import { Progress } from '..';
 import { TokenStatusInfo } from '../dictionary-db';
@@ -512,6 +512,11 @@ export function percentToHex2(percent: number): string {
 
 export function sourceString(subtitleFileName: string, timestamp: number) {
     return timestamp === 0 ? subtitleFileName : `${subtitleFileName} (${humanReadableTime(timestamp, true, true)})`;
+}
+
+export function buildSubtitleTracks(subtitles: { track: number }[], subtitleFileNames: string[]): SubtitleTrack[] {
+    const trackNumbers = [...new Set(subtitles.map((s) => s.track))].sort((a, b) => a - b);
+    return trackNumbers.map((trackNumber) => ({ trackNumber, fileName: subtitleFileNames[trackNumber] ?? '' }));
 }
 
 export function seekWithNudge(media: HTMLMediaElement, timestampSeconds: number) {

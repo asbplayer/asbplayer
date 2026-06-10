@@ -245,6 +245,11 @@ export interface VideoDataUiModel {
     hideRememberTrackPreferenceToggle: boolean;
 }
 
+export interface SubtitleTrack {
+    trackNumber: number;
+    fileName: string;
+}
+
 export interface VideoTabModel {
     id: number; // Actually the tab ID
     title?: string;
@@ -252,6 +257,7 @@ export interface VideoTabModel {
     subscribed: boolean; // Whether the video element is subscribed to extension messages
     synced: boolean; // Whether the video element has received subtitles
     loadedSubtitles: boolean; // Whether a non-empty subtitle track is loaded
+    subtitleTracks?: SubtitleTrack[]; // The loaded non-empty subtitle tracks (track number + file name)
     syncedTimestamp?: number;
     faviconUrl?: string;
 }
