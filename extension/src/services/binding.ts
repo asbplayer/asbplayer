@@ -187,6 +187,7 @@ export default class Binding {
     private pauseOnHoverMode: PauseOnHoverMode = PauseOnHoverMode.disabled;
     hoveredToken: HoveredToken;
     recordMedia: boolean;
+    private alwaysUseSubtitleForSentence: boolean;
 
     private playListener?: EventListener;
     private pauseListener?: EventListener;
@@ -242,6 +243,7 @@ export default class Binding {
         this.maxImageHeight = 0;
         this.autoPausePreference = AutoPausePreference.atEnd;
         this.copyToClipboardOnMine = false;
+        this.alwaysUseSubtitleForSentence = false;
         this.alwaysPlayOnSubtitleRepeat = true;
         this.postMinePlayback = PostMinePlayback.remember;
         this._synced = false;
@@ -1101,6 +1103,7 @@ export default class Binding {
         this.maxImageWidth = currentSettings.maxImageWidth;
         this.maxImageHeight = currentSettings.maxImageHeight;
         this.copyToClipboardOnMine = currentSettings.copyToClipboardOnMine;
+        this.alwaysUseSubtitleForSentence = currentSettings.alwaysUseSubtitleForSentence;
         this.autoPausePreference = currentSettings.autoPausePreference;
         this.alwaysPlayOnSubtitleRepeat = currentSettings.alwaysPlayOnSubtitleRepeat;
         this.pauseOnHoverMode = currentSettings.pauseOnHoverMode;
@@ -1303,7 +1306,7 @@ export default class Binding {
             await this.play();
         }
 
-        if (!text || subtitle.text.includes(text.trim())) {
+        if (this.alwaysUseSubtitleForSentence || !text || subtitle.text.includes(text.trim())) {
             text = extractText(subtitle, surroundingSubtitles);
         }
 
