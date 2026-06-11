@@ -16,23 +16,27 @@ import {
 import { SettingsProvider } from '@project/common/settings';
 import { CardPublisher } from '../../services/card-publisher';
 import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
+import MediaCache from '../../services/media-cache';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
     private readonly _imageCapturer: ImageCapturer;
     private readonly _cardPublisher: CardPublisher;
     private readonly _settingsProvider: SettingsProvider;
+    private readonly _mediaCache: MediaCache;
 
     constructor(
         audioRecorder: AudioRecorderService,
         imageCapturer: ImageCapturer,
         cardPublisher: CardPublisher,
-        settingsProvider: SettingsProvider
+        settingsProvider: SettingsProvider,
+        mediaCache: MediaCache
     ) {
         this._audioRecorder = audioRecorder;
         this._imageCapturer = imageCapturer;
         this._cardPublisher = cardPublisher;
         this._settingsProvider = settingsProvider;
+        this._mediaCache = mediaCache;
     }
 
     get sender() {
@@ -56,96 +60,117 @@ export default class RecordMediaHandler {
     ) {
         const message = recordMediaCommand.message;
         const subtitle = message.subtitle;
-        let audioPromise = undefined;
-        let imagePromise = undefined;
         let imageModel: ImageModel | undefined = undefined;
         let audioModel: AudioModel | undefined = undefined;
-        let encodeAsMp3 = false;
 
-        if (message.record) {
-            const time = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
+        const cacheKey = this._mediaCache.key(senderTab.id!, recordMediaCommand.src);
+        const cachedRecord = this._mediaCache.get(cacheKey);
+        const useCachedMedia =
+            !!message.useCachedMedia &&
+            cachedRecord !== undefined &&
+            cachedRecord.subtitleStart === subtitle.start &&
+            cachedRecord.subtitleEnd === subtitle.end;
 
-            if (message.postMineAction !== PostMineAction.showAnkiDialog) {
-                encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
-            }
+        if (useCachedMedia) {
+            audioModel = message.record ? cachedRecord!.audioModel : undefined;
+            imageModel = message.screenshot ? cachedRecord!.imageModel : undefined;
+        } else {
+            let audioPromise = undefined;
+            let imagePromise = undefined;
+            let encodeAsMp3 = false;
 
-            audioPromise = this._audioRecorder.startWithTimeout(time, encodeAsMp3, {
-                src: recordMediaCommand.src,
-                tabId: sender.tab?.id!,
-            });
-        }
+            if (message.record) {
+                const time = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
 
-        if (message.screenshot) {
-            const { maxWidth, maxHeight, rect, frameId } = message;
-            const screenshotDelay = Math.max(
-                0,
-                message.record
-                    ? message.mediaTimestamp - subtitle.start + message.audioPaddingStart
-                    : message.imageDelay
-            );
-            imagePromise = this._imageCapturer.capture(senderTab.id!, recordMediaCommand.src, screenshotDelay, {
-                maxWidth,
-                maxHeight,
-                rect,
-                frameId,
-            });
-            imagePromise.finally(() => {
-                const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
-                    sender: 'asbplayer-extension-to-video',
-                    message: {
-                        command: 'screenshot-taken',
-                    },
-                    src: recordMediaCommand.src,
-                };
-                browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
-            });
-        }
-
-        if (audioPromise) {
-            const { audioPaddingStart: paddingStart, audioPaddingEnd: paddingEnd, playbackRate } = message;
-            const baseAudioModel: AudioModel = {
-                base64: '',
-                extension: encodeAsMp3 ? 'mp3' : 'webm',
-                paddingStart,
-                paddingEnd,
-                playbackRate,
-            };
-
-            try {
-                const audioBase64 = await audioPromise;
-                audioModel = {
-                    ...baseAudioModel,
-                    base64: audioBase64,
-                };
-            } catch (e) {
-                if (!(e instanceof DrmProtectedStreamError)) {
-                    throw e;
+                if (message.postMineAction !== PostMineAction.showAnkiDialog) {
+                    encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
                 }
 
-                audioModel = {
-                    ...baseAudioModel,
-                    error: AudioErrorCode.drmProtected,
-                };
+                audioPromise = this._audioRecorder.startWithTimeout(time, encodeAsMp3, {
+                    src: recordMediaCommand.src,
+                    tabId: sender.tab?.id!,
+                });
             }
-        }
 
-        if (imagePromise) {
-            try {
-                await imagePromise;
+            if (message.screenshot) {
+                const { maxWidth, maxHeight, rect, frameId } = message;
+                const screenshotDelay = Math.max(
+                    0,
+                    message.record
+                        ? message.mediaTimestamp - subtitle.start + message.audioPaddingStart
+                        : message.imageDelay
+                );
+                imagePromise = this._imageCapturer.capture(senderTab.id!, recordMediaCommand.src, screenshotDelay, {
+                    maxWidth,
+                    maxHeight,
+                    rect,
+                    frameId,
+                });
+                imagePromise.finally(() => {
+                    const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
+                        sender: 'asbplayer-extension-to-video',
+                        message: {
+                            command: 'screenshot-taken',
+                        },
+                        src: recordMediaCommand.src,
+                    };
+                    browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
+                });
+            }
 
-                // Use the last screenshot taken to allow user to re-take screenshot while audio is recording
-                imageModel = {
-                    base64: this._imageCapturer.lastImageBase64!,
-                    extension: 'jpeg',
-                };
-            } catch (e) {
-                console.error(e);
-                imageModel = {
+            if (audioPromise) {
+                const { audioPaddingStart: paddingStart, audioPaddingEnd: paddingEnd, playbackRate } = message;
+                const baseAudioModel: AudioModel = {
                     base64: '',
-                    extension: 'jpeg',
-                    error: ImageErrorCode.captureFailed,
+                    extension: encodeAsMp3 ? 'mp3' : 'webm',
+                    paddingStart,
+                    paddingEnd,
+                    playbackRate,
                 };
+
+                try {
+                    const audioBase64 = await audioPromise;
+                    audioModel = {
+                        ...baseAudioModel,
+                        base64: audioBase64,
+                    };
+                } catch (e) {
+                    if (!(e instanceof DrmProtectedStreamError)) {
+                        throw e;
+                    }
+
+                    audioModel = {
+                        ...baseAudioModel,
+                        error: AudioErrorCode.drmProtected,
+                    };
+                }
             }
+
+            if (imagePromise) {
+                try {
+                    await imagePromise;
+
+                    // Use the last screenshot taken to allow user to re-take screenshot while audio is recording
+                    imageModel = {
+                        base64: this._imageCapturer.lastImageBase64!,
+                        extension: 'jpeg',
+                    };
+                } catch (e) {
+                    console.error(e);
+                    imageModel = {
+                        base64: '',
+                        extension: 'jpeg',
+                        error: ImageErrorCode.captureFailed,
+                    };
+                }
+            }
+
+            this._mediaCache.set(cacheKey, {
+                subtitleStart: subtitle.start,
+                subtitleEnd: subtitle.end,
+                audioModel,
+                imageModel,
+            });
         }
 
         const { isBulkExport, ...messageWithoutBulkFlag } = message;

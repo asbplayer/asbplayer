@@ -80,6 +80,7 @@
         "openInAnki": "Abrir en Anki",
         "rerecord": "Regrabar",
         "rerecordAndApplySelection": "Grabar rango de tiempo seleccionado",
+        "clearMediaCache": "Clear cached media",
         "resetSlider": "Reestablecer",
         "rewind": "Retroceder",
         "searchInAnki": "Buscar en Anki",
