@@ -9,9 +9,23 @@ export enum AnnotationTutorialState {
     hasSeen = 2,
 }
 
+export interface JimakuCachedFile {
+    name: string;
+    url: string;
+}
+
+export interface JimakuCachedWork {
+    id: number;
+    name: string;
+    // Subtitle file list captured the last time this work was opened.
+    // Undefined for entries cached by older versions that only stored id/name.
+    files?: JimakuCachedFile[];
+}
+
 export interface OnlineSubtitleSourceConfig {
     jimakuApiKey: string;
     jimakuSearchCategory: 'anime' | 'drama';
+    jimakuRecentWorks?: JimakuCachedWork[];
 }
 
 export const initialGlobalState: GlobalState = {
@@ -21,6 +35,7 @@ export const initialGlobalState: GlobalState = {
     onlineSubtitleSourceConfig: {
         jimakuApiKey: '',
         jimakuSearchCategory: 'anime',
+        jimakuRecentWorks: [],
     },
 };
 
