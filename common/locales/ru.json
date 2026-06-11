@@ -433,6 +433,7 @@
         "subtitleAlignmentTop": "У верхнего края",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
+        "timestampPreview": "Show preview timestamps",
         "subtitleBlur": "Размытие субтитров",
         "subtitleTrack": "Дорожка субтитров",
         "allSubtitleTracks": "Все",

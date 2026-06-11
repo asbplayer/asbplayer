@@ -562,6 +562,9 @@ const settingsSchema = {
         thumbnailPreview: {
             type: 'boolean',
         },
+        timestampPreview: {
+            type: 'boolean',
+        },
         subtitleAboveThumbnail: {
             type: 'boolean',
         },

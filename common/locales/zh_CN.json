@@ -433,6 +433,7 @@
         "subtitleAlignmentTop": "顶部对齐",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
+        "timestampPreview": "Show preview timestamps",
         "subtitleBlur": "字幕模糊处理",
         "subtitleTrack": "字幕轨道",
         "allSubtitleTracks": "全部",

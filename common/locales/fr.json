@@ -433,6 +433,7 @@
         "subtitleAlignmentTop": "Haut",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
+        "timestampPreview": "Show preview timestamps",
         "subtitleBlur": "Flou des sous-titres",
         "subtitleTrack": "Piste des sous-titres",
         "allSubtitleTracks": "Tout",

@@ -84,6 +84,7 @@ const MiscSettingTab: React.FC<Props> = ({
         webSocketServerUrl,
         subtitleAboveThumbnail,
         thumbnailPreview,
+        timestampPreview,
     } = settings;
     const validRegex = useMemo(() => regexIsValid(subtitleRegexFilter), [subtitleRegexFilter]);
     const [webSocketConnectionSucceeded, setWebSocketConnectionSucceeded] = useState<boolean>();
@@ -294,11 +295,21 @@ const MiscSettingTab: React.FC<Props> = ({
                         <SwitchLabelWithHoverEffect
                             control={
                                 <Switch
+                                    checked={timestampPreview}
+                                    onChange={(event) => onSettingChanged('timestampPreview', !timestampPreview)}
+                                />
+                            }
+                            label={t('settings.timestampPreview')}
+                            labelPlacement="start"
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
                                     checked={subtitleAboveThumbnail}
                                     onChange={(event) =>
                                         onSettingChanged('subtitleAboveThumbnail', !subtitleAboveThumbnail)
                                     }
-                                    disabled={!thumbnailPreview}
+                                    disabled={!thumbnailPreview && !timestampPreview}
                                 />
                             }
                             label={t('settings.subtitleAboveThumbnail')}

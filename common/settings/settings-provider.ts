@@ -108,6 +108,7 @@ export const defaultSettings: AsbplayerSettings = {
     subtitleAlignment: 'bottom',
     subtitleAboveThumbnail: true,
     thumbnailPreview: false,
+    timestampPreview: true,
     subtitleTracksV2: [],
     subtitlesWidth: -1,
     audioPaddingStart: 0,
