@@ -239,12 +239,11 @@ export interface TokenAnnotationConfig {
 
 export type TokenAnnotationStyleValues = Record<string, string>;
 
-export function tokenAnnotationStyleValues(config?: TokenAnnotationConfig): TokenAnnotationStyleValues {
-    if (config === undefined) return {};
+export function tokenAnnotationStyleValues(config: TokenAnnotationConfig | undefined): TokenAnnotationStyleValues {
     return {
-        '--asb-reading-size': `${config.reading.size}em`,
-        '--asb-frequency-size': `${config.frequency.size}em`,
-        '--asb-pitch-accent-size': `${config.pitchAccent.size}em`,
+        '--asb-reading-size': `${config?.reading.size ?? 0.5}em`,
+        '--asb-frequency-size': `${config?.frequency.size ?? 0.3}em`,
+        '--asb-pitch-accent-size': `${config?.pitchAccent.size ?? 1}em`,
     };
 }
 
@@ -397,8 +396,8 @@ export enum TokenFrequencyAnnotation {
 export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
     return (
         dt.dictionaryTokenAnnotationConfig.colorizeEnabled ||
-        dt.dictionaryTokenAnnotationConfig.onStatuses.some((l) => l.reading || l.frequency || l.pitchAccent) ||
-        dt.dictionaryTokenAnnotationConfig.onStates.some((l) => l.reading || l.frequency || l.pitchAccent) ||
+        dt.dictionaryTokenAnnotationConfig.onStatuses.some((s) => Object.values(s).some((v) => v)) ||
+        dt.dictionaryTokenAnnotationConfig.onStates.some((s) => Object.values(s).some((v) => v)) ||
         dt.dictionaryAutoGenerateStatistics
     );
 }
@@ -406,25 +405,22 @@ export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
 export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack, options: { includeStates: boolean }): boolean {
     const { includeStates } = options;
     if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled || dt.dictionaryAutoGenerateStatistics) return true;
-    for (const annotation of ['reading', 'frequency', 'pitchAccent'] as (keyof TokenAnnotationTriggerOptions)[]) {
-        const numStatusEnabled = dt.dictionaryTokenAnnotationConfig.onStatuses.filter((s) => s[annotation]).length;
-        if (numStatusEnabled > 0 && numStatusEnabled < dt.dictionaryTokenAnnotationConfig.onStatuses.length) {
-            return true;
-        }
-        if (includeStates && dt.dictionaryTokenAnnotationConfig.onStates.some((s) => s[annotation])) return true; // Check states for lookups but not building
+    const { onStatuses, onStates } = dt.dictionaryTokenAnnotationConfig;
+    for (const annotation of Object.keys(onStatuses[0]) as (keyof TokenAnnotationTriggerOptions)[]) {
+        const numStatusEnabled = onStatuses.filter((s) => s[annotation]).length;
+        if (numStatusEnabled > 0 && numStatusEnabled < onStatuses.length) return true;
+        if (includeStates && onStates.some((s) => s[annotation])) return true; // Check states for lookups but not building
     }
     return false;
 }
 
-export function getEnabledAnnotations(dt: DictionaryTrack | undefined): EnabledAnnotations {
-    if (!dt) return { color: false, reading: false, frequency: false, pitchAccent: false };
-    const { onStatuses, onStates } = dt.dictionaryTokenAnnotationConfig;
-    return {
-        color: dt.dictionaryTokenAnnotationConfig.colorizeEnabled,
-        reading: onStatuses.some((l) => l.reading) || onStates.some((l) => l.reading),
-        frequency: onStatuses.some((l) => l.frequency) || onStates.some((l) => l.frequency),
-        pitchAccent: onStatuses.some((l) => l.pitchAccent) || onStates.some((l) => l.pitchAccent),
-    };
+export function getEnabledAnnotations(dt: DictionaryTrack): EnabledAnnotations {
+    const { colorizeEnabled, onStatuses, onStates } = dt.dictionaryTokenAnnotationConfig;
+    const annotationTriggerValues: { [K in keyof TokenAnnotationTriggerOptions]: boolean } = {} as any;
+    for (const ano of Object.keys(onStatuses[0]) as (keyof TokenAnnotationTriggerOptions)[]) {
+        annotationTriggerValues[ano] = onStatuses.some((s) => s[ano]) || onStates.some((s) => s[ano]);
+    }
+    return { color: colorizeEnabled, ...annotationTriggerValues };
 }
 
 export interface EnabledAnnotations {
@@ -436,18 +432,16 @@ export interface EnabledAnnotations {
 
 export function getEnabledAnnotationsForHover(
     enabledAnnotations: EnabledAnnotations,
-    dt: DictionaryTrack | undefined,
+    dt: DictionaryTrack,
     target: TokenAnnotationConfigTarget,
     onHoverEnabled: boolean
 ): EnabledAnnotations {
-    if (!dt) return { color: false, reading: false, frequency: false, pitchAccent: false };
-    const c = dt.dictionaryTokenAnnotationConfig[target];
-    return {
-        color: enabledAnnotations.color && c.color.onHoverEnabled === onHoverEnabled,
-        reading: enabledAnnotations.reading && c.reading.onHoverEnabled === onHoverEnabled,
-        frequency: enabledAnnotations.frequency && c.frequency.onHoverEnabled === onHoverEnabled,
-        pitchAccent: enabledAnnotations.pitchAccent && c.pitchAccent.onHoverEnabled === onHoverEnabled,
-    };
+    const config = dt.dictionaryTokenAnnotationConfig[target];
+    const enabledAnnotationsForHover: EnabledAnnotations = {} as any;
+    for (const ano of Object.keys(enabledAnnotations) as (keyof EnabledAnnotations)[]) {
+        enabledAnnotationsForHover[ano] = enabledAnnotations[ano] && config[ano].onHoverEnabled === onHoverEnabled;
+    }
+    return enabledAnnotationsForHover;
 }
 
 export function shouldUseAnnotation(
