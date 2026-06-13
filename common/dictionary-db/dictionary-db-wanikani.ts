@@ -135,7 +135,7 @@ export async function buildWaniKaniCachePipeline(
                 return; // Since we set the buildId for all tracks regardless of enabled status, concurrent builds are prevented
             }
             activeTracks.push(key);
-            if (!dictionaryStatusCollectionEnabled(dt)) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
+            if (!dictionaryStatusCollectionEnabled(dt, { includeStates: false })) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
             tracksWithStatus.add(track);
 
             statusUpdates({

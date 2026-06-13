@@ -407,7 +407,7 @@
         "rememberSubtitleOffset": "Remember subtitle offset",
         "sentenceField": "Sentence Field (all tracks)",
         "streamingVideo": "Streaming Video",
-        "styling": "Styling",
+        "styling": "Styling and Hover",
         "styleKey": "Style Key",
         "styleValue": "Style Value",
         "sourceField": "Source Field",
@@ -517,6 +517,7 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "Unknown or below",
         "dictionaryTokenReadingAnnotationNever": "Never",
         "dictionaryDisplayIgnoredTokenReadings": "Display readings for ignored words",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
         "dictionaryTokenFrequencyAnnotation": "Display word frequency",
         "dictionaryTokenFrequencyAnnotationAlways": "Always",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "Uncollected only",
@@ -541,6 +542,15 @@
         "dictionaryTokenStylingOutline": "Outline",
         "dictionaryTokenStylingOutlineHelperText": "You may need to set Subtitle Outline Thickness in Subtitle Appearance to 0 for the best results.",
         "dictionaryTokenStylingThickness": "Thickness",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "Colorize fully known words",
         "dictionaryTokenStatus5": "Mature",
         "dictionaryTokenStatusReading5": "Reading",
@@ -555,6 +565,7 @@
         "dictionaryTokenStatus0": "Uncollected",
         "dictionaryTokenStatusReading0": "Reading",
         "dictionaryTokenStateIgnored": "Ignored",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "Querying Anki for modified cards",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",
@@ -672,7 +683,7 @@
             "noDeckBreakdown": "No matching Anki cards were found for this media.",
             "info": {
                 "ankiStatistics": "How your Anki cards match up with the words in this media.",
-                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature." 
+                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature."
             }
         },
         "waniKani": {
@@ -690,7 +701,7 @@
         },
         "info": {
             "comprehension": "How many unique words are known, weighted by status and occurrences.",
-            "globalKnownWords": "How many words are known including locally stored words and Anki.",
+            "globalKnownWords": "How many words are known from locally stored words and external sources.",
             "wordDistribution": "How unique words are distributed across status and frequency.",
             "frequency": "Frequency: The rank-based frequency from your frequency dictionaries.",
             "occurrences": "Occurrences: The total number of times a word appears.",

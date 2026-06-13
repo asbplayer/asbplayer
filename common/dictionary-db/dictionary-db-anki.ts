@@ -133,7 +133,7 @@ export async function buildAnkiCachePipeline(
             }
             activeTracks.push(key);
 
-            if (!dictionaryStatusCollectionEnabled(dt)) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
+            if (!dictionaryStatusCollectionEnabled(dt, { includeStates: false })) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
             if (!dt.dictionaryAnkiWordFields.length && !dt.dictionaryAnkiSentenceFields.length) {
                 tracksToClear.push(track); // Explicitly clear tracks with no Anki fields
                 continue;

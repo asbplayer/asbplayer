@@ -10,6 +10,7 @@ asbplayer can annotate subtitles to better assist with language learning. Annota
     - known status can be sourced from and synced with Anki, WaniKani, and/or tracked locally in asbplayer (includes import/export features to help seed known words)
 - reading annotation (readings displayed above each word or based on status)
 - frequency annotation (rank-based frequency displayed below each word or based on status)
+- pitch accent annotation (accent patterns displayed on furigana or kana words)
 - many more features for future releases!
 
 :::info
@@ -36,10 +37,9 @@ If you rely on the **local word database**, installing the asbplayer browser ext
     - In the `Token Description` field enter `asbplayer`, leave all `Permissions` unchecked, asbplayer only needs read access to your WaniKani account.
     - Click `Generate token` and copy the generated token into [`WaniKani API token`](../reference/settings.md#wanikani-api-token).
     - To populate the database, use [`Re-build WaniKani word database`](../reference/settings.md#re-build-wanikani-word-database) after configuring the API token.
-7. Enable your desired annotation features (styling, reading, frequency, etc.) for that track. Customize other settings as desired.
-    - If [`Only show annotations on hover`](../reference/settings.md#only-show-annotations-on-hover) is enabled, you will need to hover subtitle text to see annotations.
+7. Enable your desired annotation features (styling, reading, frequency, pitch accent, etc.) for that track. Customize other settings as desired.
 8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference.
 
 ## Troubleshooting
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please submit a [bug report](https://github.com/asbplayer/asbplayer/issues) with detailed information about your issue and steps to reproduce it.
+Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on [Discord](https://discord.gg/ad7VAQru7m) or submit a [bug report](https://github.com/asbplayer/asbplayer/issues) with detailed information about your issue and steps to reproduce it.

@@ -10,7 +10,7 @@ import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { useI18n } from '../hooks/use-i18n';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { SettingsProvider } from '@project/common/settings';
+import { DictionaryTrack, SettingsProvider } from '@project/common/settings';
 
 interface Props {
     bridge: Bridge;
@@ -33,6 +33,7 @@ const StatisticsOverlayOneUncollectedUi: React.FC<Props> = ({ bridge }) => {
     const [entries, setEntries] = useState<DictionaryStatisticsSentenceBucketEntry[]>([]);
     const [totalSentences, setTotalSentences] = useState<number>(0);
     const [language, setLanguage] = useState<string>('en');
+    const [dictionaryTracks, setDictionaryTracks] = useState<DictionaryTrack[]>([]);
 
     const theme = useMemo(() => createTheme(themeType), [themeType]);
     useEffect(() => {
@@ -53,11 +54,14 @@ const StatisticsOverlayOneUncollectedUi: React.FC<Props> = ({ bridge }) => {
     useEffect(() => bridge.serverIsReady(), [bridge]);
 
     useEffect(() => {
-        settingsProvider.get(['themeType', 'language']).then(({ themeType, language }) => {
-            setThemeType(themeType);
-            setLanguage(language);
-        });
-    });
+        settingsProvider
+            .get(['themeType', 'language', 'dictionaryTracks'])
+            .then(({ themeType, language, dictionaryTracks }) => {
+                setThemeType(themeType);
+                setLanguage(language);
+                setDictionaryTracks(dictionaryTracks);
+            });
+    }, [open]);
 
     const handleClose = useCallback(() => {
         setOpen(false);
@@ -83,6 +87,7 @@ const StatisticsOverlayOneUncollectedUi: React.FC<Props> = ({ bridge }) => {
                     onClose={handleClose}
                     mediaId={mediaId}
                     dictionaryProvider={dictionaryProvider}
+                    dictionaryTracks={dictionaryTracks}
                 />
             </ThemeProvider>
         </StyledEngineProvider>

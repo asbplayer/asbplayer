@@ -12,6 +12,7 @@ import {
     PostMineAction,
     PostMinePlayback,
     RequestSubtitlesResponse,
+    RichSubtitleModel,
     SubtitleModel,
     TokenizedSubtitleModel,
     VideoTabModel,
@@ -19,6 +20,7 @@ import {
 import {
     ApplyStrategy,
     AsbplayerSettings,
+    DictionaryTrack,
     isTrackAutoCopyable,
     isTrackSeekable,
     SettingsProvider,
@@ -94,6 +96,19 @@ function trackLength(
 
     const videoLength = video && video.duration ? 1000 * video.duration : 0;
     return Math.max(videoLength, subtitlesLength);
+}
+
+function subtitlesForPlayer<T extends RichSubtitleModel>(
+    subtitles: T[],
+    dictionaryTracks: DictionaryTrack[] | undefined
+): T[] {
+    const playerSubtitles = subtitles.map((subtitle) => ({
+        ...subtitle,
+        richText: undefined,
+        richTextOnHover: undefined,
+    }));
+    renderRichTextOntoSubtitles(playerSubtitles, 'subtitlePlayer', dictionaryTracks);
+    return playerSubtitles;
 }
 
 function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) {
@@ -211,6 +226,8 @@ const Player = React.memo(function Player({
     const [subtitlesSentThroughChannel, setSubtitlesSentThroughChannel] = useState<boolean>();
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
+    const settingsRef = useRef(settings);
+    settingsRef.current = settings;
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
     >(SubtitleCollection.empty<DisplaySubtitleModel>());
@@ -428,6 +445,7 @@ const Player = React.memo(function Player({
                 track: s.track,
                 index: i,
                 richText: s.richText,
+                richTextOnHover: s.richTextOnHover,
                 tokenization: s.tokenization,
             }));
 
@@ -504,7 +522,7 @@ const Player = React.memo(function Player({
                         tokenization: s.tokenization,
                     }));
 
-                    renderRichTextOntoSubtitles(subtitles);
+                    renderRichTextOntoSubtitles(subtitles, 'subtitlePlayer', settingsRef.current.dictionaryTracks);
 
                     setSubtitlesSentThroughChannel(false);
                     onSubtitles(subtitles);
@@ -542,16 +560,17 @@ const Player = React.memo(function Player({
             subtitleCollectionOptions,
             mediaId,
             (updatedSubtitles, dictionaryTracks) => {
-                renderRichTextOntoSubtitles(updatedSubtitles, dictionaryTracks);
-                channel?.subtitlesUpdated(updatedSubtitles);
+                const playerSubtitles = subtitlesForPlayer(updatedSubtitles, dictionaryTracks);
+                if (channel) channel.subtitlesUpdated(updatedSubtitles);
                 onSubtitles((prevSubtitles) => {
                     if (!prevSubtitles?.length) return prevSubtitles;
                     const allSubtitles = prevSubtitles.slice();
-                    for (const s of updatedSubtitles) {
+                    for (const s of playerSubtitles) {
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
                             richText: s.richText,
+                            richTextOnHover: s.richTextOnHover,
                             tokenization: s.tokenization,
                         };
                     }
@@ -582,10 +601,11 @@ const Player = React.memo(function Player({
 
     useEffect(() => {
         return channel?.onSubtitlesUpdated((updatedSubtitles) => {
+            const playerSubtitles = subtitlesForPlayer(updatedSubtitles, settingsRef.current.dictionaryTracks);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
-                for (const s of updatedSubtitles) {
+                for (const s of playerSubtitles) {
                     // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
                     // We should probably have a hash or ID associated with the subtitle file this color update is for.
                     const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
@@ -596,6 +616,7 @@ const Player = React.memo(function Player({
                             ...allSubtitles[s.index],
                             text: s.text,
                             richText: s.richText,
+                            richTextOnHover: s.richTextOnHover,
                             tokenization: s.tokenization,
                         };
                     }
@@ -618,10 +639,11 @@ const Player = React.memo(function Player({
                 | undefined;
             if (!response) return;
             const { subtitles: updatedSubtitles } = response;
+            const playerSubtitles = subtitlesForPlayer(updatedSubtitles, settingsRef.current.dictionaryTracks);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
-                for (const s of updatedSubtitles) {
+                for (const s of playerSubtitles) {
                     // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
                     // We should probably have a hash or ID associated with the subtitle file this color update is for.
                     const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
@@ -632,6 +654,7 @@ const Player = React.memo(function Player({
                             ...allSubtitles[s.index],
                             text: s.text,
                             richText: s.richText,
+                            richTextOnHover: s.richTextOnHover,
                             tokenization: s.tokenization,
                         };
                     }

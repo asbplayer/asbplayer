@@ -14,7 +14,7 @@ import {
     CardTextFieldValues,
     RichSubtitleModel,
 } from '@project/common';
-import { AsbplayerSettings } from '@project/common/settings';
+import { AsbplayerSettings, TokenAnnotationConfig, tokenAnnotationStyleValues } from '@project/common/settings';
 import {
     surroundingSubtitles,
     mockSurroundingSubtitles,
@@ -22,7 +22,7 @@ import {
     extractText,
 } from '@project/common/util';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import { getAnnotationsHtml, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -164,12 +164,6 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
         width: '100%',
         overflowWrap: 'anywhere',
         whiteSpace: 'pre-wrap',
-        '& .asb-frequency rt': {
-            fontSize: '0.5em',
-        },
-        '& .asb-frequency-hover rt': {
-            fontSize: '0.5em',
-        },
     },
     compressedSubtitle: {
         fontSize: 16,
@@ -177,12 +171,6 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
         width: '100%',
         overflowWrap: 'anywhere',
         whiteSpace: 'pre-wrap',
-        '& .asb-frequency rt': {
-            fontSize: '0.5em',
-        },
-        '& .asb-frequency-hover rt': {
-            fontSize: '0.5em',
-        },
     },
     disabledSubtitle: {
         color: 'transparent',
@@ -228,6 +216,7 @@ interface SubtitleRowProps extends TableRowProps {
     onMouseOver: (e: React.MouseEvent) => void;
     onMouseOut: (e: React.MouseEvent) => void;
     subtitleHtml: SubtitleHtml;
+    tokenAnnotationConfig?: TokenAnnotationConfig;
 }
 
 const SubtitleRow = React.memo(function SubtitleRow({
@@ -243,6 +232,7 @@ const SubtitleRow = React.memo(function SubtitleRow({
     subtitle,
     showCopyButton,
     subtitleHtml,
+    tokenAnnotationConfig,
 }: SubtitleRowProps) {
     const classes = useSubtitleRowStyles();
     const textRef = useRef<HTMLSpanElement>(null);
@@ -267,9 +257,12 @@ const SubtitleRow = React.memo(function SubtitleRow({
     ) : (
         <span
             ref={textRef}
-            className={disabledClassName}
-            dangerouslySetInnerHTML={{ __html: subtitle.richText ?? subtitle.text }}
+            className={`${disabledClassName} asb-subtitles`.trim()}
+            dangerouslySetInnerHTML={{
+                __html: getAnnotationsHtml(subtitle.text, subtitle.richText, subtitle.richTextOnHover),
+            }}
             data-track={subtitle.track}
+            style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}
         />
@@ -1146,6 +1139,7 @@ export default function SubtitlePlayer({
                 <Table>
                     <TableBody>
                         {subtitles.map((s: SubtitleModel, index: number) => {
+                            const dt = settings.dictionaryTracks[s.track];
                             let selectionState: SelectionState | undefined;
 
                             if (selectedSubtitleIndexes !== undefined) {
@@ -1176,6 +1170,7 @@ export default function SubtitlePlayer({
                                     onMouseOver={onMouseOver}
                                     onMouseOut={onMouseOut}
                                     subtitleHtml={settings.subtitleHtml}
+                                    tokenAnnotationConfig={dt.dictionaryTokenAnnotationConfig.subtitlePlayer}
                                 />
                             );
                         })}

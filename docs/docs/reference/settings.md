@@ -225,7 +225,7 @@ Imported words are considered local and take priority over the external sources 
 The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
 
 :::tip
-You can hover over words and use [keyboard shortcuts](#keyboard-shortcuts) to change their status locally.
+You can hover over words and use [**Keyboard Shortcuts**](#keyboard-shortcuts) to change their status locally.
 :::
 
 ### Export Words
@@ -239,9 +239,9 @@ Builds (or rebuilds) the local cache of word-status information sourced from Ank
 :::tip
 The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
 
-This button is disabled unless your annotation settings [benefit from Anki integration](../guides/annotation.md#enable-or-disable-annotation-for-a-track).
+This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the Anki word database entries for a track, [follow these steps](../guides/annotation.md#clear-anki-word-database).
+To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
 :::
 
 ### Re-Build WaniKani word database
@@ -251,9 +251,9 @@ Builds (or rebuilds) the local cache of vocabulary information sourced from Wani
 :::tip
 The cache is also updated automatically during playback when a track is enabled and a token is configured.
 
-This button is disabled unless your annotation settings [benefit from WaniKani integration](../guides/annotation.md#enable-or-disable-annotation-for-a-track).
+This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
 
-To clear the WaniKani word database entries for a track, [follow these steps](../guides/annotation.md#clear-wanikani-word-database).
+To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
 :::
 
 ### Subtitle track
@@ -262,7 +262,7 @@ Selects which subtitle track these annotation settings apply to.
 
 ### Colorize subtitles based on known words
 
-Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured **Word color style** and **status colors**.
+Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
 
 ### Generate statistics automatically
 
@@ -270,28 +270,11 @@ Automatically generate statistics for the current media upon load. This will als
 
 ### Display word readings
 
-Shows readings (e.g. furigana) above words.
-
-- **Always**: show readings for all eligible words.
-- **Learning or below**: show readings only for words at **Learning**, **Unknown**, or **Uncollected** status.
-- **Unknown or below**: show readings only for **Unknown** or **Uncollected** words.
-- **Never**: disable readings.
-
-### Display readings for ignored words
-
-If enabled, readings will always be shown for words you marked as **ignored**.
-
-:::tip
-Typically ignoring is used for proper nouns such as names and places or words that you don't want to measure your knowledge against.
-:::
+Shows readings (e.g. furigana) above words based on the word status and states.
 
 ### Display word frequency
 
-Shows a rank-based frequency value below words (when available). This is useful for prioritizing which words are worth spending time learning.
-
-- **Always**: show frequency for all eligible words.
-- **Uncollected only**: only show frequency for **Uncollected** words.
-- **Never**: disable frequency.
+Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
 
 :::tip
 Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
@@ -299,16 +282,18 @@ Frequency information requires at least one rank-based frequency dictionary to b
 If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
 :::
 
-### Only show annotations on hover
+### Display pitch accent (Japanese)
 
-If enabled, annotations are hidden by default and only appear when you hover over the subtitle text.
+:::note
+Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+:::
 
-### Highlight words on hover
+Shows pitch accent on furigana or the kana itself based on status and states.
 
-If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+:::info
+The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
 
-:::tip
-This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Note that the keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
 :::
 
 ### Word field search strategy
@@ -333,7 +318,7 @@ If multiple Anki cards match a word, this controls which card is used to determi
 
 ### Sentence field search strategy
 
-Controls how asbplayer searches your configured **Anki sentence fields**, it has the same options as **Word field search strategy**.
+Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
 
 When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, **Match across language scripts** controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
 
@@ -378,7 +363,7 @@ Anki note fields that contain _only_ the target word. This is the recommended wa
 
 ### Anki sentence fields
 
-Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in **Anki word fields**.
+Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
 
 ### Mature Anki stability/interval (days)
 
@@ -394,7 +379,7 @@ Controls the cutoff (in days) for treating an Anki card as **Mature** versus low
 :::tip
 If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
 
-For more information on word statuses, see [Word status colors](#word-status-colors).
+For more information on word statuses, see [**Word status colors**](#word-status-colors).
 :::
 
 ### Treat suspended Anki cards as
@@ -406,11 +391,13 @@ Controls how **suspended** cards are treated when building word status from Anki
 
 :::tip
 If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+
+For more information on word statuses, see [**Word status colors**](#word-status-colors).
 :::
 
 ### WaniKani API token
 
-The WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
 
 For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
 
@@ -422,12 +409,12 @@ For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types 
 - **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
 
 :::tip
-For more information on word statuses, see [Word status colors](#word-status-colors).
+For more information on word statuses, see [**Word status colors**](#word-status-colors).
 :::
 
 ### Word color style
 
-Controls how status colors are applied to words for **Colorize subtitles based on known words**:
+Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
 
 - **Text**: color of the word is changed.
 - **Background**: color behind the word is changed.
@@ -443,9 +430,51 @@ When using **Outline**, you may need to set [**Subtitle outline thickness**](#su
 
 Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
 
+### Highlight words on hover
+
+:::info
+This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+
+The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+:::
+
+If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+
+### Only display word color on hover
+
+:::note
+This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+:::
+
+If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Only display word reading on hover
+
+:::note
+This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+:::
+
+If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Only display word frequency on hover
+
+:::note
+This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+:::
+
+If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Only display pitch accent on hover
+
+:::note
+This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+:::
+
+If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+
 ### Word status colors
 
-Each status has a configurable color used by **Word color style**.
+Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
 
 - **Uncollected**: Word is not present in your asbplayer database.
 - **Unknown**: Word is present but considered unknown.
@@ -460,7 +489,7 @@ You can disable status stylings per your liking, e.g. disabling **Mature** to re
 You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
 
 For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stabilityinterval-days).
-For how WaniKani statuses are determined, see [WaniKani API token](#wanikani-api-token).
+For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
 :::
 
 ## [Streaming video](https://app.asbplayer.dev/?view=settings#streaming-video) (extension only)
@@ -485,7 +514,7 @@ When mining a subtitle, record the audio covered by the subtitle for inclusion i
 
 ### Take screenshot when mining
 
-When mining a subtitle, take a screenshot for inclusion in the flashcrd.
+When mining a subtitle, take a screenshot for inclusion in the flashcard.
 
 ### Clean screenshot when mining
 

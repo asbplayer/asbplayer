@@ -19,12 +19,12 @@ sidebar_position: 1
 - **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
   - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
   - **Reading annotation** for reading displayed above each word or based on status.
+  - **Accent annotation** such as pitch accent.
   - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
   - **Statistics and Comprehension** on your known words for the current media.
   - **Word browser** to manage local and view words synced from external sources.
   - Many more features for future releases! Some planned features include:
     - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
-    - **Accent annotation** such as pitch accent, tones, gender, etc.
     - **Statistics and Comprehension** on your known words across media.
 
 ## A website and browser extension

@@ -253,6 +253,7 @@
         "settings.dictionaryTokenReadingAnnotationUnknownOrBelow": "Only show reading annotations for subtitle words in unknown status or below.",
         "settings.dictionaryTokenReadingAnnotationNever": "Never show reading annotations for subtitle words.",
         "settings.dictionaryDisplayIgnoredTokenReadings": "Whether to display reading annotations for ignored words.",
+        "settings.dictionaryTokenPitchAccentAnnotation": "When to show pitch accent annotations for subtitle words based on known status.",
         "settings.dictionaryTokenFrequencyAnnotation": "When to show frequency annotations for subtitle words based on known status.",
         "settings.dictionaryTokenFrequencyAnnotationAlways": "Always show frequency annotations for subtitle words.",
         "settings.dictionaryTokenFrequencyAnnotationUncollectedOnly": "Only show frequency annotations for subtitle words in uncollected status.",

@@ -192,6 +192,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsDictionaryTokenAnnotationConfig() {
+        return this.installed && gte(this.version, '1.19.0');
+    }
+
     get supportsDictionaryMatchAcrossScripts() {
         return this.installed && gte(this.version, '1.18.0');
     }
