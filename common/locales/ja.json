@@ -565,6 +565,7 @@
         "dictionaryTokenStatus0": "未収集",
         "dictionaryTokenStatusReading0": "みしゅうしゅう",
         "dictionaryTokenStateIgnored": "無視",
+        "dictionaryTokenStateIgnoredReading": "むし",
         "dictionaryBuildAnkiStarted": "変更されたカードをクエリしています",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "アルファ値",

@@ -565,6 +565,7 @@
         "dictionaryTokenStatus0": "Non raccolto",
         "dictionaryTokenStatusReading0": "Lettura",
         "dictionaryTokenStateIgnored": "Ignorato",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "Interrogazione di Anki per le carte modificate",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",

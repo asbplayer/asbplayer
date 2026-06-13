@@ -81,7 +81,7 @@ import {
     percentToHex2,
 } from '../util';
 import DictionaryImport from './DictionaryImport';
-import { applyTokenStyle, getAnnotationsForRender, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
+import { computeRichText, getAnnotationsForRender, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
 import WordBrowserDialog from './WordBrowserDialog';
 import '../app/components/subtitles.css';
 
@@ -108,6 +108,7 @@ const readingPitchAccents: Record<string, string> = {
     がくしゅうちゅう: 'LHHHHH',
     しんき: 'HLL',
     みしゅうしゅう: 'LHHHH',
+    むし: 'HL',
 };
 
 // These are demo values of the main pitch patterns
@@ -2282,15 +2283,43 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 pitchAccent: readingPitchAccents[localizedReading] ?? statusPitchAccents[tokenStatus],
                                 __internal: true,
                             };
+                            const tokens: InternalToken[] = [token];
+                            let text = localizedMaturity;
+                            if (tokenStatus === getFullyKnownTokenStatus()) {
+                                const ignoredText = t('settings.dictionaryTokenStateIgnored');
+                                const ignoredReading = t('settings.dictionaryTokenStateIgnoredReading');
+                                const ignoredStart = localizedMaturity.length + 1;
+                                text = `${localizedMaturity} ${ignoredText}`;
+                                tokens.push({
+                                    pos: [localizedMaturity.length, ignoredStart],
+                                    status: tokenStatus,
+                                    states: [],
+                                    readings: [],
+                                    __internal: true,
+                                });
+                                tokens.push({
+                                    pos: [ignoredStart, text.length],
+                                    status: tokenStatus,
+                                    states: [TokenState.IGNORED],
+                                    readings: [
+                                        {
+                                            pos: [0, ignoredText.length],
+                                            reading: ignoredReading,
+                                        },
+                                    ],
+                                    frequency: statusFrequencies[tokenStatus],
+                                    pitchAccent: readingPitchAccents[ignoredReading] ?? statusPitchAccents[tokenStatus],
+                                    __internal: true,
+                                });
+                            }
 
                             const dt = selectedDictionary;
                             const ta = getAnnotationsForRender(dt, tokenAnnotationTarget);
 
                             const richText = ta.isRichTextEnabled
-                                ? applyTokenStyle(
-                                      localizedMaturity,
-                                      token,
-                                      {},
+                                ? computeRichText(
+                                      text,
+                                      { tokens },
                                       {
                                           dt,
                                           enabledAnnotations: ta.richTextEnabledAnnotations,
@@ -2300,10 +2329,9 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 : undefined;
 
                             const richTextOnHover = ta.isRichTextOnHoverEnabled
-                                ? applyTokenStyle(
-                                      localizedMaturity,
-                                      token,
-                                      {},
+                                ? computeRichText(
+                                      text,
+                                      { tokens },
                                       {
                                           dt,
                                           enabledAnnotations: ta.richTextOnHoverEnabledAnnotations,
@@ -2348,11 +2376,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 style={{ padding: theme.spacing(1) }}
                                                 className="asb-subtitles"
                                                 dangerouslySetInnerHTML={{
-                                                    __html: getAnnotationsHtml(
-                                                        localizedMaturity,
-                                                        richText,
-                                                        richTextOnHover
-                                                    ),
+                                                    __html: getAnnotationsHtml(text, richText, richTextOnHover),
                                                 }}
                                             />
                                             <Switch

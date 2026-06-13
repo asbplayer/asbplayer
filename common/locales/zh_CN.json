@@ -565,6 +565,7 @@
         "dictionaryTokenStatus0": "未收集",
         "dictionaryTokenStatusReading0": "读音区",
         "dictionaryTokenStateIgnored": "已忽略",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "正在查询 Anki 更新卡片状态",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "透明度",

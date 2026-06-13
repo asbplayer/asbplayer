@@ -2015,7 +2015,7 @@ interface TokenStyleState {
     allowAsciiReading: boolean;
 }
 
-const computeRichText = (fullText: string, tokenization: Tokenization, ss: TokenStyleState) => {
+export const computeRichText = (fullText: string, tokenization: Tokenization, ss: TokenStyleState) => {
     if (tokenization.error) return `<span ${ERROR_STYLE}>${fullText}</span>`;
     if (!tokenization.tokens.length) return;
 
@@ -2039,20 +2039,19 @@ const computeRichText = (fullText: string, tokenization: Tokenization, ss: Token
 const ERROR_STYLE = `style="text-decoration: line-through red 3px;"`;
 const LOGIC_ERROR_STYLE = `style="text-decoration: line-through red 3px double;"`;
 
-export const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentContext, ss: TokenStyleState) => {
-    const tokenText = applyFrequencyAnnotation(
-        applyReadingAnnotation(fullText.substring(token.pos[0], token.pos[1]), token, prevPitch, ss),
-        token,
-        ss
-    );
+const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentContext, ss: TokenStyleState) => {
+    const rawTokenText = fullText.substring(token.pos[0], token.pos[1]);
+    if (!HAS_LETTER_REGEX.test(rawTokenText)) {
+        clearPitchAccentContext(prevPitch);
+        return rawTokenText;
+    }
+    const tokenText = applyFrequencyAnnotation(applyReadingAnnotation(rawTokenText, token, prevPitch, ss), token, ss);
     if (token.status === null) return `<span ${ERROR_STYLE}>${tokenText}</span>`;
     if (token.status === undefined && dictionaryTrackEnabled(ss.dt))
         return `<span ${LOGIC_ERROR_STYLE}>${tokenText}</span>`; // External tokens may flash this on initial load
     if (!ss.enabledAnnotations.color) return tokenText;
 
-    const s = HAS_LETTER_REGEX.test(tokenText)
-        ? `<span class="${ASB_TOKEN_CLASS}${ss.dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : ''}"` // Only allow collection and highlighting if colors is enabled so that user has feedback
-        : '<span';
+    const s = `<span class="${ASB_TOKEN_CLASS}${ss.dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : ''}"`; // Only allow collection and highlighting if colors is enabled so that user has feedback
     const config = ss.dt.dictionaryTokenStatusConfig[token.status!];
     if (!config.display) return `${s}>${tokenText}</span>`;
     if (
@@ -2087,10 +2086,6 @@ const applyReadingAnnotation = (
     prevPitch: PitchAccentContext,
     ss: TokenStyleState
 ) => {
-    if (!HAS_LETTER_REGEX.test(tokenText)) {
-        clearPitchAccentContext(prevPitch);
-        return tokenText; // Prevent 。 -> まる
-    }
     if (ONLY_ASCII_LETTERS_REGEX.test(tokenText) && !ss.allowAsciiReading) {
         clearPitchAccentContext(prevPitch);
         return tokenText; // Prevent english words from getting readings
@@ -2224,9 +2219,7 @@ const pitchAccentHtml = (
 
 const applyFrequencyAnnotation = (tokenText: string, token: Token, ss: TokenStyleState) => {
     if (!ss.enabledAnnotations.frequency) return tokenText;
-    if (token.frequency == null || !HAS_LETTER_REGEX.test(tokenText)) return tokenText;
-    if (token.status == null || !shouldUseAnnotation('frequency', token.status, token.states, ss.dt)) {
-        return tokenText;
-    }
+    if (token.frequency == null) return tokenText;
+    if (token.status == null || !shouldUseAnnotation('frequency', token.status, token.states, ss.dt)) return tokenText;
     return `<ruby class="${ASB_FREQUENCY_CLASS}">${tokenText}<rt>${token.frequency}</rt></ruby>`;
 };
