@@ -5,6 +5,7 @@ import {
     AudioModel,
     SubtitleModel,
     AnkiUiState,
+    AnkiUiInitialState,
     AnkiUiResumeState,
     AnkiUiSavedState,
     AnkiUiBridgeRerecordMessage,
@@ -23,8 +24,6 @@ import {
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
 } from '@project/common';
-import { AudioClip } from '@project/common/audio-clip';
-import { extractText, sourceString } from '@project/common/util';
 import { createTheme } from '@project/common/theme';
 import type { Profile } from '@project/common/settings';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
@@ -59,7 +58,7 @@ const blobToDataUrl = async (blob: Blob): Promise<string> => {
 
 export default function AnkiUi({ bridge }: Props) {
     const [open, setOpen] = useState<boolean>(false);
-    const [uiType, setUiType] = useState<AnkiUiState['type']>('initial');
+    const [cardSelectOpen, setCardSelectOpen] = useState<boolean>(false);
     const [disabled, setDisabled] = useState<boolean>(false);
     const [canRerecord, setCanRerecord] = useState<boolean>(false);
     const [subtitle, setSubtitle] = useState<SubtitleModel>();
@@ -143,7 +142,7 @@ export default function AnkiUi({ bridge }: Props) {
                 setLastAppliedTimestampIntervalToAudio(state.lastAppliedTimestampIntervalToAudio);
             }
 
-            setUiType(s.type);
+            setCardSelectOpen(s.type === 'initial' ? ((s as AnkiUiInitialState).cardSelectOpen ?? false) : false);
             setText(s.text);
             setDefinition(s.definition ?? '');
             setWord(s.word ?? '');
@@ -217,6 +216,7 @@ export default function AnkiUi({ bridge }: Props) {
     );
 
     const handleCancel = useCallback(() => {
+        setCardSelectOpen(false);
         setOpen(false);
         const message: AnkiUiBridgeResumeMessage = { command: 'resume', uiState: savedState(), cardExported: false };
         bridge.sendMessageFromServer(message);
@@ -352,97 +352,25 @@ export default function AnkiUi({ bridge }: Props) {
         [bridge]
     );
 
-    const cardSelectSavedState = useCallback(
-        (): AnkiUiSavedState => ({
-            subtitle: subtitle!,
-            surroundingSubtitles: surroundingSubtitles ?? [],
-            text: text ?? '',
-            definition,
-            image: serializedImage,
-            audio: serializedAudio,
-            file,
-            word,
-            source,
-            url,
-            customFieldValues,
-            initialTimestampInterval: [],
-            timestampInterval: [],
-            timestampBoundaryInterval: undefined,
-            lastAppliedTimestampIntervalToText: [],
-            lastAppliedTimestampIntervalToAudio: undefined,
-            dialogRequestedTimestamp: 0,
-        }),
-        [
-            subtitle,
-            surroundingSubtitles,
-            text,
-            definition,
-            serializedImage,
-            serializedAudio,
-            file,
-            word,
-            source,
-            url,
-            customFieldValues,
-        ]
-    );
-
     const handleCardSelectSelect = useCallback(
         async (noteIds: number[]) => {
-            if (!anki || !settings || !subtitle || !surroundingSubtitles || noteIds.length === 0) {
+            if (!anki || noteIds.length === 0 || !dialogStateRef.current) {
                 return;
             }
 
             setDisabled(true);
 
             try {
-                const audioClip =
-                    serializedAudio === undefined
-                        ? undefined
-                        : AudioClip.fromBase64(
-                              source,
-                              subtitle.start,
-                              subtitle.end,
-                              serializedAudio.playbackRate ?? 1,
-                              serializedAudio.base64,
-                              serializedAudio.extension,
-                              serializedAudio.error
-                          );
-                const cardImage =
-                    serializedImage === undefined
-                        ? undefined
-                        : Image.fromBase64(
-                              source,
-                              subtitle.start,
-                              serializedImage.base64,
-                              serializedImage.extension,
-                              serializedImage.error
-                          );
-
                 for (const noteId of noteIds) {
-                    await anki.export({
-                        text: text ?? extractText(subtitle, surroundingSubtitles),
-                        track1: extractText(subtitle, surroundingSubtitles, 0),
-                        track2: extractText(subtitle, surroundingSubtitles, 1),
-                        track3: extractText(subtitle, surroundingSubtitles, 2),
-                        definition,
-                        audioClip,
-                        image: cardImage,
-                        word,
-                        source,
-                        url,
-                        customFieldValues,
-                        tags: settings.tags,
-                        mode: 'updateSpecific',
-                        noteId,
-                    });
+                    await anki.export(dialogStateRef.current.buildExportParams('updateSpecific', noteId));
                 }
 
                 bridge.sendMessageFromServer({ command: 'card-updated-dialog' } as CardUpdatedDialogMessage);
+                setCardSelectOpen(false);
                 setOpen(false);
                 const message: AnkiUiBridgeResumeMessage = {
                     command: 'resume',
-                    uiState: cardSelectSavedState(),
+                    uiState: savedState(),
                     cardExported: true,
                 };
                 bridge.sendMessageFromServer(message);
@@ -455,33 +383,12 @@ export default function AnkiUi({ bridge }: Props) {
                 setDisabled(false);
             }
         },
-        [
-            anki,
-            settings,
-            subtitle,
-            surroundingSubtitles,
-            serializedAudio,
-            serializedImage,
-            source,
-            text,
-            definition,
-            word,
-            url,
-            customFieldValues,
-            bridge,
-            cardSelectSavedState,
-        ]
+        [anki, bridge, savedState]
     );
 
     const handleCardSelectCancel = useCallback(() => {
-        setOpen(false);
-        const message: AnkiUiBridgeResumeMessage = {
-            command: 'resume',
-            uiState: cardSelectSavedState(),
-            cardExported: false,
-        };
-        bridge.sendMessageFromServer(message);
-    }, [bridge, cardSelectSavedState]);
+        setCardSelectOpen(false);
+    }, []);
 
     const showAnkiDialogQuickSelectFtue = !isMobile && ftueHasSeenAnkiDialogQuickSelect === false;
 
@@ -499,49 +406,45 @@ export default function AnkiUi({ bridge }: Props) {
                         {alert}
                     </Alert>
                 </Snackbar>
-                {uiType === 'cardSelect'
-                    ? settings &&
-                      anki && (
-                          <CardSelectView
-                              open={open}
-                              anki={anki}
-                              sentenceField={settings.sentenceField}
-                              disabled={disabled}
-                              onSelect={handleCardSelectSelect}
-                              onCancel={handleCardSelectCancel}
-                          />
-                      )
-                    : settings &&
-                      card &&
-                      anki && (
-                          <AnkiDialog
-                              open={open}
-                              disabled={disabled}
-                              card={card}
-                              settings={settings}
-                              profiles={profiles}
-                              activeProfile={activeProfile}
-                              onSetActiveProfile={handleSetActiveProfile}
-                              anki={anki}
-                              onProceed={handleProceed}
-                              onRerecord={canRerecord ? handleRerecord : undefined}
-                              onCancel={handleCancel}
-                              onOpenSettings={handleOpenSettings}
-                              onCopyToClipboard={handleCopyToClipboard}
-                              source={source}
-                              initialTimestampInterval={initialTimestampInterval}
-                              timestampBoundaryInterval={timestampBoundaryInterval}
-                              timestampInterval={timestampInterval}
-                              lastAppliedTimestampIntervalToText={lastAppliedTimestampIntervalToText}
-                              lastAppliedTimestampIntervalToAudio={lastAppliedTimestampIntervalToAudio}
-                              showQuickSelectFtue={showAnkiDialogQuickSelectFtue}
-                              onDismissShowQuickSelectFtue={handleDismissShowQuickSelectFtue}
-                              stateRef={dialogStateRef}
-                              mp3Encoder={mp3Encoder}
-                              lastSelectedExportMode={settings.lastSelectedAnkiExportMode}
-                              inTutorial={inTutorial}
-                          />
-                      )}
+                {settings && card && anki && (
+                    <AnkiDialog
+                        open={open}
+                        disabled={disabled}
+                        card={card}
+                        settings={settings}
+                        profiles={profiles}
+                        activeProfile={activeProfile}
+                        onSetActiveProfile={handleSetActiveProfile}
+                        anki={anki}
+                        onProceed={handleProceed}
+                        onRerecord={canRerecord ? handleRerecord : undefined}
+                        onCancel={handleCancel}
+                        onOpenSettings={handleOpenSettings}
+                        onCopyToClipboard={handleCopyToClipboard}
+                        source={source}
+                        initialTimestampInterval={initialTimestampInterval}
+                        timestampBoundaryInterval={timestampBoundaryInterval}
+                        timestampInterval={timestampInterval}
+                        lastAppliedTimestampIntervalToText={lastAppliedTimestampIntervalToText}
+                        lastAppliedTimestampIntervalToAudio={lastAppliedTimestampIntervalToAudio}
+                        showQuickSelectFtue={showAnkiDialogQuickSelectFtue}
+                        onDismissShowQuickSelectFtue={handleDismissShowQuickSelectFtue}
+                        stateRef={dialogStateRef}
+                        mp3Encoder={mp3Encoder}
+                        lastSelectedExportMode={settings.lastSelectedAnkiExportMode}
+                        inTutorial={inTutorial}
+                    />
+                )}
+                {settings && anki && (
+                    <CardSelectView
+                        open={cardSelectOpen}
+                        anki={anki}
+                        sentenceField={settings.sentenceField}
+                        disabled={disabled}
+                        onSelect={handleCardSelectSelect}
+                        onCancel={handleCardSelectCancel}
+                    />
+                )}
             </ThemeProvider>
         </StyledEngineProvider>
     );

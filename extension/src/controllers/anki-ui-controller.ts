@@ -6,7 +6,6 @@ import {
     AnkiUiBridgeRerecordMessage,
     AnkiUiBridgeResumeMessage,
     AnkiUiBridgeRewindMessage,
-    AnkiUiCardSelectState,
     AnkiUiInitialState,
     AnkiUiResumeState,
     AnkiUiSavedState,
@@ -148,10 +147,11 @@ export default class AnkiUiController {
 
         this._prepareShow(context);
         const client = await this._client(context);
-        const state: AnkiUiCardSelectState = {
-            type: 'cardSelect',
+        const state: AnkiUiInitialState = {
+            type: 'initial',
             open: true,
-            canRerecord: false,
+            cardSelectOpen: true,
+            canRerecord: true,
             settings: this._settings,
             source: sourceString(context.subtitleFileName(), subtitle.start),
             url: context.url(subtitle.start, subtitle.end),

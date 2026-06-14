@@ -128,6 +128,7 @@ export default function CardSelectView({ open, anki, sentenceField, disabled, on
                 alignItems: 'center',
                 justifyContent: 'center',
                 bgcolor: 'rgba(0,0,0,0.6)',
+                zIndex: (theme) => theme.zIndex.modal + 1,
             }}
             onClick={onCancel}
         >
