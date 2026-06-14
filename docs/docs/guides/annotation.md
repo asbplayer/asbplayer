@@ -6,12 +6,12 @@ sidebar_position: 1
 
 asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
 
-- word styling (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.)
+- **Word Styling**: color/underline/outline, etc. based on a word's status
     - known status can be sourced from and synced with Anki, WaniKani, and/or tracked locally in asbplayer (includes import/export features to help seed known words)
-- reading annotation (readings displayed above each word or based on status)
-- frequency annotation (rank-based frequency displayed below each word or based on status)
-- pitch accent annotation (accent patterns displayed on furigana or kana words)
-- many more features for future releases!
+- **Reading Annotation**: readings displayed above each word or based on status
+- **Frequency Annotation**: rank-based frequency displayed below each word or based on status (requires at least on rank-based frequency dictionary)
+- **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
+- **Many more features for future releases!**
 
 :::info
 Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
