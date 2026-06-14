@@ -48,13 +48,13 @@ function makeDefaultDictionaryTokenAnnotationConfigs() {
             color: { onHoverEnabled: false, size: 1 },
             reading: { onHoverEnabled: false, size: 0.5 },
             frequency: { onHoverEnabled: false, size: 0.3 },
-            pitchAccent: { onHoverEnabled: true, size: 1 },
+            pitchAccent: { onHoverEnabled: true, size: 0.1 },
         },
         subtitlePlayer: {
             color: { onHoverEnabled: false, size: 1 },
             reading: { onHoverEnabled: false, size: 0.5 },
             frequency: { onHoverEnabled: false, size: 0.5 },
-            pitchAccent: { onHoverEnabled: true, size: 1 },
+            pitchAccent: { onHoverEnabled: true, size: 0.1 },
         },
         onStatuses: [
             { reading: false, frequency: false, pitchAccent: false },

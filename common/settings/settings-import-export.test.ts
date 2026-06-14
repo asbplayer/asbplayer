@@ -202,13 +202,13 @@ it('validates exported settings', () => {
                         color: { onHoverEnabled: false, size: 1 },
                         reading: { onHoverEnabled: false, size: 0.5 },
                         frequency: { onHoverEnabled: false, size: 0.3 },
-                        pitchAccent: { onHoverEnabled: true, size: 1 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
                     },
                     subtitlePlayer: {
                         color: { onHoverEnabled: false, size: 1 },
                         reading: { onHoverEnabled: false, size: 0.5 },
                         frequency: { onHoverEnabled: false, size: 0.5 },
-                        pitchAccent: { onHoverEnabled: true, size: 1 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
                     },
                     onStatuses: [
                         {
@@ -290,13 +290,13 @@ it('validates exported settings', () => {
                         color: { onHoverEnabled: true, size: 1 },
                         reading: { onHoverEnabled: true, size: 0.5 },
                         frequency: { onHoverEnabled: true, size: 0.3 },
-                        pitchAccent: { onHoverEnabled: true, size: 1 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
                     },
                     subtitlePlayer: {
                         color: { onHoverEnabled: false, size: 1 },
                         reading: { onHoverEnabled: false, size: 0.5 },
                         frequency: { onHoverEnabled: false, size: 0.5 },
-                        pitchAccent: { onHoverEnabled: false, size: 1 },
+                        pitchAccent: { onHoverEnabled: false, size: 0.1 },
                     },
                     onStatuses: [
                         {
@@ -378,13 +378,13 @@ it('validates exported settings', () => {
                         color: { onHoverEnabled: false, size: 1 },
                         reading: { onHoverEnabled: false, size: 0.5 },
                         frequency: { onHoverEnabled: false, size: 0.3 },
-                        pitchAccent: { onHoverEnabled: false, size: 1 },
+                        pitchAccent: { onHoverEnabled: false, size: 0.1 },
                     },
                     subtitlePlayer: {
                         color: { onHoverEnabled: true, size: 1 },
                         reading: { onHoverEnabled: true, size: 0.5 },
                         frequency: { onHoverEnabled: true, size: 0.5 },
-                        pitchAccent: { onHoverEnabled: true, size: 1 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
                     },
                     onStatuses: [
                         {

@@ -243,7 +243,7 @@ export function tokenAnnotationStyleValues(config: TokenAnnotationConfig | undef
     return {
         '--asb-reading-size': `${config?.reading.size ?? 0.5}em`,
         '--asb-frequency-size': `${config?.frequency.size ?? 0.3}em`,
-        '--asb-pitch-accent-size': `${config?.pitchAccent.size ?? 1}em`,
+        '--asb-pitch-accent-size': `${config?.pitchAccent.size ?? 0.1}em`,
     };
 }
 
