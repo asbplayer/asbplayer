@@ -711,6 +711,7 @@
         "jimakuApiKey": "JimakuのAPIキー",
         "jimakuApiKeyAutosaveHint": "自動的に保存されます。APIキーは<0>こちらから</0>入手できます。",
         "entries": "検索結果",
+        "recentEntries": "Recent",
         "noEntries": "検索結果はありません",
         "availableFiles": "ファイル",
         "noFiles": "ファイルはありません",

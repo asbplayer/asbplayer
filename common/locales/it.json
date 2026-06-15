@@ -711,6 +711,7 @@
         "jimakuApiKey": "Chiave API Jimaku",
         "jimakuApiKeyAutosaveHint": "Salvata automaticamente. Ottieni una chiave API <0>qui</0>.",
         "entries": "Risultati della ricerca",
+        "recentEntries": "Recent",
         "noEntries": "Nessun risultato",
         "availableFiles": "File",
         "noFiles": "Nessun file",

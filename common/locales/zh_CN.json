@@ -711,11 +711,12 @@
         "jimakuApiKey": "Jimaku API key",
         "jimakuApiKeyAutosaveHint": "Saved automatically. Get an API key <0>here</0>.",
         "entries": "Search results",
+        "recentEntries": "最近",
         "noEntries": "No search results",
         "availableFiles": "Files",
         "noFiles": "No files",
-        "searchCategory": "Search category",
-        "categoryAnime": "Anime",
-        "categoryDrama": "Drama"
+        "searchCategory": "搜索类别",
+        "categoryAnime": "动画",
+        "categoryDrama": "剧集"
     }
 }

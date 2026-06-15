@@ -672,7 +672,7 @@
             "noDeckBreakdown": "No matching Anki cards were found for this media.",
             "info": {
                 "ankiStatistics": "How your Anki cards match up with the words in this media.",
-                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature." 
+                "projectedCards": "Preview your stats by treating past cards or new cards (in the order they will be introduced) as Mature."
             }
         },
         "waniKani": {
@@ -711,6 +711,7 @@
         "jimakuApiKey": "Jimaku API key",
         "jimakuApiKeyAutosaveHint": "Saved automatically. Get an API key <0>here</0>.",
         "entries": "Search results",
+        "recentEntries": "Recent",
         "noEntries": "No search results",
         "availableFiles": "Files",
         "noFiles": "No files",
