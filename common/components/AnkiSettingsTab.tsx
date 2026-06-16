@@ -419,9 +419,6 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     color="primary"
                     onChange={(event) => onSettingChanged('ankiConnectUrl', event.target.value)}
                     slotProps={{
-                        formHelperText: {
-                            sx: { ml: 0 },
-                        },
                         input: {
                             endAdornment: (
                                 <InputAdornment position="end">

@@ -631,6 +631,47 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 ),
         [tokenAnnotationStateLabel, tokenAnnotationStatusLabel]
     );
+    const dictionaryTokenUnderlineOverlineStyleLabelKey = useMemo(() => {
+        switch (selectedDictionary.dictionaryTokenStyling) {
+            case TokenStyling.UNDERLINE:
+                return 'settings.dictionaryTokenStylingUnderline';
+            case TokenStyling.OVERLINE:
+                return 'settings.dictionaryTokenStylingOverline';
+            default:
+                return undefined;
+        }
+    }, [selectedDictionary.dictionaryTokenStyling]);
+    const dictionaryTokenPitchAccentAnnotationEnabled = useMemo(
+        () =>
+            selectedDictionary.dictionaryTokenAnnotationConfig.onStatuses.some(({ pitchAccent }) => pitchAccent) ||
+            selectedDictionary.dictionaryTokenAnnotationConfig.onStates.some(({ pitchAccent }) => pitchAccent),
+        [
+            selectedDictionary.dictionaryTokenAnnotationConfig.onStatuses,
+            selectedDictionary.dictionaryTokenAnnotationConfig.onStates,
+        ]
+    );
+    const dictionaryTokenPitchAccentHoverOnlyForAllTargets = useMemo(
+        () =>
+            tokenAnnotationTargets.every(
+                ({ target }) => selectedDictionary.dictionaryTokenAnnotationConfig[target].pitchAccent.onHoverEnabled
+            ),
+        [selectedDictionary.dictionaryTokenAnnotationConfig]
+    );
+    const dictionaryTokenPitchAccentUnderlineOverlineStyleWarning =
+        supportsDictionaryTokenAnnotationConfig &&
+        dictionaryTokenUnderlineOverlineStyleLabelKey !== undefined &&
+        dictionaryTokenPitchAccentAnnotationEnabled &&
+        !dictionaryTokenPitchAccentHoverOnlyForAllTargets
+            ? t('settings.dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle', {
+                  style: t(dictionaryTokenUnderlineOverlineStyleLabelKey),
+                  pitchAccentOnHover: t('settings.dictionaryTokenAnnotationHoverPitchAccent'),
+              })
+            : undefined;
+    const dictionaryTokenStylingHelperText =
+        dictionaryTokenPitchAccentUnderlineOverlineStyleWarning ??
+        (selectedDictionary.dictionaryTokenStyling === TokenStyling.OUTLINE
+            ? t('settings.dictionaryTokenStylingOutlineHelperText')
+            : undefined);
     const updateDictionaryTokenAnnotationConfig = useCallback(
         (
             update: (
@@ -1193,6 +1234,11 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 size="small"
                                 label={t(labelKey)!}
                                 value={value}
+                                helperText={
+                                    annotation === 'pitchAccent'
+                                        ? dictionaryTokenPitchAccentUnderlineOverlineStyleWarning
+                                        : undefined
+                                }
                                 SelectProps={{
                                     multiple: true,
                                     renderValue: (selected) => {
@@ -1996,9 +2042,6 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 onSettingChanged('dictionaryTracks', newTracks);
                             }}
                             slotProps={{
-                                formHelperText: {
-                                    sx: { ml: 0 },
-                                },
                                 input: {
                                     disabled: !dictionaryWaniKaniApiTokenVisible,
                                     endAdornment: (
@@ -2123,12 +2166,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             label={t('settings.dictionaryTokenStylingOutline')}
                         />
                     </RadioGroup>
+                    {dictionaryTokenStylingHelperText && (
+                        <Typography variant="caption" color="textSecondary">
+                            {dictionaryTokenStylingHelperText}
+                        </Typography>
+                    )}
                 </FormControl>
-                {selectedDictionary.dictionaryTokenStyling === TokenStyling.OUTLINE && (
-                    <Typography variant="caption" color="textSecondary">
-                        {t('settings.dictionaryTokenStylingOutlineHelperText')}
-                    </Typography>
-                )}
                 {selectedDictionaryShowThickness && (
                     <SettingsTextField
                         type="number"

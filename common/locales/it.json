@@ -518,6 +518,7 @@
         "dictionaryTokenReadingAnnotationNever": "Mai",
         "dictionaryDisplayIgnoredTokenReadings": "Mostra letture per le parole ignorate",
         "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "Mostra frequenza delle parole",
         "dictionaryTokenFrequencyAnnotationAlways": "Sempre",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "Solo non raccolte",

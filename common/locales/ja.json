@@ -518,6 +518,7 @@
         "dictionaryTokenReadingAnnotationNever": "表示しない",
         "dictionaryDisplayIgnoredTokenReadings": "無視した単語の読み方を表示",
         "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "単語頻度を表示",
         "dictionaryTokenFrequencyAnnotationAlways": "いつも",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "未収集のみ",
