@@ -11,16 +11,24 @@ import {
 import { CardPublisher } from '../../services/card-publisher';
 import { SettingsProvider } from '@project/common/settings';
 import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
+import MediaCache from '../../services/media-cache';
 
 export default class RerecordMediaHandler {
     private readonly _settingsProvider: SettingsProvider;
     private readonly _audioRecorder: AudioRecorderService;
     private readonly _cardPublisher: CardPublisher;
+    private readonly _mediaCache: MediaCache;
 
-    constructor(settingsProvider: SettingsProvider, audioRecorder: AudioRecorderService, cardPublisher: CardPublisher) {
+    constructor(
+        settingsProvider: SettingsProvider,
+        audioRecorder: AudioRecorderService,
+        cardPublisher: CardPublisher,
+        mediaCache: MediaCache
+    ) {
         this._settingsProvider = settingsProvider;
         this._audioRecorder = audioRecorder;
         this._cardPublisher = cardPublisher;
+        this._mediaCache = mediaCache;
     }
 
     get sender() {
@@ -68,13 +76,22 @@ export default class RerecordMediaHandler {
             };
         }
 
+        const { uiState } = rerecordCommand.message;
+        const cacheKey = this._mediaCache.key(sender.tab!.id!, rerecordCommand.src);
+        this._mediaCache.set(cacheKey, {
+            subtitleStart: uiState.subtitle.start,
+            subtitleEnd: uiState.subtitle.end,
+            audioModel: audio,
+            imageModel: uiState.image,
+        });
+
         this._cardPublisher.publish(
             {
                 audio: audio,
-                image: rerecordCommand.message.uiState.image,
-                url: rerecordCommand.message.uiState.url,
-                subtitle: rerecordCommand.message.uiState.subtitle,
-                surroundingSubtitles: rerecordCommand.message.uiState.surroundingSubtitles,
+                image: uiState.image,
+                url: uiState.url,
+                subtitle: uiState.subtitle,
+                surroundingSubtitles: uiState.surroundingSubtitles,
                 subtitleFileName: rerecordCommand.message.subtitleFileName,
                 mediaTimestamp: rerecordCommand.message.timestamp,
             },
@@ -84,9 +101,9 @@ export default class RerecordMediaHandler {
         );
 
         const newUiState = {
-            ...rerecordCommand.message.uiState,
+            ...uiState,
             audio: audio,
-            lastAppliedTimestampIntervalToAudio: rerecordCommand.message.uiState.timestampInterval,
+            lastAppliedTimestampIntervalToAudio: uiState.timestampInterval,
         };
 
         const showAnkiUiAfterRerecordCommand: ExtensionToVideoCommand<ShowAnkiUiAfterRerecordMessage> = {

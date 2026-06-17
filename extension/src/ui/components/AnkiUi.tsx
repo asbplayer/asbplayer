@@ -234,6 +234,27 @@ export default function AnkiUi({ bridge }: Props) {
         bridge.sendMessageFromServer(message);
     }, [bridge, savedState]);
 
+    const handleClearMediaCache = useCallback(() => {
+        setOpen(false);
+        const state = savedState();
+        const fullInterval = [state.subtitle.start, state.subtitle.end];
+        const resetState = {
+            ...state,
+            timestampInterval: fullInterval,
+            initialTimestampInterval: fullInterval,
+            lastAppliedTimestampIntervalToText: fullInterval,
+            lastAppliedTimestampIntervalToAudio: fullInterval,
+        };
+        const message: AnkiUiBridgeRerecordMessage = {
+            command: 'rerecord',
+            uiState: resetState,
+            recordStart: state.subtitle.start,
+            recordEnd: state.subtitle.end,
+            clearMediaCache: true,
+        };
+        bridge.sendMessageFromServer(message);
+    }, [bridge, savedState]);
+
     const handleOpenSettings = useCallback(() => {
         bridge.sendMessageFromServer({ command: 'openSettings' });
     }, [bridge]);
@@ -372,6 +393,7 @@ export default function AnkiUi({ bridge }: Props) {
                         anki={anki}
                         onProceed={handleProceed}
                         onRerecord={canRerecord ? handleRerecord : undefined}
+                        onClearMediaCache={canRerecord ? handleClearMediaCache : undefined}
                         onCancel={handleCancel}
                         onOpenSettings={handleOpenSettings}
                         onCopyToClipboard={handleCopyToClipboard}

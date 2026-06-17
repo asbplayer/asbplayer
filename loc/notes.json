@@ -40,6 +40,7 @@
         "ankiDialog.imageFileLinkLost": "File link, or \"file reference.\" \"Page reload\" in the context of the browser.",
         "ankiDialog.openInAnki": "Button that opens  Anki's card creator with the contents of asbplayer's card creator.",
         "ankiDialog.rerecord": "Button to re-record audio.",
+        "ankiDialog.clearMediaCache": "Button to clear the cached audio/screenshot so the next mine of the same subtitle records fresh media.",
         "ankiDialog.resetSlider": "Button to reset the time-interval selector to it's initial state.",
         "ankiDialog.rewind": "Button that rewinds the video back to beginning of the subtitle that is currently in the card creator.",
         "ankiDialog.searchInAnki": "Button that queries the user's Anki deck for cards that already contain a particular word.",

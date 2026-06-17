@@ -80,6 +80,7 @@
         "openInAnki": "Anki で開く",
         "rerecord": "再録音",
         "rerecordAndApplySelection": "選択した時間範囲を録音",
+        "clearMediaCache": "Clear cached media",
         "resetSlider": "リセット",
         "rewind": "巻き戻し",
         "searchInAnki": "Anki で検索する",

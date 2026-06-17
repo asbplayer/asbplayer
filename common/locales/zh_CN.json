@@ -80,6 +80,7 @@
         "openInAnki": "在 Anki 中打开",
         "rerecord": "重新录音",
         "rerecordAndApplySelection": "录制选中时间段",
+        "clearMediaCache": "Clear cached media",
         "resetSlider": "重置",
         "rewind": "倒退",
         "searchInAnki": "在Anki中搜索",

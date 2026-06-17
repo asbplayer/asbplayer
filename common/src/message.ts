@@ -148,6 +148,7 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly playbackRate: number;
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
+    readonly useCachedMedia?: boolean;
 }
 
 export interface StartRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -512,6 +513,11 @@ export interface AnkiUiBridgeRerecordMessage extends Message {
     readonly uiState: AnkiUiSavedState;
     readonly recordStart: number;
     readonly recordEnd: number;
+    readonly clearMediaCache?: boolean;
+}
+
+export interface AnkiUiBridgeClearMediaCacheMessage extends Message {
+    readonly command: 'clear-media-cache';
 }
 
 export interface AnkiUiBridgeExportedMessage extends Message {
