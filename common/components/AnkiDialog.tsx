@@ -39,6 +39,7 @@ import CustomField from './CustomField';
 import AudioField from './AudioField';
 import ImageField from './ImageField';
 import ImageDialog from './ImageDialog';
+import AnkiSelect from './AnkiSelect';
 import MiniProfileSelector from './MiniProfileSelector';
 import Alert from '@mui/material/Alert';
 import { isMacOs } from '../device-detection/mac';
@@ -261,6 +262,8 @@ const AnkiDialog = ({
     const [imageDialogOpen, setImageDialogOpen] = useState<boolean>(false);
     const [image, setImage] = useState<MediaFragment>();
     const [imageTimestampInterval, setImageTimestampInterval] = useState<number[]>();
+    const [deckNames, setDeckNames] = useState<string[]>();
+    const [selectedDeck, setSelectedDeck] = useState<string>(settings.deck);
     const dialogRef = useRef<HTMLDivElement>(undefined);
     const dialogRefCallback = useCallback((element: HTMLDivElement) => {
         dialogRef.current = element;
@@ -732,6 +735,17 @@ const AnkiDialog = ({
     const handleActionBlur = useCallback(() => setFocusedAction(undefined), []);
 
     useEffect(() => {
+        if (open) {
+            anki.deckNames()
+                .then(setDeckNames)
+                .catch(() => {
+                    // Error fetching deck names, leave deckNames as undefined
+                });
+            setSelectedDeck(settings.deck);
+        }
+    }, [open, anki, settings.deck]);
+
+    useEffect(() => {
         if (open && !disabled) {
             focusOnPreferredAction();
         }
@@ -753,6 +767,7 @@ const AnkiDialog = ({
                 customFieldValues,
                 tags,
                 mode,
+                deck: selectedDeck,
             });
         },
         [
@@ -768,6 +783,7 @@ const AnkiDialog = ({
             url,
             customFieldValues,
             tags,
+            selectedDeck,
             onProceed,
         ]
     );
@@ -847,6 +863,12 @@ const AnkiDialog = ({
                 </Toolbar>
                 <DialogContent ref={dialogRefCallback}>
                     <form className={classes.root}>
+                        <AnkiSelect
+                            label={t('settings.deck')}
+                            value={selectedDeck}
+                            selections={deckNames}
+                            onValueChange={setSelectedDeck}
+                        />
                         {ankiFieldModels.map((model) => {
                             const key = model.custom ? `custom_${model.key}` : `standard_${model.key}`;
 
@@ -1027,9 +1049,9 @@ const AnkiDialog = ({
                                                     !timestampInterval ||
                                                     (lastAppliedTimestampIntervalToText !== undefined &&
                                                         timestampInterval[0] ===
-                                                            lastAppliedTimestampIntervalToText[0] &&
+                                                        lastAppliedTimestampIntervalToText[0] &&
                                                         timestampInterval[1] ===
-                                                            lastAppliedTimestampIntervalToText[1]) ||
+                                                        lastAppliedTimestampIntervalToText[1]) ||
                                                     disableApplyTextSelection
                                                 }
                                                 onClick={handleApplyTimestampIntervalToText}

@@ -160,6 +160,7 @@ export interface ExportParams {
     tags: string[];
     mode: AnkiExportMode;
     ankiConnectUrl?: string;
+    deck?: string;
 }
 
 interface EncodedMedia {
@@ -184,14 +185,14 @@ export async function exportCard(
         card.audio === undefined
             ? undefined
             : AudioClip.fromBase64(
-                  source,
-                  card.subtitle.start,
-                  card.subtitle.end,
-                  card.audio.playbackRate ?? 1,
-                  card.audio.base64,
-                  card.audio.extension,
-                  card.audio.error
-              );
+                source,
+                card.subtitle.start,
+                card.subtitle.end,
+                card.audio.playbackRate ?? 1,
+                card.audio.base64,
+                card.audio.extension,
+                card.audio.error
+            );
 
     return await anki.export({
         text: card.text ?? extractText(card.subtitle, card.surroundingSubtitles),
@@ -204,12 +205,12 @@ export async function exportCard(
             card.image === undefined
                 ? undefined
                 : MediaFragment.fromBase64(
-                      source,
-                      card.subtitle.start,
-                      card.image.base64,
-                      card.image.extension,
-                      card.image.error
-                  ),
+                    source,
+                    card.subtitle.start,
+                    card.image.base64,
+                    card.image.extension,
+                    card.image.error
+                ),
         word: card.word,
         source: source,
         url: card.url,
@@ -486,6 +487,7 @@ export class Anki {
         tags,
         mode,
         ankiConnectUrl,
+        deck,
     }: ExportParams) {
         const fields = {};
 
@@ -509,16 +511,18 @@ export class Anki {
             }
         }
 
+        const selectedDeck = deck ?? this.settingsProvider.deck;
+
         const params: any = {
             note: {
-                deckName: this.settingsProvider.deck,
+                deckName: selectedDeck,
                 modelName: this.settingsProvider.noteType,
                 tags: tags,
                 options: {
                     allowDuplicate: true,
                     duplicateScope: 'deck',
                     duplicateScopeOptions: {
-                        deckName: this.settingsProvider.deck,
+                        deckName: selectedDeck,
                         checkChildren: false,
                     },
                 },
