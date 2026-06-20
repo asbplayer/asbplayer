@@ -6,7 +6,6 @@ import {
     AudioTrackSelectedFromVideoMessage,
     AudioTrackSelectedToVideoMessage,
     CardTextFieldValues,
-    RichSubtitleModel,
     CopyMessage,
     CopyToVideoMessage,
     CurrentTimeToVideoMessage,
@@ -33,6 +32,7 @@ import {
     SubtitlesUpdatedToVideoMessage,
     SaveTokenLocalFromVideoMessage,
     SaveTokenLocalToVideoMessage,
+    IndexedSubtitleModel,
 } from '@project/common';
 import {
     AnkiSettings,
@@ -52,7 +52,7 @@ export default class PlayerChannel {
     private audioTrackSelectedCallbacks: ((id: string) => void)[];
     private closeCallbacks: (() => void)[];
     private subtitlesCallbacks: ((subtitles: SubtitleModel[], subtitleFileName: string) => void)[];
-    private subtitlesUpdatedCallbacks: ((updatedSubtitles: RichSubtitleModel[]) => void)[];
+    private subtitlesUpdatedCallbacks: ((updatedSubtitles: IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
         token: string,
@@ -297,7 +297,7 @@ export default class PlayerChannel {
         return () => this._remove(callback, this.subtitlesCallbacks);
     }
 
-    onSubtitlesUpdated(callback: (updatedSubtitles: RichSubtitleModel[]) => void) {
+    onSubtitlesUpdated(callback: (updatedSubtitles: IndexedSubtitleModel[]) => void) {
         this.subtitlesUpdatedCallbacks.push(callback);
         return () => this._remove(callback, this.subtitlesUpdatedCallbacks);
     }
@@ -484,7 +484,7 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
-    subtitlesUpdated(updatedSubtitles: RichSubtitleModel[]) {
+    subtitlesUpdated(updatedSubtitles: IndexedSubtitleModel[]) {
         const message: SubtitlesUpdatedFromVideoMessage = {
             command: 'subtitlesUpdated',
             updatedSubtitles,

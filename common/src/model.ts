@@ -55,20 +55,13 @@ export interface SubtitleModel {
     readonly track: number;
     readonly index?: number;
     readonly tokenization?: Tokenization;
-    readonly richText?: string;
-    readonly richTextOnHover?: string;
 }
 
 export interface IndexedSubtitleModel extends SubtitleModel {
     readonly index: number;
 }
 
-export interface RichSubtitleModel extends IndexedSubtitleModel {
-    richText?: string;
-    richTextOnHover?: string;
-}
-
-export interface TokenizedSubtitleModel extends RichSubtitleModel {
+export interface TokenizedSubtitleModel extends IndexedSubtitleModel {
     originalText?: string;
     tokenization?: Tokenization;
 }

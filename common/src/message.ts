@@ -27,9 +27,9 @@ import {
     CopyHistoryItem,
     AnkiDialogSettings,
     AnkiExportMode,
-    RichSubtitleModel,
     BrowserFeatures,
     Tokenization,
+    IndexedSubtitleModel,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';
 import {
@@ -415,7 +415,7 @@ export interface SubtitlesToVideoMessage extends Message {
 
 export interface SubtitlesUpdatedToVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly subtitles: RichSubtitleModel[];
+    readonly subtitles: IndexedSubtitleModel[];
 }
 
 export interface RequestCurrentSubtitleMessage extends Message {
@@ -428,7 +428,7 @@ export interface RequestSubtitlesMessage extends Message {
 
 export interface SubtitlesUpdatedFromVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly updatedSubtitles: RichSubtitleModel[];
+    readonly updatedSubtitles: IndexedSubtitleModel[];
 }
 
 export interface RequestSubtitlesFromAppMessage extends MessageWithId {
@@ -747,7 +747,7 @@ export interface AckMessage extends MessageWithId {
 }
 
 export interface RequestSubtitlesResponse {
-    subtitles: RichSubtitleModel[];
+    subtitles: IndexedSubtitleModel[];
     subtitleFileNames: string[];
 }
 

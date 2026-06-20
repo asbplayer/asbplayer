@@ -13,7 +13,7 @@ export const useSubtitleDomCache = (
         return () => domCache.clear();
     }, [subtitles, render]);
 
-    const updateSubtitleDomCache = useCallback(
+    const refreshSubtitleWindowDomCache = useCallback(
         (windowSubtitles: IndexedSubtitleModel[]) => {
             const keep = new Set(windowSubtitles.map((s) => String(s.index)));
             for (const key of domCache.keys()) {
@@ -27,8 +27,19 @@ export const useSubtitleDomCache = (
         [domCache, render]
     );
 
+    const updateSubtitleWindowDomCache = useCallback(
+        (updatedSubtitles: IndexedSubtitleModel[]) => {
+            for (const subtitle of updatedSubtitles) {
+                const key = String(subtitle.index);
+                if (domCache.has(key)) domCache.add(key, render(subtitle)); // Re-render updated subtitles that already exist in the cache
+            }
+        },
+        [domCache, render]
+    );
+
     return {
         getSubtitleDomCache: () => domCache,
-        updateSubtitleDomCache,
+        refreshSubtitleWindowDomCache,
+        updateSubtitleWindowDomCache,
     };
 };

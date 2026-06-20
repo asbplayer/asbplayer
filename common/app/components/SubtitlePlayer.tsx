@@ -22,7 +22,7 @@ import {
     AutoPauseContext,
     CopySubtitleWithAdditionalFieldsMessage,
     CardTextFieldValues,
-    RichSubtitleModel,
+    IndexedSubtitleModel,
 } from '@project/common';
 import {
     AsbplayerSettings,
@@ -41,7 +41,15 @@ import {
 } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { getAnnotationsHtml, SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import {
+    getAnnotationsHtml,
+    renderRichTextWindow,
+    emptyRichTextWindow,
+    RichTextWindow,
+    RenderedRichText,
+    SubtitleAnnotations,
+    renderRichTextForSubtitle,
+} from '@project/common/subtitle-annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -224,7 +232,7 @@ const useFindBarStyles = makeStyles<Theme>((theme) => ({
     },
 }));
 
-export interface DisplaySubtitleModel extends RichSubtitleModel {
+export interface DisplaySubtitleModel extends IndexedSubtitleModel {
     displayTime: string;
 }
 
@@ -238,6 +246,7 @@ interface SubtitleRowContext {
     showCopyButton: boolean;
     disabledSubtitleTracks: { [track: number]: boolean };
     dictionaryTracks: DictionaryTrack[];
+    richTextWindowRef: React.RefObject<RichTextWindow>;
     selectedSubtitleIndexes?: boolean[];
     highlightedJumpToSubtitleIndex?: number;
     currentSubtitleIndexes: { [index: number]: boolean };
@@ -372,6 +381,7 @@ interface SubtitleRowCellsProps {
     compressed: boolean;
     showCopyButton: boolean;
     tokenAnnotationConfig?: TokenAnnotationConfig;
+    rendered?: RenderedRichText;
     onCopySubtitle: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, index: number) => void;
     onMouseOver: (e: React.MouseEvent) => void;
     onMouseOut: (e: React.MouseEvent) => void;
@@ -386,6 +396,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
     compressed,
     showCopyButton,
     tokenAnnotationConfig,
+    rendered,
     onCopySubtitle,
     onMouseOver,
     onMouseOut,
@@ -401,7 +412,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
         <span
             className={disabledClassName}
             dangerouslySetInnerHTML={{
-                __html: getAnnotationsHtml(subtitle.text, subtitle.richText, subtitle.richTextOnHover),
+                __html: getAnnotationsHtml(subtitle.text, rendered?.richText, rendered?.richTextOnHover),
             }}
             data-track={subtitle.track}
             style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
@@ -456,6 +467,12 @@ const renderSubtitleRow = (index: number, subtitle: DisplaySubtitleModel, contex
         compressed={context.compressed}
         showCopyButton={context.showCopyButton}
         tokenAnnotationConfig={context.dictionaryTracks[subtitle.track]?.dictionaryTokenAnnotationConfig.subtitlePlayer}
+        rendered={renderRichTextForSubtitle(
+            context.richTextWindowRef.current,
+            subtitle,
+            'subtitlePlayer',
+            context.dictionaryTracks
+        )}
         onCopySubtitle={context.onCopySubtitle}
         onMouseOver={context.onMouseOver}
         onMouseOut={context.onMouseOut}
@@ -651,6 +668,41 @@ export default function SubtitlePlayer({
     const handleScrollerRef = useCallback((element: HTMLElement | Window | null) => {
         scrollerElementRef.current = element instanceof HTMLElement ? element : null;
     }, []);
+
+    const richTextWindowRef = useRef<RichTextWindow>(emptyRichTextWindow());
+    const visibleRangeRef = useRef<ListRange>({ startIndex: 0, endIndex: 0 });
+    const handleVisibleRangeChanged = useCallback((range: ListRange) => {
+        visibleRangeRef.current = range;
+    }, []);
+
+    const handleRangeChanged = useCallback(
+        (range: ListRange) => {
+            handleVisibleRangeChanged(range);
+            if (!subtitleListRef.current?.length) return;
+            const windowSubtitles = subtitleListRef.current.slice(range.startIndex, range.endIndex + 1);
+            richTextWindowRef.current = renderRichTextWindow(
+                richTextWindowRef.current,
+                windowSubtitles,
+                'subtitlePlayer',
+                settings.dictionaryTracks
+            );
+        },
+        [settings.dictionaryTracks, handleVisibleRangeChanged]
+    );
+
+    useEffect(() => {
+        const range = richTextWindowRef.current.range;
+        richTextWindowRef.current = emptyRichTextWindow();
+        if (range && subtitles?.length) {
+            const windowSubtitles = subtitles.slice(range.min, range.max + 1);
+            richTextWindowRef.current = renderRichTextWindow(
+                richTextWindowRef.current,
+                windowSubtitles,
+                'subtitlePlayer',
+                settings.dictionaryTracks
+            );
+        }
+    }, [subtitles, settings.dictionaryTracks]);
 
     const subtitleCollectionRef = useRef<SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>>(
         subtitleCollection
@@ -997,10 +1049,6 @@ export default function SubtitlePlayer({
     }, [findOpen, subtitles, findQuery, findExpansion]);
     const findMatchesRef = useRef(findMatches);
     findMatchesRef.current = findMatches;
-    const visibleRangeRef = useRef<ListRange>({ startIndex: 0, endIndex: 0 });
-    const handleVisibleRangeChanged = useCallback((range: ListRange) => {
-        visibleRangeRef.current = range;
-    }, []);
 
     const scrollToFindMatch = useCallback((subtitleIndex: number) => {
         lastScrollTimestampRef.current = Date.now();
@@ -1462,6 +1510,7 @@ export default function SubtitlePlayer({
             showCopyButton,
             disabledSubtitleTracks,
             dictionaryTracks: settings.dictionaryTracks,
+            richTextWindowRef,
             selectedSubtitleIndexes,
             highlightedJumpToSubtitleIndex,
             currentSubtitleIndexes,
@@ -1512,7 +1561,7 @@ export default function SubtitlePlayer({
                 components={subtitleTableComponents}
                 itemContent={renderSubtitleRow}
                 computeItemKey={computeSubtitleItemKey}
-                rangeChanged={handleVisibleRangeChanged}
+                rangeChanged={handleRangeChanged}
                 style={{ height: '100%' }}
             />
         );

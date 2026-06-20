@@ -226,8 +226,6 @@ export function mockSurroundingSubtitles(
             originalEnd: afterTimestamp - offset,
             track: middleSubtitle.track,
             index: middleSubtitle.index,
-            richText: middleSubtitle.richText,
-            richTextOnHover: middleSubtitle.richTextOnHover,
         });
     }
 
@@ -241,8 +239,6 @@ export function mockSurroundingSubtitles(
             originalEnd: middleSubtitle.start - offset,
             track: middleSubtitle.track,
             index: middleSubtitle.index,
-            richText: middleSubtitle.richText,
-            richTextOnHover: middleSubtitle.richTextOnHover,
         });
     }
 

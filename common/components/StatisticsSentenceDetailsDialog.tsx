@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     ContextProp,
     ItemProps,
+    ListRange,
     TableBodyProps,
     TableComponents,
     TableProps,
@@ -20,7 +21,14 @@ import {
     percentDisplay,
     sortDictionaryStatisticsSentenceBucketEntries,
 } from '@project/common/dictionary-statistics';
-import { getAnnotationsHtml } from '@project/common/subtitle-annotations';
+import {
+    getAnnotationsHtml,
+    renderRichTextWindow,
+    emptyRichTextWindow,
+    RichTextWindow,
+    RenderedRichText,
+    renderRichTextForSubtitle,
+} from '@project/common/subtitle-annotations';
 import { timeDurationDisplay } from '@project/common/util';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -73,6 +81,7 @@ interface SentenceTableContext {
     mineTooltip: string;
     maximumDisplayedTimestamp: number;
     dictionaryTracks: DictionaryTrack[];
+    richTextWindowRef: React.RefObject<RichTextWindow>;
     activeHighlightedSentenceIndex?: number;
     onSeekToSentence: (sentence: DictionaryStatisticsSentence) => void;
     onMineSentence: (sentence: DictionaryStatisticsSentence) => void;
@@ -141,6 +150,7 @@ interface SentenceRowCellsProps {
     mineTooltip: string;
     maximumDisplayedTimestamp: number;
     tokenAnnotationConfig?: TokenAnnotationConfig;
+    rendered?: RenderedRichText;
     onMineSentence: (sentence: DictionaryStatisticsSentence) => void;
 }
 
@@ -152,6 +162,7 @@ const SentenceRowCells = React.memo(function SentenceRowCells({
     mineTooltip,
     maximumDisplayedTimestamp,
     tokenAnnotationConfig,
+    rendered,
     onMineSentence,
 }: SentenceRowCellsProps) {
     const { t } = useTranslation();
@@ -193,7 +204,7 @@ const SentenceRowCells = React.memo(function SentenceRowCells({
                 <span
                     style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
                     dangerouslySetInnerHTML={{
-                        __html: getAnnotationsHtml(sentence.text, sentence.richText, sentence.richTextOnHover),
+                        __html: getAnnotationsHtml(sentence.text, rendered?.richText, rendered?.richTextOnHover),
                     }}
                 />
             </TableCell>
@@ -243,6 +254,12 @@ const renderSentence = (
         tokenAnnotationConfig={
             context.dictionaryTracks[entry.sentence.track]?.dictionaryTokenAnnotationConfig.subtitlePlayer
         }
+        rendered={renderRichTextForSubtitle(
+            context.richTextWindowRef.current,
+            entry.sentence,
+            'subtitlePlayer',
+            context.dictionaryTracks
+        )}
         onMineSentence={context.onMineSentence}
     />
 );
@@ -286,6 +303,37 @@ export default function StatisticsSentenceDetailsDialog({
     const sortedEntriesRef = useRef(sortedEntries);
     sortedEntriesRef.current = sortedEntries;
     const virtuosoRef = useRef<TableVirtuosoHandle>(null);
+
+    const richTextWindowRef = useRef<RichTextWindow>(emptyRichTextWindow());
+
+    const handleRangeChanged = useCallback(
+        (range: ListRange) => {
+            const entries = sortedEntriesRef.current;
+            if (!entries.length) return;
+            const windowSentences = entries.slice(range.startIndex, range.endIndex + 1).map((e) => e.sentence);
+            richTextWindowRef.current = renderRichTextWindow(
+                richTextWindowRef.current,
+                windowSentences,
+                'subtitlePlayer',
+                dictionaryTracks
+            );
+        },
+        [dictionaryTracks]
+    );
+
+    useEffect(() => {
+        const range = richTextWindowRef.current.range;
+        richTextWindowRef.current = emptyRichTextWindow();
+        if (range && sortedEntries.length) {
+            const windowSentences = sortedEntries.slice(range.min, range.max + 1).map((e) => e.sentence);
+            richTextWindowRef.current = renderRichTextWindow(
+                richTextWindowRef.current,
+                windowSentences,
+                'subtitlePlayer',
+                dictionaryTracks
+            );
+        }
+    }, [sortedEntries, dictionaryTracks]);
 
     useEffect(() => {
         if (!open || highlightedSentenceIndex === undefined) {
@@ -353,6 +401,7 @@ export default function StatisticsSentenceDetailsDialog({
             mineTooltip: mineTooltip!,
             maximumDisplayedTimestamp,
             dictionaryTracks,
+            richTextWindowRef,
             activeHighlightedSentenceIndex,
             onSeekToSentence: handleSeekToSentence,
             onMineSentence: handleMineSentence,
@@ -463,6 +512,7 @@ export default function StatisticsSentenceDetailsDialog({
                                 components={sentenceTableComponents}
                                 computeItemKey={computeSentenceItemKey}
                                 itemContent={renderSentence}
+                                rangeChanged={handleRangeChanged}
                                 increaseViewportBy={{ top: window.innerHeight, bottom: window.innerHeight }} // pre-load for fast scrolling
                             />
                             <Box sx={{ height: bottomOffset }} />

@@ -9,7 +9,6 @@ import {
     Fetcher,
     HttpPostMessage,
     IndexedSubtitleModel,
-    RichSubtitleModel,
 } from '@project/common';
 import {
     AutoCopyableTracks,
@@ -221,7 +220,7 @@ export default class SubtitleController {
         }
     }
 
-    private _windowSubtitles(): RichSubtitleModel[] {
+    private _windowSubtitles(): IndexedSubtitleModel[] {
         const now = this.context.video.currentTime * 1000;
         const windowSubtitles = this.subtitleAnnotations.subtitlesIn(
             now - ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
@@ -236,30 +235,27 @@ export default class SubtitleController {
     }
 
     private _refreshCachedHtmlWindow() {
-        const windowSubtitles = this._windowSubtitles();
-        const keep = new Set(windowSubtitles.map((s) => String(s.index)));
-        const overlays = [
-            { overlay: this.bottomSubtitlesElementOverlay, shouldRender: this.shouldRenderBottomOverlay },
-            { overlay: this.topSubtitlesElementOverlay, shouldRender: this.shouldRenderTopOverlay },
-        ];
+        const bottomWindowSubtitles: IndexedSubtitleModel[] = [];
+        const topWindowSubtitles: IndexedSubtitleModel[] = [];
+        for (const subtitle of this._windowSubtitles()) {
+            if (this._getSubtitleTrackAlignment(subtitle.track) === 'bottom') bottomWindowSubtitles.push(subtitle);
+            else topWindowSubtitles.push(subtitle);
+        }
 
-        let needsRender = false;
-        for (const { overlay } of overlays) {
-            if (!(overlay instanceof CachingElementOverlay)) continue;
+        const updateOverlay = (subtitles: IndexedSubtitleModel[], overlay: ElementOverlay, shouldRender: boolean) => {
+            if (!(overlay instanceof CachingElementOverlay)) return;
+            const keep = new Set(subtitles.map((s) => String(s.index)));
             for (const key of overlay.cachedHtmlKeys()) {
                 if (!keep.has(key)) overlay.removeCachedHtml(key);
             }
-            if (windowSubtitles.some((s) => !overlay.hasCachedHtml(String(s.index)))) needsRender = true;
-        }
-        if (!needsRender) return;
+            if (!shouldRender) return;
+            const uncachedSubtitles = subtitles.filter((s) => !overlay.hasCachedHtml(String(s.index)));
+            const htmls = this._buildSubtitlesHtml(uncachedSubtitles);
+            for (const html of htmls) overlay.cacheHtml(html.key, html.html());
+        };
 
-        const htmls = this._buildSubtitlesHtml(windowSubtitles);
-        for (const { overlay, shouldRender } of overlays) {
-            if (!shouldRender || !(overlay instanceof CachingElementOverlay)) continue;
-            for (const html of htmls) {
-                if (!overlay.hasCachedHtml(html.key)) overlay.cacheHtml(html.key, html.html());
-            }
-        }
+        updateOverlay(bottomWindowSubtitles, this.bottomSubtitlesElementOverlay, this.shouldRenderBottomOverlay);
+        updateOverlay(topWindowSubtitles, this.topSubtitlesElementOverlay, this.shouldRenderTopOverlay);
     }
 
     get bottomSubtitlePositionOffset(): number {
@@ -421,7 +417,7 @@ export default class SubtitleController {
         return { subtitleOverlayParams, topSubtitleOverlayParams, notificationOverlayParams };
     }
 
-    private _subtitleAnnotationsUpdated(updatedSubtitles: RichSubtitleModel[]): void {
+    private _subtitleAnnotationsUpdated(updatedSubtitles: IndexedSubtitleModel[]): void {
         const updatedIndexes = new Set(updatedSubtitles.map((s) => s.index));
         const updatedWindowSubtitles = this._windowSubtitles().filter((s) => updatedIndexes.has(s.index));
         if (updatedWindowSubtitles.length) {
@@ -599,9 +595,10 @@ export default class SubtitleController {
     }
 
     private _buildSubtitlesHtml(subtitles: IndexedSubtitleModel[]) {
-        if (this.dictionaryTrackSettings) renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings);
+        const buffer = renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings);
 
         return subtitles.map((subtitle) => {
+            const rendered = buffer.get(subtitle.index);
             return {
                 html: () => {
                     if (subtitle.textImage) {
@@ -627,8 +624,8 @@ export default class SubtitleController {
                         return this._buildTextHtml(
                             subtitle.text,
                             subtitle.track,
-                            subtitle.richText,
-                            subtitle.richTextOnHover
+                            rendered?.richText,
+                            rendered?.richTextOnHover
                         );
                     }
                 },

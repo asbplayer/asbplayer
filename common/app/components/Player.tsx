@@ -8,11 +8,11 @@ import {
     AutoPausePreference,
     CardModel,
     CardTextFieldValues,
+    IndexedSubtitleModel,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
     RequestSubtitlesResponse,
-    RichSubtitleModel,
     SubtitleModel,
     TokenizedSubtitleModel,
     VideoTabModel,
@@ -20,7 +20,6 @@ import {
 import {
     ApplyStrategy,
     AsbplayerSettings,
-    DictionaryTrack,
     isTrackAutoCopyable,
     isTrackSeekable,
     SettingsProvider,
@@ -29,7 +28,7 @@ import {
 } from '@project/common/settings';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { renderRichTextOntoSubtitles, HoveredToken, SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import { HoveredToken, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
 import { surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
@@ -98,17 +97,8 @@ function trackLength(
     return Math.max(videoLength, subtitlesLength);
 }
 
-function subtitlesForPlayer<T extends RichSubtitleModel>(
-    subtitles: T[],
-    dictionaryTracks: DictionaryTrack[] | undefined
-): T[] {
-    const playerSubtitles = subtitles.map((subtitle) => ({
-        ...subtitle,
-        richText: undefined,
-        richTextOnHover: undefined,
-    }));
-    renderRichTextOntoSubtitles(playerSubtitles, 'subtitlePlayer', dictionaryTracks);
-    return playerSubtitles;
+function subtitlesForPlayer<T extends IndexedSubtitleModel>(subtitles: T[]): T[] {
+    return subtitles.map((subtitle) => ({ ...subtitle }));
 }
 
 function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) {
@@ -444,8 +434,6 @@ const Player = React.memo(function Player({
                 displayTime: timeDurationDisplay(s.originalStart + offset, length),
                 track: s.track,
                 index: i,
-                richText: s.richText,
-                richTextOnHover: s.richTextOnHover,
                 tokenization: s.tokenization,
             }));
 
@@ -522,8 +510,6 @@ const Player = React.memo(function Player({
                         tokenization: s.tokenization,
                     }));
 
-                    renderRichTextOntoSubtitles(subtitles, 'subtitlePlayer', settingsRef.current.dictionaryTracks);
-
                     setSubtitlesSentThroughChannel(false);
                     onSubtitles(subtitles);
                     setPlayModes((playModes) =>
@@ -559,8 +545,8 @@ const Player = React.memo(function Player({
             settingsProvider,
             subtitleCollectionOptions,
             mediaId,
-            (updatedSubtitles, dictionaryTracks) => {
-                const playerSubtitles = subtitlesForPlayer(updatedSubtitles, dictionaryTracks);
+            (updatedSubtitles) => {
+                const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
                 if (channel) channel.subtitlesUpdated(updatedSubtitles);
                 onSubtitles((prevSubtitles) => {
                     if (!prevSubtitles?.length) return prevSubtitles;
@@ -569,8 +555,6 @@ const Player = React.memo(function Player({
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
-                            richText: s.richText,
-                            richTextOnHover: s.richTextOnHover,
                             tokenization: s.tokenization,
                         };
                     }
@@ -601,7 +585,7 @@ const Player = React.memo(function Player({
 
     useEffect(() => {
         return channel?.onSubtitlesUpdated((updatedSubtitles) => {
-            const playerSubtitles = subtitlesForPlayer(updatedSubtitles, settingsRef.current.dictionaryTracks);
+            const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
@@ -615,8 +599,6 @@ const Player = React.memo(function Player({
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
-                            richText: s.richText,
-                            richTextOnHover: s.richTextOnHover,
                             tokenization: s.tokenization,
                         };
                     }
@@ -639,7 +621,7 @@ const Player = React.memo(function Player({
                 | undefined;
             if (!response) return;
             const { subtitles: updatedSubtitles } = response;
-            const playerSubtitles = subtitlesForPlayer(updatedSubtitles, settingsRef.current.dictionaryTracks);
+            const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
@@ -653,8 +635,6 @@ const Player = React.memo(function Player({
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
-                            richText: s.richText,
-                            richTextOnHover: s.richTextOnHover,
                             tokenization: s.tokenization,
                         };
                     }
