@@ -1989,7 +1989,7 @@ export const renderRichTextOntoSubtitles = (
         const ta = trackAnnotations[subtitle.track];
         const hasExternalReading = subtitle.tokenization.tokens.some(
             (token) => !(token as InternalToken).__internal && token.readings.length > 0
-        );
+        ); // Display external readings even if no annotations are enabled, unnecessary for richTextOnHover
 
         subtitle.richText =
             ta.isRichTextEnabled || hasExternalReading
@@ -2132,7 +2132,7 @@ const applyReadingAnnotation = (
                 parts.push(tokenText.substring(left, right));
             } else {
                 const part = tokenText.substring(reading.pos[0], reading.pos[1]);
-                const readingText = applyPitchAccentAnnotation(reading.reading, token, prevPitch, ss);
+                const readingText = applyPitchAccentAnnotation(reading.reading, tokenForDisplay, prevPitch, ss);
                 parts.push(`<ruby class="${ASB_READING_CLASS}">${part}<rt>${readingText}</rt></ruby>`);
             }
         }
