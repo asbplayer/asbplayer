@@ -37,6 +37,7 @@ import { SubtitleAlignment } from '@project/common/settings';
 import Clock from '../services/clock';
 import PlaybackPreferences from '../services/playback-preferences';
 import Tooltip from '../../components/Tooltip';
+import SubtitleSyncButton, { SubtitleSyncData } from './SubtitleSyncButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -578,6 +579,7 @@ interface ControlsProps {
     subtitleAlignmentEnabled?: boolean;
     subtitleAlignment?: SubtitleAlignment;
     onSubtitleAlignment?: (alignment: SubtitleAlignment) => void;
+    subtitleSync?: SubtitleSyncData;
     hideToolbar?: boolean;
     onLoadFiles?: () => void;
     blurOverlayEnabled?: boolean;
@@ -637,6 +639,7 @@ export default function Controls({
     subtitleAlignment,
     subtitleAlignmentEnabled,
     onSubtitleAlignment,
+    subtitleSync,
     hideToolbar,
     onLoadFiles,
     blurOverlayEnabled,
@@ -1064,6 +1067,13 @@ export default function Controls({
                                 )}
                                 <Grid item style={{ flexGrow: 1 }}></Grid>
                                 <ResponsiveButtonGroup>
+                                    {subtitleSync && (
+                                        <SubtitleSyncButton
+                                            {...subtitleSync}
+                                            color="inherit"
+                                            className={classes.button}
+                                        />
+                                    )}
                                     {subtitleAlignmentEnabled && subtitleAlignment !== undefined && (
                                         <Tooltip title={t('controls.subtitleAlignment')!}>
                                             <IconButton color="inherit" onClick={handleSubtitleAlignment}>

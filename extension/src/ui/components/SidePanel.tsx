@@ -16,6 +16,7 @@ import {
     DownloadImageMessage,
     DownloadAudioMessage,
     CardExportedMessage,
+    OffsetToVideoMessage,
 } from '@project/common';
 import type { AsbplayerInstance, Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
 import type { BulkExportStartedPayload } from '../../controllers/bulk-export-controller';
@@ -26,6 +27,7 @@ import { useI18n } from '../hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Player from '@project/common/app/components/Player';
+import SubtitleSyncButton from '@project/common/app/components/SubtitleSyncButton';
 import { PlaybackPreferences } from '@project/common/app';
 import { AlertColor } from '@mui/material/Alert';
 import Alert from '@project/common/app/components/Alert';
@@ -303,6 +305,23 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
         };
         browser.runtime.sendMessage(message);
     }, [syncedVideoTab, settings.clickToMineDefaultAction]);
+
+    const handleApplySyncOffset = useCallback(
+        (offset: number) => {
+            if (syncedVideoTab === undefined) {
+                return;
+            }
+
+            const command: AsbPlayerToVideoCommandV2<OffsetToVideoMessage> = {
+                sender: 'asbplayerv2',
+                message: { command: 'offset', value: offset, echo: true },
+                tabId: syncedVideoTab.id,
+                src: syncedVideoTab.src,
+            };
+            browser.runtime.sendMessage(command);
+        },
+        [syncedVideoTab]
+    );
 
     const handleLoadSubtitles = useCallback(() => {
         if (currentTabId === undefined) {
@@ -732,6 +751,16 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onShowMiningHistory={handleShowCopyHistory}
                                 miningHistoryCount={copyHistoryItems.length}
                                 onShowStatistics={handleShowStatistics}
+                                subtitleSyncButton={
+                                    subtitles && subtitles.length > 0 ? (
+                                        <SubtitleSyncButton
+                                            subtitles={subtitles}
+                                            subtitleFileNames={subtitleFileNames ?? []}
+                                            subtitleReader={subtitleReader}
+                                            onApplyOffset={handleApplySyncOffset}
+                                        />
+                                    ) : undefined
+                                }
                             />
                             <SidePanelBottomControls
                                 disabled={currentTabId !== syncedVideoTab?.id}

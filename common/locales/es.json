@@ -189,7 +189,8 @@
         "hideSubtitlePlayer": "Ocultar Lista de Subtítulos",
         "currentTimestamp": "Marca de tiempo actual",
         "showBlurOverlay": "Mostrar efecto de desenfoque superpuesto",
-        "hideBlurOverlay": "Ocultar efecto de desenfoque superpuesto"
+        "hideBlurOverlay": "Ocultar efecto de desenfoque superpuesto",
+        "subtitleSync": "Sync to Reference"
     },
     "copyHistory": {
         "blank": "En Blanco",
@@ -736,5 +737,23 @@
         "searchCategory": "Search category",
         "categoryAnime": "Anime",
         "categoryDrama": "Drama"
+    },
+    "subtitleSync": {
+        "title": "Sync subtitles to a reference",
+        "description": "Shift the subtitle timing to match a correctly-timed reference.",
+        "primaryTrack": "Subtitle to adjust",
+        "reference": "Reference",
+        "uploadFile": "Upload a file…",
+        "chooseFile": "Choose file",
+        "trackLabel": "Track {{number}}",
+        "detect": "Detect offset",
+        "detectedOffset": "Detected offset: {{offset}} ms",
+        "confidence": "Confidence: {{percent}}%",
+        "lowConfidence": "Low confidence: the detected offset may be wrong.",
+        "noMatch": "Could not detect a reliable offset. Try a different reference.",
+        "fileError": "Could not read that subtitle file.",
+        "apply": "Apply",
+        "undo": "Undo",
+        "applied": "Applied offset: {{offset}} ms"
     }
 }

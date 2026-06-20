@@ -47,6 +47,8 @@ import {
     ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
     ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
 } from '@project/common/subtitle-annotations';
+import { SubtitleReader } from '@project/common/subtitle-reader';
+import pgsParserWorkerFactory from '../../subtitle-reader/pgs-parser-worker.ts?worker';
 import Clock from '../services/clock';
 import Controls, { Point } from './Controls';
 import PlayerChannel from '../services/player-channel';
@@ -390,6 +392,22 @@ export default function VideoPlayer({
         newCol.setSubtitles(subtitles);
         return newCol;
     }, [subtitles]);
+    const subtitleReader = useMemo(
+        () =>
+            new SubtitleReader({
+                regexFilter: settings.subtitleRegexFilter,
+                regexFilterTextReplacement: settings.subtitleRegexFilterTextReplacement,
+                subtitleHtml: settings.subtitleHtml,
+                convertNetflixRuby: settings.convertNetflixRuby,
+                pgsParserWorkerFactory: async () => new pgsParserWorkerFactory(),
+            }),
+        [
+            settings.subtitleRegexFilter,
+            settings.subtitleRegexFilterTextReplacement,
+            settings.subtitleHtml,
+            settings.convertNetflixRuby,
+        ]
+    );
     const [showSubtitles, setShowSubtitles] = useState<IndexedSubtitleModel[]>([]);
     const [miscSettings, setMiscSettings] = useState<MiscSettings>(settings);
     const [subtitleSettings, setSubtitleSettings] = useState<SubtitleSettings>(settings);
@@ -1993,6 +2011,12 @@ export default function VideoPlayer({
                 subtitleAlignment={subtitleAlignments[0]}
                 subtitleAlignmentEnabled={subtitleAlignments.length === 1}
                 onSubtitleAlignment={handleSubtitleAlignment}
+                subtitleSync={{
+                    subtitles,
+                    subtitleFileNames: [],
+                    subtitleReader,
+                    onApplyOffset: handleOffsetChange,
+                }}
                 hideToolbar={isMobile}
                 onLoadFiles={popOut ? undefined : handleLoadFiles}
                 blurOverlayEnabled={blurOverlayVisible}
