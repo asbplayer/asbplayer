@@ -1962,6 +1962,9 @@ export const getAnnotationsForRender = (dt: DictionaryTrack, target: TokenAnnota
     };
 };
 
+export const ANNOTATIONS_VIDEO_RENDER_BEHIND_MS = 15000; // Seeking backwards is usually 5-10s
+export const ANNOTATIONS_VIDEO_RENDER_AHEAD_MS = 60000; // Seeking forward is usually 5-30s
+
 export const renderRichTextOntoSubtitles = (
     subtitles: RichSubtitleModel[],
     tokenAnnotationTarget: TokenAnnotationConfigTarget,

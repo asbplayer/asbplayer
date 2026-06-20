@@ -40,7 +40,13 @@ import {
     subtitleTimestampWithDelay,
 } from '@project/common/util';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/subtitle-annotations';
+import {
+    HoveredToken,
+    renderRichTextOntoSubtitles,
+    getAnnotationsHtml,
+    ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
+    ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
+} from '@project/common/subtitle-annotations';
 import Clock from '../services/clock';
 import Controls, { Point } from './Controls';
 import PlayerChannel from '../services/player-channel';
@@ -388,8 +394,9 @@ export default function VideoPlayer({
     const [subtitles, setSubtitles] = useState<RichSubtitleModel[]>([]);
     const subtitleCollection = useMemo<SubtitleCollection<RichSubtitleModel>>(() => {
         const newCol = new SubtitleCollection<RichSubtitleModel>({
-            returnLastShown: false,
             showingCheckRadiusMs: 150,
+            returnLastShown: true,
+            returnNextToShow: true,
         });
         newCol.setSubtitles(subtitles);
         return newCol;
@@ -430,6 +437,7 @@ export default function VideoPlayer({
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
+    const updateSubtitleDomCacheRef = useRef<((windowSubtitles: RichSubtitleModel[]) => void) | undefined>(undefined);
     const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 5s
     const isGeneratingRef = useRef(false); // avoid subsequent calls to generate thumbnail while generating one
 
@@ -875,9 +883,20 @@ export default function VideoPlayer({
     }, [playerChannel]);
 
     useEffect(() => {
-        if (!subtitles || subtitles.length === 0) {
-            return;
-        }
+        if (!subtitles?.length) return;
+
+        const refreshWindowSubtitles = (now: number) => {
+            const windowSubtitles = subtitleCollection.subtitlesIn(
+                now - ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
+                now + ANNOTATIONS_VIDEO_RENDER_AHEAD_MS
+            );
+            if (!windowSubtitles.length) {
+                const { lastShown, nextToShow } = subtitleCollection.subtitlesAt(now);
+                for (const subtitle of lastShown ?? []) windowSubtitles.push(subtitle);
+                for (const subtitle of nextToShow ?? []) windowSubtitles.push(subtitle);
+            }
+            updateSubtitleDomCacheRef.current?.(windowSubtitles);
+        };
 
         const interval = setInterval(() => {
             const now = clock.time(length);
@@ -907,8 +926,11 @@ export default function VideoPlayer({
                         // ignore
                     });
                 }
+                refreshWindowSubtitles(now);
             }
         }, 100);
+
+        refreshWindowSubtitles(clock.time(length)); // Init
 
         return () => clearInterval(interval);
     }, [
@@ -1677,18 +1699,22 @@ export default function VideoPlayer({
             showingSubtitleHtml(
                 subtitle,
                 videoRef,
-                trackStyles[subtitle.track]?.styleString ?? trackStyles[0].styleString,
-                trackStyles[subtitle.track]?.classes ?? trackStyles[0].classes,
+                trackStyles[subtitle.track]?.styleString ?? trackStyles[0]?.styleString ?? '',
+                trackStyles[subtitle.track]?.classes ?? trackStyles[0]?.classes ?? '',
                 subtitleSettings.imageBasedSubtitleScaleFactor
             ),
         [trackStyles, subtitleSettings.imageBasedSubtitleScaleFactor]
     );
 
-    const { getSubtitleDomCache } = useSubtitleDomCache(subtitles, getSubtitleHtml);
+    const { getSubtitleDomCache, updateSubtitleDomCache } = useSubtitleDomCache(subtitles, getSubtitleHtml);
 
     useEffect(() => {
         domCacheRef.current = getSubtitleDomCache();
     }, [getSubtitleDomCache]);
+
+    useEffect(() => {
+        updateSubtitleDomCacheRef.current = updateSubtitleDomCache;
+    }, [updateSubtitleDomCache]);
 
     const handleSwipe = useCallback(
         (direction: Direction) => {
