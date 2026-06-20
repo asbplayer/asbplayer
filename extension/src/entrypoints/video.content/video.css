@@ -176,20 +176,6 @@
     line-height: 1;
 }
 
-.asb-frequency-hover {
-    ruby-position: under;
-}
-
-.asb-frequency-hover rt {
-    font-size: var(--asb-frequency-size);
-    line-height: 1;
-    display: none;
-}
-
-.asb-frequency-hover:hover rt {
-    display: revert; /* Safari doesn't support 'ruby-text' */
-}
-
 .asbplayer-ui-frame {
     position: fixed !important;
     top: 0 !important;

@@ -84,7 +84,6 @@ const ASB_TOKEN_CLASS = 'asb-token';
 const ASB_TOKEN_HIGHLIGHT_CLASS = 'asb-token-highlight';
 const ASB_READING_CLASS = 'asb-reading';
 const ASB_FREQUENCY_CLASS = 'asb-frequency';
-// const ASB_FREQUENCY_HOVER_CLASS = 'asb-frequency-hover';
 const ASB_PITCH_ACCENT_CLASS = 'asb-pitch-accent';
 const ASB_PITCH_ACCENT_MORA_CLASS = 'asb-pitch-accent-mora';
 const ASB_PITCH_ACCENT_MORA_HIGH_CLASS = 'asb-pitch-accent-mora-high';
@@ -644,12 +643,11 @@ export class SubtitleAnnotations extends SubtitleCollection<RichSubtitleModel> {
                 );
             });
         if (!needsReset) {
-            // Preserve existing cache here so callers don't need to be aware of it
+            // Preserve the existing tokenization cache here so callers don't need to be aware of it.
+            // Don't update richText or richTextOnHover as they are derived per render target and not cached internally.
             for (const s of subtitles) {
                 (s as InternalSubtitleModel).text = this._subtitles[s.index].text;
                 s.tokenization = this._subtitles[s.index].tokenization;
-                s.richText = this._subtitles[s.index].richText;
-                s.richTextOnHover = this._subtitles[s.index].richTextOnHover;
                 (s as InternalSubtitleModel).__tokenized = this._subtitles[s.index].__tokenized;
             }
         }
