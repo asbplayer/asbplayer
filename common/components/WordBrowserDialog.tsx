@@ -55,7 +55,7 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, normalizeForSearch } from '@project/common/util';
+import { getTokenStatus, normalizedLookupTerms } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import Box from '@mui/material/Box';
 
@@ -163,27 +163,6 @@ interface CyclingFilterListProps<T extends FilterModeValue> {
     selectedFilters: FilterMap<T>;
     onToggle: (value: T) => void;
     renderMenuItemLabel: (value: T) => React.ReactNode;
-}
-
-function normalizeSearchText(text: string) {
-    return text.normalize('NFKC').trim().toLocaleLowerCase();
-}
-
-function normalizedLookupTerms(...texts: Array<string | null | undefined>) {
-    return Array.from(
-        new Set(
-            texts
-                .flatMap((text) => {
-                    if (!text) return [];
-                    const normalized = normalizeForSearch(text);
-                    if (!normalized.length || normalized === text) return [text];
-                    return [text, normalized];
-                })
-                .filter((text) => Boolean(text))
-                .map(normalizeSearchText)
-                .filter((text) => text.length)
-        )
-    );
 }
 
 function matchesSearchTerm(searchTerms: string[], term: string) {

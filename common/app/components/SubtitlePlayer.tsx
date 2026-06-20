@@ -4,6 +4,7 @@ import { type Theme } from '@mui/material';
 import {
     ContextProp,
     ItemProps,
+    ListRange,
     ScrollerProps,
     TableBodyProps,
     TableComponents,
@@ -26,6 +27,7 @@ import {
 import {
     AsbplayerSettings,
     DictionaryTrack,
+    dictionaryTrackEnabled,
     TokenAnnotationConfig,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
@@ -34,12 +36,18 @@ import {
     mockSurroundingSubtitles,
     surroundingSubtitlesAroundInterval,
     extractText,
+    normalizedLookupTerms,
+    normalizeSearchText,
 } from '@project/common/util';
+import { Yomitan } from '@project/common/yomitan';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { getAnnotationsHtml, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
+import CloseIcon from '@mui/icons-material/Close';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import IconButton from '@mui/material/IconButton';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -48,6 +56,7 @@ import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
 import Tooltip from '../../components/Tooltip';
 import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
 import Clock from '../services/clock';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { MineSubtitleParams } from '../hooks/use-app-web-socket-client';
@@ -190,6 +199,31 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
     },
 }));
 
+const useFindBarStyles = makeStyles<Theme>((theme) => ({
+    findBar: {
+        position: 'absolute',
+        top: theme.spacing(1),
+        right: theme.spacing(2),
+        // Keep the bar within the panel (e.g. a narrow side panel), leaving an equal margin on both sides.
+        maxWidth: `calc(100% - ${theme.spacing(4)})`,
+        boxSizing: 'border-box',
+        zIndex: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: theme.spacing(0.25),
+        paddingLeft: theme.spacing(1),
+        paddingRight: theme.spacing(0.5),
+        paddingTop: theme.spacing(0.5),
+        paddingBottom: theme.spacing(0.5),
+    },
+    findCount: {
+        whiteSpace: 'nowrap',
+        color: theme.palette.text.secondary,
+        minWidth: 32,
+        textAlign: 'right',
+    },
+}));
+
 export interface DisplaySubtitleModel extends RichSubtitleModel {
     displayTime: string;
 }
@@ -230,6 +264,28 @@ const selectionStateForIndex = (
             highlightedJumpToSubtitleIndex === index ? SelectionState.insideSelection : SelectionState.outsideSelection;
     }
     return selectionState;
+};
+
+const parseRegexQuery = (query: string): RegExp | undefined => {
+    const regexMatch = /^\/(.+)\/([a-z]*)$/.exec(query);
+    if (!regexMatch) return;
+    try {
+        return new RegExp(regexMatch[1], regexMatch[2].replace(/[gy]/g, ''));
+    } catch (e) {
+        return;
+    }
+};
+
+const subtitleSearchableText = (subtitle: DisplaySubtitleModel): string => {
+    const tokens = subtitle.tokenization?.tokens;
+    if (!tokens || !tokens.length) return subtitle.text;
+    let readings = '';
+    for (const token of tokens) {
+        for (const reading of token.readings) {
+            if (reading.reading) readings += reading.reading;
+        }
+    }
+    return readings.length ? `${subtitle.text}\n${readings}` : subtitle.text;
 };
 
 const SubtitleScroller = React.forwardRef<HTMLDivElement, ScrollerProps & ContextProp<SubtitleRowContext>>(
@@ -415,6 +471,71 @@ const subtitleTableComponents: TableComponents<DisplaySubtitleModel, SubtitleRow
     TableRow: SubtitleTableRow,
 };
 
+interface SubtitleFindBarProps {
+    inputRef: React.RefObject<HTMLInputElement | null>;
+    query: string;
+    placeholder: string;
+    resultsLabel: string;
+    hasMatches: boolean;
+    onQueryChange: (query: string) => void;
+    onNext: () => void;
+    onPrevious: () => void;
+    onClose: () => void;
+}
+
+const SubtitleFindBar = ({
+    inputRef,
+    query,
+    placeholder,
+    resultsLabel,
+    hasMatches,
+    onQueryChange,
+    onNext,
+    onPrevious,
+    onClose,
+}: SubtitleFindBarProps) => {
+    const classes = useFindBarStyles();
+
+    return (
+        <Paper elevation={6} className={classes.findBar}>
+            <TextField
+                inputRef={inputRef}
+                autoFocus
+                variant="standard"
+                placeholder={placeholder}
+                value={query}
+                onChange={(e) => onQueryChange(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onClose();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.shiftKey) onPrevious();
+                        else onNext();
+                    }
+                }}
+                slotProps={{ htmlInput: { size: placeholder.length } }}
+                style={{ flexGrow: 0, flexShrink: 1, minWidth: 0 }}
+            />
+            <Typography variant="caption" className={classes.findCount}>
+                {resultsLabel}
+            </Typography>
+            <IconButton size="small" disabled={!hasMatches} onClick={onPrevious}>
+                <KeyboardArrowUpIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" disabled={!hasMatches} onClick={onNext}>
+                <KeyboardArrowDownIcon fontSize="small" />
+            </IconButton>
+            <IconButton size="small" onClick={onClose}>
+                <CloseIcon fontSize="small" />
+            </IconButton>
+        </Paper>
+    );
+};
+
 interface ResizeHandleProps extends React.HTMLAttributes<HTMLDivElement> {
     isResizing: boolean;
 }
@@ -540,6 +661,35 @@ export default function SubtitlePlayer({
     const [currentSubtitleIndexes, setCurrentSubtitleIndexes] = useState<{ [index: number]: boolean }>({});
     const [selectedSubtitleIndexes, setSelectedSubtitleIndexes] = useState<boolean[]>();
     const [highlightedJumpToSubtitleIndex, setHighlightedJumpToSubtitleIndex] = useState<number>();
+    const [findOpen, setFindOpen] = useState<boolean>(false);
+    const [findQuery, setFindQuery] = useState<string>('');
+    const [findExpansion, setFindExpansion] = useState<{ query: string; terms: string[] }>({ query: '', terms: [] });
+    const [currentMatchPosition, setCurrentMatchPosition] = useState<number>(0);
+    const findInputRef = useRef<HTMLInputElement | null>(null);
+    const yomitans = useMemo(
+        () =>
+            settings.dictionaryTracks
+                .filter((dictionaryTrack) => dictionaryTrackEnabled(dictionaryTrack))
+                .map((dictionaryTrack) => new Yomitan(dictionaryTrack)),
+        [settings.dictionaryTracks]
+    );
+    const yomitanVersionPromisesRef = useRef<WeakMap<Yomitan, Promise<unknown>>>(new WeakMap());
+    const ensureYomitanVersion = useCallback(async () => {
+        await Promise.allSettled(
+            yomitans.map((yomitan) => {
+                const cached = yomitanVersionPromisesRef.current.get(yomitan);
+                if (cached) return cached;
+                const promise = yomitan.version().catch((e) => {
+                    yomitanVersionPromisesRef.current.delete(yomitan);
+                    throw e;
+                });
+                yomitanVersionPromisesRef.current.set(yomitan, promise);
+                return promise;
+            })
+        );
+    }, [yomitans]);
+    const disableKeyEventsRef = useRef<boolean>(disableKeyEvents);
+    disableKeyEventsRef.current = disableKeyEvents;
     const lengthRef = useRef<number>(0);
     lengthRef.current = length;
     const hiddenRef = useRef<boolean>(false);
@@ -763,6 +913,174 @@ export default function SubtitlePlayer({
             setTimeout(() => setHighlightedJumpToSubtitleIndex(undefined), 1000);
         }
     }, [jumpToSubtitle, subtitles, onSeek, onJumpToSubtitleHandled, clock]);
+
+    useEffect(() => {
+        const trimmed = findQuery.trim();
+        if (!findOpen || !trimmed || parseRegexQuery(findQuery) !== undefined || !yomitans.length) return;
+
+        let cancelled = false;
+        const timeout = setTimeout(async () => {
+            await ensureYomitanVersion();
+            if (cancelled) return;
+            const queryForms = new Set<string>([trimmed]);
+
+            const tokenizeResults = await Promise.allSettled(
+                yomitans.map((yt) => {
+                    try {
+                        return yt.tokenize(trimmed);
+                    } catch (e) {
+                        yomitanVersionPromisesRef.current.delete(yt);
+                        throw e;
+                    }
+                })
+            );
+            for (const result of tokenizeResults) {
+                if (result.status !== 'fulfilled') continue;
+                for (const tokenParts of result.value) {
+                    const tokenText = tokenParts
+                        .map((part) => part.text)
+                        .join('')
+                        .trim();
+                    if (tokenText) queryForms.add(tokenText);
+                }
+            }
+
+            const lemmaTerms = new Set<string>();
+            for (const queryForm of queryForms) {
+                const lemmaResults = await Promise.allSettled(
+                    yomitans.map((yt) => {
+                        try {
+                            return yt.lemmatize(queryForm);
+                        } catch (e) {
+                            yomitanVersionPromisesRef.current.delete(yt);
+                            throw e;
+                        }
+                    })
+                );
+                for (const result of lemmaResults) {
+                    if (result.status !== 'fulfilled') continue;
+                    for (const lemma of result.value ?? []) lemmaTerms.add(lemma);
+                }
+            }
+
+            if (cancelled) return;
+            setFindExpansion({ query: trimmed, terms: normalizedLookupTerms(...queryForms, ...lemmaTerms) });
+        }, 300);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeout);
+        };
+    }, [findQuery, findOpen, yomitans, ensureYomitanVersion]);
+
+    const findMatches = useMemo(() => {
+        const trimmed = findQuery.trim();
+        if (!findOpen || !subtitles || !subtitles.length || !trimmed) return [];
+
+        const matches: number[] = [];
+        const regex = parseRegexQuery(findQuery);
+        if (regex) {
+            for (const [i, subtitle] of subtitles.entries()) {
+                const searchableText = subtitleSearchableText(subtitle);
+                if (regex.test(searchableText)) matches.push(i);
+            }
+        } else {
+            const terms = normalizedLookupTerms(trimmed).concat(
+                findExpansion.query === trimmed ? findExpansion.terms : []
+            );
+            for (const [i, subtitle] of subtitles.entries()) {
+                const normalized = normalizeSearchText(subtitleSearchableText(subtitle));
+                if (terms.some((term) => normalized.includes(term))) matches.push(i);
+            }
+        }
+        return matches;
+    }, [findOpen, subtitles, findQuery, findExpansion]);
+    const findMatchesRef = useRef(findMatches);
+    findMatchesRef.current = findMatches;
+    const visibleRangeRef = useRef<ListRange>({ startIndex: 0, endIndex: 0 });
+    const handleVisibleRangeChanged = useCallback((range: ListRange) => {
+        visibleRangeRef.current = range;
+    }, []);
+
+    const scrollToFindMatch = useCallback((subtitleIndex: number) => {
+        lastScrollTimestampRef.current = Date.now();
+        if (!hiddenRef.current) {
+            virtuosoRef.current?.scrollToIndex({
+                index: subtitleIndex,
+                align: 'center',
+                behavior: 'auto',
+            });
+        }
+        setHighlightedJumpToSubtitleIndex(subtitleIndex);
+    }, []);
+
+    useEffect(() => {
+        if (!findOpen) return;
+        const trimmed = findQuery.trim();
+        const searchCompleted =
+            !trimmed || parseRegexQuery(findQuery) !== undefined || !yomitans.length || findExpansion.query === trimmed;
+        if (!searchCompleted) return;
+        const matches = findMatches;
+        if (!matches.length) {
+            setHighlightedJumpToSubtitleIndex(undefined);
+            setCurrentMatchPosition(0);
+            return;
+        }
+        const firstVisibleIndex = visibleRangeRef.current.startIndex;
+        const matchPosition = Math.max(
+            0,
+            matches.findIndex((subtitleIndex) => subtitleIndex >= firstVisibleIndex)
+        );
+        setCurrentMatchPosition(matchPosition);
+        scrollToFindMatch(matches[matchPosition]);
+    }, [findMatches, findOpen, findQuery, findExpansion.query, yomitans.length, scrollToFindMatch]);
+
+    const navigateFindMatch = useCallback(
+        (delta: number) => {
+            const matches = findMatchesRef.current;
+            if (!matches.length) return;
+            setCurrentMatchPosition((current) => {
+                const next = (current + delta + matches.length) % matches.length;
+                scrollToFindMatch(matches[next]);
+                return next;
+            });
+        },
+        [scrollToFindMatch]
+    );
+
+    const handleFindNext = useCallback(() => navigateFindMatch(1), [navigateFindMatch]);
+    const handleFindPrevious = useCallback(() => navigateFindMatch(-1), [navigateFindMatch]);
+
+    const handleCloseFind = useCallback(() => {
+        setFindOpen(false);
+        setFindQuery('');
+        setCurrentMatchPosition(0);
+        setHighlightedJumpToSubtitleIndex(undefined);
+    }, []);
+
+    useEffect(() => {
+        const handleGlobalKeyDown = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === 'f' || event.key === 'F')) {
+                if (disableKeyEventsRef.current || !subtitleListRef.current || !subtitleListRef.current.length) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                setFindOpen(true);
+                requestAnimationFrame(() => {
+                    findInputRef.current?.focus();
+                    findInputRef.current?.select();
+                });
+            }
+        };
+
+        document.addEventListener('keydown', handleGlobalKeyDown, true);
+        return () => document.removeEventListener('keydown', handleGlobalKeyDown, true);
+    }, []);
+
+    const findResultsLabel = findQuery.trim()
+        ? `${findMatches.length ? currentMatchPosition + 1 : 0}/${findMatches.length}`
+        : '';
 
     const currentMockSubtitle = useCallback(() => {
         const timestamp = clock.time(length);
@@ -1194,6 +1512,7 @@ export default function SubtitlePlayer({
                 components={subtitleTableComponents}
                 itemContent={renderSubtitleRow}
                 computeItemKey={computeSubtitleItemKey}
+                rangeChanged={handleVisibleRangeChanged}
                 style={{ height: '100%' }}
             />
         );
@@ -1209,6 +1528,19 @@ export default function SubtitlePlayer({
                 userSelect: isResizing || dragging ? 'none' : undefined,
             }}
         >
+            {findOpen && (
+                <SubtitleFindBar
+                    inputRef={findInputRef}
+                    query={findQuery}
+                    placeholder={t('action.findPlaceholder')}
+                    resultsLabel={findResultsLabel}
+                    hasMatches={findMatches.length > 0}
+                    onQueryChange={setFindQuery}
+                    onNext={handleFindNext}
+                    onPrevious={handleFindPrevious}
+                    onClose={handleCloseFind}
+                />
+            )}
             {subtitleContent}
             {resizable && (
                 <ResizeHandle isResizing={isResizing} onMouseDown={enableResize} onTouchStart={enableResize} />

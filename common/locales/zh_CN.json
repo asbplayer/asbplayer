@@ -34,7 +34,8 @@
         "revert": "还原",
         "userGuide": "用户指南",
         "search": "Search",
-        "reload": "Reload"
+        "reload": "Reload",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "关于 asbplayer",

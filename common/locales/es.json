@@ -34,7 +34,8 @@
         "revert": "Revertir",
         "userGuide": "Guía de usuario",
         "search": "Search",
-        "reload": "Reload"
+        "reload": "Reload",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "Acerca de asbplayer",

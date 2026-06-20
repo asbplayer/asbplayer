@@ -523,6 +523,27 @@ export function normalizeForSearch(text: string): string {
         .normalize('NFC');
 }
 
+export function normalizeSearchText(text: string): string {
+    return text.normalize('NFKC').trim().toLocaleLowerCase();
+}
+
+export function normalizedLookupTerms(...texts: Array<string | null | undefined>): string[] {
+    return Array.from(
+        new Set(
+            texts
+                .flatMap((text) => {
+                    if (!text) return [];
+                    const normalized = normalizeForSearch(text);
+                    if (!normalized.length || normalized === text) return [text];
+                    return [text, normalized];
+                })
+                .filter((text) => Boolean(text))
+                .map(normalizeSearchText)
+                .filter((text) => text.length)
+        )
+    );
+}
+
 // https://stackoverflow.com/questions/63116039/camelcase-to-kebab-case
 function kebabize(str: string) {
     const kebabized = str.replace(/[A-Z]+(?![a-z])|[A-Z]/g, ($, ofs) => (ofs ? '-' : '') + $.toLowerCase());

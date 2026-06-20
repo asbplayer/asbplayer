@@ -34,7 +34,8 @@
         "revert": "元に戻す",
         "userGuide": "ユーザーガイド",
         "search": "検索",
-        "reload": "再読み込み"
+        "reload": "再読み込み",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "asbplayerについて",

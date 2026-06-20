@@ -34,7 +34,8 @@
         "revert": "Kembalikan",
         "userGuide": "Panduan Pengguna",
         "search": "Search",
-        "reload": "Reload"
+        "reload": "Reload",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "Tentang asbplayer",
