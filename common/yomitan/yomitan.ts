@@ -371,7 +371,7 @@ export class Yomitan {
 
     private cacheFromTokenize(
         tokenizeResult: TokenizeResult,
-        tokensForText: TokenPartResult[][],
+        tokensForText: TokenPart[][],
         newlines: { text: string; index: number }[]
     ): void {
         let currIndex = 0;
@@ -387,7 +387,7 @@ export class Yomitan {
                 tokensForText.push([{ text, reading: '' }]);
                 currIndex += text.length;
             }
-            tokensForText.push(tokenParts);
+            tokensForText.push(tokenParts.map((p) => ({ text: p.text, reading: p.reading })));
             const token = tokenText.trim();
 
             if (!this.lemmatizeCache.has(token)) this.extractLemmaFromMecab(token, tokenPart);
