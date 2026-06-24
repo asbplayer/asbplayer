@@ -645,7 +645,6 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             });
         if (!needsReset) {
             // Preserve the existing tokenization cache here so callers don't need to be aware of it.
-            // Don't update richText or richTextOnHover as they are derived per render target and not cached internally.
             for (const s of subtitles) {
                 (s as InternalSubtitleModel).text = this._subtitles[s.index].text;
                 s.tokenization = this._subtitles[s.index].tokenization;
@@ -1967,7 +1966,7 @@ export interface RenderedRichText {
     richTextOnHover?: string;
 }
 
-export interface CachedRenderedRichText extends RenderedRichText {
+interface CachedRenderedRichText extends RenderedRichText {
     text: string;
     tokenization?: Tokenization;
     tokenAnnotationTarget: TokenAnnotationConfigTarget;
@@ -1981,9 +1980,9 @@ const cachedRichTextIsCurrent = (
     dictionaryTracks: DictionaryTrack[] | undefined
 ) =>
     cached.text === subtitle.text &&
-    cached.tokenization === subtitle.tokenization &&
+    areTokenizationsEqual(cached.tokenization, subtitle.tokenization) &&
     cached.tokenAnnotationTarget === tokenAnnotationTarget &&
-    cached.dictionaryTracks === dictionaryTracks;
+    cached.dictionaryTracks?.every((dt, i) => areDictionaryTracksEqual(dt, dictionaryTracks?.[i]));
 
 interface IndexRange {
     min: number;
@@ -2052,11 +2051,9 @@ export const renderRichTextWindow = (
     tokenAnnotationTarget: TokenAnnotationConfigTarget,
     dictionaryTracks: DictionaryTrack[] | undefined
 ): RichTextWindow => {
-    if (!windowSubtitles.length) return { range: undefined, buffer: new Map() };
-    const range: IndexRange = {
-        min: Math.min(...windowSubtitles.map((s) => s.index)),
-        max: Math.max(...windowSubtitles.map((s) => s.index)),
-    };
+    if (!windowSubtitles.length) return emptyRichTextWindow();
+    const windowSubtitleIndexes = windowSubtitles.map((s) => s.index);
+    const range: IndexRange = { min: Math.min(...windowSubtitleIndexes), max: Math.max(...windowSubtitleIndexes) };
     const buffer = new Map<number, CachedRenderedRichText>();
 
     const toRender: RichTextRenderable[] = [];

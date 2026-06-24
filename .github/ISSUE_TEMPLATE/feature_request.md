@@ -6,7 +6,7 @@ labels: ''
 assignees: ''
 ---
 
-Before submitting a feature request, please look through the asbplayer readme (https://github.com/asbplayer/asbplayer) and settings (https://app.asbplayer.dev/?view=settings)
+Before submitting a feature request, please look through the asbplayer readme (https://github.com/asbplayer/asbplayer), docs (https://docs.asbplayer.dev/docs/reference/settings), and settings (https://app.asbplayer.dev/?view=settings)
 to be sure that your feature request isn't already implemented.
 
 **Is your feature request related to a problem? Please describe.**

@@ -74,6 +74,8 @@ import { MineSubtitleCommand, WebSocketClient } from '../../web-socket-client';
 import { clampSubtitlePlayerWidth } from './video-subtitle-split';
 import './subtitles.css';
 
+const findDelayMs = 300;
+
 let lastKnownWidth: number | undefined;
 export const minSubtitlePlayerWidth = 200;
 const calculateInitialWidth = () => lastKnownWidth ?? Math.max(350, 0.25 * window.innerWidth);
@@ -262,7 +264,7 @@ const parseRegexQuery = (query: string): RegExp | undefined => {
 
 const subtitleSearchableText = (subtitle: DisplaySubtitleModel): string => {
     const tokens = subtitle.tokenization?.tokens;
-    if (!tokens || !tokens.length) return subtitle.text;
+    if (!tokens?.length) return subtitle.text;
     let readings = '';
     for (const token of tokens) {
         for (const reading of token.readings) {
@@ -1016,7 +1018,7 @@ export default function SubtitlePlayer({
 
             if (cancelled) return;
             setFindExpansion({ query: trimmed, terms: normalizedLookupTerms(...queryForms, ...lemmaTerms) });
-        }, 300);
+        }, findDelayMs);
 
         return () => {
             cancelled = true;

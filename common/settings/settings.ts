@@ -536,8 +536,10 @@ export function compareDTField<K extends keyof DictionaryTrack>(
     return dictionaryTrackComparators[key](a[key], b[key]);
 }
 
-export function areDictionaryTracksEqual(dt1: DictionaryTrack, dt2: DictionaryTrack): boolean {
+export function areDictionaryTracksEqual(dt1: DictionaryTrack | undefined, dt2: DictionaryTrack | undefined): boolean {
     if (dt1 === dt2) return true;
+    if (!dt1 || !dt2) return false;
+
     for (const key in dictionaryTrackComparators) {
         if (!compareDTField(key as keyof DictionaryTrack, dt1, dt2)) {
             return false;
