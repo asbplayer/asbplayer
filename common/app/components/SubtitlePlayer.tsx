@@ -207,31 +207,6 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
     },
 }));
 
-const useFindBarStyles = makeStyles<Theme>((theme) => ({
-    findBar: {
-        position: 'absolute',
-        top: theme.spacing(1),
-        right: theme.spacing(2),
-        // Keep the bar within the panel (e.g. a narrow side panel), leaving an equal margin on both sides.
-        maxWidth: `calc(100% - ${theme.spacing(4)})`,
-        boxSizing: 'border-box',
-        zIndex: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: theme.spacing(0.25),
-        paddingLeft: theme.spacing(1),
-        paddingRight: theme.spacing(0.5),
-        paddingTop: theme.spacing(0.5),
-        paddingBottom: theme.spacing(0.5),
-    },
-    findCount: {
-        whiteSpace: 'nowrap',
-        color: theme.palette.text.secondary,
-        minWidth: 32,
-        textAlign: 'right',
-    },
-}));
-
 export interface DisplaySubtitleModel extends IndexedSubtitleModel {
     displayTime: string;
 }
@@ -511,10 +486,26 @@ const SubtitleFindBar = ({
     onPrevious,
     onClose,
 }: SubtitleFindBarProps) => {
-    const classes = useFindBarStyles();
-
     return (
-        <Paper elevation={6} className={classes.findBar}>
+        <Paper
+            elevation={6}
+            sx={(theme) => ({
+                position: 'absolute',
+                top: theme.spacing(1),
+                right: theme.spacing(2),
+                // Keep the bar within the panel (e.g. a narrow side panel), leaving an equal margin on both sides.
+                maxWidth: `calc(100% - ${theme.spacing(4)})`,
+                boxSizing: 'border-box',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                gap: theme.spacing(0.25),
+                paddingLeft: theme.spacing(1),
+                paddingRight: theme.spacing(0.5),
+                paddingTop: theme.spacing(0.5),
+                paddingBottom: theme.spacing(0.5),
+            })}
+        >
             <TextField
                 inputRef={inputRef}
                 autoFocus
@@ -535,9 +526,17 @@ const SubtitleFindBar = ({
                     }
                 }}
                 slotProps={{ htmlInput: { size: placeholder.length } }}
-                style={{ flexGrow: 0, flexShrink: 1, minWidth: 0 }}
+                sx={{ flexGrow: 0, flexShrink: 1, minWidth: 0 }}
             />
-            <Typography variant="caption" className={classes.findCount}>
+            <Typography
+                variant="caption"
+                sx={(theme) => ({
+                    whiteSpace: 'nowrap',
+                    color: theme.palette.text.secondary,
+                    minWidth: 32,
+                    textAlign: 'right',
+                })}
+            >
                 {resultsLabel}
             </Typography>
             <IconButton size="small" disabled={!hasMatches} onClick={onPrevious}>
