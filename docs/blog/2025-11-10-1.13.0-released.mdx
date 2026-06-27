@@ -1,0 +1,22 @@
+---
+slug: 1.13.0-released
+title: Extension v1.13.0 released
+authors: [killergerbah]
+tags: []
+---
+
+Extension v1.13.0 was released a few days ago in response to reports of broken compatibility with YouTube.
+
+<!-- truncate -->
+
+This release was expedited to fix issues exporting cards on YouTube due to the mp3 encoding worker running inside the page,
+where YouTube has been recently enforcing different CSP policies for different users.
+
+The rest of the release consisted of contributions from the community:
+
+- Bulk card export from [@agloo](https://github.com/agloo). This was a big, difficult feature that a lot of people wanted. Thank you!
+- The WebSocket client is now enabled on Firefox, thanks to [@mwojick](https://github.com/mwojick) taking the intiative to test it out.
+- [@ShanaryS](https://github.com/ShanaryS) implemented support for internal Plex subtitles, through careful and meticulous application of the newly-released Plex API docs.
+- [@Bennycopter](https://github.com/Bennycopter) and [@extremq](https://github.com/extremq) added subtitle detection for [Comprehensible Japanese](https://cijapanese.com/watch).
+
+Thanks everyone!

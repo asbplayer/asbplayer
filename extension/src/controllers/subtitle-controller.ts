@@ -12,15 +12,26 @@ import {
     RichSubtitleModel,
 } from '@project/common';
 import {
+    AutoCopyableTracks,
     DictionaryTrack,
+    SeekableTracks,
     SettingsProvider,
     SubtitleAlignment,
     SubtitleSettings,
     TextSubtitleSettings,
     allTextSubtitleSettings,
+    calculateAutoCopyableTracksValue,
+    calculateSeekableTracksValue,
+    isTrackAutoCopyable,
+    isTrackSeekable,
+    tokenAnnotationStyleValues,
 } from '@project/common/settings';
-import { SubtitleSlice } from '@project/common/subtitle-collection';
-import { renderRichTextOntoSubtitles, SubtitleColoring } from '@project/common/subtitle-coloring';
+import { SubtitleCollection, SubtitleCollectionOptions, SubtitleSlice } from '@project/common/subtitle-collection';
+import {
+    renderRichTextOntoSubtitles,
+    getAnnotationsHtml,
+    SubtitleAnnotations,
+} from '@project/common/subtitle-annotations';
 import { arrayEquals, computeStyleString, surroundingSubtitles } from '@project/common/util';
 import i18n from 'i18next';
 import {
@@ -32,6 +43,7 @@ import {
 } from '../services/element-overlay';
 import { v4 as uuidv4 } from 'uuid';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import Binding from '@/services/binding';
 
 const BOUNDING_BOX_PADDING = 25;
 
@@ -68,7 +80,7 @@ class VideoFetcher implements Fetcher {
 }
 
 export default class SubtitleController {
-    private readonly video: HTMLMediaElement;
+    private readonly context: Binding;
     private readonly dictionary: DictionaryProvider;
     private readonly settings: SettingsProvider;
 
@@ -82,7 +94,14 @@ export default class SubtitleController {
     private subtitleStyles?: string[];
     private subtitleClasses?: string[];
     private notificationElementOverlayHideTimeout?: NodeJS.Timeout;
-    subtitleColoring: SubtitleColoring;
+    subtitleAnnotations: SubtitleAnnotations;
+    /**
+     * Seekable subittle collection is a subtitle collection that contains gap intervals for only "seekable" tracks.
+     * Seekable tracks are eligible for play mode behavior, like condensed mode. This separate collection is needed
+     * because the gap intervals are used to calculate the next subtitle for condensed mode, and this separate
+     * collection excludes all subtitles that are not configured as "seekable.""
+     */
+    private seekableSubtitleCollection: SubtitleCollection<IndexedSubtitleModel>;
     private bottomSubtitlesElementOverlay: ElementOverlay;
     private topSubtitlesElementOverlay: ElementOverlay;
     private notificationElementOverlay: ElementOverlay;
@@ -97,22 +116,23 @@ export default class SubtitleController {
     surroundingSubtitlesCountRadius: number;
     surroundingSubtitlesTimeRadius: number;
     autoCopyCurrentSubtitle: boolean;
+    autoCopyableTracks: AutoCopyableTracks = calculateAutoCopyableTracksValue([0]);
     convertNetflixRuby: boolean;
     subtitleHtml: SubtitleHtml;
     refreshCurrentSubtitle: boolean;
     _preCacheDom;
     dictionaryTrackSettings?: DictionaryTrack[];
+    autoPauseContext: AutoPauseContext = new AutoPauseContext();
+    _seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
 
-    readonly autoPauseContext: AutoPauseContext = new AutoPauseContext();
-
-    onNextToShow?: (subtitle: SubtitleModel) => void;
-    onSlice?: (subtitle: SubtitleSlice<IndexedSubtitleModel>) => void;
+    onNextSeekableToShow?: (subtitle: SubtitleModel) => void;
+    onSeekableSlice?: (subtitle: SubtitleSlice<IndexedSubtitleModel>) => void;
     onOffsetChange?: () => void;
     onMouseOver?: (event: MouseEvent) => void;
     onMouseOut?: (event: MouseEvent) => void;
 
-    constructor(video: HTMLMediaElement, dictionary: DictionaryProvider, settings: SettingsProvider) {
-        this.video = video;
+    constructor(context: Binding, dictionary: DictionaryProvider, settings: SettingsProvider) {
+        this.context = context;
         this.dictionary = dictionary;
         this.settings = settings;
         this._preCacheDom = false;
@@ -138,30 +158,48 @@ export default class SubtitleController {
         this.bottomSubtitlesElementOverlay = subtitlesElementOverlay;
         this.topSubtitlesElementOverlay = topSubtitlesElementOverlay;
         this.notificationElementOverlay = notificationElementOverlay;
-        this.subtitleColoring = new SubtitleColoring(
+        const subtitleCollectionOptions: SubtitleCollectionOptions = {
+            showingCheckRadiusMs: 150,
+            returnLastShown: true,
+            returnNextToShow: true,
+        };
+        this.subtitleAnnotations = new SubtitleAnnotations(
             this.dictionary,
             this.settings,
-            { showingCheckRadiusMs: 150 },
-            (updatedSubtitles) => this._subtitleColorsUpdated(updatedSubtitles),
-            () => this.video.currentTime * 1000,
-            new VideoFetcher(() => this.video.src)
+            subtitleCollectionOptions,
+            this.context.registeredVideoSrc,
+            (updatedSubtitles) => this._subtitleAnnotationsUpdated(updatedSubtitles),
+            () => this.context.video.currentTime * 1000,
+            new VideoFetcher(() => this.context.registeredVideoSrc)
         );
+        this.seekableSubtitleCollection = new SubtitleCollection(subtitleCollectionOptions);
     }
 
     get subtitles() {
-        return this.subtitleColoring.subtitles;
+        return this.subtitleAnnotations.subtitles;
     }
 
     set subtitles(subtitles) {
-        this.subtitleColoring.setSubtitles(subtitles);
+        this.subtitleAnnotations.setSubtitles(subtitles);
+        this.seekableSubtitleCollection.setSubtitles(
+            subtitles.filter((s) => isTrackSeekable(this._seekableTracks, s.track))
+        );
         this.autoPauseContext.clear();
+    }
+
+    set seekableTracks(seekableTracks: SeekableTracks) {
+        this._seekableTracks = seekableTracks;
+        this.seekableSubtitleCollection.setSubtitles(
+            this.subtitleAnnotations.subtitles.filter((s) => isTrackSeekable(this._seekableTracks, s.track))
+        );
     }
 
     reset() {
         this.subtitles = [];
         this.subtitleFileNames = undefined;
         this.cacheHtml();
-        this.subtitleColoring.reset();
+        this.subtitleAnnotations.reset();
+        this.seekableSubtitleCollection.setSubtitles([]);
     }
 
     cacheHtml() {
@@ -241,7 +279,11 @@ export default class SubtitleController {
     }
 
     private _computeStyles(settings: SubtitleSettings) {
-        return allTextSubtitleSettings(settings).map((s) => computeStyleString(s));
+        return allTextSubtitleSettings(settings).map((s, track) => {
+            const dt = this.dictionaryTrackSettings?.[track];
+            const annotationStyleValues = tokenAnnotationStyleValues(dt?.dictionaryTokenAnnotationConfig.video);
+            return computeStyleString(s, annotationStyleValues);
+        });
     }
 
     private _computeClasses(settings: SubtitleSettings) {
@@ -287,7 +329,7 @@ export default class SubtitleController {
 
     private _elementOverlayParams() {
         const subtitleOverlayParams: ElementOverlayParams = {
-            targetElement: this.video,
+            targetElement: this.context.video,
             nonFullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
             nonFullscreenContentClassName: 'asbplayer-subtitles',
             fullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
@@ -298,7 +340,7 @@ export default class SubtitleController {
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
         const topSubtitleOverlayParams: ElementOverlayParams = {
-            targetElement: this.video,
+            targetElement: this.context.video,
             nonFullscreenContainerClassName: 'asbplayer-subtitles-container-top',
             nonFullscreenContentClassName: 'asbplayer-subtitles',
             fullscreenContainerClassName: 'asbplayer-subtitles-container-top',
@@ -311,7 +353,7 @@ export default class SubtitleController {
         const notificationOverlayParams: ElementOverlayParams =
             this._getSubtitleTrackAlignment(0) === 'bottom'
                 ? {
-                      targetElement: this.video,
+                      targetElement: this.context.video,
                       nonFullscreenContainerClassName: 'asbplayer-notification-container-top',
                       nonFullscreenContentClassName: 'asbplayer-notification',
                       fullscreenContainerClassName: 'asbplayer-notification-container-top',
@@ -322,7 +364,7 @@ export default class SubtitleController {
                       onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
                   }
                 : {
-                      targetElement: this.video,
+                      targetElement: this.context.video,
                       nonFullscreenContainerClassName: 'asbplayer-notification-container-bottom',
                       nonFullscreenContentClassName: 'asbplayer-notification',
                       fullscreenContainerClassName: 'asbplayer-notification-container-bottom',
@@ -336,11 +378,7 @@ export default class SubtitleController {
         return { subtitleOverlayParams, topSubtitleOverlayParams, notificationOverlayParams };
     }
 
-    private _subtitleColorsUpdated(updatedSubtitles: RichSubtitleModel[]): void {
-        if (this.dictionaryTrackSettings) {
-            renderRichTextOntoSubtitles(updatedSubtitles, this.dictionaryTrackSettings);
-        }
-
+    private _subtitleAnnotationsUpdated(updatedSubtitles: RichSubtitleModel[]): void {
         const htmls = this._buildSubtitlesHtml(updatedSubtitles);
         for (const [index, updatedSubtitle] of updatedSubtitles.entries()) {
             const html = htmls[index];
@@ -366,13 +404,13 @@ export default class SubtitleController {
                 command: 'subtitlesUpdated',
                 updatedSubtitles,
             },
-            src: this.video.src,
+            src: this.context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(command);
     }
 
     bind() {
-        this.subtitleColoring.bind();
+        this.subtitleAnnotations.bind();
 
         this.subtitlesInterval = setInterval(() => {
             if (this.lastLoadedMessageTimestamp > 0 && Date.now() - this.lastLoadedMessageTimestamp < 1000) {
@@ -391,10 +429,12 @@ export default class SubtitleController {
 
             const showOffset = this.lastOffsetChangeTimestamp > 0 && Date.now() - this.lastOffsetChangeTimestamp < 1000;
             const offset = showOffset ? this._computeOffset() : 0;
-            const slice = this.subtitleColoring.subtitlesAt(this.video.currentTime * 1000);
+            const slice = this.subtitleAnnotations.subtitlesAt(this.context.video.currentTime * 1000);
+            const seekableSlice = this.seekableSubtitleCollection.subtitlesAt(this.context.video.currentTime * 1000);
+
             const showingSubtitles = this._findShowingSubtitles(slice);
 
-            this.onSlice?.(slice);
+            this.onSeekableSlice?.(seekableSlice);
 
             if (slice.willStopShowing && this._trackEnabled(slice.willStopShowing)) {
                 this.autoPauseContext.willStopShowing(slice.willStopShowing);
@@ -404,8 +444,8 @@ export default class SubtitleController {
                 this.autoPauseContext.startedShowing(slice.startedShowing);
             }
 
-            if (slice.nextToShow && slice.nextToShow.length > 0) {
-                this.onNextToShow?.(slice.nextToShow[0]);
+            if (seekableSlice.nextToShow && seekableSlice.nextToShow.length > 0) {
+                this.onNextSeekableToShow?.(seekableSlice.nextToShow[0]);
             }
 
             const subtitlesAreNew =
@@ -479,6 +519,7 @@ export default class SubtitleController {
     private _autoCopyToClipboard(subtitles: SubtitleModel[]) {
         if (this.autoCopyCurrentSubtitle && subtitles.length > 0 && document.hasFocus()) {
             const text = subtitles
+                .filter((s) => isTrackAutoCopyable(this.autoCopyableTracks, s.track))
                 .map((s) => s.text)
                 .filter((text) => text !== '')
                 .join('\n');
@@ -490,7 +531,7 @@ export default class SubtitleController {
                         command: 'copy-to-clipboard',
                         dataUrl: `data:,${encodeURIComponent(text)}`,
                     },
-                    src: this.video.src,
+                    src: this.context.registeredVideoSrc,
                 };
 
                 browser.runtime.sendMessage(command);
@@ -507,6 +548,8 @@ export default class SubtitleController {
     }
 
     private _buildSubtitlesHtml(subtitles: IndexedSubtitleModel[]) {
+        if (this.dictionaryTrackSettings) renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings);
+
         return subtitles.map((subtitle) => {
             return {
                 html: () => {
@@ -514,7 +557,7 @@ export default class SubtitleController {
                         const className = this.subtitleClasses?.[subtitle.track] ?? '';
                         const imageScale =
                             ((this.subtitleSettings?.imageBasedSubtitleScaleFactor ?? 1) *
-                                this.video.getBoundingClientRect().width) /
+                                this.context.video.getBoundingClientRect().width) /
                             subtitle.textImage.screen.width;
                         const width = imageScale * subtitle.textImage.image.width;
 
@@ -530,7 +573,12 @@ export default class SubtitleController {
                             </div>
                         `;
                     } else {
-                        return this._buildTextHtml(subtitle.text, subtitle.track, subtitle.richText);
+                        return this._buildTextHtml(
+                            subtitle.text,
+                            subtitle.track,
+                            subtitle.richText,
+                            subtitle.richTextOnHover
+                        );
                     }
                 },
                 key: String(subtitle.index),
@@ -538,15 +586,14 @@ export default class SubtitleController {
         });
     }
 
-    private _buildTextHtml(text: string, track?: number, richText?: string) {
-        if (richText && this.subtitleColoring.hoverOnly(track!)) {
-            return `<span data-track="${track!}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(track)}"><span class="asbplayer-subtitle-text">${text}</span><span class="asbplayer-subtitle-rich">${richText}</span></span>`;
-        }
-        return `<span data-track="${track ?? 0}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(track)}">${richText ?? text}</span>`;
+    private _buildTextHtml(text: string, track?: number, richText?: string, richTextOnHover?: string) {
+        return `<span data-track="${track ?? 0}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(
+            track
+        )}">${getAnnotationsHtml(text, richText, richTextOnHover)}</span>`;
     }
 
     unbind() {
-        this.subtitleColoring.unbind();
+        this.subtitleAnnotations.unbind();
 
         if (this.subtitlesInterval) {
             clearInterval(this.subtitlesInterval);
@@ -561,8 +608,8 @@ export default class SubtitleController {
         this.bottomSubtitlesElementOverlay.dispose();
         this.topSubtitlesElementOverlay.dispose();
         this.notificationElementOverlay.dispose();
-        this.onNextToShow = undefined;
-        this.onSlice = undefined;
+        this.onNextSeekableToShow = undefined;
+        this.onSeekableSlice = undefined;
         this.onOffsetChange = undefined;
         this.onMouseOver = undefined;
         this.onMouseOut = undefined;
@@ -574,8 +621,22 @@ export default class SubtitleController {
         this.notificationElementOverlay.refresh();
     }
 
+    subtitleAtIndex(index: number): [IndexedSubtitleModel | null, SubtitleModel[] | null] {
+        const subtitle = this.subtitles[index];
+        if (!subtitle) return [null, null];
+        return [
+            subtitle,
+            surroundingSubtitles(
+                this.subtitles,
+                index,
+                this.surroundingSubtitlesCountRadius,
+                this.surroundingSubtitlesTimeRadius
+            ),
+        ];
+    }
+
     currentSubtitle(): [IndexedSubtitleModel | null, SubtitleModel[] | null] {
-        const now = 1000 * this.video.currentTime;
+        const now = 1000 * this.context.video.currentTime;
         let subtitle = null;
         let index = null;
 
@@ -593,19 +654,8 @@ export default class SubtitleController {
             }
         }
 
-        if (subtitle === null || index === null) {
-            return [null, null];
-        }
-
-        return [
-            subtitle,
-            surroundingSubtitles(
-                this.subtitles,
-                index,
-                this.surroundingSubtitlesCountRadius,
-                this.surroundingSubtitlesTimeRadius
-            ),
-        ];
+        if (index === null) return [null, null];
+        return this.subtitleAtIndex(index);
     }
 
     unblur(track: number) {
@@ -647,7 +697,7 @@ export default class SubtitleController {
                     command: 'offset',
                     value: offset,
                 },
-                src: this.video.src,
+                src: this.context.registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);

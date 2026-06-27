@@ -1,3 +1,7 @@
+import type { SubtitleTrack } from '../src/model';
+
+export type { SubtitleTrack };
+
 export interface MineSubtitleCommand {
     command: 'mine-subtitle';
     messageId: string;
@@ -40,6 +44,25 @@ export interface SeekTimestampCommand {
     };
 }
 
+export interface GetBoundMediaCommand {
+    command: 'get-bound-media';
+    messageId: string;
+    body: {};
+}
+
+export interface BoundMedia {
+    id: string; // Derived from a hash of `streaming:<tabId>:<src>` or `local:<asbplayerId>`.
+    type: 'streaming' | 'local';
+    title?: string;
+    faviconUrl?: string;
+    loadedSubtitles: SubtitleTrack[];
+    active: boolean;
+}
+
+interface GetBoundMediaResponseBody {
+    media: BoundMedia[];
+}
+
 export class WebSocketClient {
     private _socket?: WebSocket;
     private _pingInterval?: NodeJS.Timeout;
@@ -50,6 +73,7 @@ export class WebSocketClient {
     onMineSubtitle?: (command: MineSubtitleCommand) => Promise<boolean>;
     onLoadSubtitles?: (command: LoadSubtitlesCommand) => Promise<void>;
     onSeekTimestamp?: (command: SeekTimestampCommand) => Promise<void>;
+    onGetBoundMedia?: () => Promise<BoundMedia[]>;
 
     get socket() {
         return this._socket;
@@ -130,6 +154,17 @@ export class WebSocketClient {
                             body: {},
                         };
                         this._socket?.send(JSON.stringify(response));
+                    } else if (payload.command === 'get-bound-media') {
+                        if (this.onGetBoundMedia !== undefined) {
+                            const messageId = payload.messageId;
+                            const media = await this.onGetBoundMedia();
+                            const response: Response<GetBoundMediaResponseBody> = {
+                                command: 'response',
+                                messageId,
+                                body: { media },
+                            };
+                            this._socket?.send(JSON.stringify(response));
+                        }
                     }
                 }
             };
@@ -199,5 +234,6 @@ export class WebSocketClient {
         this.onMineSubtitle = undefined;
         this.onSeekTimestamp = undefined;
         this.onLoadSubtitles = undefined;
+        this.onGetBoundMedia = undefined;
     }
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { makeStyles } from '@mui/styles';
 import Fade from '@mui/material/Fade';
 import { type Theme } from '@mui/material';
-import { useAppBarHeight } from '../hooks/use-app-bar-height';
+import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 
 interface StylesProps {
     dragging: boolean;

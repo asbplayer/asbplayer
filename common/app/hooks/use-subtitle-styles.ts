@@ -1,5 +1,12 @@
 import { useMemo } from 'react';
-import { SubtitleSettings, TextSubtitleSettings, textSubtitleSettingsForTrack } from '../../settings';
+import {
+    DictionaryTrack,
+    SubtitleSettings,
+    TextSubtitleSettings,
+    textSubtitleSettingsForTrack,
+    TokenAnnotationConfigTarget,
+    tokenAnnotationStyleValues,
+} from '../../settings';
 import { computeStyleString, computeStyles } from '../../util';
 
 interface TrackStyles {
@@ -8,17 +15,26 @@ interface TrackStyles {
     classes: string;
 }
 
-export const useSubtitleStyles = (settings: SubtitleSettings, trackCount: number) => {
+export const useSubtitleStyles = (
+    settings: SubtitleSettings,
+    trackCount: number,
+    dictionaryTracks: DictionaryTrack[],
+    tokenAnnotationTarget: TokenAnnotationConfigTarget
+) => {
     return useMemo(() => {
         const tracks: TrackStyles[] = [];
         for (let track = 0; track < trackCount; ++track) {
             const s = textSubtitleSettingsForTrack(settings, track) as TextSubtitleSettings;
+            const dt = dictionaryTracks[track];
+            const annotationStyleValues = tokenAnnotationStyleValues(
+                dt.dictionaryTokenAnnotationConfig[tokenAnnotationTarget]
+            );
             tracks.push({
-                styles: computeStyles(s),
-                styleString: computeStyleString(s),
+                styles: computeStyles(s, annotationStyleValues),
+                styleString: computeStyleString(s, annotationStyleValues),
                 classes: s.subtitleBlur ? 'asbplayer-subtitles-blurred' : '',
             });
         }
         return tracks;
-    }, [settings, trackCount]);
+    }, [settings, trackCount, dictionaryTracks, tokenAnnotationTarget]);
 };

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Image,
-    ImageModel,
+    MediaFragmentModel,
     AudioModel,
     SubtitleModel,
     AnkiUiState,
@@ -65,8 +64,7 @@ export default function AnkiUi({ bridge }: Props) {
     const [surroundingSubtitles, setSurroundingSubtitles] = useState<SubtitleModel[]>();
     const [text, setText] = useState<string>();
     const [serializedAudio, setSerializedAudio] = useState<AudioModel>();
-    const [image, setImage] = useState<Image>();
-    const [serializedImage, setSerializedImage] = useState<ImageModel>();
+    const [serializedImage, setSerializedImage] = useState<MediaFragmentModel>();
     const [file, setFile] = useState<FileModel>();
     const [source, setSource] = useState<string>('');
     const [url, setUrl] = useState<string>('');
@@ -160,12 +158,11 @@ export default function AnkiUi({ bridge }: Props) {
             setSettings(s.settings);
             setActiveProfile(s.activeProfile);
             setProfiles(s.profiles);
-            setImage(image);
             setOpen(s.open);
             setFtueHasSeenAnkiDialogQuickSelect(s.ftueHasSeenAnkiDialogQuickSelect);
             setInTutorial(s.inTutorial);
         });
-    }, [bridge, image]);
+    }, [bridge]);
 
     useEffect(() => bridge.serverIsReady(), [bridge]);
 

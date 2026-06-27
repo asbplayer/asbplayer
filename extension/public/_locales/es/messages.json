@@ -21,12 +21,15 @@
         "message": "Tomar captura de pantalla manualmente, sobrescribiendo la que se toma automáticamente al minar"
     },
     "shortcutToggleRecordingDescription": {
-        "message": "Comenzar/Finalizar grabación de audio manualmente, incluso cuando hay una pista de subtítulos cargada."
+        "message": "Iniciar/detener manualmente la grabación de audio, incluso cuando se cargan los subtítulos."
     },
     "shortcutUpdateLastCardDescription": {
         "message": "Actualizar la última tarjeta de Anki creada con medios capturados por asbplayer. Cuando el video es sincronizado sin una pista de subtítulos, comienza/finaliza la grabación de audio."
     },
     "shortcutOpenSidePanel": {
         "message": "Abrir/Cerrar Panel Lateral"
+    },
+    "shortcutExportCardDescription": {
+        "message": "Exportar tarjeta a Anki, evitando el diálogo."
     }
 }

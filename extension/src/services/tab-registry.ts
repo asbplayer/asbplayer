@@ -6,8 +6,10 @@ import {
     ExtensionToAsbPlayerCommandTabsCommand,
     ExtensionToVideoCommand,
     Message,
+    SidePanelLocation,
     VideoHeartbeatMessage,
     VideoTabModel,
+    SubtitleTrack,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 
@@ -22,10 +24,12 @@ export interface Asbplayer {
     id: string;
     tab?: SlimTab;
     sidePanel?: boolean;
+    sidePanelAppRequestedLocation?: SidePanelLocation;
     timestamp: number;
     receivedTabs?: VideoTabModel[];
     videoPlayer: boolean;
     loadedSubtitles?: boolean;
+    subtitleTracks?: SubtitleTrack[];
     syncedVideoElement?: VideoTabModel;
 }
 
@@ -37,6 +41,7 @@ export interface VideoElement {
     synced: boolean;
     syncedTimestamp?: number;
     loadedSubtitles?: boolean;
+    subtitleTracks?: SubtitleTrack[];
 }
 
 export default class TabRegistry {
@@ -68,6 +73,14 @@ export default class TabRegistry {
                 this._removeVideoElementsInTab(tabId);
                 this._removeAsbplayersInTab(tabId);
             }
+        });
+
+        // A replaced tab (e.g. Chrome reactivating a discarded tab under a new id) fires
+        // onReplaced, not onRemoved, for the old id...without this the old id's bound
+        // media would remain in the registry forever.
+        browser.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
+            this._removeVideoElementsInTab(removedTabId);
+            this._removeAsbplayersInTab(removedTabId);
         });
     }
 
@@ -187,8 +200,10 @@ export default class TabRegistry {
             id: asbplayerId,
             videoPlayer,
             sidePanel,
+            sidePanelAppRequestedLocation,
             receivedTabs,
             loadedSubtitles,
+            subtitleTracks,
             syncedVideoElement,
         }: AsbplayerHeartbeatMessage
     ) {
@@ -197,7 +212,9 @@ export default class TabRegistry {
             asbplayerId,
             videoPlayer,
             sidePanel ?? false,
+            sidePanelAppRequestedLocation,
             loadedSubtitles ?? false,
+            subtitleTracks,
             receivedTabs,
             syncedVideoElement
         );
@@ -208,7 +225,7 @@ export default class TabRegistry {
                 message: {
                     command: 'tabs',
                     tabs: await this.activeVideoElements(),
-                    asbplayers: await this._asbplayerInstances(),
+                    asbplayers: await this.asbplayerInstances(),
                     ackRequested: false,
                 },
             };
@@ -225,14 +242,25 @@ export default class TabRegistry {
 
     async onAsbplayerAckTabs(
         tab: Browser.tabs.Tab | undefined,
-        { id: asbplayerId, videoPlayer, sidePanel, loadedSubtitles, receivedTabs, syncedVideoElement }: AckTabsMessage
+        {
+            id: asbplayerId,
+            videoPlayer,
+            sidePanel,
+            sidePanelAppRequestedLocation,
+            loadedSubtitles,
+            subtitleTracks,
+            receivedTabs,
+            syncedVideoElement,
+        }: AckTabsMessage
     ) {
         this._updateAsbplayers(
             tab,
             asbplayerId,
             videoPlayer,
             sidePanel ?? false,
+            sidePanelAppRequestedLocation,
             loadedSubtitles ?? false,
+            subtitleTracks,
             receivedTabs,
             syncedVideoElement
         );
@@ -243,7 +271,9 @@ export default class TabRegistry {
         asbplayerId: string,
         videoPlayer: boolean,
         sidePanel: boolean,
+        sidePanelAppRequestedLocation: SidePanelLocation | undefined,
         loadedSubtitles: boolean,
+        subtitleTracks: SubtitleTrack[] | undefined,
         receivedTabs: VideoTabModel[] | undefined,
         syncedVideoElement: VideoTabModel | undefined
     ) {
@@ -263,11 +293,23 @@ export default class TabRegistry {
                 timestamp: Date.now(),
                 receivedTabs,
                 sidePanel,
+                sidePanelAppRequestedLocation,
                 loadedSubtitles,
+                subtitleTracks,
                 videoPlayer,
                 syncedVideoElement,
             };
             return true;
+        });
+    }
+
+    async onAsbplayerRemoved(id: string) {
+        await this._asbplayers((asbplayers) => {
+            if (id in asbplayers) {
+                delete asbplayers[id];
+                return true;
+            }
+            return false;
         });
     }
 
@@ -286,6 +328,8 @@ export default class TabRegistry {
                     src: videoElement.src,
                     subscribed: videoElement.subscribed,
                     synced: videoElement.synced,
+                    loadedSubtitles: videoElement.loadedSubtitles ?? false,
+                    subtitleTracks: videoElement.subtitleTracks,
                     syncedTimestamp: videoElement.syncedTimestamp,
                 };
                 activeVideoElements.push(element);
@@ -295,7 +339,7 @@ export default class TabRegistry {
         return activeVideoElements;
     }
 
-    private async _asbplayerInstances() {
+    async asbplayerInstances() {
         const asbplayers = await this._asbplayers();
         const asbplayerInstances: AsbplayerInstance[] = [];
 
@@ -306,6 +350,9 @@ export default class TabRegistry {
                 sidePanel: asbplayer.sidePanel ?? false,
                 timestamp: asbplayer.timestamp,
                 videoPlayer: asbplayer.videoPlayer,
+                loadedSubtitles: asbplayer.loadedSubtitles ?? false,
+                subtitleTracks: asbplayer.subtitleTracks,
+                syncedVideoElement: asbplayer.syncedVideoElement,
             });
         }
 
@@ -315,7 +362,7 @@ export default class TabRegistry {
     async onVideoElementHeartbeat(
         tab: Browser.tabs.Tab,
         src: string,
-        { subscribed, synced, syncedTimestamp, loadedSubtitles }: VideoHeartbeatMessage
+        { subscribed, synced, syncedTimestamp, loadedSubtitles, subtitleTracks }: VideoHeartbeatMessage
     ) {
         if (tab.id === undefined) {
             return;
@@ -337,6 +384,7 @@ export default class TabRegistry {
                 synced,
                 syncedTimestamp,
                 loadedSubtitles,
+                subtitleTracks,
             };
             return true;
         });
@@ -369,7 +417,7 @@ export default class TabRegistry {
             message: {
                 command: 'tabs',
                 tabs: await this.activeVideoElements(),
-                asbplayers: await this._asbplayerInstances(),
+                asbplayers: await this.asbplayerInstances(),
                 ackRequested: true,
             },
         };
@@ -511,6 +559,25 @@ export default class TabRegistry {
         return undefined;
     }
 
+    async findAsbplayerTab({ filter }: { filter?: (asbplayer: Asbplayer) => boolean }): Promise<SlimTab | undefined> {
+        let chosenTab: SlimTab | undefined;
+        let min: number | null = null;
+        const now = Date.now();
+        const asbplayers = await this._asbplayers();
+
+        for (const asbplayer of Object.values(asbplayers)) {
+            if (!asbplayer.tab) continue;
+            if (filter !== undefined && !filter(asbplayer)) continue;
+            const elapsed = now - asbplayer.timestamp;
+            if (min === null || elapsed < min) {
+                min = elapsed;
+                chosenTab = asbplayer.tab;
+            }
+        }
+
+        return chosenTab;
+    }
+
     async _createNewTab() {
         return new Promise<Browser.tabs.Tab>(async (resolve, reject) => {
             const activeTabs = await browser.tabs.query({ active: true });
@@ -548,5 +615,32 @@ export default class TabRegistry {
         }
 
         setTimeout(() => this._anyAsbplayerTab(resolve, reject, attempt + 1, maxAttempts, filter), 1000);
+    }
+
+    async focusTabForMediaId(mediaId: string) {
+        if (!mediaId) {
+            return;
+        }
+        try {
+            const videoElements = await this.activeVideoElements();
+            let tabId = videoElements.find((videoElement) => videoElement.src === mediaId)?.id;
+            if (tabId === undefined) {
+                tabId = (await this.findAsbplayerTab({ filter: (asbplayer) => asbplayer.id === mediaId }))?.id;
+            }
+            if (tabId === undefined) return;
+
+            const targetTab = await browser.tabs.get(tabId);
+            if (targetTab.windowId !== undefined) {
+                const targetWindow = await browser.windows.get(targetTab.windowId);
+                if (!targetWindow.focused) {
+                    await browser.windows.update(targetTab.windowId, { focused: true });
+                }
+            }
+            if (!targetTab.active) {
+                await browser.tabs.update(tabId, { active: true });
+            }
+        } catch {
+            // Best effort only
+        }
     }
 }

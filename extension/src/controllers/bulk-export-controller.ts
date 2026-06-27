@@ -46,7 +46,7 @@ export default class BulkExportController {
                 request?.sender === 'asbplayer-extension-to-video' &&
                 request.message &&
                 request.message.command === 'card-exported' &&
-                request.src === this._context.video.src
+                request.src === this._context.registeredVideoSrc
             ) {
                 const exported = request.message as CardExportedMessage;
                 const isBulk = exported.isBulkExport;
@@ -127,7 +127,7 @@ export default class BulkExportController {
                 command: 'bulk-export-started',
                 total: this._queue.length,
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(startedMessage).catch(console.error);
 
@@ -154,7 +154,7 @@ export default class BulkExportController {
             message: {
                 command: 'bulk-export-cancelled',
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(cancelledMessage);
     }
@@ -218,7 +218,7 @@ export default class BulkExportController {
             message: {
                 command: 'bulk-export-completed',
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(completedMessage);
     }

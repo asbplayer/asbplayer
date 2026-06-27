@@ -35,3 +35,5 @@ yarn-error.log*
 
 # local binaries
 /scripts/web-socket-server/asbplayer-ws
+
+.vscode/

@@ -29,6 +29,6 @@ jobs:
                     --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip \
                     --firefox-channel listed
               env:
-                  FIREFOX_EXTENSION_ID: "a62b0e8f282f4099bd2c"
+                  FIREFOX_EXTENSION_ID: "asbplayer-language-learning"
                   FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
                   FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

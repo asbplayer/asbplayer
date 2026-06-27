@@ -23,7 +23,7 @@
         "typescript": "^5.8.3",
         "vite": "^8.0.0"
     },
-    "homepage": "https://killergerbah.github.io/asbplayer",
+    "homepage": "https://app.asbplayer.dev",
     "scripts": {
         "start": "VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) vite",
         "verify": "../scripts/loc/loc-keys-match && tsc && jest",

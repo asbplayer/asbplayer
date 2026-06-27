@@ -14,7 +14,7 @@ import {
     CardTextFieldValues,
     RichSubtitleModel,
 } from '@project/common';
-import { AsbplayerSettings } from '@project/common/settings';
+import { AsbplayerSettings, TokenAnnotationConfig, tokenAnnotationStyleValues } from '@project/common/settings';
 import {
     surroundingSubtitles,
     mockSurroundingSubtitles,
@@ -22,7 +22,7 @@ import {
     extractText,
 } from '@project/common/util';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { SubtitleColoring } from '@project/common/subtitle-coloring';
+import { getAnnotationsHtml, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -36,11 +36,12 @@ import TableRow, { TableRowProps } from '@mui/material/TableRow';
 import Tooltip from '../../components/Tooltip';
 import Typography from '@mui/material/Typography';
 import Clock from '../services/clock';
-import { useAppBarHeight } from '../hooks/use-app-bar-height';
+import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { MineSubtitleParams } from '../hooks/use-app-web-socket-client';
 import { isMobile } from 'react-device-detect';
 import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension';
 import { MineSubtitleCommand, WebSocketClient } from '../../web-socket-client';
+import { clampSubtitlePlayerWidth } from './video-subtitle-split';
 import './subtitles.css';
 
 let lastKnownWidth: number | undefined;
@@ -163,12 +164,6 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
         width: '100%',
         overflowWrap: 'anywhere',
         whiteSpace: 'pre-wrap',
-        '& .asb-frequency rt': {
-            fontSize: '0.5em',
-        },
-        '& .asb-frequency-hover rt': {
-            fontSize: '0.5em',
-        },
     },
     compressedSubtitle: {
         fontSize: 16,
@@ -176,12 +171,6 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
         width: '100%',
         overflowWrap: 'anywhere',
         whiteSpace: 'pre-wrap',
-        '& .asb-frequency rt': {
-            fontSize: '0.5em',
-        },
-        '& .asb-frequency-hover rt': {
-            fontSize: '0.5em',
-        },
     },
     disabledSubtitle: {
         color: 'transparent',
@@ -227,6 +216,7 @@ interface SubtitleRowProps extends TableRowProps {
     onMouseOver: (e: React.MouseEvent) => void;
     onMouseOut: (e: React.MouseEvent) => void;
     subtitleHtml: SubtitleHtml;
+    tokenAnnotationConfig?: TokenAnnotationConfig;
 }
 
 const SubtitleRow = React.memo(function SubtitleRow({
@@ -242,6 +232,7 @@ const SubtitleRow = React.memo(function SubtitleRow({
     subtitle,
     showCopyButton,
     subtitleHtml,
+    tokenAnnotationConfig,
 }: SubtitleRowProps) {
     const classes = useSubtitleRowStyles();
     const textRef = useRef<HTMLSpanElement>(null);
@@ -266,9 +257,12 @@ const SubtitleRow = React.memo(function SubtitleRow({
     ) : (
         <span
             ref={textRef}
-            className={disabledClassName}
-            dangerouslySetInnerHTML={{ __html: subtitle.richText ?? subtitle.text }}
+            className={`${disabledClassName} asb-subtitles`.trim()}
+            dangerouslySetInnerHTML={{
+                __html: getAnnotationsHtml(subtitle.text, subtitle.richText, subtitle.richTextOnHover),
+            }}
             data-track={subtitle.track}
+            style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}
         />
@@ -362,12 +356,13 @@ interface SubtitlePlayerProps {
     onMouseOver: (e: React.MouseEvent) => void;
     onMouseOut: (e: React.MouseEvent) => void;
     onResizeStart?: () => void;
-    onResizeEnd?: () => void;
+    onResizeEnd?: (width: number) => void;
     autoPauseContext: AutoPauseContext;
     subtitles?: DisplaySubtitleModel[];
-    subtitleCollection: SubtitleColoring | SubtitleCollection<DisplaySubtitleModel>;
+    subtitleCollection: SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>;
     length: number;
     jumpToSubtitle?: SubtitleModel;
+    onJumpToSubtitleHandled?: () => void;
     compressed: boolean;
     resizable: boolean;
     showCopyButton: boolean;
@@ -383,6 +378,7 @@ interface SubtitlePlayerProps {
     settings: AsbplayerSettings;
     keyBinder: KeyBinder;
     maxResizeWidth: number;
+    initialWidth?: number;
     webSocketClient?: WebSocketClient;
 }
 
@@ -403,6 +399,7 @@ export default function SubtitlePlayer({
     subtitleCollection,
     length,
     jumpToSubtitle,
+    onJumpToSubtitleHandled,
     compressed,
     resizable,
     showCopyButton,
@@ -418,6 +415,7 @@ export default function SubtitlePlayer({
     settings,
     keyBinder,
     maxResizeWidth,
+    initialWidth,
     webSocketClient,
 }: SubtitlePlayerProps) {
     const { t } = useTranslation();
@@ -442,7 +440,7 @@ export default function SubtitlePlayer({
         subtitleRefsRef.current.length = 0;
     }
 
-    const subtitleCollectionRef = useRef<SubtitleColoring | SubtitleCollection<DisplaySubtitleModel>>(
+    const subtitleCollectionRef = useRef<SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>>(
         subtitleCollection
     );
     subtitleCollectionRef.current = subtitleCollection;
@@ -635,9 +633,10 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settings.seekableTracks
         );
-    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length]);
+    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, settings.seekableTracks]);
 
     useEffect(() => {
         return keyBinder.bindSeekToSubtitle(
@@ -648,7 +647,8 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settingsRef.current.seekableTracks
         );
     }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length]);
 
@@ -661,7 +661,8 @@ export default function SubtitlePlayer({
             },
             () => disableKeyEvents,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settingsRef.current.seekableTracks
         );
     }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length, settings.alwaysPlayOnSubtitleRepeat]);
 
@@ -708,6 +709,7 @@ export default function SubtitlePlayer({
 
         const target = jumpToIndex !== -1 ? subtitles[jumpToIndex] : jumpToSubtitle;
         onSeek(target.start, clock.running);
+        onJumpToSubtitleHandled?.();
 
         if (!hiddenRef.current && jumpToIndex !== -1) {
             subtitleRefs[jumpToIndex]?.current?.scrollIntoView({
@@ -718,7 +720,7 @@ export default function SubtitlePlayer({
             setHighlightedJumpToSubtitleIndex(jumpToIndex);
             setTimeout(() => setHighlightedJumpToSubtitleIndex(undefined), 1000);
         }
-    }, [jumpToSubtitle, subtitles, subtitleRefs, onSeek, clock]);
+    }, [jumpToSubtitle, subtitles, subtitleRefs, onSeek, onJumpToSubtitleHandled, clock]);
 
     const currentMockSubtitle = useCallback(() => {
         const timestamp = clock.time(length);
@@ -1013,17 +1015,26 @@ export default function SubtitlePlayer({
     });
 
     useEffect(() => {
-        lastKnownWidth = width;
-    }, [width, maxResizeWidth]);
+        if (!resizable || initialWidth === undefined || maxResizeWidth < minSubtitlePlayerWidth) {
+            return;
+        }
+
+        const clampedInitialWidth = clampSubtitlePlayerWidth(initialWidth, minSubtitlePlayerWidth, maxResizeWidth);
+        setWidth(clampedInitialWidth);
+    }, [resizable, initialWidth, maxResizeWidth, setWidth]);
+
+    // Scroll to selected subtitle when layout changes
+    useEffect(() => {
+        // Small delay to allow layout to settle
+        const timer = setTimeout(() => {
+            scrollToCurrentSubtitle();
+        }, 50);
+        return () => clearTimeout(timer);
+    }, [width, scrollToCurrentSubtitle]);
 
     useEffect(() => {
-        const listener = () => {
-            lastKnownWidth = undefined;
-            setWidth(calculateInitialWidth());
-        };
-        screen.orientation.addEventListener('change', listener);
-        return () => screen.orientation.removeEventListener('change', listener);
-    }, [setWidth]);
+        lastKnownWidth = width;
+    }, [width, maxResizeWidth]);
 
     const { dragging, draggingStartLocation, draggingCurrentLocation } = useDragging({ holdToDragMs: 750 });
 
@@ -1128,6 +1139,7 @@ export default function SubtitlePlayer({
                 <Table>
                     <TableBody>
                         {subtitles.map((s: SubtitleModel, index: number) => {
+                            const dt = settings.dictionaryTracks[s.track];
                             let selectionState: SelectionState | undefined;
 
                             if (selectedSubtitleIndexes !== undefined) {
@@ -1158,6 +1170,7 @@ export default function SubtitlePlayer({
                                     onMouseOver={onMouseOver}
                                     onMouseOut={onMouseOut}
                                     subtitleHtml={settings.subtitleHtml}
+                                    tokenAnnotationConfig={dt.dictionaryTokenAnnotationConfig.subtitlePlayer}
                                 />
                             );
                         })}

@@ -4,6 +4,8 @@ import { makeStyles, withStyles } from '@mui/styles';
 import { useTheme } from '@mui/material/styles';
 import { type Theme } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import BlurOnIcon from '@mui/icons-material/BlurOn';
+import BlurOffIcon from '@mui/icons-material/BlurOff';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CloseIcon from '@mui/icons-material/Close';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -169,6 +171,7 @@ const useControlStyles = makeStyles<Theme>((theme) => ({
 const useProgressBarStyles = makeStyles<Theme>((theme) => ({
     root: {
         height: 10,
+        position: 'relative',
     },
     container: {
         height: 10,
@@ -187,6 +190,18 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         pointerEvents: 'auto',
         position: 'absolute',
         width: '100%',
+    },
+    preview: {
+        position: 'absolute',
+        backgroundColor: 'grey',
+        borderRadius: 5,
+        height: 79,
+        top: -90,
+        zIndex: -1,
+    },
+    thumbnail: {
+        height: 79,
+        borderRadius: 5,
     },
     fillContainer: {
         background: 'rgba(30,30,30,0.7)',
@@ -258,13 +273,25 @@ function elementWidth(element: HTMLElement) {
 
 interface ProgressBarProps {
     onSeek: (progress: number) => void;
+    onSeekPreview?: (progress: number) => string | undefined;
     value: number;
+    videoHeight: number | undefined;
+    videoWidth: number | undefined;
+    previewEnabled: boolean;
 }
 
-function ProgressBar({ onSeek, value }: ProgressBarProps) {
+function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, previewEnabled }: ProgressBarProps) {
     const classes = useProgressBarStyles();
     const [mouseOver, setMouseOver] = useState(false);
     const containerRef = useRef(null);
+    // x position of mouse
+    const [hoverX, setHoverX] = useState(0);
+    const [thumbnailSrc, setThumbnailSrc] = useState<string | undefined>(undefined);
+
+    // calculate width of thumbnail based on aspect ratio of video
+    if (videoHeight && videoWidth) {
+        videoWidth = Math.round((videoWidth / videoHeight) * 79);
+    }
 
     const handleClick = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
@@ -277,7 +304,26 @@ function ProgressBar({ onSeek, value }: ProgressBarProps) {
         [onSeek]
     );
 
-    const handleMouseOver = useCallback(() => setMouseOver(true), []);
+    const handleMouseOver = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            setMouseOver(true);
+            if (onSeekPreview == undefined) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            // Account for margins by subtracting 10 from left/right sides
+            const width = rect.right - rect.left - 20;
+            const progress = Math.min(1, Math.max(0, (e.pageX - rect.left - 10) / width));
+            const positionInPixels = progress * width;
+            // subtract to center the mouse in the center of the preview box
+            setHoverX(positionInPixels - 145 / 2 + 10);
+
+            const previewSrc = onSeekPreview(progress);
+            if (previewSrc) {
+                setThumbnailSrc(previewSrc);
+            }
+        },
+        [onSeekPreview]
+    );
+
     const handleMouseOut = useCallback(() => setMouseOver(false), []);
     const progressWidth =
         Number.isFinite(value) && containerRef.current ? (elementWidth(containerRef.current) * value) / 100 : 0;
@@ -290,6 +336,14 @@ function ProgressBar({ onSeek, value }: ProgressBarProps) {
 
     return (
         <div className={classes.root}>
+            {mouseOver && (
+                <div
+                    style={{ left: hoverX, width: videoWidth ?? 145, display: previewEnabled ? 'block' : 'none' }}
+                    className={classes.preview}
+                >
+                    <img src={thumbnailSrc} className={classes.thumbnail} style={{ width: videoWidth ?? 145 }} />
+                </div>
+            )}
             <div ref={containerRef} className={classes.container}>
                 <div className={fillContainerClassName}>
                     <div className={classes.fill} style={fillStyle}></div>
@@ -301,7 +355,7 @@ function ProgressBar({ onSeek, value }: ProgressBarProps) {
             <div
                 className={classes.mouseEventListener}
                 onClick={handleClick}
-                onMouseOver={handleMouseOver}
+                onMouseMove={handleMouseOver}
                 onMouseOut={handleMouseOut}
             ></div>
         </div>
@@ -482,6 +536,7 @@ interface ControlsProps {
     playbackRateEnabled?: boolean;
     onAudioTrackSelected: (id: string) => void;
     onSeek: (progress: number) => void;
+    onSeekPreview?: (progress: number) => string | undefined;
     mousePositionRef: MutableRefObject<Point | undefined>;
     onShow?: (show: boolean) => void;
     onPause: () => void;
@@ -497,6 +552,7 @@ interface ControlsProps {
     onClose?: () => void;
     volumeEnabled?: boolean;
     playModes?: Set<PlayMode>;
+    previewEnabled: boolean;
     playModeEnabled?: boolean;
     onPlayMode?: (playMode: PlayMode) => void;
     subtitlesEnabled?: boolean;
@@ -524,6 +580,10 @@ interface ControlsProps {
     onSubtitleAlignment?: (alignment: SubtitleAlignment) => void;
     hideToolbar?: boolean;
     onLoadFiles?: () => void;
+    blurOverlayEnabled?: boolean;
+    onBlurOverlayToggle?: () => void;
+    videoWidth?: number | undefined;
+    videoHeight?: number | undefined;
 }
 
 export default function Controls({
@@ -536,6 +596,7 @@ export default function Controls({
     playbackRateEnabled,
     onAudioTrackSelected,
     onSeek,
+    onSeekPreview,
     mousePositionRef,
     onShow,
     onPause,
@@ -578,6 +639,11 @@ export default function Controls({
     onSubtitleAlignment,
     hideToolbar,
     onLoadFiles,
+    blurOverlayEnabled,
+    onBlurOverlayToggle,
+    videoWidth,
+    videoHeight,
+    previewEnabled,
 }: ControlsProps) {
     const classes = useControlStyles();
     const { t } = useTranslation();
@@ -903,7 +969,14 @@ export default function Controls({
             >
                 <Fade in={show} timeout={200}>
                     <div className={classes.subContainer}>
-                        <ProgressBar onSeek={handleSeek} value={progress * 100} />
+                        <ProgressBar
+                            onSeekPreview={onSeekPreview}
+                            onSeek={handleSeek}
+                            value={progress * 100}
+                            videoHeight={videoHeight}
+                            videoWidth={videoWidth}
+                            previewEnabled={previewEnabled}
+                        />
                         {!hideToolbar && (
                             <Grid container className={classes.gridContainer} direction="row" wrap="nowrap">
                                 <Grid item>
@@ -1047,6 +1120,23 @@ export default function Controls({
                                                     className={classes.button}
                                                     style={popOut ? { transform: 'rotateX(180deg)' } : {}}
                                                 />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {onBlurOverlayToggle && (
+                                        <Tooltip
+                                            title={
+                                                blurOverlayEnabled
+                                                    ? t('controls.hideBlurOverlay')
+                                                    : t('controls.showBlurOverlay')
+                                            }
+                                        >
+                                            <IconButton color="inherit" onClick={onBlurOverlayToggle}>
+                                                {blurOverlayEnabled ? (
+                                                    <BlurOnIcon className={classes.button} />
+                                                ) : (
+                                                    <BlurOffIcon className={classes.inactiveButton} />
+                                                )}
                                             </IconButton>
                                         </Tooltip>
                                     )}

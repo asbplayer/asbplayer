@@ -8,6 +8,7 @@ import {
 import Binding from '../services/binding';
 import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
 import { adjacentSubtitle } from '@project/common/key-binder';
+import { frameColorScheme } from '@/services/frame-color-scheme';
 
 const smallScreenVideoHeightThreshold = 300;
 
@@ -115,7 +116,10 @@ export class MobileVideoOverlayController {
             sender: Browser.runtime.MessageSender,
             sendResponse: (response?: any) => void
         ) => {
-            if (message.sender !== 'asbplayer-mobile-overlay-to-video' || message.src !== this._context.video.src) {
+            if (
+                message.sender !== 'asbplayer-mobile-overlay-to-video' ||
+                message.src !== this._context.registeredVideoSrc
+            ) {
                 return;
             }
 
@@ -152,7 +156,7 @@ export class MobileVideoOverlayController {
                 command: 'update-mobile-overlay-model',
                 model,
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(command);
     }
@@ -162,12 +166,13 @@ export class MobileVideoOverlayController {
         const subtitleDisplaying =
             subtitles.length > 0 && this._context.subtitleController.currentSubtitle()[0] !== null;
         const timestamp = this._context.video.currentTime * 1000;
-        const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles } =
+        const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles, seekableTracks } =
             await this._context.settings.get([
                 'language',
                 'clickToMineDefaultAction',
                 'themeType',
                 'streamingDisplaySubtitles',
+                'seekableTracks',
             ]);
         const model: MobileOverlayModel = {
             offset: subtitles.length === 0 ? 0 : subtitles[0].start - subtitles[0].originalStart,
@@ -175,8 +180,10 @@ export class MobileVideoOverlayController {
             emptySubtitleTrack: subtitles.length === 0,
             recordingEnabled: this._context.recordMedia,
             recording: this._context.recordingMedia,
-            previousSubtitleTimestamp: adjacentSubtitle(false, timestamp, subtitles)?.originalStart ?? undefined,
-            nextSubtitleTimestamp: adjacentSubtitle(true, timestamp, subtitles)?.originalStart ?? undefined,
+            previousSubtitleTimestamp:
+                adjacentSubtitle(false, timestamp, subtitles, seekableTracks)?.originalStart ?? undefined,
+            nextSubtitleTimestamp:
+                adjacentSubtitle(true, timestamp, subtitles, seekableTracks)?.originalStart ?? undefined,
             currentTimestamp: timestamp,
             language,
             postMineAction: clickToMineDefaultAction,
@@ -217,11 +224,12 @@ export class MobileVideoOverlayController {
             this._overlay.uncacheHtml();
         }
 
+        const colorScheme = frameColorScheme();
         this._overlay.setHtml([
             {
                 key: 'ui',
                 html: () =>
-                    `<iframe style="border: 0; color-scheme: normal; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
+                    `<iframe style="border: 0; color-scheme: ${colorScheme}; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
                         '/mobile-video-overlay-ui.html'
                     )}?src=${src}&anchor=${anchor}&tooltips=${tooltips}"/>`,
             },
@@ -238,7 +246,7 @@ export class MobileVideoOverlayController {
         const height = smallScreen ? 64 : 108;
         const tooltips = !smallScreen;
         const width = Math.min(window.innerWidth, 410);
-        const src = encodeURIComponent(this._context.video.src);
+        const src = encodeURIComponent(this._context.registeredVideoSrc);
 
         return { width, height, anchor, src, tooltips };
     }

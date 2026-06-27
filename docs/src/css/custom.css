@@ -1,0 +1,51 @@
+:root {
+  --ifm-color-primary: #ff3f78;
+  --ifm-color-primary-dark: #ff1f62;
+  --ifm-color-primary-darker: #ff0f56;
+  --ifm-color-primary-darkest: #df0042;
+  --ifm-color-primary-light: #ff5f8e;
+  --ifm-color-primary-lighter: #ff6f9a;
+  --ifm-color-primary-lightest: #ff9ebb;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #ff3f78;
+  --ifm-color-primary-dark: #ff1f62;
+  --ifm-color-primary-darker: #ff0f56;
+  --ifm-color-primary-darkest: #df0042;
+  --ifm-color-primary-light: #ff5f8e;
+  --ifm-color-primary-lighter: #ff6f9a;
+  --ifm-color-primary-lightest: #ff9ebb;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.header-github-link::before {
+  content: "";
+  width: 24px;
+  height: 24px;
+  display: flex;
+  background-color: var(--ifm-navbar-link-color);
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E");
+  transition: background-color var(--ifm-transition-fast)
+    var(--ifm-transition-timing-default);
+}
+
+.header-github-link:hover::before {
+  background-color: var(--ifm-navbar-link-hover-color);
+}
+
+.header-discord-link::before {
+  content: '';
+  width: 24px;
+  height: 18.19px;
+  display: flex;
+  background-color: var(--ifm-navbar-link-color);
+  mask-image: url("data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%3Csvg%20id%3D%22Discord-Logo%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20126.644%2096%22%3E%3Cpath%20id%3D%22Discord-Symbol-White%22%20d%3D%22M81.15%2C0c-1.2376%2C2.1973-2.3489%2C4.4704-3.3591%2C6.794-9.5975-1.4396-19.3718-1.4396-28.9945%2C0-.985-2.3236-2.1216-4.5967-3.3591-6.794-9.0166%2C1.5407-17.8059%2C4.2431-26.1405%2C8.0568C2.779%2C32.5304-1.6914%2C56.3725.5312%2C79.8863c9.6732%2C7.1476%2C20.5083%2C12.603%2C32.0505%2C16.0884%2C2.6014-3.4854%2C4.8998-7.1981%2C6.8698-11.0623-3.738-1.3891-7.3497-3.1318-10.8098-5.1523.9092-.6567%2C1.7932-1.3386%2C2.6519-1.9953%2C20.281%2C9.547%2C43.7696%2C9.547%2C64.0758%2C0%2C.8587.7072%2C1.7427%2C1.3891%2C2.6519%2C1.9953-3.4601%2C2.0457-7.0718%2C3.7632-10.835%2C5.1776%2C1.97%2C3.8642%2C4.2683%2C7.5769%2C6.8698%2C11.0623%2C11.5419-3.4854%2C22.3769-8.9156%2C32.0509-16.0631%2C2.626-27.2771-4.496-50.9172-18.817-71.8548C98.9811%2C4.2684%2C90.1918%2C1.5659%2C81.1752.0505l-.0252-.0505ZM42.2802%2C65.4144c-6.2383%2C0-11.4159-5.6575-11.4159-12.6535s4.9755-12.6788%2C11.3907-12.6788%2C11.5169%2C5.708%2C11.4159%2C12.6788c-.101%2C6.9708-5.026%2C12.6535-11.3907%2C12.6535ZM84.3576%2C65.4144c-6.2637%2C0-11.3907-5.6575-11.3907-12.6535s4.9755-12.6788%2C11.3907-12.6788%2C11.4917%2C5.708%2C11.3906%2C12.6788c-.101%2C6.9708-5.026%2C12.6535-11.3906%2C12.6535Z%22%2F%3E%3C%2Fsvg%3E");
+  transition: background-color var(--ifm-transition-fast) var(--ifm-transition-timing-default);
+}
+
+.header-discord-link:hover::before {
+  background-color: var(--ifm-navbar-link-hover-color);
+}

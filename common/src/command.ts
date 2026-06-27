@@ -73,6 +73,14 @@ export interface MobileOverlayToVideoCommand<T extends Message> extends Command<
     readonly src: string;
 }
 
+export interface StatisticsOverlayToTabCommand<T extends Message> extends Command<T> {
+    readonly sender: 'asbplayer-statistics-overlay-to-tab';
+}
+
+export interface StatisticsOverlayCommand<T extends Message> extends Command<T> {
+    readonly sender: 'asbplayer-statistics-overlay';
+}
+
 export interface VideoToMobileOverlayCommand<T extends Message> extends Command<T> {
     readonly sender: 'asbplayer-video-to-mobile-overlay';
     readonly src: string;
@@ -84,5 +92,4 @@ export interface MobileOverlayCommand<T extends Message> extends Command<T> {
 
 export interface DictionaryDBCommand<T extends Message> extends Command<T> {
     readonly sender: 'asbplayer-dictionary';
-    readonly useOriginTab?: boolean;
 }

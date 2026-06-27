@@ -11,6 +11,9 @@ import CenteredGridContainer from './CenteredGridContainer';
 import CenteredGridItem from './CenteredGridItem';
 import React, { useEffect, useState } from 'react';
 import Tutorial from './Tutorial';
+import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
+import { SettingsProvider } from '@project/common/settings';
+import { type PaletteMode } from '@mui/material';
 
 const useStyles = makeStyles({
     container: {
@@ -59,6 +62,8 @@ const WelcomeMessage: React.FC<{ className: string }> = ({ className }) => {
     );
 };
 
+const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
+
 const useLangParam = () => {
     const [lang, setLang] = useState<string>();
     useEffect(() => setLang(new URLSearchParams(window.location.search).get('lang') ?? undefined), []);
@@ -66,7 +71,8 @@ const useLangParam = () => {
 };
 
 const FtueUi = () => {
-    const theme = createTheme('dark');
+    const [themeType, setThemeType] = useState<PaletteMode>('dark');
+    const theme = createTheme(themeType);
     const langParam = useLangParam();
     const { initialized: i18Initialized } = useI18n({ language: langParam ?? browser.i18n.getUILanguage() });
     const classes = useStyles();
@@ -85,6 +91,10 @@ const FtueUi = () => {
             }
         };
     };
+
+    useEffect(() => {
+        settingsProvider.getSingle('themeType').then(setThemeType);
+    }, []);
 
     if (!i18Initialized) {
         return null;

@@ -50,18 +50,24 @@ import {
     VideoToExtensionCommand,
     IndexedSubtitleModel,
     SaveTokenLocalMessage,
+    DictionaryBuildAnkiCacheStateMessage,
+    DictionaryBuildWaniKaniCacheStateMessage,
 } from '@project/common';
 import { adjacentSubtitle } from '@project/common/key-binder';
 import PlayModeManager from '@project/common/app/services/play-mode-manager';
 import {
+    calculateSeekableTracksValue,
     extractAnkiSettings,
+    isTrackSeekable,
     PauseOnHoverMode,
+    SeekableTracks,
     SettingsProvider,
     SubtitleListPreference,
 } from '@project/common/settings';
 import { SubtitleSlice } from '@project/common/subtitle-collection';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import {
+    buildSubtitleTracks,
     extractText,
     seekWithNudge,
     sourceString,
@@ -88,7 +94,8 @@ import { bufferToBase64 } from '@project/common/base64';
 import { pgsParserWorkerFactory } from './pgs-parser-worker-factory';
 import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-provider';
 import { ExtensionDictionaryStorage } from './extension-dictionary-storage';
-import { HoveredToken } from '@project/common/subtitle-coloring';
+import { HoveredToken } from '@project/common/subtitle-annotations';
+import { v4 as uuidv4 } from 'uuid';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -122,6 +129,8 @@ const startAudioRecordingErrorResponse: (e: any) => StartRecordingResponse = (e:
 };
 
 export default class Binding {
+    private readonly _fallbackVideoSrc = uuidv4();
+
     subscribed: boolean = false;
 
     ankiUiSavedState?: AnkiUiSavedState;
@@ -129,11 +138,13 @@ export default class Binding {
 
     private _synced: boolean;
     private _syncedTimestamp?: number;
+    private _lastSyncedLocation?: string;
 
     recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
     wasPlayingBeforeRecordingMedia?: boolean;
     postMinePlayback: PostMinePlayback = PostMinePlayback.remember;
+    seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
     private recordingMediaStartedTimestamp?: number;
     private recordingMediaWithScreenshot: boolean;
     private pausedDueToHover = false;
@@ -163,6 +174,7 @@ export default class Binding {
     readonly bulkExportController: BulkExportController;
 
     private copyToClipboardOnMine: boolean;
+    private clickToMineDefaultAction: PostMineAction;
     private takeScreenshot: boolean;
     private cleanScreenshot: boolean;
     private audioPaddingStart: number;
@@ -191,6 +203,7 @@ export default class Binding {
         sendResponse: (response?: any) => void
     ) => void;
     private heartbeatInterval?: NodeJS.Timeout;
+    private _registeredVideoSrc: string;
 
     // In the case of firefox, we need to avoid capturing the audio stream more than once,
     // so we keep a reference to the first one we capture here.
@@ -198,15 +211,18 @@ export default class Binding {
     private audioContext?: AudioContext;
     private audioVolumeChangeListener?: () => void;
     private currentAudioRecordingRequestId?: string;
+    private unsubscribeStatisticsSeek?: () => void;
+    private unsubscribeStatisticsSubtitleMine?: () => void;
 
     private readonly frameId?: string;
 
     constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string) {
         this.video = video;
+        this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
         this.hasPageScript = hasPageScript;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
-        this.subtitleController = new SubtitleController(video, this.dictionary, this.settings);
+        this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
         this.videoDataSyncController = new VideoDataSyncController(this, this.settings);
         this.controlsController = new ControlsController(video);
         this.dragController = new DragController(video);
@@ -221,6 +237,7 @@ export default class Binding {
         this.recordMedia = true;
         this.takeScreenshot = true;
         this.cleanScreenshot = true;
+        this.clickToMineDefaultAction = PostMineAction.showAnkiDialog;
         this.audioPaddingStart = 0;
         this.audioPaddingEnd = 500;
         this.maxImageWidth = 0;
@@ -232,6 +249,10 @@ export default class Binding {
         this._synced = false;
         this.recordingMediaWithScreenshot = false;
         this.frameId = frameId;
+    }
+
+    get registeredVideoSrc() {
+        return this._registeredVideoSrc;
     }
 
     get recordingMedia() {
@@ -278,6 +299,9 @@ export default class Binding {
                 this.subtitleController.autoPauseContext.onStartedShowing = undefined;
                 if (newModes.has(PlayMode.repeat)) {
                     this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                        if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
+                            return;
+                        }
                         this._resetPendingAutoRepeatTargetTimestamp();
                         this.seek(subtitle.start / 1000);
                     };
@@ -288,12 +312,12 @@ export default class Binding {
                 if (showNotif) this.subtitleController.notification('info.disabledAutoPause');
                 break;
             case PlayMode.condensed:
-                this.subtitleController.onNextToShow = undefined;
+                this.subtitleController.onNextSeekableToShow = undefined;
 
                 if (showNotif) this.subtitleController.notification('info.disabledCondensedPlayback');
                 break;
             case PlayMode.fastForward:
-                this.subtitleController.onSlice = undefined;
+                this.subtitleController.onSeekableSlice = undefined;
                 this.video.playbackRate = 1;
 
                 if (showNotif) this.subtitleController.notification('info.disabledFastForwardPlayback');
@@ -319,14 +343,22 @@ export default class Binding {
     private _enablePlayMode(mode: PlayMode) {
         switch (mode) {
             case PlayMode.autoPause:
-                this.subtitleController.autoPauseContext.onStartedShowing = () => {
-                    if (this.recordingMedia || this.autoPausePreference !== AutoPausePreference.atStart) {
+                this.subtitleController.autoPauseContext.onStartedShowing = (subtitle) => {
+                    if (
+                        this.recordingMedia ||
+                        this.autoPausePreference !== AutoPausePreference.atStart ||
+                        !isTrackSeekable(this.seekableTracks, subtitle.track)
+                    ) {
                         return;
                     }
 
                     this.pause();
                 };
                 this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                    if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
+                        return;
+                    }
+
                     const shouldRepeat = this._playModes.has(PlayMode.repeat);
 
                     if (this.autoPausePreference === AutoPausePreference.atEnd) {
@@ -346,11 +378,12 @@ export default class Binding {
                 break;
             case PlayMode.condensed:
                 let seeking = false;
-                this.subtitleController.onNextToShow = async (subtitle) => {
+                this.subtitleController.onNextSeekableToShow = async (subtitle) => {
                     try {
                         if (
                             this.recordingMedia ||
                             seeking ||
+                            !isTrackSeekable(this.seekableTracks, subtitle.track) ||
                             this.video.paused ||
                             subtitle.start - this.video.currentTime * 1000 <=
                                 this.condensedPlaybackMinimumSkipIntervalMs
@@ -369,7 +402,7 @@ export default class Binding {
                 this.subtitleController.notification('info.enabledCondensedPlayback');
                 break;
             case PlayMode.fastForward:
-                this.subtitleController.onSlice = async (slice: SubtitleSlice<IndexedSubtitleModel>) => {
+                this.subtitleController.onSeekableSlice = async (slice: SubtitleSlice<IndexedSubtitleModel>) => {
                     const subtitlesAreSufficientlyOffsetFromNow = (subtitleEdgeTime: number | undefined) => {
                         return (
                             subtitleEdgeTime &&
@@ -403,6 +436,10 @@ export default class Binding {
                 break;
             case PlayMode.repeat:
                 this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                    if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
+                        return;
+                    }
+
                     const shouldAutoPause =
                         this._playModes.has(PlayMode.autoPause) &&
                         this.autoPausePreference === AutoPausePreference.atEnd &&
@@ -471,7 +508,7 @@ export default class Binding {
                         command: 'readyState',
                         value: 4,
                     },
-                    src: this.video.src,
+                    src: this._registeredVideoSrc,
                 };
 
                 browser.runtime.sendMessage(command);
@@ -495,7 +532,8 @@ export default class Binding {
             const subtitle = adjacentSubtitle(
                 forward,
                 this.video.currentTime * 1000,
-                this.subtitleController.subtitles
+                this.subtitleController.subtitles,
+                this.seekableTracks
             );
 
             if (subtitle !== null) {
@@ -519,7 +557,7 @@ export default class Binding {
                 selectedAudioTrack: undefined,
                 playbackRate: this.video.playbackRate,
             },
-            src: this.video.src,
+            src: this._registeredVideoSrc,
         };
 
         browser.runtime.sendMessage(command);
@@ -533,7 +571,7 @@ export default class Binding {
                     command: 'play',
                     echo: false,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);
@@ -552,7 +590,7 @@ export default class Binding {
                     command: 'pause',
                     echo: false,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);
@@ -572,7 +610,7 @@ export default class Binding {
                     value: this.video.currentTime,
                     echo: false,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
             const readyStateCommand: VideoToExtensionCommand<ReadyStateFromVideoMessage> = {
                 sender: 'asbplayer-video',
@@ -580,7 +618,7 @@ export default class Binding {
                     command: 'readyState',
                     value: this.video.readyState,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(currentTimeCommand);
@@ -597,7 +635,7 @@ export default class Binding {
                     value: this.video.playbackRate,
                     echo: false,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);
@@ -643,6 +681,22 @@ export default class Binding {
 
         if (this.hasPageScript) {
             this.videoChangeListener = () => {
+                this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
+
+                // Player events (e.g. Hulu blob URL rotation) can fire loadedmetadata
+                // without an actual video change. Skip refresh when the picker is open
+                // here or subtitles are already synced for it.
+                if (
+                    this.videoDataSyncController.pickerVisible &&
+                    this.videoDataSyncController.openedLocation === window.location.href
+                ) {
+                    return;
+                }
+
+                if (this._synced && this._lastSyncedLocation === window.location.href) {
+                    return;
+                }
+
                 this.videoDataSyncController.requestSubtitles();
                 this._resetSubtitles();
             };
@@ -650,6 +704,8 @@ export default class Binding {
         }
 
         this.heartbeatInterval = setInterval(() => {
+            this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
+
             const command: VideoToExtensionCommand<VideoHeartbeatMessage> = {
                 sender: 'asbplayer-video',
                 message: {
@@ -658,8 +714,12 @@ export default class Binding {
                     synced: this._synced,
                     syncedTimestamp: this._syncedTimestamp,
                     loadedSubtitles: this.subtitleController.subtitles.length > 0,
+                    subtitleTracks: buildSubtitleTracks(
+                        this.subtitleController.subtitles,
+                        this.subtitleController.subtitleFileNames ?? []
+                    ),
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);
@@ -674,7 +734,7 @@ export default class Binding {
             sender: Browser.runtime.MessageSender,
             sendResponse: (response?: any) => void
         ) => {
-            if (request.sender === 'asbplayer-extension-to-video' && request.src === this.video.src) {
+            if (request.sender === 'asbplayer-extension-to-video' && request.src === this._registeredVideoSrc) {
                 switch (request.message.command) {
                     case 'init':
                         this._notifyReady();
@@ -784,11 +844,11 @@ export default class Binding {
                         switch (cardMessage.command) {
                             case 'card-updated':
                                 locKey = 'info.updatedCard';
-                                this.subtitleController.subtitleColoring.ankiCardWasModified();
+                                this.subtitleController.subtitleAnnotations.ankiCardWasModified();
                                 break;
                             case 'card-exported':
                                 locKey = 'info.exportedCard';
-                                this.subtitleController.subtitleColoring.ankiCardWasModified();
+                                this.subtitleController.subtitleAnnotations.ankiCardWasModified();
                                 break;
                             case 'card-saved':
                                 locKey = 'info.copiedSubtitle2';
@@ -813,11 +873,11 @@ export default class Binding {
                         break;
                     case 'card-updated-dialog':
                     case 'card-exported-dialog':
-                        this.subtitleController.subtitleColoring.ankiCardWasModified();
+                        this.subtitleController.subtitleAnnotations.ankiCardWasModified();
                         break;
                     case 'save-token-local':
                         const { track, token, status, states, applyStates } = request.message as SaveTokenLocalMessage;
-                        this.subtitleController.subtitleColoring.saveTokenLocal(
+                        this.subtitleController.subtitleAnnotations.saveTokenLocal(
                             track,
                             token,
                             status,
@@ -825,6 +885,15 @@ export default class Binding {
                             applyStates
                         );
                         break;
+                    case 'dictionary-build-anki-cache-state':
+                        const state = request.message as DictionaryBuildAnkiCacheStateMessage;
+                        this.subtitleController.subtitleAnnotations.buildAnkiCacheStateChange(state);
+                        break;
+                    case 'dictionary-build-wanikani-cache-state': {
+                        const state = request.message as DictionaryBuildWaniKaniCacheStateMessage;
+                        this.subtitleController.subtitleAnnotations.buildWaniKaniCacheStateChange(state);
+                        break;
+                    }
                     case 'notify-error':
                         const notifyErrorMessage = request.message as NotifyErrorMessage;
                         this.subtitleController.notification('info.error', { message: notifyErrorMessage.message });
@@ -997,7 +1066,7 @@ export default class Binding {
                             command: 'ack-message',
                             messageId: request.message['messageId'],
                         },
-                        src: this.video.src,
+                        src: this._registeredVideoSrc,
                     };
                     browser.runtime.sendMessage(ackCommand);
                 }
@@ -1005,6 +1074,23 @@ export default class Binding {
         };
 
         browser.runtime.onMessage.addListener(this.listener);
+        this.unsubscribeStatisticsSeek = this.dictionary.onRequestStatisticsSeek((timestamp) => {
+            this.seek(timestamp / 1000);
+        });
+        this.unsubscribeStatisticsSubtitleMine = this.dictionary.onRequestStatisticsMineSentences(
+            (_mediaId, indexes) => {
+                const index = indexes[0];
+                if (index === undefined) return;
+                const [resolvedSubtitle, resolvedSurroundingSubtitles] = this.subtitleController.subtitleAtIndex(index);
+                if (resolvedSubtitle === null || resolvedSurroundingSubtitles === null) return;
+                void this._copySubtitle({
+                    command: 'copy-subtitle',
+                    postMineAction: this.clickToMineDefaultAction,
+                    subtitle: resolvedSubtitle,
+                    surroundingSubtitles: resolvedSurroundingSubtitles,
+                });
+            }
+        );
         this.subscribed = true;
     }
 
@@ -1012,6 +1098,7 @@ export default class Binding {
         const currentSettings = await this.settings.getAll();
         this._seekDuration = currentSettings.seekDuration;
         this._speedChangeStep = currentSettings.speedChangeStep;
+        this.seekableTracks = currentSettings.seekableTracks;
         this.recordMedia = currentSettings.streamingRecordMedia;
         this.takeScreenshot = currentSettings.streamingTakeScreenshot;
         this.cleanScreenshot = currentSettings.streamingTakeScreenshot && currentSettings.streamingCleanScreenshot;
@@ -1020,6 +1107,7 @@ export default class Binding {
         this.imageDelay = currentSettings.streamingScreenshotDelay;
         this.audioPaddingStart = currentSettings.audioPaddingStart;
         this.audioPaddingEnd = currentSettings.audioPaddingEnd;
+        this.clickToMineDefaultAction = currentSettings.clickToMineDefaultAction;
         this.maxImageWidth = currentSettings.maxImageWidth;
         this.maxImageHeight = currentSettings.maxImageHeight;
         this.copyToClipboardOnMine = currentSettings.copyToClipboardOnMine;
@@ -1035,6 +1123,8 @@ export default class Binding {
         this.subtitleController.surroundingSubtitlesTimeRadius = currentSettings.surroundingSubtitlesTimeRadius;
         this.subtitleController.autoCopyCurrentSubtitle = currentSettings.autoCopyCurrentSubtitle;
         this.subtitleController.dictionaryTrackSettings = currentSettings.dictionaryTracks;
+        this.subtitleController.seekableTracks = currentSettings.seekableTracks;
+        this.subtitleController.autoCopyableTracks = currentSettings.autoCopyableTracks;
 
         const convertNetflixRubyChanged =
             this.subtitleController.convertNetflixRuby !== currentSettings.convertNetflixRuby;
@@ -1043,7 +1133,7 @@ export default class Binding {
         const subtitleHtmlChanged = this.subtitleController.subtitleHtml !== currentSettings.subtitleHtml;
         this.subtitleController.subtitleHtml = currentSettings.subtitleHtml;
 
-        this.subtitleController.subtitleColoring.settingsUpdated(currentSettings);
+        this.subtitleController.subtitleAnnotations.settingsUpdated(currentSettings);
         this.subtitleController.setSubtitleSettings(currentSettings);
 
         if (convertNetflixRubyChanged || subtitleHtmlChanged) {
@@ -1136,6 +1226,11 @@ export default class Binding {
             this.listener = undefined;
         }
 
+        this.unsubscribeStatisticsSeek?.();
+        this.unsubscribeStatisticsSeek = undefined;
+        this.unsubscribeStatisticsSubtitleMine?.();
+        this.unsubscribeStatisticsSubtitleMine = undefined;
+
         this.subtitleController.unbind();
         this.dragController.unbind();
         this.keyBindings.unbind();
@@ -1146,14 +1241,9 @@ export default class Binding {
         this.bulkExportController.unbind();
         this.subscribed = false;
 
-        const command: VideoToExtensionCommand<VideoDisappearedMessage> = {
-            sender: 'asbplayer-video',
-            message: {
-                command: 'video-disappeared',
-            },
-            src: this.video.src,
-        };
-        browser.runtime.sendMessage(command);
+        this._notifyVideoDisappeared(this._registeredVideoSrc);
+        this._registeredVideoSrc = '';
+        this._lastSyncedLocation = undefined;
     }
 
     async _takeScreenshot() {
@@ -1172,7 +1262,7 @@ export default class Binding {
                 subtitleFileName: this.subtitleFileName(),
                 mediaTimestamp: this.video.currentTime * 1000,
             },
-            src: this.video.src,
+            src: this._registeredVideoSrc,
         };
 
         browser.runtime.sendMessage(command);
@@ -1205,6 +1295,11 @@ export default class Binding {
 
         if (this.takeScreenshot) {
             await this._prepareScreenshot();
+        }
+
+        if (this.recordMedia && this.recordingMedia) {
+            // In case recording state changed during the await above
+            return;
         }
 
         if (this.recordMedia) {
@@ -1247,7 +1342,7 @@ export default class Binding {
                 isBulkExport,
                 ...this._imageCaptureParams,
             },
-            src: this.video.src,
+            src: this._registeredVideoSrc,
         };
 
         browser.runtime.sendMessage(command);
@@ -1280,7 +1375,7 @@ export default class Binding {
                     ...this._imageCaptureParams,
                     ...this._surroundingSubtitlesAroundInterval(this.recordingMediaStartedTimestamp!, currentTimestamp),
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);
@@ -1318,7 +1413,7 @@ export default class Binding {
                     imageDelay: this.imageDelay,
                     ...this._imageCaptureParams,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
 
             browser.runtime.sendMessage(command);
@@ -1369,7 +1464,7 @@ export default class Binding {
                 timestamp: start,
                 subtitleFileName: this.subtitleFileName(),
             },
-            src: this.video.src,
+            src: this._registeredVideoSrc,
         };
 
         browser.runtime.sendMessage(command);
@@ -1496,7 +1591,7 @@ export default class Binding {
                     withSyncedAsbplayerOnly,
                     withAsbplayerId,
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
             browser.runtime.sendMessage(syncMessage);
         };
@@ -1564,6 +1659,7 @@ export default class Binding {
         this.ankiUiSavedState = undefined;
         this._synced = true;
         this._syncedTimestamp = Date.now();
+        this._lastSyncedLocation = window.location.href;
 
         if (this.video.paused) {
             this.mobileVideoOverlayController.show();
@@ -1595,7 +1691,26 @@ export default class Binding {
         this.ankiUiSavedState = undefined;
         this._synced = false;
         this._syncedTimestamp = undefined;
+        this._lastSyncedLocation = undefined;
         this.mobileVideoOverlayController.disposeOverlay();
+    }
+
+    private _updateRegisteredVideoSrc(src: string) {
+        if (src === this._registeredVideoSrc) return;
+        this._notifyVideoDisappeared(this._registeredVideoSrc);
+        this._registeredVideoSrc = src;
+    }
+
+    private _notifyVideoDisappeared(src: string | undefined) {
+        if (src === undefined) return;
+        const command: VideoToExtensionCommand<VideoDisappearedMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'video-disappeared',
+            },
+            src,
+        };
+        browser.runtime.sendMessage(command);
     }
 
     private _captureStream(): Promise<MediaStream> {
@@ -1691,7 +1806,7 @@ export default class Binding {
                     base64,
                     extension: 'webm',
                 },
-                src: this.video.src,
+                src: this._registeredVideoSrc,
             };
             base64 = await browser.runtime.sendMessage(encodeMp3Command);
         }
@@ -1703,7 +1818,7 @@ export default class Binding {
                 base64,
                 requestId,
             },
-            src: this.video.src,
+            src: this._registeredVideoSrc,
         };
 
         browser.runtime.sendMessage(command);
@@ -1716,7 +1831,7 @@ export default class Binding {
                 command: 'requesting-active-tab-permission',
                 requesting,
             },
-            src: this.video.src,
+            src: this._registeredVideoSrc,
         };
 
         browser.runtime.sendMessage(command);

@@ -1,0 +1,1 @@
+- [ ] I have read the [contribution guidelines](https://github.com/asbplayer/asbplayer/blob/main/CONTRIBUTING.md).

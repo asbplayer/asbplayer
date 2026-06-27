@@ -57,10 +57,11 @@ export default defineConfig({
             for (const { srcDir, destDir } of commonAssets) {
                 addToPublicPathsType(srcDir, destDir, paths);
             }
+            paths.push('content-scripts/video.css');
         },
     },
     manifest: ({ browser, mode }) => {
-        const version = '1.15.0';
+        const version = '1.19.0';
         const isDev = mode === 'development';
         const devLabel = isDev ? ' (Dev)' : '';
         const title = `${extName}${devLabel}`;
@@ -106,6 +107,7 @@ export default defineConfig({
                         'cijapanese-page.js',
                         'svt-play-page.js',
                         'ur-play-page.js',
+                        'hulu-jp-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',
@@ -113,7 +115,11 @@ export default defineConfig({
                         'video-select-ui.js',
                         'notification-ui.js',
                         'mobile-video-overlay-ui.html',
+                        'statistics-overlay-ui.html',
+                        'statistics-overlay-one-uncollected-ui.html',
+                        'statistics-overlay-one-uncollected-ui.js',
                         'page-favicons/*',
+                        'content-scripts/video.css',
                     ],
                     matches: ['<all_urls>'],
                 },

@@ -17,8 +17,14 @@ const listenForVersion = (callback: (extension: ChromeExtension) => void) => {
                 const message = event.data.message as ExtensionVersionMessage;
                 const extensionCommands = message.extensionCommands ?? {};
                 const pageConfig = message.pageConfig;
+                const browserFeatures = message.browserFeatures;
                 callback(
-                    new ChromeExtension(message.version, chromeCommandBindsToKeyBinds(extensionCommands), pageConfig)
+                    new ChromeExtension(
+                        message.version,
+                        chromeCommandBindsToKeyBinds(extensionCommands),
+                        pageConfig,
+                        browserFeatures
+                    )
                 );
             }
         }
@@ -32,7 +38,7 @@ const listenForVersion = (callback: (extension: ChromeExtension) => void) => {
 };
 
 const unbindInitialListener = listenForVersion((extension) => (realExtension = extension));
-export type AsbplayerComponent = 'sidePanel' | 'videoPlayer' | 'application';
+export type AsbplayerComponent = 'sidePanel' | 'videoPlayer' | 'application' | 'statisticsPopup';
 
 export interface ChromeExtensionOptions {
     component: AsbplayerComponent;

@@ -19,6 +19,7 @@ export interface ElementOverlayParams {
     offsetAnchor: OffsetAnchor;
     contentPositionOffset?: number;
     contentWidthPercentage: number;
+    onContainerStyles?: (container: HTMLElement) => void;
     onMouseOver: (event: MouseEvent) => void;
     onMouseOut: (event: MouseEvent) => void;
 }
@@ -56,6 +57,7 @@ export class CachingElementOverlay implements ElementOverlay {
     private fullscreenStylesInterval?: NodeJS.Timeout;
     private onMouseOver: (event: MouseEvent) => void;
     private onMouseOut: (event: MouseEvent) => void;
+    private onContainerStyles?: (container: HTMLElement) => void;
 
     nonFullscreenContainerClassName: string;
     nonFullscreenContentClassName: string;
@@ -76,6 +78,7 @@ export class CachingElementOverlay implements ElementOverlay {
         contentWidthPercentage,
         onMouseOver,
         onMouseOut,
+        onContainerStyles,
     }: ElementOverlayParams) {
         this.targetElement = targetElement;
         this.nonFullscreenContainerClassName = nonFullscreenContainerClassName;
@@ -87,6 +90,7 @@ export class CachingElementOverlay implements ElementOverlay {
         this.contentWidthPercentage = contentWidthPercentage;
         this.onMouseOver = onMouseOver;
         this.onMouseOut = onMouseOut;
+        this.onContainerStyles = onContainerStyles;
 
         // Necessary for token highlighting on hover
         document.body.classList.add('asbplayer-token-container');
@@ -178,6 +182,7 @@ export class CachingElementOverlay implements ElementOverlay {
         const toggle = () => {
             if (document.fullscreenElement) {
                 container.style.setProperty('display', 'none', 'important');
+                this._transferChildren(container, this._fullscreenContainerElement());
             } else {
                 container.style.display = '';
 
@@ -223,6 +228,7 @@ export class CachingElementOverlay implements ElementOverlay {
                 }
             } else if (!document.fullscreenElement) {
                 container.style.setProperty('display', 'none', 'important');
+                this._transferChildren(container, this._nonFullscreenContainerElement());
             }
         };
 
@@ -244,6 +250,10 @@ export class CachingElementOverlay implements ElementOverlay {
             return document.body;
         }
 
+        const targetElementRootNode = this.targetElement.getRootNode();
+        const rootNode: ShadowRoot | Document =
+            targetElementRootNode instanceof ShadowRoot ? targetElementRootNode : document;
+
         let chosen: HTMLElement | undefined = undefined;
 
         do {
@@ -254,7 +264,7 @@ export class CachingElementOverlay implements ElementOverlay {
                 (typeof chosen === 'undefined' ||
                     // Typescript is not smart enough to know that it's possible for 'chosen' to be defined here
                     rect.height >= (chosen as HTMLElement).getBoundingClientRect().height) &&
-                this._clickable(current, testNode)
+                this._clickable(rootNode, current, testNode)
             ) {
                 chosen = current;
                 break;
@@ -386,12 +396,14 @@ export class CachingElementOverlay implements ElementOverlay {
             container.style.top = clampedY + this.contentPositionOffset + 'px';
             container.style.bottom = '';
         }
+
+        this.onContainerStyles?.(container);
     }
 
-    private _clickable(container: HTMLElement, element: HTMLElement): boolean {
+    private _clickable(rootNode: Document | ShadowRoot, container: HTMLElement, element: HTMLElement): boolean {
         container.appendChild(element);
         const rect = element.getBoundingClientRect();
-        const clickedElement = document.elementFromPoint(rect.x, rect.y);
+        const clickedElement = rootNode.elementFromPoint(rect.x, rect.y);
         const clickable = element.isSameNode(clickedElement) || element.contains(clickedElement);
         element.remove();
         return clickable;

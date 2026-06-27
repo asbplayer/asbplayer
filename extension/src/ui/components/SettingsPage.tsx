@@ -1,5 +1,5 @@
 import { CardModel, HttpFetcher } from '@project/common';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
@@ -18,6 +18,7 @@ import { AsbplayerSettings, Profile, testCard } from '@project/common/settings';
 import { useTheme, type Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import { useLocationHash } from '@project/common/hooks/use-location-hash';
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
@@ -91,14 +92,9 @@ const SettingsPage = ({
     }, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
-    const section = useMemo(() => {
-        if (location.hash && location.hash.startsWith('#')) {
-            return location.hash.substring(1, location.hash.length);
-        }
-
-        return undefined;
-    }, []);
     const { supportedLanguages } = useSupportedLanguages();
+
+    const { hash: scrollToId } = useLocationHash();
 
     if (!settings || !anki || !commands || !i18nInitialized) {
         return null;
@@ -123,6 +119,12 @@ const SettingsPage = ({
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
                         extensionSupportsDictionary
+                        extensionSupportsDictionaryBrowser
+                        extensionSupportsDictionaryWaniKani
+                        extensionSupportsDictionaryMatchAcrossScripts
+                        extensionSupportsDictionaryTokenAnnotationConfig
+                        extensionSupportsSeekableTrackSetting
+                        extensionSupportsAutoCopyableTrackSetting
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         extensionSupportsDictionaryYomitanMecab
                         chromeKeyBinds={commands}
@@ -138,11 +140,11 @@ const SettingsPage = ({
                         localFontFamilies={localFontFamilies}
                         supportedLanguages={supportedLanguages}
                         onUnlockLocalFonts={handleUnlockLocalFonts}
-                        scrollToId={section}
                         inTutorial={inTutorial}
                         inAnnotationTutorial={inAnnotationTutorial}
                         onAnnotationTutorialSeen={onAnnotationTutorialSeen}
                         testCard={extensionTestCard}
+                        scrollToId={scrollToId}
                     />
                 </DialogContent>
                 <Box style={{ marginBottom: theme.spacing(2) }} className={classes.profilesContainer}>

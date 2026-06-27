@@ -1,7 +1,7 @@
 import { currentPageDelegate } from '@/services/pages';
 import type { ContentScriptContext } from '#imports';
 
-const excludeGlobs = ['*://killergerbah.github.io/asbplayer*', '*://app.asbplayer.dev/*'];
+const excludeGlobs = ['*://app.asbplayer.dev/*'];
 
 if (import.meta.env.DEV) {
     excludeGlobs.push('*://localhost:3000/*');

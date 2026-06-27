@@ -1,5 +1,5 @@
 import { VideoData, VideoDataSubtitleTrack } from '@project/common';
-import { trackFromDef, trackId } from '@/pages/util';
+import { poll, trackFromDef, trackId } from '@/pages/util';
 import { decodePoToken, fetchPlayerContextForPage } from '@/services/youtube';
 
 declare global {
@@ -23,15 +23,74 @@ const inferVideoId = () => {
     return params.get('v') ?? undefined;
 };
 
-const ytTrackToSubtitleTrack = (track: any, url: URL) => {
+const trackLabel = (track: any) =>
+    track.name?.simpleText ||
+    track.name?.runs?.[0]?.text ||
+    track.displayName ||
+    track.languageName ||
+    track.languageCode;
+
+const prepareTimedTextUrl = (url: URL) => {
     url.searchParams.set('fmt', 'srv3');
+    url.searchParams.set('c', window.ytcfg?.get?.('INNERTUBE_CLIENT_NAME') || 'WEB');
+};
+
+const trackToSubtitleTrack = (track: any): VideoDataSubtitleTrack | undefined => {
+    const timedTextUrl = track.url || track.baseUrl;
+    const language = track.languageCode;
+
+    if (!timedTextUrl || !language) {
+        return undefined;
+    }
+
+    const url = new URL(timedTextUrl, window.location.href);
+    prepareTimedTextUrl(url);
+
     const def = {
-        label: track.name.text || track.name.simpleText || track.name?.runs?.[0]?.text || track.languageCode,
-        language: track.languageCode,
+        label: trackLabel(track),
+        language,
         url: url.toString(),
         extension: 'ytsrv3',
     };
     return trackFromDef(def);
+};
+
+const tracksToSubtitleTracks = (tracks: any[]): VideoDataSubtitleTrack[] =>
+    tracks.flatMap((track) => {
+        const subtitleTrack = trackToSubtitleTrack(track);
+        return subtitleTrack === undefined ? [] : [subtitleTrack];
+    });
+
+const tracksFromPlayerAudioTrack = async (videoId: string) => {
+    // YouTube's player exposes caption URLs after it has initialized the audio track. These URLs can include
+    // runtime-only params such as POT that are not available in ytInitialPlayerResponse or sessionStorage.
+    let info: { basename: string; subtitles: VideoDataSubtitleTrack[] } | undefined;
+    const ready = await poll(() => {
+        const player = document.querySelector('#movie_player') as any;
+        const playerVideoId = player?.getVideoData?.()?.video_id;
+        const tracks = player?.getAudioTrack?.()?.captionTracks;
+
+        if ((playerVideoId === undefined || playerVideoId === videoId) && Array.isArray(tracks) && tracks.length > 0) {
+            const trackWithPotParam = tracks.find((t) => new URL(t?.url)?.searchParams?.get('pot') !== null);
+            if (trackWithPotParam === undefined) {
+                return false;
+            }
+
+            const subtitles = tracksToSubtitleTracks(tracks);
+
+            if (subtitles.length > 0) {
+                info = {
+                    basename: player?.getVideoData?.()?.title || '',
+                    subtitles,
+                };
+                return true;
+            }
+        }
+
+        return false;
+    }, 5000);
+
+    return ready ? info : undefined;
 };
 
 const androidInnerTubeTracks = async (videoId: string) => {
@@ -72,10 +131,7 @@ const androidInnerTubeTracks = async (videoId: string) => {
     }
 
     const tracks = payload.captions.playerCaptionsTracklistRenderer.captionTracks;
-    const subtitles: VideoDataSubtitleTrack[] = tracks.map((t: any) => {
-        const url = new URL(t.baseUrl);
-        return ytTrackToSubtitleTrack(t, url);
-    });
+    const subtitles: VideoDataSubtitleTrack[] = tracksToSubtitleTracks(tracks);
     return { basename, subtitles };
 };
 
@@ -88,14 +144,14 @@ const timedTextTracksUsingPot = async (videoId: string) => {
 
     const playerContext = await fetchPlayerContextForPage();
     const tracks = playerContext?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-    const subtitles = tracks.map((track: any) => {
+    const tracksWithPot = tracks.map((track: any) => {
         const baseUrl = track.baseUrl as string;
         const baseUrlWithHost = baseUrl.startsWith('/') ? `https://${window.location.host}${baseUrl}` : baseUrl;
         const url = new URL(baseUrlWithHost);
         url.searchParams.set('pot', pot.poToken);
-        url.searchParams.set('c', 'WEB');
-        return ytTrackToSubtitleTrack(track, url);
+        return { ...track, url: url.toString() };
     });
+    const subtitles = tracksToSubtitleTracks(tracksWithPot);
     const basename = playerContext.videoDetails?.title;
     return { basename, subtitles };
 };
@@ -145,7 +201,16 @@ const publishCurrentTracks = async ({
         let basename: string = '';
         let subtitles: VideoDataSubtitleTrack[] | undefined;
 
-        const androidInnerTubeInfo = await androidInnerTubeTracks(videoId);
+        // Prefer YouTube's initialized player state because it contains runtime caption URL params that
+        // can be absent from static player responses and hardcoded POT caches.
+        const playerAudioTrackInfo = await tracksFromPlayerAudioTrack(videoId);
+
+        if (playerAudioTrackInfo) {
+            basename = playerAudioTrackInfo.basename;
+            subtitles = playerAudioTrackInfo.subtitles;
+        }
+
+        const androidInnerTubeInfo = subtitles === undefined ? await androidInnerTubeTracks(videoId) : undefined;
 
         if (androidInnerTubeInfo) {
             basename = androidInnerTubeInfo.basename;

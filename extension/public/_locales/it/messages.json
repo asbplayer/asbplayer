@@ -1,0 +1,35 @@
+{
+    "extensionDescription": {
+        "message": "Migliorare lo streaming video per l'apprendimento delle lingue."
+    },
+    "shortcutOpenSidePanel": {
+        "message": "Mostra/Nascondi pannello laterale"
+    },
+    "shortcutMineSubtitleDescription": {
+        "message": "Estrai sottotitolo corrente. Quando il video viene sincronizzato senza sottotitoli, avvia/ferma la registrazione audio."
+    },
+    "shortcutMineSubtitleAndOpenDialogDescription": {
+        "message": "Estrai sottotitoli correnti e apri la finestra di esportazione Anki. Quando il video viene sincronizzato senza sottotitoli, avvia/ferma la registrazione audio."
+    },
+    "shortcutUpdateLastCardDescription": {
+        "message": "Aggiorna l'ultima carta Anki creata con media prelevati da asbplayer. Quando il video viene sincronizzato senza file di sottotitoli, avvia/ferma la registrazione audio."
+    },
+    "shortcutExportCardDescription": {
+        "message": "Esporta carta direttamente su Anki, senza dialogo."
+    },
+    "shortcutTakeScreenshotDescription": {
+        "message": "Effettua cattura schermo manualmente, sovrascrivendo quella fatta automaticamente al momento dell'estrazione."
+    },
+    "shortcutToggleRecordingDescription": {
+        "message": "Avvia/Ferma Manualmente la registrazione audio, anche quando i sottotitoli sono caricati."
+    },
+    "shortcutSelectSubtitleTrackDescription": {
+        "message": "Seleziona le tracce dei sottotitoli da caricare."
+    },
+    "contextMenuMineSubtitle": {
+        "message": "Estrai Sottotitoli"
+    },
+    "contextMenuLoadSubtitles": {
+        "message": "Carica Sottotitoli"
+    }
+}

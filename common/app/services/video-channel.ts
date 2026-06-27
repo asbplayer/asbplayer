@@ -571,6 +571,7 @@ export default class VideoChannel {
     ankiSettings(settings: AnkiSettings) {
         const {
             ankiConnectUrl,
+            ankiConnectApiKey,
             deck,
             noteType,
             sentenceField,
@@ -590,6 +591,10 @@ export default class VideoChannel {
             audioPaddingEnd,
             maxImageWidth,
             maxImageHeight,
+            mediaFragmentFormat,
+            mediaFragmentTrimStart,
+            mediaFragmentTrimEnd,
+            mediaFragmentMaxClipLength,
             surroundingSubtitlesCountRadius,
             surroundingSubtitlesTimeRadius,
             ankiFieldSettings,
@@ -600,6 +605,7 @@ export default class VideoChannel {
             command: 'ankiSettings',
             value: {
                 ankiConnectUrl,
+                ankiConnectApiKey,
                 deck,
                 noteType,
                 sentenceField,
@@ -619,6 +625,10 @@ export default class VideoChannel {
                 audioPaddingEnd,
                 maxImageWidth,
                 maxImageHeight,
+                mediaFragmentFormat,
+                mediaFragmentTrimStart,
+                mediaFragmentTrimEnd,
+                mediaFragmentMaxClipLength,
                 surroundingSubtitlesCountRadius,
                 surroundingSubtitlesTimeRadius,
                 ankiFieldSettings,
@@ -632,8 +642,11 @@ export default class VideoChannel {
     miscSettings(settings: MiscSettings) {
         const {
             themeType,
+            videoSubtitleSplitBehavior,
             copyToClipboardOnMine,
             autoPausePreference,
+            seekableTracks,
+            autoCopyableTracks,
             seekDuration,
             speedChangeStep,
             fastForwardModePlaybackRate,
@@ -653,13 +666,18 @@ export default class VideoChannel {
             tabName,
             pauseOnHoverMode,
             lastSelectedAnkiExportMode,
+            thumbnailPreview,
+            subtitleAboveThumbnail,
         } = settings;
         const message: MiscSettingsToVideoMessage = {
             command: 'miscSettings',
             value: {
                 themeType,
+                videoSubtitleSplitBehavior,
                 copyToClipboardOnMine,
                 autoPausePreference,
+                seekableTracks,
+                autoCopyableTracks,
                 seekDuration,
                 speedChangeStep,
                 fastForwardModePlaybackRate,
@@ -679,6 +697,8 @@ export default class VideoChannel {
                 tabName,
                 pauseOnHoverMode,
                 lastSelectedAnkiExportMode,
+                thumbnailPreview,
+                subtitleAboveThumbnail,
             },
         };
         this.protocol.postMessage(message);

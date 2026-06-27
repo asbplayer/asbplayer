@@ -1,6 +1,6 @@
 import { base64ToBuffer, uint8ArrayToBase64 } from '@project/common/base64';
 
-// Much of the POT decoding code was provided by @kekulta on https://github.com/killergerbah/asbplayer/pull/733
+// Much of the POT decoding code was provided by @kekulta on https://github.com/asbplayer/asbplayer/pull/733
 const computeHash = (input: string, start: number = 0, end: number = input.length) => {
     let hash = 0;
 

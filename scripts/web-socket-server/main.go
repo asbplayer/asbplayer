@@ -24,6 +24,8 @@ type (
 		Mutex            *sync.Mutex
 		AnkiConnectUrl   string
 		PostMineAction   int
+		InterceptField  string
+		InterceptValue  string
 	}
 	ankiConnectRequest struct {
 		Action string                 `json:"action"`
@@ -199,7 +201,7 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 
 	c.Set("ankiConnectAction", request.Action)
 
-	if request.Action != "addNote" || len(forwarder.WebsocketClients) == 0 {
+	if request.Action != "addNote" || len(forwarder.WebsocketClients) == 0 || !shouldInterceptAddNote(request, forwarder.InterceptField, forwarder.InterceptValue) {
 		return forwarder.forwardToAnkiConnect(buf, c, "POST")
 	}
 
@@ -237,6 +239,29 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 	c.JSON(http.StatusOK, -1)
 
 	return nil
+}
+
+func shouldInterceptAddNote(request ankiConnectRequest, fieldName string, fieldValue string) bool {
+	if fieldName == "" || fieldValue == "" {
+		return true
+	}
+
+	params, ok := request.Params["note"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	fields, ok := params["fields"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	miscInfo, ok := fields[fieldName].(string)
+	if !ok {
+		return false
+	}
+
+	return miscInfo == fieldValue
 }
 
 func (forwarder forwarder) handleOptionsRequest(c echo.Context) error {
@@ -293,6 +318,19 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 	return nil
 }
 
+func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) error {
+	command := clientCommand{Command: "get-bound-media", MessageId: uuid.NewString(), Body: map[string]interface{}{}}
+	responseChannel := make(chan clientResponse)
+
+	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
+	response, ok := <-responseChannel
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	}
+
+	return c.JSONBlob(http.StatusOK, response.Body)
+}
+
 func (forwarder forwarder) disconnectWebsocketClients(c echo.Context) error {
 	forwarder.Mutex.Lock()
 	defer forwarder.Mutex.Unlock()
@@ -308,8 +346,10 @@ func main() {
 	port := getenv("PORT", "8766")
 	ankiConnectUrl := getenv("ANKI_CONNECT_URL", "http://127.0.0.1:8765")
 	postMineAction, _ := strconv.Atoi(getenv("POST_MINE_ACTION", "2"))
-	fmt.Printf("Started with config:\n\n\tPORT=%v\n\tANKI_CONNECT_URL=%v\n\tPOST_MINE_ACTION=%v\n",
-		port, ankiConnectUrl, postMineAction)
+	interceptField := getenv("INTERCEPT_FIELD", "")
+	interceptValue := getenv("INTERCEPT_VALUE", "")
+	fmt.Printf("Started with config:\n\n\tPORT=%v\n\tANKI_CONNECT_URL=%v\n\tPOST_MINE_ACTION=%v\n\tINTERCEPT_FIELD=%v\n\tINTERCEPT_VALUE=%v\n",
+		port, ankiConnectUrl, postMineAction, interceptField, interceptValue)
 
 	e := echo.New()
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
@@ -336,13 +376,16 @@ func main() {
 		WebsocketClients: make(map[*websocket.Conn]bool),
 		ResponseChannel:  make(chan clientResponse),
 		AnkiConnectUrl:   ankiConnectUrl,
-		PostMineAction:   postMineAction}
+		PostMineAction:   postMineAction,
+		InterceptField:   interceptField,
+		InterceptValue:   interceptValue}
 	e.GET("/ws", forwarder.handleWebsocketClient)
 	e.POST("/disconnect-ws-clients", forwarder.disconnectWebsocketClients)
 	e.GET("/", forwarder.handleGetRequest)
 	e.POST("/", forwarder.handlePostRequest)
 	e.POST("/asbplayer/load-subtitles", forwarder.handleAsbplayerLoadSubtitlesRequest)
 	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
+	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
 	e.OPTIONS("/", forwarder.handleOptionsRequest)
 	e.Logger.Fatal(e.Start(":" + port))
 }

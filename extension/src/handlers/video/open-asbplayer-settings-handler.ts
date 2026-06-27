@@ -10,10 +10,13 @@ export default class OpenAsbplayerSettingsHandler {
     }
 
     async handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
-        const tutorial = (command.message as OpenAsbplayerSettingsMessage).tutorial;
+        const { tutorial, scrollToId } = command.message as OpenAsbplayerSettingsMessage;
+        const hash = scrollToId ? `#${scrollToId}` : '';
 
         if (tutorial) {
-            browser.tabs.create({ active: true, url: browser.runtime.getURL('/options.html?tutorial=true') });
+            browser.tabs.create({ active: true, url: browser.runtime.getURL(`/options.html?tutorial=true${hash}`) });
+        } else if (scrollToId) {
+            browser.tabs.create({ active: true, url: browser.runtime.getURL(`/options.html${hash}`) });
         } else {
             browser.runtime.openOptionsPage();
         }

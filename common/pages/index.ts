@@ -29,4 +29,6 @@ export const pageMetadata: { [K in keyof PageSettings]: PageMetadata } = {
     iwanttfc: { title: 'iWantTFC', disableCspRuleId: 21 },
     svtplay: { title: 'SVT Play', disableCspRuleId: 22 },
     urplay: { title: 'UR Play', disableCspRuleId: 23 },
+    archive: { title: 'Internet Archive', disableCspRuleId: 24 },
+    huluJp: { title: 'Hulu Japan', disableCspRuleId: 25 },
 };

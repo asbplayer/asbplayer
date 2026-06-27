@@ -1,7 +1,39 @@
-import { CancelledImageDataRenderingError, Image as CommonImage } from '@project/common';
+import { CancelledMediaFragmentDataRenderingError, MediaFragment } from '@project/common';
 import { useEffect, useState } from 'react';
 
-export const useImageData = ({ image, smoothTransition }: { image?: CommonImage; smoothTransition: boolean }) => {
+const mediaFragmentDimensionsLoader = (
+    image: MediaFragment,
+    dataUrl: string,
+    onLoad: (width: number, height: number) => void
+) => {
+    if (image.extension === 'webm') {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = () => {
+            onLoad(video.videoWidth, video.videoHeight);
+        };
+        video.src = dataUrl;
+
+        return () => {
+            video.onloadedmetadata = null;
+            video.removeAttribute('src');
+            video.load();
+        };
+    }
+
+    const img = new Image();
+    img.onload = () => {
+        onLoad(img.width, img.height);
+    };
+    img.src = dataUrl;
+
+    return () => {
+        img.onload = null;
+        img.src = '';
+    };
+};
+
+export const useImageData = ({ image, smoothTransition }: { image?: MediaFragment; smoothTransition: boolean }) => {
     const [dataUrl, setDataUrl] = useState<string>('');
     const [width, setWidth] = useState<number>(0);
     const [height, setHeight] = useState<number>(0);
@@ -17,41 +49,35 @@ export const useImageData = ({ image, smoothTransition }: { image?: CommonImage;
             return;
         }
 
-        let img: HTMLImageElement | undefined;
+        let cancelled = false;
+        let cleanupLoadedMedia: (() => void) | undefined;
 
-        function fetchImage() {
-            if (!image) {
-                return;
-            }
+        image
+            .dataUrl()
+            .then((nextDataUrl) => {
+                if (cancelled) {
+                    return;
+                }
 
-            image
-                .dataUrl()
-                .then((dataUrl) => {
-                    img = new Image();
-                    img.onload = () => {
-                        if (!img) {
-                            return;
-                        }
-
-                        setWidth(img.width);
-                        setHeight(img.height);
-                        setDataUrl(dataUrl);
-                    };
-                    img.src = dataUrl;
-                })
-                .catch((e) => {
-                    if (!(e instanceof CancelledImageDataRenderingError)) {
-                        throw e;
+                cleanupLoadedMedia = mediaFragmentDimensionsLoader(image, nextDataUrl, (nextWidth, nextHeight) => {
+                    if (cancelled) {
+                        return;
                     }
-                });
-        }
 
-        fetchImage();
+                    setWidth(nextWidth);
+                    setHeight(nextHeight);
+                    setDataUrl(nextDataUrl);
+                });
+            })
+            .catch((e) => {
+                if (!(e instanceof CancelledMediaFragmentDataRenderingError)) {
+                    throw e;
+                }
+            });
 
         return () => {
-            if (img) {
-                img.onload = null;
-            }
+            cancelled = true;
+            cleanupLoadedMedia?.();
         };
     }, [image, smoothTransition]);
 

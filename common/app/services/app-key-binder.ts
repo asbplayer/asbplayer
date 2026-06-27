@@ -1,6 +1,6 @@
 import { CopySubtitleMessage, PostMineAction, SubtitleModel } from '@project/common';
 import { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';
-import { TokenStatus } from '@project/common/settings';
+import { SeekableTracks, TokenStatus } from '@project/common/settings';
 import ChromeExtension, { ExtensionMessage } from './chrome-extension';
 
 export default class AppKeyBinder implements KeyBinder {
@@ -187,6 +187,7 @@ export default class AppKeyBinder implements KeyBinder {
         disabledGetter: () => boolean,
         timeGetter: () => number,
         subtitlesGetter: () => SubtitleModel[] | undefined,
+        seekableTracksGetter: () => SeekableTracks,
         useCapture?: boolean | undefined
     ): () => void {
         return this.defaultKeyBinder.bindSeekToSubtitle(
@@ -194,6 +195,7 @@ export default class AppKeyBinder implements KeyBinder {
             disabledGetter,
             timeGetter,
             subtitlesGetter,
+            seekableTracksGetter,
             useCapture
         );
     }
@@ -203,6 +205,7 @@ export default class AppKeyBinder implements KeyBinder {
         disabledGetter: () => boolean,
         timeGetter: () => number,
         subtitlesGetter: () => SubtitleModel[] | undefined,
+        seekableTracksGetter: () => SeekableTracks,
         useCapture?: boolean | undefined
     ): () => void {
         return this.defaultKeyBinder.bindSeekToBeginningOfCurrentSubtitle(
@@ -210,6 +213,7 @@ export default class AppKeyBinder implements KeyBinder {
             disabledGetter,
             timeGetter,
             subtitlesGetter,
+            seekableTracksGetter,
             useCapture
         );
     }
@@ -227,6 +231,7 @@ export default class AppKeyBinder implements KeyBinder {
         disabledGetter: () => boolean,
         timeGetter: () => number,
         subtitlesGetter: () => SubtitleModel[] | undefined,
+        seekableTracksGetter: () => SeekableTracks,
         useCapture?: boolean | undefined
     ): () => void {
         return this.defaultKeyBinder.bindOffsetToSubtitle(
@@ -234,6 +239,7 @@ export default class AppKeyBinder implements KeyBinder {
             disabledGetter,
             timeGetter,
             subtitlesGetter,
+            seekableTracksGetter,
             useCapture
         );
     }
@@ -317,6 +323,14 @@ export default class AppKeyBinder implements KeyBinder {
             disabledGetter,
             useCapture
         );
+    }
+
+    bindOpenStatistics(
+        onOpenStatistics: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        return this.defaultKeyBinder.bindOpenStatistics(onOpenStatistics, disabledGetter, useCapture);
     }
 
     bindPlay(

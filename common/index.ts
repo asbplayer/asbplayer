@@ -1,5 +1,6 @@
-export { default as Image, CancelledImageDataRenderingError } from './src/image';
+export { default as MediaFragment, CancelledMediaFragmentDataRenderingError } from './src/media-fragment';
 export * from './src/image-transformer';
+export * from './src/media-fragment';
 export * from './src/command';
 export * from './src/model';
 export * from './src/message';

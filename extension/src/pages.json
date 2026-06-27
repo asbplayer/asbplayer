@@ -53,13 +53,25 @@
             }
         },
         {
+            "key": "huluJp",
+            "host": "www\\.hulu\\.jp",
+            "pageScript": "hulu-jp-page.js",
+            "syncAllowedAtPath": "watch",
+            "autoSync": {
+                "enabled": true
+            }
+        },
+        {
             "key": "hulu",
-            "host": "www\\.hulu\\..+",
+            "host": "www\\.hulu\\.(?!jp)",
             "pageScript": "hulu-page.js",
             "syncAllowedAtPath": "watch",
             "autoSync": {
                 "enabled": true,
                 "elementId": "content-video-player"
+            },
+            "ignoreVideoElements": {
+                "class": "VideoPreviewPlayer"
             }
         },
         {
@@ -171,7 +183,7 @@
         },
         {
             "key": "hboMax",
-            "host": "play\\.max\\.com",
+            "host": "play\\.(hbo)?max\\.com",
             "pageScript": "hbo-max-page.js",
             "syncAllowedAtPath": "watch",
             "autoSync": {
@@ -214,6 +226,11 @@
             "autoSync": {
                 "enabled": true
             }
+        },
+        {
+            "key": "archive",
+            "host": "archive\\.org",
+            "searchShadowRootsForVideoElements": true
         }
     ]
 }

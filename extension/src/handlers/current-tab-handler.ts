@@ -2,7 +2,7 @@ import { Command, Message } from '@project/common';
 
 export default class CurrentTabHandler {
     get sender() {
-        return 'asbplayer-mobile-overlay';
+        return ['asbplayer-mobile-overlay', 'asbplayer-statistics-overlay'];
     }
 
     get command() {

@@ -23,5 +23,10 @@ it('can retrieve all keys', async () => {
         ftueHasSeenAnkiDialogQuickSelectV2: false,
         ftueHasSeenSubtitleTrackSelector: false,
         ftueAnnotation: 0,
+        onlineSubtitleSourceConfig: {
+            jimakuApiKey: '',
+            jimakuSearchCategory: 'anime',
+            jimakuRecentWorks: [],
+        },
     });
 });

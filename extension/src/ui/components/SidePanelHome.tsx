@@ -14,6 +14,7 @@ import TutorialIcon from '@project/common/components/TutorialIcon';
 interface Props {
     extension: ChromeExtension;
     videoElementCount: number;
+    miningHistoryCount: number;
     onLoadSubtitles: () => void;
     onShowMiningHistory: () => void;
     onOpenUserGuide: () => void;
@@ -30,7 +31,13 @@ const VideoElementInfoText = ({ videoElementCount }: { videoElementCount: number
     );
 };
 
-const SidePanelHome = ({ videoElementCount, onLoadSubtitles, onShowMiningHistory, onOpenUserGuide }: Props) => {
+const SidePanelHome = ({
+    videoElementCount,
+    miningHistoryCount,
+    onLoadSubtitles,
+    onShowMiningHistory,
+    onOpenUserGuide,
+}: Props) => {
     const { t } = useTranslation();
 
     return (
@@ -48,7 +55,7 @@ const SidePanelHome = ({ videoElementCount, onLoadSubtitles, onShowMiningHistory
                         {t('action.loadSubtitles')}
                     </Button>
                     <Button startIcon={<HistoryIcon />} onClick={onShowMiningHistory}>
-                        {t('bar.miningHistory')}
+                        {`${t('bar.miningHistory')} (${miningHistoryCount})`}
                     </Button>
                     <Button startIcon={<TutorialIcon />} onClick={onOpenUserGuide}>
                         {t('action.userGuide')}

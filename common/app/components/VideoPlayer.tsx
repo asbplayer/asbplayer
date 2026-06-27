@@ -25,9 +25,10 @@ import {
     textSubtitleSettingsForTrack,
     PauseOnHoverMode,
     allTextSubtitleSettings,
-    DictionaryTrack,
     TokenState,
     ApplyStrategy,
+    isTrackSeekable,
+    DictionaryTrack,
 } from '@project/common/settings';
 import {
     arrayEquals,
@@ -39,7 +40,7 @@ import {
     subtitleTimestampWithDelay,
 } from '@project/common/util';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { HoveredToken } from '@project/common/subtitle-coloring';
+import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/subtitle-annotations';
 import Clock from '../services/clock';
 import Controls, { Point } from './Controls';
 import PlayerChannel from '../services/player-channel';
@@ -59,6 +60,7 @@ import { MiningContext } from '../services/mining-context';
 import { useSubtitleStyles } from '../hooks/use-subtitle-styles';
 import { useFullscreen } from '../hooks/use-fullscreen';
 import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
+import BlurOverlay from './BlurOverlay';
 import { CachedLocalStorage } from '../services/cached-local-storage';
 import useLastScrollableControlType from '../../hooks/use-last-scrollable-control-type';
 import { type Theme } from '@mui/material/styles';
@@ -160,13 +162,25 @@ function errorMessage(element: HTMLVideoElement) {
     return error + ': ' + (element.error?.message || '<details missing>');
 }
 
+function subtitlesForVideo<T extends RichSubtitleModel>(
+    subtitles: T[],
+    dictionaryTracks: DictionaryTrack[] | undefined
+): T[] {
+    const videoSubtitles = subtitles.map((subtitle) => ({
+        ...subtitle,
+        richText: undefined,
+        richTextOnHover: undefined,
+    }));
+    renderRichTextOntoSubtitles(videoSubtitles, 'video', dictionaryTracks);
+    return videoSubtitles;
+}
+
 const showingSubtitleHtml = (
     subtitle: RichSubtitleModel,
     videoRef: MutableRefObject<ExperimentalHTMLVideoElement | undefined>,
     subtitleStyles: string,
     subtitleClasses: string,
-    imageBasedSubtitleScaleFactor: number,
-    dictionaryTracks: DictionaryTrack[]
+    imageBasedSubtitleScaleFactor: number
 ) => {
     if (subtitle.textImage) {
         const imageScale =
@@ -185,10 +199,11 @@ const showingSubtitleHtml = (
 `;
     }
     const allSubtitleClasses = subtitleClasses ? `${subtitleClasses} asbplayer-subtitles` : 'asbplayer-subtitles';
-    if (subtitle.richText && dictionaryTracks[subtitle.track].dictionaryColorizeOnHoverOnly) {
-        return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}"><span class="asbplayer-subtitle-text">${subtitle.text}</span><span class="asbplayer-subtitle-rich">${subtitle.richText}</span></span>`;
-    }
-    return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}">${subtitle.richText ?? subtitle.text}</span>`;
+    return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}">${getAnnotationsHtml(
+        subtitle.text,
+        subtitle.richText,
+        subtitle.richTextOnHover
+    )}</span>`;
 };
 
 interface CachedShowingSubtitleProps {
@@ -231,6 +246,7 @@ const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
 const useSubtitleContainerStyles = makeStyles(() => ({
     subtitleContainer: {
         position: 'absolute',
+        zIndex: 6,
         paddingLeft: 20,
         paddingRight: 20,
         textAlign: 'center',
@@ -242,16 +258,16 @@ const useSubtitleContainerStyles = makeStyles(() => ({
 interface SubtitleContainerProps {
     subtitleSettings: SubtitleSettings;
     alignment: SubtitleAlignment;
+    subtitleZIndex: boolean;
     baseOffset: number;
     children: React.ReactNode;
 }
 
 const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProps>(function SubtitleContainer(
-    { subtitleSettings, alignment, baseOffset, children }: SubtitleContainerProps,
+    { subtitleSettings, alignment, baseOffset, children, subtitleZIndex }: SubtitleContainerProps,
     ref
 ) {
     const classes = useSubtitleContainerStyles();
-
     return (
         <div
             ref={ref}
@@ -261,6 +277,7 @@ const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProp
                     ? { bottom: subtitleSettings.subtitlePositionOffset + baseOffset }
                     : { top: subtitleSettings.topSubtitlePositionOffset + baseOffset }),
                 ...(subtitleSettings.subtitlesWidth === -1 ? {} : { width: `${subtitleSettings.subtitlesWidth}%` }),
+                zIndex: subtitleZIndex ? 12 : 0,
             }}
         >
             {children}
@@ -346,7 +363,11 @@ export default function VideoPlayer({
     const classes = useStyles();
     const { t } = useTranslation();
     const poppingInRef = useRef<boolean>(undefined);
+    const settingsRef = useRef(settings);
+    settingsRef.current = settings;
     const videoRef = useRef<ExperimentalHTMLVideoElement>(undefined);
+    const hiddenVideoRef = useRef<HTMLVideoElement | null>(null); // seek preview thumbnail
+    const [hiddenVideoReady, setHiddenVideoReady] = useState(false);
     const [windowWidth, windowHeight] = useWindowSize(true);
     if (videoRef.current) {
         videoRef.current.width = windowWidth;
@@ -358,6 +379,8 @@ export default function VideoPlayer({
     const playing = () => !videoRef.current?.paused || false;
     const [length, setLength] = useState<number>(0);
     const [videoFileName, setVideoFileName] = useState<string>();
+    const [videoWidth, setVideoWidth] = useState<number>(); // width and height are original width and height from metadata
+    const [videoHeight, setVideoHeight] = useState<number>();
     const [offset, setOffset] = useState<number>(0);
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
@@ -402,9 +425,13 @@ export default function VideoPlayer({
     const [trackCount, setTrackCount] = useState<number>(0);
     const [, forceRender] = useState<any>();
     const [mineIntervalStartTimestamp, setMineIntervalStartTimestamp] = useState<number>();
+    const [blurOverlayVisible, setBlurOverlayVisible] = useState<boolean>(false);
+    const handleBlurOverlayToggle = useCallback(() => setBlurOverlayVisible((v) => !v), []);
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
+    const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 5s
+    const isGeneratingRef = useRef(false); // avoid subsequent calls to generate thumbnail while generating one
 
     useEffect(() => {
         setMiscSettings(settings);
@@ -420,18 +447,23 @@ export default function VideoPlayer({
 
     const autoPauseContext = useMemo(() => {
         const context = new AutoPauseContext();
-        context.onStartedShowing = () => {
+        context.onStartedShowing = (subtitle: SubtitleModel) => {
             if (
                 !playModes.has(PlayMode.autoPause) ||
-                miscSettings.autoPausePreference !== AutoPausePreference.atStart
+                miscSettings.autoPausePreference !== AutoPausePreference.atStart ||
+                !isTrackSeekable(miscSettings.seekableTracks, subtitle.track)
             ) {
                 return;
             }
 
             playerChannel.pause();
         };
-        context.onWillStopShowing = () => {
-            if (!playModes.has(PlayMode.autoPause) || miscSettings.autoPausePreference !== AutoPausePreference.atEnd) {
+        context.onWillStopShowing = (subtitle: SubtitleModel) => {
+            if (
+                !playModes.has(PlayMode.autoPause) ||
+                miscSettings.autoPausePreference !== AutoPausePreference.atEnd ||
+                !isTrackSeekable(miscSettings.seekableTracks, subtitle.track)
+            ) {
                 return;
             }
 
@@ -483,9 +515,14 @@ export default function VideoPlayer({
 
                 if (videoElement.readyState === 4) {
                     notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
+                    setVideoWidth(videoElement.videoWidth);
+                    setVideoHeight(videoElement.videoHeight);
                 } else {
-                    videoElement.onloadeddata = () =>
+                    videoElement.onloadeddata = () => {
                         notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
+                        setVideoWidth(videoElement.videoWidth);
+                        setVideoHeight(videoElement.videoHeight);
+                    };
                     videoElement.ondurationchange = () =>
                         notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
                 }
@@ -549,6 +586,7 @@ export default function VideoPlayer({
                 track: s.track,
                 index: i,
                 richText: s.richText,
+                richTextOnHover: s.richTextOnHover,
             }))
         );
     }, []);
@@ -619,7 +657,11 @@ export default function VideoPlayer({
         });
 
         playerChannel.onSubtitles((subtitles) => {
-            setSubtitles(subtitles.map((s, i) => ({ ...s, index: i })));
+            const renderedSubtitles = subtitlesForVideo(
+                subtitles.map((s, i) => ({ ...s, index: i })),
+                settingsRef.current.dictionaryTracks
+            );
+            setSubtitles(renderedSubtitles);
             setTrackCount(Math.max(...subtitles.map((s) => s.track)) + 1);
 
             if (subtitles && subtitles.length > 0) {
@@ -632,11 +674,12 @@ export default function VideoPlayer({
             autoPauseContextRef.current?.clear();
         });
         playerChannel.onSubtitlesUpdated((updatedSubtitles) => {
-            for (const updatedSubtitle of updatedSubtitles) {
+            const renderedUpdatedSubtitles = subtitlesForVideo(updatedSubtitles, settingsRef.current.dictionaryTracks);
+            for (const updatedSubtitle of renderedUpdatedSubtitles) {
                 domCacheRef.current?.delete(String(updatedSubtitle.index));
             }
 
-            const updatedByIndex = new Map(updatedSubtitles.map((s) => [s.index, s] as const));
+            const updatedByIndex = new Map(renderedUpdatedSubtitles.map((s) => [s.index, s] as const));
             if (showSubtitlesRef.current.some((s) => updatedByIndex.has(s.index))) {
                 setShowSubtitles((prevShowSubtitles) =>
                     prevShowSubtitles.map((showSubtitle) => {
@@ -646,6 +689,7 @@ export default function VideoPlayer({
                             ...showSubtitle,
                             text: updatedShowSubtitle.text,
                             richText: updatedShowSubtitle.richText,
+                            richTextOnHover: updatedShowSubtitle.richTextOnHover,
                             tokenization: updatedShowSubtitle.tokenization,
                         };
                     })
@@ -655,11 +699,12 @@ export default function VideoPlayer({
             setSubtitles((prevSubtitles) => {
                 if (!prevSubtitles.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
-                for (const s of updatedSubtitles) {
+                for (const s of renderedUpdatedSubtitles) {
                     allSubtitles[s.index] = {
                         ...allSubtitles[s.index],
                         text: s.text,
                         richText: s.richText,
+                        richTextOnHover: s.richTextOnHover,
                         tokenization: s.tokenization,
                     };
                 }
@@ -715,10 +760,72 @@ export default function VideoPlayer({
             }
 
             const time = progress * length;
+            // get a screenshot of this time when hovered
             playerChannel.currentTime(time / 1000);
         },
         [length, clock, playerChannel]
     );
+
+    const handleSeekPreview = useCallback(
+        (progress: number): string | undefined => {
+            if (!Number.isFinite(length)) {
+                return;
+            }
+
+            if (!hiddenVideoRef.current) {
+                return;
+            }
+
+            const time = progress * length;
+            const video = hiddenVideoRef.current;
+
+            const thumbnailKey = Math.floor(time / 1000 / 5);
+
+            // cached url found, return url
+            if (thumbnailsRef.current.has(thumbnailKey)) {
+                return thumbnailsRef.current.get(thumbnailKey);
+            }
+
+            if (isGeneratingRef.current) return;
+            // if not in cache, generate new one in the background
+            isGeneratingRef.current = true;
+
+            const onSeeked = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth * 0.7;
+                canvas.height = video.videoHeight * 0.7;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+                thumbnailsRef.current.set(thumbnailKey, thumbnailUrl);
+                isGeneratingRef.current = false;
+            };
+
+            video.addEventListener('seeked', onSeeked, { once: true });
+            video.currentTime = time / 1000;
+
+            return;
+        },
+        [length]
+    );
+
+    // load or unload preview thumbnail
+    useEffect(() => {
+        const videoPreview = hiddenVideoRef.current;
+
+        if (!videoPreview) return;
+
+        if (settings.thumbnailPreview) {
+            videoPreview.src = videoFile;
+            videoPreview.load();
+        } else {
+            settings.thumbnailPreview;
+            videoPreview.pause();
+            videoPreview.removeAttribute('src');
+            videoPreview.load();
+        }
+    }, [settings.thumbnailPreview, videoFile, hiddenVideoReady]);
 
     const handleSeekByTimestamp = useCallback(
         (timestampMs: number) => {
@@ -814,6 +921,7 @@ export default function VideoPlayer({
         autoPauseContext,
         miscSettings,
         extension,
+        settings,
     ]);
 
     const handleOffsetChange = useCallback(
@@ -839,9 +947,10 @@ export default function VideoPlayer({
             },
             () => !videoRef.current,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settings.seekableTracks
         );
-    }, [keyBinder, playerChannel, subtitles, length, clock]);
+    }, [keyBinder, playerChannel, subtitles, length, clock, settings]);
 
     useEffect(() => {
         return keyBinder.bindSeekToBeginningOfCurrentSubtitle(
@@ -855,7 +964,8 @@ export default function VideoPlayer({
             },
             () => !videoRef.current,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => settings.seekableTracks
         );
     }, [keyBinder, playerChannel, subtitles, length, clock, settings]);
 
@@ -1034,9 +1144,10 @@ export default function VideoPlayer({
             },
             () => false,
             () => clock.time(length),
-            () => subtitles
+            () => subtitles,
+            () => miscSettings.seekableTracks
         );
-    }, [keyBinder, handleOffsetChange, subtitles, clock, length]);
+    }, [keyBinder, handleOffsetChange, subtitles, clock, length, miscSettings.seekableTracks]);
 
     const extractSubtitles = useCallback(() => {
         if (!subtitles || subtitles.length === 0) {
@@ -1559,7 +1670,7 @@ export default function VideoPlayer({
         setAlertDisableAutoHide(false);
         setAlertOpen(false);
     }, []);
-    const trackStyles = useSubtitleStyles(subtitleSettings, trackCount ?? 1);
+    const trackStyles = useSubtitleStyles(subtitleSettings, trackCount ?? 1, settings.dictionaryTracks, 'video');
 
     const getSubtitleHtml = useCallback(
         (subtitle: RichSubtitleModel) =>
@@ -1568,10 +1679,9 @@ export default function VideoPlayer({
                 videoRef,
                 trackStyles[subtitle.track]?.styleString ?? trackStyles[0].styleString,
                 trackStyles[subtitle.track]?.classes ?? trackStyles[0].classes,
-                subtitleSettings.imageBasedSubtitleScaleFactor,
-                settings.dictionaryTracks
+                subtitleSettings.imageBasedSubtitleScaleFactor
             ),
-        [trackStyles, subtitleSettings.imageBasedSubtitleScaleFactor, settings.dictionaryTracks]
+        [trackStyles, subtitleSettings.imageBasedSubtitleScaleFactor]
     );
 
     const { getSubtitleDomCache } = useSubtitleDomCache(subtitles, getSubtitleHtml);
@@ -1582,12 +1692,17 @@ export default function VideoPlayer({
 
     const handleSwipe = useCallback(
         (direction: Direction) => {
-            const subtitle = adjacentSubtitle(direction === 'right', clock.time(length), subtitles);
+            const subtitle = adjacentSubtitle(
+                direction === 'right',
+                clock.time(length),
+                subtitles,
+                miscSettings.seekableTracks
+            );
             if (subtitle) {
                 playerChannel.currentTime(subtitle.start / 1000);
             }
         },
-        [clock, length, subtitles, playerChannel]
+        [clock, length, subtitles, playerChannel, miscSettings.seekableTracks]
     );
 
     useSwipe({
@@ -1720,8 +1835,10 @@ export default function VideoPlayer({
             emptySubtitleTrack: subtitles.length === 0,
             recordingEnabled: true,
             recording: mineIntervalStartTimestamp !== undefined,
-            previousSubtitleTimestamp: adjacentSubtitle(false, timestamp, subtitles)?.originalStart ?? undefined,
-            nextSubtitleTimestamp: adjacentSubtitle(true, timestamp, subtitles)?.originalStart ?? undefined,
+            previousSubtitleTimestamp:
+                adjacentSubtitle(false, timestamp, subtitles, miscSettings.seekableTracks)?.originalStart ?? undefined,
+            nextSubtitleTimestamp:
+                adjacentSubtitle(true, timestamp, subtitles, miscSettings.seekableTracks)?.originalStart ?? undefined,
             currentTimestamp: timestamp,
             postMineAction: settings.clickToMineDefaultAction,
             subtitleDisplaying: showSubtitles.length > 0,
@@ -1780,8 +1897,31 @@ export default function VideoPlayer({
                 src={videoFile}
                 onMouseOver={handleVideoMouseOver}
             />
+            {/* Optional blur mask overlay; constrained to the video bounds within the player container */}
+            {blurOverlayVisible && <BlurOverlay anchorRef={containerRef} containerRef={videoRef} />}
+            {/* this video is for getting the seek preview below */}
+            {miscSettings.thumbnailPreview && (
+                <video
+                    src={videoFile}
+                    muted
+                    preload="none"
+                    autoPlay={false}
+                    style={{ position: 'absolute', left: '-9999px' }}
+                    ref={(node) => {
+                        hiddenVideoRef.current = node;
+                        if (node) {
+                            setHiddenVideoReady(true);
+                        }
+                    }}
+                />
+            )}
             {topSubtitleElements.length > 0 && (
-                <SubtitleContainer alignment={'top'} subtitleSettings={subtitleSettings} baseOffset={0}>
+                <SubtitleContainer
+                    alignment={'top'}
+                    subtitleSettings={subtitleSettings}
+                    baseOffset={0}
+                    subtitleZIndex={settings.subtitleAboveThumbnail}
+                >
                     {topSubtitleElements}
                 </SubtitleContainer>
             )}
@@ -1791,11 +1931,14 @@ export default function VideoPlayer({
                     alignment={'bottom'}
                     subtitleSettings={subtitleSettings}
                     baseOffset={baseBottomSubtitleOffset}
+                    subtitleZIndex={settings.subtitleAboveThumbnail}
                 >
                     {bottomSubtitleElements}
                 </SubtitleContainer>
             )}
             <Controls
+                videoWidth={videoWidth}
+                videoHeight={videoHeight}
                 mousePositionRef={mousePositionRef}
                 clock={clock}
                 length={length}
@@ -1815,6 +1958,7 @@ export default function VideoPlayer({
                 popOutEnabled={!isMobile}
                 playModeEnabled={subtitles && subtitles.length > 0}
                 playModes={playModes}
+                previewEnabled={settings.thumbnailPreview}
                 hideSubtitlePlayerToggleEnabled={
                     subtitles?.length > 0 && !popOut && !fullscreen && !notEnoughRoomForSubtitlePlayer
                 }
@@ -1822,6 +1966,7 @@ export default function VideoPlayer({
                 onPlay={handlePlay}
                 onPause={handlePause}
                 onSeek={handleSeek}
+                onSeekPreview={handleSeekPreview}
                 onAudioTrackSelected={handleAudioTrackSelected}
                 onSubtitlesToggle={handleSubtitlesToggle}
                 onFullscreenToggle={handleFullscreenToggle}
@@ -1842,6 +1987,8 @@ export default function VideoPlayer({
                 onSubtitleAlignment={handleSubtitleAlignment}
                 hideToolbar={isMobile}
                 onLoadFiles={popOut ? undefined : handleLoadFiles}
+                blurOverlayEnabled={blurOverlayVisible}
+                onBlurOverlayToggle={handleBlurOverlayToggle}
             />
         </div>
     );
