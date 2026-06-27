@@ -27,7 +27,6 @@ import {
 import {
     AsbplayerSettings,
     DictionaryTrack,
-    dictionaryTrackEnabled,
     TokenAnnotationConfig,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
@@ -36,10 +35,7 @@ import {
     mockSurroundingSubtitles,
     surroundingSubtitlesAroundInterval,
     extractText,
-    normalizedLookupTerms,
-    normalizeSearchText,
 } from '@project/common/util';
-import { Yomitan } from '@project/common/yomitan';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
 import {
     getAnnotationsHtml,
@@ -68,13 +64,12 @@ import TextField from '@mui/material/TextField';
 import Clock from '../services/clock';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { MineSubtitleParams } from '../hooks/use-app-web-socket-client';
+import { useSubtitleFind } from '../hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
 import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension';
 import { MineSubtitleCommand, WebSocketClient } from '../../web-socket-client';
 import { clampSubtitlePlayerWidth } from './video-subtitle-split';
 import './subtitles.css';
-
-const findDelayMs = 300;
 
 let lastKnownWidth: number | undefined;
 export const minSubtitlePlayerWidth = 200;
@@ -250,28 +245,6 @@ const selectionStateForIndex = (
             highlightedJumpToSubtitleIndex === index ? SelectionState.insideSelection : SelectionState.outsideSelection;
     }
     return selectionState;
-};
-
-const parseRegexQuery = (query: string): RegExp | undefined => {
-    const regexMatch = /^\/(.+)\/([a-z]*)$/.exec(query);
-    if (!regexMatch) return;
-    try {
-        return new RegExp(regexMatch[1], regexMatch[2].replace(/[gy]/g, ''));
-    } catch (e) {
-        return;
-    }
-};
-
-const subtitleSearchableText = (subtitle: DisplaySubtitleModel): string => {
-    const tokens = subtitle.tokenization?.tokens;
-    if (!tokens?.length) return subtitle.text;
-    let readings = '';
-    for (const token of tokens) {
-        for (const reading of token.readings) {
-            if (reading.reading) readings += reading.reading;
-        }
-    }
-    return readings.length ? `${subtitle.text}\n${readings}` : subtitle.text;
 };
 
 const SubtitleScroller = React.forwardRef<HTMLDivElement, ScrollerProps & ContextProp<SubtitleRowContext>>(
@@ -714,33 +687,6 @@ export default function SubtitlePlayer({
     const [currentSubtitleIndexes, setCurrentSubtitleIndexes] = useState<{ [index: number]: boolean }>({});
     const [selectedSubtitleIndexes, setSelectedSubtitleIndexes] = useState<boolean[]>();
     const [highlightedJumpToSubtitleIndex, setHighlightedJumpToSubtitleIndex] = useState<number>();
-    const [findOpen, setFindOpen] = useState<boolean>(false);
-    const [findQuery, setFindQuery] = useState<string>('');
-    const [findExpansion, setFindExpansion] = useState<{ query: string; terms: string[] }>({ query: '', terms: [] });
-    const [currentMatchPosition, setCurrentMatchPosition] = useState<number>(0);
-    const findInputRef = useRef<HTMLInputElement | null>(null);
-    const yomitans = useMemo(
-        () =>
-            settings.dictionaryTracks
-                .filter((dictionaryTrack) => dictionaryTrackEnabled(dictionaryTrack))
-                .map((dictionaryTrack) => new Yomitan(dictionaryTrack)),
-        [settings.dictionaryTracks]
-    );
-    const yomitanVersionPromisesRef = useRef<WeakMap<Yomitan, Promise<unknown>>>(new WeakMap());
-    const ensureYomitanVersion = useCallback(async () => {
-        await Promise.allSettled(
-            yomitans.map((yomitan) => {
-                const cached = yomitanVersionPromisesRef.current.get(yomitan);
-                if (cached) return cached;
-                const promise = yomitan.version().catch((e) => {
-                    yomitanVersionPromisesRef.current.delete(yomitan);
-                    throw e;
-                });
-                yomitanVersionPromisesRef.current.set(yomitan, promise);
-                return promise;
-            })
-        );
-    }, [yomitans]);
     const disableKeyEventsRef = useRef<boolean>(disableKeyEvents);
     disableKeyEventsRef.current = disableKeyEvents;
     const lengthRef = useRef<number>(0);
@@ -757,6 +703,17 @@ export default function SubtitlePlayer({
     autoPauseContextRef.current = autoPauseContext;
     const onSubtitlesHighlightedRef = useRef<(subtitles: SubtitleModel[]) => void>(undefined);
     onSubtitlesHighlightedRef.current = onSubtitlesHighlighted;
+    const find = useSubtitleFind({
+        subtitles,
+        dictionaryTracks: settings.dictionaryTracks,
+        disableKeyEventsRef,
+        hiddenRef,
+        lastScrollTimestampRef,
+        subtitleListRef,
+        virtuosoRef,
+        visibleRangeRef,
+        setHighlightedJumpToSubtitleIndex,
+    });
 
     // This effect should be scheduled only once as re-scheduling seems to cause performance issues.
     // Therefore all of the state it operates on is contained in refs.
@@ -966,170 +923,6 @@ export default function SubtitlePlayer({
             setTimeout(() => setHighlightedJumpToSubtitleIndex(undefined), 1000);
         }
     }, [jumpToSubtitle, subtitles, onSeek, onJumpToSubtitleHandled, clock]);
-
-    useEffect(() => {
-        const trimmed = findQuery.trim();
-        if (!findOpen || !trimmed || parseRegexQuery(findQuery) !== undefined || !yomitans.length) return;
-
-        let cancelled = false;
-        const timeout = setTimeout(async () => {
-            await ensureYomitanVersion();
-            if (cancelled) return;
-            const queryForms = new Set<string>([trimmed]);
-
-            const tokenizeResults = await Promise.allSettled(
-                yomitans.map((yt) => {
-                    try {
-                        return yt.tokenize(trimmed);
-                    } catch (e) {
-                        yomitanVersionPromisesRef.current.delete(yt);
-                        throw e;
-                    }
-                })
-            );
-            for (const result of tokenizeResults) {
-                if (result.status !== 'fulfilled') continue;
-                for (const tokenParts of result.value) {
-                    const tokenText = tokenParts
-                        .map((part) => part.text)
-                        .join('')
-                        .trim();
-                    if (tokenText) queryForms.add(tokenText);
-                }
-            }
-
-            const lemmaTerms = new Set<string>();
-            for (const queryForm of queryForms) {
-                const lemmaResults = await Promise.allSettled(
-                    yomitans.map((yt) => {
-                        try {
-                            return yt.lemmatize(queryForm);
-                        } catch (e) {
-                            yomitanVersionPromisesRef.current.delete(yt);
-                            throw e;
-                        }
-                    })
-                );
-                for (const result of lemmaResults) {
-                    if (result.status !== 'fulfilled') continue;
-                    for (const lemma of result.value ?? []) lemmaTerms.add(lemma);
-                }
-            }
-
-            if (cancelled) return;
-            setFindExpansion({ query: trimmed, terms: normalizedLookupTerms(...queryForms, ...lemmaTerms) });
-        }, findDelayMs);
-
-        return () => {
-            cancelled = true;
-            clearTimeout(timeout);
-        };
-    }, [findQuery, findOpen, yomitans, ensureYomitanVersion]);
-
-    const findMatches = useMemo(() => {
-        const trimmed = findQuery.trim();
-        if (!findOpen || !subtitles || !subtitles.length || !trimmed) return [];
-
-        const matches: number[] = [];
-        const regex = parseRegexQuery(findQuery);
-        if (regex) {
-            for (const [i, subtitle] of subtitles.entries()) {
-                const searchableText = subtitleSearchableText(subtitle);
-                if (regex.test(searchableText)) matches.push(i);
-            }
-        } else {
-            const terms = normalizedLookupTerms(trimmed).concat(
-                findExpansion.query === trimmed ? findExpansion.terms : []
-            );
-            for (const [i, subtitle] of subtitles.entries()) {
-                const normalized = normalizeSearchText(subtitleSearchableText(subtitle));
-                if (terms.some((term) => normalized.includes(term))) matches.push(i);
-            }
-        }
-        return matches;
-    }, [findOpen, subtitles, findQuery, findExpansion]);
-    const findMatchesRef = useRef(findMatches);
-    findMatchesRef.current = findMatches;
-
-    const scrollToFindMatch = useCallback((subtitleIndex: number) => {
-        lastScrollTimestampRef.current = Date.now();
-        if (!hiddenRef.current) {
-            virtuosoRef.current?.scrollToIndex({
-                index: subtitleIndex,
-                align: 'center',
-                behavior: 'auto',
-            });
-        }
-        setHighlightedJumpToSubtitleIndex(subtitleIndex);
-    }, []);
-
-    useEffect(() => {
-        if (!findOpen) return;
-        const trimmed = findQuery.trim();
-        const searchCompleted =
-            !trimmed || parseRegexQuery(findQuery) !== undefined || !yomitans.length || findExpansion.query === trimmed;
-        if (!searchCompleted) return;
-        const matches = findMatches;
-        if (!matches.length) {
-            setHighlightedJumpToSubtitleIndex(undefined);
-            setCurrentMatchPosition(0);
-            return;
-        }
-        const firstVisibleIndex = visibleRangeRef.current.startIndex;
-        const matchPosition = Math.max(
-            0,
-            matches.findIndex((subtitleIndex) => subtitleIndex >= firstVisibleIndex)
-        );
-        setCurrentMatchPosition(matchPosition);
-        scrollToFindMatch(matches[matchPosition]);
-    }, [findMatches, findOpen, findQuery, findExpansion.query, yomitans.length, scrollToFindMatch]);
-
-    const navigateFindMatch = useCallback(
-        (delta: number) => {
-            const matches = findMatchesRef.current;
-            if (!matches.length) return;
-            setCurrentMatchPosition((current) => {
-                const next = (current + delta + matches.length) % matches.length;
-                scrollToFindMatch(matches[next]);
-                return next;
-            });
-        },
-        [scrollToFindMatch]
-    );
-
-    const handleFindNext = useCallback(() => navigateFindMatch(1), [navigateFindMatch]);
-    const handleFindPrevious = useCallback(() => navigateFindMatch(-1), [navigateFindMatch]);
-
-    const handleCloseFind = useCallback(() => {
-        setFindOpen(false);
-        setFindQuery('');
-        setCurrentMatchPosition(0);
-        setHighlightedJumpToSubtitleIndex(undefined);
-    }, []);
-
-    useEffect(() => {
-        const handleGlobalKeyDown = (event: KeyboardEvent) => {
-            if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === 'f' || event.key === 'F')) {
-                if (disableKeyEventsRef.current || !subtitleListRef.current || !subtitleListRef.current.length) {
-                    return;
-                }
-                event.preventDefault();
-                event.stopPropagation();
-                setFindOpen(true);
-                requestAnimationFrame(() => {
-                    findInputRef.current?.focus();
-                    findInputRef.current?.select();
-                });
-            }
-        };
-
-        document.addEventListener('keydown', handleGlobalKeyDown, true);
-        return () => document.removeEventListener('keydown', handleGlobalKeyDown, true);
-    }, []);
-
-    const findResultsLabel = findQuery.trim()
-        ? `${findMatches.length ? currentMatchPosition + 1 : 0}/${findMatches.length}`
-        : '';
 
     const currentMockSubtitle = useCallback(() => {
         const timestamp = clock.time(length);
@@ -1578,17 +1371,17 @@ export default function SubtitlePlayer({
                 userSelect: isResizing || dragging ? 'none' : undefined,
             }}
         >
-            {findOpen && (
+            {find.open && (
                 <SubtitleFindBar
-                    inputRef={findInputRef}
-                    query={findQuery}
+                    inputRef={find.inputRef}
+                    query={find.query}
                     placeholder={t('action.findPlaceholder')}
-                    resultsLabel={findResultsLabel}
-                    hasMatches={findMatches.length > 0}
-                    onQueryChange={setFindQuery}
-                    onNext={handleFindNext}
-                    onPrevious={handleFindPrevious}
-                    onClose={handleCloseFind}
+                    resultsLabel={find.resultsLabel}
+                    hasMatches={find.matches.length > 0}
+                    onQueryChange={find.setQuery}
+                    onNext={find.next}
+                    onPrevious={find.previous}
+                    onClose={find.close}
                 />
             )}
             {subtitleContent}

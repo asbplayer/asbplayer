@@ -426,10 +426,10 @@ export default function VideoPlayer({
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
-    const refreshSubtitleWindowDomCacheRef = useRef<((windowSubtitles: IndexedSubtitleModel[]) => void) | undefined>(
-        undefined
-    );
-    const updateSubtitleWindowDomCacheRef = useRef<((windowSubtitles: IndexedSubtitleModel[]) => void) | undefined>(
+    const refreshSubtitleDomCacheForSubtitlesRef = useRef<
+        ((windowSubtitles: IndexedSubtitleModel[]) => void) | undefined
+    >(undefined);
+    const updateSubtitleDomCacheRef = useRef<((windowSubtitles: IndexedSubtitleModel[]) => void) | undefined>(
         undefined
     );
     const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 5s
@@ -671,7 +671,7 @@ export default function VideoPlayer({
             autoPauseContextRef.current?.clear();
         });
         playerChannel.onSubtitlesUpdated((updatedSubtitles) => {
-            updateSubtitleWindowDomCacheRef.current?.(updatedSubtitles);
+            updateSubtitleDomCacheRef.current?.(updatedSubtitles);
 
             const updatedByIndex = new Map(updatedSubtitles.map((s) => [s.index, s] as const));
             if (showSubtitlesRef.current.some((s) => updatedByIndex.has(s.index))) {
@@ -877,7 +877,7 @@ export default function VideoPlayer({
                 for (const subtitle of lastShown ?? []) windowSubtitles.push(subtitle);
                 for (const subtitle of nextToShow ?? []) windowSubtitles.push(subtitle);
             }
-            refreshSubtitleWindowDomCacheRef.current?.(windowSubtitles);
+            refreshSubtitleDomCacheForSubtitlesRef.current?.(windowSubtitles);
         };
 
         const interval = setInterval(() => {
@@ -1689,22 +1689,14 @@ export default function VideoPlayer({
         [trackStyles, settings.dictionaryTracks, subtitleSettings.imageBasedSubtitleScaleFactor]
     );
 
-    const { getSubtitleDomCache, refreshSubtitleWindowDomCache, updateSubtitleWindowDomCache } = useSubtitleDomCache(
+    const { getSubtitleDomCache, refreshSubtitleDomCacheForSubtitles, updateSubtitleDomCache } = useSubtitleDomCache(
         subtitles,
         getSubtitleHtml
     );
 
-    useEffect(() => {
-        domCacheRef.current = getSubtitleDomCache();
-    }, [getSubtitleDomCache]);
-
-    useEffect(() => {
-        refreshSubtitleWindowDomCacheRef.current = refreshSubtitleWindowDomCache;
-    }, [refreshSubtitleWindowDomCache]);
-
-    useEffect(() => {
-        updateSubtitleWindowDomCacheRef.current = updateSubtitleWindowDomCache;
-    }, [updateSubtitleWindowDomCache]);
+    domCacheRef.current = getSubtitleDomCache();
+    refreshSubtitleDomCacheForSubtitlesRef.current = refreshSubtitleDomCacheForSubtitles;
+    updateSubtitleDomCacheRef.current = updateSubtitleDomCache;
 
     const handleSwipe = useCallback(
         (direction: Direction) => {
