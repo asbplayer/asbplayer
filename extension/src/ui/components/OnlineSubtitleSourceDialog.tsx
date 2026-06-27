@@ -444,7 +444,7 @@ export default function OnlineSubtitleSourceDialog({
                                 }}
                             >
                                 {jimakuFiles === undefined && loadingJimakuFiles && (
-                                    <ListItem>
+                                    <ListItem sx={{ justifyContent: 'center' }}>
                                         <CircularProgress size={20} />
                                     </ListItem>
                                 )}
