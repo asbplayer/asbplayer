@@ -18,6 +18,7 @@ import {
     PostMinePlayback,
     SettingsUpdatedMessage,
     ShowAnkiUiMessage,
+    ShowCardSelectUiMessage,
     VideoToExtensionCommand,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
@@ -116,6 +117,48 @@ export default class AnkiUiController {
             surroundingSubtitles: surroundingSubtitles,
             image: image,
             audio: audio,
+            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            text,
+            word,
+            definition,
+            customFieldValues,
+            inTutorial: this._inTutorial,
+            ...(await this._additionalUiState(context)),
+        };
+        client.updateState(state);
+    }
+
+    async showCardSelect(
+        context: Binding,
+        {
+            subtitle,
+            surroundingSubtitles,
+            image,
+            audio,
+            text,
+            definition,
+            word,
+            customFieldValues,
+        }: ShowCardSelectUiMessage
+    ) {
+        if (!this._settings) {
+            throw new Error('Unable to show card select UI because settings are missing.');
+        }
+
+        this._prepareShow(context);
+        const client = await this._client(context);
+        const state: AnkiUiInitialState = {
+            type: 'initial',
+            open: true,
+            cardSelectOpen: true,
+            canRerecord: true,
+            settings: this._settings,
+            source: sourceString(context.subtitleFileName(), subtitle.start),
+            url: context.url(subtitle.start, subtitle.end),
+            subtitle,
+            surroundingSubtitles,
+            image,
+            audio,
             dialogRequestedTimestamp: context.video.currentTime * 1000,
             text,
             word,

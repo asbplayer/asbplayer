@@ -16,6 +16,14 @@ export default class OffscreenDomCache {
         this._empty = true;
     }
 
+    has(key: string) {
+        return this._cachedContentElements[key] !== undefined;
+    }
+
+    keys() {
+        return Object.keys(this._cachedContentElements);
+    }
+
     add(key: string, html: string) {
         let cached = this._cachedContentElements[key];
         if (!cached) {

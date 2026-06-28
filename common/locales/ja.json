@@ -34,7 +34,8 @@
         "revert": "元に戻す",
         "userGuide": "ユーザーガイド",
         "search": "検索",
-        "reload": "再読み込み"
+        "reload": "再読み込み",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "asbplayerについて",
@@ -91,12 +92,17 @@
         "tagList": "テキストのリスト（カンマ「,」区切り）",
         "title": "Anki エクスポート",
         "updateLastCard": "最後のカードを更新する",
+        "updateSelectedCards": "Update selected cards ({{count}})",
         "url": "URL",
         "word": "単語",
         "zoomIn": "ズームイン",
         "zoomOut": "ズームアウト",
         "imagePreview": "プレビュー・編集",
         "quickSelectFtue": "{{shortcut}}は最後に使用したアクションを選択/実行します。"
+    },
+    "cardSelectUi": {
+        "title": "Select cards to update",
+        "noResults": "No cards found."
     },
     "bar": {
         "donate": "寄付",
@@ -517,6 +523,8 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "新規以下",
         "dictionaryTokenReadingAnnotationNever": "表示しない",
         "dictionaryDisplayIgnoredTokenReadings": "無視した単語の読み方を表示",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "単語頻度を表示",
         "dictionaryTokenFrequencyAnnotationAlways": "いつも",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "未収集のみ",
@@ -541,6 +549,15 @@
         "dictionaryTokenStylingOutline": "縁取り",
         "dictionaryTokenStylingOutlineHelperText": "「字幕の縁取りの太さ」を0に設定する必要があるかもしれません。",
         "dictionaryTokenStylingThickness": "線の太さ",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "熟知している単語を色づける",
         "dictionaryTokenStatus5": "熟知",
         "dictionaryTokenStatusReading5": "じゅくち",
@@ -555,6 +572,7 @@
         "dictionaryTokenStatus0": "未収集",
         "dictionaryTokenStatusReading0": "みしゅうしゅう",
         "dictionaryTokenStateIgnored": "無視",
+        "dictionaryTokenStateIgnoredReading": "むし",
         "dictionaryBuildAnkiStarted": "変更されたカードをクエリしています",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "アルファ値",
@@ -711,6 +729,7 @@
         "jimakuApiKey": "JimakuのAPIキー",
         "jimakuApiKeyAutosaveHint": "自動的に保存されます。APIキーは<0>こちらから</0>入手できます。",
         "entries": "検索結果",
+        "recentEntries": "Recent",
         "noEntries": "検索結果はありません",
         "availableFiles": "ファイル",
         "noFiles": "ファイルはありません",

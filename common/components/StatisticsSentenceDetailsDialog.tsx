@@ -1,4 +1,14 @@
-import React, { createRef, RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ContextProp,
+    ItemProps,
+    ListRange,
+    TableBodyProps,
+    TableComponents,
+    TableProps,
+    TableVirtuoso,
+    TableVirtuosoHandle,
+} from 'react-virtuoso';
 import {
     DictionaryStatisticsSentence,
     DictionaryStatisticsSentenceBucketEntry,
@@ -11,13 +21,24 @@ import {
     percentDisplay,
     sortDictionaryStatisticsSentenceBucketEntries,
 } from '@project/common/dictionary-statistics';
+import {
+    getAnnotationsHtml,
+    renderRichTextWindow,
+    emptyRichTextWindow,
+    RichTextWindow,
+    RenderedRichText,
+    renderRichTextForSubtitle,
+} from '@project/common/subtitle-annotations';
 import { timeDurationDisplay } from '@project/common/util';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import IconButton from '@mui/material/IconButton';
-import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -30,6 +51,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import SortIcon from '@mui/icons-material/Sort';
 import Toolbar from '@mui/material/Toolbar';
+import { DictionaryTrack, TokenAnnotationConfig, tokenAnnotationStyleValues } from '@project/common/settings';
 import '../app/components/subtitles.css';
 
 interface Props {
@@ -39,6 +61,7 @@ interface Props {
     entries: DictionaryStatisticsSentenceBucketEntry[];
     totalSentences: number;
     miningEnabled: boolean;
+    dictionaryTracks: DictionaryTrack[];
     highlightedSentenceIndex?: number;
     miningDisabledReason?: string;
     onClose: () => void;
@@ -52,157 +75,202 @@ const Subtitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     </Typography>
 );
 
-interface SentenceProps {
-    entry: DictionaryStatisticsSentenceBucketEntry;
-    ref: RefObject<HTMLDivElement | null>;
+interface SentenceTableContext {
     small: boolean;
-    highlighted: boolean;
-    mineTooltip: string;
     miningEnabled: boolean;
+    mineTooltip: string;
     maximumDisplayedTimestamp: number;
+    dictionaryTracks: DictionaryTrack[];
+    richTextWindowRef: React.RefObject<RichTextWindow>;
+    activeHighlightedSentenceIndex?: number;
     onSeekToSentence: (sentence: DictionaryStatisticsSentence) => void;
     onMineSentence: (sentence: DictionaryStatisticsSentence) => void;
 }
 
-const Sentence: React.FC<SentenceProps> = React.memo(function Sentence({
+const SentenceTable = ({ style, context, ...rest }: TableProps & ContextProp<SentenceTableContext>) => (
+    <Table {...rest} style={style} />
+);
+
+const SentenceTableBody = React.forwardRef<HTMLTableSectionElement, TableBodyProps & ContextProp<SentenceTableContext>>(
+    function SentenceTableBody({ context, ...rest }, ref) {
+        return <TableBody {...rest} ref={ref} />;
+    }
+);
+
+const SentenceTableRow = ({
+    item,
+    context,
+    ...props
+}: ItemProps<DictionaryStatisticsSentenceBucketEntry> & ContextProp<SentenceTableContext>) => {
+    const sentence = item.sentence;
+    const highlighted = context.activeHighlightedSentenceIndex === sentence.index;
+    return (
+        <TableRow
+            {...props}
+            role="button"
+            tabIndex={0}
+            sx={{
+                cursor: 'pointer',
+                backgroundColor: (theme) => (highlighted ? alpha(theme.palette.primary.main, 0.16) : undefined),
+                '&:hover': {
+                    backgroundColor: (theme) =>
+                        highlighted ? alpha(theme.palette.primary.main, 0.24) : theme.palette.action.hover,
+                },
+                '& .asb-token-highlight:hover': {
+                    backgroundColor: 'rgb(0, 123, 255)',
+                },
+            }}
+            onClick={(event) => {
+                const selection = document.getSelection();
+                const row = event.currentTarget;
+                const selectingText =
+                    selection !== null &&
+                    selection.type === 'Range' &&
+                    !selection.isCollapsed &&
+                    selection.anchorNode !== null &&
+                    row.contains(selection.anchorNode);
+                if (selectingText) return;
+                context.onSeekToSentence(sentence);
+            }}
+            onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                event.preventDefault();
+                context.onSeekToSentence(sentence);
+            }}
+        />
+    );
+};
+
+interface SentenceRowCellsProps {
+    entry: DictionaryStatisticsSentenceBucketEntry;
+    small: boolean;
+    miningEnabled: boolean;
+    mineTooltip: string;
+    maximumDisplayedTimestamp: number;
+    tokenAnnotationConfig?: TokenAnnotationConfig;
+    rendered?: RenderedRichText;
+    onMineSentence: (sentence: DictionaryStatisticsSentence) => void;
+}
+
+// Memoized with stable props so that frequent statistics-snapshot updates don't re-render.
+const SentenceRowCells = React.memo(function SentenceRowCells({
     entry,
-    ref,
     small,
-    highlighted,
     miningEnabled,
     mineTooltip,
     maximumDisplayedTimestamp,
-    onSeekToSentence,
+    tokenAnnotationConfig,
+    rendered,
     onMineSentence,
-}) {
+}: SentenceRowCellsProps) {
     const { t } = useTranslation();
     const sentence = entry.sentence;
     const comprehensionBand =
         dictionaryStatisticsComprehensionBands[entry.comprehensionBandIndex] ??
         dictionaryStatisticsComprehensionBands[dictionaryStatisticsComprehensionBands.length - 1];
     return (
-        <Paper
-            key={sentence.index}
-            variant="outlined"
-            ref={ref}
-            sx={{
-                display: 'flex',
-                alignItems: 'stretch',
-                overflow: 'hidden',
-                transition: (theme) =>
-                    theme.transitions.create(['background-color', 'border-color'], {
-                        duration: 1000,
-                    }),
-                backgroundColor: (theme) => (highlighted ? alpha(theme.palette.primary.main, 0.16) : 'transparent'),
-                borderColor: (theme) => (highlighted ? theme.palette.primary.main : undefined),
-            }}
-        >
-            <Box
-                role="button"
-                tabIndex={0}
+        <>
+            <TableCell sx={{ verticalAlign: 'top', whiteSpace: 'nowrap', width: small ? 'auto' : 72 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        {`#${sentence.index + 1}`}
+                    </Typography>
+                    <Tooltip title={t('statistics.comprehension')}>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: comprehensionBand.color,
+                                lineHeight: 1.2,
+                                fontWeight: 600,
+                                width: 'fit-content',
+                            }}
+                        >
+                            {percentDisplay(entry.comprehensionPercent)}
+                        </Typography>
+                    </Tooltip>
+                </Box>
+            </TableCell>
+            <TableCell
+                className="asb-subtitles"
                 sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    px: 2,
-                    py: 1.5,
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'action.hover' },
-                }}
-                onClick={() => onSeekToSentence(sentence)}
-                onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
-                    event.preventDefault();
-                    onSeekToSentence(sentence);
+                    verticalAlign: 'top',
+                    width: '100%',
+                    overflowWrap: 'anywhere',
+                    whiteSpace: 'pre-wrap',
                 }}
             >
-                <Box
+                <span
+                    style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
+                    dangerouslySetInnerHTML={{
+                        __html: getAnnotationsHtml(sentence.text, rendered?.richText, rendered?.richTextOnHover),
+                    }}
+                />
+            </TableCell>
+            <TableCell sx={{ verticalAlign: 'top', p: 0.5, textAlign: 'center' }}>
+                <Tooltip title={mineTooltip}>
+                    <span>
+                        <IconButton
+                            disabled={!miningEnabled}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                onMineSentence(sentence);
+                            }}
+                        >
+                            <NoteAddIcon />
+                        </IconButton>
+                    </span>
+                </Tooltip>
+            </TableCell>
+            {!small && (
+                <TableCell
                     sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: 2,
-                        alignItems: 'flex-start',
+                        verticalAlign: 'top',
+                        whiteSpace: 'nowrap',
+                        textAlign: 'right',
+                        color: 'text.secondary',
                     }}
                 >
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 0.5,
-                            flexShrink: 0,
-                            minWidth: small ? 'auto' : 72,
-                        }}
-                    >
-                        <Typography variant="body2" color="text.secondary">
-                            {`#${sentence.index + 1}`}
-                        </Typography>
-                        <Tooltip title={t('statistics.comprehension')}>
-                            <Typography
-                                variant="caption"
-                                sx={{
-                                    color: comprehensionBand.color,
-                                    lineHeight: 1.2,
-                                    fontWeight: 600,
-                                    width: 'fit-content',
-                                }}
-                            >
-                                {percentDisplay(entry.comprehensionPercent)}
-                            </Typography>
-                        </Tooltip>
-                    </Box>
-                    <Box
-                        sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            overflowWrap: 'anywhere',
-                            whiteSpace: 'pre-wrap',
-                            '& .asb-frequency rt': { fontSize: '0.5em' },
-                            '& .asb-frequency-hover rt': { fontSize: '0.5em' },
-                        }}
-                    >
-                        <span
-                            dangerouslySetInnerHTML={{
-                                __html: sentence.richText ?? sentence.text,
-                            }}
-                        />
-                    </Box>
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            flexShrink: 0,
-                            ml: 'auto',
-                        }}
-                    >
-                        <Tooltip title={mineTooltip!}>
-                            <span>
-                                <IconButton
-                                    disabled={!miningEnabled}
-                                    onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        onMineSentence(sentence);
-                                    }}
-                                >
-                                    <NoteAddIcon />
-                                </IconButton>
-                            </span>
-                        </Tooltip>
-                        {!small && (
-                            <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ whiteSpace: 'nowrap', pl: 0.5, textAlign: 'right' }}
-                            >
-                                {timeDurationDisplay(sentence.start, maximumDisplayedTimestamp, true)}
-                            </Typography>
-                        )}
-                    </Box>
-                </Box>
-            </Box>
-        </Paper>
+                    {timeDurationDisplay(sentence.start, maximumDisplayedTimestamp, true)}
+                </TableCell>
+            )}
+        </>
     );
 });
+
+const renderSentence = (
+    _index: number,
+    entry: DictionaryStatisticsSentenceBucketEntry,
+    context: SentenceTableContext
+) => (
+    <SentenceRowCells
+        entry={entry}
+        small={context.small}
+        miningEnabled={context.miningEnabled}
+        mineTooltip={context.mineTooltip}
+        maximumDisplayedTimestamp={context.maximumDisplayedTimestamp}
+        tokenAnnotationConfig={
+            context.dictionaryTracks[entry.sentence.track]?.dictionaryTokenAnnotationConfig.subtitlePlayer
+        }
+        rendered={renderRichTextForSubtitle(
+            context.richTextWindowRef.current,
+            entry.sentence,
+            'subtitlePlayer',
+            context.dictionaryTracks
+        )}
+        onMineSentence={context.onMineSentence}
+    />
+);
+
+const computeSentenceItemKey = (_index: number, entry: DictionaryStatisticsSentenceBucketEntry) => entry.sentence.index;
+
+const sentenceTableComponents: TableComponents<DictionaryStatisticsSentenceBucketEntry, SentenceTableContext> = {
+    Table: SentenceTable,
+    TableBody: SentenceTableBody,
+    TableRow: SentenceTableRow,
+};
 
 export default function StatisticsSentenceDetailsDialog({
     open,
@@ -211,6 +279,7 @@ export default function StatisticsSentenceDetailsDialog({
     entries,
     totalSentences,
     miningEnabled,
+    dictionaryTracks,
     highlightedSentenceIndex,
     miningDisabledReason,
     onClose,
@@ -222,18 +291,49 @@ export default function StatisticsSentenceDetailsDialog({
         defaultDictionaryStatisticsSentenceSortState()
     );
     const [activeHighlightedSentenceIndex, setActiveHighlightedSentenceIndex] = useState<number>();
-    const entryRefs = useMemo(() => {
-        const refs: Record<number, RefObject<HTMLDivElement | null>> = {};
-        for (const entry of entries) {
-            refs[entry.sentence.index] = createRef<HTMLDivElement | null>();
-        }
-        return refs;
-    }, [entries]);
     const mineTooltip = miningEnabled ? t('action.mine') : (miningDisabledReason ?? t('action.mine'));
     const maximumDisplayedTimestamp = useMemo(
         () => entries.reduce((maximum, entry) => Math.max(maximum, entry.sentence.end), 0),
         [entries]
     );
+
+    const sortedEntries = useMemo(() => {
+        return sortDictionaryStatisticsSentenceBucketEntries(entries, sortState);
+    }, [entries, sortState]);
+    const sortedEntriesRef = useRef(sortedEntries);
+    sortedEntriesRef.current = sortedEntries;
+    const virtuosoRef = useRef<TableVirtuosoHandle>(null);
+
+    const richTextWindowRef = useRef<RichTextWindow>(emptyRichTextWindow());
+
+    const handleRangeChanged = useCallback(
+        (range: ListRange) => {
+            const entries = sortedEntriesRef.current;
+            if (!entries.length) return;
+            const windowSentences = entries.slice(range.startIndex, range.endIndex + 1).map((e) => e.sentence);
+            richTextWindowRef.current = renderRichTextWindow(
+                richTextWindowRef.current,
+                windowSentences,
+                'subtitlePlayer',
+                dictionaryTracks
+            );
+        },
+        [dictionaryTracks]
+    );
+
+    useEffect(() => {
+        const range = richTextWindowRef.current.range;
+        richTextWindowRef.current = emptyRichTextWindow();
+        if (range && sortedEntries.length) {
+            const windowSentences = sortedEntries.slice(range.min, range.max + 1).map((e) => e.sentence);
+            richTextWindowRef.current = renderRichTextWindow(
+                richTextWindowRef.current,
+                windowSentences,
+                'subtitlePlayer',
+                dictionaryTracks
+            );
+        }
+    }, [sortedEntries, dictionaryTracks]);
 
     useEffect(() => {
         if (!open || highlightedSentenceIndex === undefined) {
@@ -243,9 +343,12 @@ export default function StatisticsSentenceDetailsDialog({
 
         setActiveHighlightedSentenceIndex(highlightedSentenceIndex);
         const scrollTimeout = window.setTimeout(() => {
-            entryRefs[highlightedSentenceIndex].current?.scrollIntoView({
-                block: 'center',
-            });
+            const index = sortedEntriesRef.current.findIndex(
+                (entry) => entry.sentence.index === highlightedSentenceIndex
+            );
+            if (index !== -1) {
+                virtuosoRef.current?.scrollToIndex({ index, align: 'center' });
+            }
         }, 0);
         const highlightTimeout = window.setTimeout(() => {
             setActiveHighlightedSentenceIndex((current) =>
@@ -257,11 +360,7 @@ export default function StatisticsSentenceDetailsDialog({
             window.clearTimeout(scrollTimeout);
             window.clearTimeout(highlightTimeout);
         };
-    }, [open, entryRefs, highlightedSentenceIndex]);
-
-    const sortedEntries = useMemo(() => {
-        return sortDictionaryStatisticsSentenceBucketEntries(entries, sortState);
-    }, [entries, sortState]);
+    }, [open, highlightedSentenceIndex]);
 
     const sortOptions: { sort: DictionaryStatisticsSentenceSort; label: string }[] = [
         { sort: 'index', label: t('statistics.sentenceIndex') },
@@ -278,10 +377,46 @@ export default function StatisticsSentenceDetailsDialog({
         }
         setBottomOffset(div.getBoundingClientRect().height);
     }, []);
+    const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
     const theme = useTheme();
     const smallScreen = useMediaQuery(theme.breakpoints.down(450));
     const sortLabel = sortOptions.find((s) => s.sort === sortState.sort)!.label;
     const ArrowIcon = sortState.direction === 'asc' ? ArrowUpwardIcon : ArrowDownwardIcon;
+    const onSeekToSentenceRef = useRef(onSeekToSentence);
+    onSeekToSentenceRef.current = onSeekToSentence;
+    const onMineSentenceRef = useRef(onMineSentence);
+    onMineSentenceRef.current = onMineSentence;
+    const handleSeekToSentence = useCallback(
+        (sentence: DictionaryStatisticsSentence) => onSeekToSentenceRef.current(sentence),
+        []
+    );
+    const handleMineSentence = useCallback(
+        (sentence: DictionaryStatisticsSentence) => onMineSentenceRef.current(sentence),
+        []
+    );
+    const listContext = useMemo<SentenceTableContext>(
+        () => ({
+            small: smallScreen,
+            miningEnabled,
+            mineTooltip: mineTooltip!,
+            maximumDisplayedTimestamp,
+            dictionaryTracks,
+            richTextWindowRef,
+            activeHighlightedSentenceIndex,
+            onSeekToSentence: handleSeekToSentence,
+            onMineSentence: handleMineSentence,
+        }),
+        [
+            smallScreen,
+            miningEnabled,
+            mineTooltip,
+            maximumDisplayedTimestamp,
+            dictionaryTracks,
+            activeHighlightedSentenceIndex,
+            handleSeekToSentence,
+            handleMineSentence,
+        ]
+    );
 
     return (
         <Dialog fullWidth maxWidth="md" open={open} onClose={onClose}>
@@ -294,7 +429,7 @@ export default function StatisticsSentenceDetailsDialog({
                 </IconButton>
             </Toolbar>
 
-            <DialogContent>
+            <DialogContent ref={setScrollParent}>
                 <Box
                     ref={handleCaptionBoxRef}
                     sx={{
@@ -367,26 +502,22 @@ export default function StatisticsSentenceDetailsDialog({
                 {sortedEntries.length === 0 ? (
                     <Typography color="text.secondary">{t('statistics.sentenceDetailsEmpty')}</Typography>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {sortedEntries.map((entry) => {
-                            const isHighlighted = activeHighlightedSentenceIndex === entry.sentence.index;
-                            return (
-                                <Sentence
-                                    key={entry.sentence.index}
-                                    ref={entryRefs[entry.sentence.index]}
-                                    entry={entry}
-                                    small={smallScreen}
-                                    highlighted={isHighlighted}
-                                    maximumDisplayedTimestamp={maximumDisplayedTimestamp}
-                                    mineTooltip={mineTooltip!}
-                                    miningEnabled={miningEnabled}
-                                    onMineSentence={onMineSentence}
-                                    onSeekToSentence={onSeekToSentence}
-                                />
-                            );
-                        })}
-                        <Box sx={{ height: bottomOffset }} />
-                    </Box>
+                    scrollParent && (
+                        <>
+                            <TableVirtuoso
+                                ref={virtuosoRef}
+                                customScrollParent={scrollParent}
+                                data={sortedEntries}
+                                context={listContext}
+                                components={sentenceTableComponents}
+                                computeItemKey={computeSentenceItemKey}
+                                itemContent={renderSentence}
+                                rangeChanged={handleRangeChanged}
+                                increaseViewportBy={{ top: window.innerHeight, bottom: window.innerHeight }} // pre-load for fast scrolling
+                            />
+                            <Box sx={{ height: bottomOffset }} />
+                        </>
+                    )
                 )}
             </DialogContent>
         </Dialog>

@@ -6,11 +6,12 @@ sidebar_position: 1
 
 asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
 
-- word styling (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.)
+- **Word Styling**: color/underline/outline, etc. based on a word's status
     - known status can be sourced from and synced with Anki, WaniKani, and/or tracked locally in asbplayer (includes import/export features to help seed known words)
-- reading annotation (readings displayed above each word or based on status)
-- frequency annotation (rank-based frequency displayed below each word or based on status)
-- many more features for future releases!
+- **Reading Annotation**: readings displayed above each word or based on status
+- **Frequency Annotation**: rank-based frequency displayed below each word or based on status (requires at least on rank-based frequency dictionary)
+- **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
+- **Many more features for future releases!**
 
 :::info
 Annotation requires a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
@@ -36,10 +37,9 @@ If you rely on the **local word database**, installing the asbplayer browser ext
     - In the `Token Description` field enter `asbplayer`, leave all `Permissions` unchecked, asbplayer only needs read access to your WaniKani account.
     - Click `Generate token` and copy the generated token into [`WaniKani API token`](../reference/settings.md#wanikani-api-token).
     - To populate the database, use [`Re-build WaniKani word database`](../reference/settings.md#re-build-wanikani-word-database) after configuring the API token.
-7. Enable your desired annotation features (styling, reading, frequency, etc.) for that track. Customize other settings as desired.
-    - If [`Only show annotations on hover`](../reference/settings.md#only-show-annotations-on-hover) is enabled, you will need to hover subtitle text to see annotations.
+7. Enable your desired annotation features (styling, reading, frequency, pitch accent, etc.) for that track. Customize other settings as desired.
 8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference.
 
 ## Troubleshooting
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please submit a [bug report](https://github.com/asbplayer/asbplayer/issues) with detailed information about your issue and steps to reproduce it.
+Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on [Discord](https://discord.gg/ad7VAQru7m) or submit a [bug report](https://github.com/asbplayer/asbplayer/issues) with detailed information about your issue and steps to reproduce it.

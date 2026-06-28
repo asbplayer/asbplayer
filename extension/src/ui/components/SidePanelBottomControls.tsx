@@ -40,6 +40,8 @@ const SidePanelBottomControls = ({
                 return t('action.mine');
             case PostMineAction.updateLastCard:
                 return t('action.updateLastCard');
+            case PostMineAction.showUpdateCardDialog:
+                return t('postMineAction.showUpdateCardDialog');
         }
     }
 

@@ -7,6 +7,7 @@ import {
     NotifyErrorMessage,
     PostMineAction,
     ShowAnkiUiMessage,
+    ShowCardSelectUiMessage,
 } from '@project/common';
 import { humanReadableTime } from '@project/common/util';
 import { AnkiSettings, ankiSettingsKeys, SettingsProvider } from '@project/common/settings';
@@ -35,6 +36,8 @@ export class CardPublisher {
                 this._showAnkiDialog(card, id, src, tabId);
             } else if (postMineAction == PostMineAction.updateLastCard) {
                 await this._updateLastCard(card, src, tabId);
+            } else if (postMineAction === PostMineAction.showUpdateCardDialog) {
+                this._showUpdateCardDialog(card, src, tabId);
             } else if (postMineAction === PostMineAction.exportCard) {
                 await this._exportCard(card, src, tabId);
             } else if (postMineAction === PostMineAction.none) {
@@ -186,6 +189,19 @@ export class CardPublisher {
         };
 
         browser.tabs.sendMessage(tabId, showAnkiUiCommand);
+    }
+
+    private _showUpdateCardDialog(card: CardModel, src: string | undefined, tabId: number) {
+        const showCardSelectUiCommand: ExtensionToVideoCommand<ShowCardSelectUiMessage> = {
+            sender: 'asbplayer-extension-to-video',
+            message: {
+                ...card,
+                command: 'show-card-select-ui',
+            },
+            src,
+        };
+
+        browser.tabs.sendMessage(tabId, showCardSelectUiCommand);
     }
 
     private async _saveCardToRepository(id: string, card: CardModel) {

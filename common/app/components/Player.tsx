@@ -8,6 +8,7 @@ import {
     AutoPausePreference,
     CardModel,
     CardTextFieldValues,
+    IndexedSubtitleModel,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
@@ -27,7 +28,7 @@ import {
 } from '@project/common/settings';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { renderRichTextOntoSubtitles, HoveredToken, SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import { HoveredToken, SubtitleAnnotations } from '@project/common/subtitle-annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
 import { surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
@@ -94,6 +95,10 @@ function trackLength(
 
     const videoLength = video && video.duration ? 1000 * video.duration : 0;
     return Math.max(videoLength, subtitlesLength);
+}
+
+function subtitlesForPlayer<T extends IndexedSubtitleModel>(subtitles: T[]): T[] {
+    return subtitles.map((subtitle) => ({ ...subtitle }));
 }
 
 function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) {
@@ -211,6 +216,8 @@ const Player = React.memo(function Player({
     const [subtitlesSentThroughChannel, setSubtitlesSentThroughChannel] = useState<boolean>();
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
+    const settingsRef = useRef(settings);
+    settingsRef.current = settings;
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
     >(SubtitleCollection.empty<DisplaySubtitleModel>());
@@ -427,7 +434,6 @@ const Player = React.memo(function Player({
                 displayTime: timeDurationDisplay(s.originalStart + offset, length),
                 track: s.track,
                 index: i,
-                richText: s.richText,
                 tokenization: s.tokenization,
             }));
 
@@ -504,8 +510,6 @@ const Player = React.memo(function Player({
                         tokenization: s.tokenization,
                     }));
 
-                    renderRichTextOntoSubtitles(subtitles);
-
                     setSubtitlesSentThroughChannel(false);
                     onSubtitles(subtitles);
                     setPlayModes((playModes) =>
@@ -541,17 +545,16 @@ const Player = React.memo(function Player({
             settingsProvider,
             subtitleCollectionOptions,
             mediaId,
-            (updatedSubtitles, dictionaryTracks) => {
-                renderRichTextOntoSubtitles(updatedSubtitles, dictionaryTracks);
-                channel?.subtitlesUpdated(updatedSubtitles);
+            (updatedSubtitles) => {
+                const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
+                if (channel) channel.subtitlesUpdated(updatedSubtitles);
                 onSubtitles((prevSubtitles) => {
                     if (!prevSubtitles?.length) return prevSubtitles;
                     const allSubtitles = prevSubtitles.slice();
-                    for (const s of updatedSubtitles) {
+                    for (const s of playerSubtitles) {
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
-                            richText: s.richText,
                             tokenization: s.tokenization,
                         };
                     }
@@ -582,10 +585,11 @@ const Player = React.memo(function Player({
 
     useEffect(() => {
         return channel?.onSubtitlesUpdated((updatedSubtitles) => {
+            const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
-                for (const s of updatedSubtitles) {
+                for (const s of playerSubtitles) {
                     // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
                     // We should probably have a hash or ID associated with the subtitle file this color update is for.
                     const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
@@ -595,7 +599,6 @@ const Player = React.memo(function Player({
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
-                            richText: s.richText,
                             tokenization: s.tokenization,
                         };
                     }
@@ -618,10 +621,11 @@ const Player = React.memo(function Player({
                 | undefined;
             if (!response) return;
             const { subtitles: updatedSubtitles } = response;
+            const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
             onSubtitles((prevSubtitles) => {
                 if (!prevSubtitles?.length) return prevSubtitles;
                 const allSubtitles = prevSubtitles.slice();
-                for (const s of updatedSubtitles) {
+                for (const s of playerSubtitles) {
                     // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
                     // We should probably have a hash or ID associated with the subtitle file this color update is for.
                     const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
@@ -631,7 +635,6 @@ const Player = React.memo(function Player({
                         allSubtitles[s.index] = {
                             ...allSubtitles[s.index],
                             text: s.text,
-                            richText: s.richText,
                             tokenization: s.tokenization,
                         };
                     }

@@ -372,6 +372,8 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                 return t('action.mine');
             case PostMineAction.updateLastCard:
                 return t('action.updateLastCard');
+            case PostMineAction.showUpdateCardDialog:
+                return t('postMineAction.showUpdateCardDialog');
         }
     }
 

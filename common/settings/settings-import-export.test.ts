@@ -196,6 +196,60 @@ it('validates exported settings', () => {
                     { display: true, color: '#0000FF', alpha: 'FF' },
                     { display: false, color: '#FFFFFF', alpha: 'FF' },
                 ],
+                dictionaryTokenAnnotationConfig: {
+                    colorizeEnabled: true,
+                    video: {
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.3 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
+                    },
+                    subtitlePlayer: {
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.5 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
+                    },
+                    onStatuses: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
+                    onStates: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
+                },
             },
             {
                 dictionaryColorizeSubtitles: false,
@@ -230,6 +284,60 @@ it('validates exported settings', () => {
                     { display: true, color: '#0000FF', alpha: 'FF' },
                     { display: true, color: '#FFFFFF', alpha: 'FF' },
                 ],
+                dictionaryTokenAnnotationConfig: {
+                    colorizeEnabled: false,
+                    video: {
+                        color: { onHoverEnabled: true, size: 1 },
+                        reading: { onHoverEnabled: true, size: 0.5 },
+                        frequency: { onHoverEnabled: true, size: 0.3 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
+                    },
+                    subtitlePlayer: {
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.5 },
+                        pitchAccent: { onHoverEnabled: false, size: 0.1 },
+                    },
+                    onStatuses: [
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                    ],
+                    onStates: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
+                },
             },
             {
                 dictionaryColorizeSubtitles: false,
@@ -264,6 +372,60 @@ it('validates exported settings', () => {
                     { display: true, color: '#FF0000', alpha: 'FF' },
                     { display: false, color: '#FFFF00', alpha: '00' },
                 ],
+                dictionaryTokenAnnotationConfig: {
+                    colorizeEnabled: false,
+                    video: {
+                        color: { onHoverEnabled: false, size: 1 },
+                        reading: { onHoverEnabled: false, size: 0.5 },
+                        frequency: { onHoverEnabled: false, size: 0.3 },
+                        pitchAccent: { onHoverEnabled: false, size: 0.1 },
+                    },
+                    subtitlePlayer: {
+                        color: { onHoverEnabled: true, size: 1 },
+                        reading: { onHoverEnabled: true, size: 0.5 },
+                        frequency: { onHoverEnabled: true, size: 0.5 },
+                        pitchAccent: { onHoverEnabled: true, size: 0.1 },
+                    },
+                    onStatuses: [
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                        {
+                            reading: false,
+                            frequency: false,
+                            pitchAccent: false,
+                        },
+                    ],
+                    onStates: [
+                        {
+                            reading: true,
+                            frequency: true,
+                            pitchAccent: true,
+                        },
+                    ],
+                },
             },
         ],
     });

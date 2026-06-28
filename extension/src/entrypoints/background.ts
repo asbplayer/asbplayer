@@ -313,6 +313,7 @@ export default defineBackground(() => {
             switch (command) {
                 case 'copy-subtitle':
                 case 'update-last-card':
+                case 'update-selected-card':
                 case 'export-card':
                 case 'copy-subtitle-with-dialog':
                     const postMineAction = postMineActionFromCommand(command);
@@ -442,6 +443,8 @@ export default defineBackground(() => {
                 return PostMineAction.showAnkiDialog;
             case 'update-last-card':
                 return PostMineAction.updateLastCard;
+            case 'update-selected-card':
+                return PostMineAction.showUpdateCardDialog;
             case 'export-card':
                 return PostMineAction.exportCard;
             default:

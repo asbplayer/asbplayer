@@ -9,6 +9,7 @@ import {
     SidePanelLocation,
     VideoHeartbeatMessage,
     VideoTabModel,
+    SubtitleTrack,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 
@@ -28,6 +29,7 @@ export interface Asbplayer {
     receivedTabs?: VideoTabModel[];
     videoPlayer: boolean;
     loadedSubtitles?: boolean;
+    subtitleTracks?: SubtitleTrack[];
     syncedVideoElement?: VideoTabModel;
 }
 
@@ -39,6 +41,7 @@ export interface VideoElement {
     synced: boolean;
     syncedTimestamp?: number;
     loadedSubtitles?: boolean;
+    subtitleTracks?: SubtitleTrack[];
 }
 
 export default class TabRegistry {
@@ -70,6 +73,14 @@ export default class TabRegistry {
                 this._removeVideoElementsInTab(tabId);
                 this._removeAsbplayersInTab(tabId);
             }
+        });
+
+        // A replaced tab (e.g. Chrome reactivating a discarded tab under a new id) fires
+        // onReplaced, not onRemoved, for the old id...without this the old id's bound
+        // media would remain in the registry forever.
+        browser.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
+            this._removeVideoElementsInTab(removedTabId);
+            this._removeAsbplayersInTab(removedTabId);
         });
     }
 
@@ -192,6 +203,7 @@ export default class TabRegistry {
             sidePanelAppRequestedLocation,
             receivedTabs,
             loadedSubtitles,
+            subtitleTracks,
             syncedVideoElement,
         }: AsbplayerHeartbeatMessage
     ) {
@@ -202,6 +214,7 @@ export default class TabRegistry {
             sidePanel ?? false,
             sidePanelAppRequestedLocation,
             loadedSubtitles ?? false,
+            subtitleTracks,
             receivedTabs,
             syncedVideoElement
         );
@@ -235,6 +248,7 @@ export default class TabRegistry {
             sidePanel,
             sidePanelAppRequestedLocation,
             loadedSubtitles,
+            subtitleTracks,
             receivedTabs,
             syncedVideoElement,
         }: AckTabsMessage
@@ -246,6 +260,7 @@ export default class TabRegistry {
             sidePanel ?? false,
             sidePanelAppRequestedLocation,
             loadedSubtitles ?? false,
+            subtitleTracks,
             receivedTabs,
             syncedVideoElement
         );
@@ -258,6 +273,7 @@ export default class TabRegistry {
         sidePanel: boolean,
         sidePanelAppRequestedLocation: SidePanelLocation | undefined,
         loadedSubtitles: boolean,
+        subtitleTracks: SubtitleTrack[] | undefined,
         receivedTabs: VideoTabModel[] | undefined,
         syncedVideoElement: VideoTabModel | undefined
     ) {
@@ -279,6 +295,7 @@ export default class TabRegistry {
                 sidePanel,
                 sidePanelAppRequestedLocation,
                 loadedSubtitles,
+                subtitleTracks,
                 videoPlayer,
                 syncedVideoElement,
             };
@@ -312,6 +329,7 @@ export default class TabRegistry {
                     subscribed: videoElement.subscribed,
                     synced: videoElement.synced,
                     loadedSubtitles: videoElement.loadedSubtitles ?? false,
+                    subtitleTracks: videoElement.subtitleTracks,
                     syncedTimestamp: videoElement.syncedTimestamp,
                 };
                 activeVideoElements.push(element);
@@ -333,6 +351,7 @@ export default class TabRegistry {
                 timestamp: asbplayer.timestamp,
                 videoPlayer: asbplayer.videoPlayer,
                 loadedSubtitles: asbplayer.loadedSubtitles ?? false,
+                subtitleTracks: asbplayer.subtitleTracks,
                 syncedVideoElement: asbplayer.syncedVideoElement,
             });
         }
@@ -343,7 +362,7 @@ export default class TabRegistry {
     async onVideoElementHeartbeat(
         tab: Browser.tabs.Tab,
         src: string,
-        { subscribed, synced, syncedTimestamp, loadedSubtitles }: VideoHeartbeatMessage
+        { subscribed, synced, syncedTimestamp, loadedSubtitles, subtitleTracks }: VideoHeartbeatMessage
     ) {
         if (tab.id === undefined) {
             return;
@@ -365,6 +384,7 @@ export default class TabRegistry {
                 synced,
                 syncedTimestamp,
                 loadedSubtitles,
+                subtitleTracks,
             };
             return true;
         });

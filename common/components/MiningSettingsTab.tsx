@@ -84,6 +84,19 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                     <LabelWithHoverEffect
                         control={
                             <Radio
+                                checked={clickToMineDefaultAction === PostMineAction.showUpdateCardDialog}
+                                value={PostMineAction.showUpdateCardDialog}
+                                onChange={(event) =>
+                                    event.target.checked &&
+                                    onSettingChanged('clickToMineDefaultAction', PostMineAction.showUpdateCardDialog)
+                                }
+                            />
+                        }
+                        label={t('postMineAction.showUpdateCardDialog')}
+                    />
+                    <LabelWithHoverEffect
+                        control={
+                            <Radio
                                 checked={clickToMineDefaultAction === PostMineAction.exportCard}
                                 value={PostMineAction.exportCard}
                                 onChange={(event) =>

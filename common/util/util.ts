@@ -1,20 +1,21 @@
 import sanitize from 'sanitize-filename';
-import { Rgb, SubtitleModel, Tokenization, TokenReading } from '../src/model';
+import { Rgb, SubtitleModel, SubtitleTrack, Token, Tokenization, TokenReading } from '../src/model';
 import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
 import { Progress } from '..';
 import { TokenStatusInfo } from '../dictionary-db';
+import { PitchAccentPosition } from '../yomitan/yomitan';
 
-export function arrayEquals<T>(a: T[], b: T[], equals = (lhs: T, rhs: T) => lhs === rhs): boolean {
-    if (a.length !== b.length) {
-        return false;
-    }
-
+export function arrayEquals<T>(
+    a: readonly T[] | undefined,
+    b: readonly T[] | undefined,
+    equals = (lhs: T, rhs: T) => lhs === rhs
+): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; ++i) {
-        if (!equals(a[i], b[i])) {
-            return false;
-        }
+        if (!equals(a[i], b[i])) return false;
     }
-
     return true;
 }
 
@@ -225,7 +226,6 @@ export function mockSurroundingSubtitles(
             originalEnd: afterTimestamp - offset,
             track: middleSubtitle.track,
             index: middleSubtitle.index,
-            richText: middleSubtitle.richText,
         });
     }
 
@@ -239,7 +239,6 @@ export function mockSurroundingSubtitles(
             originalEnd: middleSubtitle.start - offset,
             track: middleSubtitle.track,
             index: middleSubtitle.index,
-            richText: middleSubtitle.richText,
         });
     }
 
@@ -346,20 +345,24 @@ export function download(blob: Blob, name: string) {
     a.remove();
 }
 
-export function computeStyles({
-    subtitleColor,
-    subtitleSize,
-    subtitleThickness,
-    subtitleOutlineThickness,
-    subtitleOutlineColor,
-    subtitleShadowThickness,
-    subtitleShadowColor,
-    subtitleBackgroundOpacity,
-    subtitleBackgroundColor,
-    subtitleFontFamily,
-    subtitleCustomStyles,
-}: TextSubtitleSettings) {
+export function computeStyles(
+    {
+        subtitleColor,
+        subtitleSize,
+        subtitleThickness,
+        subtitleOutlineThickness,
+        subtitleOutlineColor,
+        subtitleShadowThickness,
+        subtitleShadowColor,
+        subtitleBackgroundOpacity,
+        subtitleBackgroundColor,
+        subtitleFontFamily,
+        subtitleCustomStyles,
+    }: TextSubtitleSettings,
+    values: { [key: string]: string | number } = {}
+) {
     const styles: { [key: string]: any } = {
+        ...values,
         color: subtitleColor,
         fontSize: `${subtitleSize}px`,
         fontWeight: String(subtitleThickness),
@@ -436,6 +439,67 @@ export function isKatakanaOnly(text: string) {
     return KATAKANA_ONLY_REGEX.test(text.normalize('NFC'));
 }
 
+const SMALL_KANAS = [
+    'ぁ',
+    'ぃ',
+    'ぅ',
+    'ぇ',
+    'ぉ',
+    'ゃ',
+    'ゅ',
+    'ょ',
+    'ゎ',
+    'ァ',
+    'ィ',
+    'ゥ',
+    'ェ',
+    'ォ',
+    'ャ',
+    'ュ',
+    'ョ',
+    'ヮ',
+];
+
+export function getKanaMoras(kana: string): string[] {
+    const moras: string[] = [];
+    for (const char of kana.normalize('NFC')) {
+        if (SMALL_KANAS.includes(char) && moras.length > 0) moras[moras.length - 1] += char;
+        else moras.push(char);
+    }
+    return moras;
+}
+
+export function isKanaMoraPitchHigh(index: number, positions: PitchAccentPosition): boolean {
+    if (typeof positions === 'string') return positions[index] === 'H';
+    if (positions === 0) return index > 0;
+    if (positions === 1) return index < 1;
+    return index > 0 && index < positions;
+}
+
+export function isAttachedParticlePitchHigh(
+    candidateText: string | undefined,
+    prevPitch: PitchAccentContext
+): boolean | null {
+    if (candidateText?.length !== 1 || !isKanaOnly(candidateText)) return null;
+    const { prevMoras, prevPitchAccent } = prevPitch;
+    if (!prevMoras?.length || prevPitchAccent === undefined) return null;
+    if (typeof prevPitchAccent === 'number') return isKanaMoraPitchHigh(prevMoras.length, prevPitchAccent); // Position as a number is handled naturally even with out-of-range mora counts
+    if (prevPitchAccent.length > prevMoras.length) return isKanaMoraPitchHigh(prevMoras.length, prevPitchAccent); // Position explicitly includes pitch for attaching particles
+    if (prevPitchAccent.length) return isKanaMoraPitchHigh(prevMoras.length - 1, prevPitchAccent); // Default to the same pitch as the last mora
+    return null;
+}
+
+export interface PitchAccentContext {
+    prevMoras?: string[];
+    prevPitchAccent?: PitchAccentPosition;
+    prevPitchHigh?: boolean;
+}
+export function clearPitchAccentContext(pitchCtx: PitchAccentContext) {
+    pitchCtx.prevMoras = undefined;
+    pitchCtx.prevPitchAccent = undefined;
+    pitchCtx.prevPitchHigh = undefined;
+}
+
 export function normalizeForSearch(text: string): string {
     return text
         .normalize('NFD')
@@ -455,6 +519,27 @@ export function normalizeForSearch(text: string): string {
         .normalize('NFC');
 }
 
+export function normalizeSearchText(text: string): string {
+    return text.normalize('NFKC').trim().toLocaleLowerCase();
+}
+
+export function normalizedLookupTerms(...texts: Array<string | null | undefined>): string[] {
+    return Array.from(
+        new Set(
+            texts
+                .flatMap((text) => {
+                    if (!text) return [];
+                    const normalized = normalizeForSearch(text);
+                    if (!normalized.length || normalized === text) return [text];
+                    return [text, normalized];
+                })
+                .filter((text) => Boolean(text))
+                .map(normalizeSearchText)
+                .filter((text) => text.length)
+        )
+    );
+}
+
 // https://stackoverflow.com/questions/63116039/camelcase-to-kebab-case
 function kebabize(str: string) {
     const kebabized = str.replace(/[A-Z]+(?![a-z])|[A-Z]/g, ($, ofs) => (ofs ? '-' : '') + $.toLowerCase());
@@ -471,8 +556,11 @@ function kebabize(str: string) {
     return kebabized;
 }
 
-export function computeStyleString(styleSettings: TextSubtitleSettings) {
-    const stylesMap = computeStyles(styleSettings);
+export function computeStyleString(
+    styleSettings: TextSubtitleSettings,
+    values: { [key: string]: string | number } = {}
+) {
+    const stylesMap = computeStyles(styleSettings, values);
     const styleList = [];
 
     for (const [key, value] of Object.entries(stylesMap)) {
@@ -512,6 +600,11 @@ export function percentToHex2(percent: number): string {
 
 export function sourceString(subtitleFileName: string, timestamp: number) {
     return timestamp === 0 ? subtitleFileName : `${subtitleFileName} (${humanReadableTime(timestamp, true, true)})`;
+}
+
+export function buildSubtitleTracks(subtitles: { track: number }[], subtitleFileNames: string[]): SubtitleTrack[] {
+    const trackNumbers = [...new Set(subtitles.map((s) => s.track))].sort((a, b) => a - b);
+    return trackNumbers.map((trackNumber) => ({ trackNumber, fileName: subtitleFileNames[trackNumber] ?? '' }));
 }
 
 export function seekWithNudge(media: HTMLMediaElement, timestampSeconds: number) {
@@ -642,19 +735,58 @@ export const areTokenizationsEqual = (a: Tokenization | undefined, b: Tokenizati
     return arrayEquals(a.tokens, b.tokens, areTokensEqual);
 };
 
-const areTokensEqual = (aToken: any, bToken: any) => {
-    if (!arrayEquals(aToken.pos, bToken.pos)) return false;
-    if (aToken.status !== bToken.status) return false;
-    if (!arrayEquals(aToken.states, bToken.states)) return false;
-    if (!arrayEquals(aToken.readings, bToken.readings, areTokenReadingsEqual)) return false;
-    if (aToken.frequency !== bToken.frequency) return false;
-    if (aToken.groupingKey !== bToken.groupingKey) return false;
-    if (aToken.lemmasGroupingKey !== bToken.lemmasGroupingKey) return false;
+type TokenReadingComparators = {
+    [K in keyof TokenReading]: (a: TokenReading[K], b: TokenReading[K]) => boolean;
+};
+
+const tokenReadingComparators: TokenReadingComparators = {
+    pos: (a, b) => arrayEquals(a, b),
+    reading: (a, b) => a === b,
+} satisfies Required<TokenReadingComparators>;
+
+function compareTokenReadingField<K extends keyof TokenReading>(key: K, a: TokenReading, b: TokenReading): boolean {
+    return tokenReadingComparators[key]!(a[key], b[key]);
+}
+
+const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) => {
+    if (a === b) return true;
+    for (const key in tokenReadingComparators) {
+        if (!compareTokenReadingField(key as keyof TokenReading, a, b)) {
+            return false;
+        }
+    }
     return true;
 };
 
-const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) =>
-    arrayEquals(a.pos, b.pos) && a.reading === b.reading;
+type TokenComparators = {
+    [K in keyof Token]: (a: Token[K], b: Token[K]) => boolean;
+};
+
+const tokenComparators: TokenComparators = {
+    pos: (a, b) => arrayEquals(a, b),
+    states: (a, b) => arrayEquals(a, b),
+    status: (a, b) => a === b,
+    readings: (a, b) => arrayEquals(a, b, areTokenReadingsEqual),
+    frequency: (a, b) => a === b,
+    pitchAccent: (a, b) => a === b,
+    groupingKey: (a, b) => a === b,
+    lemmasGroupingKey: (a, b) => a === b,
+    externalCandidateStatuses: (a, b) => arrayEquals(a, b),
+} satisfies Required<TokenComparators>;
+
+function compareTokenField<K extends keyof Token>(key: K, a: Token, b: Token): boolean {
+    return tokenComparators[key]!(a[key], b[key]);
+}
+
+const areTokensEqual = (aToken: Token, bToken: Token) => {
+    if (aToken === bToken) return true;
+    for (const key in tokenComparators) {
+        if (!compareTokenField(key as keyof Token, aToken, bToken)) {
+            return false;
+        }
+    }
+    return true;
+};
 
 /**
  * We prefer the highest status for a given token (e.g. duplicate anki cards)

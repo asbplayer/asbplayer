@@ -1863,6 +1863,10 @@ export default function Statistics({
                 : undefined,
         [statisticsSnapshot, statisticsSnapshotLoaded, rewatchProjectionsByTrack]
     );
+    // Keep a ref to the latest snapshots so callbacks that only read them at call time (e.g. mining a
+    // sentence) can stay referentially stable across the frequent snapshot updates.
+    const trackSnapshotsRef = useRef(trackSnapshots);
+    trackSnapshotsRef.current = trackSnapshots;
     const hasSnapshots = trackSnapshots && trackSnapshots.length > 0;
     const loadingSnapshots = !statisticsSnapshotLoaded;
     const allTrackProgressComplete = useMemo(
@@ -1953,12 +1957,12 @@ export default function Statistics({
     const handleMineSentence = useCallback(
         async (sentence: DictionaryStatisticsSentence) => {
             if (mediaId === undefined) return;
-            const trackSnapshot = trackSnapshots?.find((candidate) => candidate.track === sentence.track);
+            const trackSnapshot = trackSnapshotsRef.current?.find((candidate) => candidate.track === sentence.track);
             if (!trackSnapshot || trackSnapshot.progress.current < trackSnapshot.progress.total) return;
             await onMineWasRequested?.(mediaId);
             await Promise.resolve(dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]));
         },
-        [dictionaryProvider, onMineWasRequested, trackSnapshots, mediaId]
+        [dictionaryProvider, onMineWasRequested, mediaId]
     );
     const canGenerateStatistics = useMemo(
         () => settings.dictionaryTracks.some((dt) => dictionaryTrackEnabled(dt)),
@@ -2093,6 +2097,7 @@ export default function Statistics({
                     entries={sentenceDialogState.entries}
                     totalSentences={sentenceDialogState.totalSentences}
                     miningEnabled={sentenceDialogState.miningEnabled}
+                    dictionaryTracks={settings.dictionaryTracks}
                     highlightedSentenceIndex={sentenceDialogState.highlightedSentenceIndex}
                     miningDisabledReason={t('statistics.miningDisabledUntilComplete')}
                     onClose={handleCloseSentenceBucketDetails}

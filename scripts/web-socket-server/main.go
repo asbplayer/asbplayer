@@ -318,6 +318,19 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 	return nil
 }
 
+func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) error {
+	command := clientCommand{Command: "get-bound-media", MessageId: uuid.NewString(), Body: map[string]interface{}{}}
+	responseChannel := make(chan clientResponse)
+
+	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
+	response, ok := <-responseChannel
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	}
+
+	return c.JSONBlob(http.StatusOK, response.Body)
+}
+
 func (forwarder forwarder) disconnectWebsocketClients(c echo.Context) error {
 	forwarder.Mutex.Lock()
 	defer forwarder.Mutex.Unlock()
@@ -372,6 +385,7 @@ func main() {
 	e.POST("/", forwarder.handlePostRequest)
 	e.POST("/asbplayer/load-subtitles", forwarder.handleAsbplayerLoadSubtitlesRequest)
 	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
+	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
 	e.OPTIONS("/", forwarder.handleOptionsRequest)
 	e.Logger.Fatal(e.Start(":" + port))
 }

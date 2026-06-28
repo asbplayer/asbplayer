@@ -195,6 +195,13 @@ const dependencies: Dependency[] = [
         licenseLink: 'https://github.com/cure53/DOMPurify/blob/main/LICENSE',
         purpose: 'HTML sanitization',
     },
+    {
+        name: 'react-virtuoso',
+        projectLink: 'https://github.com/petyosi/react-virtuoso',
+        license: 'MIT',
+        licenseLink: 'https://github.com/petyosi/react-virtuoso/blob/main/README.md#license',
+        purpose: 'Virtualized subtitle list rendering',
+    },
 ];
 
 const dependencyPurposeCounts: { [key: string]: number } = {};

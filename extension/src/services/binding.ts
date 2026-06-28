@@ -31,6 +31,7 @@ import {
     ScreenshotTakenMessage,
     ShowAnkiUiAfterRerecordMessage,
     ShowAnkiUiMessage,
+    ShowCardSelectUiMessage,
     StartRecordingAudioViaCaptureStreamMessage,
     StartRecordingAudioWithTimeoutViaCaptureStreamMessage,
     StartRecordingErrorCode,
@@ -66,6 +67,7 @@ import {
 import { SubtitleSlice } from '@project/common/subtitle-collection';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import {
+    buildSubtitleTracks,
     extractText,
     seekWithNudge,
     sourceString,
@@ -712,6 +714,10 @@ export default class Binding {
                     synced: this._synced,
                     syncedTimestamp: this._syncedTimestamp,
                     loadedSubtitles: this.subtitleController.subtitles.length > 0,
+                    subtitleTracks: buildSubtitleTracks(
+                        this.subtitleController.subtitles,
+                        this.subtitleController.subtitleFileNames ?? []
+                    ),
                 },
                 src: this._registeredVideoSrc,
             };
@@ -919,6 +925,10 @@ export default class Binding {
                     case 'show-anki-ui':
                         const showAnkiUiMessage = request.message as ShowAnkiUiMessage;
                         this.ankiUiController.show(this, showAnkiUiMessage);
+                        break;
+                    case 'show-card-select-ui':
+                        const showCardSelectUiMessage = request.message as ShowCardSelectUiMessage;
+                        this.ankiUiController.showCardSelect(this, showCardSelectUiMessage);
                         break;
                     case 'show-anki-ui-after-rerecord':
                         const showAnkiUiAfterRerecordMessage = request.message as ShowAnkiUiAfterRerecordMessage;

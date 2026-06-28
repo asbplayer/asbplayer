@@ -7,7 +7,6 @@ import {
     AudioTrackSelectedFromVideoMessage,
     AudioTrackSelectedToVideoMessage,
     CardTextFieldValues,
-    RichSubtitleModel,
     CopyMessage,
     CopyToVideoMessage,
     CurrentTimeFromVideoMessage,
@@ -37,6 +36,7 @@ import {
     SubtitlesUpdatedToVideoMessage,
     SaveTokenLocalFromVideoMessage,
     SaveTokenLocalToVideoMessage,
+    IndexedSubtitleModel,
 } from '@project/common';
 import {
     AnkiSettings,
@@ -76,7 +76,7 @@ export default class VideoChannel {
     private appBarToggleCallbacks: (() => void)[];
     private ankiDialogRequestCallbacks: (() => void)[];
     private toggleSubtitleTrackInListCallbacks: ((track: number) => void)[];
-    private subtitlesUpdatedCallbacks: ((updatedSubtitles: RichSubtitleModel[]) => void)[];
+    private subtitlesUpdatedCallbacks: ((updatedSubtitles: IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
         token: string,
@@ -397,7 +397,7 @@ export default class VideoChannel {
         return () => this._remove(callback, this.toggleSubtitleTrackInListCallbacks);
     }
 
-    onSubtitlesUpdated(callback: (updatedSubtitles: RichSubtitleModel[]) => void) {
+    onSubtitlesUpdated(callback: (updatedSubtitles: IndexedSubtitleModel[]) => void) {
         this.subtitlesUpdatedCallbacks.push(callback);
         return () => this._remove(callback, this.subtitlesUpdatedCallbacks);
     }
@@ -477,7 +477,7 @@ export default class VideoChannel {
         } as SaveTokenLocalToVideoMessage);
     }
 
-    subtitlesUpdated(subtitles: RichSubtitleModel[]) {
+    subtitlesUpdated(subtitles: IndexedSubtitleModel[]) {
         this.protocol.postMessage({
             command: 'subtitlesUpdated',
             subtitles,

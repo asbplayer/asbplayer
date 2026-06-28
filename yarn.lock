@@ -3561,6 +3561,7 @@ __metadata:
     jsonschema: ^1.5.0
     lamejs: 1.2.0
     pgs-parser: 0.1.0
+    react-virtuoso: ^4.18.7
     sanitize-filename: ^1.6.3
     semver: ^7.3.7
     ts-jest: ^29.2.5
@@ -12788,6 +12789,16 @@ __metadata:
     react: ">=16.6.0"
     react-dom: ">=16.6.0"
   checksum: 75602840106aa9c6545149d6d7ae1502fb7b7abadcce70a6954c4b64a438ff1cd16fc77a0a1e5197cdd72da398f39eb929ea06f9005c45b132ed34e056ebdeb1
+  languageName: node
+  linkType: hard
+
+"react-virtuoso@npm:^4.18.7":
+  version: 4.18.7
+  resolution: "react-virtuoso@npm:4.18.7"
+  peerDependencies:
+    react: ">=16 || >=17 || >= 18 || >= 19"
+    react-dom: ">=16 || >=17 || >= 18 || >=19"
+  checksum: 7f6b74bb232a026ad7f5a3d630bfb4fbab7e140394e31c51bbb8dc1b68ac8a8991c334f1242a2c6177611e37c818bd20b754bf2dc8336974e469a476b04c5f44
   languageName: node
   linkType: hard
 

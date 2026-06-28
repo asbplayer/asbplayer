@@ -16,7 +16,13 @@ export default function SubtitleTextImage({ subtitle, availableWidth, scale }: P
 
     return (
         <div style={{ maxWidth: width, margin: 'auto' }}>
-            <img style={{ width: '100%' }} alt="subtitle" src={subtitle.textImage.dataUrl} />
+            <img
+                width={subtitle.textImage.image.width}
+                height={subtitle.textImage.image.height}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+                alt="subtitle"
+                src={subtitle.textImage.dataUrl}
+            />
         </div>
     );
 }

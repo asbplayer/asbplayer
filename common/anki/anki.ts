@@ -159,6 +159,7 @@ export interface ExportParams {
     customFieldValues: { [key: string]: string };
     tags: string[];
     mode: AnkiExportMode;
+    noteId?: number;
     ankiConnectUrl?: string;
 }
 
@@ -325,6 +326,18 @@ export class Anki {
         return this.findNotes(`"${this.settingsProvider.wordField}:${escapeAnkiQuery(word)}"`, ankiConnectUrl);
     }
 
+    async findNotesWithFieldsContainingWord(
+        word: string,
+        fields: string[],
+        ankiConnectUrl?: string
+    ): Promise<number[]> {
+        if (!fields.length) return [];
+        return this.findNotes(
+            fields.map((field) => `"${field}:*${escapeAnkiQuery(word)}*"`).join(' OR '),
+            ankiConnectUrl
+        );
+    }
+
     async findNotesWithWordGui(word: string, ankiConnectUrl?: string): Promise<number[]> {
         const response = await this._executeAction(
             'guiBrowse',
@@ -486,6 +499,7 @@ export class Anki {
         tags,
         mode,
         ankiConnectUrl,
+        noteId,
     }: ExportParams) {
         const fields = {};
 
@@ -527,6 +541,7 @@ export class Anki {
 
         const gui = mode === 'gui';
         const updateLast = mode === 'updateLast';
+        const isUpdate = mode === 'updateLast' || mode === 'updateSpecific';
 
         const recentNotes = updateLast ? await this.findNotes('added:1', ankiConnectUrl) : [];
         if (updateLast && recentNotes.length === 0) {
@@ -544,11 +559,11 @@ export class Anki {
         ]);
 
         if (encodedAudio) {
-            await this._attachAudio(params, fields, encodedAudio, gui || updateLast, ankiConnectUrl);
+            await this._attachAudio(params, fields, encodedAudio, gui || isUpdate, ankiConnectUrl);
         }
 
         if (encodedImage && image) {
-            await this._attachMediaFragment(params, fields, encodedImage, image, gui || updateLast, ankiConnectUrl);
+            await this._attachMediaFragment(params, fields, encodedImage, image, gui || isUpdate, ankiConnectUrl);
         }
 
         params.note['fields'] = fields;
@@ -556,43 +571,22 @@ export class Anki {
         switch (mode) {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
-            case 'updateLast':
+            case 'updateLast': {
                 const lastNoteId = [...recentNotes].sort()[recentNotes.length - 1];
-                params.note['id'] = lastNoteId;
-                const infoResponse = await this._executeAction('notesInfo', { notes: [lastNoteId] }, ankiConnectUrl);
 
-                if (infoResponse.result.length > 0 && infoResponse.result[0].noteId === lastNoteId) {
-                    const info = infoResponse.result[0];
-
-                    this._inheritHtmlMarkupFromField('sentenceField', info, params);
-                    this._inheritHtmlMarkupFromField('track1Field', info, params);
-                    this._inheritHtmlMarkupFromField('track2Field', info, params);
-                    this._inheritHtmlMarkupFromField('track3Field', info, params);
-
-                    await this._executeAction('updateNoteFields', params, ankiConnectUrl);
-
-                    if (tags.length > 0) {
-                        await this._executeAction(
-                            'addTags',
-                            { notes: [lastNoteId], tags: tags.join(' ') },
-                            ankiConnectUrl
-                        );
-                    }
-
-                    if (!this.settingsProvider.wordField || !info.fields) {
-                        return info.noteId;
-                    }
-
-                    const wordField = info.fields[this.settingsProvider.wordField];
-
-                    if (!wordField || !wordField.value) {
-                        return info.noteId;
-                    }
-
-                    return wordField.value;
+                if (recentNotes.length === 0) {
+                    throw new Error('Could not find note to update');
                 }
 
-                throw new Error('Could not update last card because the card info could not be fetched');
+                return await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
+            }
+            case 'updateSpecific': {
+                if (noteId === undefined) {
+                    throw new Error('noteId is required for updateSpecific mode');
+                }
+
+                return await this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
+            }
             case 'default':
                 return (await this._executeAction('addNote', params, ankiConnectUrl)).result;
             default:
@@ -728,6 +722,40 @@ export class Anki {
             { filename: makeUniqueFileName(name), data: base64, deleteExisting: false },
             ankiConnectUrl
         );
+    }
+
+    private async _updateNoteFields(noteId: number, params: any, tags: string[], ankiConnectUrl?: string) {
+        params.note['id'] = noteId;
+        const infoResponse = await this._executeAction('notesInfo', { notes: [noteId] }, ankiConnectUrl);
+
+        if (infoResponse.result.length === 0 || infoResponse.result[0].noteId !== noteId) {
+            throw new Error('Could not update card because the card info could not be fetched');
+        }
+
+        const info = infoResponse.result[0];
+
+        this._inheritHtmlMarkupFromField('sentenceField', info, params);
+        this._inheritHtmlMarkupFromField('track1Field', info, params);
+        this._inheritHtmlMarkupFromField('track2Field', info, params);
+        this._inheritHtmlMarkupFromField('track3Field', info, params);
+
+        await this._executeAction('updateNoteFields', params, ankiConnectUrl);
+
+        if (tags.length > 0) {
+            await this._executeAction('addTags', { notes: [noteId], tags: tags.join(' ') }, ankiConnectUrl);
+        }
+
+        if (!this.settingsProvider.wordField || !info.fields) {
+            return info.noteId;
+        }
+
+        const wordField = info.fields[this.settingsProvider.wordField];
+
+        if (!wordField || !wordField.value) {
+            return info.noteId;
+        }
+
+        return wordField.value;
     }
 
     private _inheritHtmlMarkupFromField(fieldKey: AnkiSettingsFieldKey, info: any, params: any) {
