@@ -9,7 +9,6 @@ export default class AppKeyBinder implements KeyBinder {
     private readonly copyHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly ankiExportHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly updateLastCardHandlers: ((event: KeyboardEvent) => void)[] = [];
-    private readonly updateSelectedCardHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly exportCardHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly takeScreenshotHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly toggleRecordingHandlers: ((event: KeyboardEvent) => void)[] = [];
@@ -34,9 +33,6 @@ export default class AppKeyBinder implements KeyBinder {
                             break;
                         case PostMineAction.updateLastCard:
                             handlers = this.updateLastCardHandlers;
-                            break;
-                        case PostMineAction.showUpdateCardDialog:
-                            handlers = this.updateSelectedCardHandlers;
                             break;
                         case PostMineAction.exportCard:
                             handlers = this.exportCardHandlers;
@@ -107,22 +103,6 @@ export default class AppKeyBinder implements KeyBinder {
         }
 
         return this.defaultKeyBinder.bindUpdateLastCard(onUpdateLastCard, disabledGetter, useCapture);
-    }
-
-    bindUpdateSelectedCard(
-        onUpdateSelectedCard: (event: KeyboardEvent) => void,
-        disabledGetter: () => boolean,
-        useCapture?: boolean | undefined
-    ): () => void {
-        if (this.extension.installed) {
-            const handler = this.defaultKeyBinder.updateSelectedCardHandler(onUpdateSelectedCard, disabledGetter);
-            this.updateSelectedCardHandlers.push(handler);
-            return () => {
-                this._remove(handler, this.updateSelectedCardHandlers);
-            };
-        }
-
-        return this.defaultKeyBinder.bindUpdateSelectedCard(onUpdateSelectedCard, disabledGetter, useCapture);
     }
 
     bindExportCard(
