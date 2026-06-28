@@ -96,7 +96,6 @@ import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-pro
 import { ExtensionDictionaryStorage } from './extension-dictionary-storage';
 import { HoveredToken } from '@project/common/subtitle-annotations';
 import { createVideoChangeHandler } from './video-change-handler';
-import { isDisneyPlusPageConfigKey } from './disney-plus-mse-offset';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -224,7 +223,6 @@ export default class Binding {
 
     private readonly frameId?: string;
     private readonly pageConfigKey?: string;
-    private _mseBaseOffsetMs: number = 0;
 
     get contentTimeMs(): number {
         if (this._isDisneyPlus() && disneyPlusContentTimeMs !== undefined) {
@@ -236,7 +234,7 @@ export default class Binding {
             return disneyPlusContentTimeMs + elapsed;
         }
 
-        return this.video.currentTime * 1000 - this._mseBaseOffsetMs;
+        return this.video.currentTime * 1000;
     }
 
     constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string, pageConfigKey?: string) {
@@ -539,7 +537,6 @@ export default class Binding {
 
     _bind() {
         this._notifyReady();
-        this._mseBaseOffsetMs = this._detectMseBaseOffset();
         this._subscribe();
         this._refreshSettings().then(() => {
             this.videoDataSyncController.requestSubtitles();
@@ -731,7 +728,6 @@ export default class Binding {
         if (this.hasPageScript) {
             this.videoChangeListener = createVideoChangeHandler(this.video, () => {
                 this._updateRegisteredVideoSrc(this.video.src || undefined);
-                this._mseBaseOffsetMs = this._detectMseBaseOffset();
                 this.videoDataSyncController.requestSubtitles();
                 this._resetSubtitles();
             });
@@ -1530,7 +1526,7 @@ export default class Binding {
                 })
             );
         } else {
-            seekWithNudge(this.video, timestamp + this._mseBaseOffsetMs / 1000);
+            seekWithNudge(this.video, timestamp);
         }
     }
 
@@ -1610,9 +1606,9 @@ export default class Binding {
         });
     }
 
-    // Disney+ player-API seeks are async and do not fire 'seeked', so wait until the
-    // player's content time reaches the target before recording. Otherwise mined audio
-    // is captured from the pre-seek position.
+    // Disney+ player-API seeks are asynchronous: the player's content time updates with a
+    // delay after the seek is requested. Wait until it reaches the target before recording,
+    // otherwise mined audio is captured from the pre-seek position.
     private async _waitForDisneyPlusSeek(targetSec: number, timeoutMs = 3000) {
         const targetMs = targetSec * 1000;
         const startWait = performance.now();
@@ -1812,21 +1808,7 @@ export default class Binding {
     }
 
     private _isDisneyPlus(): boolean {
-        return isDisneyPlusPageConfigKey(this.pageConfigKey);
-    }
-
-    private _detectMseBaseOffset(): number {
-        if (!this.video.src.startsWith('blob:') || (isFinite(this.video.duration) && !isNaN(this.video.duration))) {
-            return 0;
-        }
-        if (this.video.seekable.length === 0) {
-            return 0;
-        }
-        const offsetSeconds = this.video.currentTime - this.video.seekable.start(0);
-        if (offsetSeconds > 0.5 && offsetSeconds < 86400) {
-            return Math.round(offsetSeconds * 1000);
-        }
-        return 0;
+        return this.pageConfigKey === 'disneyPlus';
     }
 
     private _captureStream(): Promise<MediaStream> {
