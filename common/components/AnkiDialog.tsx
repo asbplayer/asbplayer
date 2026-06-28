@@ -724,6 +724,7 @@ const AnkiDialog = ({
         setLastAppliedTimestampIntervalToText(undefined);
     }, []);
 
+    const updateSpecificButtonRef = useRef<HTMLButtonElement | null>(null);
     const updateLastButtonRef = useRef<HTMLButtonElement | null>(null);
     const openInAnkiButtonRef = useRef<HTMLButtonElement | null>(null);
     const exportButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -781,7 +782,10 @@ const AnkiDialog = ({
     const handleOpenInAnki = useCallback(() => handleProceed('gui'), [handleProceed]);
     const handleUpdateLastCard = useCallback(() => handleProceed('updateLast'), [handleProceed]);
     const handleUpdateSelectedCards = useCallback(
-        (noteIds: number[]) => handleProceed('updateSpecific', noteIds),
+        async (noteIds: number[]) => {
+            await handleProceed('updateSpecific', noteIds);
+            setCardSelectDialogOpen(false);
+        },
         [handleProceed]
     );
     const handleExport = useCallback(() => handleProceed('default'), [handleProceed]);
@@ -1074,9 +1078,18 @@ const AnkiDialog = ({
                 </DialogContent>
                 <DialogActions>
                     <Tooltip title={t('cardSelectUi.title')}>
-                        <IconButton size="small" color="primary" onClick={() => setCardSelectDialogOpen(true)}>
-                            <SearchIcon />
-                        </IconButton>
+                        <AnkiDialogButton
+                            ref={updateSpecificButtonRef}
+                            disabled={disabled}
+                            focusVisible={focusedAction === 'updateSpecific'}
+                            onBlurVisible={handleActionBlur}
+                            onClick={() => setCardSelectDialogOpen(true)}
+                            component={(props) => (
+                                <IconButton color="primary" size="small" {...props}>
+                                    <SearchIcon />
+                                </IconButton>
+                            )}
+                        />
                     </Tooltip>
                     <AnkiDialogButton
                         ref={openInAnkiButtonRef}
