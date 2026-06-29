@@ -441,7 +441,7 @@ export interface RequestLocalSubtitlesMessage extends MessageWithId {
 
 export interface LocalSubtitlesResponseMessage extends MessageWithId {
     readonly command: 'local-subtitles-response';
-    readonly subtitles: SubtitleModel[];
+    readonly response: RequestSubtitlesResponse;
 }
 
 export interface SubtitleSettingsToVideoMessage extends Message {

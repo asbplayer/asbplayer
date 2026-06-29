@@ -1232,7 +1232,10 @@ function App({
                 }
             } else if (message.data.command === 'request-local-subtitles') {
                 const requestMessage = message.data as RequestLocalSubtitlesMessage;
-                extension.sendSubtitles(requestMessage.messageId, subtitles);
+                extension.sendSubtitles(requestMessage.messageId, {
+                    subtitles,
+                    subtitleFileNames: sources.subtitleFiles.map((f) => f.name),
+                });
             }
         }
 

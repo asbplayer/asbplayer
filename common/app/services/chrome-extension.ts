@@ -25,7 +25,7 @@ import {
     AddProfileMessage,
     RemoveProfileMessage,
     RequestSubtitlesFromAppMessage,
-    SubtitleModel,
+    RequestSubtitlesResponse,
     LocalSubtitlesResponseMessage,
     SubtitleTrack,
     LoadSubtitlesMessage,
@@ -473,13 +473,13 @@ export default class ChromeExtension {
         return this._createResponsePromise(messageId);
     }
 
-    sendSubtitles(messageId: string, subtitles: SubtitleModel[]) {
+    sendSubtitles(messageId: string, response: RequestSubtitlesResponse) {
         const command: AsbPlayerCommand<LocalSubtitlesResponseMessage> = {
             sender: 'asbplayerv2',
             message: {
                 command: 'local-subtitles-response',
                 messageId,
-                subtitles,
+                response,
             },
         };
         window.postMessage(command);

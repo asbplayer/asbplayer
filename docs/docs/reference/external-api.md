@@ -151,8 +151,8 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ### `get-subtitles`
 
-Returns the subtitles currently loaded for a piece of media, as SRT. By default it targets the active tab's video element; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target a specific media. 
-Returns an empty string when no matching media is found or no subtitles are loaded.
+Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's video element; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
+Returns an empty list when no matching media is found or no subtitles are loaded.
 
 #### Request
 
@@ -164,8 +164,8 @@ Returns an empty string when no matching media is found or no subtitles are load
     "body": {
         // Optional media id from `get-bound-media`. Defaults to the active tab when omitted.
         "mediaId": "a1b2c3d4e5f6",
-        // Optional track number from `get-bound-media`. Defaults to the lowest-numbered loaded track when omitted.
-        "trackNumber": 0
+        // Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.
+        "trackNumbers": [0]
     }
 }
 ```
@@ -178,8 +178,10 @@ Returns an empty string when no matching media is found or no subtitles are load
     // Same message ID received in request
     "messageId": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
     "body": {
-        // Loaded subtitles as SRT.
-        "srt": "1\n00:00:01,000 --> 00:00:02,000\nHello\n"
+        // Loaded subtitles. `start`/`end` are in milliseconds; `track` is the loaded track number.
+        "subtitles": [
+            { "text": "Hello", "start": 1000, "end": 2000, "track": 0 }
+        ]
     }
 }
 ```
@@ -191,7 +193,7 @@ The WebSocket server also implements an HTTP-based API which can trigger the com
 - `POST asbplayer/load-subtitles` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
 - `POST asbplayer/seek` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
 - `GET asbplayer/bound-media` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/bound-media))
-- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumber=...`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))
+- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))
 
 ## AnkiConnect proxy
 

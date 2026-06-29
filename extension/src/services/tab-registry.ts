@@ -6,12 +6,14 @@ import {
     ExtensionToAsbPlayerCommandTabsCommand,
     ExtensionToVideoCommand,
     Message,
+    MessageWithId,
     SidePanelLocation,
     VideoHeartbeatMessage,
     VideoTabModel,
     SubtitleTrack,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
+import { v4 as uuidv4 } from 'uuid';
 
 interface SlimTab {
     id: number;
@@ -455,6 +457,48 @@ export default class TabRegistry {
                 }
             }
         }
+    }
+
+    // Publishes a command carrying a messageId to asbplayer instance(s) and awaits a response
+    async publishCommandToAsbplayersAndAwaitResponse<T extends MessageWithId, R extends MessageWithId>({
+        asbplayerId,
+        commandFactory,
+        responseCommand,
+        timeoutMs = 5000,
+    }: {
+        commandFactory: (asbplayer: Asbplayer, messageId: string) => Command<T> | undefined;
+        responseCommand: string;
+        asbplayerId?: string;
+        timeoutMs?: number;
+    }): Promise<R | undefined> {
+        const messageId = uuidv4();
+
+        return new Promise<R | undefined>((resolve) => {
+            let timeout: ReturnType<typeof setTimeout>;
+
+            const listener = (request: any) => {
+                if (
+                    request?.sender === 'asbplayerv2' &&
+                    request.message?.command === responseCommand &&
+                    request.message.messageId === messageId
+                ) {
+                    clearTimeout(timeout);
+                    browser.runtime.onMessage.removeListener(listener);
+                    resolve(request.message as R);
+                }
+            };
+
+            timeout = setTimeout(() => {
+                browser.runtime.onMessage.removeListener(listener);
+                resolve(undefined);
+            }, timeoutMs);
+
+            browser.runtime.onMessage.addListener(listener);
+            this.publishCommandToAsbplayers({
+                asbplayerId,
+                commandFactory: (asbplayer) => commandFactory(asbplayer, messageId),
+            });
+        });
     }
 
     private async _sendCommand<T extends Message>(asbplayer: Asbplayer, command: Command<T>) {

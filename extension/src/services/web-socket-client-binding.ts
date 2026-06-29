@@ -4,6 +4,7 @@ import {
     LoadSubtitlesCommand,
     MineSubtitleCommand,
     SeekTimestampCommand,
+    SubtitleCue,
     WebSocketClient,
 } from '@project/common/web-socket-client';
 import TabRegistry from './tab-registry';
@@ -21,7 +22,6 @@ import {
     SubtitleModel,
     ToggleVideoSelectMessage,
 } from '@project/common';
-import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
 
 let client: WebSocketClient | undefined;
 
@@ -49,53 +49,37 @@ const cyrb53 = (str: string) => {
 
 const boundMediaId = (key: string) => cyrb53(key);
 
-// Selects a single track's cues from a merged subtitle list
-const subtitlesForTrack = (subtitles: SubtitleModel[], trackNumber: number | undefined) => {
-    if (subtitles.length === 0) {
+// Filters subtitles to the requested tracks, or returns all of them when none are specified.
+const filterByTracks = (subtitles: SubtitleModel[], trackNumbers: number[] | undefined) => {
+    if (trackNumbers === undefined || trackNumbers.length === 0) {
         return subtitles;
     }
 
-    //Default to lowest numbered loaded track if no trackNumber provided
-    const selectedTrack = trackNumber ?? Math.min(...subtitles.map((subtitle) => subtitle.track));
-    return subtitles.filter((subtitle) => subtitle.track === selectedTrack);
+    return subtitles.filter((subtitle) => trackNumbers.includes(subtitle.track));
 };
 
+const toSubtitleCues = (subtitles: SubtitleModel[]): SubtitleCue[] =>
+    subtitles.map(({ text, start, end, track }) => ({ text, start, end, track }));
+
 // Requests the loaded subtitles from a local asbplayer app instance
-const requestSubtitlesFromAsbplayer = (
+const requestSubtitlesFromAsbplayer = async (
     tabRegistry: TabRegistry,
     asbplayerId: string
 ): Promise<SubtitleModel[] | undefined> => {
-    return new Promise((resolve) => {
-        const messageId = crypto.randomUUID();
-        let timeout: ReturnType<typeof setTimeout>;
-
-        const listener = (request: any) => {
-            if (
-                request?.sender === 'asbplayerv2' &&
-                request.message?.command === 'local-subtitles-response' &&
-                request.message.messageId === messageId
-            ) {
-                clearTimeout(timeout);
-                browser.runtime.onMessage.removeListener(listener);
-                resolve((request.message as LocalSubtitlesResponseMessage).subtitles);
-            }
-        };
-
-        timeout = setTimeout(() => {
-            browser.runtime.onMessage.removeListener(listener);
-            resolve(undefined);
-        }, 5000);
-
-        browser.runtime.onMessage.addListener(listener);
-        tabRegistry.publishCommandToAsbplayers({
-            asbplayerId,
-            commandFactory: (asbplayer): ExtensionToAsbPlayerCommand<RequestLocalSubtitlesMessage> => ({
-                sender: 'asbplayer-extension-to-player',
-                message: { command: 'request-local-subtitles', messageId },
-                asbplayerId: asbplayer.id,
-            }),
-        });
+    const response = await tabRegistry.publishCommandToAsbplayersAndAwaitResponse<
+        RequestLocalSubtitlesMessage,
+        LocalSubtitlesResponseMessage
+    >({
+        asbplayerId,
+        responseCommand: 'local-subtitles-response',
+        commandFactory: (asbplayer, messageId): ExtensionToAsbPlayerCommand<RequestLocalSubtitlesMessage> => ({
+            sender: 'asbplayer-extension-to-player',
+            message: { command: 'request-local-subtitles', messageId },
+            asbplayerId: asbplayer.id,
+        }),
     });
+
+    return response?.response.subtitles;
 };
 
 export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistry: TabRegistry) => {
@@ -269,7 +253,10 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
 
         return [...streamingMedia, ...localMedia];
     };
-    client.onGetSubtitles = async (mediaId: string | undefined, trackNumber: number | undefined): Promise<string> => {
+    client.onGetSubtitles = async (
+        mediaId: string | undefined,
+        trackNumbers: number[] | undefined
+    ): Promise<SubtitleCue[]> => {
         const videoElements = await tabRegistry.activeVideoElements();
         let match: (typeof videoElements)[number] | undefined;
 
@@ -313,7 +300,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
             }
         }
 
-        return subtitlesToSrt(subtitlesForTrack(subtitles ?? [], trackNumber));
+        return toSubtitleCues(filterByTracks(subtitles ?? [], trackNumbers));
     };
 };
 

@@ -68,12 +68,19 @@ export interface GetSubtitlesCommand {
     messageId: string;
     body: {
         mediaId?: string;
-        trackNumber?: number;
+        trackNumbers?: number[];
     };
 }
 
+export interface SubtitleCue {
+    text: string;
+    start: number;
+    end: number;
+    track: number;
+}
+
 interface GetSubtitlesResponseBody {
-    srt: string;
+    subtitles: SubtitleCue[];
 }
 
 export class WebSocketClient {
@@ -87,7 +94,7 @@ export class WebSocketClient {
     onLoadSubtitles?: (command: LoadSubtitlesCommand) => Promise<void>;
     onSeekTimestamp?: (command: SeekTimestampCommand) => Promise<void>;
     onGetBoundMedia?: () => Promise<BoundMedia[]>;
-    onGetSubtitles?: (mediaId: string | undefined, trackNumber: number | undefined) => Promise<string>;
+    onGetSubtitles?: (mediaId: string | undefined, trackNumbers: number[] | undefined) => Promise<SubtitleCue[]>;
 
     get socket() {
         return this._socket;
@@ -182,13 +189,17 @@ export class WebSocketClient {
                     } else if (payload.command === 'get-subtitles') {
                         if (this.onGetSubtitles !== undefined) {
                             const messageId = payload.messageId;
-                            const srt = await this.onGetSubtitles(payload.body?.mediaId, payload.body?.trackNumber);
+                            const subtitles = await this.onGetSubtitles(
+                                payload.body?.mediaId,
+                                payload.body?.trackNumbers
+                            );
                             const response: Response<GetSubtitlesResponseBody> = {
                                 command: 'response',
                                 messageId,
-                                body: { srt },
+                                body: { subtitles },
                             };
-                            this._socket?.send(JSON.stringify(response));
+                            const serialized = JSON.stringify(response);
+                            this._socket?.send(serialized);console.log('[ws] get-subtitles response sent', messageId);
                         }
                     }
                 }
