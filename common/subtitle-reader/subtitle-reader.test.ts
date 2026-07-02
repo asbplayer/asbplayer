@@ -75,6 +75,58 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
         expect(withoutRuby[0].tokenization).toBeUndefined();
     });
 
+    it('binds a ruby reading to its own base when preceded by kanji or kana', async () => {
+        // The base 子 is preceded by the kana ひろ. The reading must bind to 子 alone,
+        // not to the whole ひろ子 run.
+        const xml =
+            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
+            '<head><styling>' +
+            '<style xml:id="container" tts:ruby="container"/>' +
+            '<style xml:id="base" tts:ruby="base"/>' +
+            '<style xml:id="text" tts:ruby="text"/>' +
+            '</styling></head>' +
+            '<body><div>' +
+            '<p begin="10000000t" end="30000000t">ひろ<span style="container"><span style="base">子</span><span style="text">こ</span></span>そんな</p>' +
+            '</div></body>' +
+            '</tt>';
+
+        const withRuby = await parse(xml, true);
+        expect(withRuby).toHaveLength(1);
+        expect(withRuby[0].text).toBe('ひろ子そんな');
+        expect(withRuby[0].text).not.toContain('\u2063');
+        expect(withRuby[0].tokenization).toEqual({
+            tokens: [{ pos: [2, 3], readings: [{ pos: [0, 1], reading: 'こ' }], states: [] }],
+        });
+
+        const withoutRuby = await parse(xml, false);
+        expect(withoutRuby).toHaveLength(1);
+        expect(withoutRuby[0].text).toBe('ひろ子(こ)そんな');
+        expect(withoutRuby[0].text).not.toContain('\u2063');
+        expect(withoutRuby[0].tokenization).toBeUndefined();
+    });
+
+    it('does not fence a reading containing a closing paren', async () => {
+        // The reading )こ cannot be matched by netflixRubyRegex, so no marker is inserted
+        // and the cue passes through as literal text with no tokenization.
+        const xml =
+            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
+            '<head><styling>' +
+            '<style xml:id="container" tts:ruby="container"/>' +
+            '<style xml:id="base" tts:ruby="base"/>' +
+            '<style xml:id="text" tts:ruby="text"/>' +
+            '</styling></head>' +
+            '<body><div>' +
+            '<p begin="10000000t" end="30000000t">ひろ<span style="container"><span style="base">子</span><span style="text">)こ</span></span>そんな</p>' +
+            '</div></body>' +
+            '</tt>';
+
+        const withRuby = await parse(xml, true);
+        expect(withRuby).toHaveLength(1);
+        expect(withRuby[0].text).toBe('ひろ子()こ)そんな');
+        expect(withRuby[0].text).not.toContain('\u2063');
+        expect(withRuby[0].tokenization).toBeUndefined();
+    });
+
     it('drops tick cues when the tick rate is missing', async () => {
         const xml =
             '<tt xmlns="http://www.w3.org/ns/ttml">' +

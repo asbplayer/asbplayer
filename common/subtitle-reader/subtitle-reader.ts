@@ -7,7 +7,23 @@ import DOMPurify from 'dompurify';
 
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
-const netflixRubyRegex = /([\p{sc=Hira}\p{sc=Kana}\p{sc=Han}々〆〤ヶ]+)\((?=[^)]*[\p{sc=Hira}\p{sc=Kana}])([^)]+)\)/gu;
+// Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
+const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
+const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶ`;
+// Invisible sentinel placed before a ruby base so netflixRubyRegex cannot capture back
+// into preceding kanji or kana. U+2063 is an invisible separator that in practice never
+// appears in subtitle text and is a valid scalar, so extension loaders accept it in
+// bundled files. The optional leading match consumes it.
+const netflixRubyBaseMarker = '\u2063';
+const netflixRubyRegex = new RegExp(
+    `${netflixRubyBaseMarker}?([${netflixRubyBaseClass}]+)\\((?=[^)]*[${netflixRubyKanaClass}])([^)]+)\\)`,
+    'gu'
+);
+// A base is fenceable when every character is rubyable and the reading has kana before
+// any closing paren, which is when netflixRubyRegex matches, so an inserted marker is
+// always consumed.
+const netflixRubyBaseRegex = new RegExp(`^[${netflixRubyBaseClass}]+$`, 'u');
+const netflixRubyReadingRegex = new RegExp(`^[^)]*[${netflixRubyKanaClass}]`, 'u');
 const helperElement = document.createElement('div');
 
 interface SubtitleNode {
@@ -104,14 +120,22 @@ export default class SubtitleReader {
             .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
-        if (flatten) {
-            return this._deduplicate(allNodes);
+        if (this._convertNetflixRuby) {
+            if (flatten) {
+                // Flattened output keeps inline base(reading) without tokenizing, so
+                // the ruby base markers are simply dropped here.
+                for (const node of allNodes) {
+                    node.text = node.text.replaceAll(netflixRubyBaseMarker, '');
+                }
+            } else {
+                for (const node of allNodes) {
+                    this._convertNetflixRubyToHtml(node);
+                }
+            }
         }
 
-        if (this._convertNetflixRuby) {
-            for (const node of allNodes) {
-                this._convertNetflixRubyToHtml(node);
-            }
+        if (flatten) {
+            return this._deduplicate(allNodes);
         }
 
         return allNodes;
@@ -612,7 +636,21 @@ export default class SubtitleReader {
 
         reading = reading.trim();
 
-        return reading.length > 0 ? `${base}(${reading})` : base;
+        if (reading.length === 0) {
+            return base;
+        }
+
+        // Fence the base from any preceding CJK so tokenization binds the reading to this
+        // base alone. Only when the shared regex is sure to match, so the marker is consumed.
+        if (this._convertNetflixRuby && this._rubyBaseIsFenceable(base, reading)) {
+            return `${netflixRubyBaseMarker}${base}(${reading})`;
+        }
+
+        return `${base}(${reading})`;
+    }
+
+    private _rubyBaseIsFenceable(base: string, reading: string): boolean {
+        return netflixRubyBaseRegex.test(base) && netflixRubyReadingRegex.test(reading);
     }
 
     private _xmlNodePath(parent: Element, path: string[]): Element[] {
