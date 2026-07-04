@@ -198,9 +198,7 @@ export class WebSocketClient {
                                 messageId,
                                 body: { subtitles },
                             };
-                            const serialized = JSON.stringify(response);
-                            this._socket?.send(serialized);
-                            console.log('[ws] get-subtitles response sent', messageId);
+                            this._socket?.send(JSON.stringify(response));
                         }
                     }
                 }
