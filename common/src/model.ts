@@ -1,7 +1,7 @@
 import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
 import type { OnlineSubtitleSourceConfig } from '../global-state';
 import type { TokenStatusInfo } from '../dictionary-db';
-import type { PitchAccentPosition } from '../yomitan/yomitan';
+import type { PitchAccentPosition } from '../yomitan';
 
 type Profile = { name: string };
 

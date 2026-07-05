@@ -28,7 +28,7 @@ import {
     RichTextWindow,
     RenderedRichText,
     renderRichTextForSubtitle,
-} from '@project/common/subtitle-annotations';
+} from '@project/common/annotations';
 import { timeDurationDisplay } from '@project/common/util';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';

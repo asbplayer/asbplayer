@@ -21,7 +21,7 @@ import {
     ApplyStrategy,
     Profile,
 } from '@project/common/settings';
-import { Yomitan } from '../yomitan/yomitan';
+import { Yomitan } from '../yomitan';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import SettingsTextField from './SettingsTextField';
 import { DictionaryLocalTokenInput, DictionaryProvider, DictionaryTokenRecord } from '../dictionary-db';

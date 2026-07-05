@@ -32,7 +32,7 @@ import {
     SubtitleAnnotations,
     ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
     ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
-} from '@project/common/subtitle-annotations';
+} from '@project/common/annotations';
 import { arrayEquals, computeStyleString, surroundingSubtitles } from '@project/common/util';
 import i18n from 'i18next';
 import {

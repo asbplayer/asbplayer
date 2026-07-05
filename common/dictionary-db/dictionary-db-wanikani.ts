@@ -17,7 +17,7 @@ import {
     WaniKaniSpacedRepetitionSystem,
     WaniKaniSubject,
 } from '@project/common/wanikani';
-import { Yomitan } from '@project/common/yomitan/yomitan';
+import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
 import {
     _DictionaryDatabase,

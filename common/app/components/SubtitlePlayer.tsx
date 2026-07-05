@@ -45,7 +45,7 @@ import {
     RenderedRichText,
     SubtitleAnnotations,
     renderRichTextForSubtitle,
-} from '@project/common/subtitle-annotations';
+} from '@project/common/annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';

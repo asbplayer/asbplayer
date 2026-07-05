@@ -51,7 +51,7 @@ import {
 } from '@project/common/settings';
 import { Anki } from '../anki';
 import { WaniKani, WaniKaniUser } from '../wanikani';
-import { Yomitan } from '../yomitan/yomitan';
+import { Yomitan } from '../yomitan';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import SettingsTextField from './SettingsTextField';
 import SettingsSection from './SettingsSection';
@@ -81,7 +81,12 @@ import {
     percentToHex2,
 } from '../util';
 import DictionaryImport from './DictionaryImport';
-import { computeRichText, getAnnotationsForRender, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
+import {
+    computeRichText,
+    getAnnotationsForRender,
+    getAnnotationsHtml,
+    InternalToken,
+} from '@project/common/annotations';
 import WordBrowserDialog from './WordBrowserDialog';
 import '../app/components/subtitles.css';
 import ButtonGroup from '@mui/material/ButtonGroup';

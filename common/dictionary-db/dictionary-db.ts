@@ -14,7 +14,7 @@ import {
 } from '@project/common/settings';
 import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
 import { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
-import { Yomitan } from '@project/common/yomitan/yomitan';
+import { Yomitan } from '@project/common/yomitan';
 import Dexie from 'dexie';
 import { buildAnkiCachePipeline } from '@project/common/dictionary-db';
 import { buildWaniKaniCachePipeline } from '@project/common/dictionary-db';

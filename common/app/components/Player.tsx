@@ -28,7 +28,7 @@ import {
 } from '@project/common/settings';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { HoveredToken, SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
 import { surroundingSubtitles, timeDurationDisplay } from '@project/common/util';

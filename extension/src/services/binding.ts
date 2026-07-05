@@ -94,7 +94,7 @@ import { bufferToBase64 } from '@project/common/base64';
 import { pgsParserWorkerFactory } from './pgs-parser-worker-factory';
 import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-provider';
 import { ExtensionDictionaryStorage } from './extension-dictionary-storage';
-import { HoveredToken } from '@project/common/subtitle-annotations';
+import { HoveredToken } from '@project/common/annotations';
 import { v4 as uuidv4 } from 'uuid';
 
 let netflix = false;

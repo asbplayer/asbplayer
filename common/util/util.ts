@@ -3,7 +3,7 @@ import { Rgb, SubtitleModel, SubtitleTrack, Token, Tokenization, TokenReading } 
 import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
 import { Progress } from '..';
 import { TokenStatusInfo } from '../dictionary-db';
-import { PitchAccentPosition } from '../yomitan/yomitan';
+import { PitchAccentPosition } from '../yomitan';
 
 export function arrayEquals<T>(
     a: readonly T[] | undefined,

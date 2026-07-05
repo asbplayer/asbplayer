@@ -46,7 +46,7 @@ import {
     getAnnotationsHtml,
     ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
     ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
-} from '@project/common/subtitle-annotations';
+} from '@project/common/annotations';
 import Clock from '../services/clock';
 import Controls, { Point } from './Controls';
 import PlayerChannel from '../services/player-channel';
