@@ -105,6 +105,7 @@ const subtitleExtensions = [
     '.vtt',
     '.sup',
     '.nfvtt',
+    '.nfimsc',
     '.ytxml',
     '.ytsrv3',
     '.dfxp',

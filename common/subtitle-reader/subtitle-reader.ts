@@ -7,7 +7,23 @@ import DOMPurify from 'dompurify';
 
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
-const netflixRubyRegex = /([\p{sc=Hira}\p{sc=Kana}\p{sc=Han}々〆〤ヶ]+)\((?=[^)]*[\p{sc=Hira}\p{sc=Kana}])([^)]+)\)/gu;
+// Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
+const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
+const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶ`;
+// Invisible sentinel placed before a ruby base so netflixRubyRegex cannot capture back
+// into preceding kanji or kana. U+2063 is an invisible separator that in practice never
+// appears in subtitle text and is a valid scalar, so extension loaders accept it in
+// bundled files. The optional leading match consumes it.
+const netflixRubyBaseMarker = '\u2063';
+const netflixRubyRegex = new RegExp(
+    `${netflixRubyBaseMarker}?([${netflixRubyBaseClass}]+)\\((?=[^)]*[${netflixRubyKanaClass}])([^)]+)\\)`,
+    'gu'
+);
+// A base is fenceable when every character is rubyable and the reading has kana before
+// any closing paren, which is when netflixRubyRegex matches, so an inserted marker is
+// always consumed.
+const netflixRubyBaseRegex = new RegExp(`^[${netflixRubyBaseClass}]+$`, 'u');
+const netflixRubyReadingRegex = new RegExp(`^[^)]*[${netflixRubyKanaClass}]`, 'u');
 const helperElement = document.createElement('div');
 
 interface SubtitleNode {
@@ -104,14 +120,22 @@ export default class SubtitleReader {
             .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
-        if (flatten) {
-            return this._deduplicate(allNodes);
+        if (this._convertNetflixRuby) {
+            if (flatten) {
+                // Flattened output keeps inline base(reading) without tokenizing, so
+                // the ruby base markers are simply dropped here.
+                for (const node of allNodes) {
+                    node.text = node.text.replaceAll(netflixRubyBaseMarker, '');
+                }
+            } else {
+                for (const node of allNodes) {
+                    this._convertNetflixRubyToHtml(node);
+                }
+            }
         }
 
-        if (this._convertNetflixRuby) {
-            for (const node of allNodes) {
-                this._convertNetflixRubyToHtml(node);
-            }
+        if (flatten) {
+            return this._deduplicate(allNodes);
         }
 
         return allNodes;
@@ -350,6 +374,10 @@ export default class SubtitleReader {
             return await this._parsePgs(file, track);
         }
 
+        if (file.name.endsWith('.nfimsc')) {
+            return this._parseNetflixImsc(await file.text(), track);
+        }
+
         if (file.name.endsWith('.dfxp') || file.name.endsWith('ttml2')) {
             const text = await file.text();
             const parser = new DOMParser();
@@ -366,11 +394,19 @@ export default class SubtitleReader {
                     continue;
                 }
 
+                const start = this._parseTtmlTimestamp(beginAttribute);
+                const end = this._parseTtmlTimestamp(endAttribute);
+
+                // Skip cues whose timestamps did not parse to a finite number.
+                if (!Number.isFinite(start) || !Number.isFinite(end)) {
+                    continue;
+                }
+
                 const text = this._decodeHTML(elm.innerHTML.replaceAll(/<br(\s[^\s]+)?(\/)?>/g, '\n'));
                 subtitles.push({
                     text: this._filterText(text),
-                    start: this._parseTtmlTimestamp(beginAttribute),
-                    end: this._parseTtmlTimestamp(endAttribute),
+                    start,
+                    end,
                     track,
                 });
             }
@@ -439,13 +475,182 @@ export default class SubtitleReader {
             };
         });
     }
-    private _parseTtmlTimestamp(timestamp: string) {
+    private _parseTtmlTimestamp(timestamp: string, tickRate?: number) {
+        // Tick-based time (e.g. IMSC 1.1): "<ticks>t" resolved against ttp:tickRate.
+        const tickMatch = /^([0-9]+(?:\.[0-9]+)?)t$/.exec(timestamp);
+
+        if (tickMatch) {
+            const ticks = parseFloat(tickMatch[1]);
+            // Without a tick rate the value is unparseable, so let the caller drop it.
+            return tickRate && tickRate > 0 ? Math.floor((ticks / tickRate) * 1000) : NaN;
+        }
+
+        // Offset time with a metric unit, e.g. "1234ms", "12.5s", "90m", "1h".
+        const offsetMatch = /^([0-9]+(?:\.[0-9]+)?)(h|m|s|ms)$/.exec(timestamp);
+
+        if (offsetMatch) {
+            const value = parseFloat(offsetMatch[1]);
+
+            switch (offsetMatch[2]) {
+                case 'h':
+                    return Math.floor(value * 3600000);
+                case 'm':
+                    return Math.floor(value * 60000);
+                case 's':
+                    return Math.floor(value * 1000);
+                case 'ms':
+                    return Math.floor(value);
+            }
+        }
+
+        // Clock time: [[HH:]MM:]SS[.mmm]
         const parts = timestamp.split(':');
         const milliseconds = Math.floor(parseFloat(parts[parts.length - 1]) * 1000);
         const minutes = parts.length < 2 ? 0 : Number(parts[parts.length - 2]);
         const hours = parts.length < 3 ? 0 : Number(parts[parts.length - 3]);
 
         return milliseconds + minutes * 60000 + hours * 3600000;
+    }
+
+    // Parses the Netflix IMSC 1.1 (TTML) shape seen in subtitle downloads: tick-based
+    // timestamps resolved against ttp:tickRate, and furigana as tts:ruby styles
+    // (a container span wrapping a base span and a text span).
+    private _parseNetflixImsc(text: string, track: number): SubtitleNode[] {
+        const parameterNamespace = 'http://www.w3.org/ns/ttml#parameter';
+        const stylingNamespace = 'http://www.w3.org/ns/ttml#styling';
+        const doc = new DOMParser().parseFromString(text, 'application/xml');
+        const root = doc.documentElement;
+
+        // Resolve namespaced attributes by URI, falling back to the conventional prefix.
+        const tickRateAttribute =
+            root.getAttributeNS(parameterNamespace, 'tickRate') ?? root.getAttribute('ttp:tickRate');
+        const tickRate = Number(tickRateAttribute ?? '') || undefined;
+
+        // Map each style id to its ruby role (container/base/text), where defined.
+        const rubyRoleByStyleId: { [id: string]: string } = {};
+
+        for (const style of Array.from(doc.getElementsByTagNameNS('*', 'style'))) {
+            const id = style.getAttribute('xml:id');
+            const role = style.getAttributeNS(stylingNamespace, 'ruby') ?? style.getAttribute('tts:ruby');
+
+            if (id !== null && role !== null) {
+                rubyRoleByStyleId[id] = role;
+            }
+        }
+
+        // A style attribute may list several style ids, so use the first ruby one.
+        const rubyRoleOf = (element: Element) => {
+            const styleRef = element.getAttribute('style');
+
+            if (styleRef === null) {
+                return undefined;
+            }
+
+            for (const id of styleRef.trim().split(/\s+/)) {
+                const role = rubyRoleByStyleId[id];
+
+                if (role !== undefined) {
+                    return role;
+                }
+            }
+
+            return undefined;
+        };
+
+        const subtitles: SubtitleNode[] = [];
+
+        // Collect every <p> regardless of how many <div>s the body splits them across.
+        for (const paragraph of Array.from(doc.getElementsByTagNameNS('*', 'p'))) {
+            const begin = paragraph.getAttribute('begin');
+            const end = paragraph.getAttribute('end');
+            const dur = paragraph.getAttribute('dur');
+
+            if (begin === null || (end === null && dur === null)) {
+                continue;
+            }
+
+            const start = this._parseTtmlTimestamp(begin, tickRate);
+            const stop =
+                end !== null
+                    ? this._parseTtmlTimestamp(end, tickRate)
+                    : start + this._parseTtmlTimestamp(dur!, tickRate);
+
+            // Skip cues whose timestamps did not parse to a finite number.
+            if (!Number.isFinite(start) || !Number.isFinite(stop)) {
+                continue;
+            }
+
+            subtitles.push({
+                start,
+                end: stop,
+                text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
+                track,
+            });
+        }
+
+        return subtitles;
+    }
+
+    // Flattens an IMSC <p> to text. Furigana renders inline as base(reading)
+    // so the existing _convertNetflixRubyToHtml pass tokenizes it.
+    private _imscParagraphText(node: Node, rubyRoleOf: (element: Element) => string | undefined): string {
+        let text = '';
+
+        for (const child of Array.from(node.childNodes)) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                text += child.nodeValue ?? '';
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const element = child as Element;
+                const tag = this._dropTagNamespace(element.tagName).toLowerCase();
+
+                if (tag === 'br') {
+                    text += '\n';
+                } else if (rubyRoleOf(element) === 'container') {
+                    text += this._imscRubyText(element, rubyRoleOf);
+                } else {
+                    text += this._imscParagraphText(element, rubyRoleOf);
+                }
+            }
+        }
+
+        return text;
+    }
+
+    private _imscRubyText(container: Element, rubyRoleOf: (element: Element) => string | undefined): string {
+        let base = '';
+        let reading = '';
+
+        for (const child of Array.from(container.childNodes)) {
+            if (child.nodeType === Node.TEXT_NODE) {
+                base += child.nodeValue ?? '';
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const element = child as Element;
+
+                if (rubyRoleOf(element) === 'text') {
+                    reading += element.textContent ?? '';
+                } else {
+                    base += this._imscParagraphText(element, rubyRoleOf);
+                }
+            }
+        }
+
+        reading = reading.trim();
+
+        if (reading.length === 0) {
+            return base;
+        }
+
+        // Fence the base from any preceding CJK so tokenization binds the reading to this
+        // base alone. Only when the shared regex is sure to match, so the marker is consumed.
+        if (this._convertNetflixRuby && this._rubyBaseIsFenceable(base, reading)) {
+            return `${netflixRubyBaseMarker}${base}(${reading})`;
+        }
+
+        return `${base}(${reading})`;
+    }
+
+    private _rubyBaseIsFenceable(base: string, reading: string): boolean {
+        return netflixRubyBaseRegex.test(base) && netflixRubyReadingRegex.test(reading);
     }
 
     private _xmlNodePath(parent: Element, path: string[]): Element[] {
