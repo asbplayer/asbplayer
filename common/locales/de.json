@@ -710,7 +710,10 @@
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
         "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality"
     },
     "statistics": {
         "title": "Statistics",

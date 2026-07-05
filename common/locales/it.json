@@ -710,7 +710,10 @@
         "webSocketInterface": "Interfaccia WebSocket",
         "yomitanHelperText": "Le istruzioni per configurare l'API Yomitan sono <0>qui</0>.",
         "seekableTracks": "Tracce dei sottotitoli influenzate dalle modalità di riproduzione e dalle scorciatoie da tastiera",
-        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica"
+        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality"
     },
     "statistics": {
         "title": "Statistiche",

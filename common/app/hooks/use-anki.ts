@@ -97,6 +97,12 @@ class SettingsAccessor {
     get trimBlackBars() {
         return this.settings.trimBlackBars;
     }
+    get animatedImageFps() {
+        return this.settings.animatedImageFps;
+    }
+    get animatedImageQuality() {
+        return this.settings.animatedImageQuality;
+    }
     get surroundingSubtitlesCountRadius() {
         return this.settings.surroundingSubtitlesCountRadius;
     }
