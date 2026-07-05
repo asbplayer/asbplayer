@@ -50,6 +50,7 @@
         "none": "无",
         "showAnkiDialog": "显示 Anki 对话框",
         "updateLastCard": "更新上一张卡片",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "导出卡片"
     },
     "postMinePlayback": {

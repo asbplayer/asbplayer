@@ -50,6 +50,7 @@
         "none": "何もしない",
         "showAnkiDialog": "Anki のエクスポートウィンドウを開く",
         "updateLastCard": "最後のカードを更新する",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "カードをエクスポート"
     },
     "postMinePlayback": {

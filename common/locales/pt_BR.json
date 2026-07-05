@@ -50,6 +50,7 @@
         "none": "Nada",
         "showAnkiDialog": "Mostrar caixa de diálogo do Anki",
         "updateLastCard": "Atualizar último card",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Exportar cartão"
     },
     "postMinePlayback": {

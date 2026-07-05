@@ -50,6 +50,7 @@
         "none": "Не делать ничего",
         "showAnkiDialog": "Показать диалоговое окно Anki",
         "updateLastCard": "Обновить последнюю карточку",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Экспортировать карточку"
     },
     "postMinePlayback": {

@@ -50,6 +50,7 @@
         "none": "아무것도 하지 않기",
         "showAnkiDialog": "Anki 익스포트 윈도우 열기",
         "updateLastCard": "이전 카드 업데이트",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Anki로 카드 보내기"
     },
     "postMinePlayback": {

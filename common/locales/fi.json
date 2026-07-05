@@ -50,6 +50,7 @@
         "none": "Tyhjä",
         "showAnkiDialog": "Näytä Anki-valintaikkuna",
         "updateLastCard": "Päivitä edellinen kortti",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Vie kortti"
     },
     "postMinePlayback": {
