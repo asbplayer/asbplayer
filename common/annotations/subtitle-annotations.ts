@@ -1129,6 +1129,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             try {
                 if (!ts.yt) continue;
                 const tokenizeBulkRes = await ts.yt.tokenizeBulk(texts);
+                // TODO: Remove this block once pitch accent from tokenize is released
                 if (
                     (ts.dt.dictionaryTokenAnnotationConfig.onStatuses.some((l) => l.pitchAccent) ||
                         ts.dt.dictionaryTokenAnnotationConfig.onStates.some((l) => l.pitchAccent)) &&
