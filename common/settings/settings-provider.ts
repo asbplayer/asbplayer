@@ -166,6 +166,8 @@ export const defaultSettings: AsbplayerSettings = {
     mediaFragmentTrimEnd: 200,
     mediaFragmentMaxClipLength: 10000,
     trimBlackBars: false,
+    animatedImageFps: 10,
+    animatedImageQuality: 0.85,
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,

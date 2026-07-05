@@ -595,6 +595,23 @@ export interface StartRecordingAudioWithTimeoutMessage extends Message {
     readonly encodeAsMp3: boolean;
 }
 
+// Record a tab-capture clip in the content script and transcode it to a cropped animated WebP. The
+// audio is captured in the same stream and returned separately. Crop params come via ImageCaptureParams.
+export interface RecordAnimatedWebpMessage extends Message, ImageCaptureParams {
+    readonly command: 'record-animated-webp';
+    readonly streamId: string;
+    readonly durationMs: number;
+    readonly fps: number;
+    readonly quality: number;
+    readonly recordAudio: boolean;
+}
+
+export interface RecordAnimatedWebpResponse {
+    readonly base64: string; // animated webp
+    readonly audioBase64?: string; // audio webm, when recordAudio was requested
+    readonly error?: string;
+}
+
 export interface StartRecordingAudioWithTimeoutViaCaptureStreamMessage extends Message {
     readonly command: 'start-recording-audio-with-timeout';
     readonly timeout: number;

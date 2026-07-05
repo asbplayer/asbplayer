@@ -196,6 +196,7 @@ interface Props {
     extensionSupportsDictionaryYomitanMecab: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
+    extensionSupportsAnimatedMediaFragment?: boolean;
     insideApp?: boolean;
     appVersionRepoPath?: string;
     dictionaryProvider: DictionaryProvider;
@@ -236,6 +237,7 @@ export default function SettingsForm({
     extensionSupportsSidePanel,
     extensionSupportsSubtitleTrackSelectorInWebApp,
     extensionSupportsSubtitleListCustomization,
+    extensionSupportsAnimatedMediaFragment,
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
@@ -519,6 +521,7 @@ export default function SettingsForm({
                         settings={settings}
                         onSettingChanged={handleSettingChanged}
                         showWebmMediaFragmentSettings={Boolean(insideApp)}
+                        animatedMediaFragmentSupported={Boolean(extensionSupportsAnimatedMediaFragment)}
                     />
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['annotation']} tabsOrientation={tabsOrientation}>

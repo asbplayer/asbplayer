@@ -202,7 +202,7 @@ export type AnkiSettingsFieldKey =
     | 'track2Field'
     | 'track3Field';
 
-export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
+export type MediaFragmentFormatSetting = 'jpeg' | 'webm' | 'webp';
 
 // Any setting being added here also needs to be added to SettingsAccessor in use-anki.ts
 export interface AnkiSettings {
@@ -234,6 +234,8 @@ export interface AnkiSettings {
     readonly mediaFragmentTrimEnd: number;
     readonly mediaFragmentMaxClipLength: number;
     readonly trimBlackBars: boolean;
+    readonly animatedImageFps: number;
+    readonly animatedImageQuality: number;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -289,6 +291,8 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     mediaFragmentTrimEnd: true,
     mediaFragmentMaxClipLength: true,
     trimBlackBars: true,
+    animatedImageFps: true,
+    animatedImageQuality: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,
