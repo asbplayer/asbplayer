@@ -495,6 +495,7 @@
         "dictionaryLocalWordDatabase": "本地生词本",
         "dictionaryAnkiWordDatabase": "Anki 词汇库",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "根据词汇掌握度着色",
         "dictionaryAutoGenerateStatistics": "自动生成数据统计",
         "dictionaryColorizeOnHoverOnly": "仅在鼠标悬停时显示颜色",
