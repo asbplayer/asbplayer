@@ -726,8 +726,8 @@ export default class Binding {
             browser.runtime.sendMessage(command);
         }, 1000);
 
-        window.addEventListener('beforeunload', (event) => {
-            this.heartbeatInterval && clearInterval(this.heartbeatInterval);
+        window.addEventListener('beforeunload', () => {
+            if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
         });
 
         this.listener = (

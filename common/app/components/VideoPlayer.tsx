@@ -810,7 +810,6 @@ export default function VideoPlayer({
             videoPreview.src = videoFile;
             videoPreview.load();
         } else {
-            settings.thumbnailPreview;
             videoPreview.pause();
             videoPreview.removeAttribute('src');
             videoPreview.load();
