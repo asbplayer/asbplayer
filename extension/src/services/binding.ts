@@ -1597,7 +1597,7 @@ export default class Binding {
                     command: 'sync',
                     subtitles: await Promise.all(
                         files.map(async (f) => {
-                            const base64 = await bufferToBase64(await f.arrayBuffer());
+                            const base64 = bufferToBase64(await f.arrayBuffer());
 
                             return {
                                 name: f.name,

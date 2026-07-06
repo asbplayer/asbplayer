@@ -143,7 +143,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                     return extensionToVideoCommand;
                 });
 
-                const publishToAsbplayers = await tabRegistry.publishCommandToAsbplayers({
+                await tabRegistry.publishCommandToAsbplayers({
                     commandFactory: (asbplayer) => {
                         if (asbplayer.sidePanel || !asbplayer.loadedSubtitles) {
                             return undefined;
@@ -168,7 +168,6 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                 });
 
                 await publishToVideoElements;
-                await publishToAsbplayers;
                 resolve(published);
             });
         });

@@ -89,7 +89,7 @@ export class IndexedDBCopyHistoryRepository implements CopyHistoryRepository {
             return [];
         }
 
-        const result = await await this._db.copyHistoryItems.reverse().limit(count).toArray();
+        const result = await this._db.copyHistoryItems.reverse().limit(count).toArray();
         result.reverse();
         return result;
     }
