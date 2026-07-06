@@ -100,8 +100,6 @@ export default class PlayerChannel {
         this.alertCallbacks = [];
         this.copyCallbacks = [];
 
-        const that = this;
-
         this.channel.onmessage = (event) => {
             switch (event.data.command) {
                 case 'init':
@@ -110,25 +108,25 @@ export default class PlayerChannel {
                 case 'ready': {
                     const readyMessage = event.data as ReadyToVideoMessage;
 
-                    for (const callback of that.readyCallbacks) {
+                    for (const callback of this.readyCallbacks) {
                         callback(readyMessage.duration, readyMessage.videoFileName);
                     }
                     break;
                 }
                 case 'play':
-                    for (const callback of that.playCallbacks) {
+                    for (const callback of this.playCallbacks) {
                         callback();
                     }
                     break;
                 case 'pause':
-                    for (const callback of that.pauseCallbacks) {
+                    for (const callback of this.pauseCallbacks) {
                         callback();
                     }
                     break;
                 case 'currentTime': {
                     const currentTimeMessage = event.data as CurrentTimeToVideoMessage;
 
-                    for (const callback of that.currentTimeCallbacks) {
+                    for (const callback of this.currentTimeCallbacks) {
                         callback(currentTimeMessage.value);
                     }
                     break;
@@ -136,20 +134,20 @@ export default class PlayerChannel {
                 case 'audioTrackSelected': {
                     const audioTrackSelectedMessage = event.data as AudioTrackSelectedToVideoMessage;
 
-                    for (const callback of that.audioTrackSelectedCallbacks) {
+                    for (const callback of this.audioTrackSelectedCallbacks) {
                         callback(audioTrackSelectedMessage.id);
                     }
                     break;
                 }
                 case 'close':
-                    for (const callback of that.closeCallbacks) {
+                    for (const callback of this.closeCallbacks) {
                         callback();
                     }
                     break;
                 case 'subtitles': {
                     const subtitlesMessage = event.data as SubtitlesToVideoMessage;
 
-                    for (const callback of that.subtitlesCallbacks) {
+                    for (const callback of this.subtitlesCallbacks) {
                         callback(
                             subtitlesMessage.value,
                             subtitlesMessage.names.length > 0 ? subtitlesMessage.names[0] : ''
@@ -160,7 +158,7 @@ export default class PlayerChannel {
                 case 'subtitlesUpdated': {
                     const subtitlesUpdatedMessage = event.data as SubtitlesUpdatedToVideoMessage;
 
-                    for (const callback of that.subtitlesUpdatedCallbacks) {
+                    for (const callback of this.subtitlesUpdatedCallbacks) {
                         callback(subtitlesUpdatedMessage.subtitles);
                     }
                     break;
@@ -168,7 +166,7 @@ export default class PlayerChannel {
                 case 'saveTokenLocal': {
                     const { track, token, status, states, applyStates } = event.data as SaveTokenLocalToVideoMessage;
 
-                    for (const callback of that.saveTokenLocalCallbacks) {
+                    for (const callback of this.saveTokenLocalCallbacks) {
                         callback(track, token, status, states, applyStates);
                     }
                     break;
@@ -176,7 +174,7 @@ export default class PlayerChannel {
                 case 'offset': {
                     const offsetMessage = event.data as OffsetToVideoMessage;
 
-                    for (const callback of that.offsetCallbacks) {
+                    for (const callback of this.offsetCallbacks) {
                         callback(offsetMessage.value);
                     }
                     break;
@@ -184,7 +182,7 @@ export default class PlayerChannel {
                 case 'playbackRate': {
                     const playbackRateMessage = event.data as PlaybackRateToVideoMessage;
 
-                    for (const callback of that.playbackRateCallbacks) {
+                    for (const callback of this.playbackRateCallbacks) {
                         callback(playbackRateMessage.value);
                     }
                     break;
@@ -192,7 +190,7 @@ export default class PlayerChannel {
                 case 'subtitleSettings': {
                     const subtitleSettingsMessage = event.data as SubtitleSettingsToVideoMessage;
 
-                    for (const callback of that.subtitleSettingsCallbacks) {
+                    for (const callback of this.subtitleSettingsCallbacks) {
                         callback(subtitleSettingsMessage.value);
                     }
                     break;
@@ -200,7 +198,7 @@ export default class PlayerChannel {
                 case 'playModes': {
                     const playModesMessage = event.data as PlayModesMessage;
 
-                    for (const callback of that.playModesCallbacks) {
+                    for (const callback of this.playModesCallbacks) {
                         const modes = new Set<PlayMode>(playModesMessage.playModes);
                         callback(modes);
                     }
@@ -209,7 +207,7 @@ export default class PlayerChannel {
                 case 'hideSubtitlePlayerToggle': {
                     const hideSubtitlePlayerToggleMessage = event.data as HideSubtitlePlayerToggleToVideoMessage;
 
-                    for (const callback of that.hideSubtitlePlayerToggleCallbacks) {
+                    for (const callback of this.hideSubtitlePlayerToggleCallbacks) {
                         callback(hideSubtitlePlayerToggleMessage.value);
                     }
                     break;
@@ -217,7 +215,7 @@ export default class PlayerChannel {
                 case 'appBarToggle': {
                     const appBarToggleMessage = event.data as AppBarToggleMessageToVideoMessage;
 
-                    for (const callback of that.appBarToggleCallbacks) {
+                    for (const callback of this.appBarToggleCallbacks) {
                         callback(appBarToggleMessage.value);
                     }
                     break;
@@ -225,7 +223,7 @@ export default class PlayerChannel {
                 case 'fullscreenToggle': {
                     const fullscreenToggleMessage = event.data as FullscreenToggleMessageToVideoMessage;
 
-                    for (const callback of that.fullscreenToggleCallbacks) {
+                    for (const callback of this.fullscreenToggleCallbacks) {
                         callback(fullscreenToggleMessage.value);
                     }
                     break;
@@ -233,7 +231,7 @@ export default class PlayerChannel {
                 case 'ankiSettings': {
                     const ankiSettingsMessage = event.data as AnkiSettingsToVideoMessage;
 
-                    for (const callback of that.ankiSettingsCallbacks) {
+                    for (const callback of this.ankiSettingsCallbacks) {
                         callback(ankiSettingsMessage.value);
                     }
                     break;
@@ -241,7 +239,7 @@ export default class PlayerChannel {
                 case 'miscSettings': {
                     const miscSettingsMessage = event.data as MiscSettingsToVideoMessage;
 
-                    for (const callback of that.miscSettingsCallbacks) {
+                    for (const callback of this.miscSettingsCallbacks) {
                         callback(miscSettingsMessage.value);
                     }
                     break;
@@ -249,7 +247,7 @@ export default class PlayerChannel {
                 case 'alert': {
                     const alertMessage = event.data as AlertMessage;
 
-                    for (const callback of that.alertCallbacks) {
+                    for (const callback of this.alertCallbacks) {
                         callback(alertMessage.message, alertMessage.severity);
                     }
                     break;
@@ -257,7 +255,7 @@ export default class PlayerChannel {
                 case 'copy': {
                     const copyMessage = event.data as CopyToVideoMessage;
 
-                    for (const callback of that.copyCallbacks) {
+                    for (const callback of this.copyCallbacks) {
                         const { text, word, definition, customFieldValues } = copyMessage;
                         const cardTextFieldValues = { text, word, definition, customFieldValues };
                         callback(

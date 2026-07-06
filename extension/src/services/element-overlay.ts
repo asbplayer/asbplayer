@@ -225,14 +225,13 @@ export class CachingElementOverlay implements ElementOverlay {
         this._applyContainerStyles(container);
         this._findFullscreenParentElement(container).appendChild(container);
         container.style.setProperty('display', 'none', 'important');
-        const that = this;
 
         const toggle = () => {
             if (document.fullscreenElement) {
                 if (container.style.display === 'none') {
                     container.style.display = '';
                     container.remove();
-                    that._findFullscreenParentElement(container).appendChild(container);
+                    this._findFullscreenParentElement(container).appendChild(container);
                 }
 
                 if (this.nonFullscreenContainerElement) {

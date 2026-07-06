@@ -8,9 +8,8 @@ export default class BroadcastChannelVideoProtocol implements VideoProtocol {
 
     constructor(channelId: string) {
         this.channel = new BroadcastChannel(channelId);
-        const that = this;
         this.channel.onmessage = (event) => {
-            that.onMessage?.(event as VideoProtocolMessage);
+            this.onMessage?.(event as VideoProtocolMessage);
         };
     }
 
