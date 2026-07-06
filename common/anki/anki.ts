@@ -194,7 +194,7 @@ export async function exportCard(
                   card.audio.error
               );
 
-    return await anki.export({
+    return anki.export({
         text: card.text ?? extractText(card.subtitle, card.surroundingSubtitles),
         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
         track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
@@ -578,14 +578,14 @@ export class Anki {
                     throw new Error('Could not find note to update');
                 }
 
-                return await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
+                return this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
             }
             case 'updateSpecific': {
                 if (noteId === undefined) {
                     throw new Error('noteId is required for updateSpecific mode');
                 }
 
-                return await this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
+                return this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
             }
             case 'default':
                 return (await this._executeAction('addNote', params, ankiConnectUrl)).result;

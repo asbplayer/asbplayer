@@ -143,11 +143,11 @@ export class JimakuClient {
         if (anime !== undefined) {
             searchParams.set('anime', `${anime}`);
         }
-        return await this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
+        return this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
     }
 
     async getEntry(id: number): Promise<JimakuResponse<JimakuEntry>> {
-        return await this._request<JimakuEntry>(`entries/${id}`);
+        return this._request<JimakuEntry>(`entries/${id}`);
     }
 
     async getFiles(
@@ -164,7 +164,7 @@ export class JimakuClient {
 
         const query = searchParams.toString();
         const endpoint = query.length > 0 ? `entries/${id}/files?${query}` : `entries/${id}/files`;
-        return await this._request<JimakuFile[]>(endpoint);
+        return this._request<JimakuFile[]>(endpoint);
     }
 
     private async _request<T>(endpoint: string): Promise<JimakuResponse<T>> {

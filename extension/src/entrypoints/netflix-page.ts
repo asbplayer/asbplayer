@@ -157,7 +157,7 @@ export default defineUnlistedScript(() => {
 
             if (shouldRetry) {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                return await determineBasenameWithRetries(titleId, --retries);
+                return determineBasenameWithRetries(titleId, --retries);
             }
 
             return basename;

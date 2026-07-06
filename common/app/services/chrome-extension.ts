@@ -714,7 +714,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryGetAllTokens(profile: string | undefined, track: number): Promise<TokenResults> {
@@ -729,7 +729,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryGetByLemmaBulk(
@@ -749,7 +749,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionarySaveRecordLocalBulk(
@@ -769,7 +769,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryDeleteRecordLocalBulk(
@@ -787,7 +787,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryDeleteProfile(profile: string): Promise<DictionaryDeleteProfileResult> {
@@ -801,7 +801,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryExportRecordLocalBulk(): Promise<DictionaryExportRecordLocalResult> {
@@ -814,7 +814,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryImportRecordLocalBulk(
@@ -832,7 +832,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryGetRecords(
@@ -850,7 +850,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
+        return this._createResponsePromise(messageId, 60000); // Usually a few seconds
     }
 
     async dictionaryUpdateRecords(
@@ -870,7 +870,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
+        return this._createResponsePromise(messageId, 60000); // Usually a few seconds
     }
 
     async dictionaryDeleteRecords(
@@ -888,7 +888,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId, 60000); // Usually a few seconds
+        return this._createResponsePromise(messageId, 60000); // Usually a few seconds
     }
 
     buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings): Promise<void> {

@@ -15,6 +15,6 @@ export class BridgeFetcher {
             body,
             messageId: uuidv4(),
         };
-        return await this._bridge.sendMessageFromServerAndExpectResponse(httpPostMessage);
+        return this._bridge.sendMessageFromServerAndExpectResponse(httpPostMessage);
     }
 }

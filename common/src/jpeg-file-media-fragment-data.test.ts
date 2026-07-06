@@ -67,7 +67,7 @@ const toListener = (listener: EventListenerOrEventListenerObject): Listener => {
 };
 
 const flushAsync = async () =>
-    await new Promise<void>((resolve) => {
+    new Promise<void>((resolve) => {
         setTimeout(resolve, 0);
     });
 

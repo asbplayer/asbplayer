@@ -203,6 +203,6 @@ export default class VideoSelectController {
         const filePromises = subtitleFiles.map(
             async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
         );
-        return await Promise.all(filePromises);
+        return Promise.all(filePromises);
     }
 }

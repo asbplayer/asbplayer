@@ -20,11 +20,11 @@ const setRequestedLocation = async (key: string, location: SidePanelLocation) =>
 };
 
 export const getAppRequestedLocation = async (): Promise<SidePanelLocation | undefined> => {
-    return await getRequestedLocation(appRequestedLocationKey);
+    return getRequestedLocation(appRequestedLocationKey);
 };
 
 export const getExtensionRequestedLocation = async (): Promise<SidePanelLocation | undefined> => {
-    return await getRequestedLocation(extensionRequestedLocationKey);
+    return getRequestedLocation(extensionRequestedLocationKey);
 };
 
 const getRequestedLocation = async (key: string): Promise<SidePanelLocation | undefined> => {

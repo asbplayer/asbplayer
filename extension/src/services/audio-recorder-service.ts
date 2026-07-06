@@ -132,7 +132,7 @@ export default class AudioRecorderService {
         }
 
         this._notifyRecordingFinished(requester);
-        return await this.audioBase64Promise;
+        return this.audioBase64Promise;
     }
 
     private _notifyRecordingStarted({ tabId, src }: Requester) {

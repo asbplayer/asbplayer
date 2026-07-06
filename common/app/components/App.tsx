@@ -1597,7 +1597,7 @@ function App({
     }, []);
 
     const mp3Encoder = useCallback(async (blob: Blob, extension: string) => {
-        return await Mp3Encoder.encode(blob, () => new mp3WorkerFactory());
+        return Mp3Encoder.encode(blob, () => new mp3WorkerFactory());
     }, []);
 
     useEffect(() => {

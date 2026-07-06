@@ -114,7 +114,7 @@ class Base64AudioData implements AudioData {
     }
 
     async blob() {
-        return await this._blob();
+        return this._blob();
     }
 
     get playing() {
@@ -846,11 +846,11 @@ export default class AudioClip {
     }
 
     async base64() {
-        return await this.data.base64();
+        return this.data.base64();
     }
 
     async blob() {
-        return await this.data.blob();
+        return this.data.blob();
     }
 
     async download() {

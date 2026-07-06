@@ -376,7 +376,7 @@ export default class SubtitleReader {
         }
 
         if (file.name.endsWith('.sup')) {
-            return await this._parsePgs(file, track);
+            return this._parsePgs(file, track);
         }
 
         if (file.name.endsWith('.nfimsc')) {

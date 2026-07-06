@@ -346,7 +346,7 @@ export default function AnkiUi({ bridge }: Props) {
                 messageId: uuidv4(),
             };
             const { base64 } = await bridge.sendMessageFromServerAndExpectResponse(encodeMp3Message, 60_000);
-            return await base64ToBlob(base64, 'audio/mp3');
+            return base64ToBlob(base64, 'audio/mp3');
         },
         [bridge]
     );

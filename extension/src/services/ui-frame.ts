@@ -71,7 +71,7 @@ export default class UiFrame {
     }
 
     async bind(): Promise<boolean> {
-        return await this._init();
+        return this._init();
     }
 
     async client() {

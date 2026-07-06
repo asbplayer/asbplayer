@@ -750,7 +750,7 @@ export class SettingsProvider {
     }
 
     async activeProfile() {
-        return await this._storage.activeProfile();
+        return this._storage.activeProfile();
     }
 
     async setActiveProfile(name: string | undefined) {
@@ -758,7 +758,7 @@ export class SettingsProvider {
     }
 
     async profiles() {
-        return await this._storage.profiles();
+        return this._storage.profiles();
     }
 
     async addProfile(name: string) {

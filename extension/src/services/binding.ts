@@ -1569,7 +1569,7 @@ export default class Binding {
         const rect = this.video.getBoundingClientRect();
         const maxWidth = this.maxImageWidth;
         const maxHeight = this.maxImageHeight;
-        return await cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl);
+        return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl);
     }
 
     async loadSubtitles(files: File[], flatten: boolean, syncWithAsbplayerId?: string) {
