@@ -376,7 +376,7 @@ export default class Binding {
                 };
                 this.subtitleController.notification('info.enabledAutoPause');
                 break;
-            case PlayMode.condensed:
+            case PlayMode.condensed: {
                 let seeking = false;
                 this.subtitleController.onNextSeekableToShow = async (subtitle) => {
                     try {
@@ -401,6 +401,7 @@ export default class Binding {
                 };
                 this.subtitleController.notification('info.enabledCondensedPlayback');
                 break;
+            }
             case PlayMode.fastForward:
                 this.subtitleController.onSeekableSlice = async (slice: SubtitleSlice<IndexedSubtitleModel>) => {
                     const subtitlesAreSufficientlyOffsetFromNow = (subtitleEdgeTime: number | undefined) => {
@@ -748,10 +749,11 @@ export default class Binding {
                     case 'pause':
                         this.pause();
                         break;
-                    case 'currentTime':
+                    case 'currentTime': {
                         const currentTimeMessage = request.message as CurrentTimeToVideoMessage;
                         this.seek(currentTimeMessage.value);
                         break;
+                    }
                     case 'close':
                         // ignore
                         break;
@@ -773,27 +775,30 @@ export default class Binding {
                     }
                     // This is useful because when we kick off bulk export the side panel needs to know
                     // what subtitle to start from.
-                    case 'request-current-subtitle':
+                    case 'request-current-subtitle': {
                         const [currentSubtitle] = this.subtitleController.currentSubtitle();
                         sendResponse({
                             currentSubtitle: currentSubtitle,
                             currentSubtitleIndex: currentSubtitle?.index ?? null,
                         });
                         break;
+                    }
                     case 'start-bulk-export':
                         this.bulkExportController.start();
                         break;
                     case 'cancel-bulk-export':
                         this.bulkExportController.cancel();
                         break;
-                    case 'offset':
+                    case 'offset': {
                         const offsetMessage = request.message as OffsetToVideoMessage;
                         this.subtitleController.offset(offsetMessage.value, !offsetMessage.echo);
                         break;
-                    case 'playbackRate':
+                    }
+                    case 'playbackRate': {
                         const playbackRateMessage = request.message as PlaybackRateToVideoMessage;
                         this.video.playbackRate = playbackRateMessage.value;
                         break;
+                    }
                     case 'subtitleSettings':
                         // ignore
                         break;
@@ -806,7 +811,7 @@ export default class Binding {
                     case 'settings-updated':
                         this._refreshSettings();
                         break;
-                    case 'copy-subtitle':
+                    case 'copy-subtitle': {
                         const copySubtitleMessage = request.message as CopySubtitleMessage;
 
                         if (this._synced) {
@@ -827,6 +832,7 @@ export default class Binding {
                             this.mobileVideoOverlayController.updateModel();
                         }
                         break;
+                    }
                     case 'toggle-recording':
                         if (this._synced) {
                             this._toggleRecordingMedia(PostMineAction.showAnkiDialog);
@@ -835,7 +841,7 @@ export default class Binding {
                         break;
                     case 'card-updated':
                     case 'card-exported':
-                    case 'card-saved':
+                    case 'card-saved': {
                         const cardMessage = request.message as
                             | CardUpdatedMessage
                             | CardExportedMessage
@@ -871,11 +877,12 @@ export default class Binding {
                         };
                         this.mobileVideoOverlayController.updateModel();
                         break;
+                    }
                     case 'card-updated-dialog':
                     case 'card-exported-dialog':
                         this.subtitleController.subtitleAnnotations.ankiCardWasModified();
                         break;
-                    case 'save-token-local':
+                    case 'save-token-local': {
                         const { track, token, status, states, applyStates } = request.message as SaveTokenLocalMessage;
                         this.subtitleController.subtitleAnnotations.saveTokenLocal(
                             track,
@@ -885,19 +892,22 @@ export default class Binding {
                             applyStates
                         );
                         break;
-                    case 'dictionary-build-anki-cache-state':
+                    }
+                    case 'dictionary-build-anki-cache-state': {
                         const state = request.message as DictionaryBuildAnkiCacheStateMessage;
                         this.subtitleController.subtitleAnnotations.buildAnkiCacheStateChange(state);
                         break;
+                    }
                     case 'dictionary-build-wanikani-cache-state': {
                         const state = request.message as DictionaryBuildWaniKaniCacheStateMessage;
                         this.subtitleController.subtitleAnnotations.buildWaniKaniCacheStateChange(state);
                         break;
                     }
-                    case 'notify-error':
+                    case 'notify-error': {
                         const notifyErrorMessage = request.message as NotifyErrorMessage;
                         this.subtitleController.notification('info.error', { message: notifyErrorMessage.message });
                         break;
+                    }
                     case 'recording-started':
                         this.recordingState = RecordingState.started;
                         break;
@@ -922,18 +932,21 @@ export default class Binding {
                                 break;
                         }
                         break;
-                    case 'show-anki-ui':
+                    case 'show-anki-ui': {
                         const showAnkiUiMessage = request.message as ShowAnkiUiMessage;
                         this.ankiUiController.show(this, showAnkiUiMessage);
                         break;
-                    case 'show-card-select-ui':
+                    }
+                    case 'show-card-select-ui': {
                         const showCardSelectUiMessage = request.message as ShowCardSelectUiMessage;
                         this.ankiUiController.showCardSelect(this, showCardSelectUiMessage);
                         break;
-                    case 'show-anki-ui-after-rerecord':
+                    }
+                    case 'show-anki-ui-after-rerecord': {
                         const showAnkiUiAfterRerecordMessage = request.message as ShowAnkiUiAfterRerecordMessage;
                         this.ankiUiController.showAfterRerecord(this, showAnkiUiAfterRerecordMessage.uiState);
                         break;
+                    }
                     case 'take-screenshot':
                         if (this._synced) {
                             if (this.ankiUiController.showing) {
@@ -943,7 +956,7 @@ export default class Binding {
                             }
                         }
                         break;
-                    case 'screenshot-taken':
+                    case 'screenshot-taken': {
                         const screenshotTakenMessage = request.message as ScreenshotTakenMessage;
                         this.subtitleController.forceHideSubtitles = false;
                         this.mobileVideoOverlayController.forceHide = false;
@@ -953,6 +966,7 @@ export default class Binding {
                             this.ankiUiController.showAfterRetakingScreenshot(this, screenshotTakenMessage.ankiUiState);
                         }
                         break;
+                    }
                     case 'alert':
                         // ignore
                         break;
@@ -977,7 +991,7 @@ export default class Binding {
                     case 'load-subtitles':
                         this.showVideoDataDialog(false);
                         break;
-                    case 'start-recording-audio-with-timeout':
+                    case 'start-recording-audio-with-timeout': {
                         const startRecordingAudioWithTimeoutMessage =
                             request.message as StartRecordingAudioWithTimeoutViaCaptureStreamMessage;
 
@@ -1005,6 +1019,7 @@ export default class Binding {
                                 sendResponse(startAudioRecordingErrorResponse(e));
                             });
                         return true;
+                    }
                     case 'start-recording-audio':
                         this.currentAudioRecordingRequestId = (
                             request.message as StartRecordingAudioViaCaptureStreamMessage
@@ -1018,7 +1033,7 @@ export default class Binding {
                                 sendResponse(startAudioRecordingErrorResponse(e));
                             });
                         return true;
-                    case 'stop-recording-audio':
+                    case 'stop-recording-audio': {
                         const stopRecordingAudioMessage = request.message as StopRecordingAudioMessage;
                         this._audioRecorder
                             .stop(true)
@@ -1050,13 +1065,15 @@ export default class Binding {
                                 sendResponse(errorResponse);
                             });
                         return true;
-                    case 'notification-dialog':
+                    }
+                    case 'notification-dialog': {
                         const notificationDialogMessage = request.message as NotificationDialogMessage;
                         this.notificationController.show(
                             notificationDialogMessage.titleLocKey,
                             notificationDialogMessage.messageLocKey
                         );
                         break;
+                    }
                 }
 
                 if ('messageId' in request.message) {
@@ -1597,7 +1614,7 @@ export default class Binding {
         };
 
         switch (streamingSubtitleListPreference) {
-            case SubtitleListPreference.noSubtitleList:
+            case SubtitleListPreference.noSubtitleList: {
                 const reader = new SubtitleReader({
                     regexFilter: subtitleRegexFilter,
                     regexFilterTextReplacement: subtitleRegexFilterTextReplacement,
@@ -1634,6 +1651,7 @@ export default class Binding {
                     flatten ? [files[0].name] : files.map((f) => f.name)
                 );
                 break;
+            }
             case SubtitleListPreference.app:
                 syncWithAsbplayerTab(false, undefined);
                 break;

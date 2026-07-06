@@ -115,7 +115,7 @@ export class TabAnkiUiController {
         if (isNewClient) {
             client.onMessage(async (message) => {
                 switch (message.command) {
-                    case 'openSettings':
+                    case 'openSettings': {
                         const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
                             sender: 'asbplayer-video-tab',
                             message: {
@@ -124,7 +124,8 @@ export class TabAnkiUiController {
                         };
                         browser.runtime.sendMessage(openSettingsCommand);
                         return;
-                    case 'copy-to-clipboard':
+                    }
+                    case 'copy-to-clipboard': {
                         const copyToClipboardMessage = message as CopyToClipboardMessage;
                         const copyToClipboardCommand: TabToExtensionCommand<CopyToClipboardMessage> = {
                             sender: 'asbplayer-video-tab',
@@ -135,7 +136,8 @@ export class TabAnkiUiController {
                         };
                         browser.runtime.sendMessage(copyToClipboardCommand);
                         return;
-                    case 'encode-mp3':
+                    }
+                    case 'encode-mp3': {
                         const { base64, messageId, extension } = message as EncodeMp3Message;
                         const encodeMp3Command: TabToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
                             sender: 'asbplayer-video-tab',
@@ -151,10 +153,11 @@ export class TabAnkiUiController {
                             base64: encodedBase64,
                         });
                         return;
+                    }
                     case 'resume':
                         this._frame.hide();
                         return;
-                    case 'activeProfile':
+                    case 'activeProfile': {
                         const activeProfileMessage = message as ActiveProfileMessage;
                         this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
                             const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
@@ -166,10 +169,11 @@ export class TabAnkiUiController {
                             browser.runtime.sendMessage(settingsUpdatedCommand);
                         });
                         return;
+                    }
                     case 'dismissedQuickSelectFtue':
                         globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
                         return;
-                    case 'exported':
+                    case 'exported': {
                         const exportedMessage = message as AnkiUiBridgeExportedMessage;
                         this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
                             const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
@@ -181,20 +185,23 @@ export class TabAnkiUiController {
                             browser.runtime.sendMessage(settingsUpdatedCommand);
                         });
                         return;
-                    case 'card-updated-dialog':
+                    }
+                    case 'card-updated-dialog': {
                         const cardUpdatedDialogCommand: TabToExtensionCommand<CardUpdatedDialogMessage> = {
                             sender: 'asbplayer-video-tab',
                             message: message as CardUpdatedDialogMessage,
                         };
                         browser.runtime.sendMessage(cardUpdatedDialogCommand);
                         return;
-                    case 'card-exported-dialog':
+                    }
+                    case 'card-exported-dialog': {
                         const cardExportedDialogCommand: TabToExtensionCommand<CardExportedDialogMessage> = {
                             sender: 'asbplayer-video-tab',
                             message: message as CardExportedDialogMessage,
                         };
                         browser.runtime.sendMessage(cardExportedDialogCommand);
                         return;
+                    }
                 }
             });
         }

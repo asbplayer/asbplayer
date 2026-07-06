@@ -254,7 +254,7 @@ export default class AnkiUiController {
 
             client.onMessage(async (message) => {
                 switch (message.command) {
-                    case 'openSettings':
+                    case 'openSettings': {
                         const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
                             sender: 'asbplayer-video',
                             message: {
@@ -265,7 +265,8 @@ export default class AnkiUiController {
                         };
                         browser.runtime.sendMessage(openSettingsCommand);
                         return;
-                    case 'copy-to-clipboard':
+                    }
+                    case 'copy-to-clipboard': {
                         const copyToClipboardMessage = message as CopyToClipboardMessage;
                         const copyToClipboardCommand: VideoToExtensionCommand<CopyToClipboardMessage> = {
                             sender: 'asbplayer-video',
@@ -277,7 +278,8 @@ export default class AnkiUiController {
                         };
                         browser.runtime.sendMessage(copyToClipboardCommand);
                         return;
-                    case 'encode-mp3':
+                    }
+                    case 'encode-mp3': {
                         const { base64, messageId, extension } = message as EncodeMp3Message;
                         const encodeMp3Command: VideoToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
                             sender: 'asbplayer-video',
@@ -294,7 +296,8 @@ export default class AnkiUiController {
                             base64: encodedBase64,
                         });
                         return;
-                    case 'activeProfile':
+                    }
+                    case 'activeProfile': {
                         const activeProfileMessage = message as ActiveProfileMessage;
                         context.settings.setActiveProfile(activeProfileMessage.profile).then(() => {
                             const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
@@ -307,10 +310,11 @@ export default class AnkiUiController {
                             browser.runtime.sendMessage(settingsUpdatedCommand);
                         });
                         return;
+                    }
                     case 'dismissedQuickSelectFtue':
                         globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
                         return;
-                    case 'exported':
+                    case 'exported': {
                         const exportedMessage = message as AnkiUiBridgeExportedMessage;
                         context.settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
                             const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
@@ -323,7 +327,8 @@ export default class AnkiUiController {
                             browser.runtime.sendMessage(settingsUpdatedCommand);
                         });
                         return;
-                    case 'card-updated-dialog':
+                    }
+                    case 'card-updated-dialog': {
                         const cardUpdatedDialogCommand: VideoToExtensionCommand<CardUpdatedDialogMessage> = {
                             sender: 'asbplayer-video',
                             message: message as CardUpdatedDialogMessage,
@@ -331,7 +336,8 @@ export default class AnkiUiController {
                         };
                         browser.runtime.sendMessage(cardUpdatedDialogCommand);
                         return;
-                    case 'card-exported-dialog':
+                    }
+                    case 'card-exported-dialog': {
                         const cardExportedDialogCommand: VideoToExtensionCommand<CardExportedDialogMessage> = {
                             sender: 'asbplayer-video',
                             message: message as CardExportedDialogMessage,
@@ -339,6 +345,7 @@ export default class AnkiUiController {
                         };
                         browser.runtime.sendMessage(cardExportedDialogCommand);
                         return;
+                    }
                 }
 
                 context.keyBindings.bind(context);
@@ -364,7 +371,7 @@ export default class AnkiUiController {
                 }
 
                 switch (message.command) {
-                    case 'resume':
+                    case 'resume': {
                         const resumeMessage = message as AnkiUiBridgeResumeMessage;
                         context.ankiUiSavedState = resumeMessage.uiState;
 
@@ -390,13 +397,15 @@ export default class AnkiUiController {
                                 break;
                         }
                         break;
-                    case 'rewind':
+                    }
+                    case 'rewind': {
                         const rewindMessage = message as AnkiUiBridgeRewindMessage;
                         context.ankiUiSavedState = rewindMessage.uiState;
                         context.pause();
                         context.seek(rewindMessage.uiState.subtitle.start / 1000);
                         break;
-                    case 'rerecord':
+                    }
+                    case 'rerecord': {
                         const rerecordMessage = message as AnkiUiBridgeRerecordMessage;
                         context.rerecord(
                             rerecordMessage.recordStart,
@@ -404,6 +413,7 @@ export default class AnkiUiController {
                             rerecordMessage.uiState
                         );
                         break;
+                    }
                     default:
                         console.error('Unknown message received from bridge: ' + message.command);
                 }

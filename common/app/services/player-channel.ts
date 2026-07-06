@@ -107,13 +107,14 @@ export default class PlayerChannel {
                 case 'init':
                     // ignore, this is for the chrome extension
                     break;
-                case 'ready':
+                case 'ready': {
                     const readyMessage = event.data as ReadyToVideoMessage;
 
                     for (const callback of that.readyCallbacks) {
                         callback(readyMessage.duration, readyMessage.videoFileName);
                     }
                     break;
+                }
                 case 'play':
                     for (const callback of that.playCallbacks) {
                         callback();
@@ -124,26 +125,28 @@ export default class PlayerChannel {
                         callback();
                     }
                     break;
-                case 'currentTime':
+                case 'currentTime': {
                     const currentTimeMessage = event.data as CurrentTimeToVideoMessage;
 
                     for (const callback of that.currentTimeCallbacks) {
                         callback(currentTimeMessage.value);
                     }
                     break;
-                case 'audioTrackSelected':
+                }
+                case 'audioTrackSelected': {
                     const audioTrackSelectedMessage = event.data as AudioTrackSelectedToVideoMessage;
 
                     for (const callback of that.audioTrackSelectedCallbacks) {
                         callback(audioTrackSelectedMessage.id);
                     }
                     break;
+                }
                 case 'close':
                     for (const callback of that.closeCallbacks) {
                         callback();
                     }
                     break;
-                case 'subtitles':
+                case 'subtitles': {
                     const subtitlesMessage = event.data as SubtitlesToVideoMessage;
 
                     for (const callback of that.subtitlesCallbacks) {
@@ -153,42 +156,48 @@ export default class PlayerChannel {
                         );
                     }
                     break;
-                case 'subtitlesUpdated':
+                }
+                case 'subtitlesUpdated': {
                     const subtitlesUpdatedMessage = event.data as SubtitlesUpdatedToVideoMessage;
 
                     for (const callback of that.subtitlesUpdatedCallbacks) {
                         callback(subtitlesUpdatedMessage.subtitles);
                     }
                     break;
-                case 'saveTokenLocal':
+                }
+                case 'saveTokenLocal': {
                     const { track, token, status, states, applyStates } = event.data as SaveTokenLocalToVideoMessage;
 
                     for (const callback of that.saveTokenLocalCallbacks) {
                         callback(track, token, status, states, applyStates);
                     }
                     break;
-                case 'offset':
+                }
+                case 'offset': {
                     const offsetMessage = event.data as OffsetToVideoMessage;
 
                     for (const callback of that.offsetCallbacks) {
                         callback(offsetMessage.value);
                     }
                     break;
-                case 'playbackRate':
+                }
+                case 'playbackRate': {
                     const playbackRateMessage = event.data as PlaybackRateToVideoMessage;
 
                     for (const callback of that.playbackRateCallbacks) {
                         callback(playbackRateMessage.value);
                     }
                     break;
-                case 'subtitleSettings':
+                }
+                case 'subtitleSettings': {
                     const subtitleSettingsMessage = event.data as SubtitleSettingsToVideoMessage;
 
                     for (const callback of that.subtitleSettingsCallbacks) {
                         callback(subtitleSettingsMessage.value);
                     }
                     break;
-                case 'playModes':
+                }
+                case 'playModes': {
                     const playModesMessage = event.data as PlayModesMessage;
 
                     for (const callback of that.playModesCallbacks) {
@@ -196,49 +205,56 @@ export default class PlayerChannel {
                         callback(modes);
                     }
                     break;
-                case 'hideSubtitlePlayerToggle':
+                }
+                case 'hideSubtitlePlayerToggle': {
                     const hideSubtitlePlayerToggleMessage = event.data as HideSubtitlePlayerToggleToVideoMessage;
 
                     for (const callback of that.hideSubtitlePlayerToggleCallbacks) {
                         callback(hideSubtitlePlayerToggleMessage.value);
                     }
                     break;
-                case 'appBarToggle':
+                }
+                case 'appBarToggle': {
                     const appBarToggleMessage = event.data as AppBarToggleMessageToVideoMessage;
 
                     for (const callback of that.appBarToggleCallbacks) {
                         callback(appBarToggleMessage.value);
                     }
                     break;
-                case 'fullscreenToggle':
+                }
+                case 'fullscreenToggle': {
                     const fullscreenToggleMessage = event.data as FullscreenToggleMessageToVideoMessage;
 
                     for (const callback of that.fullscreenToggleCallbacks) {
                         callback(fullscreenToggleMessage.value);
                     }
                     break;
-                case 'ankiSettings':
+                }
+                case 'ankiSettings': {
                     const ankiSettingsMessage = event.data as AnkiSettingsToVideoMessage;
 
                     for (const callback of that.ankiSettingsCallbacks) {
                         callback(ankiSettingsMessage.value);
                     }
                     break;
-                case 'miscSettings':
+                }
+                case 'miscSettings': {
                     const miscSettingsMessage = event.data as MiscSettingsToVideoMessage;
 
                     for (const callback of that.miscSettingsCallbacks) {
                         callback(miscSettingsMessage.value);
                     }
                     break;
-                case 'alert':
+                }
+                case 'alert': {
                     const alertMessage = event.data as AlertMessage;
 
                     for (const callback of that.alertCallbacks) {
                         callback(alertMessage.message, alertMessage.severity);
                     }
                     break;
-                case 'copy':
+                }
+                case 'copy': {
                     const copyMessage = event.data as CopyToVideoMessage;
 
                     for (const callback of that.copyCallbacks) {
@@ -252,6 +268,7 @@ export default class PlayerChannel {
                         );
                     }
                     break;
+                }
                 default:
                     console.error('Unrecognized event ' + event.data.command);
             }

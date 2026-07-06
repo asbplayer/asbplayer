@@ -315,7 +315,7 @@ export default defineBackground(() => {
                 case 'update-last-card':
                 case 'update-selected-card':
                 case 'export-card':
-                case 'copy-subtitle-with-dialog':
+                case 'copy-subtitle-with-dialog': {
                     const postMineAction = postMineActionFromCommand(command);
                     tabRegistry.publishCommandToVideoElements((videoElement) => {
                         if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
@@ -351,6 +351,7 @@ export default defineBackground(() => {
                         },
                     });
                     break;
+                }
                 case 'toggle-video-select':
                     for (const tab of tabs) {
                         if (typeof tab.id !== 'undefined') {

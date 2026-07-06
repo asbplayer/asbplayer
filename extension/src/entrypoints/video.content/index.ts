@@ -204,7 +204,7 @@ export default defineContentScript({
                 }
 
                 switch (request.message.command) {
-                    case 'copy-to-clipboard':
+                    case 'copy-to-clipboard': {
                         const copyToClipboardMessage = request.message as CopyToClipboardMessage;
                         fetch(copyToClipboardMessage.dataUrl)
                             .then((response) => response.blob())
@@ -224,7 +224,8 @@ export default defineContentScript({
                                 }
                             });
                         break;
-                    case 'crop-and-resize':
+                    }
+                    case 'crop-and-resize': {
                         const cropAndResizeMessage = request.message as CropAndResizeMessage;
                         let rect = cropAndResizeMessage.rect;
 
@@ -249,6 +250,7 @@ export default defineContentScript({
                             cropAndResizeMessage.dataUrl
                         ).then((dataUrl) => sendResponse({ dataUrl }));
                         return true;
+                    }
                     case 'show-anki-ui':
                         if (request.src === undefined) {
                             // Message intended for the tab, and not a specific video binding

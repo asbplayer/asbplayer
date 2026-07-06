@@ -298,7 +298,7 @@ const useBuildAnkiCacheState: () => {
         const { state, receivedAt } = buildAnkiCacheState;
 
         switch (state.type) {
-            case DictionaryBuildAnkiCacheStateType.error:
+            case DictionaryBuildAnkiCacheStateType.error: {
                 const error = state.body as DictionaryBuildAnkiCacheStateError;
                 switch (error.code) {
                     case DictionaryBuildAnkiCacheStateErrorCode.concurrentBuild:
@@ -323,16 +323,18 @@ const useBuildAnkiCacheState: () => {
                         break;
                 }
                 break;
+            }
             case DictionaryBuildAnkiCacheStateType.start:
                 msg = t('settings.dictionaryBuildAnkiStarted');
                 break;
-            case DictionaryBuildAnkiCacheStateType.progress:
+            case DictionaryBuildAnkiCacheStateType.progress: {
                 const progress = state.body as DictionaryBuildAnkiCacheProgress;
                 const rate = progress.current / (receivedAt - progress.buildTimestamp);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
                 msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(receivedAt + eta)} (${humanReadableTime(eta)})]`;
                 break;
-            case DictionaryBuildAnkiCacheStateType.stats:
+            }
+            case DictionaryBuildAnkiCacheStateType.stats: {
                 const stats = state.body as DictionaryBuildAnkiCacheStats;
                 const parts: string[] = [];
                 if (stats.tracksToBuild !== undefined) {
@@ -361,6 +363,7 @@ const useBuildAnkiCacheState: () => {
                 }
                 msg = parts.join(' | ');
                 break;
+            }
         }
     }
 

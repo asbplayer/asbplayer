@@ -597,7 +597,7 @@ function App({
                     handleAnkiDialogRequest(newCard);
                     break;
                 case PostMineAction.exportCard:
-                case PostMineAction.updateLastCard:
+                case PostMineAction.updateLastCard: {
                     miningContext.started();
                     let audioClip = AudioClip.fromCard(
                         newCard,
@@ -634,6 +634,7 @@ function App({
                         mode: postMineAction === PostMineAction.updateLastCard ? 'updateLast' : 'default',
                     });
                     break;
+                }
                 default:
                     throw new Error('Unknown post mine action: ' + postMineAction);
             }

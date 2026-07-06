@@ -89,7 +89,7 @@ export class StatisticsOverlayController {
         const command = message as StatisticsOverlayToTabCommand<Message>;
 
         switch (command.message.command) {
-            case 'open-statistics-overlay-one-uncollected-dialog':
+            case 'open-statistics-overlay-one-uncollected-dialog': {
                 const openDialogMessage = command.message as OpenStatisticsOverlayOneUncollectedDialogMessage;
                 const { entries, totalSentences, mediaId } = openDialogMessage;
                 this._getOneUncollectedDialogFrame().then(async (frame) => {
@@ -104,11 +104,13 @@ export class StatisticsOverlayController {
                     frame.show();
                 });
                 break;
-            case 'open-statistics-overlay':
+            }
+            case 'open-statistics-overlay': {
                 const openMessage = command.message as OpenStatisticsOverlayMessage;
                 this._handleOpen(openMessage);
                 break;
-            case 'move-statistics-overlay':
+            }
+            case 'move-statistics-overlay': {
                 if (this._state === 'fullscreen') {
                     break;
                 }
@@ -118,14 +120,17 @@ export class StatisticsOverlayController {
                 this._yOffset = Math.max(0, this._yOffset + moveMessage.deltaY);
                 this._applyCurrentContainerStyles();
                 break;
-            case 'close-statistics-overlay':
+            }
+            case 'close-statistics-overlay': {
                 const closeMessage = command.message as CloseStatisticsOverlayMessage;
                 this._close(closeMessage.mediaId);
                 break;
-            case 'resize-statistics-overlay':
+            }
+            case 'resize-statistics-overlay': {
                 const resizeMessage = command.message as ResizeStatisticsOverlayMessage;
                 this._setWidth(`${resizeMessage.width + 50}px`);
                 break;
+            }
         }
     }
 

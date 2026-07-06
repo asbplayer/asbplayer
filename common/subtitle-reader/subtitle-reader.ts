@@ -442,12 +442,13 @@ export default class SubtitleReader {
                 worker.onmessage = (e) => {
                     void (async () => {
                         switch (e.data.command) {
-                            case 'subtitle':
+                            case 'subtitle': {
                                 const subtitle = { ...e.data.subtitle, track };
                                 const imageBlob = e.data.imageBlob;
                                 subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
                                 subtitles.push(subtitle);
                                 break;
+                            }
                             case 'finished':
                                 worker?.terminate();
                                 resolve(subtitles);

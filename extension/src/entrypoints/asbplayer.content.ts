@@ -67,53 +67,58 @@ export default defineContentScript({
 
             if (command.sender === 'asbplayer' || command.sender === 'asbplayerv2') {
                 switch (command.message.command) {
-                    case 'get-settings':
+                    case 'get-settings': {
                         const getSettingsMessage = command.message as GetSettingsMessage;
                         sendMessageToPlayer({
                             response: await settingsStorage.get(getSettingsMessage.keysAndDefaults),
                             messageId: command.message.messageId,
                         });
                         break;
-                    case 'set-settings':
+                    }
+                    case 'set-settings': {
                         const setSettingsMessage = command.message as SetSettingsMessage;
                         await settingsStorage.set(setSettingsMessage.settings);
                         sendMessageToPlayer({
                             messageId: command.message.messageId,
                         });
                         break;
+                    }
                     case 'get-active-profile':
                         sendMessageToPlayer({
                             response: await settingsStorage.activeProfile(),
                             messageId: command.message.messageId,
                         });
                         break;
-                    case 'set-active-profile':
+                    case 'set-active-profile': {
                         const setActiveProfileMessage = command.message as SetActiveProfileMessage;
                         await settingsStorage.setActiveProfile(setActiveProfileMessage.name);
                         sendMessageToPlayer({
                             messageId: command.message.messageId,
                         });
                         break;
+                    }
                     case 'get-profiles':
                         sendMessageToPlayer({
                             response: await settingsStorage.profiles(),
                             messageId: command.message.messageId,
                         });
                         break;
-                    case 'add-profile':
+                    case 'add-profile': {
                         const addProfileMessage = command.message as AddProfileMessage;
                         await settingsStorage.addProfile(addProfileMessage.name);
                         sendMessageToPlayer({
                             messageId: command.message.messageId,
                         });
                         break;
-                    case 'remove-profile':
+                    }
+                    case 'remove-profile': {
                         const removeProfileMessage = command.message as RemoveProfileMessage;
                         await settingsStorage.removeProfile(removeProfileMessage.name);
                         sendMessageToPlayer({
                             messageId: command.message.messageId,
                         });
                         break;
+                    }
                     case 'dictionary-get-bulk': {
                         const { profile, track, tokens } = command.message as DictionaryGetBulkMessage;
                         sendMessageToPlayer({
@@ -260,7 +265,7 @@ export default defineContentScript({
                         await browser.runtime.sendMessage(command);
                         sendMessageToPlayer({ messageId: command.message.messageId });
                         break;
-                    case 'request-copy-history':
+                    case 'request-copy-history': {
                         const requestCopyHistoryRequest = command.message as RequestCopyHistoryMessage;
                         sendMessageToPlayer({
                             response: (await browser.runtime.sendMessage(command)) as
@@ -270,6 +275,7 @@ export default defineContentScript({
                             count: requestCopyHistoryRequest.count,
                         });
                         break;
+                    }
                     case 'save-copy-history':
                         await browser.runtime.sendMessage(command);
                         sendMessageToPlayer({
@@ -288,7 +294,7 @@ export default defineContentScript({
                             messageId: command.message.messageId,
                         });
                         break;
-                    case 'get-global-state':
+                    case 'get-global-state': {
                         const getGlobalStateMessage = command.message as GetGlobalStateMessage;
                         const { keys } = getGlobalStateMessage;
                         sendMessageToPlayer({
@@ -299,13 +305,15 @@ export default defineContentScript({
                             messageId: command.message.messageId,
                         });
                         break;
-                    case 'set-global-state':
+                    }
+                    case 'set-global-state': {
                         const setGlobalStateMessage = command.message as SetGlobalStateMessage;
                         await globalStateProvider.set(setGlobalStateMessage.state);
                         sendMessageToPlayer({
                             messageId: command.message.messageId,
                         });
                         break;
+                    }
                     default:
                         browser.runtime.sendMessage(command);
                         break;
