@@ -274,7 +274,7 @@ export const defaultSettings: AsbplayerSettings = {
 };
 
 export const NUM_DICTIONARY_TRACKS = defaultSettings.dictionaryTracks.length;
-export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenStatusColors.length;
+export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStatuses.length;
 export const NUM_TOKEN_STATES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStates.length;
 
 export interface AnkiFieldUiModel {
