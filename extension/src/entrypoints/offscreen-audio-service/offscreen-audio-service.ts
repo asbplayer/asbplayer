@@ -39,7 +39,7 @@ const _sendAudioBase64 = async (base64: string, requestId: string, encodeAsMp3: 
 const _stream: (streamId: string) => Promise<MediaStream> = async (streamId: string) => {
     return navigator.mediaDevices.getUserMedia({
         audio: {
-            // @ts-ignore
+            // @ts-expect-error: The ts declaration is missing mandatory
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: streamId,

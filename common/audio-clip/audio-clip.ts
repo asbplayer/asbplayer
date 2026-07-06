@@ -406,7 +406,6 @@ class FileAudioClipper {
                     Date.now() - t0 >= 5_000
                 ) {
                     if (selectTrack && this._trackId && audio.audioTracks && audio.audioTracks.length > 0) {
-                        // @ts-ignore
                         for (const t of audio.audioTracks) {
                             t.enabled = this._trackId === t.id;
                         }

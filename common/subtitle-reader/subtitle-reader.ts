@@ -470,8 +470,6 @@ export default class SubtitleReader {
                 };
                 const canvas = document.createElement('canvas');
 
-                // transferControlToOffscreen is not in lib.dom.d.ts
-                // @ts-ignore
                 const offscreenCanvas = canvas.transferControlToOffscreen();
 
                 // Node ReadableStream clashes with web ReadableStream

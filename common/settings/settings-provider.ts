@@ -22,7 +22,7 @@ import {
 } from '.';
 import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
-// @ts-ignore
+// @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;
 
 const defaultSubtitleTextSettings = {

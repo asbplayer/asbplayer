@@ -322,7 +322,7 @@ export default defineUnlistedScript(() => {
                     }
                 }
 
-                // @ts-ignore
+                // @ts-expect-error: keeping args as any[]
                 return target.call(originalThis, ...args);
             },
         });

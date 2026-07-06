@@ -67,7 +67,7 @@ export default defineUnlistedScript(() => {
                 tryExtractMetadata(this.response);
             });
 
-            // @ts-ignore
+            // @ts-expect-error: forwarding original XHR arguments
             originalXhrSend.apply(this, arguments);
         };
 

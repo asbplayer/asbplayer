@@ -63,7 +63,7 @@ export default defineUnlistedScript(() => {
             }
         }
 
-        // @ts-ignore
+        // @ts-expect-error: forwarding original XHR arguments
         originalXhrOpen.apply(this, arguments);
     };
 
@@ -73,7 +73,7 @@ export default defineUnlistedScript(() => {
             metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = arguments[0];
         }
 
-        // @ts-ignore
+        // @ts-expect-error: forwarding original XHR arguments
         originalXhrSend.apply(this, arguments);
     };
 
@@ -110,7 +110,7 @@ export default defineUnlistedScript(() => {
             // Never let our interceptor break the page's fetches.
         }
 
-        // @ts-ignore
+        // @ts-expect-error: forwarding original fetch arguments
         return originalFetch.apply(this, arguments);
     };
 

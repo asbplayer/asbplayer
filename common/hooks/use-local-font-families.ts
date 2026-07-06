@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-// @ts-ignore
+// @ts-expect-error: queryLocalFonts is not yet in the TypeScript lib.dom.d.ts
 const localFontsAvailable = typeof queryLocalFonts === 'function';
 
 export const useLocalFontFamilies = () => {
@@ -16,9 +16,9 @@ export const useLocalFontFamilies = () => {
 
     const updateLocalFonts = useCallback(() => {
         if (localFontsAvailable) {
-            // @ts-ignore
+            // @ts-expect-error: queryLocalFonts is not yet in the TypeScript lib.dom.d.ts
             queryLocalFonts()
-                // @ts-ignore
+                // @ts-expect-error: The ts declaration is missing the return type
                 .then((fonts) => {
                     const families: { [family: string]: boolean } = {};
 

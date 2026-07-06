@@ -63,12 +63,10 @@ export default class ToggleSidePanelHandler {
             // Open the side panel at the app-requested location
             void setAppRequestedLocation(appRequestedLocation!);
             if (!isFirefoxBuild) {
-                browser.windows
-                    // @ts-ignore
-                    .getLastFocused((w) => {
-                        const windowId = w.id;
-                        browser.sidePanel.open({ windowId: windowId! });
-                    });
+                browser.windows.getLastFocused((w) => {
+                    const windowId = w.id;
+                    browser.sidePanel.open({ windowId: windowId! });
+                });
             }
         }
 

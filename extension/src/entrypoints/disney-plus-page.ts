@@ -7,7 +7,7 @@ export default defineUnlistedScript(() => {
         let lastBasename: string | undefined = undefined;
         const originalParse = JSON.parse;
         JSON.parse = function () {
-            // @ts-ignore
+            // @ts-expect-error: forwarding original parse arguments
             const value = originalParse.apply(this, arguments);
             if (value?.stream?.sources instanceof Array && value.stream.sources.length > 0) {
                 const url = value.stream.sources[0].complete?.url;

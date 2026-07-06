@@ -100,7 +100,7 @@ export const inferTracksFromInterceptedM3u8 = (urlRegex: RegExp) => {
             lastManifestUrl = url;
         }
 
-        // @ts-ignore
+        // @ts-expect-error: forwarding original XHR arguments
         originalXhrOpen.apply(this, arguments);
     };
 

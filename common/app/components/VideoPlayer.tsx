@@ -560,7 +560,6 @@ export default function VideoPlayer({
             return;
         }
 
-        // @ts-ignore
         for (const t of audioTracks) {
             if (t.id === id) {
                 t.enabled = true;

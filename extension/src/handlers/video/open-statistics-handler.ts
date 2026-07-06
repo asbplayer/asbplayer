@@ -40,12 +40,10 @@ export default class OpenStatisticsHandler {
         } else if (browser.sidePanel !== undefined) {
             void setExtensionRequestedLocation('statistics');
 
-            browser.windows
-                // @ts-ignore
-                .getLastFocused((w) => {
-                    const windowId = w.id;
-                    browser.sidePanel.open({ windowId: windowId! });
-                });
+            browser.windows.getLastFocused((w) => {
+                const windowId = w.id;
+                browser.sidePanel.open({ windowId: windowId! });
+            });
         } else {
             createStatisticsPopup();
         }

@@ -1,7 +1,5 @@
 import { DisplaySet, parseDisplaySets } from 'pgs-parser';
 
-// OffscreenCanvas not in lib.dom.d.ts
-// @ts-ignore
 function parse(fileStream: ReadableStream, canvas: OffscreenCanvas) {
     let currentImageDisplaySet: DisplaySet | undefined;
     let imageDataArray: Uint8ClampedArray | undefined;

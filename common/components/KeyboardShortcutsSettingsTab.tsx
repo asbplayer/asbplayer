@@ -97,8 +97,7 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
 
         const handler = (event: KeyboardEvent) => {
             if (event.type === 'keydown') {
-                // The ts declaration is missing getPressedKeyString()
-                // @ts-ignore
+                // @ts-expect-error: The ts declaration is missing getPressedKeyString()
                 const pressed = hotkeys.getPressedKeyString() as string[];
                 setCurrentKeyString(
                     pressed

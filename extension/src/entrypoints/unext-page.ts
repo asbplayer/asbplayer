@@ -4,7 +4,7 @@ export default defineUnlistedScript(() => {
 
         const originalParse = JSON.parse;
         JSON.parse = function () {
-            // @ts-ignore
+            // @ts-expect-error: forwarding original parse arguments
             const value = originalParse.apply(this, arguments);
 
             if (typeof value?.data?.webfront_title_stage?.titleName === 'string') {

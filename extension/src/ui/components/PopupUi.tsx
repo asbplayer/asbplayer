@@ -66,11 +66,10 @@ export function PopupUi({ commands }: Props) {
 
     const handleOpenSidePanel = useCallback(async () => {
         if (isFirefoxBuild) {
-            // @ts-ignore
+            // @ts-expect-error: browser.sidebarAction is not yet in the TypeScript lib.dom.d.ts
             browser.sidebarAction.open();
         } else {
-            // @ts-ignore
-            browser.windows.getLastFocused((window) => browser.sidePanel.open({ windowId: window.id }));
+            browser.windows.getLastFocused((window) => browser.sidePanel.open({ windowId: window.id! }));
         }
     }, []);
 

@@ -68,7 +68,7 @@ export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
             lastManifestUrl = url;
         }
 
-        // @ts-ignore
+        // @ts-expect-error: forwarding original XHR arguments
         originalXhrOpen.apply(this, arguments);
     };
 
