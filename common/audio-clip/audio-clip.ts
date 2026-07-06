@@ -293,65 +293,65 @@ class FileAudioClipper {
     async clip(audible: boolean): Promise<Blob> {
         this._stopClippingAudio();
         this._clippingAudibly = audible;
-        this._blobPromise = new Promise(async (resolve, reject) => {
-            try {
+        this._blobPromise = new Promise((resolve, reject) => {
+            void (async () => {
                 const audio = await this._audioElement(this._file.blobUrl, true);
-                audio.oncanplay = async (e) => {
+                audio.oncanplay = () => {
                     audio.oncanplay = null;
 
-                    if (!audible) {
-                        // Direct audio to destination other than speakers
-                        const audioContext = new AudioContext();
-                        const destination = audioContext.createMediaStreamDestination();
-                        const source = audioContext.createMediaElementSource(audio);
-                        source.connect(destination);
-                    }
-
-                    await audio.play();
-
-                    if (audible) {
-                        invokeCallbacks('play', this._callbacks);
-                    }
-
-                    const stream = this._captureStream(audio);
-                    const recorder = new MediaRecorder(stream, { mimeType: this._recorderMimeType });
-                    const chunks: BlobPart[] = [];
-
-                    recorder.ondataavailable = (e) => {
-                        chunks.push(e.data);
-                    };
-
-                    let finished = false;
-
-                    recorder.onstop = (e) => {
-                        if (finished) {
-                            this._blob = new Blob(chunks, { type: this._recorderMimeType });
-                            resolve(this._blob);
+                    void (async () => {
+                        if (!audible) {
+                            // Direct audio to destination other than speakers
+                            const audioContext = new AudioContext();
+                            const destination = audioContext.createMediaStreamDestination();
+                            const source = audioContext.createMediaElementSource(audio);
+                            source.connect(destination);
                         }
-                    };
 
-                    recorder.start();
+                        await audio.play();
 
-                    this._clippingAudioReject = reject;
-                    this._clippingAudioElement = audio;
-                    this._stopClippingTimeout = setTimeout(
-                        () => {
-                            this._stopAudio(audio, false);
-                            this._clippingAudioElement = undefined;
-                            this._stopClippingTimeout = undefined;
-                            this._clippingAudioReject = undefined;
-                            finished = true;
-                            recorder.stop();
-                            for (const track of stream.getAudioTracks()) {
-                                track.stop();
+                        if (audible) {
+                            invokeCallbacks('play', this._callbacks);
+                        }
+
+                        const stream = this._captureStream(audio);
+                        const recorder = new MediaRecorder(stream, { mimeType: this._recorderMimeType });
+                        const chunks: BlobPart[] = [];
+
+                        recorder.ondataavailable = (e) => {
+                            chunks.push(e.data);
+                        };
+
+                        let finished = false;
+
+                        recorder.onstop = () => {
+                            if (finished) {
+                                this._blob = new Blob(chunks, { type: this._recorderMimeType });
+                                resolve(this._blob);
                             }
-                        },
-                        (this._end - this._start) / this._playbackRate + 100
-                    );
+                        };
+
+                        recorder.start();
+
+                        this._clippingAudioReject = reject;
+                        this._clippingAudioElement = audio;
+                        this._stopClippingTimeout = setTimeout(
+                            () => {
+                                this._stopAudio(audio, false);
+                                this._clippingAudioElement = undefined;
+                                this._stopClippingTimeout = undefined;
+                                this._clippingAudioReject = undefined;
+                                finished = true;
+                                recorder.stop();
+                                for (const track of stream.getAudioTracks()) {
+                                    track.stop();
+                                }
+                            },
+                            (this._end - this._start) / this._playbackRate + 100
+                        );
+                    })().catch(reject);
                 };
-            } catch (e) {
-                reject(e);
-            }
+            })().catch(reject);
         });
         return this._blobPromise;
     }
@@ -527,16 +527,7 @@ class FileAudioData implements AudioData {
     }
 
     async base64() {
-        return new Promise<string>(async (resolve, reject) => {
-            const reader = new FileReader();
-            const blob = await this.blob();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-                const result = reader.result as string;
-                const base64 = result.substring(result.indexOf(',') + 1);
-                resolve(base64);
-            };
-        });
+        return blobToBase64(await this.blob());
     }
 
     get playing() {

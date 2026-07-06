@@ -7,7 +7,7 @@ export interface SerializableAudioBuffer {
 
 export default class Mp3Encoder {
     static async encode(blob: Blob, workerFactory: () => Worker | Promise<Worker>): Promise<Blob> {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {

@@ -24,24 +24,21 @@ export default class AudioRecorder {
         onStartedCallback: () => void,
         doNotManageStream: boolean = false
     ): Promise<string> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                if (this.recording) {
-                    console.error('Already recording, cannot start with timeout.');
-                    reject('Already recording');
-                    return;
-                }
+        if (this.recording) {
+            console.error('Already recording, cannot start with timeout.');
+            return Promise.reject('Already recording');
+        }
 
-                await this.start(stream, doNotManageStream);
-                onStartedCallback();
+        return this.start(stream, doNotManageStream).then(() => {
+            onStartedCallback();
+
+            return new Promise((resolve, reject) => {
                 this.timeoutResolve = resolve;
-                this.timeoutId = setTimeout(async () => {
+                this.timeoutId = setTimeout(() => {
                     this.timeoutId = undefined;
-                    resolve(await this.stop(doNotManageStream));
+                    void this.stop(doNotManageStream).then(resolve, reject);
                 }, time);
-            } catch (e) {
-                reject(e);
-            }
+            });
         });
     }
 

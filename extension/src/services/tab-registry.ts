@@ -591,11 +591,11 @@ export default class TabRegistry {
         }
 
         if (allowTabCreation) {
-            return new Promise(async (resolve, reject) => {
-                if (asbplayerTabCount === 0) {
-                    await this._createNewTab();
-                }
+            if (asbplayerTabCount === 0) {
+                await this._createNewTab();
+            }
 
+            return new Promise((resolve, reject) => {
                 this._anyAsbplayerTab(resolve, reject, 0, 10, filter);
             });
         }
@@ -623,17 +623,12 @@ export default class TabRegistry {
     }
 
     async _createNewTab() {
-        return new Promise<Browser.tabs.Tab>(async (resolve, reject) => {
-            const activeTabs = await browser.tabs.query({ active: true });
-            const activeTabIndex = !activeTabs || activeTabs.length === 0 ? undefined : activeTabs[0].index + 1;
-            browser.tabs.create(
-                {
-                    active: false,
-                    url: await this._settings.getSingle('streamingAppUrl'),
-                    index: activeTabIndex,
-                },
-                resolve
-            );
+        const activeTabs = await browser.tabs.query({ active: true });
+        const activeTabIndex = !activeTabs || activeTabs.length === 0 ? undefined : activeTabs[0].index + 1;
+        return browser.tabs.create({
+            active: false,
+            url: await this._settings.getSingle('streamingAppUrl'),
+            index: activeTabIndex,
         });
     }
 

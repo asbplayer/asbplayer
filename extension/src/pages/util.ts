@@ -6,27 +6,24 @@ export function extractExtension(url: string, fallback: string) {
     return dotIndex === -1 ? fallback : path.substring(dotIndex + 1);
 }
 
-export function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
-    return new Promise<boolean>(async (resolve) => {
-        if (test()) {
-            resolve(true);
-            return;
-        }
+export async function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
+    if (test()) {
+        return true;
+    }
 
-        const t0 = Date.now();
-        let passed = false;
+    const t0 = Date.now();
+    let passed = false;
 
-        while (!passed && Date.now() < t0 + timeout) {
-            await new Promise<void>((loopResolve) => {
-                setTimeout(() => {
-                    passed = test();
-                    loopResolve();
-                }, 1000);
-            });
-        }
+    while (!passed && Date.now() < t0 + timeout) {
+        await new Promise<void>((loopResolve) => {
+            setTimeout(() => {
+                passed = test();
+                loopResolve();
+            }, 1000);
+        });
+    }
 
-        resolve(passed);
-    });
+    return passed;
 }
 
 type SubtitlesByPath = { [key: string]: VideoDataSubtitleTrack[] };

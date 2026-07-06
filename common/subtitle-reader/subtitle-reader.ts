@@ -177,7 +177,7 @@ export default class SubtitleReader {
         }
 
         if (file.name.endsWith('.vtt') || file.name.endsWith('.nfvtt')) {
-            return new Promise(async (resolve, reject) => {
+            return new Promise((resolve, reject) => {
                 const isFromNetflix = file.name.endsWith('.nfvtt');
                 const parser = new WebVTT.Parser(window, WebVTT.StringDecoder());
                 const allBuffers: VTTCue[][] = [];
@@ -227,8 +227,12 @@ export default class SubtitleReader {
 
                     resolve(nodes);
                 };
-                parser.parse(await file.text());
-                parser.flush();
+                file.text()
+                    .then((text) => {
+                        parser.parse(text);
+                        parser.flush();
+                    })
+                    .catch(reject);
             });
         }
 
@@ -430,40 +434,52 @@ export default class SubtitleReader {
 
     private _parsePgs(file: File, track: number): Promise<SubtitleNode[]> {
         const subtitles: SubtitleNode[] = [];
-        return new Promise(async (resolve, reject) => {
-            const worker = await this._pgsWorkerFactory();
-            worker.onmessage = async (e) => {
-                switch (e.data.command) {
-                    case 'subtitle':
-                        const subtitle = { ...e.data.subtitle, track };
-                        const imageBlob = e.data.imageBlob;
-                        subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
-                        subtitles.push(subtitle);
-                        break;
-                    case 'finished':
-                        worker.terminate();
-                        resolve(subtitles);
-                        break;
-                    case 'error':
-                        worker.terminate();
-                        reject(e.data.error);
-                        break;
-                }
-            };
-            worker.onerror = (e) => {
-                const error = e?.error ?? new Error('PGS decoding failed: ' + e?.message);
+        return new Promise((resolve, reject) => {
+            let worker: Worker | undefined;
+
+            void (async () => {
+                worker = await this._pgsWorkerFactory();
+                worker.onmessage = (e) => {
+                    void (async () => {
+                        switch (e.data.command) {
+                            case 'subtitle':
+                                const subtitle = { ...e.data.subtitle, track };
+                                const imageBlob = e.data.imageBlob;
+                                subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
+                                subtitles.push(subtitle);
+                                break;
+                            case 'finished':
+                                worker?.terminate();
+                                resolve(subtitles);
+                                break;
+                            case 'error':
+                                worker?.terminate();
+                                reject(e.data.error);
+                                break;
+                        }
+                    })().catch((error) => {
+                        worker?.terminate();
+                        reject(error);
+                    });
+                };
+                worker.onerror = (e) => {
+                    const error = e?.error ?? new Error('PGS decoding failed: ' + e?.message);
+                    reject(error);
+                    worker?.terminate();
+                };
+                const canvas = document.createElement('canvas');
+
+                // transferControlToOffscreen is not in lib.dom.d.ts
+                // @ts-ignore
+                const offscreenCanvas = canvas.transferControlToOffscreen();
+
+                // Node ReadableStream clashes with web ReadableStream
+                const fileStream = file.stream() as unknown as ReadableStream;
+                worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
+            })().catch((error) => {
+                worker?.terminate();
                 reject(error);
-                worker.terminate();
-            };
-            const canvas = document.createElement('canvas');
-
-            // transferControlToOffscreen is not in lib.dom.d.ts
-            // @ts-ignore
-            const offscreenCanvas = canvas.transferControlToOffscreen();
-
-            // Node ReadableStream clashes with web ReadableStream
-            const fileStream = (await file.stream()) as unknown as ReadableStream;
-            worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
+            });
         });
     }
 
