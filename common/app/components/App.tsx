@@ -162,8 +162,8 @@ async function extractDropFileHandles(items: DataTransferItemList): Promise<File
 }
 
 function extractSources(files: FileList | File[]): MediaSources {
-    let subtitleFiles: File[] = [];
-    let audioFile: File | undefined = undefined;
+    const subtitleFiles: File[] = [];
+    const audioFile: File | undefined = undefined;
     let videoFile: File | undefined = undefined;
 
     for (let i = 0; i < files.length; ++i) {
@@ -957,7 +957,7 @@ function App({
                 }
             }
 
-            let selectedTabMissing = tab && tabs.filter((t) => t.id === tab.id && t.src === tab.src).length === 0;
+            const selectedTabMissing = tab && tabs.filter((t) => t.id === tab.id && t.src === tab.src).length === 0;
 
             if (selectedTabMissing) {
                 setTab(undefined);
@@ -977,7 +977,9 @@ function App({
     const handleFiles = useCallback(
         ({ files, flattenSubtitleFiles }: { files: FileList | File[]; flattenSubtitleFiles?: boolean }): boolean => {
             try {
-                let { subtitleFiles, videoFile } = extractSources(files);
+                const mediaSources = extractSources(files);
+                let videoFile = mediaSources.videoFile;
+                const subtitleFiles = mediaSources.subtitleFiles;
 
                 if (videoFile || subtitleFiles.length > 0) {
                     setJumpToSubtitle(undefined);
@@ -1003,7 +1005,7 @@ function App({
 
                     const sources = {
                         subtitleFiles: subtitleFiles.length === 0 ? previous.subtitleFiles : subtitleFiles,
-                        videoFile: videoFile,
+                        videoFile,
                         videoFileUrl: videoFileUrl,
                         flattenSubtitleFiles,
                     };

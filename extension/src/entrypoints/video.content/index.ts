@@ -99,7 +99,7 @@ export default defineContentScript({
         const bind = async () => {
             const bindings: Binding[] = [];
             const page = await currentPageDelegate();
-            let hasPageScript = page?.config.pageScript !== undefined;
+            const hasPageScript = page?.config.pageScript !== undefined;
             let frameInfoListener: FrameInfoListener | undefined;
             let frameInfoBroadcaster: FrameInfoBroadcaster | undefined;
             const isParentDocument = window.self === window.top;
@@ -267,7 +267,7 @@ export default defineContentScript({
             browser.runtime.onMessage.addListener(messageListener);
 
             window.addEventListener('beforeunload', (event) => {
-                for (let b of bindings) {
+                for (const b of bindings) {
                     b.unbind();
                 }
 

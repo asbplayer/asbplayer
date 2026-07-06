@@ -207,7 +207,7 @@ const dependencies: Dependency[] = [
 const dependencyPurposeCounts: { [key: string]: number } = {};
 
 for (const dep of dependencies) {
-    let count = dependencyPurposeCounts[dep.purpose] ?? 0;
+    const count = dependencyPurposeCounts[dep.purpose] ?? 0;
     dependencyPurposeCounts[dep.purpose] = count + 1;
 }
 
@@ -300,7 +300,7 @@ const About = ({ appVersion, extensionVersion }: Props) => {
                                 renderedPurpose[d.purpose] = true;
 
                                 let CellComponent = TableCell;
-                                let nextPurpose = dependencies[index + 1]?.purpose;
+                                const nextPurpose = dependencies[index + 1]?.purpose;
 
                                 if (nextPurpose !== undefined && d.purpose !== nextPurpose) {
                                     CellComponent = BorderedTableCell;

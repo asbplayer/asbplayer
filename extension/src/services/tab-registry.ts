@@ -474,7 +474,7 @@ export default class TabRegistry {
         const messageId = uuidv4();
 
         return new Promise<R | undefined>((resolve) => {
-            let timeout: ReturnType<typeof setTimeout>;
+            let timeout: ReturnType<typeof setTimeout>; // eslint-disable-line prefer-const
 
             const listener = (request: any) => {
                 if (

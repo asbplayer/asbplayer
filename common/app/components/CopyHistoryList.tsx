@@ -294,7 +294,7 @@ export default function CopyHistoryList({
         let lastSeenItemName: string | null = null;
         let i = 0;
         const itemNameCounters: { [name: string]: number } = {};
-        let itemsBySection: { [key: string]: CopyHistoryItem[] } = {};
+        const itemsBySection: { [key: string]: CopyHistoryItem[] } = {};
         let currentKey: string | undefined;
 
         for (const item of items) {

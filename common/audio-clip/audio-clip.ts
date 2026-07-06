@@ -528,7 +528,7 @@ class FileAudioData implements AudioData {
 
     async base64() {
         return new Promise<string>(async (resolve, reject) => {
-            var reader = new FileReader();
+            const reader = new FileReader();
             const blob = await this.blob();
             reader.readAsDataURL(blob);
             reader.onloadend = () => {

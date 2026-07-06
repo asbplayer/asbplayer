@@ -95,7 +95,7 @@ const anyHtmlTagRegex = /<[^>]+>/;
 const tagContent = (html: string) => {
     const htmlTagRegex = new RegExp(htmlTagRegexString);
     let content = html;
-    let contents = [html];
+    const contents = [html];
 
     while (true) {
         const match = htmlTagRegex.exec(content);
@@ -181,7 +181,7 @@ export async function exportCard(
 ): Promise<string> {
     const anki = new Anki(ankiSettings);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
-    let audioClip =
+    const audioClip =
         card.audio === undefined
             ? undefined
             : AudioClip.fromBase64(

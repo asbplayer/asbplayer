@@ -162,12 +162,12 @@ export default class ChromeExtension {
                 this.tabs = tabsCommand.message.tabs;
                 this.asbplayers = tabsCommand.message.asbplayers;
 
-                for (let c of this.onTabsCallbacks) {
+                for (const c of this.onTabsCallbacks) {
                     c(this.tabs);
                 }
 
                 if (tabsCommand.message.ackRequested) {
-                    let ackTabsMessage: AckTabsMessage = {
+                    const ackTabsMessage: AckTabsMessage = {
                         command: 'ackTabs',
                         id: id,
                         receivedTabs: this.tabs,
@@ -185,7 +185,7 @@ export default class ChromeExtension {
                 }
             } else {
                 const command = event.data as ExtensionToAsbPlayerCommand<Message>;
-                for (let c of this.onMessageCallbacks) {
+                for (const c of this.onMessageCallbacks) {
                     c({
                         data: command.message,
                         tabId: command.tabId,

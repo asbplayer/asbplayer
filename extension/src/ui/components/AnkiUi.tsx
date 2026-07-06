@@ -46,7 +46,7 @@ interface Props {
 
 const blobToDataUrl = async (blob: Blob): Promise<string> => {
     return new Promise((resolve) => {
-        var reader = new FileReader();
+        const reader = new FileReader();
         reader.onload = () => {
             resolve(reader.result as string);
         };

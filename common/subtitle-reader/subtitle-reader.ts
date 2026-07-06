@@ -266,7 +266,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                let parts = [];
+                const parts = [];
 
                 if (typeof row['#text'] === 'string') {
                     parts.push(row['#text']);
@@ -291,7 +291,7 @@ export default class SubtitleReader {
                 const text = parts.join('').trim();
 
                 if (text) {
-                    let nextRow = subtitleRows[i + 1];
+                    const nextRow = subtitleRows[i + 1];
 
                     // Prevent subtitle from overlapping with next one by reading ahead to see where the next one starts.
                     // Usually text rows are separated by empty newline rows.
@@ -469,7 +469,7 @@ export default class SubtitleReader {
 
     private _blobToDataUrl(blob: Blob) {
         return new Promise((resolve, reject) => {
-            var reader = new FileReader();
+            const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = () => {
                 resolve(reader.result);

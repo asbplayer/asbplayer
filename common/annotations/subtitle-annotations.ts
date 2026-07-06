@@ -851,7 +851,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         if (!this.subtitles.length) return true;
         if (this.annotationsBuilding) return false;
         let tokensRefreshed: string[] = [];
-        let skipTracks: number[] = [];
+        const skipTracks: number[] = [];
         let buildWasCancelled = false;
         let updateThresholds = false;
         let statisticsBatching = false;
@@ -1359,7 +1359,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
             const tokens: Token[] = [];
             let currentOffset = 0;
-            let reconstructedTextParts = [];
+            const reconstructedTextParts = [];
             for (const tokenParts of tokenizeRes) {
                 const tokenText = tokenParts.map((p) => p.text).join('');
                 reconstructedTextParts.push(tokenText);

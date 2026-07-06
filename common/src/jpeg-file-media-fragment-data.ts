@@ -126,8 +126,7 @@ export class JpegFileMediaFragmentData implements MediaFragmentData {
             return this._canvasPromise;
         }
 
-        let canvasPromise: Promise<HTMLCanvasElement>;
-        canvasPromise = this._renderCanvas().catch((error) => {
+        const canvasPromise: Promise<HTMLCanvasElement> = this._renderCanvas().catch((error) => {
             if (this._canvasPromise === canvasPromise) {
                 this._canvasPromise = undefined;
             }

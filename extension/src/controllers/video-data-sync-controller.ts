@@ -274,7 +274,7 @@ export default class VideoDataSyncController {
 
     private _matchLastSyncedWithAvailableTracks() {
         const subtitleTrackChoices = this._syncedData?.subtitles ?? [];
-        let tracks = {
+        const tracks = {
             autoSelectedTracks: [this._emptySubtitle, this._emptySubtitle, this._emptySubtitle],
             completeMatch: false,
         };
@@ -528,7 +528,7 @@ export default class VideoDataSyncController {
 
     private async _syncData(data: VideoDataSubtitleTrack[]) {
         try {
-            let subtitles: SerializedSubtitleFile[] = [];
+            const subtitles: SerializedSubtitleFile[] = [];
 
             for (let i = 0; i < data.length; i++) {
                 const { extension, url, language, localFile } = data[i];
@@ -560,7 +560,7 @@ export default class VideoDataSyncController {
 
     private async _syncDataArray(data: ConfirmedVideoDataSubtitleTrack[], syncWithAsbplayerId?: string) {
         try {
-            let subtitles: SerializedSubtitleFile[] = [];
+            const subtitles: SerializedSubtitleFile[] = [];
 
             for (let i = 0; i < data.length; i++) {
                 const { name, language, extension, url, localFile } = data[i];
@@ -667,7 +667,7 @@ export default class VideoDataSyncController {
         const fileName = `${name}.${partExtension}`;
         const promises = url.map((u) => fetch(u));
         const tracks = [];
-        let totalPromises = promises.length;
+        const totalPromises = promises.length;
         let finishedPromises = 0;
 
         for (const p of promises) {

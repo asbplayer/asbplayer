@@ -48,7 +48,7 @@ export default defineUnlistedScript(() => {
                 (stream: { IsTextSubtitleStream: any }) => stream.IsTextSubtitleStream
             ).forEach((sub: { Codec: string; DisplayTitle: any; Language: any; Index: number; Path: string }) => {
                 const extension = 'srt';
-                var url =
+                const url =
                     ApiClient.serverAddress() +
                     '/Videos/' +
                     nowPlayingItem.Id +

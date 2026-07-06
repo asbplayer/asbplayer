@@ -124,7 +124,7 @@ function notifyReady(
     if (element.audioTracks) {
         tracks = [];
 
-        for (let t of element.audioTracks) {
+        for (const t of element.audioTracks) {
             tracks.push({
                 id: t.id,
                 label: t.label,
@@ -837,7 +837,7 @@ export default function VideoPlayer({
             return;
         }
 
-        var bounds = containerRef.current.getBoundingClientRect();
+        const bounds = containerRef.current.getBoundingClientRect();
         mousePositionRef.current = { x: e.clientX - bounds.left, y: e.clientY - bounds.top };
     }, []);
 
@@ -1071,7 +1071,7 @@ export default function VideoPlayer({
     useEffect(() => {
         return keyBinder.bindAdjustSubtitlePositionOffset(
             (event, increase) => {
-                let newSubtitleSettings = { ...subtitleSettings };
+                const newSubtitleSettings = { ...subtitleSettings };
 
                 event.preventDefault();
                 if (increase) {
@@ -1090,7 +1090,7 @@ export default function VideoPlayer({
     useEffect(() => {
         return keyBinder.bindAdjustTopSubtitlePositionOffset(
             (event, increase) => {
-                let newSubtitleSettings = { ...subtitleSettings };
+                const newSubtitleSettings = { ...subtitleSettings };
 
                 event.preventDefault();
                 if (increase) {

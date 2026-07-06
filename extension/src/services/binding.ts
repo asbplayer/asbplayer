@@ -1497,7 +1497,7 @@ export default class Binding {
                 // Deal with Amazon Prime player pausing in the middle of play, without loss of generality
                 return new Promise((resolve, reject) => {
                     const listener = async (evt: Event) => {
-                        let retries = 3;
+                        const retries = 3;
 
                         for (let i = 0; i < retries; ++i) {
                             try {
@@ -1649,7 +1649,7 @@ export default class Binding {
             this.togglePlayMode(PlayMode.normal);
         }
 
-        let nonEmptyTrackIndex: number[] = [];
+        const nonEmptyTrackIndex: number[] = [];
         for (let i = 0; i < subtitles.length; i++) {
             if (!nonEmptyTrackIndex.includes(subtitles[i].track)) {
                 nonEmptyTrackIndex.push(subtitles[i].track);

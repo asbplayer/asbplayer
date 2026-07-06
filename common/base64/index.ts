@@ -21,7 +21,7 @@ export async function urlToBase64(url: string): Promise<string> {
 export const blobToBase64 = (blob: Blob) => {
     return new Promise<string>(async (resolve, reject) => {
         try {
-            var reader = new FileReader();
+            const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = () => {
                 const result = reader.result as string;

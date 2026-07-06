@@ -356,7 +356,7 @@ export const textSubtitleSettingsForTrack = (
             return true;
         };
 
-        let mergedSettings: any = {};
+        const mergedSettings: any = {};
 
         for (const key of textSubtitleSettingsKeys) {
             if (valuesAllSame(key)) {
@@ -621,9 +621,9 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     ensureDictionaryTracksConsistency(settings);
 
     let keyBindSetModified = false;
-    let newKeyBindSet: any = {};
+    const newKeyBindSet: any = {};
     let ankiFieldSettingsModified = false;
-    let newAnkiFieldSettings: any = {};
+    const newAnkiFieldSettings: any = {};
 
     if (settings.keyBindSet !== undefined) {
         const keyBindSet = settings.keyBindSet;
@@ -689,7 +689,7 @@ export class SettingsProvider {
     }
 
     async get<K extends keyof AsbplayerSettings>(keys: K[]): Promise<Pick<AsbplayerSettings, K>> {
-        let parameters: Partial<AsbplayerSettings> = {};
+        const parameters: Partial<AsbplayerSettings> = {};
 
         for (const key of keys) {
             parameters[key] = defaultSettings[key];

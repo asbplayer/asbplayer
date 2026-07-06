@@ -95,7 +95,7 @@ export default class VideoSelectController {
         subtitleFiles?: SubtitleFile[]
     ) {
         if (targetSrc !== undefined) {
-            var binding = this._bindings.find((b) => b.registeredVideoSrc === targetSrc);
+            const binding = this._bindings.find((b) => b.registeredVideoSrc === targetSrc);
 
             if (binding !== undefined && binding.subscribed) {
                 if (subtitleFiles !== undefined) {
