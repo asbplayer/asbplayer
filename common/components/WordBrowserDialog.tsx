@@ -863,8 +863,9 @@ export default function WordBrowserDialog({
                 if (requestId !== loadRequestIdRef.current) return;
                 setLoadError(errorMessage(error));
             } finally {
-                if (requestId !== loadRequestIdRef.current) return;
-                setLoading(false);
+                if (requestId === loadRequestIdRef.current) {
+                    setLoading(false);
+                }
             }
         },
         [dictionaryProvider, activeProfile]
