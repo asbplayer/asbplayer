@@ -99,7 +99,7 @@ export default defineUnlistedScript(() => {
                 const sessionMatch = selectedSubUrl.match(/&session=(?:[^&]+)/i);
                 if (sessionMatch) {
                     selectedSubUrl = selectedSubUrl.replace(sessionMatch[0], `&session=${session}`);
-                    decisionUrl = decisionUrl!.replace(sessionMatch[0], `&session=${session}`);
+                    decisionUrl = decisionUrl.replace(sessionMatch[0], `&session=${session}`);
                 } else {
                     selectedSubUrl += `&session=${session}`;
                     decisionUrl += `&session=${session}`;
@@ -111,7 +111,7 @@ export default defineUnlistedScript(() => {
                         plexSessionIdentifierMatch[0],
                         `&X-Plex-Session-Identifier=${plexSessionIdentifier}`
                     );
-                    decisionUrl = decisionUrl!.replace(
+                    decisionUrl = decisionUrl.replace(
                         plexSessionIdentifierMatch[0],
                         `&X-Plex-Session-Identifier=${plexSessionIdentifier}`
                     );
@@ -126,7 +126,7 @@ export default defineUnlistedScript(() => {
                         plexSessionIdMatch[0],
                         `&X-Plex-Session-Id=${plexSessionId}`
                     );
-                    decisionUrl = decisionUrl!.replace(plexSessionIdMatch[0], `&X-Plex-Session-Id=${plexSessionId}`);
+                    decisionUrl = decisionUrl.replace(plexSessionIdMatch[0], `&X-Plex-Session-Id=${plexSessionId}`);
                 } else {
                     selectedSubUrl += `&X-Plex-Session-Id=${plexSessionId}`;
                     decisionUrl += `&X-Plex-Session-Id=${plexSessionId}`;
@@ -138,7 +138,7 @@ export default defineUnlistedScript(() => {
                         plexPlaybackSessionIdMatch[0],
                         `&X-Plex-Playback-Session-Id=${plexPlaybackSessionId}`
                     );
-                    decisionUrl = decisionUrl!.replace(
+                    decisionUrl = decisionUrl.replace(
                         plexPlaybackSessionIdMatch[0],
                         `&X-Plex-Playback-Session-Id=${plexPlaybackSessionId}`
                     );
@@ -153,7 +153,7 @@ export default defineUnlistedScript(() => {
                         plexPlaybackIdMatch[0],
                         `&X-Plex-Playback-Id=${plexPlaybackId}`
                     );
-                    decisionUrl = decisionUrl!.replace(plexPlaybackIdMatch[0], `&X-Plex-Playback-Id=${plexPlaybackId}`);
+                    decisionUrl = decisionUrl.replace(plexPlaybackIdMatch[0], `&X-Plex-Playback-Id=${plexPlaybackId}`);
                 } else {
                     selectedSubUrl += `&X-Plex-Playback-Id=${plexPlaybackId}`;
                     decisionUrl += `&X-Plex-Playback-Id=${plexPlaybackId}`;

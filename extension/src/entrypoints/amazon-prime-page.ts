@@ -81,7 +81,7 @@ export default defineUnlistedScript(() => {
     const originalFetch = window.fetch;
     window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
         try {
-            const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+            const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
             if (typeof url === 'string') {
                 const titleId = captureRequestUrl(url);

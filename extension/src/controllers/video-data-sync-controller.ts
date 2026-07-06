@@ -427,18 +427,18 @@ export default class VideoDataSyncController {
                     if (confirmMessage.shouldRememberTrackChoices) {
                         this.lastLanguagesSynced = confirmMessage.data
                             .map((track) => track.language)
-                            .filter((language) => language !== undefined) as string[];
+                            .filter((language) => language !== undefined);
                         await this._context.settings
                             .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
                             .catch(() => {});
                     }
 
-                    const data = confirmMessage.data as ConfirmedVideoDataSubtitleTrack[];
+                    const data = confirmMessage.data;
 
                     dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
                 } else if ('openFile' === message.command) {
                     const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
-                    const subtitles = openFileMessage.subtitles as SerializedSubtitleFile[];
+                    const subtitles = openFileMessage.subtitles;
 
                     try {
                         await this._syncSubtitles(subtitles, false);

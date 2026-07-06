@@ -106,7 +106,7 @@ export class TokenCollectionBase<T = TokenStatusResult | TokenStatusResult[]> {
     }
 
     updateDictionaryTrack(dt: DictionaryTrack) {
-        (this.dt as DictionaryTrack) = dt;
+        (this.dt as any) = dt;
     }
 
     protected tokenStatusResult(

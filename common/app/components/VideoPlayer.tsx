@@ -333,7 +333,7 @@ const fetchLastControlType = async (): Promise<ControlType | undefined> => {
         return undefined;
     }
 
-    return parseInt(val) as ControlType;
+    return parseInt(val);
 };
 
 const saveLastControlType = (controlType: ControlType): void => {
@@ -1296,7 +1296,7 @@ export default function VideoPlayer({
 
                 if (!isMobile) {
                     setAlertSeverity('info');
-                    setAlertMessage(t('info.manualMiningIntervalPrompt')!);
+                    setAlertMessage(t('info.manualMiningIntervalPrompt'));
                     setAlertDisableAutoHide(true);
                     setAlertOpen(true);
                 }

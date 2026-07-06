@@ -86,7 +86,7 @@ function AddCustomField({ onAddCustomField }: AddCustomFieldProps) {
     return (
         <SettingsTextField
             label={t('settings.addCustomField')}
-            placeholder={t('settings.customFieldName')!}
+            placeholder={t('settings.customFieldName')}
             fullWidth
             value={fieldName}
             color="primary"
@@ -547,7 +547,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 disabled={!inTutorial}
                                 show={tutorialStep === TutorialStep.ankiFields && Boolean(deck) && Boolean(noteType)}
                                 disableArrow
-                                text={t('ftue.ankiFields')!}
+                                text={t('ftue.ankiFields')}
                                 onConfirm={() => onTutorialStepChanged(TutorialStep.testCard)}
                             >
                                 <AnkiSelect
@@ -650,7 +650,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                             <AnkiSelect
                                 label={`${model.key}`}
                                 value={customAnkiFields[model.key]}
-                                selections={fieldNames!}
+                                selections={fieldNames}
                                 onValueChange={(value) => handleCustomFieldChange(model.key, value)}
                                 onRemoval={() => handleCustomFieldRemoval(model.key)}
                                 removable={true}
@@ -674,7 +674,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     placement="top"
                     disabled={!inTutorial}
                     show={tutorialStep === TutorialStep.testCard}
-                    text={t('ftue.testCard')!}
+                    text={t('ftue.testCard')}
                     onConfirm={() => onTutorialStepChanged(TutorialStep.done)}
                 >
                     <Button variant="contained" onClick={handleCreateTestCard}>

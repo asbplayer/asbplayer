@@ -202,7 +202,7 @@ const AnkiSelect = React.forwardRef<HTMLDivElement, SelectableSettingProps>(func
                                         {display === true && <VisibilityIcon fontSize="small" />}
                                     </ListItemIcon>
                                     <ListItemText>
-                                        {(display ? t('settings.hideInCardCreator') : t('settings.showInCardCreator'))!}
+                                        {display ? t('settings.hideInCardCreator') : t('settings.showInCardCreator')}
                                     </ListItemText>
                                 </ListItemButton>
                             </ListItem>

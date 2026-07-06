@@ -42,7 +42,7 @@ describe('JimakuClient', () => {
                 },
             })
         );
-        global.fetch = fetchMock as unknown as typeof fetch;
+        global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
         const response = await client.searchEntries('Sousou no Frieren');
@@ -68,7 +68,7 @@ describe('JimakuClient', () => {
                 },
             })
         );
-        global.fetch = fetchMock as unknown as typeof fetch;
+        global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
         const response = await client.searchEntries('Some Drama', false);
@@ -81,7 +81,7 @@ describe('JimakuClient', () => {
 
     it('requests files with optional filters', async () => {
         const fetchMock = jest.fn().mockResolvedValue(createResponse({ jsonData: [] }));
-        global.fetch = fetchMock as unknown as typeof fetch;
+        global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
         await client.getFiles(729, { episode: 1 });
@@ -95,7 +95,7 @@ describe('JimakuClient', () => {
         const fetchMock = jest
             .fn()
             .mockResolvedValue(createResponse({ ok: false, status: 401, jsonData: { error: 'Unauthorized' } }));
-        global.fetch = fetchMock as unknown as typeof fetch;
+        global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
         await expect(client.getEntry(123)).rejects.toThrow('Unauthorized');
@@ -103,7 +103,7 @@ describe('JimakuClient', () => {
 
     it('falls back to status-based error when response is not json', async () => {
         const fetchMock = jest.fn().mockResolvedValue(createResponse({ ok: false, status: 503, textData: '<html/>' }));
-        global.fetch = fetchMock as unknown as typeof fetch;
+        global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
         await expect(client.getEntry(123)).rejects.toThrow('Jimaku request failed with status 503');
@@ -111,7 +111,7 @@ describe('JimakuClient', () => {
 
     it('throws when successful response does not contain valid json', async () => {
         const fetchMock = jest.fn().mockResolvedValue(createResponse({ ok: true, status: 200, textData: '<html/>' }));
-        global.fetch = fetchMock as unknown as typeof fetch;
+        global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
         await expect(client.getEntry(123)).rejects.toThrow('Jimaku request failed: expected a JSON response body');

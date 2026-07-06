@@ -365,7 +365,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
                 __html: getAnnotationsHtml(subtitle.text, rendered?.richText, rendered?.richTextOnHover),
             }}
             data-track={subtitle.track}
-            style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
+            style={tokenAnnotationStyleValues(tokenAnnotationConfig)}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}
         />
@@ -378,7 +378,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
                     disabled={!showCopyButton}
                     enterDelay={1500}
                     enterNextDelay={1500}
-                    title={t('subtitlePlayer.multiSubtitleSelectHelp')!}
+                    title={t('subtitlePlayer.multiSubtitleSelectHelp')}
                     placement="top"
                 >
                     <TableCell className={className}>{content}</TableCell>
@@ -1035,7 +1035,7 @@ export default function SubtitlePlayer({
                 }
             }
 
-            const subtitle = index === -1 ? calculateCurrentSubtitle() : subtitles![index];
+            const subtitle = index === -1 ? calculateCurrentSubtitle() : subtitles[index];
 
             if (subtitle) {
                 const surroundingSubtitles =
@@ -1086,7 +1086,7 @@ export default function SubtitlePlayer({
 
                         return [asbplayerFieldName, fieldValue];
                     })
-                    .filter((entry) => entry !== undefined) as string[][]
+                    .filter((entry) => entry !== undefined)
             );
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
             return copyFromWebSocketClient({ postMineAction, text, word, definition, customFieldValues });
@@ -1262,7 +1262,7 @@ export default function SubtitlePlayer({
             const selectedSubtitles = selectedSubtitleIndexes
                 .map((selected, index) => (selected ? subtitles[index] : undefined))
                 .filter((s) => s !== undefined)
-                .filter((s) => !disabledSubtitleTracks[s!.track]) as SubtitleModel[];
+                .filter((s) => !disabledSubtitleTracks[s.track]) as SubtitleModel[];
 
             if (selectedSubtitles.length > 0) {
                 const startTimestamp = Math.min(...selectedSubtitles.map((s) => s.start));

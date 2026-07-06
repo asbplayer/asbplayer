@@ -94,7 +94,7 @@ async function pageConfigsMergedWithSettingsOverrides(): Promise<PageConfigFile>
         };
     });
 
-    return { pages: mergedPages } as PageConfigFile;
+    return { pages: mergedPages };
 }
 
 export async function currentPageDelegate(): Promise<PageDelegate | undefined> {

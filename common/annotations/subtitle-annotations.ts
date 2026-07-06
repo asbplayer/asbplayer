@@ -109,18 +109,18 @@ export class TrackState {
     }
 
     updateDictionaryTrack(dt: DictionaryTrack) {
-        (this.dt as DictionaryTrack) = dt;
+        (this.dt as any) = dt;
         this.tokenCollectionExact.updateDictionaryTrack(dt);
         this.tokenCollectionLemma.updateDictionaryTrack(dt);
         this.tokenCollectionAny.updateDictionaryTrack(dt);
     }
 
     updateYomitan(yt: Yomitan | undefined) {
-        (this.yt as Yomitan | undefined) = yt;
+        (this.yt as any) = yt;
     }
 
     resetYomitan() {
-        (this.ytLastResetAt as number) = Date.now();
+        (this.ytLastResetAt as any) = Date.now();
         if (!this.yt) return;
         this.yt.resetCache();
         this.updateYomitan(undefined);
@@ -1181,6 +1181,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 }
                 if (this.shouldCancelBuild) return;
 
+                const emptyTokenResults: TokenResults = {};
                 const [exactFormResultMap, lemmaFormResultMap, anyFormResultsMap] = await Promise.all([
                     forExactFormQuery.size
                         ? this.dictionaryProvider.getBulk(
@@ -1188,21 +1189,21 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                               track,
                               ts.tokenCollectionExact.getAllQueries(forExactFormQuery)
                           )
-                        : ({} as TokenResults),
+                        : emptyTokenResults,
                     forLemmaFormQuery.size
                         ? this.dictionaryProvider.getBulk(
                               profile,
                               track,
                               ts.tokenCollectionLemma.getAllQueries(forLemmaFormQuery)
                           )
-                        : ({} as TokenResults),
+                        : emptyTokenResults,
                     forAnyFormQuery.size
                         ? this.dictionaryProvider.getByLemmaBulk(
                               profile,
                               track,
                               ts.tokenCollectionAny.getAllQueries(forAnyFormQuery)
                           )
-                        : ({} as LemmaResults),
+                        : emptyTokenResults,
                 ]);
                 if (this.shouldCancelBuild) return;
 

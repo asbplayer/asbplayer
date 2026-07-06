@@ -213,7 +213,7 @@ const MobileVideoOverlayUi = () => {
         fetchLastControlType,
     });
     const theme = useMemo(
-        () => (model?.themeType === undefined ? undefined : createTheme(model?.themeType as PaletteMode)),
+        () => (model?.themeType === undefined ? undefined : createTheme(model?.themeType)),
         [model?.themeType]
     );
 

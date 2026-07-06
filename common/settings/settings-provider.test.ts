@@ -211,7 +211,7 @@ it('calculates diff for text subtitle settings', () => {
                 subtitleBackgroundOpacity: 0,
                 subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
                 subtitleBlur: true,
-                subtitleAlignment: 'bottom' as SubtitleAlignment,
+                subtitleAlignment: 'bottom',
                 subtitleCustomStyles: [],
             },
             {
@@ -226,7 +226,7 @@ it('calculates diff for text subtitle settings', () => {
                 subtitleBackgroundOpacity: 0,
                 subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
                 subtitleBlur: false,
-                subtitleAlignment: 'bottom' as SubtitleAlignment,
+                subtitleAlignment: 'bottom',
                 subtitleCustomStyles: [{ key: 'opacity', value: '0.5' }],
             },
         ],
@@ -248,7 +248,7 @@ it('calculates diff for text subtitle settings', () => {
                 subtitleBackgroundOpacity: 0,
                 subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
                 subtitleBlur: true,
-                subtitleAlignment: 'bottom' as SubtitleAlignment,
+                subtitleAlignment: 'bottom',
                 subtitleCustomStyles: [],
             },
         ],
@@ -271,7 +271,7 @@ it('targets correct values for text subtitle ', () => {
         subtitleBackgroundOpacity: 0,
         subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
         subtitleBlur: false,
-        subtitleAlignment: 'bottom' as SubtitleAlignment,
+        subtitleAlignment: 'bottom',
         subtitleCustomStyles: [],
     });
     expect(textSubtitleSettingsForTrack(subtitleSettings, 1)).toEqual({
@@ -286,7 +286,7 @@ it('targets correct values for text subtitle ', () => {
         subtitleBackgroundOpacity: 0,
         subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
         subtitleBlur: true,
-        subtitleAlignment: 'bottom' as SubtitleAlignment,
+        subtitleAlignment: 'bottom',
         subtitleCustomStyles: [],
     });
 });

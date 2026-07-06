@@ -52,9 +52,7 @@ const useExtensionState = () => {
                         tabId: currentElem.id,
                         src: currentElem.src,
                     };
-                    const response = (await browser.runtime.sendMessage(message)) as
-                        | RequestSubtitlesResponse
-                        | undefined;
+                    const response = await browser.runtime.sendMessage(message);
 
                     setLoadedSubtitlesCount(response?.subtitles?.length);
                 }

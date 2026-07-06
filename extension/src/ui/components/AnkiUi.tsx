@@ -193,16 +193,16 @@ export default function AnkiUi({ bridge }: Props) {
                 }
 
                 if (params.mode === 'updateLast' || params.mode === 'updateSpecific') {
-                    bridge.sendMessageFromServer({ command: 'card-updated-dialog' } as CardUpdatedDialogMessage);
+                    bridge.sendMessageFromServer({ command: 'card-updated-dialog' });
                 } else if (params.mode === 'default') {
-                    bridge.sendMessageFromServer({ command: 'card-exported-dialog' } as CardExportedDialogMessage);
+                    bridge.sendMessageFromServer({ command: 'card-exported-dialog' });
                 }
             } catch (e) {
                 console.error(e);
                 setAlertSeverity('error');
 
                 if (e instanceof Error) {
-                    setAlert((e as Error).message);
+                    setAlert(e.message);
                 } else {
                     setAlert(String(e));
                 }
@@ -234,8 +234,8 @@ export default function AnkiUi({ bridge }: Props) {
         const message: AnkiUiBridgeRerecordMessage = {
             command: 'rerecord',
             uiState: state,
-            recordStart: state.timestampInterval![0],
-            recordEnd: state.timestampInterval![1],
+            recordStart: state.timestampInterval[0],
+            recordEnd: state.timestampInterval[1],
         };
 
         bridge.sendMessageFromServer(message);

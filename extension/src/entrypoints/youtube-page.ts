@@ -61,12 +61,17 @@ const tracksToSubtitleTracks = (tracks: any[]): VideoDataSubtitleTrack[] =>
         return subtitleTrack === undefined ? [] : [subtitleTrack];
     });
 
+interface YouTubeMoviePlayerElement extends Element {
+    getAudioTrack?: () => { captionTracks?: any[] };
+    getVideoData?: () => { title?: string; video_id?: string };
+}
+
 const tracksFromPlayerAudioTrack = async (videoId: string) => {
     // YouTube's player exposes caption URLs after it has initialized the audio track. These URLs can include
     // runtime-only params such as POT that are not available in ytInitialPlayerResponse or sessionStorage.
     let info: { basename: string; subtitles: VideoDataSubtitleTrack[] } | undefined;
     const ready = await poll(() => {
-        const player = document.querySelector('#movie_player') as any;
+        const player = document.querySelector<YouTubeMoviePlayerElement>('#movie_player');
         const playerVideoId = player?.getVideoData?.()?.video_id;
         const tracks = player?.getAudioTrack?.()?.captionTracks;
 

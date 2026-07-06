@@ -22,11 +22,11 @@ export default function SubtitleAppearanceTrackSelector({ track, onTrackSelected
                 color="primary"
                 variant="outlined"
                 size="small"
-                label={t('settings.subtitleTrack')!}
+                label={t('settings.subtitleTrack')}
                 helperText={track === 'all' ? t('settings.subtitleTrackSelectorHelper') : undefined}
                 value={track}
                 onChange={(e) =>
-                    e.target.value === 'all' ? onTrackSelected('all') : onTrackSelected(Number(e.target.value) as Track)
+                    e.target.value === 'all' ? onTrackSelected('all') : onTrackSelected(Number(e.target.value))
                 }
             >
                 <MenuItem value={'all'}>{t('settings.allSubtitleTracks')}</MenuItem>

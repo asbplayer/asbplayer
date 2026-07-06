@@ -113,7 +113,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
 
                             return [asbplayerFieldName, fieldValue];
                         })
-                        .filter((entry) => entry !== undefined) as string[][]
+                        .filter((entry) => entry !== undefined)
                 );
                 const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
                 let published = false;
@@ -282,9 +282,10 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
             };
 
             try {
-                const response = (await browser.tabs.sendMessage(target.tabId, requestSubtitlesCommand)) as
-                    | RequestSubtitlesResponse
-                    | undefined;
+                const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+                    target.tabId,
+                    requestSubtitlesCommand
+                );
                 subtitles = response?.subtitles;
             } catch (e) {
                 // Targeting a non-active/discarded tab can fail

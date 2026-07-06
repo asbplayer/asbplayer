@@ -3,7 +3,6 @@ import {
     AnkiFieldSettings,
     AnkiSettings,
     AsbplayerSettings,
-    CustomAnkiFieldSettings,
     KeyBindName,
     SubtitleListPreference,
     SubtitleSettings,
@@ -370,12 +369,10 @@ export const textSubtitleSettingsForTrack = (
     }
 
     if (track === 0 || track > subtitleSettings.subtitleTracksV2.length) {
-        return Object.fromEntries(
-            textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]])
-        ) as unknown as TextSubtitleSettings;
+        return Object.fromEntries(textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]]));
     }
 
-    return subtitleSettings.subtitleTracksV2[track - 1] as TextSubtitleSettings;
+    return subtitleSettings.subtitleTracksV2[track - 1];
 };
 
 export const changeForTextSubtitleSetting = (
@@ -730,11 +727,11 @@ export class SettingsProvider {
         }
         const customAnkiFieldSettings =
             settings.customAnkiFieldSettings ??
-            ((
+            (
                 await this._storage.get({
                     customAnkiFieldSettings: defaultSettings.customAnkiFieldSettings,
                 })
-            ).customAnkiFieldSettings as CustomAnkiFieldSettings);
+            ).customAnkiFieldSettings!;
 
         let modifyCustomAnkiFieldSettings = false;
 
@@ -786,7 +783,7 @@ export const prefixKey = (key: string, profile: string) => {
 };
 
 export const unprefixKey = (key: string, profile: string) => {
-    return (key as string).substring(profile.length + 7);
+    return key.substring(profile.length + 7);
 };
 
 export const prefixedSettings = <P extends string>(
@@ -796,7 +793,7 @@ export const prefixedSettings = <P extends string>(
     const prefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        prefixed[prefixKey(key as keyof AsbplayerSettings, profile)] = settings[key as keyof AsbplayerSettings];
+        prefixed[prefixKey(key, profile)] = settings[key as keyof AsbplayerSettings];
     }
 
     return prefixed;
@@ -806,7 +803,7 @@ export const unprefixedSettings = <P extends string>(settings: Partial<Asbplayer
     const unprefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        const unprefixedKey = unprefixKey(key as keyof AsbplayerSettingsProfile<P>, profile);
+        const unprefixedKey = unprefixKey(key, profile);
         unprefixed[unprefixedKey] = settings[key as keyof AsbplayerSettingsProfile<P>];
     }
 

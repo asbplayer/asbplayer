@@ -102,7 +102,7 @@ export class CachingElementOverlay implements ElementOverlay {
             for (const content of container.childNodes) {
                 for (const el of content.childNodes) {
                     if (el instanceof HTMLElement) {
-                        yield el as HTMLElement;
+                        yield el;
                     }
                 }
             }

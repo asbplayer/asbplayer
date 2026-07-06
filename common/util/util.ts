@@ -745,7 +745,7 @@ const tokenReadingComparators: TokenReadingComparators = {
 } satisfies Required<TokenReadingComparators>;
 
 function compareTokenReadingField<K extends keyof TokenReading>(key: K, a: TokenReading, b: TokenReading): boolean {
-    return tokenReadingComparators[key]!(a[key], b[key]);
+    return tokenReadingComparators[key](a[key], b[key]);
 }
 
 const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) => {

@@ -339,7 +339,7 @@ const DictionaryImport: React.FC<Props> = ({
                                 size="small"
                                 label={t('settings.dictionaryImportedMaturity')}
                                 value={importClipboardStatus}
-                                onChange={(e) => setImportClipboardStatus(Number(e.target.value) as TokenStatus)}
+                                onChange={(e) => setImportClipboardStatus(Number(e.target.value))}
                             >
                                 {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
                                     const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;

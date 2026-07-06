@@ -136,7 +136,7 @@ const sliderMarksFromCard = (surroundingSubtitles: SubtitleModel[], boundary: nu
             };
         })
         .filter((mark: Mark | null) => mark !== null)
-        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]) as Mark[];
+        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]);
 };
 
 const sliderValueLabelFormat = (ms: number) => {
@@ -841,7 +841,7 @@ const AnkiDialog = ({
                             placement="bottom"
                             disabled={!effectiveInTutorial}
                             show={tutorialStep === TutorialStep.configure}
-                            text={t('ftue.configureAnki')!}
+                            text={t('ftue.configureAnki')}
                             onConfirm={() => setTutorialStep(TutorialStep.export)}
                         >
                             <IconButton
@@ -876,7 +876,7 @@ const AnkiDialog = ({
                                     {!model.custom && model.key === 'sentence' && model.field.display && (
                                         <SentenceField
                                             text={text}
-                                            label={t('ankiDialog.sentence')!}
+                                            label={t('ankiDialog.sentence')}
                                             width={width}
                                             onChangeText={handleSentenceTextChange}
                                             selectedSubtitles={selectedSubtitles}
@@ -1000,7 +1000,7 @@ const AnkiDialog = ({
                                     />
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.resetSlider')!}>
+                                    <Tooltip title={t('ankiDialog.resetSlider')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1013,7 +1013,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.zoomIn')!}>
+                                    <Tooltip title={t('ankiDialog.zoomIn')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1026,7 +1026,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.zoomOut')!}>
+                                    <Tooltip title={t('ankiDialog.zoomOut')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1039,7 +1039,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.applySelection')!}>
+                                    <Tooltip title={t('ankiDialog.applySelection')}>
                                         <span>
                                             <IconButton
                                                 edge="end"

@@ -29,10 +29,7 @@ export default class LoadSubtitlesHandler {
         const toggleVideoSelectCommand: ExtensionToVideoCommand<ToggleVideoSelectMessage> = {
             sender: 'asbplayer-extension-to-video',
             // Target specific video element by 'src' if the command specifies a 'src'
-            src:
-                'src' in command
-                    ? ((command as AsbPlayerToVideoCommandV2<LoadSubtitlesMessage>).src as string)
-                    : undefined,
+            src: 'src' in command ? (command as AsbPlayerToVideoCommandV2<LoadSubtitlesMessage>).src : undefined,
             message: {
                 command: 'toggle-video-select',
                 fromAsbplayerId: loadSubtitlesCommand.message.fromAsbplayerId,

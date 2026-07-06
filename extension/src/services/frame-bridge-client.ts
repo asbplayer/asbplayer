@@ -137,9 +137,9 @@ export default class FrameBridgeClient {
         let httpPostCommand: VideoToExtensionCommand<HttpPostMessage> | TabToExtensionCommand<HttpPostMessage>;
         const httpPostMessage: HttpPostMessage = {
             command: 'http-post',
-            url: message.url as string,
-            body: message.body as any,
-            messageId: message.messageId as string,
+            url: message.url,
+            body: message.body,
+            messageId: message.messageId,
         };
 
         if (this.fetchOptions.videoSrc === undefined) {

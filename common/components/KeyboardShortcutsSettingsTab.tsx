@@ -193,7 +193,7 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
                                             </IconButton>
                                         )}
                                         {firefoxExtensionShortcut && (
-                                            <Tooltip title={t('settings.firefoxExtensionShortcutHelp')!}>
+                                            <Tooltip title={t('settings.firefoxExtensionShortcutHelp')}>
                                                 <span>
                                                     <IconButton disabled={true}>
                                                         <EditIcon fontSize="small" />
@@ -242,38 +242,38 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     } = settings;
     const keyBindProperties = useMemo<{ [key in AllKeyNames]: KeyBindProperties }>(
         () => ({
-            copySubtitle: { label: t('binds.copySubtitle')!, boundViaBrowser: true },
-            ankiExport: { label: t('binds.ankiExport')!, boundViaBrowser: true },
+            copySubtitle: { label: t('binds.copySubtitle'), boundViaBrowser: true },
+            ankiExport: { label: t('binds.ankiExport'), boundViaBrowser: true },
             updateLastCard: {
-                label: t('binds.updateLastCard')!,
+                label: t('binds.updateLastCard'),
                 boundViaBrowser: true,
             },
             exportCard: {
-                label: t('binds.exportCard')!,
+                label: t('binds.exportCard'),
                 boundViaBrowser: true,
                 hide: extensionInstalled && !extensionSupportsExportCardBind,
             },
             takeScreenshot: {
-                label: t('binds.takeScreenshot')!,
+                label: t('binds.takeScreenshot'),
                 boundViaBrowser: true,
             },
             toggleRecording: {
-                label: t('binds.extensionToggleRecording')!,
+                label: t('binds.extensionToggleRecording'),
                 boundViaBrowser: true,
             },
             selectSubtitleTrack: {
-                label: t('binds.extensionSelectSubtitleTrack')!,
+                label: t('binds.extensionSelectSubtitleTrack'),
                 boundViaBrowser: true,
                 hide: !extensionInstalled,
             },
             toggleSidePanel: {
-                label: t('binds.toggleSidePanel')!,
+                label: t('binds.toggleSidePanel'),
                 boundViaBrowser: isFirefox,
                 hide: !extensionInstalled || !extensionSupportsSidePanel,
             },
-            togglePlay: { label: t('binds.togglePlay')!, boundViaBrowser: false },
+            togglePlay: { label: t('binds.togglePlay'), boundViaBrowser: false },
             toggleAutoPause: {
-                label: t('binds.toggleAutoPause')!,
+                label: t('binds.toggleAutoPause'),
                 boundViaBrowser: false,
                 additionalControl: (
                     <KeyBindRelatedSetting
@@ -313,9 +313,9 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     />
                 ),
             },
-            toggleCondensedPlayback: { label: t('binds.toggleCondensedPlayback')!, boundViaBrowser: false },
+            toggleCondensedPlayback: { label: t('binds.toggleCondensedPlayback'), boundViaBrowser: false },
             toggleFastForwardPlayback: {
-                label: t('binds.toggleFastForwardPlayback')!,
+                label: t('binds.toggleFastForwardPlayback'),
                 boundViaBrowser: false,
                 additionalControl: (
                     <KeyBindRelatedSetting
@@ -341,38 +341,38 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     />
                 ),
             },
-            toggleRepeat: { label: t('binds.toggleRepeat')!, boundViaBrowser: false },
-            toggleSubtitles: { label: t('binds.toggleSubtitles')!, boundViaBrowser: false },
-            toggleVideoSubtitleTrack1: { label: t('binds.toggleVideoSubtitleTrack1')!, boundViaBrowser: false },
-            toggleVideoSubtitleTrack2: { label: t('binds.toggleVideoSubtitleTrack2')!, boundViaBrowser: false },
-            toggleVideoSubtitleTrack3: { label: t('binds.toggleVideoSubtitleTrack3')!, boundViaBrowser: false },
+            toggleRepeat: { label: t('binds.toggleRepeat'), boundViaBrowser: false },
+            toggleSubtitles: { label: t('binds.toggleSubtitles'), boundViaBrowser: false },
+            toggleVideoSubtitleTrack1: { label: t('binds.toggleVideoSubtitleTrack1'), boundViaBrowser: false },
+            toggleVideoSubtitleTrack2: { label: t('binds.toggleVideoSubtitleTrack2'), boundViaBrowser: false },
+            toggleVideoSubtitleTrack3: { label: t('binds.toggleVideoSubtitleTrack3'), boundViaBrowser: false },
             toggleAsbplayerSubtitleTrack1: {
-                label: t('binds.toggleAsbplayerSubtitleTrack1')!,
+                label: t('binds.toggleAsbplayerSubtitleTrack1'),
                 boundViaBrowser: false,
             },
             toggleAsbplayerSubtitleTrack2: {
-                label: t('binds.toggleAsbplayerSubtitleTrack2')!,
+                label: t('binds.toggleAsbplayerSubtitleTrack2'),
                 boundViaBrowser: false,
             },
             toggleAsbplayerSubtitleTrack3: {
-                label: t('binds.toggleAsbplayerSubtitleTrack3')!,
+                label: t('binds.toggleAsbplayerSubtitleTrack3'),
                 boundViaBrowser: false,
             },
             unblurAsbplayerTrack1: {
-                label: t('binds.unblurAsbplayerTrack', { trackNumber: 1 })!,
+                label: t('binds.unblurAsbplayerTrack', { trackNumber: 1 }),
                 boundViaBrowser: false,
             },
             unblurAsbplayerTrack2: {
-                label: t('binds.unblurAsbplayerTrack', { trackNumber: 2 })!,
+                label: t('binds.unblurAsbplayerTrack', { trackNumber: 2 }),
                 boundViaBrowser: false,
             },
             unblurAsbplayerTrack3: {
-                label: t('binds.unblurAsbplayerTrack', { trackNumber: 3 })!,
+                label: t('binds.unblurAsbplayerTrack', { trackNumber: 3 }),
                 boundViaBrowser: false,
             },
-            seekBackward: { label: t('binds.seekBackward')!, boundViaBrowser: false },
+            seekBackward: { label: t('binds.seekBackward'), boundViaBrowser: false },
             seekForward: {
-                label: t('binds.seekForward')!,
+                label: t('binds.seekForward'),
                 boundViaBrowser: false,
                 additionalControl: (
                     <KeyBindRelatedSetting
@@ -397,10 +397,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     />
                 ),
             },
-            seekToPreviousSubtitle: { label: t('binds.seekToPreviousSubtitle')!, boundViaBrowser: false },
-            seekToNextSubtitle: { label: t('binds.seekToNextSubtitle')!, boundViaBrowser: false },
+            seekToPreviousSubtitle: { label: t('binds.seekToPreviousSubtitle'), boundViaBrowser: false },
+            seekToNextSubtitle: { label: t('binds.seekToNextSubtitle'), boundViaBrowser: false },
             seekToBeginningOfCurrentSubtitle: {
-                label: t('binds.seekToBeginningOfCurrentOrPreviousSubtitle')!,
+                label: t('binds.seekToBeginningOfCurrentOrPreviousSubtitle'),
                 boundViaBrowser: false,
                 additionalControl: (
                     <KeyBindRelatedSetting
@@ -417,19 +417,19 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 ),
             },
             adjustOffsetToPreviousSubtitle: {
-                label: t('binds.adjustOffsetToPreviousSubtitle')!,
+                label: t('binds.adjustOffsetToPreviousSubtitle'),
                 boundViaBrowser: false,
             },
             adjustOffsetToNextSubtitle: {
-                label: t('binds.adjustOffsetToNextSubtitle')!,
+                label: t('binds.adjustOffsetToNextSubtitle'),
                 boundViaBrowser: false,
             },
-            increaseOffset: { label: t('binds.increaseOffset')!, boundViaBrowser: false },
-            decreaseOffset: { label: t('binds.decreaseOffset')!, boundViaBrowser: false },
-            resetOffset: { label: t('binds.resetOffset')!, boundViaBrowser: false },
-            increasePlaybackRate: { label: t('binds.increasePlaybackRate')!, boundViaBrowser: false },
+            increaseOffset: { label: t('binds.increaseOffset'), boundViaBrowser: false },
+            decreaseOffset: { label: t('binds.decreaseOffset'), boundViaBrowser: false },
+            resetOffset: { label: t('binds.resetOffset'), boundViaBrowser: false },
+            increasePlaybackRate: { label: t('binds.increasePlaybackRate'), boundViaBrowser: false },
             decreasePlaybackRate: {
-                label: t('binds.decreasePlaybackRate')!,
+                label: t('binds.decreasePlaybackRate'),
                 boundViaBrowser: false,
                 additionalControl: (
                     <KeyBindRelatedSetting
@@ -454,51 +454,51 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 ),
             },
             moveBottomSubtitlesUp: {
-                label: t('binds.moveBottomSubtitlesUp')!,
+                label: t('binds.moveBottomSubtitlesUp'),
                 boundViaBrowser: false,
             },
             moveBottomSubtitlesDown: {
-                label: t('binds.moveBottomSubtitlesDown')!,
+                label: t('binds.moveBottomSubtitlesDown'),
                 boundViaBrowser: false,
             },
             moveTopSubtitlesUp: {
-                label: t('binds.moveTopSubtitlesUp')!,
+                label: t('binds.moveTopSubtitlesUp'),
                 boundViaBrowser: false,
             },
             moveTopSubtitlesDown: {
-                label: t('binds.moveTopSubtitlesDown')!,
+                label: t('binds.moveTopSubtitlesDown'),
                 boundViaBrowser: false,
             },
             markHoveredToken5: {
-                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus5') })!,
+                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus5') }),
                 boundViaBrowser: false,
             },
             markHoveredToken4: {
-                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus4') })!,
+                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus4') }),
                 boundViaBrowser: false,
             },
             markHoveredToken3: {
-                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus3') })!,
+                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus3') }),
                 boundViaBrowser: false,
             },
             markHoveredToken2: {
-                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus2') })!,
+                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus2') }),
                 boundViaBrowser: false,
             },
             markHoveredToken1: {
-                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus1') })!,
+                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus1') }),
                 boundViaBrowser: false,
             },
             markHoveredToken0: {
-                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus0') })!,
+                label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus0') }),
                 boundViaBrowser: false,
             },
             toggleHoveredTokenIgnored: {
-                label: t('binds.toggleHoveredTokenIgnored')!,
+                label: t('binds.toggleHoveredTokenIgnored'),
                 boundViaBrowser: false,
             },
             openStatistics: {
-                label: t('binds.openStatistics')!,
+                label: t('binds.openStatistics'),
                 boundViaBrowser: false,
             },
         }),

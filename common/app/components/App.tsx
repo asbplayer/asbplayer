@@ -457,7 +457,7 @@ function App({
                 truncatedError = error;
             }
 
-            setAlert(t('info.copiedSubtitle', { text: truncatedError })!);
+            setAlert(t('info.copiedSubtitle', { text: truncatedError }));
             setAlertOpen(true);
         },
         [t]
@@ -465,7 +465,7 @@ function App({
 
     const handleAnkiDialogRequest = useCallback(
         (ankiDialogItem?: CopyHistoryItem) => {
-            if (!ankiDialogItem && copyHistoryItemsRef.current!.length === 0) {
+            if (!ankiDialogItem && copyHistoryItemsRef.current.length === 0) {
                 return;
             }
 
@@ -520,11 +520,11 @@ function App({
                 if (params.mode !== 'gui') {
                     if (params.mode === 'default') {
                         setAlertSeverity('success');
-                        setAlert(t('info.exportedCard', { result })!);
+                        setAlert(t('info.exportedCard', { result }));
                         setAlertOpen(true);
                     } else if (params.mode === 'updateLast') {
                         setAlertSeverity('success');
-                        setAlert(t('info.updatedCard', { result })!);
+                        setAlert(t('info.updatedCard', { result }));
                         setAlertOpen(true);
                     }
 
@@ -585,8 +585,8 @@ function App({
                     setAlertSeverity('success');
                     setAlert(
                         card.subtitle.text === ''
-                            ? t('info.savedTimestamp', { timestamp: humanReadableTime(card.subtitle.start) })!
-                            : t('info.copiedSubtitle2', { result: card.subtitle.text })!
+                            ? t('info.savedTimestamp', { timestamp: humanReadableTime(card.subtitle.start) })
+                            : t('info.copiedSubtitle2', { result: card.subtitle.text })
                     );
                     setAlertOpen(true);
                     break;
@@ -962,7 +962,7 @@ function App({
 
             if (selectedTabMissing) {
                 setTab(undefined);
-                handleError(t('error.lostTabConnection', { tabName: tab!.id + ' ' + tab!.title }));
+                handleError(t('error.lostTabConnection', { tabName: tab.id + ' ' + tab.title }));
             }
 
             const isSidePanelOpen = extension.asbplayers?.find((a) => a.sidePanel) !== undefined;
@@ -1012,7 +1012,7 @@ function App({
                     };
 
                     const sourcesToList = (s: MediaSources) =>
-                        [...s.subtitleFiles, s.videoFile].filter((f) => f !== undefined) as File[];
+                        [...s.subtitleFiles, s.videoFile].filter((f) => f !== undefined);
 
                     const previousLoadingSources = sourcesToList(previous);
                     const loadingSources = sourcesToList(sources).filter((f) => {
@@ -1322,21 +1322,21 @@ function App({
                     return;
                 }
 
-                setAlert(t('info.disabledAllPlayModes')!);
+                setAlert(t('info.disabledAllPlayModes'));
             } else {
                 const enabling = !playModes.has(targetMode);
                 switch (targetMode) {
                     case PlayMode.autoPause:
-                        setAlert(t(enabling ? 'info.enabledAutoPause' : 'info.disabledAutoPause')!);
+                        setAlert(t(enabling ? 'info.enabledAutoPause' : 'info.disabledAutoPause'));
                         break;
                     case PlayMode.condensed:
-                        setAlert(t(enabling ? 'info.enabledCondensedPlayback' : 'info.disabledCondensedPlayback')!);
+                        setAlert(t(enabling ? 'info.enabledCondensedPlayback' : 'info.disabledCondensedPlayback'));
                         break;
                     case PlayMode.fastForward:
-                        setAlert(t(enabling ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback')!);
+                        setAlert(t(enabling ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback'));
                         break;
                     case PlayMode.repeat:
-                        setAlert(t(enabling ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback')!);
+                        setAlert(t(enabling ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback'));
                         break;
                 }
 

@@ -99,7 +99,7 @@ export default class UiFrame {
         document.body.appendChild(this._frame);
 
         await this._frameInitializer(this._frame, this._language);
-        await this._client!.bind();
+        await this._client.bind();
         return true;
     }
 

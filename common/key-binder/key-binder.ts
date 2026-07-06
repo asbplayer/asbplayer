@@ -1019,7 +1019,7 @@ export class DefaultKeyBinder implements KeyBinder {
         const unbindHandlers: (() => void)[] = [];
 
         for (let i = 0; i < shortcuts.length; ++i) {
-            const handler = (event: KeyboardEvent) => delegate(event, i as TokenStatus);
+            const handler = (event: KeyboardEvent) => delegate(event, i);
             const unbindHandler = shortcuts[i] ? this._bind(shortcuts[i], capture, handler) : () => {};
             unbindHandlers.push(unbindHandler);
         }

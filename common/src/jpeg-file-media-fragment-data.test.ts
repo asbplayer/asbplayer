@@ -93,13 +93,13 @@ const mockCanvasCreation = () => {
     } as unknown as HTMLCanvasElement;
 
     const originalCreateElement = document.createElement.bind(document);
-    jest.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+    jest.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
         if (tagName.toLowerCase() === 'canvas') {
-            return canvas as unknown as HTMLElement;
+            return canvas;
         }
 
         return originalCreateElement(tagName);
-    }) as any);
+    });
 };
 
 afterEach(() => {

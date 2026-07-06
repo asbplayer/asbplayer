@@ -255,9 +255,7 @@ export default defineContentScript({
                     }
                     case 'request-subtitles':
                         sendMessageToPlayer({
-                            response: (await browser.runtime.sendMessage(command)) as
-                                | RequestSubtitlesResponse
-                                | undefined,
+                            response: await browser.runtime.sendMessage(command),
                             messageId: command.message.messageId,
                         });
                         break;
@@ -268,9 +266,7 @@ export default defineContentScript({
                     case 'request-copy-history': {
                         const requestCopyHistoryRequest = command.message as RequestCopyHistoryMessage;
                         sendMessageToPlayer({
-                            response: (await browser.runtime.sendMessage(command)) as
-                                | RequestCopyHistoryResponse
-                                | undefined,
+                            response: await browser.runtime.sendMessage(command),
                             messageId: requestCopyHistoryRequest.messageId,
                             count: requestCopyHistoryRequest.count,
                         });

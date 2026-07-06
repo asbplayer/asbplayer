@@ -128,7 +128,7 @@ export default class VideoSelectController {
             message: { command: 'capture-visible-tab' },
         };
 
-        const tabImageDataUrl = (await browser.runtime.sendMessage(captureVisibleTabCommand)) as string;
+        const tabImageDataUrl = await browser.runtime.sendMessage(captureVisibleTabCommand);
         const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b) => {
             return {
                 src: b.registeredVideoSrc,

@@ -296,12 +296,8 @@ export default class SubtitleController {
         const newAlignments = allTextSubtitleSettings(newSubtitleSettings).map((s) => s.subtitleAlignment);
         if (!arrayEquals(newAlignments, Object.values(this.subtitleTrackAlignments), (a, b) => a === b)) {
             this.subtitleTrackAlignments = newAlignments;
-            this.shouldRenderBottomOverlay = Object.values(this.subtitleTrackAlignments).includes(
-                'bottom' as SubtitleAlignment
-            );
-            this.shouldRenderTopOverlay = Object.values(this.subtitleTrackAlignments).includes(
-                'top' as SubtitleAlignment
-            );
+            this.shouldRenderBottomOverlay = Object.values(this.subtitleTrackAlignments).includes('bottom');
+            this.shouldRenderTopOverlay = Object.values(this.subtitleTrackAlignments).includes('top');
             const { subtitleOverlayParams, topSubtitleOverlayParams, notificationOverlayParams } =
                 this._elementOverlayParams();
             this._applyElementOverlayParams(this.bottomSubtitlesElementOverlay, subtitleOverlayParams);

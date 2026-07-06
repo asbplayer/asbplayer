@@ -112,7 +112,7 @@ export default function WordField({
                     input: {
                         endAdornment: (
                             <InputAdornment position="end">
-                                <Tooltip title={t('ankiDialog.searchInAnki')!}>
+                                <Tooltip title={t('ankiDialog.searchInAnki')}>
                                     <span>
                                         <IconButton
                                             disabled={disabled || !wordField || !text || text.trim() === ''}

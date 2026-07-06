@@ -132,7 +132,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         window.parent.postMessage({
             sender: 'asbplayer-dictionary',
             message: { command: 'card-updated-dialog' },
-        } as DictionaryDBCommand<CardUpdatedDialogMessage>);
+        });
     }
 
     onAnkiCardModified(callback: () => void) {

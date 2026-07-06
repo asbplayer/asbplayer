@@ -170,9 +170,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                         },
                         src: lastSyncedVideoTab.src,
                     };
-                    const response = (await browser.tabs.sendMessage(lastSyncedVideoTab.id, message)) as
-                        | RequestSubtitlesResponse
-                        | undefined;
+                    const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+                        lastSyncedVideoTab.id,
+                        message
+                    );
 
                     if (response !== undefined) {
                         const subs = response.subtitles;
@@ -331,7 +332,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
         if (!syncedVideoTab) return;
         const startCommand: AsbPlayerToVideoCommandV2<Message> = {
             sender: 'asbplayerv2',
-            message: { command: 'start-bulk-export' } as Message,
+            message: { command: 'start-bulk-export' },
             tabId: syncedVideoTab.id,
             src: syncedVideoTab.src,
         };
@@ -342,7 +343,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
         if (!syncedVideoTab) return;
         const cancelCommand: AsbPlayerToVideoCommandV2<Message> = {
             sender: 'asbplayerv2',
-            message: { command: 'cancel-bulk-export' } as Message,
+            message: { command: 'cancel-bulk-export' },
             tabId: syncedVideoTab.id,
             src: syncedVideoTab.src,
         };

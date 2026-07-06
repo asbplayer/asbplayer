@@ -1163,7 +1163,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     color="primary"
                     variant="outlined"
                     size="small"
-                    label={t('settings.subtitleTrack')!}
+                    label={t('settings.subtitleTrack')}
                     value={selectedDictionaryTrack}
                     onChange={(e) => {
                         const track = Number(e.target.value);
@@ -1253,7 +1253,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         color="primary"
                                         variant="outlined"
                                         size="small"
-                                        label={t(labelKey)!}
+                                        label={t(labelKey)}
                                         value={value}
                                         helperText={
                                             annotation === 'pitchAccent'
@@ -1271,8 +1271,10 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     tokenAnnotationStatusLabel
                                                 );
                                                 const stateLabels = selection.states.map(tokenAnnotationStateLabel);
-                                                return ([...statusLabels, ...stateLabels].join(', ') ||
-                                                    t('settings.dictionaryTokenReadingAnnotationNever'))!;
+                                                return (
+                                                    [...statusLabels, ...stateLabels].join(', ') ||
+                                                    t('settings.dictionaryTokenReadingAnnotationNever')
+                                                );
                                             },
                                         }}
                                         onChange={(e) => {
@@ -1647,7 +1649,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     options={deckNames ?? []}
                     value={selectedDictionary.dictionaryAnkiDecks}
                     onChange={(_, newValue) => {
-                        const items = newValue as string[];
+                        const items = newValue;
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],
@@ -1684,7 +1686,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     options={allFieldNames ?? []}
                     value={selectedDictionary.dictionaryAnkiWordFields}
                     onChange={(_, newValue) => {
-                        const items = newValue as string[];
+                        const items = newValue;
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],
@@ -1721,7 +1723,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     options={allFieldNames ?? []}
                     value={selectedDictionary.dictionaryAnkiSentenceFields}
                     onChange={(_, newValue) => {
-                        const items = newValue as string[];
+                        const items = newValue;
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],

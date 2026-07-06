@@ -91,7 +91,7 @@ export default class AudioRecorder {
         if (this.blobPromise !== null) {
             const blob = await this.blobPromise;
             this.blobPromise = null;
-            const base64 = await bufferToBase64(await blob!.arrayBuffer());
+            const base64 = await bufferToBase64(await blob.arrayBuffer());
 
             if (this.timeoutId !== undefined) {
                 clearTimeout(this.timeoutId);

@@ -204,7 +204,7 @@ function cycleViewCriteriaFilter<K extends FilterCriteriaKey>(
     return {
         ...criteria,
         [key]: cycleFilterMode(criteria[key] as FilterMap<FilterCriteriaValue<K>>, value),
-    } as ViewCriteria;
+    };
 }
 
 function tokenKeyToString(key: DictionaryTokenKey) {
@@ -235,7 +235,7 @@ function dedupedTrackErrors(errors: TrackError[]) {
 function filterableTokenStatuses() {
     const statuses: TokenStatus[] = [];
     for (let status = getFullyKnownTokenStatus(); status >= TokenStatus.UNCOLLECTED; --status) {
-        statuses.push(status as TokenStatus);
+        statuses.push(status);
     }
     return statuses;
 }
@@ -669,9 +669,7 @@ const BulkUpdateDialog: React.FC<{
                             value={bulkStatus}
                             label={t('settings.dictionaryBrowser.bulkStatus')}
                             onChange={(event) =>
-                                setBulkStatus(
-                                    event.target.value === '' ? '' : (Number(event.target.value) as TokenStatus)
-                                )
+                                setBulkStatus(event.target.value === '' ? '' : Number(event.target.value))
                             }
                         >
                             <MenuItem value="">

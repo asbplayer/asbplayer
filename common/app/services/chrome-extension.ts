@@ -528,7 +528,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<RequestCopyHistoryResponse>;
+        return this._createResponsePromise<RequestCopyHistoryResponse>(messageId);
     }
 
     deleteCopyHistory(id: string) {
@@ -542,7 +542,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<void>;
+        return this._createResponsePromise(messageId);
     }
 
     saveCopyHistory(copyHistoryItem: CopyHistoryItem) {
@@ -556,7 +556,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<void>;
+        return this._createResponsePromise(messageId);
     }
 
     clearCopyHistory() {
@@ -569,7 +569,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<void>;
+        return this._createResponsePromise(messageId);
     }
 
     loadSubtitles(tabId: number, src: string) {

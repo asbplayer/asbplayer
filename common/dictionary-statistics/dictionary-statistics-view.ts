@@ -604,7 +604,7 @@ function surfaceProjectedStatusesForGrouping(
 
             groupedStatuses.set(
                 targetKey,
-                Math.max(groupedStatuses.get(targetKey) ?? projectedStatus, projectedStatus) as TokenStatus
+                Math.max(groupedStatuses.get(targetKey) ?? projectedStatus, projectedStatus)
             );
         }
     }
@@ -615,7 +615,7 @@ function mergeProjectedStatuses(...projectedStatusMaps: Map<string, TokenStatus>
     const mergedStatuses = new Map<string, TokenStatus>();
     for (const projectedStatuses of projectedStatusMaps) {
         for (const [tokenKey, status] of projectedStatuses.entries()) {
-            mergedStatuses.set(tokenKey, Math.max(mergedStatuses.get(tokenKey) ?? status, status) as TokenStatus);
+            mergedStatuses.set(tokenKey, Math.max(mergedStatuses.get(tokenKey) ?? status, status));
         }
     }
     return mergedStatuses;
@@ -646,7 +646,7 @@ function evaluateSentenceSnapshot(
     for (const [tokenKey, token] of sentenceSnapshot.tokens.entries()) {
         if (token.ignored) continue;
 
-        const status = Math.max(projectedStatuses?.get(tokenKey) ?? token.status, token.status) as TokenStatus;
+        const status = Math.max(projectedStatuses?.get(tokenKey) ?? token.status, token.status);
         numConsideredTokens += 1;
         consideredTokenKeys.push(tokenKey);
         const count = statusCounts.get(status)!;
@@ -1022,7 +1022,7 @@ function projectionData(tokenEntries: [string, ProcessedTokenSnapshot][], option
                 (status) => projectedByAnki(status, options) || projectedByWaniKani(status, options.waniKaniLevel)
             )
         ) {
-            projectedStatuses.set(tokenKey, Math.max(tokenSnapshot.status, fullyKnownTokenStatus) as TokenStatus);
+            projectedStatuses.set(tokenKey, Math.max(tokenSnapshot.status, fullyKnownTokenStatus));
         }
 
         const statusesByDeck = new Map<string, (TokenStatusInfo & { cardId: number })[]>();
@@ -1070,7 +1070,7 @@ function projectionData(tokenEntries: [string, ProcessedTokenSnapshot][], option
 }
 
 function promoteTokenStatus(status: TokenStatus): TokenStatus {
-    return Math.min(status + 1, fullyKnownTokenStatus) as TokenStatus;
+    return Math.min(status + 1, fullyKnownTokenStatus);
 }
 
 function promoteProjectedStatuses(
@@ -1114,10 +1114,7 @@ function projectedRewatchSnapshot(
 
     for (const [tokenKey, token] of tokenEntries) {
         if (token.ignored) continue;
-        const projectedStatus = Math.max(
-            aggregateProjectedStatuses.get(tokenKey) ?? token.status,
-            token.status
-        ) as TokenStatus;
+        const projectedStatus = Math.max(aggregateProjectedStatuses.get(tokenKey) ?? token.status, token.status);
         const count = projectedStatusCounts.get(projectedStatus)!;
         count.numUnique += 1;
         count.numOccurrences += token.numOccurrences;
@@ -1197,7 +1194,7 @@ function rewatchSnapshotsFromRaw(
             if (currentStatus !== undefined && currentStatus < fullyKnownTokenStatus) {
                 sentenceFilterProjectedStatuses.set(
                     tokenKey,
-                    Math.max(promoteTokenStatus(currentStatus), TokenStatus.LEARNING) as TokenStatus
+                    Math.max(promoteTokenStatus(currentStatus), TokenStatus.LEARNING)
                 );
             }
         }

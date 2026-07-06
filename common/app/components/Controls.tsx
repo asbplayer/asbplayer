@@ -887,7 +887,7 @@ export default function Controls({
                 <Grid container style={{ position: 'absolute', top: 0 }}>
                     <Grid item>
                         {closeEnabled && (
-                            <Tooltip title={t('controls.unloadVideo')!}>
+                            <Tooltip title={t('controls.unloadVideo')}>
                                 <IconButton
                                     color="inherit"
                                     className={classes.topButton}
@@ -916,7 +916,7 @@ export default function Controls({
                     <Grid item style={{ flexGrow: 1 }} />
                     <Grid item>
                         {theaterModeToggleEnabled && (
-                            <Tooltip title={t('controls.toggleTheaterMode')!}>
+                            <Tooltip title={t('controls.toggleTheaterMode')}>
                                 <IconButton
                                     color="inherit"
                                     className={theaterModeEnabled ? classes.topButton : classes.inactiveTopButton}
@@ -929,7 +929,7 @@ export default function Controls({
                             </Tooltip>
                         )}
                         {fullscreenEnabled && (
-                            <Tooltip title={t('controls.toggleFullscreen')!}>
+                            <Tooltip title={t('controls.toggleFullscreen')}>
                                 <IconButton color="inherit" onClick={onFullscreenToggle}>
                                     {fullscreen ? (
                                         <FullscreenExitIcon className={classes.topButton} />
@@ -943,8 +943,8 @@ export default function Controls({
                             <Tooltip
                                 title={
                                     subtitlePlayerHidden
-                                        ? t('controls.showSubtitlePlayer')!
-                                        : t('controls.hideSubtitlePlayer')!
+                                        ? t('controls.showSubtitlePlayer')
+                                        : t('controls.hideSubtitlePlayer')
                                 }
                             >
                                 <IconButton
@@ -1040,7 +1040,7 @@ export default function Controls({
                                     </Grid>
                                 )}
                                 {offsetEnabled && !showVolumeBar && !isReallySmallScreen && (
-                                    <Tooltip title={t('controls.subtitleOffset')!}>
+                                    <Tooltip title={t('controls.subtitleOffset')}>
                                         <Grid item style={{ marginLeft: 10 }}>
                                             <SubtitleOffsetInput
                                                 inputRef={offsetInputRef}
@@ -1053,7 +1053,7 @@ export default function Controls({
                                 )}
                                 {playbackRateEnabled && !showVolumeBar && !isReallySmallScreen && (
                                     <Grid item style={{ marginLeft: 10 }}>
-                                        <Tooltip title={t('controls.playbackRate')!}>
+                                        <Tooltip title={t('controls.playbackRate')}>
                                             <PlaybackRateInput
                                                 inputRef={playbackRateInputRef}
                                                 playbackRate={playbackRate}
@@ -1065,7 +1065,7 @@ export default function Controls({
                                 <Grid item style={{ flexGrow: 1 }}></Grid>
                                 <ResponsiveButtonGroup>
                                     {subtitleAlignmentEnabled && subtitleAlignment !== undefined && (
-                                        <Tooltip title={t('controls.subtitleAlignment')!}>
+                                        <Tooltip title={t('controls.subtitleAlignment')}>
                                             <IconButton color="inherit" onClick={handleSubtitleAlignment}>
                                                 {subtitleAlignment === 'top' ? (
                                                     <VerticalAlignTopIcon />
@@ -1076,7 +1076,7 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {subtitlesToggle && (
-                                        <Tooltip title={t('controls.toggleSubtitles')!}>
+                                        <Tooltip title={t('controls.toggleSubtitles')}>
                                             <IconButton color="inherit" onClick={onSubtitlesToggle}>
                                                 <SubtitlesIcon
                                                     className={
@@ -1087,14 +1087,14 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {audioTracks && audioTracks.length > 1 && (
-                                        <Tooltip title={t('controls.selectAudioTrack')!}>
+                                        <Tooltip title={t('controls.selectAudioTrack')}>
                                             <IconButton color="inherit" onClick={handleAudioTrackSelectorOpened}>
                                                 <QueueMusicIcon className={classes.button} />
                                             </IconButton>
                                         </Tooltip>
                                     )}
                                     {tabs && tabs.length > 0 && (
-                                        <Tooltip title={t('controls.selectVideoElement')!}>
+                                        <Tooltip title={t('controls.selectVideoElement')}>
                                             <IconButton color="inherit" onClick={handleTabSelectorOpened}>
                                                 <VideocamIcon
                                                     className={selectedTab ? classes.button : classes.inactiveButton}
@@ -1103,7 +1103,7 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {playModeEnabled && (
-                                        <Tooltip title={t('controls.playbackMode')!}>
+                                        <Tooltip title={t('controls.playbackMode')}>
                                             <IconButton color="inherit" onClick={handlePlayModeSelectorOpened}>
                                                 <TuneIcon
                                                     className={
@@ -1114,7 +1114,7 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {popOutEnabled && (
-                                        <Tooltip title={popOut ? t('controls.popIn')! : t('controls.popOut')!}>
+                                        <Tooltip title={popOut ? t('controls.popIn') : t('controls.popOut')}>
                                             <IconButton color="inherit" onClick={onPopOutToggle}>
                                                 <OpenInNewIcon
                                                     className={classes.button}

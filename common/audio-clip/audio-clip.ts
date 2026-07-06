@@ -59,7 +59,7 @@ function recorderConfiguration() {
     };
     return Object.keys(AUDIO_TYPES)
         .filter(MediaRecorder.isTypeSupported)
-        .map((t) => [t as string, AUDIO_TYPES[t] as string])[0];
+        .map((t) => [t, AUDIO_TYPES[t]])[0];
 }
 
 class Base64AudioData implements AudioData {
@@ -756,7 +756,7 @@ export default class AudioClip {
             const end = card.audio.end ?? card.subtitle.end;
 
             return AudioClip.fromBase64(
-                card.subtitleFileName!,
+                card.subtitleFileName,
                 Math.max(0, start - (card.audio.paddingStart ?? 0)),
                 end + (card.audio.paddingEnd ?? 0),
                 card.audio.playbackRate ?? 1,
