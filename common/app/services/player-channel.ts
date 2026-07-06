@@ -538,7 +538,7 @@ export default class PlayerChannel {
         }
     }
 
-    _remove(callback: Function, callbacks: Function[]) {
+    _remove<T>(callback: T, callbacks: T[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

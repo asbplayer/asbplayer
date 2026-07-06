@@ -64,7 +64,7 @@ export interface DictionaryStorage {
     onRequestStatisticsSeek: (callback: (timestamp: number) => void) => () => void;
     requestStatisticsMineSentences: (mediaId: string, indexes: number[]) => Promise<void> | void;
     onRequestStatisticsMineSentences: (callback: (mediaId: string, indexes: number[]) => void) => () => void;
-    _removeCallback(callback: Function, callbacks: Function[]): void;
+    _removeCallback<T>(callback: T, callbacks: T[]): void;
 }
 
 export class DictionaryProvider {
