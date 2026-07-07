@@ -1,4 +1,3 @@
-import { Command, Message } from '@project/common';
 import TabRegistry from '../../services/tab-registry';
 import { setExtensionRequestedLocation } from '@/services/side-panel';
 import { isFirefoxBuild } from '@/services/build-flags';
@@ -19,7 +18,7 @@ export default class OpenStatisticsHandler {
         return 'open-statistics';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle() {
         if (isFirefoxBuild) {
             void setExtensionRequestedLocation('statistics');
 

@@ -246,7 +246,7 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
     },
 }));
 
-const VolumeSlider = withStyles((theme) => ({
+const VolumeSlider = withStyles(() => ({
     root: {
         color: 'white',
         verticalAlign: 'middle',
@@ -463,14 +463,6 @@ function TabSelector({ open, anchorEl, onClose, tabs, selectedTab, onTabSelected
     );
 }
 
-interface MediaUnloaderProps {
-    open: boolean;
-    anchorEl?: Element;
-    file?: string;
-    onUnload: () => void;
-    onClose: () => void;
-}
-
 interface ResponsiveButtonGroupProps {
     children: React.ReactNode[];
 }
@@ -542,7 +534,6 @@ interface ControlsProps {
     onPause: () => void;
     onPlay: () => void;
     onTabSelected?: (tab: VideoTabModel) => void;
-    onUnloadVideo?: () => void;
     onOffsetChange: (offset: number) => void;
     onPlaybackRateChange: (playbackRate: number) => void;
     onVolumeChange?: (volume: number) => void;
@@ -602,7 +593,6 @@ export default function Controls({
     onPause,
     onPlay,
     onTabSelected,
-    onUnloadVideo,
     onOffsetChange,
     onPlaybackRateChange,
     onVolumeChange,

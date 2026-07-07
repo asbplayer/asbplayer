@@ -9,7 +9,7 @@ export default class MobileOverlayForwarderHandler {
         return null;
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) {
+    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         if (sender.tab?.id === undefined) {
             return;
         }

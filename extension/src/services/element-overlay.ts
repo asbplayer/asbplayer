@@ -205,7 +205,7 @@ export class CachingElementOverlay implements ElementOverlay {
         };
 
         toggle();
-        this.nonFullscreenElementFullscreenChangeListener = (e) => toggle();
+        this.nonFullscreenElementFullscreenChangeListener = () => toggle();
         this.nonFullscreenStylesInterval = setInterval(() => this._applyContainerStyles(container), 1000);
         this.nonFullscreenElementFullscreenPollingInterval = setInterval(() => toggle(), 1000);
         document.addEventListener('fullscreenchange', this.nonFullscreenElementFullscreenChangeListener);
@@ -244,7 +244,7 @@ export class CachingElementOverlay implements ElementOverlay {
         };
 
         toggle();
-        this.fullscreenElementFullscreenChangeListener = (e) => toggle();
+        this.fullscreenElementFullscreenChangeListener = () => toggle();
         this.fullscreenStylesInterval = setInterval(() => this._applyContainerStyles(container), 1000);
         this.fullscreenElementFullscreenPollingInterval = setInterval(() => toggle(), 1000);
         document.addEventListener('fullscreenchange', this.fullscreenElementFullscreenChangeListener);

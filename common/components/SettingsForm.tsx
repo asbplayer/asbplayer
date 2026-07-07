@@ -6,7 +6,6 @@ import Box from '@mui/material/Box';
 import { type Theme } from '@mui/material';
 import { CardModel } from '@project/common';
 import { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
-import { isNumeric } from '@project/common/util';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -209,9 +208,6 @@ interface Props {
     onOpenChromeExtensionShortcuts: () => void;
     onUnlockLocalFonts: () => void;
 }
-
-// Filter out keys that look like '0', '1', ... as those are invalid
-const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
 
 export default function SettingsForm({
     anki,

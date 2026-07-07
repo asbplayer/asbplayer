@@ -1,5 +1,5 @@
 import { CopyHistoryItem, FileModel, SubtitleModel } from '@project/common';
-import Dexie, { liveQuery, Observable } from 'dexie';
+import Dexie, { liveQuery } from 'dexie';
 
 class CopyHistoryDatabase extends Dexie {
     copyHistoryItems!: Dexie.Table<CopyHistoryRecord, number>;

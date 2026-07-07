@@ -205,7 +205,7 @@ export class Base64MediaFragmentData implements MediaFragmentData {
         return this._error;
     }
 
-    atTimestamp(_: number) {
+    atTimestamp() {
         return this;
     }
 

@@ -681,7 +681,6 @@ export default class SubtitleController {
 
     currentSubtitle(): [IndexedSubtitleModel | null, SubtitleModel[] | null] {
         const now = 1000 * this.context.video.currentTime;
-        let subtitle = null;
         let index = null;
 
         for (let i = 0; i < this.subtitles.length; ++i) {
@@ -692,7 +691,6 @@ export default class SubtitleController {
                 now < s.end &&
                 (typeof s.track === 'undefined' || !this.disabledSubtitleTracks[s.track])
             ) {
-                subtitle = s;
                 index = i;
                 break;
             }

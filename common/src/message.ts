@@ -28,7 +28,6 @@ import {
     AnkiDialogSettings,
     AnkiExportMode,
     BrowserFeatures,
-    Tokenization,
     IndexedSubtitleModel,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';

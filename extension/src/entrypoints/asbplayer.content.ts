@@ -19,8 +19,6 @@ import type {
     GetSettingsMessage,
     RemoveProfileMessage,
     RequestCopyHistoryMessage,
-    RequestCopyHistoryResponse,
-    RequestSubtitlesResponse,
     SetActiveProfileMessage,
     SetGlobalStateMessage,
     SetSettingsMessage,
@@ -32,7 +30,6 @@ import type {
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
-import type { ContentScriptContext } from '#imports';
 
 const matches = ['*://app.asbplayer.dev/*'];
 
@@ -46,7 +43,7 @@ export default defineContentScript({
     allFrames: true,
     runAt: 'document_start',
 
-    main(ctx: ContentScriptContext) {
+    main() {
         const sendMessageToPlayer = (message: any) => {
             window.postMessage({
                 sender: 'asbplayer-extension-to-player',
@@ -323,7 +320,7 @@ export default defineContentScript({
             })().catch(console.error);
         });
 
-        browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        browser.runtime.onMessage.addListener((request) => {
             if (request.sender === 'asbplayer-extension-to-player') {
                 window.postMessage(request);
             }

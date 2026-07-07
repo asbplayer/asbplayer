@@ -262,20 +262,24 @@ const SubtitleScroller = React.forwardRef<HTMLDivElement, ScrollerProps & Contex
     }
 );
 
-const SubtitleTable = ({ context, children, ...rest }: TableProps & ContextProp<SubtitleRowContext>) => (
-    <Table {...rest}>
-        {children}
-        {/* Trailing spacer so the last row clears the controls. */}
-        <tbody aria-hidden="true">
-            <tr>
-                <td style={{ height: 75, border: 0, padding: 0 }} />
-            </tr>
-        </tbody>
-    </Table>
-);
+const SubtitleTable = ({ context, children, ...rest }: TableProps & ContextProp<SubtitleRowContext>) => {
+    void context;
+    return (
+        <Table {...rest}>
+            {children}
+            {/* Trailing spacer so the last row clears the controls. */}
+            <tbody aria-hidden="true">
+                <tr>
+                    <td style={{ height: 75, border: 0, padding: 0 }} />
+                </tr>
+            </tbody>
+        </Table>
+    );
+};
 
 const SubtitleTableBody = React.forwardRef<HTMLTableSectionElement, TableBodyProps & ContextProp<SubtitleRowContext>>(
     function SubtitleTableBody({ context, ...rest }, ref) {
+        void context;
         return <TableBody {...rest} ref={ref} />;
     }
 );
@@ -285,6 +289,7 @@ const SubtitleTableRow = ({
     context,
     ...props
 }: ItemProps<DisplaySubtitleModel> & ContextProp<SubtitleRowContext>) => {
+    void item;
     const classes = useSubtitleRowStyles();
     const index = props['data-item-index'];
     const selectionState = selectionStateForIndex(

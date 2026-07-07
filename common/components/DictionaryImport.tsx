@@ -217,7 +217,7 @@ const DictionaryImport: React.FC<Props> = ({
 
             try {
                 records = JSON.parse(text);
-            } catch (e) {
+            } catch {
                 // Was not JSON, assume arbitrary text
                 setImportClipboardText(text);
                 setImportClipboardPreviewHasChanges(true);

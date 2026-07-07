@@ -1,4 +1,4 @@
-import { Command, ExtensionToVideoCommand, Message, SettingsUpdatedMessage } from '@project/common';
+import { ExtensionToVideoCommand, SettingsUpdatedMessage } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 import TabRegistry from '../../services/tab-registry';
 
@@ -19,7 +19,7 @@ export default class ToggleSubtitlesHandler {
         return 'toggle-subtitles';
     }
 
-    async handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    async handle() {
         const displaySubtitles = await this.settings.getSingle('streamingDisplaySubtitles');
         await this.settings.set({ streamingDisplaySubtitles: !displaySubtitles });
 

@@ -183,7 +183,7 @@ class Base64AudioData implements AudioData {
         return this.cachedBlob;
     }
 
-    slice(start: number, end: number): AudioData {
+    slice(): AudioData {
         // Not supported
         return this;
     }
@@ -268,7 +268,7 @@ class FileAudioClipper {
             this._playingAudioElement = audio;
         } else {
             const audio = await this._audioElement(this._file.blobUrl, true);
-            audio.oncanplay = async (e) => {
+            audio.oncanplay = async () => {
                 void audio.play();
                 invokeCallbacks('play', this._callbacks);
                 audio.oncanplay = null;

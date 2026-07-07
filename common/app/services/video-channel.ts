@@ -456,7 +456,7 @@ export default class VideoChannel {
     // Return a promise to implement the analogous HTMLMediaElement method
     play(): Promise<void> {
         this.protocol.postMessage({ command: 'play' });
-        return new Promise((resolve, reject) => resolve());
+        return new Promise((resolve) => resolve());
     }
 
     pause() {

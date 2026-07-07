@@ -6,10 +6,6 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
-import TextField from '@mui/material/TextField';
-import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
-import Alert from '@mui/material/Alert';
 import { useTranslation } from 'react-i18next';
 
 interface Props {

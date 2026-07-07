@@ -24,7 +24,7 @@ export default class LoadSubtitlesHandler {
         return 'load-subtitles';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const loadSubtitlesCommand = command as AsbPlayerToTabCommand<LoadSubtitlesMessage>;
         const toggleVideoSelectCommand: ExtensionToVideoCommand<ToggleVideoSelectMessage> = {
             sender: 'asbplayer-extension-to-video',

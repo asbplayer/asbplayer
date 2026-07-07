@@ -1202,7 +1202,7 @@ const Player = React.memo(function Player({
                 .join('\n');
 
             if (text) {
-                navigator.clipboard.writeText(text).catch((e) => {
+                navigator.clipboard.writeText(text).catch(() => {
                     // ignore
                 });
             }
@@ -1455,7 +1455,6 @@ const Player = React.memo(function Player({
                             onSeek={(progress) => void handleSeek(progress)}
                             onAudioTrackSelected={(id) => void handleAudioTrackSelected(id)}
                             onTabSelected={onTabSelected}
-                            onUnloadVideo={() => videoFileUrl && onUnloadVideo(videoFileUrl)}
                             onOffsetChange={handleOffsetChange}
                             onPlayMode={handlePlayMode}
                             disableKeyEvents={disableKeyEvents}

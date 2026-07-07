@@ -36,7 +36,7 @@ function regexIsValid(regex: string) {
     try {
         new RegExp(regex.trim());
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 }
@@ -289,7 +289,7 @@ const MiscSettingTab: React.FC<Props> = ({
                             control={
                                 <Switch
                                     checked={thumbnailPreview}
-                                    onChange={(event) => void onSettingChanged('thumbnailPreview', !thumbnailPreview)}
+                                    onChange={() => void onSettingChanged('thumbnailPreview', !thumbnailPreview)}
                                 />
                             }
                             label={t('settings.thumbnailPreview')}
@@ -299,7 +299,7 @@ const MiscSettingTab: React.FC<Props> = ({
                             control={
                                 <Switch
                                     checked={subtitleAboveThumbnail}
-                                    onChange={(event) =>
+                                    onChange={() =>
                                         void onSettingChanged('subtitleAboveThumbnail', !subtitleAboveThumbnail)
                                     }
                                     disabled={!thumbnailPreview}

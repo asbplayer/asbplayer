@@ -18,7 +18,7 @@ interface Props {
     logoUrl: string;
 }
 
-const useStyles = makeStyles<Theme, StylesProps>((theme) => ({
+const useStyles = makeStyles<Theme, StylesProps>(() => ({
     root: ({ dragging, appBarHidden, appBarHeight }) => ({
         position: 'absolute',
         height: appBarHidden ? '100%' : `calc(100% - ${appBarHeight}px)`,

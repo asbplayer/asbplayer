@@ -86,9 +86,6 @@ const boundaryIntervalSubtitleCountRadius = 1;
 const boundaryIntervalSubtitleTimeRadius = 5000;
 
 const boundaryIntervalFromCard = (subtitle: SubtitleModel, theSurroundingSubtitles: SubtitleModel[]) => {
-    let index = theSurroundingSubtitles.findIndex((s) => s.start === subtitle.start);
-    index = index === -1 ? theSurroundingSubtitles.length / 2 : index;
-
     const { surroundingSubtitles: subtitlesToDisplay } = surroundingSubtitlesAroundInterval(
         theSurroundingSubtitles,
         subtitle.start,

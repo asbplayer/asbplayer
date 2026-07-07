@@ -183,7 +183,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                 subtitleFiles,
             },
         };
-        void tabRegistry.publishCommandToVideoElementTabs((tab): ExtensionToVideoCommand<Message> | undefined => {
+        void tabRegistry.publishCommandToVideoElementTabs((): ExtensionToVideoCommand<Message> | undefined => {
             return toggleVideoSelectCommand;
         });
     };
@@ -288,7 +288,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                     requestSubtitlesCommand
                 );
                 subtitles = response?.subtitles;
-            } catch (e) {
+            } catch {
                 // Targeting a non-active/discarded tab can fail
                 subtitles = undefined;
             }

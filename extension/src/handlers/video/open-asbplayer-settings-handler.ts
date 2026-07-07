@@ -9,7 +9,7 @@ export default class OpenAsbplayerSettingsHandler {
         return 'open-asbplayer-settings';
     }
 
-    async handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    async handle(command: Command<Message>) {
         const { tutorial, scrollToId } = command.message as OpenAsbplayerSettingsMessage;
         const hash = scrollToId ? `#${scrollToId}` : '';
 

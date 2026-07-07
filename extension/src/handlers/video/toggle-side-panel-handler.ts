@@ -27,7 +27,7 @@ export default class ToggleSidePanelHandler {
      * If a location is not specified, toggles the side panel open or closed.
      * Otherwise, sets the app-requested location state, which will update the side panel's location.
      */
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const toggleSidePanelMessage = command.message as ToggleSidePanelMessage;
 
         // Currently we do not support the extension specifying a location inside the side panel.

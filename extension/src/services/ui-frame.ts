@@ -21,7 +21,7 @@ export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
 };
 
 export const uiFrameForSrc = (src: string) => {
-    return new UiFrame(async (frame: HTMLIFrameElement, _: string) => {
+    return new UiFrame(async (frame: HTMLIFrameElement) => {
         frame.src = src;
     });
 };

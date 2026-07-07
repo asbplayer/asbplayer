@@ -1,5 +1,4 @@
 import { CachingElementOverlay, OffsetAnchor } from '@/services/element-overlay';
-import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { frameColorScheme } from '@/services/frame-color-scheme';
 import UiFrame, { uiFrameForSrc } from '@/services/ui-frame';
 import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '@/ui/components/StatisticsOverlayUi';
@@ -13,11 +12,8 @@ import {
     ResizeStatisticsOverlayMessage,
     StatisticsOverlayToTabCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
 
 type State = 'open' | 'fullscreen' | 'closed';
-
-const settings = new SettingsProvider(new ExtensionSettingsStorage());
 
 export class StatisticsOverlayController {
     private _messageListener?: (
@@ -58,11 +54,7 @@ export class StatisticsOverlayController {
 
     bind() {
         this._setHeight('0px');
-        this._messageListener = (
-            message: any,
-            sender: Browser.runtime.MessageSender,
-            sendResponse: (response?: any) => void
-        ) => {
+        this._messageListener = (message: any) => {
             if (message.sender === 'asbplayer-statistics-overlay-to-tab') {
                 this._handleMessageFromOverlay(message);
             } else {

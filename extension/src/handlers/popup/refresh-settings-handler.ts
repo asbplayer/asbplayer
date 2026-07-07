@@ -1,10 +1,4 @@
-import {
-    Command,
-    ExtensionToAsbPlayerCommand,
-    ExtensionToVideoCommand,
-    Message,
-    SettingsUpdatedMessage,
-} from '@project/common';
+import { ExtensionToAsbPlayerCommand, ExtensionToVideoCommand, SettingsUpdatedMessage } from '@project/common';
 import TabRegistry from '../../services/tab-registry';
 import { SettingsProvider } from '@project/common/settings';
 import { primeLocalization } from '../../services/localization-fetcher';
@@ -32,7 +26,7 @@ export default class RefreshSettingsHandler {
         return 'settings-updated';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle() {
         void this._settingsProvider
             .get(['language', 'webSocketClientEnabled'])
             .then(({ language, webSocketClientEnabled }) => {

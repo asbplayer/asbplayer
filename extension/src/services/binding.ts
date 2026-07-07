@@ -497,7 +497,7 @@ export default class Binding {
             this._bind();
             bound = true;
         } else {
-            this.canPlayListener = (event) => {
+            this.canPlayListener = () => {
                 if (!bound) {
                     this._bind();
                     bound = true;
@@ -565,7 +565,7 @@ export default class Binding {
     }
 
     _subscribe() {
-        this.playListener = (event) => {
+        this.playListener = () => {
             const command: VideoToExtensionCommand<PlayFromVideoMessage> = {
                 sender: 'asbplayer-video',
                 message: {
@@ -584,7 +584,7 @@ export default class Binding {
             }
         };
 
-        this.pauseListener = (event) => {
+        this.pauseListener = () => {
             const command: VideoToExtensionCommand<PauseFromVideoMessage> = {
                 sender: 'asbplayer-video',
                 message: {
@@ -601,7 +601,7 @@ export default class Binding {
             }
         };
 
-        this.seekedListener = (event) => {
+        this.seekedListener = () => {
             this._resetPendingAutoRepeatTargetTimestamp();
 
             const currentTimeCommand: VideoToExtensionCommand<CurrentTimeFromVideoMessage> = {
@@ -628,7 +628,7 @@ export default class Binding {
             this.subtitleController.autoPauseContext.clear();
         };
 
-        this.playbackRateListener = (event) => {
+        this.playbackRateListener = () => {
             const command: VideoToExtensionCommand<PlaybackRateFromVideoMessage> = {
                 sender: 'asbplayer-video',
                 message: {
@@ -1514,7 +1514,7 @@ export default class Binding {
 
         try {
             await this.video.play();
-        } catch (ex) {
+        } catch {
             // Ignore exception
 
             if (this.video.readyState !== 4) {
@@ -1545,7 +1545,7 @@ export default class Binding {
     }
 
     _playNetflix() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const listener = () => {
                 this.video.removeEventListener('play', listener);
                 this.video.removeEventListener('playing', listener);

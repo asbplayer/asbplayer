@@ -241,7 +241,7 @@ export default class AnkiUiController {
         const client = await this.frame.client();
 
         if (isNewClient) {
-            this.focusInListener = (event: FocusEvent) => {
+            this.focusInListener = () => {
                 if (this.frame === undefined || this.frame.hidden) {
                     return;
                 }

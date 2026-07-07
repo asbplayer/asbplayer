@@ -529,7 +529,7 @@ export default function VideoPlayer({
                         notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
                 }
 
-                videoElement.oncanplay = (event) => {
+                videoElement.oncanplay = () => {
                     playerChannel.readyState(4);
 
                     if (playing()) {
@@ -537,8 +537,8 @@ export default function VideoPlayer({
                     }
                 };
 
-                videoElement.ontimeupdate = (event) => clock.setTime(element.currentTime * 1000);
-                videoElement.onerror = (event) => onErrorRef.current?.(errorMessage(element));
+                videoElement.ontimeupdate = () => clock.setTime(element.currentTime * 1000);
+                videoElement.onerror = () => onErrorRef.current?.(errorMessage(element));
                 videoElement.onplay = updatePlayerState;
                 videoElement.onpause = updatePlayerState;
                 videoElement.onratechange = updatePlayerState;
@@ -722,7 +722,7 @@ export default function VideoPlayer({
             setAlertSeverity(severity as AlertColor);
         });
 
-        window.onbeforeunload = (e) => {
+        window.onbeforeunload = () => {
             if (!poppingInRef.current) {
                 playerChannel.close();
             }
@@ -841,7 +841,7 @@ export default function VideoPlayer({
         mousePositionRef.current = { x: e.clientX - bounds.left, y: e.clientY - bounds.top };
     }, []);
 
-    const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const handleMouseLeave = useCallback(() => {
         mousePositionRef.current = undefined;
     }, []);
 
@@ -904,7 +904,7 @@ export default function VideoPlayer({
             if (!arrayEquals(showSubtitles, showSubtitlesRef.current, (s1, s2) => s1.index === s2.index)) {
                 setShowSubtitles(showSubtitles);
                 if (showSubtitles.length > 0 && miscSettings.autoCopyCurrentSubtitle && document.hasFocus()) {
-                    navigator.clipboard.writeText(showSubtitles.map((s) => s.text).join('\n')).catch((e) => {
+                    navigator.clipboard.writeText(showSubtitles.map((s) => s.text).join('\n')).catch(() => {
                         // ignore
                     });
                 }
@@ -1490,7 +1490,7 @@ export default function VideoPlayer({
 
     useEffect(() => {
         return keyBinder.bindCopy(
-            (event, subtitle) => {
+            (event) => {
                 event.preventDefault();
                 inferAndExecuteMiningBehavior(PostMineAction.none);
             },

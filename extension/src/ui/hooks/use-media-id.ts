@@ -40,7 +40,7 @@ export const useMediaId = (params?: Params) => {
                     setMediaIdWithSubtitles(anySyncedVideoElement?.src || syncedAsbplayerId);
                     return;
                 }
-            } catch (e) {
+            } catch {
                 // Swallow errors - best effort
             }
         };
@@ -103,7 +103,7 @@ const findLastMediaId = async () => {
             return lastSyncedAsbplayer.id;
         }
         return lastSyncedVideoElement.src;
-    } catch (e) {
+    } catch {
         // Swallow errors - best effort
     }
 };

@@ -20,8 +20,6 @@ import {
     AnkiDialogSettings,
     AnkiUiBridgeExportedMessage,
     AnkiDialogDismissedQuickSelectFtueMessage,
-    CardUpdatedDialogMessage,
-    CardExportedDialogMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
 import type { Profile } from '@project/common/settings';

@@ -86,7 +86,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingSubtitleListPreference !== SubtitleListPreference.noSubtitleList}
-                            onChange={(e) =>
+                            onChange={() =>
                                 void onSettingChanged(
                                     'streamingSubtitleListPreference',
                                     streamingSubtitleListPreference === SubtitleListPreference.noSubtitleList

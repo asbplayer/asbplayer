@@ -12,7 +12,7 @@ const parseRegexQuery = (query: string): RegExp | undefined => {
     if (!regexMatch) return;
     try {
         return new RegExp(regexMatch[1], regexMatch[2].replace(/[gy]/g, ''));
-    } catch (e) {
+    } catch {
         return;
     }
 };

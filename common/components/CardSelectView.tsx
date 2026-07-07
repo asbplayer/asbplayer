@@ -68,7 +68,7 @@ const useSearchAnki = ({ anki, querier }: { anki: Anki; querier: (anki: Anki) =>
             }
 
             setNotes(noteInfos);
-        } catch (e) {
+        } catch {
             setError(error);
         } finally {
             setLoading(false);

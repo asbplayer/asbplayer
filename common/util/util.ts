@@ -691,11 +691,11 @@ type Block = {
 /**
  * Iterates over a string in "blocks" where a "block" represents a collection of substrings of the passed-in string.
  * @param str The string to iterate over.
- * @param block Function respresenting the substrings to iterate over.
+ * @param block Function representing the substrings to iterate over.
  * @param callback Called when iterating over each block, and also gaps between blocks. When iterating over a gap,
  * the optional block argument is undefined.
  */
-export function iterateOverStringInBlocks<T, B extends Block>(
+export function iterateOverStringInBlocks<B extends Block>(
     str: string,
     block: (str: string, blockIndex: number) => B | undefined,
     callback: (left: number, right: number, block?: B) => void

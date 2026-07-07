@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { DictionaryProvider } from '../dictionary-db';
 import {
     DictionarySimplifiedStatisticsTrackSnapshot,

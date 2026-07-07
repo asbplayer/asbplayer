@@ -3,7 +3,7 @@ import { renderPopupUi } from '@/ui/popup';
 import { SettingsProvider } from '@project/common/settings';
 
 const fetchShortcuts = () => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         if (browser.commands === undefined) {
             resolve({});
             return;

@@ -11,7 +11,7 @@ export default class AsbplayerToVideoCommandForwardingHandler {
         return null;
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const asbplayerToVideoCommand = command as AsbPlayerToVideoCommandV2<Message>;
 
         if (asbplayerToVideoCommand.tabId) {

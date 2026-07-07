@@ -99,7 +99,7 @@ export default class SubtitleReader {
 
         try {
             regex = regexFilter.trim() === '' ? undefined : new RegExp(regexFilter, 'gv');
-        } catch (e) {
+        } catch {
             regex = undefined;
         }
 
@@ -483,7 +483,7 @@ export default class SubtitleReader {
     }
 
     private _blobToDataUrl(blob: Blob) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = () => {

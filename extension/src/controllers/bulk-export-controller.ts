@@ -7,14 +7,6 @@ export interface BulkExportStartedPayload extends Message {
     total: number;
 }
 
-interface BulkExportCompletedPayload extends Message {
-    command: 'bulk-export-completed';
-}
-
-interface BulkExportCancelledPayload extends Message {
-    command: 'bulk-export-cancelled';
-}
-
 export default class BulkExportController {
     private readonly _context: Binding;
     private _exporting = false;

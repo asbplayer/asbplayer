@@ -53,7 +53,7 @@ interface ShowOptions {
 }
 
 const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const listener = (event: Event) => {
             const data = (event as CustomEvent).detail as VideoData;
             resolve(data);

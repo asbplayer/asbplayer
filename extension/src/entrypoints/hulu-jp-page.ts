@@ -56,7 +56,7 @@ export default defineUnlistedScript(() => {
                 }
 
                 lastVideoId = value?.ref_id;
-            } catch (e) {
+            } catch {
                 // ignore
             }
         };

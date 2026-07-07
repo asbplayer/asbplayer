@@ -15,7 +15,7 @@ export default class AckMessageHandler {
         return 'ack-message';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) {
+    handle(command: Command<Message>) {
         const message = command.message as AckMessage;
         const ackCommand: ExtensionToAsbPlayerCommand<AckMessage> = {
             sender: 'asbplayer-extension-to-player',

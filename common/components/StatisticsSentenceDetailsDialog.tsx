@@ -87,12 +87,14 @@ interface SentenceTableContext {
     onMineSentence: (sentence: DictionaryStatisticsSentence) => void;
 }
 
-const SentenceTable = ({ style, context, ...rest }: TableProps & ContextProp<SentenceTableContext>) => (
-    <Table {...rest} style={style} />
-);
+const SentenceTable = ({ style, context, ...rest }: TableProps & ContextProp<SentenceTableContext>) => {
+    void context;
+    return <Table {...rest} style={style} />;
+};
 
 const SentenceTableBody = React.forwardRef<HTMLTableSectionElement, TableBodyProps & ContextProp<SentenceTableContext>>(
     function SentenceTableBody({ context, ...rest }, ref) {
+        void context;
         return <TableBody {...rest} ref={ref} />;
     }
 );

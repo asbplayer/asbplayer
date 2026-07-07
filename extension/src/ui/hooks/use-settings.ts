@@ -20,7 +20,7 @@ export const useSettings = () => {
     }, [refreshSettings]);
 
     useEffect(() => {
-        browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        browser.runtime.onMessage.addListener((request) => {
             if (request.message?.command === 'settings-updated') {
                 void settingsProvider.getAll().then(setSettings);
             }

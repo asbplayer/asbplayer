@@ -477,7 +477,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         let manualCaptureStream: MediaStream | undefined;
         try {
             manualCaptureStream = canvas.captureStream(0);
-        } catch (_) {
+        } catch {
             manualCaptureStream = undefined;
         }
 

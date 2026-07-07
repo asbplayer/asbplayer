@@ -17,7 +17,7 @@ function parse(fileStream: ReadableStream, canvas: OffscreenCanvas) {
                     error,
                 });
             },
-            async write(displaySet, controller) {
+            async write(displaySet) {
                 if (displaySet.objectDefinitionSegments.length > 0) {
                     if (currentImageDisplaySet === undefined) {
                         currentImageDisplaySet = displaySet;

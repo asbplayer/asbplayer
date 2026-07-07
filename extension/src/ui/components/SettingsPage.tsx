@@ -1,5 +1,5 @@
 import { CardModel, HttpFetcher } from '@project/common';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';

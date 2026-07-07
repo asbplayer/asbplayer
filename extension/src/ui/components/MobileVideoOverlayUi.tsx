@@ -24,7 +24,6 @@ import { useI18n } from '../hooks/use-i18n';
 import { isMobile } from '@project/common/device-detection/mobile';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
 import { createTheme } from '@project/common/theme';
-import type { PaletteMode } from '@mui/material/styles';
 import { StyledEngineProvider } from '@mui/material/styles';
 
 const settings = new SettingsProvider(new ExtensionSettingsStorage());

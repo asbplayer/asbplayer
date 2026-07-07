@@ -166,7 +166,7 @@ window.onload = async () => {
     };
     browser.runtime.onMessage.addListener(listener);
 
-    window.addEventListener('beforeunload', (event) => {
+    window.addEventListener('beforeunload', () => {
         browser.runtime.onMessage.removeListener(listener);
     });
 };

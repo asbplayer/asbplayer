@@ -86,7 +86,7 @@ export default defineUnlistedScript(() => {
                     ) {
                         urls.set(node.trackId, node.urls[0].url);
                     }
-                } catch (e) {
+                } catch {
                     // Ignore properties that throw on access
                 }
 
@@ -102,7 +102,7 @@ export default defineUnlistedScript(() => {
 
                         try {
                             value = node[key];
-                        } catch (e) {
+                        } catch {
                             continue;
                         }
 

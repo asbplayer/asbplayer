@@ -28,7 +28,7 @@ export default class SettingsUpdatedHandler {
         return 'settings-updated';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const settingsUpdatedCommand = command as AsbPlayerCommand<SettingsUpdatedMessage>;
         void this._settingsProvider
             .get(['language', 'webSocketClientEnabled'])

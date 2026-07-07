@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supportedLanguages as defaultSupportedLanguages } from '@project/common/settings';
 import { fetchSupportedLanguages } from '../../services/localization-fetcher';
 

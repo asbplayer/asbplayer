@@ -30,7 +30,7 @@ import {
     TokenStatus,
     shouldUseAnnotation,
 } from '@project/common/settings';
-import { DictionaryProvider, LemmaResults, TokenResults } from '@project/common/dictionary-db';
+import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
 import {
     DictionaryStatistics,
     DictionaryStatisticsAnkiDueCardsSnapshot,

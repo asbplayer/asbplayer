@@ -17,7 +17,6 @@ import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
 import { isFirefoxBuild } from '@/services/build-flags';
 
-import type { ContentScriptContext } from '#imports';
 import './video.css';
 
 const excludeGlobs = ['*://app.asbplayer.dev/*'];
@@ -33,7 +32,7 @@ export default defineContentScript({
     allFrames: true,
     runAt: 'document_idle',
 
-    main(ctx: ContentScriptContext) {
+    main() {
         const extensionSettingsStorage = new ExtensionSettingsStorage();
         const settingsProvider = new SettingsProvider(extensionSettingsStorage);
 
@@ -268,7 +267,7 @@ export default defineContentScript({
 
             browser.runtime.onMessage.addListener(messageListener);
 
-            window.addEventListener('beforeunload', (event) => {
+            window.addEventListener('beforeunload', () => {
                 for (const b of bindings) {
                     b.unbind();
                 }
@@ -293,7 +292,7 @@ export default defineContentScript({
         if (document.readyState === 'complete') {
             bind().catch(console.error);
         } else {
-            document.addEventListener('readystatechange', (event) => {
+            document.addEventListener('readystatechange', () => {
                 if (document.readyState === 'complete') {
                     bind().catch(console.error);
                 }

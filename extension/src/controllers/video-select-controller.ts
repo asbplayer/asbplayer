@@ -48,11 +48,7 @@ export default class VideoSelectController {
     }
 
     bind() {
-        this.messageListener = (
-            request: any,
-            sender: Browser.runtime.MessageSender,
-            sendResponse: (response?: any) => void
-        ) => {
+        this.messageListener = (request: any) => {
             if (request.sender !== 'asbplayer-extension-to-video') {
                 return;
             }

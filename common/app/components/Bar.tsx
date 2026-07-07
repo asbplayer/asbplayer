@@ -103,7 +103,7 @@ interface CopyHistoryTooltipProps extends TooltipProps {
     show: boolean;
 }
 
-const useCopyHistoryTooltipStyles = makeStyles<Theme, CopyHistoryTooltipStylesProps, string>((theme) => ({
+const useCopyHistoryTooltipStyles = makeStyles<Theme, CopyHistoryTooltipStylesProps, string>(() => ({
     tooltip: ({ show }) => ({
         display: show ? 'block' : 'none',
     }),

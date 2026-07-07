@@ -55,8 +55,8 @@ export default class AudioRecorder {
                 recorder.ondataavailable = (e) => {
                     chunks.push(e.data);
                 };
-                this.blobPromise = new Promise((resolve, reject) => {
-                    recorder.onstop = (e) => {
+                this.blobPromise = new Promise((resolve) => {
+                    recorder.onstop = () => {
                         resolve(new Blob(chunks));
                     };
                 });

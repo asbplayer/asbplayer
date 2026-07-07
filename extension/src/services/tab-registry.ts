@@ -56,7 +56,7 @@ export default class TabRegistry {
 
         // Update video element state on tab changes
         // Triggers events for when synced video elements appear/disappear
-        browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
+        browser.tabs.onRemoved.addListener((tabId) => {
             void this._removeVideoElementsInTab(tabId);
             void this._removeAsbplayersInTab(tabId);
         });
@@ -237,7 +237,7 @@ export default class TabRegistry {
             } else {
                 await browser.runtime.sendMessage(command);
             }
-        } catch (e) {
+        } catch {
             // Swallow
         }
     }
@@ -508,7 +508,7 @@ export default class TabRegistry {
             } else if (asbplayer.sidePanel) {
                 await browser.runtime.sendMessage(command);
             }
-        } catch (e) {
+        } catch {
             // Swallow as this usually only indicates that the tab is not an asbplayer tab
         }
     }
