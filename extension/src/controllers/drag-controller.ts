@@ -19,7 +19,7 @@ export default class DragController {
     private bodyDragEnterListener?: (event: DragEvent) => void;
     private bodyDragLeaveListener?: (event: DragEvent) => void;
 
-    private dragElementStylesInterval?: NodeJS.Timeout;
+    private dragElementStylesInterval?: ReturnType<typeof setInterval>;
 
     constructor(video: HTMLMediaElement) {
         this.video = video;

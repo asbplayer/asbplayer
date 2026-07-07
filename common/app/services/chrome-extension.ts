@@ -119,7 +119,7 @@ export default class ChromeExtension {
     private readonly _responseResolves: { [key: string]: (value: any) => void } = {};
     private onMessageCallbacks: Array<(message: ExtensionMessage) => void>;
     private onTabsCallbacks: Array<(tabs: VideoTabModel[]) => void>;
-    private heartbeatInterval?: NodeJS.Timeout;
+    private heartbeatInterval?: ReturnType<typeof setInterval>;
 
     constructor(
         version?: string,

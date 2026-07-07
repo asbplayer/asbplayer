@@ -85,7 +85,7 @@ interface GetSubtitlesResponseBody {
 
 export class WebSocketClient {
     private _socket?: WebSocket;
-    private _pingInterval?: NodeJS.Timeout;
+    private _pingInterval?: ReturnType<typeof setInterval>;
     private _lastPingTimestampMs?: number;
     private _pongReceived: boolean = false;
     private _pingPromises: { resolve: (value: unknown) => void; reject: (error: any) => void }[] = [];

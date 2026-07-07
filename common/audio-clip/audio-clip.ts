@@ -72,7 +72,7 @@ class Base64AudioData implements AudioData {
     private readonly _error?: AudioErrorCode;
     private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [] };
     private playingAudio?: HTMLAudioElement;
-    private stopAudioTimeout?: NodeJS.Timeout;
+    private stopAudioTimeout?: ReturnType<typeof setTimeout>;
     private cachedBlob?: Blob;
 
     constructor(
@@ -209,9 +209,9 @@ class FileAudioClipper {
     private _clippingAudioElement?: HTMLAudioElement;
     private _clippingAudibly?: boolean;
     private _clippingAudioReject?: (error: Error) => void;
-    private _stopClippingTimeout?: NodeJS.Timeout;
+    private _stopClippingTimeout?: ReturnType<typeof setTimeout>;
     private _playingAudioElement?: HTMLAudioElement;
-    private _stopAudioTimeout?: NodeJS.Timeout;
+    private _stopAudioTimeout?: ReturnType<typeof setTimeout>;
     private _blob?: Blob;
     private _blobPromise?: Promise<Blob>;
     private _callbacks: AudioClipEventCallbacks;

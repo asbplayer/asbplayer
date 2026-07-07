@@ -29,7 +29,6 @@ export class StatisticsOverlayController {
     private _restoreWidth?: string;
     private _width?: string;
     private _state: State = 'closed';
-    private _restoreTimeout?: NodeJS.Timeout;
     private _lastClosedMediaId?: string;
     private _xOffset = 0;
     private _yOffset = 0;
@@ -42,9 +41,6 @@ export class StatisticsOverlayController {
         if (this._windowMessageListener !== undefined) {
             window.removeEventListener('message', this._windowMessageListener);
             this._windowMessageListener = undefined;
-        }
-        if (this._restoreTimeout !== undefined) {
-            clearTimeout(this._restoreTimeout);
         }
         this._overlay?.dispose();
         this._overlay = undefined;

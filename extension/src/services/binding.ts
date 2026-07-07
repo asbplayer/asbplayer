@@ -202,7 +202,7 @@ export default class Binding {
         sender: Browser.runtime.MessageSender,
         sendResponse: (response?: any) => void
     ) => void;
-    private heartbeatInterval?: NodeJS.Timeout;
+    private heartbeatInterval?: ReturnType<typeof setInterval>;
     private _registeredVideoSrc: string;
 
     // In the case of firefox, we need to avoid capturing the audio stream more than once,

@@ -8,7 +8,7 @@ export default class AudioRecorder {
     private recorder: MediaRecorder | null;
     private stream: MediaStream | null;
     private blobPromise: Promise<Blob> | null;
-    private timeoutId?: NodeJS.Timeout;
+    private timeoutId?: ReturnType<typeof setTimeout>;
     private timeoutResolve?: (base64: string) => void;
 
     constructor() {

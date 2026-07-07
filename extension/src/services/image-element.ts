@@ -4,7 +4,7 @@ const dragImageHeight = 300;
 export default class ImageElement {
     private readonly video: HTMLMediaElement;
     private imageElement?: HTMLDivElement;
-    private imageElementStylesInterval?: NodeJS.Timeout;
+    private imageElementStylesInterval?: ReturnType<typeof setInterval>;
 
     constructor(video: HTMLMediaElement) {
         this.video = video;

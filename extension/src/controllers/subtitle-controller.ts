@@ -89,12 +89,12 @@ export default class SubtitleController {
     private lastLoadedMessageTimestamp: number;
     private lastOffsetChangeTimestamp: number;
     private showingOffset?: number;
-    private subtitlesInterval?: NodeJS.Timeout;
+    private subtitlesInterval?: ReturnType<typeof setInterval>;
     private showingLoadedMessage: boolean;
     private subtitleSettings?: SubtitleSettings;
     private subtitleStyles?: string[];
     private subtitleClasses?: string[];
-    private notificationElementOverlayHideTimeout?: NodeJS.Timeout;
+    private notificationElementOverlayHideTimeout?: ReturnType<typeof setTimeout>;
     subtitleAnnotations: SubtitleAnnotations;
     /**
      * Seekable subittle collection is a subtitle collection that contains gap intervals for only "seekable" tracks.

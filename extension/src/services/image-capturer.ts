@@ -14,7 +14,7 @@ export default class ImageCapturer {
     private imageBase64Promise: Promise<string> | undefined;
     private imageBase64Resolve: ((value: string) => void) | undefined;
     private imageBase64Reject: ((error: any) => void) | undefined;
-    private lastCaptureTimeoutId?: NodeJS.Timeout;
+    private lastCaptureTimeoutId?: ReturnType<typeof setTimeout>;
 
     private _capturing = false;
     private _lastImageBase64?: string;

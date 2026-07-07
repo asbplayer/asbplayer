@@ -33,7 +33,7 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
             setModel(initialModel);
         };
 
-        let timeout: NodeJS.Timeout | undefined;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
         let cancelled = false;
 
         const init = async () => {
