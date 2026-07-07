@@ -880,40 +880,44 @@ const Player = React.memo(function Player({
     );
     useEffect(
         () =>
-            channel?.onCurrentTime(async (currentTime, forwardToMedia) => {
-                const playing = clock.running;
+            channel?.onCurrentTime((currentTime, forwardToMedia) => {
+                void (async () => {
+                    const playing = clock.running;
 
-                if (playing) {
-                    clock.stop();
-                }
+                    if (playing) {
+                        clock.stop();
+                    }
 
-                // When forwardToMedia is false, the message came from the video element's seeked event,
-                // which is typically triggered by user actions (progress bar, keyboard shortcuts)
-                const isUserInitiated = !forwardToMedia;
+                    // When forwardToMedia is false, the message came from the video element's seeked event,
+                    // which is typically triggered by user actions (progress bar, keyboard shortcuts)
+                    const isUserInitiated = !forwardToMedia;
 
-                await seek(currentTime * 1000, clock, forwardToMedia, isUserInitiated);
+                    await seek(currentTime * 1000, clock, forwardToMedia, isUserInitiated);
 
-                if (playing) {
-                    clock.start();
-                }
+                    if (playing) {
+                        clock.start();
+                    }
+                })();
             }),
         [channel, clock, seek]
     );
     useEffect(
         () =>
-            channel?.onAudioTrackSelected(async (id) => {
-                const playing = clock.running;
+            channel?.onAudioTrackSelected((id) => {
+                void (async () => {
+                    const playing = clock.running;
 
-                if (playing) {
-                    clock.stop();
-                }
+                    if (playing) {
+                        clock.stop();
+                    }
 
-                await mediaAdapter.onReady();
-                if (playing) {
-                    clock.start();
-                }
+                    await mediaAdapter.onReady();
+                    if (playing) {
+                        clock.start();
+                    }
 
-                setSelectedAudioTrack(id);
+                    setSelectedAudioTrack(id);
+                })();
             }),
         [channel, clock, mediaAdapter]
     );
@@ -972,37 +976,39 @@ const Player = React.memo(function Player({
         let seeking = false;
         let expectedSeekTime = 1000;
 
-        const interval = setInterval(async () => {
-            const timestamp = clock.time(calculateLength());
-            const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
+        const interval = setInterval(() => {
+            void (async () => {
+                const timestamp = clock.time(calculateLength());
+                const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
 
-            if (slice.nextToShow && slice.nextToShow.length > 0) {
-                const nextSubtitle = slice.nextToShow[0];
+                if (slice.nextToShow && slice.nextToShow.length > 0) {
+                    const nextSubtitle = slice.nextToShow[0];
 
-                if (nextSubtitle.start - timestamp < expectedSeekTime + 500) {
-                    return;
-                }
+                    if (nextSubtitle.start - timestamp < expectedSeekTime + 500) {
+                        return;
+                    }
 
-                const playing = clock.running;
+                    const playing = clock.running;
 
-                if (pendingAutoRepeatTargetTimestamp.current > 0) {
-                    return;
-                }
+                    if (pendingAutoRepeatTargetTimestamp.current > 0) {
+                        return;
+                    }
 
-                if (playing) {
-                    clock.stop();
+                    if (playing) {
+                        clock.stop();
+                    }
+                    if (!seeking) {
+                        seeking = true;
+                        const t0 = Date.now();
+                        await seek(nextSubtitle.start, clock, true);
+                        expectedSeekTime = Date.now() - t0;
+                        seeking = false;
+                    }
+                    if (playing) {
+                        clock.start();
+                    }
                 }
-                if (!seeking) {
-                    seeking = true;
-                    const t0 = Date.now();
-                    await seek(nextSubtitle.start, clock, true);
-                    expectedSeekTime = Date.now() - t0;
-                    seeking = false;
-                }
-                if (playing) {
-                    clock.start();
-                }
-            }
+            })();
         }, 100);
 
         return () => clearInterval(interval);
@@ -1017,7 +1023,7 @@ const Player = React.memo(function Player({
             return;
         }
 
-        const interval = setInterval(async () => {
+        const interval = setInterval(() => {
             if (!playModesRef.current.has(PlayMode.fastForward)) return;
 
             const timestamp = clock.time(calculateLength());
@@ -1209,12 +1215,14 @@ const Player = React.memo(function Player({
             return;
         }
 
-        const interval = setInterval(async () => {
-            const progress = clock.progress(calculateLength());
+        const interval = setInterval(() => {
+            void (async () => {
+                const progress = clock.progress(calculateLength());
 
-            if (progress >= 1) {
-                pause(clock, mediaAdapter, true);
-            }
+                if (progress >= 1) {
+                    pause(clock, mediaAdapter, true);
+                }
+            })();
         }, 1000);
 
         return () => clearInterval(interval);
@@ -1444,8 +1452,8 @@ const Player = React.memo(function Player({
                             playModes={playModes}
                             onPlay={handlePlay}
                             onPause={handlePause}
-                            onSeek={handleSeek}
-                            onAudioTrackSelected={handleAudioTrackSelected}
+                            onSeek={(progress) => void handleSeek(progress)}
+                            onAudioTrackSelected={(id) => void handleAudioTrackSelected(id)}
                             onTabSelected={onTabSelected}
                             onUnloadVideo={() => videoFileUrl && onUnloadVideo(videoFileUrl)}
                             onOffsetChange={handleOffsetChange}
@@ -1477,8 +1485,8 @@ const Player = React.memo(function Player({
                         lastJumpToTopTimestamp={lastJumpToTopTimestamp}
                         hidden={actuallyHideSubtitlePlayer}
                         disabledSubtitleTracks={disabledSubtitleTracks}
-                        onSeek={handleSeekToTimestamp}
-                        onCopy={handleCopyFromSubtitlePlayer}
+                        onSeek={(progress, shouldPlay) => void handleSeekToTimestamp(progress, shouldPlay)}
+                        onCopy={(...args) => void handleCopyFromSubtitlePlayer(...args)}
                         onMouseOver={handleMouseOver}
                         onMouseOut={handleMouseOut}
                         onOffsetChange={handleOffsetChange}

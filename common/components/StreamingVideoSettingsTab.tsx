@@ -16,7 +16,7 @@ import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import TuneIcon from '@mui/icons-material/Tune';
 import { PageConfigMap } from './SettingsForm';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import PageSettingsForm from './PageSettingsForm';
 import SettingsSection from './SettingsSection';
 
@@ -40,7 +40,7 @@ interface Props {
 
 const StreamingVideoSettingsTab: React.FC<Props> = ({
     settings,
-    onSettingChanged,
+    onSettingChanged: onSettingChangedAsync,
     onSettingsChanged,
     insideApp,
     extensionSupportsOverlay,
@@ -48,6 +48,12 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
     pageConfigs,
 }) => {
     const { t } = useTranslation();
+    const onSettingChanged = useCallback(
+        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
+            void onSettingChangedAsync(key, value);
+        },
+        [onSettingChangedAsync]
+    );
     const {
         streamingSubtitleListPreference,
         streamingEnableOverlay,

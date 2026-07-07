@@ -143,55 +143,60 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             return;
         }
 
-        return extension.subscribeTabs(async (tabs) => {
-            const currentVideoTabs = tabs.filter((t) => t.id === currentTabId);
+        return extension.subscribeTabs((tabs) => {
+            void (async () => {
+                const currentVideoTabs = tabs.filter((t) => t.id === currentTabId);
 
-            if (currentVideoTabs.length > 0) {
-                let lastSyncedVideoTab: VideoTabModel | undefined;
+                if (currentVideoTabs.length > 0) {
+                    let lastSyncedVideoTab: VideoTabModel | undefined;
 
-                for (const t of currentVideoTabs) {
-                    if (!t.synced) {
-                        continue;
+                    for (const t of currentVideoTabs) {
+                        if (!t.synced) {
+                            continue;
+                        }
+
+                        if (
+                            lastSyncedVideoTab === undefined ||
+                            t.syncedTimestamp! > lastSyncedVideoTab.syncedTimestamp!
+                        ) {
+                            lastSyncedVideoTab = t;
+                        }
                     }
 
-                    if (lastSyncedVideoTab === undefined || t.syncedTimestamp! > lastSyncedVideoTab.syncedTimestamp!) {
-                        lastSyncedVideoTab = t;
-                    }
-                }
-
-                if (
-                    lastSyncedVideoTab !== undefined &&
-                    (syncedVideoTab === undefined || !sameVideoTab(lastSyncedVideoTab, syncedVideoTab))
-                ) {
-                    const message: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
-                        sender: 'asbplayer-extension-to-video',
-                        message: {
-                            command: 'request-subtitles',
-                        },
-                        src: lastSyncedVideoTab.src,
-                    };
-                    const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
-                        lastSyncedVideoTab.id,
-                        message
-                    );
-
-                    if (response !== undefined) {
-                        const subs = response.subtitles;
-                        const length = subs.length > 0 ? subs[subs.length - 1].end : 0;
-                        setSyncedVideoElement(lastSyncedVideoTab);
-                        setSubtitles(
-                            subs.map((s, index) => ({
-                                ...s,
-                                index,
-                                displayTime: timeDurationDisplay(s.start, length),
-                            }))
+                    if (
+                        lastSyncedVideoTab !== undefined &&
+                        (syncedVideoTab === undefined || !sameVideoTab(lastSyncedVideoTab, syncedVideoTab))
+                    ) {
+                        const message: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
+                            sender: 'asbplayer-extension-to-video',
+                            message: {
+                                command: 'request-subtitles',
+                            },
+                            src: lastSyncedVideoTab.src,
+                        };
+                        const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+                            lastSyncedVideoTab.id,
+                            message
                         );
-                        setSubtitleFileNames(response.subtitleFileNames);
+
+                        if (response !== undefined) {
+                            const subs = response.subtitles;
+                            const length = subs.length > 0 ? subs[subs.length - 1].end : 0;
+                            setSyncedVideoElement(lastSyncedVideoTab);
+                            setSubtitles(
+                                subs.map((s, index) => ({
+                                    ...s,
+                                    index,
+                                    displayTime: timeDurationDisplay(s.start, length),
+                                }))
+                            );
+                            setSubtitleFileNames(response.subtitleFileNames);
+                        }
                     }
                 }
-            }
 
-            setInitializing(false);
+                setInitializing(false);
+            })().catch(console.error);
         });
     }, [extension, subtitles, initializing, currentTabId, syncedVideoTab]);
 
@@ -626,10 +631,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     items={copyHistoryItems}
                     forceShowDownloadOptions={true}
                     onClose={noOp}
-                    onDelete={deleteCopyHistoryItem}
-                    onDeleteAll={deleteAllCopyHistoryItems}
+                    onDelete={(item) => void deleteCopyHistoryItem(item)}
+                    onDeleteAll={() => void deleteAllCopyHistoryItems()}
                     onAnki={handleAnki}
-                    onClipAudio={handleClipAudio}
+                    onClipAudio={(item) => void handleClipAudio(item)}
                     onDownloadImage={handleDownloadImage}
                     onSelect={handleJumpToSubtitle}
                 />
@@ -655,10 +660,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                         open={showCopyHistory || extensionRequestedLocation === 'mining-history'}
                         items={copyHistoryItems}
                         onClose={handleCloseCopyHistory}
-                        onDelete={deleteCopyHistoryItem}
-                        onDeleteAll={deleteAllCopyHistoryItems}
+                        onDelete={(item) => void deleteCopyHistoryItem(item)}
+                        onDeleteAll={() => void deleteAllCopyHistoryItems()}
                         onAnki={handleAnki}
-                        onClipAudio={handleClipAudio}
+                        onClipAudio={(item) => void handleClipAudio(item)}
                         onDownloadImage={handleDownloadImage}
                     />
                     {subtitles === undefined ? (
@@ -667,7 +672,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                             videoElementCount={videoElementCount}
                             miningHistoryCount={copyHistoryItems.length}
                             onLoadSubtitles={handleLoadSubtitles}
-                            onShowMiningHistory={handleShowCopyHistory}
+                            onShowMiningHistory={() => void handleShowCopyHistory()}
                             onOpenUserGuide={handleOpenUserGuide}
                         />
                     ) : (
@@ -718,8 +723,8 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onClose={handleCloseStatistics}
                                 onMineWasRequested={uiTabRegistry.focusTabForMediaId}
                                 onViewAnnotationSettings={handleViewAnnotationSettings}
-                                onOpenOverlay={handleOpenStatisticsOverlay}
-                                onOpenInNewWindow={createStatisticsPopup}
+                                onOpenOverlay={(mediaId) => void handleOpenStatisticsOverlay(mediaId)}
+                                onOpenInNewWindow={() => void createStatisticsPopup()}
                                 sx={{ p: 2 }}
                             />
                             <SidePanelTopControls
@@ -728,9 +733,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onLoadSubtitles={handleLoadSubtitles}
                                 canDownloadSubtitles={canDownloadSubtitles}
                                 onDownloadSubtitles={handleDownloadSubtitles}
-                                onBulkExportSubtitles={handleBulkExportSubtitles}
+                                onBulkExportSubtitles={() => void handleBulkExportSubtitles()}
                                 disableBulkExport={recordingAudio}
-                                onShowMiningHistory={handleShowCopyHistory}
+                                onShowMiningHistory={() => void handleShowCopyHistory()}
                                 miningHistoryCount={copyHistoryItems.length}
                                 onShowStatistics={handleShowStatistics}
                             />
@@ -752,7 +757,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 open={bulkOpen}
                 currentIndex={bulkCurrent}
                 totalItems={bulkTotal}
-                onCancel={handleBulkExportCancel}
+                onCancel={() => void handleBulkExportCancel()}
             />
         </div>
     );

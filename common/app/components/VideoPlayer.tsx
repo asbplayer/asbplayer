@@ -336,7 +336,7 @@ const fetchLastControlType = async (): Promise<ControlType | undefined> => {
     return parseInt(val);
 };
 
-const saveLastControlType = (controlType: ControlType): void => {
+const saveLastControlType = async (controlType: ControlType): Promise<void> => {
     storage.set(lastControlTypeKey, String(controlType));
 };
 
@@ -460,7 +460,7 @@ export default function VideoPlayer({
 
             playerChannel.pause();
         };
-        context.onWillStopShowing = (subtitle: SubtitleModel) => {
+        context.onWillStopShowing = async (subtitle: SubtitleModel) => {
             if (
                 !playModes.has(PlayMode.autoPause) ||
                 miscSettings.autoPausePreference !== AutoPausePreference.atEnd ||
@@ -618,9 +618,11 @@ export default function VideoPlayer({
             setVideoFileName(videoFileName);
         });
 
-        playerChannel.onPlay(async () => {
-            await videoRef.current?.play();
-            clock.start();
+        playerChannel.onPlay(() => {
+            void (async () => {
+                await videoRef.current?.play();
+                clock.start();
+            })();
         });
 
         playerChannel.onPause(() => {
@@ -894,7 +896,7 @@ export default function VideoPlayer({
             }
 
             if (slice.willStopShowing && !disabledSubtitleTracks[slice.willStopShowing.track]) {
-                autoPauseContext.willStopShowing(slice.willStopShowing);
+                void autoPauseContext.willStopShowing(slice.willStopShowing);
             }
 
             showSubtitles = showSubtitles.sort((s1, s2) => s1.track - s2.track);

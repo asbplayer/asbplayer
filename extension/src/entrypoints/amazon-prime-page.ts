@@ -187,8 +187,8 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async () => {
-            try {
+        () => {
+            void (async () => {
                 if (lastEntityId) {
                     const entityId = lastEntityId;
                     const capturedUrls = await poll(() => {
@@ -236,14 +236,14 @@ export default defineUnlistedScript(() => {
                         })
                     );
                 }
-            } catch (e) {
+            })().catch((e) => {
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {
                         detail: { error },
                     })
                 );
-            }
+            });
         },
         false
     );

@@ -653,7 +653,9 @@ export default class TabRegistry {
             }
         }
 
-        setTimeout(() => this._anyAsbplayerTab(resolve, reject, attempt + 1, maxAttempts, filter), 1000);
+        setTimeout(() => {
+            void this._anyAsbplayerTab(resolve, reject, attempt + 1, maxAttempts, filter);
+        }, 1000);
     }
 
     async focusTabForMediaId(mediaId: string) {

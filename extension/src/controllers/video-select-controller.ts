@@ -153,35 +153,38 @@ export default class VideoSelectController {
         const client = await this._frame.client();
 
         if (isNewClient) {
-            client.onMessage(async (message) => {
-                if (message.command === 'confirm') {
-                    client.updateState({ open: false });
-                    this._frame.hide();
-                    const binding = this._bindings.find(
-                        (b) =>
-                            b.registeredVideoSrc === (message as VideoSelectModeConfirmMessage).selectedVideoElementSrc
-                    );
-                    if (binding !== undefined) {
-                        if (this._subtitleFiles === undefined) {
-                            binding.showVideoDataDialog(false);
-                        } else {
-                            binding.loadSubtitles(await this._filesForSubtitleFiles(this._subtitleFiles), false);
-                            this._subtitleFiles = undefined;
+            client.onMessage((message) => {
+                void (async () => {
+                    if (message.command === 'confirm') {
+                        client.updateState({ open: false });
+                        this._frame.hide();
+                        const binding = this._bindings.find(
+                            (b) =>
+                                b.registeredVideoSrc ===
+                                (message as VideoSelectModeConfirmMessage).selectedVideoElementSrc
+                        );
+                        if (binding !== undefined) {
+                            if (this._subtitleFiles === undefined) {
+                                binding.showVideoDataDialog(false);
+                            } else {
+                                binding.loadSubtitles(await this._filesForSubtitleFiles(this._subtitleFiles), false);
+                                this._subtitleFiles = undefined;
+                            }
                         }
+                    } else if (message.command === 'openSettings') {
+                        const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
+                            sender: 'asbplayer-video-tab',
+                            message: {
+                                command: 'open-asbplayer-settings',
+                            },
+                        };
+                        browser.runtime.sendMessage(openSettingsCommand);
+                    } else if (message.command === 'cancel') {
+                        client.updateState({ open: false });
+                        this._frame.hide();
+                        this._subtitleFiles = undefined;
                     }
-                } else if (message.command === 'openSettings') {
-                    const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                        sender: 'asbplayer-video-tab',
-                        message: {
-                            command: 'open-asbplayer-settings',
-                        },
-                    };
-                    browser.runtime.sendMessage(openSettingsCommand);
-                } else if (message.command === 'cancel') {
-                    client.updateState({ open: false });
-                    this._frame.hide();
-                    this._subtitleFiles = undefined;
-                }
+                })().catch(console.error);
             });
         }
 

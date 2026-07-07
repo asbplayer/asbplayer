@@ -55,7 +55,7 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async () => {
+        () => {
             dispatchSubtitles();
         },
         false

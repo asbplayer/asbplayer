@@ -34,7 +34,10 @@ export interface InferHooks {
         addTrack: (track: VideoDataSubtitleTrackDef) => void,
         setBasename: (basename: string) => void
     ) => void;
-    onRequest?: (addTrack: (track: VideoDataSubtitleTrackDef) => void, setBasename: (basename: string) => void) => void;
+    onRequest?: (
+        addTrack: (track: VideoDataSubtitleTrackDef) => void,
+        setBasename: (basename: string) => void
+    ) => Promise<void>;
     waitForBasename: boolean;
 }
 
@@ -118,62 +121,62 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
         document.addEventListener(
             'asbplayer-get-synced-data',
             async () => {
-                // Pin the pathname at request-start time so async onRequest
-                // callbacks resolving after a soft-navigation still file their
-                // tracks and basename under the path they were fetched for.
-                const requestPath = window.location.pathname;
+                    // Pin the pathname at request-start time so async onRequest
+                    // callbacks resolving after a soft-navigation still file their
+                    // tracks and basename under the path they were fetched for.
+                    const requestPath = window.location.pathname;
 
                 onRequest?.(
-                    (track) => {
-                        if (typeof subtitlesByPath[requestPath] === 'undefined') {
-                            subtitlesByPath[requestPath] = [];
-                        }
+                                (track) => {
+                                    if (typeof subtitlesByPath[requestPath] === 'undefined') {
+                                        subtitlesByPath[requestPath] = [];
+                                    }
 
-                        const newId = trackId(track);
+                                    const newId = trackId(track);
 
-                        if (subtitlesByPath[requestPath].find((s) => s.id === newId) === undefined) {
-                            subtitlesByPath[requestPath].push({ id: newId, ...track });
-                        }
-                    },
-                    (theBasename) => {
-                        basenameByPath[requestPath] = theBasename;
-                        if (!trackDataRequestHandled && requestPath === window.location.pathname) {
-                            // Notify basename even if still waiting for subtitle track info
-                            document.dispatchEvent(
-                                new CustomEvent('asbplayer-synced-data', {
-                                    detail: {
-                                        error: '',
-                                        basename: theBasename,
-                                        subtitles: undefined,
-                                    },
-                                })
+                                    if (subtitlesByPath[requestPath].find((s) => s.id === newId) === undefined) {
+                                        subtitlesByPath[requestPath].push({ id: newId, ...track });
+                                    }
+                                },
+                                (theBasename) => {
+                                    basenameByPath[requestPath] = theBasename;
+                                    if (!trackDataRequestHandled && requestPath === window.location.pathname) {
+                                        // Notify basename even if still waiting for subtitle track info
+                                        document.dispatchEvent(
+                                            new CustomEvent('asbplayer-synced-data', {
+                                                detail: {
+                                                    error: '',
+                                                    basename: theBasename,
+                                                    subtitles: undefined,
+                                                },
+                                            })
+                                        );
+                                    }
+                                }
                             );
-                        }
+
+                    const ready = () => {
+                        const path = window.location.pathname;
+                        return (!waitForBasename || (basenameByPath[path] ?? '') !== '') && path in subtitlesByPath;
+                    };
+
+                    if (!ready()) {
+                        await poll(ready, timeout);
                     }
-                );
 
-                const ready = () => {
-                    const path = window.location.pathname;
-                    return (!waitForBasename || (basenameByPath[path] ?? '') !== '') && path in subtitlesByPath;
-                };
+                    const currentPath = window.location.pathname;
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: {
+                                error: '',
+                                basename: basenameByPath[currentPath] ?? '',
+                                subtitles: subtitlesByPath[currentPath] ?? [],
+                            },
+                        })
+                    );
 
-                if (!ready()) {
-                    await poll(ready, timeout);
-                }
-
-                const currentPath = window.location.pathname;
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: {
-                            error: '',
-                            basename: basenameByPath[currentPath] ?? '',
-                            subtitles: subtitlesByPath[currentPath] ?? [],
-                        },
-                    })
-                );
-
-                garbageCollect();
-                trackDataRequestHandled = true;
+                    garbageCollect();
+                    trackDataRequestHandled = true;
             },
             false
         );

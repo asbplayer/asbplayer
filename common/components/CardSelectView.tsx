@@ -207,7 +207,7 @@ export default function CardSelectView({
                             input: {
                                 endAdornment: (
                                     <InputAdornment position="end" sx={{ mr: -1 }}>
-                                        <IconButton loading={loading} onClick={searchAnki}>
+                                        <IconButton loading={loading} onClick={() => void searchAnki()}>
                                             <SearchIcon fontSize="small" />
                                         </IconButton>
                                     </InputAdornment>
@@ -246,7 +246,7 @@ export default function CardSelectView({
                                             <IconButton
                                                 edge="end"
                                                 disabled={disabled || loading}
-                                                onClick={() => handleUpdateSingle(note.noteId)}
+                                                onClick={() => void handleUpdateSingle(note.noteId)}
                                             >
                                                 <NoteAddIcon />
                                             </IconButton>
@@ -283,7 +283,7 @@ export default function CardSelectView({
                 <Button
                     action={updateButtonActionRef}
                     disabled={selectedNoteIds.length === 0 || disabled || loading}
-                    onClick={handleUpdateSelected}
+                    onClick={() => void handleUpdateSelected()}
                 >
                     {t('ankiDialog.updateSelectedCards', { count: selectedNoteIds.length })}
                 </Button>

@@ -855,12 +855,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
     useEffect(() => {
         let canceled = false;
 
-        const timeout = setTimeout(async () => {
+        const timeout = setTimeout(() => {
             if (canceled) {
                 return;
             }
 
-            dictionaryRequestYomitan();
+            void dictionaryRequestYomitan();
         }, 3000);
 
         return () => {
@@ -1075,7 +1075,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
-                                onClick={handleExportDictionaryDB}
+                                onClick={() => void handleExportDictionaryDB()}
                                 loading={exportingDictionaryDB}
                             >
                                 {t('action.exportDictionaryLocalRecords')}
@@ -1098,7 +1098,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             variant="contained"
                             color="primary"
                             style={{ width: '100%' }}
-                            onClick={handleBuildAnkiCache}
+                            onClick={() => void handleBuildAnkiCache()}
                             loading={buildingAnkiCache}
                             disabled={buildAnkiCacheDisabled}
                             startIcon={<RefreshIcon />}
@@ -1585,7 +1585,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         input: {
                             endAdornment: (
                                 <InputAdornment position="end">
-                                    <IconButton onClick={dictionaryRequestYomitan}>
+                                    <IconButton onClick={() => void dictionaryRequestYomitan()}>
                                         <RefreshIcon />
                                     </IconButton>
                                 </InputAdornment>

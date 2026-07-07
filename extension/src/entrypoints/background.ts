@@ -158,9 +158,9 @@ export default defineBackground(() => {
         enqueueUpdateAlert();
     };
 
-    browser.runtime.onInstalled.addListener(installListener);
-    browser.runtime.onInstalled.addListener(updateListener);
-    browser.runtime.onStartup.addListener(startListener);
+    browser.runtime.onInstalled.addListener((details) => void installListener(details));
+    browser.runtime.onInstalled.addListener((details) => void updateListener(details));
+    browser.runtime.onStartup.addListener(() => void startListener());
 
     const tabRegistry = new TabRegistry(settings);
     const audioRecorder = new AudioRecorderService(
@@ -469,7 +469,7 @@ export default defineBackground(() => {
     browser.runtime.onConnect.addListener((port) => {
         const asbplayerId = /asbplayer-side-panel-(.+)/.exec(port.name)?.[1];
         if (asbplayerId) {
-            port.onDisconnect.addListener(() => tabRegistry.onAsbplayerRemoved(asbplayerId));
+            port.onDisconnect.addListener(() => void tabRegistry.onAsbplayerRemoved(asbplayerId));
         }
     });
 
@@ -504,21 +504,23 @@ export default defineBackground(() => {
             }
         });
 
-        action.onClicked.addListener(async (tab) => {
-            if (hasHostPermission) {
-                defaultAction(tab);
-            } else {
-                try {
-                    const obtainedHostPermission = await browser.permissions.request({ origins: ['<all_urls>'] });
+        action.onClicked.addListener((tab) => {
+            void (async () => {
+                if (hasHostPermission) {
+                    defaultAction(tab);
+                } else {
+                    try {
+                        const obtainedHostPermission = await browser.permissions.request({ origins: ['<all_urls>'] });
 
-                    if (obtainedHostPermission) {
-                        hasHostPermission = true;
-                        browser.runtime.reload();
+                        if (obtainedHostPermission) {
+                            hasHostPermission = true;
+                            browser.runtime.reload();
+                        }
+                    } catch (e) {
+                        console.error(e);
                     }
-                } catch (e) {
-                    console.error(e);
                 }
-            }
+            })();
         });
     } else {
         if (!isMobile) {

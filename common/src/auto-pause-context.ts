@@ -5,10 +5,10 @@ export default class AutoPauseContext {
     private lastWillStopShowing?: SubtitleModel;
 
     onStartedShowing?: (subtitle: SubtitleModel) => void;
-    onWillStopShowing?: (subtitle: SubtitleModel) => void;
+    onWillStopShowing?: (subtitle: SubtitleModel) => Promise<void>;
     onNextToShow?: (subtitle: SubtitleModel) => void;
 
-    willStopShowing(subtitle: SubtitleModel) {
+    async willStopShowing(subtitle: SubtitleModel): Promise<void> {
         if (subtitle.end === this.lastWillStopShowing?.end) {
             return;
         }

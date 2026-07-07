@@ -69,7 +69,9 @@ export function PopupUi({ commands }: Props) {
             // @ts-expect-error: browser.sidebarAction is not yet in the TypeScript lib.dom.d.ts
             browser.sidebarAction.open();
         } else {
-            browser.windows.getLastFocused((window) => browser.sidePanel.open({ windowId: window.id! }));
+            browser.windows.getLastFocused((window) => {
+                void browser.sidePanel.open({ windowId: window.id! });
+            });
         }
     }, []);
 
@@ -129,10 +131,10 @@ export function PopupUi({ commands }: Props) {
                             commands={commands}
                             dictionaryProvider={dictionaryProvider}
                             settings={settings}
-                            onSettingsChanged={handleSettingsChanged}
-                            onOpenApp={handleOpenApp}
-                            onOpenSidePanel={handleOpenSidePanel}
-                            onOpenExtensionShortcuts={handleOpenExtensionShortcuts}
+                            onSettingsChanged={(settings) => void handleSettingsChanged(settings)}
+                            onOpenApp={() => void handleOpenApp()}
+                            onOpenSidePanel={() => void handleOpenSidePanel()}
+                            onOpenExtensionShortcuts={() => void handleOpenExtensionShortcuts()}
                             onOpenUserGuide={handleOpenUserGuide}
                             {...profilesContext}
                         />

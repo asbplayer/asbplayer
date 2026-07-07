@@ -313,7 +313,7 @@ export default function OnlineSubtitleSourceDialog({
                             onFocus={(e) => e.target.select()}
                             onKeyDown={(evt) => {
                                 if (evt.key === 'Enter') {
-                                    handleSearch();
+                                    void handleSearch();
                                 }
                             }}
                             fullWidth
@@ -341,7 +341,7 @@ export default function OnlineSubtitleSourceDialog({
                                             </ToggleButtonGroup>
                                             <IconButton
                                                 loading={searching}
-                                                onClick={handleSearch}
+                                                onClick={() => void handleSearch()}
                                                 disabled={isSearchDisabled}
                                             >
                                                 <SearchIcon fontSize="small" />
@@ -394,7 +394,7 @@ export default function OnlineSubtitleSourceDialog({
                                 {filteredJimakuEntries.map((entry) => (
                                     <ListItemButton
                                         key={entry.id}
-                                        onClick={() => handleLoadJimakuFiles(entry)}
+                                        onClick={() => void handleLoadJimakuFiles(entry)}
                                         disabled={loadingFiles || loadingJimakuFiles || isApiKeyMissing}
                                     >
                                         <ListItemText primary={entry.name} />
@@ -451,7 +451,7 @@ export default function OnlineSubtitleSourceDialog({
                                 {filteredJimakuFiles?.map((file) => (
                                     <ListItemButton
                                         key={file.url}
-                                        onClick={() => handleImport(file)}
+                                        onClick={() => void handleImport(file)}
                                         disabled={loadingFiles}
                                     >
                                         <ListItemText primary={file.name} />
@@ -483,7 +483,7 @@ export default function OnlineSubtitleSourceDialog({
                                 {jimakuRecentWorks.map((entry) => (
                                     <ListItemButton
                                         key={entry.id}
-                                        onClick={() => handleLoadJimakuFiles(entry)}
+                                        onClick={() => void handleLoadJimakuFiles(entry)}
                                         disabled={loadingFiles || loadingJimakuFiles || isApiKeyMissing}
                                     >
                                         <ListItemText primary={entry.name} />

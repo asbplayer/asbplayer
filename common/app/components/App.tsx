@@ -1252,7 +1252,9 @@ function App({
             }
         }
 
-        const unsubscribe = extension.subscribe(onMessage);
+        const unsubscribe = extension.subscribe((message) => {
+            void onMessage(message);
+        });
         extension.videoPlayer = false;
         extension.loadedSubtitles = subtitles.length > 0;
         extension.setSubtitleTracks(
@@ -1671,7 +1673,7 @@ function App({
                                 ankiDialogOpen={ankiDialogOpen}
                                 seekRequest={videoPlayerSeekRequest}
                                 onSettingsChanged={onSettingsChanged}
-                                onAnkiDialogRequest={handleAnkiDialogRequestFromVideoPlayer}
+                                onAnkiDialogRequest={(...args) => void handleAnkiDialogRequestFromVideoPlayer(...args)}
                                 onAnkiDialogRewind={handleAnkiDialogRewindFromVideoPlayer}
                                 onError={handleError}
                                 onPlayModeChangedViaBind={handlePlayModeChangedViaBind}
@@ -1685,7 +1687,7 @@ function App({
                                     settings={settings}
                                     lastSelectedExportMode={lastSelectedAnkiExportMode}
                                     onCancel={handleAnkiDialogCancel}
-                                    onProceed={handleAnkiDialogProceed}
+                                    onProceed={(params) => handleAnkiDialogProceed(params)}
                                     onCopyToClipboard={handleCopyToClipboard}
                                     mp3Encoder={mp3Encoder}
                                     showQuickSelectFtue={showAnkiDialogQuickSelectFtue}
@@ -1701,9 +1703,9 @@ function App({
                                 open={effectiveDrawerOpen}
                                 drawerWidth={drawerWidth}
                                 onClose={handleCloseCopyHistory}
-                                onDelete={deleteCopyHistoryItem}
-                                onDeleteAll={deleteAllCopyHistoryItems}
-                                onClipAudio={handleDownloadAudio}
+                                onDelete={(item) => void deleteCopyHistoryItem(item)}
+                                onDeleteAll={() => void deleteAllCopyHistoryItems()}
+                                onClipAudio={(item) => void handleDownloadAudio(item)}
                                 onDownloadImage={handleDownloadImage}
                                 onDownloadSectionAsSrt={handleDownloadCopyHistorySectionAsSrt}
                                 onSelect={handleSelectCopyHistoryItem}
@@ -1732,7 +1734,7 @@ function App({
                                     settings={settings}
                                     lastSelectedExportMode={lastSelectedAnkiExportMode}
                                     onCancel={handleAnkiDialogCancel}
-                                    onProceed={handleAnkiDialogProceed}
+                                    onProceed={(params) => handleAnkiDialogProceed(params)}
                                     onOpenSettings={handleOpenSettings}
                                     onCopyToClipboard={handleCopyToClipboard}
                                     mp3Encoder={mp3Encoder}
@@ -1764,9 +1766,9 @@ function App({
                                 drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
                                 subtitleFiles={sources.subtitleFiles}
-                                onOpenCopyHistory={handleOpenCopyHistory}
+                                onOpenCopyHistory={() => void handleOpenCopyHistory()}
                                 onOpenStatistics={supportsDictionaryStatistics ? handleOpenStatistics : undefined}
-                                onDownloadSubtitleFilesAsSrt={handleDownloadSubtitleFilesAsSrt}
+                                onDownloadSubtitleFilesAsSrt={() => void handleDownloadSubtitleFilesAsSrt()}
                                 onOpenSettings={handleOpenSettings}
                                 lastError={lastError}
                                 onCopyLastError={handleCopyLastError}
@@ -1791,9 +1793,11 @@ function App({
                                             appBarHidden={appBarHidden}
                                             videoElements={availableTabs ?? []}
                                             canRestoreLastSession={canRestoreLastSession}
-                                            onFileSelector={handleFileSelector}
-                                            onVideoElementSelected={handleVideoElementSelected}
-                                            onRestoreLastSession={handleRestoreLastSession}
+                                            onFileSelector={() => void handleFileSelector()}
+                                            onVideoElementSelected={(videoElement) =>
+                                                void handleVideoElementSelected(videoElement)
+                                            }
+                                            onRestoreLastSession={() => void handleRestoreLastSession()}
                                         />
                                     )}
                                     <DragOverlay
@@ -1812,7 +1816,7 @@ function App({
                                     dictionaryProvider={dictionaryProvider}
                                     settingsProvider={settingsProvider}
                                     playbackPreferences={playbackPreferences}
-                                    onCopy={handleCopy}
+                                    onCopy={(...args) => void handleCopy(...args)}
                                     onError={handleError}
                                     onUnloadVideo={handleUnloadVideo}
                                     onLoaded={handleFilesLoaded}
@@ -1840,7 +1844,7 @@ function App({
                                             onClose={handleCloseStatisticsOverlay}
                                         />
                                     }
-                                    onLoadFiles={handleFileSelector}
+                                    onLoadFiles={() => void handleFileSelector()}
                                     tab={tab}
                                     availableTabs={availableTabs ?? []}
                                     sources={sources}

@@ -45,7 +45,7 @@ export const useMediaId = (params?: Params) => {
             }
         };
         void update();
-        const interval = setInterval(update, 1000);
+        const interval = setInterval(() => void update(), 1000);
         return () => {
             mounted = false;
             clearInterval(interval);

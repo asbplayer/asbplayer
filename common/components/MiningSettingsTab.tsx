@@ -1,5 +1,5 @@
 import TextField from './SettingsTextField';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormLabel from '@mui/material/FormLabel';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -23,8 +23,18 @@ interface Props {
 
 const integerValueRegex = /^-?\d+$/;
 
-const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWebmMediaFragmentSettings = true }) => {
+const MiningSettingsTab: React.FC<Props> = ({
+    settings,
+    onSettingChanged: onSettingChangedAsync,
+    showWebmMediaFragmentSettings = true,
+}) => {
     const { t } = useTranslation();
+    const onSettingChanged = useCallback(
+        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
+            void onSettingChangedAsync(key, value);
+        },
+        [onSettingChangedAsync]
+    );
     const webmCaptureSupported = showWebmMediaFragmentSettings && isWebmMediaFragmentSupported();
     const {
         audioPaddingStart,

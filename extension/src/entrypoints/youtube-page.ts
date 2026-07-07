@@ -262,10 +262,12 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async (e) => {
-            const targetTranslationLanguageCodes: string[] =
-                ((e as CustomEvent).detail?.targetTranslationLanguageCodes as string[] | undefined) ?? [];
-            lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes });
+        (e) => {
+            void (async () => {
+                const targetTranslationLanguageCodes: string[] =
+                    ((e as CustomEvent).detail?.targetTranslationLanguageCodes as string[] | undefined) ?? [];
+                lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes });
+            })();
         },
         false
     );
@@ -273,19 +275,21 @@ export default defineUnlistedScript(() => {
     let publishing = false;
 
     // Handle YT shorts: Publish subtitle tracks according to current video ID
-    setInterval(async () => {
-        if (publishing) {
-            return;
-        }
-
-        try {
-            publishing = true;
-            const videoId = inferVideoId();
-            if (lastVideoIdDispatched && videoId && lastVideoIdDispatched !== videoId) {
-                lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes: [] });
+    setInterval(() => {
+        void (async () => {
+            if (publishing) {
+                return;
             }
-        } finally {
-            publishing = false;
-        }
+
+            try {
+                publishing = true;
+                const videoId = inferVideoId();
+                if (lastVideoIdDispatched && videoId && lastVideoIdDispatched !== videoId) {
+                    lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes: [] });
+                }
+            } finally {
+                publishing = false;
+            }
+        })();
     }, 500);
 });

@@ -298,7 +298,7 @@ export default class Binding {
             case PlayMode.autoPause:
                 this.subtitleController.autoPauseContext.onStartedShowing = undefined;
                 if (newModes.has(PlayMode.repeat)) {
-                    this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                    this.subtitleController.autoPauseContext.onWillStopShowing = async (subtitle) => {
                         if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
                             return;
                         }
@@ -324,7 +324,7 @@ export default class Binding {
                 break;
             case PlayMode.repeat:
                 if (newModes.has(PlayMode.autoPause)) {
-                    this.subtitleController.autoPauseContext.onWillStopShowing = () => {
+                    this.subtitleController.autoPauseContext.onWillStopShowing = async () => {
                         if (this.recordingMedia || this.autoPausePreference !== AutoPausePreference.atEnd) {
                             return;
                         }
@@ -354,7 +354,7 @@ export default class Binding {
 
                     this.pause();
                 };
-                this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                this.subtitleController.autoPauseContext.onWillStopShowing = async (subtitle) => {
                     if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
                         return;
                     }
@@ -403,7 +403,7 @@ export default class Binding {
                 break;
             }
             case PlayMode.fastForward:
-                this.subtitleController.onSeekableSlice = async (slice: SubtitleSlice<IndexedSubtitleModel>) => {
+                this.subtitleController.onSeekableSlice = (slice: SubtitleSlice<IndexedSubtitleModel>) => {
                     const subtitlesAreSufficientlyOffsetFromNow = (subtitleEdgeTime: number | undefined) => {
                         return (
                             subtitleEdgeTime &&
@@ -436,7 +436,7 @@ export default class Binding {
                 this.subtitleController.notification('info.enabledFastForwardPlayback');
                 break;
             case PlayMode.repeat:
-                this.subtitleController.autoPauseContext.onWillStopShowing = (subtitle) => {
+                this.subtitleController.autoPauseContext.onWillStopShowing = async (subtitle) => {
                     if (!isTrackSeekable(this.seekableTracks, subtitle.track)) {
                         return;
                     }
@@ -1513,20 +1513,22 @@ export default class Binding {
             if (this.video.readyState !== 4) {
                 // Deal with Amazon Prime player pausing in the middle of play, without loss of generality
                 return new Promise((resolve, reject) => {
-                    const listener = async (evt: Event) => {
-                        const retries = 3;
+                    const listener = () => {
+                        void (async () => {
+                            const retries = 3;
 
-                        for (let i = 0; i < retries; ++i) {
-                            try {
-                                await this.video.play();
-                                break;
-                            } catch (ex2) {
-                                console.error(ex2);
+                            for (let i = 0; i < retries; ++i) {
+                                try {
+                                    await this.video.play();
+                                    break;
+                                } catch (ex2) {
+                                    console.error(ex2);
+                                }
                             }
-                        }
 
-                        resolve(undefined);
-                        this.video.removeEventListener('canplay', listener);
+                            resolve(undefined);
+                            this.video.removeEventListener('canplay', listener);
+                        })().catch(reject);
                     };
 
                     this.video.addEventListener('canplay', listener);
@@ -1537,7 +1539,7 @@ export default class Binding {
 
     _playNetflix() {
         return new Promise((resolve, reject) => {
-            const listener = async (evt: Event) => {
+            const listener = () => {
                 this.video.removeEventListener('play', listener);
                 this.video.removeEventListener('playing', listener);
                 resolve(undefined);

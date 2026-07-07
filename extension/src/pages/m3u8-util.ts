@@ -27,8 +27,8 @@ export function fetchM3U8(url: string): Promise<any> {
 
 export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSubtitleTrack[]> {
     return new Promise((resolve, reject) => {
-        setTimeout(async () => {
-            try {
+        setTimeout(() => {
+            void (async () => {
                 const manifest = await fetchM3U8(url);
                 const subtitleGroups = manifest.mediaGroups?.SUBTITLES;
 
@@ -82,9 +82,7 @@ export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSub
                     (t): t is VideoDataSubtitleTrack => t !== undefined
                 );
                 resolve(tracks);
-            } catch (e) {
-                reject(e);
-            }
+            })().catch(reject);
         }, 0);
     });
 }

@@ -4,7 +4,7 @@ import { ControlType } from '..';
 interface Params {
     isMobile: boolean;
     fetchLastControlType: () => Promise<ControlType | undefined>;
-    saveLastControlType: (controlType: ControlType) => void;
+    saveLastControlType: (controlType: ControlType) => Promise<void>;
 }
 
 export const useLastScrollableControlType = ({ isMobile, fetchLastControlType, saveLastControlType }: Params) => {
@@ -27,7 +27,7 @@ export const useLastScrollableControlType = ({ isMobile, fetchLastControlType, s
     const wrapSaveLastControlType = useCallback(
         (controlType: ControlType) => {
             setLastControlType(controlType);
-            saveLastControlType(controlType);
+            void saveLastControlType(controlType);
         },
         [saveLastControlType]
     );

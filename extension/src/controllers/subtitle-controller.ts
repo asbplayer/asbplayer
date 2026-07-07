@@ -126,9 +126,9 @@ export default class SubtitleController {
     autoPauseContext: AutoPauseContext = new AutoPauseContext();
     _seekableTracks: SeekableTracks = calculateSeekableTracksValue([0]);
 
-    onNextSeekableToShow?: (subtitle: SubtitleModel) => void;
+    onNextSeekableToShow?: (subtitle: SubtitleModel) => Promise<void>;
     onSeekableSlice?: (subtitle: SubtitleSlice<IndexedSubtitleModel>) => void;
-    onOffsetChange?: () => void;
+    onOffsetChange?: () => Promise<void>;
     onMouseOver?: (event: MouseEvent) => void;
     onMouseOut?: (event: MouseEvent) => void;
 
@@ -479,7 +479,7 @@ export default class SubtitleController {
             this.onSeekableSlice?.(seekableSlice);
 
             if (slice.willStopShowing && this._trackEnabled(slice.willStopShowing)) {
-                this.autoPauseContext.willStopShowing(slice.willStopShowing);
+                void this.autoPauseContext.willStopShowing(slice.willStopShowing);
             }
 
             if (slice.startedShowing && this._trackEnabled(slice.startedShowing)) {
@@ -487,7 +487,7 @@ export default class SubtitleController {
             }
 
             if (seekableSlice.nextToShow && seekableSlice.nextToShow.length > 0) {
-                this.onNextSeekableToShow?.(seekableSlice.nextToShow[0]);
+                void this.onNextSeekableToShow?.(seekableSlice.nextToShow[0]);
             }
 
             const subtitlesAreNew =
@@ -747,7 +747,7 @@ export default class SubtitleController {
             browser.runtime.sendMessage(command);
         }
 
-        this.onOffsetChange?.();
+        void this.onOffsetChange?.();
 
         this.settings.getSingle('rememberSubtitleOffset').then((rememberSubtitleOffset) => {
             if (rememberSubtitleOffset) {

@@ -113,96 +113,98 @@ export class TabAnkiUiController {
         const client = await this._frame.client();
 
         if (isNewClient) {
-            client.onMessage(async (message) => {
-                switch (message.command) {
-                    case 'openSettings': {
-                        const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'open-asbplayer-settings',
-                            },
-                        };
-                        browser.runtime.sendMessage(openSettingsCommand);
-                        return;
-                    }
-                    case 'copy-to-clipboard': {
-                        const copyToClipboardMessage = message as CopyToClipboardMessage;
-                        const copyToClipboardCommand: TabToExtensionCommand<CopyToClipboardMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'copy-to-clipboard',
-                                dataUrl: copyToClipboardMessage.dataUrl,
-                            },
-                        };
-                        browser.runtime.sendMessage(copyToClipboardCommand);
-                        return;
-                    }
-                    case 'encode-mp3': {
-                        const { base64, messageId, extension } = message as EncodeMp3Message;
-                        const encodeMp3Command: TabToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'encode-mp3',
-                                base64,
-                                extension,
-                            },
-                        };
-                        const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
-                        client.sendMessage({
-                            messageId,
-                            base64: encodedBase64,
-                        });
-                        return;
-                    }
-                    case 'resume':
-                        this._frame.hide();
-                        return;
-                    case 'activeProfile': {
-                        const activeProfileMessage = message as ActiveProfileMessage;
-                        this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
-                            const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+            client.onMessage((message) => {
+                void (async () => {
+                    switch (message.command) {
+                        case 'openSettings': {
+                            const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
                                 sender: 'asbplayer-video-tab',
                                 message: {
-                                    command: 'settings-updated',
+                                    command: 'open-asbplayer-settings',
                                 },
                             };
-                            browser.runtime.sendMessage(settingsUpdatedCommand);
-                        });
-                        return;
-                    }
-                    case 'dismissedQuickSelectFtue':
-                        globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
-                        return;
-                    case 'exported': {
-                        const exportedMessage = message as AnkiUiBridgeExportedMessage;
-                        this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
-                            const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                            browser.runtime.sendMessage(openSettingsCommand);
+                            return;
+                        }
+                        case 'copy-to-clipboard': {
+                            const copyToClipboardMessage = message as CopyToClipboardMessage;
+                            const copyToClipboardCommand: TabToExtensionCommand<CopyToClipboardMessage> = {
                                 sender: 'asbplayer-video-tab',
                                 message: {
-                                    command: 'settings-updated',
+                                    command: 'copy-to-clipboard',
+                                    dataUrl: copyToClipboardMessage.dataUrl,
                                 },
                             };
-                            browser.runtime.sendMessage(settingsUpdatedCommand);
-                        });
-                        return;
+                            browser.runtime.sendMessage(copyToClipboardCommand);
+                            return;
+                        }
+                        case 'encode-mp3': {
+                            const { base64, messageId, extension } = message as EncodeMp3Message;
+                            const encodeMp3Command: TabToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: {
+                                    command: 'encode-mp3',
+                                    base64,
+                                    extension,
+                                },
+                            };
+                            const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
+                            client.sendMessage({
+                                messageId,
+                                base64: encodedBase64,
+                            });
+                            return;
+                        }
+                        case 'resume':
+                            this._frame.hide();
+                            return;
+                        case 'activeProfile': {
+                            const activeProfileMessage = message as ActiveProfileMessage;
+                            this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
+                                const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                                    sender: 'asbplayer-video-tab',
+                                    message: {
+                                        command: 'settings-updated',
+                                    },
+                                };
+                                browser.runtime.sendMessage(settingsUpdatedCommand);
+                            });
+                            return;
+                        }
+                        case 'dismissedQuickSelectFtue':
+                            globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                            return;
+                        case 'exported': {
+                            const exportedMessage = message as AnkiUiBridgeExportedMessage;
+                            this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
+                                const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                                    sender: 'asbplayer-video-tab',
+                                    message: {
+                                        command: 'settings-updated',
+                                    },
+                                };
+                                browser.runtime.sendMessage(settingsUpdatedCommand);
+                            });
+                            return;
+                        }
+                        case 'card-updated-dialog': {
+                            const cardUpdatedDialogCommand: TabToExtensionCommand<CardUpdatedDialogMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: message as CardUpdatedDialogMessage,
+                            };
+                            browser.runtime.sendMessage(cardUpdatedDialogCommand);
+                            return;
+                        }
+                        case 'card-exported-dialog': {
+                            const cardExportedDialogCommand: TabToExtensionCommand<CardExportedDialogMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: message as CardExportedDialogMessage,
+                            };
+                            browser.runtime.sendMessage(cardExportedDialogCommand);
+                            return;
+                        }
                     }
-                    case 'card-updated-dialog': {
-                        const cardUpdatedDialogCommand: TabToExtensionCommand<CardUpdatedDialogMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: message as CardUpdatedDialogMessage,
-                        };
-                        browser.runtime.sendMessage(cardUpdatedDialogCommand);
-                        return;
-                    }
-                    case 'card-exported-dialog': {
-                        const cardExportedDialogCommand: TabToExtensionCommand<CardExportedDialogMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: message as CardExportedDialogMessage,
-                        };
-                        browser.runtime.sendMessage(cardExportedDialogCommand);
-                        return;
-                    }
-                }
+                })();
             });
         }
 

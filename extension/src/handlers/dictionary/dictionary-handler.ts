@@ -122,7 +122,7 @@ export default class DictionaryHandler {
             case 'dictionary-build-anki-cache': {
                 const message = command.message as DictionaryBuildAnkiCacheMessage;
                 this.dictionaryDB
-                    .buildAnkiCache(message.profile, async (state: DictionaryBuildAnkiCacheState) => {
+                    .buildAnkiCache(message.profile, (state: DictionaryBuildAnkiCacheState) => {
                         const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
                             sender: 'asbplayer-extension-to-player',
                             message: { command: 'dictionary-build-anki-cache-state', ...state },

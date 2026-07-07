@@ -32,7 +32,7 @@ export default class DragController {
             return;
         }
 
-        this.dropListener = async (e: DragEvent) => {
+        this.dropListener = (e: DragEvent) => {
             e.preventDefault();
 
             this.dragEnterElement = null;
@@ -69,7 +69,7 @@ export default class DragController {
                 }
             }
 
-            context.loadSubtitles(files, false);
+            void context.loadSubtitles(files, false);
         };
 
         this.dragOverListener = (e) => e.preventDefault();

@@ -366,93 +366,95 @@ export default class VideoDataSyncController {
         const client = await this._frame.client();
 
         if (isNewClient) {
-            client.onMessage(async (message) => {
-                if ('openSettings' === message.command) {
-                    const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                        sender: 'asbplayer-video',
-                        message: {
-                            command: 'open-asbplayer-settings',
-                        },
-                        src: this._context.registeredVideoSrc,
-                    };
-                    browser.runtime.sendMessage(openSettingsCommand);
-                    return;
-                }
-
-                if ('activeProfile' === message.command) {
-                    const activeProfileMessage = message as ActiveProfileMessage;
-                    await this._context.settings.setActiveProfile(activeProfileMessage.profile);
-                    const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
-                        sender: 'asbplayer-video',
-                        message: {
-                            command: 'settings-updated',
-                        },
-                        src: this._context.registeredVideoSrc,
-                    };
-                    browser.runtime.sendMessage(settingsUpdatedCommand);
-                    return;
-                }
-
-                if ('dismissFtue' === message.command) {
-                    globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
-                    return;
-                }
-
-                if ('setOnlineSubtitleSourceConfig' === message.command) {
-                    const setOnlineSubtitleSourceConfigMessage =
-                        message as VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage;
-                    const currentOnlineSubtitleSourceConfig = (
-                        await globalStateProvider.get(['onlineSubtitleSourceConfig'])
-                    ).onlineSubtitleSourceConfig;
-
-                    await globalStateProvider.set({
-                        onlineSubtitleSourceConfig: {
-                            ...currentOnlineSubtitleSourceConfig,
-                            ...setOnlineSubtitleSourceConfigMessage.state,
-                        },
-                    });
-                    return;
-                }
-
-                if ('cancel' === message.command) {
-                    this._hideAndResume();
-                    return;
-                }
-
-                let dataWasSynced = true;
-
-                if ('confirm' === message.command) {
-                    const confirmMessage = message as VideoDataUiBridgeConfirmMessage;
-
-                    if (confirmMessage.shouldRememberTrackChoices) {
-                        this.lastLanguagesSynced = confirmMessage.data
-                            .map((track) => track.language)
-                            .filter((language) => language !== undefined);
-                        await this._context.settings
-                            .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
-                            .catch(() => {});
+            client.onMessage((message) => {
+                void (async () => {
+                    if ('openSettings' === message.command) {
+                        const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
+                            sender: 'asbplayer-video',
+                            message: {
+                                command: 'open-asbplayer-settings',
+                            },
+                            src: this._context.registeredVideoSrc,
+                        };
+                        browser.runtime.sendMessage(openSettingsCommand);
+                        return;
                     }
 
-                    const data = confirmMessage.data;
+                    if ('activeProfile' === message.command) {
+                        const activeProfileMessage = message as ActiveProfileMessage;
+                        await this._context.settings.setActiveProfile(activeProfileMessage.profile);
+                        const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+                            sender: 'asbplayer-video',
+                            message: {
+                                command: 'settings-updated',
+                            },
+                            src: this._context.registeredVideoSrc,
+                        };
+                        browser.runtime.sendMessage(settingsUpdatedCommand);
+                        return;
+                    }
 
-                    dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
-                } else if ('openFile' === message.command) {
-                    const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
-                    const subtitles = openFileMessage.subtitles;
+                    if ('dismissFtue' === message.command) {
+                        globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
+                        return;
+                    }
 
-                    try {
-                        await this._syncSubtitles(subtitles, false);
-                        dataWasSynced = true;
-                    } catch (e) {
-                        if (e instanceof Error) {
-                            await this._reportError(e.message);
+                    if ('setOnlineSubtitleSourceConfig' === message.command) {
+                        const setOnlineSubtitleSourceConfigMessage =
+                            message as VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage;
+                        const currentOnlineSubtitleSourceConfig = (
+                            await globalStateProvider.get(['onlineSubtitleSourceConfig'])
+                        ).onlineSubtitleSourceConfig;
+
+                        await globalStateProvider.set({
+                            onlineSubtitleSourceConfig: {
+                                ...currentOnlineSubtitleSourceConfig,
+                                ...setOnlineSubtitleSourceConfigMessage.state,
+                            },
+                        });
+                        return;
+                    }
+
+                    if ('cancel' === message.command) {
+                        this._hideAndResume();
+                        return;
+                    }
+
+                    let dataWasSynced = true;
+
+                    if ('confirm' === message.command) {
+                        const confirmMessage = message as VideoDataUiBridgeConfirmMessage;
+
+                        if (confirmMessage.shouldRememberTrackChoices) {
+                            this.lastLanguagesSynced = confirmMessage.data
+                                .map((track) => track.language)
+                                .filter((language) => language !== undefined);
+                            await this._context.settings
+                                .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
+                                .catch(() => {});
+                        }
+
+                        const data = confirmMessage.data;
+
+                        dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
+                    } else if ('openFile' === message.command) {
+                        const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
+                        const subtitles = openFileMessage.subtitles;
+
+                        try {
+                            await this._syncSubtitles(subtitles, false);
+                            dataWasSynced = true;
+                        } catch (e) {
+                            if (e instanceof Error) {
+                                await this._reportError(e.message);
+                            }
                         }
                     }
-                }
 
-                if (dataWasSynced) {
-                    this._hideAndResume();
-                }
+                    if (dataWasSynced) {
+                        this._hideAndResume();
+                    }
+                })().catch(console.error);
             });
         }
 

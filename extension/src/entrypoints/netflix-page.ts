@@ -205,14 +205,16 @@ export default defineUnlistedScript(() => {
 
         document.addEventListener(
             'asbplayer-get-synced-data',
-            async () => {
-                const response: VideoData = await buildResponse();
+            () => {
+                void (async () => {
+                    const response: VideoData = await buildResponse();
 
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
+                        })
+                    );
+                })();
             },
             false
         );
@@ -303,7 +305,7 @@ export default defineUnlistedScript(() => {
                 }
 
                 await currentFetchForLanguagePromise;
-                currentFetchForLanguagePromise = undefined;
+                        currentFetchForLanguagePromise = undefined;
             },
             false
         );
@@ -327,13 +329,15 @@ export default defineUnlistedScript(() => {
             },
         });
 
-        document.addEventListener('asbplayer-query-netflix', async () => {
-            const apiAvailable = await poll(() => getVideoPlayer() !== undefined, 30000);
-            document.dispatchEvent(
-                new CustomEvent('asbplayer-netflix-enabled', {
-                    detail: apiAvailable,
-                })
-            );
+        document.addEventListener('asbplayer-query-netflix', () => {
+            void (async () => {
+                const apiAvailable = await poll(() => getVideoPlayer() !== undefined, 30000);
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-netflix-enabled', {
+                        detail: apiAvailable,
+                    })
+                );
+            })();
         });
     }, 0);
 });

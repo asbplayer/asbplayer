@@ -134,7 +134,7 @@ interface Props {
 
 const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     settings,
-    onSettingChanged,
+    onSettingChanged: onSettingChangedAsync,
     onSettingsChanged,
     extensionInstalled,
     extensionSupportsTrackSpecificSettings,
@@ -145,6 +145,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     onUnlockLocalFonts,
 }) => {
     const { t } = useTranslation();
+    const onSettingChanged = useCallback(
+        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
+            void onSettingChangedAsync(key, value);
+        },
+        [onSettingChangedAsync]
+    );
     const {
         subtitlePreview,
         imageBasedSubtitleScaleFactor,

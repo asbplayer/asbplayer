@@ -306,7 +306,7 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
                                     }}
                                 >
                                     {!playing && (
-                                        <IconButton onClick={() => videoRef.current?.play()}>
+                                        <IconButton onClick={() => void videoRef.current?.play()}>
                                             <PlayArrowIcon />
                                         </IconButton>
                                     )}

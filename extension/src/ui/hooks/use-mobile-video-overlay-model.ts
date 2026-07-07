@@ -48,7 +48,9 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
                     'Failed to request overlay model, retrying in 1s. Message: ' +
                         (e instanceof Error ? e.message : String(e))
                 );
-                timeout = setTimeout(() => init(), 1000);
+                timeout = setTimeout(() => {
+                    void init();
+                }, 1000);
             }
         };
 

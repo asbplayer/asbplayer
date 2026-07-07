@@ -94,7 +94,7 @@ const RootApp = ({
             globalState={globalState}
             extension={extension}
             fetcher={fetcher}
-            onSettingsChanged={handleSettingsChanged}
+            onSettingsChanged={(settings) => void handleSettingsChanged(settings)}
             onGlobalStateChanged={handleGlobalStateChanged}
             {...profilesContext}
         />

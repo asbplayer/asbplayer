@@ -77,25 +77,27 @@ export default defineUnlistedScript(() => {
 
         document.addEventListener(
             'asbplayer-get-synced-data',
-            async () => {
-                let response: VideoData | undefined;
-                const pollPromise = poll(() => {
-                    const videoId = videoIdFromUrl() ?? lastVideoId;
-                    if (!videoId) {
-                        return false;
-                    }
-                    response = dataByVideoId.get(videoId);
-                    if (response === undefined) {
-                        return false;
-                    }
-                    return true;
-                });
-                await pollPromise;
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response ?? { basename: '', error: 'Timed out' },
-                    })
-                );
+            () => {
+                void (async () => {
+                    let response: VideoData | undefined;
+                    const pollPromise = poll(() => {
+                        const videoId = videoIdFromUrl() ?? lastVideoId;
+                        if (!videoId) {
+                            return false;
+                        }
+                        response = dataByVideoId.get(videoId);
+                        if (response === undefined) {
+                            return false;
+                        }
+                        return true;
+                    });
+                    await pollPromise;
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response ?? { basename: '', error: 'Timed out' },
+                        })
+                    );
+                })().catch(console.error);
             },
             false
         );

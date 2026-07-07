@@ -55,7 +55,7 @@ interface Props {
 
 const MiscSettingTab: React.FC<Props> = ({
     settings,
-    onSettingChanged,
+    onSettingChanged: onSettingChangedAsync,
     onSettingsChanged,
     supportedLanguages,
     insideApp,
@@ -65,6 +65,12 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsAutoCopyableTrackSetting,
 }) => {
     const { t } = useTranslation();
+    const onSettingChanged = useCallback(
+        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
+            void onSettingChangedAsync(key, value);
+        },
+        [onSettingChangedAsync]
+    );
     const {
         themeType,
         videoSubtitleSplitBehavior,
@@ -475,7 +481,7 @@ const MiscSettingTab: React.FC<Props> = ({
             </Stack>
             <input
                 ref={settingsFileInputRef}
-                onChange={handleSettingsFileInputChange}
+                onChange={() => void handleSettingsFileInputChange()}
                 type="file"
                 accept=".json"
                 multiple

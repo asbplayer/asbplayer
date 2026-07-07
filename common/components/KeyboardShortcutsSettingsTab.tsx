@@ -224,7 +224,7 @@ interface Props {
 
 const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     settings,
-    onSettingChanged,
+    onSettingChanged: onSettingChangedAsync,
     chromeKeyBinds,
     extensionInstalled,
     extensionSupportsExportCardBind,
@@ -232,6 +232,12 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     onOpenChromeExtensionShortcuts,
 }) => {
     const { t } = useTranslation();
+    const onSettingChanged = useCallback(
+        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
+            void onSettingChangedAsync(key, value);
+        },
+        [onSettingChangedAsync]
+    );
     const {
         autoPausePreference,
         fastForwardModePlaybackRate,

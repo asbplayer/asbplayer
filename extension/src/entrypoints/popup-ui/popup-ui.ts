@@ -23,12 +23,14 @@ const fetchShortcuts = () => {
     });
 };
 
-document.addEventListener('DOMContentLoaded', async (e) => {
-    const settings = new SettingsProvider(new ExtensionSettingsStorage());
-    const currentSettingsPromise = settings.getAll();
-    const commandsPromise = fetchShortcuts();
-    const currentSettings = await currentSettingsPromise;
-    const commands = await commandsPromise;
-    const rootElement = document.getElementById('root')!;
-    await renderPopupUi(rootElement, { currentSettings, commands });
+document.addEventListener('DOMContentLoaded', () => {
+    void (async () => {
+        const settings = new SettingsProvider(new ExtensionSettingsStorage());
+        const currentSettingsPromise = settings.getAll();
+        const commandsPromise = fetchShortcuts();
+        const currentSettings = await currentSettingsPromise;
+        const commands = await commandsPromise;
+        const rootElement = document.getElementById('root')!;
+        await renderPopupUi(rootElement, { currentSettings, commands });
+    })();
 });

@@ -269,7 +269,7 @@ export default function Bar({
                     </Link>
                     {lastError && (
                         <ListItem disablePadding>
-                            <ListItemButton onClick={handleCopyLastError}>
+                            <ListItemButton onClick={() => void handleCopyLastError()}>
                                 <ListItemIcon>
                                     <ErrorIcon />
                                 </ListItemIcon>
