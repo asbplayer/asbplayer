@@ -3,12 +3,12 @@ import { AnnotationTutorialState, GlobalStateProvider } from '@project/common/gl
 
 export const useAnnotationTutorial = ({ globalStateProvider }: { globalStateProvider: GlobalStateProvider }) => {
     const handleAnnotationTutorialSeen = useCallback(() => {
-        globalStateProvider.set({ ftueAnnotation: AnnotationTutorialState.hasSeen });
+        void globalStateProvider.set({ ftueAnnotation: AnnotationTutorialState.hasSeen });
         setInAnnotationTutorial(false);
     }, [globalStateProvider]);
     const [inAnnotationTutorial, setInAnnotationTutorial] = useState<boolean>(false);
     useEffect(() => {
-        globalStateProvider
+        void globalStateProvider
             .get(['ftueAnnotation'])
             .then((s) => setInAnnotationTutorial(s.ftueAnnotation === AnnotationTutorialState.shouldSee));
     }, [globalStateProvider]);

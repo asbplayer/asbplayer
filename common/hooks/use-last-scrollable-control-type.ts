@@ -15,7 +15,7 @@ export const useLastScrollableControlType = ({ isMobile, fetchLastControlType, s
     const [lastControlType, setLastControlType] = useState<ControlType>(defaultControlType);
 
     useEffect(() => {
-        fetchLastControlType().then((controlType) => {
+        void fetchLastControlType().then((controlType) => {
             if (controlType === undefined) {
                 setLastControlType(defaultControlType);
             } else {

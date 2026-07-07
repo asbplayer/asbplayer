@@ -20,7 +20,7 @@ export const i18nInit = async (lang: string): Promise<TFunction<['translation', 
         const actualLanguage = langsInitialized[lang];
 
         if (i18n.language !== actualLanguage) {
-            i18n.changeLanguage(actualLanguage);
+            void i18n.changeLanguage(actualLanguage);
         }
 
         return i18n.t;
@@ -28,7 +28,7 @@ export const i18nInit = async (lang: string): Promise<TFunction<['translation', 
 
     initializedPromise = (async () => {
         const loc = await fetchLocalization(lang);
-        i18n.init({
+        void i18n.init({
             resources: { [loc.lang]: { translation: loc.strings } },
             lng: loc.lang,
             fallbackLng: loc.lang,

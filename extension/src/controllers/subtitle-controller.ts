@@ -448,7 +448,7 @@ export default class SubtitleController {
             },
             src: this.context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }
 
     bind() {
@@ -577,7 +577,7 @@ export default class SubtitleController {
                     src: this.context.registeredVideoSrc,
                 };
 
-                browser.runtime.sendMessage(command);
+                void browser.runtime.sendMessage(command);
             }
         }
     }
@@ -744,14 +744,14 @@ export default class SubtitleController {
                 src: this.context.registeredVideoSrc,
             };
 
-            browser.runtime.sendMessage(command);
+            void browser.runtime.sendMessage(command);
         }
 
         void this.onOffsetChange?.();
 
-        this.settings.getSingle('rememberSubtitleOffset').then((rememberSubtitleOffset) => {
+        void this.settings.getSingle('rememberSubtitleOffset').then((rememberSubtitleOffset) => {
             if (rememberSubtitleOffset) {
-                this.settings.set({ lastSubtitleOffset: offset });
+                void this.settings.set({ lastSubtitleOffset: offset });
             }
         });
     }

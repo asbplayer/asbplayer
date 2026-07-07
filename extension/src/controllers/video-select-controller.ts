@@ -59,17 +59,22 @@ export default class VideoSelectController {
 
             switch (request.message.command) {
                 case 'toggle-video-select':
-                    this._trigger(false, request.message.fromAsbplayerId, request.src, request.message.subtitleFiles);
+                    void this._trigger(
+                        false,
+                        request.message.fromAsbplayerId,
+                        request.src,
+                        request.message.subtitleFiles
+                    );
                     break;
                 case 'copy-subtitle':
                 case 'toggle-recording':
                 case 'take-screenshot':
                     if (this._bindings.find((b) => b.synced) === undefined) {
-                        this._trigger(true);
+                        void this._trigger(true);
                     }
                     break;
                 case 'subtitles':
-                    this._hideUi();
+                    void this._hideUi();
                     break;
                 default:
                 // ignore
@@ -99,7 +104,11 @@ export default class VideoSelectController {
 
             if (binding !== undefined && binding.subscribed) {
                 if (subtitleFiles !== undefined) {
-                    binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false, fromAsbplayerId);
+                    await binding.loadSubtitles(
+                        await this._filesForSubtitleFiles(subtitleFiles),
+                        false,
+                        fromAsbplayerId
+                    );
                 } else {
                     binding.showVideoDataDialog(openedFromMiningCommand, fromAsbplayerId);
                 }
@@ -110,14 +119,14 @@ export default class VideoSelectController {
 
             if (binding.subscribed) {
                 if (subtitleFiles !== undefined) {
-                    binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false);
+                    await binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false);
                 } else {
                     binding.showVideoDataDialog(openedFromMiningCommand);
                 }
             }
         } else if (this._bindings.length > 1) {
             // Toggle on
-            this._showUi(openedFromMiningCommand);
+            void this._showUi(openedFromMiningCommand);
             this._subtitleFiles = subtitleFiles;
         }
     }
@@ -167,7 +176,10 @@ export default class VideoSelectController {
                             if (this._subtitleFiles === undefined) {
                                 binding.showVideoDataDialog(false);
                             } else {
-                                binding.loadSubtitles(await this._filesForSubtitleFiles(this._subtitleFiles), false);
+                                await binding.loadSubtitles(
+                                    await this._filesForSubtitleFiles(this._subtitleFiles),
+                                    false
+                                );
                                 this._subtitleFiles = undefined;
                             }
                         }
@@ -178,7 +190,7 @@ export default class VideoSelectController {
                                 command: 'open-asbplayer-settings',
                             },
                         };
-                        browser.runtime.sendMessage(openSettingsCommand);
+                        void browser.runtime.sendMessage(openSettingsCommand);
                     } else if (message.command === 'cancel') {
                         client.updateState({ open: false });
                         this._frame.hide();

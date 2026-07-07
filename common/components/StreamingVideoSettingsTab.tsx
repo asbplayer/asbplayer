@@ -16,7 +16,7 @@ import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import TuneIcon from '@mui/icons-material/Tune';
 import { PageConfigMap } from './SettingsForm';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import PageSettingsForm from './PageSettingsForm';
 import SettingsSection from './SettingsSection';
 
@@ -40,7 +40,7 @@ interface Props {
 
 const StreamingVideoSettingsTab: React.FC<Props> = ({
     settings,
-    onSettingChanged: onSettingChangedAsync,
+    onSettingChanged,
     onSettingsChanged,
     insideApp,
     extensionSupportsOverlay,
@@ -48,12 +48,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
     pageConfigs,
 }) => {
     const { t } = useTranslation();
-    const onSettingChanged = useCallback(
-        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
-            void onSettingChangedAsync(key, value);
-        },
-        [onSettingChangedAsync]
-    );
     const {
         streamingSubtitleListPreference,
         streamingEnableOverlay,
@@ -93,7 +87,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                         <Switch
                             checked={streamingSubtitleListPreference !== SubtitleListPreference.noSubtitleList}
                             onChange={(e) =>
-                                onSettingChanged(
+                                void onSettingChanged(
                                     'streamingSubtitleListPreference',
                                     streamingSubtitleListPreference === SubtitleListPreference.noSubtitleList
                                         ? SubtitleListPreference.app
@@ -111,7 +105,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                         fullWidth
                         label={t('extension.settings.asbplayerUrl')}
                         value={streamingAppUrl}
-                        onChange={(e) => onSettingChanged('streamingAppUrl', e.target.value)}
+                        onChange={(e) => void onSettingChanged('streamingAppUrl', e.target.value)}
                     />
                 )}
                 <SettingsSection>{t('settings.ui')}</SettingsSection>
@@ -120,7 +114,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                         control={
                             <Switch
                                 checked={streamingEnableOverlay}
-                                onChange={(e) => onSettingChanged('streamingEnableOverlay', e.target.checked)}
+                                onChange={(e) => void onSettingChanged('streamingEnableOverlay', e.target.checked)}
                             />
                         }
                         label={t('extension.settings.enableOverlay')}
@@ -131,7 +125,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingDisplaySubtitles}
-                            onChange={(e) => onSettingChanged('streamingDisplaySubtitles', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingDisplaySubtitles', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.displaySubtitles')}
@@ -142,7 +136,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingRecordMedia}
-                            onChange={(e) => onSettingChanged('streamingRecordMedia', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingRecordMedia', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.recordAudio')}
@@ -152,7 +146,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingTakeScreenshot}
-                            onChange={(e) => onSettingChanged('streamingTakeScreenshot', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingTakeScreenshot', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.takeScreenshot')}
@@ -162,7 +156,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingCleanScreenshot}
-                            onChange={(e) => onSettingChanged('streamingCleanScreenshot', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingCleanScreenshot', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.cleanScreenshot')}
@@ -172,7 +166,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingCropScreenshot}
-                            onChange={(e) => onSettingChanged('streamingCropScreenshot', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingCropScreenshot', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.cropScreenshot')}
@@ -183,7 +177,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingSubsDragAndDrop}
-                            onChange={(e) => onSettingChanged('streamingSubsDragAndDrop', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingSubsDragAndDrop', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.dragAndDrop')}
@@ -193,7 +187,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingAutoSync}
-                            onChange={(e) => onSettingChanged('streamingAutoSync', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('streamingAutoSync', e.target.checked)}
                         />
                     }
                     label={t('extension.settings.autoLoadDetectedSubs')}
@@ -203,7 +197,9 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={streamingAutoSyncPromptOnFailure}
-                            onChange={(e) => onSettingChanged('streamingAutoSyncPromptOnFailure', e.target.checked)}
+                            onChange={(e) =>
+                                void onSettingChanged('streamingAutoSyncPromptOnFailure', e.target.checked)
+                            }
                         />
                     }
                     label={t('extension.settings.autoLoadDetectedSubsFailure')}
@@ -217,7 +213,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     label={t('extension.settings.condensedPlaybackMinSkipInterval')}
                     value={streamingCondensedPlaybackMinimumSkipIntervalMs}
                     onChange={(e) =>
-                        onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', Number(e.target.value))
+                        void onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', Number(e.target.value))
                     }
                     slotProps={{
                         htmlInput: {

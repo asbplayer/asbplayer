@@ -113,7 +113,7 @@ export const useLastMediaIdOnce = () => {
     useEffect(() => {
         let mounted = true;
 
-        findLastMediaId().then((lastMediaId) => {
+        void findLastMediaId().then((lastMediaId) => {
             if (mounted) {
                 setLastMediaId(lastMediaId);
             }
@@ -131,7 +131,7 @@ export const useLastMediaId = () => {
         let mounted = true;
 
         const interval = setInterval(() => {
-            findLastMediaId().then((lastMediaId) => {
+            void findLastMediaId().then((lastMediaId) => {
                 if (mounted) {
                     setLastMediaId(lastMediaId);
                 }

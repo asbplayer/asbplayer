@@ -224,7 +224,7 @@ interface Props {
 
 const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     settings,
-    onSettingChanged: onSettingChangedAsync,
+    onSettingChanged,
     chromeKeyBinds,
     extensionInstalled,
     extensionSupportsExportCardBind,
@@ -232,12 +232,6 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     onOpenChromeExtensionShortcuts,
 }) => {
     const { t } = useTranslation();
-    const onSettingChanged = useCallback(
-        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
-            void onSettingChangedAsync(key, value);
-        },
-        [onSettingChangedAsync]
-    );
     const {
         autoPausePreference,
         fastForwardModePlaybackRate,
@@ -294,7 +288,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                                 value={AutoPausePreference.atStart}
                                                 onChange={(event) =>
                                                     event.target.checked &&
-                                                    onSettingChanged('autoPausePreference', AutoPausePreference.atStart)
+                                                    void onSettingChanged(
+                                                        'autoPausePreference',
+                                                        AutoPausePreference.atStart
+                                                    )
                                                 }
                                             />
                                         }
@@ -307,7 +304,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                                 value={AutoPausePreference.atEnd}
                                                 onChange={(event) =>
                                                     event.target.checked &&
-                                                    onSettingChanged('autoPausePreference', AutoPausePreference.atEnd)
+                                                    void onSettingChanged(
+                                                        'autoPausePreference',
+                                                        AutoPausePreference.atEnd
+                                                    )
                                                 }
                                             />
                                         }
@@ -333,7 +333,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                 value={fastForwardModePlaybackRate}
                                 color="primary"
                                 onChange={(event) =>
-                                    onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
+                                    void onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
                                 }
                                 slotProps={{
                                     htmlInput: {
@@ -390,7 +390,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                 fullWidth
                                 value={seekDuration}
                                 color="primary"
-                                onChange={(event) => onSettingChanged('seekDuration', Number(event.target.value))}
+                                onChange={(event) => void onSettingChanged('seekDuration', Number(event.target.value))}
                                 slotProps={{
                                     htmlInput: {
                                         min: 1,
@@ -415,7 +415,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                             <Switch
                                 checked={alwaysPlayOnSubtitleRepeat}
                                 onChange={(event) =>
-                                    onSettingChanged('alwaysPlayOnSubtitleRepeat', event.target.checked)
+                                    void onSettingChanged('alwaysPlayOnSubtitleRepeat', event.target.checked)
                                 }
                             />
                         }
@@ -446,7 +446,9 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                 fullWidth
                                 value={speedChangeStep}
                                 color="primary"
-                                onChange={(event) => onSettingChanged('speedChangeStep', Number(event.target.value))}
+                                onChange={(event) =>
+                                    void onSettingChanged('speedChangeStep', Number(event.target.value))
+                                }
                                 slotProps={{
                                     htmlInput: {
                                         min: 0.1,
@@ -524,7 +526,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
 
     const handleKeysChange = useCallback(
         (keys: string, keyBindName: KeyBindName) => {
-            onSettingChanged('keyBindSet', { ...settings.keyBindSet, [keyBindName]: { keys } });
+            void onSettingChanged('keyBindSet', { ...settings.keyBindSet, [keyBindName]: { keys } });
         },
         [settings.keyBindSet, onSettingChanged]
     );

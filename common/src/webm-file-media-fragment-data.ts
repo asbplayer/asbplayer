@@ -959,7 +959,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         this._cancelRendering();
 
         if (this._blobPromise) {
-            this._blobPromise.finally(() => {
+            void this._blobPromise.finally(() => {
                 if (this._disposed) {
                     this._disposeResources();
                 }

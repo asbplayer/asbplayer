@@ -24,13 +24,13 @@ const StatisticsUi = () => {
     const extension = useChromeExtension({ component: 'statisticsPopup' });
 
     useEffect(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, []);
 
     useEffect(() => {
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'settings-updated') {
-                settingsProvider.getAll().then(setSettings);
+                void settingsProvider.getAll().then(setSettings);
             }
         });
     }, [extension]);
@@ -51,7 +51,7 @@ const StatisticsUi = () => {
                 force: true,
             },
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, []);
     const currentTabId = useCurrentTabId();
     const currentMediaIdWithSubtitles = useMediaId({

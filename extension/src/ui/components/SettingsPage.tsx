@@ -88,7 +88,7 @@ const SettingsPage = ({
     const commands = useCommandKeyBinds();
 
     const handleOpenExtensionShortcuts = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
+        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
     }, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });

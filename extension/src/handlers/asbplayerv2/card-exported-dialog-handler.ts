@@ -24,7 +24,7 @@ export default class CardExportedDialogHandler {
                 command: 'card-exported-dialog',
             },
         };
-        browser.tabs.sendMessage(tabId, cardExportedDialogFromTabCommand);
+        void browser.tabs.sendMessage(tabId, cardExportedDialogFromTabCommand);
         return true;
     }
 }

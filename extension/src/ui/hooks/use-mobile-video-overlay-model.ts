@@ -54,7 +54,7 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
             }
         };
 
-        init();
+        void init();
 
         return () => {
             if (timeout !== undefined) {

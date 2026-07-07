@@ -33,7 +33,7 @@ const _sendAudioBase64 = async (base64: string, requestId: string, encodeAsMp3: 
         },
     };
 
-    browser.runtime.sendMessage(command);
+    void browser.runtime.sendMessage(command);
 };
 
 const _stream: (streamId: string) => Promise<MediaStream> = async (streamId: string) => {
@@ -120,7 +120,11 @@ window.onload = async () => {
                             };
 
                             sendResponse(successResponse);
-                            _sendAudioBase64(audioBase64, currentRequestId!, stopRecordingAudioMessage.encodeAsMp3);
+                            void _sendAudioBase64(
+                                audioBase64,
+                                currentRequestId!,
+                                stopRecordingAudioMessage.encodeAsMp3
+                            );
                         })
                         .catch((e) => {
                             let errorCode: StopRecordingErrorCode;

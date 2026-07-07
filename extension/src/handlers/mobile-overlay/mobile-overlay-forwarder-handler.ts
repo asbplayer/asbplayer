@@ -14,7 +14,7 @@ export default class MobileOverlayForwarderHandler {
             return;
         }
 
-        browser.tabs.sendMessage(sender.tab.id, command);
+        void browser.tabs.sendMessage(sender.tab.id, command);
         return false;
     }
 }

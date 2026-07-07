@@ -64,7 +64,7 @@ export default class MediaAdapter {
     }
 
     play() {
-        this.ref.current?.play();
+        void this.ref.current?.play();
     }
 
     pause() {

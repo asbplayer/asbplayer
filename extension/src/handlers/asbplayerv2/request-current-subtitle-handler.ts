@@ -24,7 +24,7 @@ export default class RequestCurrentSubtitleHandler {
                 command: 'request-current-subtitle',
             },
         };
-        browser.tabs.sendMessage(tabId, requestCurrentSubtitleFromTabCommand).then((response) => {
+        void browser.tabs.sendMessage(tabId, requestCurrentSubtitleFromTabCommand).then((response) => {
             sendResponse(response);
         });
         return true;

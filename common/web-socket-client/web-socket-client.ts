@@ -117,7 +117,7 @@ export class WebSocketClient {
                 }
 
                 this._pingPromises = [];
-                this._connect(url);
+                void this._connect(url);
             } else {
                 this.ping().catch(console.info);
             }

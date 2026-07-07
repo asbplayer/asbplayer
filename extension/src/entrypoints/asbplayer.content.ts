@@ -316,7 +316,7 @@ export default defineContentScript({
                             break;
                         }
                         default:
-                            browser.runtime.sendMessage(command);
+                            void browser.runtime.sendMessage(command);
                             break;
                     }
                 }

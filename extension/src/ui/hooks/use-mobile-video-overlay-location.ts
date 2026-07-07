@@ -32,7 +32,7 @@ export const useMobileVideoOverlayLocation = () => {
 
             setLocation({ src, tabId });
         };
-        init();
+        void init();
     }, []);
 
     return location;

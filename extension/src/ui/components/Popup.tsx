@@ -110,7 +110,7 @@ const Popup = ({
     const { initialized: i18nInitialized } = useI18n({ language: settings.language });
     const anki = useMemo(() => new Anki(settings, new ExtensionFetcher()), [settings]);
     const handleUnlockLocalFonts = useCallback(() => {
-        browser.tabs.create({
+        void browser.tabs.create({
             url: `${browser.runtime.getURL('/options.html')}#subtitle-appearance`,
             active: true,
         });
@@ -133,7 +133,7 @@ const Popup = ({
                 force: true,
             },
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, []);
 
     const [statisticsOpen, setStatisticsOpen] = useState<boolean>(false);

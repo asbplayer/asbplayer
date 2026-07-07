@@ -126,10 +126,10 @@ export default class VideoDataSyncController {
         this._lastLanguagesSynced = streamingLastLanguagesSynced;
 
         if (this._frame.clientIfLoaded !== undefined) {
-            this._context.settings.getSingle('themeType').then((themeType) => {
+            void this._context.settings.getSingle('themeType').then((themeType) => {
                 const profilesPromise = this._context.settings.profiles();
                 const activeProfilePromise = this._context.settings.activeProfile();
-                Promise.all([profilesPromise, activeProfilePromise]).then(([profiles, activeProfile]) => {
+                void Promise.all([profilesPromise, activeProfilePromise]).then(([profiles, activeProfile]) => {
                     this._frame.clientIfLoaded?.updateState({
                         settings: {
                             themeType,
@@ -178,7 +178,7 @@ export default class VideoDataSyncController {
         if (!this._dataReceivedListener) {
             this._dataReceivedListener = (event: Event) => {
                 const data = (event as CustomEvent).detail as VideoData;
-                this._setSyncedData(data);
+                void this._setSyncedData(data);
             };
             document.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
         }
@@ -376,7 +376,7 @@ export default class VideoDataSyncController {
                             },
                             src: this._context.registeredVideoSrc,
                         };
-                        browser.runtime.sendMessage(openSettingsCommand);
+                        void browser.runtime.sendMessage(openSettingsCommand);
                         return;
                     }
 
@@ -390,7 +390,7 @@ export default class VideoDataSyncController {
                             },
                             src: this._context.registeredVideoSrc,
                         };
-                        browser.runtime.sendMessage(settingsUpdatedCommand);
+                        void browser.runtime.sendMessage(settingsUpdatedCommand);
                         return;
                     }
 
@@ -479,7 +479,7 @@ export default class VideoDataSyncController {
 
         if (document.fullscreenElement) {
             this._fullscreenElement = document.fullscreenElement;
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
 
         if (document.activeElement) {
@@ -507,7 +507,7 @@ export default class VideoDataSyncController {
         this._frame?.hide();
 
         if (this._fullscreenElement) {
-            this._fullscreenElement.requestFullscreen();
+            void this._fullscreenElement.requestFullscreen();
             this._fullscreenElement = undefined;
         }
 
@@ -522,7 +522,7 @@ export default class VideoDataSyncController {
         }
 
         if (!this._wasPaused) {
-            this._context.play();
+            void this._context.play();
         }
 
         this._wasPaused = undefined;
@@ -595,7 +595,7 @@ export default class VideoDataSyncController {
         const files: File[] = await Promise.all(
             serializedFiles.map(async (f) => new File([base64ToBlob(f.base64, 'text/plain')], f.name))
         );
-        this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
+        await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
     }
 
     private async _subtitlesForUrl(

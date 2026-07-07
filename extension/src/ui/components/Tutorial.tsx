@@ -29,18 +29,18 @@ const useExtensionState = () => {
     const [loadedSubtitlesCount, setLoadedSubtitlesCount] = useState<number>();
     const [currentTabId, setCurrentTabId] = useState<number>();
     useEffect(() => {
-        browser.tabs.getCurrent().then((t) => setCurrentTabId(t?.id));
+        void browser.tabs.getCurrent().then((t) => setCurrentTabId(t?.id));
     }, []);
     useEffect(() => {
         const interval = setInterval(() => {
-            tabRegistry
+            void tabRegistry
                 .findAsbplayer({
                     filter: (asbplayer) => asbplayer.sidePanel ?? false,
                     allowTabCreation: false,
                 })
                 .then((asbplayer) => setSidePanelOpen(asbplayer !== undefined));
 
-            tabRegistry.activeVideoElements().then(async (elems) => {
+            void tabRegistry.activeVideoElements().then(async (elems) => {
                 const currentElem = elems.find((elem) => elem.id === currentTabId && elem.synced);
 
                 if (currentElem !== undefined) {
@@ -242,7 +242,7 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
 
     useEffect(() => {
         if (step == Step.overlay) {
-            settingsProvider.getSingle('streamingEnableOverlay').then((overlayEnabled) => {
+            void settingsProvider.getSingle('streamingEnableOverlay').then((overlayEnabled) => {
                 if (overlayEnabled) {
                     videoRef.current?.pause();
                 } else {
@@ -259,7 +259,7 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
         if (playing) {
             videoRef.current?.pause();
         } else {
-            videoRef.current?.play();
+            void videoRef.current?.play();
         }
     };
 

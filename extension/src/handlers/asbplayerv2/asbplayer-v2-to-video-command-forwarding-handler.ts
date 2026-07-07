@@ -20,7 +20,7 @@ export default class AsbplayerToVideoCommandForwardingHandler {
                 message: asbplayerToVideoCommand.message,
                 src: asbplayerToVideoCommand.src,
             };
-            browser.tabs.sendMessage(asbplayerToVideoCommand.tabId, extensionToVideoCommand);
+            void browser.tabs.sendMessage(asbplayerToVideoCommand.tabId, extensionToVideoCommand);
         }
 
         return false;

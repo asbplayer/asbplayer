@@ -14,11 +14,14 @@ export default class OpenAsbplayerSettingsHandler {
         const hash = scrollToId ? `#${scrollToId}` : '';
 
         if (tutorial) {
-            browser.tabs.create({ active: true, url: browser.runtime.getURL(`/options.html?tutorial=true${hash}`) });
+            void browser.tabs.create({
+                active: true,
+                url: browser.runtime.getURL(`/options.html?tutorial=true${hash}`),
+            });
         } else if (scrollToId) {
-            browser.tabs.create({ active: true, url: browser.runtime.getURL(`/options.html${hash}`) });
+            void browser.tabs.create({ active: true, url: browser.runtime.getURL(`/options.html${hash}`) });
         } else {
-            browser.runtime.openOptionsPage();
+            void browser.runtime.openOptionsPage();
         }
     }
 }

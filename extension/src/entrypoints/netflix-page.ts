@@ -305,7 +305,7 @@ export default defineUnlistedScript(() => {
                 }
 
                 await currentFetchForLanguagePromise;
-                        currentFetchForLanguagePromise = undefined;
+                currentFetchForLanguagePromise = undefined;
             },
             false
         );

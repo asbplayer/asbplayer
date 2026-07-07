@@ -22,7 +22,7 @@ export default class VideoDisappearedHandler {
         }
 
         const videoToExtensionCommand = command as VideoToExtensionCommand<VideoDisappearedMessage>;
-        this._tabRegistry.onVideoElementDisappeared(sender.tab, videoToExtensionCommand.src);
+        void this._tabRegistry.onVideoElementDisappeared(sender.tab, videoToExtensionCommand.src);
         return false;
     }
 }

@@ -57,8 +57,8 @@ export default class TabRegistry {
         // Update video element state on tab changes
         // Triggers events for when synced video elements appear/disappear
         browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
-            this._removeVideoElementsInTab(tabId);
-            this._removeAsbplayersInTab(tabId);
+            void this._removeVideoElementsInTab(tabId);
+            void this._removeAsbplayersInTab(tabId);
         });
         browser.tabs.onUpdated.addListener((tabId, updateInfo) => {
             let shouldGarbageCollect = false;
@@ -72,8 +72,8 @@ export default class TabRegistry {
             }
 
             if (shouldGarbageCollect) {
-                this._removeVideoElementsInTab(tabId);
-                this._removeAsbplayersInTab(tabId);
+                void this._removeVideoElementsInTab(tabId);
+                void this._removeAsbplayersInTab(tabId);
             }
         });
 
@@ -81,8 +81,8 @@ export default class TabRegistry {
         // onReplaced, not onRemoved, for the old id...without this the old id's bound
         // media would remain in the registry forever.
         browser.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
-            this._removeVideoElementsInTab(removedTabId);
-            this._removeAsbplayersInTab(removedTabId);
+            void this._removeVideoElementsInTab(removedTabId);
+            void this._removeAsbplayersInTab(removedTabId);
         });
     }
 
@@ -209,7 +209,7 @@ export default class TabRegistry {
             syncedVideoElement,
         }: AsbplayerHeartbeatMessage
     ) {
-        this._updateAsbplayers(
+        void this._updateAsbplayers(
             tab,
             asbplayerId,
             videoPlayer,
@@ -255,7 +255,7 @@ export default class TabRegistry {
             syncedVideoElement,
         }: AckTabsMessage
     ) {
-        this._updateAsbplayers(
+        void this._updateAsbplayers(
             tab,
             asbplayerId,
             videoPlayer,
@@ -494,7 +494,7 @@ export default class TabRegistry {
             }, timeoutMs);
 
             browser.runtime.onMessage.addListener(listener);
-            this.publishCommandToAsbplayers({
+            void this.publishCommandToAsbplayers({
                 asbplayerId,
                 commandFactory: (asbplayer) => commandFactory(asbplayer, messageId),
             });
@@ -526,7 +526,7 @@ export default class TabRegistry {
                 const command = commandFactory(videoElement);
 
                 if (command !== undefined) {
-                    browser.tabs.sendMessage(tabId, command);
+                    void browser.tabs.sendMessage(tabId, command);
                 }
             }
         }
@@ -549,7 +549,7 @@ export default class TabRegistry {
                 const command = commandFactory(tab);
 
                 if (command !== undefined) {
-                    browser.tabs.sendMessage(tab.id, command);
+                    void browser.tabs.sendMessage(tab.id, command);
                 }
             }
         }
@@ -596,7 +596,7 @@ export default class TabRegistry {
             }
 
             return new Promise((resolve, reject) => {
-                this._anyAsbplayerTab(resolve, reject, 0, 10, filter);
+                void this._anyAsbplayerTab(resolve, reject, 0, 10, filter);
             });
         }
 

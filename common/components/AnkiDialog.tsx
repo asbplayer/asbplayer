@@ -773,7 +773,7 @@ const AnkiDialog = ({
                     await onProceed(buildExportParams(mode, noteId));
                 }
             } else {
-                onProceed(buildExportParams(mode));
+                void onProceed(buildExportParams(mode));
             }
         },
         [buildExportParams, onProceed]

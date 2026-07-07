@@ -76,7 +76,7 @@ export default function AudioField({
                         disabled={audioClip?.error !== undefined}
                         onClick={(e) => {
                             e.stopPropagation();
-                            audioClip.download();
+                            void audioClip.download();
                         }}
                         edge="end"
                     >

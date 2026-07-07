@@ -221,7 +221,7 @@ export default function OnlineSubtitleSourceDialog({
     const prevCategoryRef = useRef(jimakuSearchCategory);
     useEffect(() => {
         if (prevCategoryRef.current !== jimakuSearchCategory && lastQuery !== undefined) {
-            handleSearchJimaku();
+            void handleSearchJimaku();
         }
         prevCategoryRef.current = jimakuSearchCategory;
     }, [handleSearchJimaku, jimakuSearchCategory, lastQuery]);

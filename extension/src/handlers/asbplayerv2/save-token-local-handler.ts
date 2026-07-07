@@ -23,7 +23,7 @@ export default class SaveTokenLocalHandler {
             src,
             message: { command: 'save-token-local', track, token, status, states, applyStates },
         };
-        browser.tabs.sendMessage(tabId, saveTokenLocalCommand);
+        void browser.tabs.sendMessage(tabId, saveTokenLocalCommand);
         return false;
     }
 }

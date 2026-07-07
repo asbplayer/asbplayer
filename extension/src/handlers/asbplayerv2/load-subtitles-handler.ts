@@ -36,7 +36,7 @@ export default class LoadSubtitlesHandler {
             },
         };
         let published = false;
-        this._tabRegistry
+        void this._tabRegistry
             .publishCommandToVideoElementTabs((tab) => {
                 if (tab.id === loadSubtitlesCommand.tabId) {
                     published = true;
@@ -47,7 +47,7 @@ export default class LoadSubtitlesHandler {
             })
             .then(() => {
                 if (published) {
-                    browser.tabs.update(loadSubtitlesCommand.tabId, { active: true });
+                    void browser.tabs.update(loadSubtitlesCommand.tabId, { active: true });
                 }
             });
 

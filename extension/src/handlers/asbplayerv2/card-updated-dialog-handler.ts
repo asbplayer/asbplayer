@@ -24,7 +24,7 @@ export default class CardUpdatedDialogHandler {
                 command: 'card-updated-dialog',
             },
         };
-        browser.tabs.sendMessage(tabId, cardUpdatedDialogFromTabCommand);
+        void browser.tabs.sendMessage(tabId, cardUpdatedDialogFromTabCommand);
         return true;
     }
 }

@@ -55,7 +55,7 @@ interface Props {
 
 const MiscSettingTab: React.FC<Props> = ({
     settings,
-    onSettingChanged: onSettingChangedAsync,
+    onSettingChanged,
     onSettingsChanged,
     supportedLanguages,
     insideApp,
@@ -65,12 +65,6 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsAutoCopyableTrackSetting,
 }) => {
     const { t } = useTranslation();
-    const onSettingChanged = useCallback(
-        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
-            void onSettingChangedAsync(key, value);
-        },
-        [onSettingChangedAsync]
-    );
     const {
         themeType,
         videoSubtitleSplitBehavior,
@@ -157,7 +151,9 @@ const MiscSettingTab: React.FC<Props> = ({
                                 <Radio
                                     checked={themeType === 'light'}
                                     value="light"
-                                    onChange={(event) => event.target.checked && onSettingChanged('themeType', 'light')}
+                                    onChange={(event) =>
+                                        event.target.checked && void onSettingChanged('themeType', 'light')
+                                    }
                                 />
                             }
                             label={t('settings.themeLight')}
@@ -167,7 +163,9 @@ const MiscSettingTab: React.FC<Props> = ({
                                 <Radio
                                     checked={themeType === 'dark'}
                                     value="dark"
-                                    onChange={(event) => event.target.checked && onSettingChanged('themeType', 'dark')}
+                                    onChange={(event) =>
+                                        event.target.checked && void onSettingChanged('themeType', 'dark')
+                                    }
                                 />
                             }
                             label={t('settings.themeDark')}
@@ -179,7 +177,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     label={t('settings.language')}
                     value={language}
                     color="primary"
-                    onChange={(event) => onSettingChanged('language', event.target.value)}
+                    onChange={(event) => void onSettingChanged('language', event.target.value)}
                 >
                     {supportedLanguages.map((s) => (
                         <MenuItem key={s} value={s}>
@@ -192,7 +190,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         <Switch
                             checked={videoSubtitleSplitBehavior === VideoSubtitleSplitBehavior.autoMaximizeVideo}
                             onChange={(event) =>
-                                onSettingChanged(
+                                void onSettingChanged(
                                     'videoSubtitleSplitBehavior',
                                     event.target.checked
                                         ? VideoSubtitleSplitBehavior.autoMaximizeVideo
@@ -209,7 +207,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={rememberSubtitleOffset}
-                            onChange={(event) => onSettingChanged('rememberSubtitleOffset', event.target.checked)}
+                            onChange={(event) => void onSettingChanged('rememberSubtitleOffset', event.target.checked)}
                         />
                     }
                     label={t('settings.rememberSubtitleOffset')}
@@ -219,7 +217,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={autoCopyCurrentSubtitle}
-                            onChange={(event) => onSettingChanged('autoCopyCurrentSubtitle', event.target.checked)}
+                            onChange={(event) => void onSettingChanged('autoCopyCurrentSubtitle', event.target.checked)}
                         />
                     }
                     label={t('settings.autoCopy')}
@@ -237,7 +235,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                             <Checkbox
                                                 checked={isTrackAutoCopyable(autoCopyableTracks, trackIndex)}
                                                 onChange={(event) => {
-                                                    onSettingChanged(
+                                                    void onSettingChanged(
                                                         'autoCopyableTracks',
                                                         updateAutoCopyableTracksValue(
                                                             autoCopyableTracks,
@@ -267,7 +265,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                             <Checkbox
                                                 checked={isTrackSeekable(seekableTracks, trackIndex)}
                                                 onChange={(event) => {
-                                                    onSettingChanged(
+                                                    void onSettingChanged(
                                                         'seekableTracks',
                                                         updateSeekableTracksValue(
                                                             seekableTracks,
@@ -291,7 +289,7 @@ const MiscSettingTab: React.FC<Props> = ({
                             control={
                                 <Switch
                                     checked={thumbnailPreview}
-                                    onChange={(event) => onSettingChanged('thumbnailPreview', !thumbnailPreview)}
+                                    onChange={(event) => void onSettingChanged('thumbnailPreview', !thumbnailPreview)}
                                 />
                             }
                             label={t('settings.thumbnailPreview')}
@@ -302,7 +300,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                 <Switch
                                     checked={subtitleAboveThumbnail}
                                     onChange={(event) =>
-                                        onSettingChanged('subtitleAboveThumbnail', !subtitleAboveThumbnail)
+                                        void onSettingChanged('subtitleAboveThumbnail', !subtitleAboveThumbnail)
                                     }
                                     disabled={!thumbnailPreview}
                                 />
@@ -319,14 +317,16 @@ const MiscSettingTab: React.FC<Props> = ({
                     color="primary"
                     error={!validRegex}
                     helperText={validRegex ? undefined : 'Invalid regular expression'}
-                    onChange={(event) => onSettingChanged('subtitleRegexFilter', event.target.value)}
+                    onChange={(event) => void onSettingChanged('subtitleRegexFilter', event.target.value)}
                 />
                 <SettingsTextField
                     label={t('settings.subtitleRegexFilterTextReplacement')}
                     fullWidth
                     value={subtitleRegexFilterTextReplacement}
                     color="primary"
-                    onChange={(event) => onSettingChanged('subtitleRegexFilterTextReplacement', event.target.value)}
+                    onChange={(event) =>
+                        void onSettingChanged('subtitleRegexFilterTextReplacement', event.target.value)
+                    }
                 />
                 <FormControl>
                     <FormLabel>{t('settings.subtitleHtml')}</FormLabel>
@@ -337,7 +337,8 @@ const MiscSettingTab: React.FC<Props> = ({
                                     checked={subtitleHtml === SubtitleHtml.remove}
                                     value={SubtitleHtml.remove}
                                     onChange={(event) =>
-                                        event.target.checked && onSettingChanged('subtitleHtml', SubtitleHtml.remove)
+                                        event.target.checked &&
+                                        void onSettingChanged('subtitleHtml', SubtitleHtml.remove)
                                     }
                                 />
                             }
@@ -349,7 +350,8 @@ const MiscSettingTab: React.FC<Props> = ({
                                     checked={subtitleHtml === SubtitleHtml.render}
                                     value={SubtitleHtml.render}
                                     onChange={(event) =>
-                                        event.target.checked && onSettingChanged('subtitleHtml', SubtitleHtml.render)
+                                        event.target.checked &&
+                                        void onSettingChanged('subtitleHtml', SubtitleHtml.render)
                                     }
                                 />
                             }
@@ -361,7 +363,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={convertNetflixRuby}
-                            onChange={(event) => onSettingChanged('convertNetflixRuby', event.target.checked)}
+                            onChange={(event) => void onSettingChanged('convertNetflixRuby', event.target.checked)}
                         />
                     }
                     label={t('settings.convertNetflixRuby')}
@@ -378,7 +380,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                         value={PauseOnHoverMode.disabled}
                                         onChange={(event) =>
                                             event.target.checked &&
-                                            onSettingChanged('pauseOnHoverMode', PauseOnHoverMode.disabled)
+                                            void onSettingChanged('pauseOnHoverMode', PauseOnHoverMode.disabled)
                                         }
                                     />
                                 }
@@ -391,7 +393,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                         value={PauseOnHoverMode.inAndOut}
                                         onChange={(event) =>
                                             event.target.checked &&
-                                            onSettingChanged('pauseOnHoverMode', PauseOnHoverMode.inAndOut)
+                                            void onSettingChanged('pauseOnHoverMode', PauseOnHoverMode.inAndOut)
                                         }
                                     />
                                 }
@@ -404,7 +406,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                         value={PauseOnHoverMode.inNotOut}
                                         onChange={(event) =>
                                             event.target.checked &&
-                                            onSettingChanged('pauseOnHoverMode', PauseOnHoverMode.inNotOut)
+                                            void onSettingChanged('pauseOnHoverMode', PauseOnHoverMode.inNotOut)
                                         }
                                     />
                                 }
@@ -418,7 +420,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     control={
                         <Switch
                             checked={webSocketClientEnabled}
-                            onChange={(e) => onSettingChanged('webSocketClientEnabled', e.target.checked)}
+                            onChange={(e) => void onSettingChanged('webSocketClientEnabled', e.target.checked)}
                         />
                     }
                     label={t('settings.webSocketClientEnabled')}
@@ -430,7 +432,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     label={t('settings.webSocketServerUrl')}
                     value={webSocketServerUrl}
                     disabled={!webSocketClientEnabled}
-                    onChange={(e) => onSettingChanged('webSocketServerUrl', e.target.value)}
+                    onChange={(e) => void onSettingChanged('webSocketServerUrl', e.target.value)}
                     error={webSocketClientEnabled && webSocketConnectionSucceeded === false}
                     helperText={webSocketServerUrlHelperText}
                     slotProps={{
@@ -452,7 +454,7 @@ const MiscSettingTab: React.FC<Props> = ({
                     fullWidth
                     value={miningHistoryStorageLimit}
                     color="primary"
-                    onChange={(event) => onSettingChanged('miningHistoryStorageLimit', Number(event.target.value))}
+                    onChange={(event) => void onSettingChanged('miningHistoryStorageLimit', Number(event.target.value))}
                     slotProps={{
                         htmlInput: {
                             min: 0,
@@ -466,7 +468,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         fullWidth
                         value={tabName}
                         color="primary"
-                        onChange={(event) => onSettingChanged('tabName', event.target.value)}
+                        onChange={(event) => void onSettingChanged('tabName', event.target.value)}
                     />
                 )}
                 <SettingsSection>{t('settings.title')}</SettingsSection>

@@ -64,7 +64,7 @@ export default defineUnlistedScript(() => {
         const originalXhrSend = window.XMLHttpRequest.prototype.send;
         window.XMLHttpRequest.prototype.send = function () {
             this.addEventListener('load', function () {
-                tryExtractMetadata(this.response);
+                void tryExtractMetadata(this.response);
             });
 
             // @ts-expect-error: forwarding original XHR arguments

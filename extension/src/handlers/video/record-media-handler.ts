@@ -89,7 +89,7 @@ export default class RecordMediaHandler {
                 rect,
                 frameId,
             });
-            imagePromise.finally(() => {
+            void imagePromise.finally(() => {
                 const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
                     sender: 'asbplayer-extension-to-video',
                     message: {
@@ -97,7 +97,7 @@ export default class RecordMediaHandler {
                     },
                     src: recordMediaCommand.src,
                 };
-                browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
+                void browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
             });
         }
 
@@ -156,9 +156,9 @@ export default class RecordMediaHandler {
         };
 
         if (isBulkExport) {
-            this._cardPublisher.publishBulk(card, senderTab.id!, recordMediaCommand.src);
+            void this._cardPublisher.publishBulk(card, senderTab.id!, recordMediaCommand.src);
         } else {
-            this._cardPublisher.publish(card, message.postMineAction, senderTab.id!, recordMediaCommand.src);
+            void this._cardPublisher.publish(card, message.postMineAction, senderTab.id!, recordMediaCommand.src);
         }
     }
 }

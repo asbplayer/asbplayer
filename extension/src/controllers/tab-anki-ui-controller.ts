@@ -90,7 +90,7 @@ export class TabAnkiUiController {
         ]);
 
         if (this._frame.bound) {
-            this._frame.client().then(async (client) => {
+            void this._frame.client().then(async (client) => {
                 const profilesPromise = this._settings.profiles();
                 const activeProfilePromise = this._settings.activeProfile();
                 const message: AnkiDialogSettingsMessage = {
@@ -123,7 +123,7 @@ export class TabAnkiUiController {
                                     command: 'open-asbplayer-settings',
                                 },
                             };
-                            browser.runtime.sendMessage(openSettingsCommand);
+                            void browser.runtime.sendMessage(openSettingsCommand);
                             return;
                         }
                         case 'copy-to-clipboard': {
@@ -135,7 +135,7 @@ export class TabAnkiUiController {
                                     dataUrl: copyToClipboardMessage.dataUrl,
                                 },
                             };
-                            browser.runtime.sendMessage(copyToClipboardCommand);
+                            void browser.runtime.sendMessage(copyToClipboardCommand);
                             return;
                         }
                         case 'encode-mp3': {
@@ -160,14 +160,14 @@ export class TabAnkiUiController {
                             return;
                         case 'activeProfile': {
                             const activeProfileMessage = message as ActiveProfileMessage;
-                            this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
+                            void this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
                                 const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
                                     sender: 'asbplayer-video-tab',
                                     message: {
                                         command: 'settings-updated',
                                     },
                                 };
-                                browser.runtime.sendMessage(settingsUpdatedCommand);
+                                void browser.runtime.sendMessage(settingsUpdatedCommand);
                             });
                             return;
                         }
@@ -176,14 +176,14 @@ export class TabAnkiUiController {
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
-                            this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
+                            void this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
                                 const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
                                     sender: 'asbplayer-video-tab',
                                     message: {
                                         command: 'settings-updated',
                                     },
                                 };
-                                browser.runtime.sendMessage(settingsUpdatedCommand);
+                                void browser.runtime.sendMessage(settingsUpdatedCommand);
                             });
                             return;
                         }
@@ -192,7 +192,7 @@ export class TabAnkiUiController {
                                 sender: 'asbplayer-video-tab',
                                 message: message as CardUpdatedDialogMessage,
                             };
-                            browser.runtime.sendMessage(cardUpdatedDialogCommand);
+                            void browser.runtime.sendMessage(cardUpdatedDialogCommand);
                             return;
                         }
                         case 'card-exported-dialog': {
@@ -200,7 +200,7 @@ export class TabAnkiUiController {
                                 sender: 'asbplayer-video-tab',
                                 message: message as CardExportedDialogMessage,
                             };
-                            browser.runtime.sendMessage(cardExportedDialogCommand);
+                            void browser.runtime.sendMessage(cardExportedDialogCommand);
                             return;
                         }
                     }

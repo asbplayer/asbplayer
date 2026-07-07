@@ -23,7 +23,7 @@ export default class CopyToClipboardHandler {
             sender: 'asbplayer-extension-to-video',
             message: command.message,
         };
-        browser.tabs.sendMessage(tabId, extensionToVideoCommand);
+        void browser.tabs.sendMessage(tabId, extensionToVideoCommand);
         return false;
     }
 }

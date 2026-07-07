@@ -109,7 +109,7 @@ export default class StopRecordingMediaHandler {
                 playbackRate: stopRecordingCommand.message.playbackRate,
             };
 
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     subtitle: subtitle,
                     surroundingSubtitles: surroundingSubtitles,

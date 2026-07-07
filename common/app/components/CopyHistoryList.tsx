@@ -145,7 +145,7 @@ function Menu({
 }: MenuProps) {
     const { t } = useTranslation();
     const handleCopy = useCallback(() => {
-        navigator.clipboard.writeText(item.subtitle.text);
+        void navigator.clipboard.writeText(item.subtitle.text);
         onClose();
     }, [item, onClose]);
 

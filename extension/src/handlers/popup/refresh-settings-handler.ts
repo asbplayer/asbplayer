@@ -33,18 +33,18 @@ export default class RefreshSettingsHandler {
     }
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
-        this._settingsProvider
+        void this._settingsProvider
             .get(['language', 'webSocketClientEnabled'])
             .then(({ language, webSocketClientEnabled }) => {
-                primeLocalization(language);
+                void primeLocalization(language);
 
                 if (webSocketClientEnabled) {
-                    bindWebSocketClient(this._settingsProvider, this._tabRegistry);
+                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry);
                 } else {
                     unbindWebSocketClient();
                 }
             });
-        this._tabRegistry.publishCommandToVideoElements((videoElement) => {
+        void this._tabRegistry.publishCommandToVideoElements((videoElement) => {
             const settingsUpdatedCommand: ExtensionToVideoCommand<SettingsUpdatedMessage> = {
                 sender: 'asbplayer-extension-to-video',
                 message: {
@@ -54,7 +54,7 @@ export default class RefreshSettingsHandler {
             };
             return settingsUpdatedCommand;
         });
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: () => {
                 const settingsUpdatedCommand: ExtensionToAsbPlayerCommand<SettingsUpdatedMessage> = {
                     sender: 'asbplayer-extension-to-player',
@@ -65,10 +65,10 @@ export default class RefreshSettingsHandler {
                 return settingsUpdatedCommand;
             },
         });
-        browser.tabs.query({ url: `${browser.runtime.getURL('/options.html')}` }).then((tabs) => {
+        void browser.tabs.query({ url: `${browser.runtime.getURL('/options.html')}` }).then((tabs) => {
             for (const t of tabs) {
                 if (t.id !== undefined) {
-                    browser.tabs.sendMessage(t.id, {
+                    void browser.tabs.sendMessage(t.id, {
                         message: {
                             command: 'settings-updated',
                         },

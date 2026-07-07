@@ -12,12 +12,12 @@ export const useSidePanelRequestedLocation = () => {
     const [extensionRequestedLocation, setExtensionRequestedLocation] = useState<SidePanelLocation>();
 
     useEffect(() => {
-        getAppRequestedLocation().then(setAppRequestedLocation);
+        void getAppRequestedLocation().then(setAppRequestedLocation);
         return onAppRequestedAppLocationChanged(setAppRequestedLocation);
     }, []);
 
     useEffect(() => {
-        getExtensionRequestedLocation().then(setExtensionRequestedLocation);
+        void getExtensionRequestedLocation().then(setExtensionRequestedLocation);
         return onExtensionRequestedAppLocationChanged(setExtensionRequestedLocation);
     }, []);
 

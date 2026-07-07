@@ -527,7 +527,7 @@ const Player = React.memo(function Player({
             }
         }
 
-        init().then(() => onLoaded(subtitleFiles ?? []));
+        void init().then(() => onLoaded(subtitleFiles ?? []));
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
@@ -614,7 +614,7 @@ const Player = React.memo(function Player({
         // If the user is on the app's tab in the same window where the chrome side panel is now displaying
         // the mining history, the subtitle side panel on the video will not receive the updated subtitles.
         // Once the subtitle side panel is active, we only need to refresh the colors once to get anything missed.
-        (async () => {
+        void (async () => {
             if (!subtitlesRef.current) return;
             const response = (await extension.requestSubtitles(tab.id, tab.src)) as
                 | RequestSubtitlesResponse
@@ -717,7 +717,7 @@ const Player = React.memo(function Player({
     useEffect(() => {
         return channel?.onSaveTokenLocal((track, token, status, states, applyStates) => {
             if (!(subtitleCollectionRef.current instanceof SubtitleAnnotations)) return;
-            subtitleCollectionRef.current.saveTokenLocal(track, token, status, states, applyStates);
+            void subtitleCollectionRef.current.saveTokenLocal(track, token, status, states, applyStates);
         });
     }, [channel]);
 
@@ -805,7 +805,7 @@ const Player = React.memo(function Player({
                 (playModesRef.current.has(PlayMode.repeat) || playModesRef.current.has(PlayMode.autoPause)) &&
                 pendingAutoRepeatTargetTimestamp.current > 0
             ) {
-                seek(pendingAutoRepeatTargetTimestamp.current, clock, forwardToMedia);
+                void seek(pendingAutoRepeatTargetTimestamp.current, clock, forwardToMedia);
                 resetPendingAutoRepeatTargetTimestamp();
             }
 
@@ -1333,7 +1333,7 @@ const Player = React.memo(function Player({
 
         pause(clock, mediaAdapter, true);
 
-        seek(rewindSubtitle.start, clock, true, true);
+        void seek(rewindSubtitle.start, clock, true, true);
     }, [clock, rewindSubtitle?.start, mediaAdapter, seek]);
 
     useEffect(() => {

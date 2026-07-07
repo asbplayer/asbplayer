@@ -105,7 +105,7 @@ export class MobileVideoOverlayController {
             this._hide();
         };
         this._seekedListener = () => {
-            this.updateModel();
+            void this.updateModel();
         };
 
         this._context.video.addEventListener('pause', this._pauseListener);
@@ -124,7 +124,7 @@ export class MobileVideoOverlayController {
             }
 
             if (message.message.command === 'request-mobile-overlay-model') {
-                this._model().then(sendResponse);
+                void this._model().then(sendResponse);
                 this._uiInitialized = true;
                 return true;
             }
@@ -158,7 +158,7 @@ export class MobileVideoOverlayController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }
 
     private async _model() {

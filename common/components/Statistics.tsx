@@ -1897,7 +1897,7 @@ export default function Statistics({
 
                 if (mediaId === snapshot.mediaId) {
                     if (mediaInfoFetcher) {
-                        mediaInfoFetcher(snapshot.mediaId).then(setMediaInfo);
+                        void mediaInfoFetcher(snapshot.mediaId).then(setMediaInfo);
                     } else {
                         setMediaInfo(undefined);
                     }
@@ -1950,7 +1950,7 @@ export default function Statistics({
         (sentence: DictionaryStatisticsSentence) => {
             if (mediaId === undefined) return;
             void dictionaryProvider.requestStatisticsSeek(mediaId, sentence.start);
-            onSeekWasRequested?.(mediaId);
+            void onSeekWasRequested?.(mediaId);
         },
         [dictionaryProvider, mediaId, onSeekWasRequested]
     );

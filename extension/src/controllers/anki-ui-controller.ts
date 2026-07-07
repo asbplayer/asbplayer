@@ -76,7 +76,7 @@ export default class AnkiUiController {
         this._settings = settings;
 
         if (this.frame?.bound) {
-            this.frame.client().then(async (client) => {
+            void this.frame.client().then(async (client) => {
                 const profilesPromise = settingsProvider.profiles();
                 const activeProfilePromise = settingsProvider.activeProfile();
                 const message: AnkiDialogSettingsMessage = {
@@ -223,7 +223,7 @@ export default class AnkiUiController {
 
         if (document.fullscreenElement) {
             this.fullscreenElement = document.fullscreenElement;
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
 
         context.keyBindings.unbind();
@@ -264,7 +264,7 @@ export default class AnkiUiController {
                                 },
                                 src: context.registeredVideoSrc,
                             };
-                            browser.runtime.sendMessage(openSettingsCommand);
+                            void browser.runtime.sendMessage(openSettingsCommand);
                             return;
                         }
                         case 'copy-to-clipboard': {
@@ -277,7 +277,7 @@ export default class AnkiUiController {
                                 },
                                 src: context.registeredVideoSrc,
                             };
-                            browser.runtime.sendMessage(copyToClipboardCommand);
+                            void browser.runtime.sendMessage(copyToClipboardCommand);
                             return;
                         }
                         case 'encode-mp3': {
@@ -300,7 +300,7 @@ export default class AnkiUiController {
                         }
                         case 'activeProfile': {
                             const activeProfileMessage = message as ActiveProfileMessage;
-                            context.settings.setActiveProfile(activeProfileMessage.profile).then(() => {
+                            void context.settings.setActiveProfile(activeProfileMessage.profile).then(() => {
                                 const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
                                     sender: 'asbplayer-video',
                                     message: {
@@ -308,7 +308,7 @@ export default class AnkiUiController {
                                     },
                                     src: context.registeredVideoSrc,
                                 };
-                                browser.runtime.sendMessage(settingsUpdatedCommand);
+                                void browser.runtime.sendMessage(settingsUpdatedCommand);
                             });
                             return;
                         }
@@ -317,7 +317,7 @@ export default class AnkiUiController {
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
-                            context.settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
+                            void context.settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
                                 const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
                                     sender: 'asbplayer-video',
                                     message: {
@@ -325,7 +325,7 @@ export default class AnkiUiController {
                                     },
                                     src: context.registeredVideoSrc,
                                 };
-                                browser.runtime.sendMessage(settingsUpdatedCommand);
+                                void browser.runtime.sendMessage(settingsUpdatedCommand);
                             });
                             return;
                         }
@@ -335,7 +335,7 @@ export default class AnkiUiController {
                                 message: message as CardUpdatedDialogMessage,
                                 src: context.registeredVideoSrc,
                             };
-                            browser.runtime.sendMessage(cardUpdatedDialogCommand);
+                            void browser.runtime.sendMessage(cardUpdatedDialogCommand);
                             return;
                         }
                         case 'card-exported-dialog': {
@@ -344,7 +344,7 @@ export default class AnkiUiController {
                                 message: message as CardExportedDialogMessage,
                                 src: context.registeredVideoSrc,
                             };
-                            browser.runtime.sendMessage(cardExportedDialogCommand);
+                            void browser.runtime.sendMessage(cardExportedDialogCommand);
                             return;
                         }
                     }
@@ -355,7 +355,7 @@ export default class AnkiUiController {
                     this.frame?.hide();
 
                     if (this.fullscreenElement) {
-                        this.fullscreenElement.requestFullscreen();
+                        void this.fullscreenElement.requestFullscreen();
                         this.fullscreenElement = undefined;
                     }
 
@@ -387,11 +387,11 @@ export default class AnkiUiController {
                             switch (context.postMinePlayback) {
                                 case PostMinePlayback.remember:
                                     if (context.wasPlayingBeforeRecordingMedia) {
-                                        context.play();
+                                        void context.play();
                                     }
                                     break;
                                 case PostMinePlayback.play:
-                                    context.play();
+                                    void context.play();
                                     break;
                                 case PostMinePlayback.pause:
                                     // already paused, don't need to do anything
@@ -408,7 +408,7 @@ export default class AnkiUiController {
                         }
                         case 'rerecord': {
                             const rerecordMessage = message as AnkiUiBridgeRerecordMessage;
-                            context.rerecord(
+                            void context.rerecord(
                                 rerecordMessage.recordStart,
                                 rerecordMessage.recordEnd,
                                 rerecordMessage.uiState

@@ -21,7 +21,7 @@ export default class AckMessageHandler {
             sender: 'asbplayer-extension-to-player',
             message,
         };
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: () => ackCommand,
         });
         return false;

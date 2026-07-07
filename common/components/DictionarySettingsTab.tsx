@@ -679,7 +679,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 ...newTracks[selectedDictionaryTrack],
                 dictionaryTokenAnnotationConfig,
             };
-            onSettingChanged('dictionaryTracks', newTracks);
+            void onSettingChanged('dictionaryTracks', newTracks);
         },
         [dictionaryTracks, onSettingChanged, selectedDictionaryTrack]
     );
@@ -758,7 +758,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryMatchAcrossScripts: e.target.checked,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                 />
             }
@@ -1214,7 +1214,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     colorizeEnabled,
                                                 },
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1231,7 +1231,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 ...newTracks[selectedDictionaryTrack],
                                                 dictionaryAutoGenerateStatistics: e.target.checked,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1316,7 +1316,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1336,7 +1336,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryTokenMatchStrategy:
                                                 TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1355,7 +1355,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenMatchStrategy: TokenMatchStrategy.LEMMA_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1374,7 +1374,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1400,7 +1400,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 ...newTracks[selectedDictionaryTrack],
                                                 dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1419,7 +1419,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 ...newTracks[selectedDictionaryTrack],
                                                 dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.LEMMA,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1439,7 +1439,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 dictionaryTokenMatchStrategyPriority:
                                                     TokenMatchStrategyPriority.BEST_KNOWN,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1459,7 +1459,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 dictionaryTokenMatchStrategyPriority:
                                                     TokenMatchStrategyPriority.LEAST_KNOWN,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1485,7 +1485,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.ANY_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1505,7 +1505,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1525,7 +1525,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.LEMMA_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1545,7 +1545,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1579,7 +1579,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryYomitanUrl: e.target.value,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     slotProps={{
                         input: {
@@ -1612,7 +1612,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 ...newTracks[selectedDictionaryTrack],
                                 dictionaryYomitanParser: e.target.value as DictionaryTrack['dictionaryYomitanParser'],
                             };
-                            onSettingChanged('dictionaryTracks', newTracks);
+                            void onSettingChanged('dictionaryTracks', newTracks);
                         }}
                     >
                         <MenuItem value="scanning-parser">{t('settings.dictionaryYomitanScanningParser')}</MenuItem>
@@ -1636,7 +1636,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 ...newTracks[selectedDictionaryTrack],
                                 dictionaryYomitanScanLength: Number(e.target.value),
                             };
-                            onSettingChanged('dictionaryTracks', newTracks);
+                            void onSettingChanged('dictionaryTracks', newTracks);
                         }}
                         slotProps={{
                             htmlInput: { min: 1, max: 128, step: 1 },
@@ -1655,7 +1655,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiDecks: items,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     disableCloseOnSelect
                     renderOption={({ key, ...restOfProps }, option, { selected }) => (
@@ -1692,7 +1692,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiWordFields: items,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     disableCloseOnSelect
                     renderOption={(props, option, { selected }) => (
@@ -1729,7 +1729,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiSentenceFields: items,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     disableCloseOnSelect
                     renderOption={(props, option, { selected }) => (
@@ -1770,7 +1770,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiMatureCutoff: Number(e.target.value),
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     slotProps={{
                         htmlInput: { min: 1, max: 36500, step: 1 },
@@ -1791,7 +1791,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryAnkiTreatSuspended: 'NORMAL',
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1813,7 +1813,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     ...newTracks[selectedDictionaryTrack],
                                                     dictionaryAnkiTreatSuspended: tokenStatus,
                                                 };
-                                                onSettingChanged('dictionaryTracks', newTracks);
+                                                void onSettingChanged('dictionaryTracks', newTracks);
                                             }}
                                         />
                                     }
@@ -1854,7 +1854,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 };
                                 clearWaniKaniUserInfo();
                                 setPendingDictionaryWaniKaniApiToken(apiToken);
-                                onSettingChanged('dictionaryTracks', newTracks);
+                                void onSettingChanged('dictionaryTracks', newTracks);
                             }}
                             slotProps={{
                                 input: {
@@ -1910,7 +1910,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.TEXT,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1926,7 +1926,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.BACKGROUND,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1942,7 +1942,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.UNDERLINE,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1958,7 +1958,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.OVERLINE,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1974,7 +1974,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.OUTLINE,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2000,7 +2000,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 ...newTracks[selectedDictionaryTrack],
                                 dictionaryTokenStylingThickness: Number(e.target.value),
                             };
-                            onSettingChanged('dictionaryTracks', newTracks);
+                            void onSettingChanged('dictionaryTracks', newTracks);
                         }}
                         slotProps={{
                             htmlInput: {
@@ -2024,7 +2024,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     ...newTracks[selectedDictionaryTrack],
                                     dictionaryHighlightOnHover: e.target.checked,
                                 };
-                                onSettingChanged('dictionaryTracks', newTracks);
+                                void onSettingChanged('dictionaryTracks', newTracks);
                             }}
                         />
                     }
@@ -2118,7 +2118,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     dictionaryTokenStatusColors: newConfigs.map((config) => config.color),
                                     dictionaryColorizeFullyKnownTokens: newConfigs[getFullyKnownTokenStatus()].display,
                                 };
-                                onSettingChanged('dictionaryTracks', newTracks);
+                                void onSettingChanged('dictionaryTracks', newTracks);
                             };
 
                             // Create a dummy token for previewing the styles
@@ -2306,7 +2306,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryColorizeFullyKnownTokens: e.target.checked,
                                             dictionaryTokenStatusConfig: newConfigs,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2339,7 +2339,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryTokenStatusColors: newColors,
                                             dictionaryTokenStatusConfig: newConfigs,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             );

@@ -15,7 +15,7 @@ export const useFileSession = () => {
 
     useEffect(() => {
         if (!fileSessionRepository) return;
-        fileSessionRepository.fetch().then((record) => {
+        void fileSessionRepository.fetch().then((record) => {
             if (record && (record.videoHandle || record.subtitleHandles.length > 0)) {
                 setCanRestoreLastSession(true);
             }

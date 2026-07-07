@@ -92,7 +92,7 @@ export class StatisticsOverlayController {
             case 'open-statistics-overlay-one-uncollected-dialog': {
                 const openDialogMessage = command.message as OpenStatisticsOverlayOneUncollectedDialogMessage;
                 const { entries, totalSentences, mediaId } = openDialogMessage;
-                this._getOneUncollectedDialogFrame().then(async (frame) => {
+                void this._getOneUncollectedDialogFrame().then(async (frame) => {
                     const state: UiState = {
                         open: true,
                         mediaId,

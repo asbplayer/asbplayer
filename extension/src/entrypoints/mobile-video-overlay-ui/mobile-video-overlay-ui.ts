@@ -16,5 +16,5 @@ window.addEventListener('load', () => {
         document.body.appendChild(scrollBufferDiv);
     }
 
-    renderMobileVideoOverlay(root);
+    void renderMobileVideoOverlay(root);
 });

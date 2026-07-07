@@ -152,13 +152,13 @@ const AnkiSettingsTab: React.FC<Props> = ({
 
     const handleAddCustomField = useCallback(
         (customFieldName: string) => {
-            onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: '' });
+            void onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: '' });
         },
         [settings.customAnkiFields, onSettingChanged]
     );
     const handleCustomFieldChange = useCallback(
         (customFieldName: string, value: string) => {
-            onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: value });
+            void onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: value });
         },
         [settings.customAnkiFields, onSettingChanged]
     );
@@ -166,7 +166,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
         (customFieldName: string) => {
             const newCustomFields = { ...settings.customAnkiFields };
             delete newCustomFields[customFieldName];
-            onSettingChanged('customAnkiFields', newCustomFields);
+            void onSettingChanged('customAnkiFields', newCustomFields);
         },
         [onSettingChanged, settings.customAnkiFields]
     );
@@ -286,7 +286,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
             }
         }
 
-        refreshFieldNames();
+        void refreshFieldNames();
 
         return () => {
             canceled = true;

@@ -68,7 +68,7 @@ export default class RerecordMediaHandler {
             };
         }
 
-        this._cardPublisher.publish(
+        void this._cardPublisher.publish(
             {
                 audio: audio,
                 image: rerecordCommand.message.uiState.image,
@@ -98,6 +98,6 @@ export default class RerecordMediaHandler {
             src: rerecordCommand.src,
         };
 
-        browser.tabs.sendMessage(sender.tab!.id!, showAnkiUiAfterRerecordCommand);
+        void browser.tabs.sendMessage(sender.tab!.id!, showAnkiUiAfterRerecordCommand);
     }
 }

@@ -401,7 +401,7 @@ export default class ChromeExtension {
                 src: src,
             };
             window.postMessage(command);
-            this._createResponsePromise(messageId).then(callback);
+            void this._createResponsePromise(messageId).then(callback);
         }
     }
 

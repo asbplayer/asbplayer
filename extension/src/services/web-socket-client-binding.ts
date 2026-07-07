@@ -91,7 +91,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
     }
 
     client = new WebSocketClient();
-    client.bind(url);
+    void client.bind(url);
     client.onMineSubtitle = async ({
         body: { fields: receivedFields, postMineAction: receivedPostMineAction },
     }: MineSubtitleCommand) => {
@@ -183,7 +183,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                 subtitleFiles,
             },
         };
-        tabRegistry.publishCommandToVideoElementTabs((tab): ExtensionToVideoCommand<Message> | undefined => {
+        void tabRegistry.publishCommandToVideoElementTabs((tab): ExtensionToVideoCommand<Message> | undefined => {
             return toggleVideoSelectCommand;
         });
     };
@@ -191,7 +191,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
         return new Promise<void>((resolve) => {
             // Publish the command to the active tab video element
             browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                tabRegistry.publishCommandToVideoElements((videoElement) => {
+                void tabRegistry.publishCommandToVideoElements((videoElement) => {
                     if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
                         return undefined;
                     }

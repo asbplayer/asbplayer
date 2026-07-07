@@ -23,7 +23,7 @@ export default class OpenStatisticsHandler {
         if (isFirefoxBuild) {
             void setExtensionRequestedLocation('statistics');
 
-            this._tabRegistry
+            void this._tabRegistry
                 .findAsbplayer({
                     filter: (a) => a.sidePanel ?? false,
                     allowTabCreation: false,
@@ -42,7 +42,7 @@ export default class OpenStatisticsHandler {
 
             browser.windows.getLastFocused((w) => {
                 const windowId = w.id;
-                browser.sidePanel.open({ windowId: windowId! });
+                void browser.sidePanel.open({ windowId: windowId! });
             });
         } else {
             createStatisticsPopup();

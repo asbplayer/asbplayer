@@ -564,7 +564,7 @@ function App({
     const handleCopy = useCallback(
         async (card: CardModel, postMineAction?: PostMineAction, id?: string) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
-                navigator.clipboard.writeText(card.subtitle.text);
+                void navigator.clipboard.writeText(card.subtitle.text);
             }
 
             const newCard = {
@@ -577,7 +577,7 @@ function App({
             if (extension.supportsSidePanel) {
                 extension.publishCard(newCard);
             } else {
-                saveCopyHistoryItem(newCard);
+                void saveCopyHistoryItem(newCard);
             }
 
             switch (postMineAction ?? PostMineAction.none) {
@@ -610,7 +610,7 @@ function App({
                         audioClip = audioClip.toMp3(() => new mp3WorkerFactory());
                     }
 
-                    handleAnkiDialogProceed({
+                    void handleAnkiDialogProceed({
                         text: extractText(card.subtitle, card.surroundingSubtitles),
                         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
                         track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
@@ -724,10 +724,10 @@ function App({
     useEffect(() => {
         if (videoFullscreen) {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
+                void document.documentElement.requestFullscreen();
             }
         } else if (document.fullscreenElement) {
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
     }, [videoFullscreen]);
     useEffect(() => {
@@ -791,9 +791,9 @@ function App({
 
                 if (clip?.error === undefined) {
                     if (settings.preferMp3) {
-                        clip!.toMp3(() => new mp3WorkerFactory()).download();
+                        void clip!.toMp3(() => new mp3WorkerFactory()).download();
                     } else {
-                        clip!.download();
+                        void clip!.download();
                     }
                 } else {
                     handleError(t(clip.errorLocKey!));
@@ -819,7 +819,7 @@ function App({
                 )!;
 
                 if (image.error === undefined) {
-                    image.download();
+                    void image.download();
                 } else if (image.error === MediaFragmentErrorCode.fileLinkLost) {
                     handleError(t('ankiDialog.imageFileLinkLost'));
                 } else if (image.error === MediaFragmentErrorCode.captureFailed) {
@@ -1312,7 +1312,7 @@ function App({
 
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'download-audio') {
-                handleDownloadAudio(message.data as DownloadAudioMessage);
+                void handleDownloadAudio(message.data as DownloadAudioMessage);
             }
         });
     }, [extension, inVideoPlayer, handleDownloadAudio]);
@@ -1377,7 +1377,7 @@ function App({
             }
 
             if (dataTransfer.items && dataTransfer.items.length > 0 && allDirectories(dataTransfer.items)) {
-                handleDirectory(dataTransfer.items);
+                void handleDirectory(dataTransfer.items);
             } else if (dataTransfer.files && dataTransfer.files.length > 0) {
                 // Copy files synchronously; DataTransfer may be cleared after this handler returns.
                 const droppedFiles = Array.from(dataTransfer.files);
@@ -1560,11 +1560,11 @@ function App({
                 if (extension.supportsSidePanel) {
                     extension.toggleSidePanel();
                 } else if (copyHistoryOpen) {
-                    handleOpenCopyHistory();
+                    void handleOpenCopyHistory();
                 } else if (statisticsOpen) {
                     handleOpenStatistics();
                 } else {
-                    handleOpenCopyHistory();
+                    void handleOpenCopyHistory();
                 }
             },
             () => ankiDialogOpen || !extension.supportsSidePanel,

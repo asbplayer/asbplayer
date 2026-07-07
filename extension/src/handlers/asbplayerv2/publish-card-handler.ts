@@ -18,7 +18,7 @@ export default class PublishCardHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         const message = command.message as PublishCardMessage;
-        this._cardPublisher.publish(message);
+        void this._cardPublisher.publish(message);
         return false;
     }
 }

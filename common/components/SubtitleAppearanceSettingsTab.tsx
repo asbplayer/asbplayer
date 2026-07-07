@@ -134,7 +134,7 @@ interface Props {
 
 const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     settings,
-    onSettingChanged: onSettingChangedAsync,
+    onSettingChanged,
     onSettingsChanged,
     extensionInstalled,
     extensionSupportsTrackSpecificSettings,
@@ -145,12 +145,6 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     onUnlockLocalFonts,
 }) => {
     const { t } = useTranslation();
-    const onSettingChanged = useCallback(
-        function <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) {
-            void onSettingChangedAsync(key, value);
-        },
-        [onSettingChangedAsync]
-    );
     const {
         subtitlePreview,
         imageBasedSubtitleScaleFactor,
@@ -219,7 +213,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
             <SubtitlePreview
                 subtitleSettings={settings}
                 text={subtitlePreview}
-                onTextChanged={(text) => onSettingChanged('subtitlePreview', text)}
+                onTextChanged={(text) => void onSettingChanged('subtitlePreview', text)}
             />
             <SettingsSection>{t('settings.styling')}</SettingsSection>
             {subtitleColor !== undefined && (
@@ -461,7 +455,9 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     }}
                     value={imageBasedSubtitleScaleFactor}
                     color="primary"
-                    onChange={(event) => onSettingChanged('imageBasedSubtitleScaleFactor', Number(event.target.value))}
+                    onChange={(event) =>
+                        void onSettingChanged('imageBasedSubtitleScaleFactor', Number(event.target.value))
+                    }
                 />
             )}
 
@@ -514,7 +510,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 step: 1,
                             },
                         }}
-                        onChange={(e) => onSettingChanged('subtitlePositionOffset', Number(e.target.value))}
+                        onChange={(e) => void onSettingChanged('subtitlePositionOffset', Number(e.target.value))}
                     />
                     <SettingsTextField
                         type="number"
@@ -528,7 +524,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 step: 1,
                             },
                         }}
-                        onChange={(e) => onSettingChanged('topSubtitlePositionOffset', Number(e.target.value))}
+                        onChange={(e) => void onSettingChanged('topSubtitlePositionOffset', Number(e.target.value))}
                     />
                     {(!extensionInstalled || extensionSupportsSubtitlesWidthSetting) && (
                         <SettingsTextField
@@ -541,7 +537,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 const numberValue = Number(e.target.value);
 
                                 if (!Number.isNaN(numberValue) && numberValue >= 0 && numberValue <= 100) {
-                                    onSettingChanged('subtitlesWidth', numberValue);
+                                    void onSettingChanged('subtitlesWidth', numberValue);
                                 }
                             }}
                             slotProps={{
@@ -550,7 +546,9 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                         <>
                                             {subtitlesWidth === -1 && (
                                                 <InputAdornment position="end">
-                                                    <IconButton onClick={() => onSettingChanged('subtitlesWidth', 100)}>
+                                                    <IconButton
+                                                        onClick={() => void onSettingChanged('subtitlesWidth', 100)}
+                                                    >
                                                         <EditIcon />
                                                     </IconButton>
                                                 </InputAdornment>
@@ -560,7 +558,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                                     <InputAdornment position="end">%</InputAdornment>
                                                     <InputAdornment position="end">
                                                         <IconButton
-                                                            onClick={() => onSettingChanged('subtitlesWidth', -1)}
+                                                            onClick={() => void onSettingChanged('subtitlesWidth', -1)}
                                                         >
                                                             <ClearIcon />
                                                         </IconButton>

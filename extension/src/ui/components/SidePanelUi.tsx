@@ -20,13 +20,13 @@ const SidePanelUi = () => {
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
 
     useEffect(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, []);
 
     useEffect(() => {
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'settings-updated') {
-                settingsProvider.getAll().then(setSettings);
+                void settingsProvider.getAll().then(setSettings);
             }
         });
     }, [extension]);

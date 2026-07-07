@@ -26,7 +26,7 @@ export const useI18n = ({ language }: { language: string }) => {
             return;
         }
 
-        init.then(() => setInitialized(true));
+        void init.then(() => setInitialized(true));
     }, [initialized]);
 
     useEffect(() => {

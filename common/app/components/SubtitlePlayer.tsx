@@ -758,7 +758,7 @@ export default function SubtitlePlayer({
             }
 
             if (slice.willStopShowing !== undefined) {
-                autoPauseContextRef.current?.willStopShowing(slice.willStopShowing);
+                void autoPauseContextRef.current?.willStopShowing(slice.willStopShowing);
             }
 
             requestAnimationRef.current = requestAnimationFrame(update);

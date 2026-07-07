@@ -23,7 +23,7 @@ export default class ToggleSubtitlesHandler {
         const displaySubtitles = await this.settings.getSingle('streamingDisplaySubtitles');
         await this.settings.set({ streamingDisplaySubtitles: !displaySubtitles });
 
-        this.tabRegistry.publishCommandToVideoElements((videoElement) => {
+        void this.tabRegistry.publishCommandToVideoElements((videoElement) => {
             const settingsUpdatedCommand: ExtensionToVideoCommand<SettingsUpdatedMessage> = {
                 sender: 'asbplayer-extension-to-video',
                 message: {

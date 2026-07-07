@@ -40,7 +40,7 @@ export default defineContentScript({
         let unbindToggleSidePanel: (() => void) | undefined;
 
         const bindToggleSidePanel = () => {
-            settingsProvider.getSingle('keyBindSet').then((keyBindSet) => {
+            void settingsProvider.getSingle('keyBindSet').then((keyBindSet) => {
                 unbindToggleSidePanel?.();
                 unbindToggleSidePanel = new DefaultKeyBinder(keyBindSet).bindToggleSidePanel(
                     (event) => {
@@ -53,7 +53,7 @@ export default defineContentScript({
                                 command: 'toggle-side-panel',
                             },
                         };
-                        browser.runtime.sendMessage(command);
+                        void browser.runtime.sendMessage(command);
                     },
                     () => false,
                     true
@@ -206,7 +206,7 @@ export default defineContentScript({
                 switch (request.message.command) {
                     case 'copy-to-clipboard': {
                         const copyToClipboardMessage = request.message as CopyToClipboardMessage;
-                        fetch(copyToClipboardMessage.dataUrl)
+                        void fetch(copyToClipboardMessage.dataUrl)
                             .then((response) => response.blob())
                             .then((blob) => {
                                 if (isFirefoxBuild) {
@@ -243,7 +243,7 @@ export default defineContentScript({
                             }
                         }
 
-                        cropAndResize(
+                        void cropAndResize(
                             cropAndResizeMessage.maxWidth,
                             cropAndResizeMessage.maxHeight,
                             rect,
@@ -254,12 +254,12 @@ export default defineContentScript({
                     case 'show-anki-ui':
                         if (request.src === undefined) {
                             // Message intended for the tab, and not a specific video binding
-                            ankiUiController.show(request.message);
+                            void ankiUiController.show(request.message);
                         }
                         break;
                     case 'settings-updated':
                         bindToggleSidePanel();
-                        ankiUiController.updateSettings();
+                        void ankiUiController.updateSettings();
                         break;
                     default:
                     // ignore

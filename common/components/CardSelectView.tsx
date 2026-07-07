@@ -78,7 +78,7 @@ const useSearchAnki = ({ anki, querier }: { anki: Anki; querier: (anki: Anki) =>
     // Search at least once to provide initial list
     const searchRef = useRef<typeof search>(search);
     useEffect(() => {
-        searchRef.current();
+        void searchRef.current();
     }, []);
 
     return { notes, error, loading, search };
@@ -121,7 +121,7 @@ export default function CardSelectView({
         if (open) {
             setSearchTerm('');
             setShouldAutoCheck(true);
-            searchAnkiRef.current();
+            void searchAnkiRef.current();
         }
     }, [open]);
 
@@ -130,10 +130,10 @@ export default function CardSelectView({
 
     useEffect(() => {
         if (shouldAutoCheckRef.current && notes.length > 0) {
-            onSelectRef.current([notes[0].noteId]);
+            void onSelectRef.current([notes[0].noteId]);
             updateButtonActionRef.current?.focusVisible();
         } else {
-            onSelectRef.current([]);
+            void onSelectRef.current([]);
         }
     }, [notes]);
 
@@ -160,9 +160,9 @@ export default function CardSelectView({
     const handleToggleId = useCallback(
         (noteId: number) => {
             if (selectedNoteIds.includes(noteId)) {
-                onSelect(selectedNoteIds.filter((n) => n !== noteId));
+                void onSelect(selectedNoteIds.filter((n) => n !== noteId));
             } else {
-                onSelect([...selectedNoteIds, noteId].sort());
+                void onSelect([...selectedNoteIds, noteId].sort());
                 updateButtonActionRef.current?.focusVisible();
             }
         },
@@ -172,7 +172,7 @@ export default function CardSelectView({
     const handleSearchKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLDivElement>) => {
             if (e.key === 'Enter') {
-                searchAnki();
+                void searchAnki();
             }
         },
         [searchAnki]

@@ -480,7 +480,7 @@ export default function VideoPlayer({
 
     useEffect(() => {
         if (i18n.language !== miscSettings.language) {
-            i18n.changeLanguage(miscSettings.language);
+            void i18n.changeLanguage(miscSettings.language);
         }
     }, [miscSettings]);
 

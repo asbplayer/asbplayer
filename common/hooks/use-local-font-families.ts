@@ -8,7 +8,7 @@ export const useLocalFontFamilies = () => {
     const [localFontsPermission, setLocalFontsPermission] = useState<PermissionState>();
     const updateLocalFontsPermission = useCallback(() => {
         if (localFontsAvailable) {
-            navigator.permissions
+            void navigator.permissions
                 .query({ name: 'local-fonts' as PermissionName })
                 .then((result) => setLocalFontsPermission(result.state));
         }

@@ -4,7 +4,7 @@ function parse(fileStream: ReadableStream, canvas: OffscreenCanvas) {
     let currentImageDisplaySet: DisplaySet | undefined;
     let imageDataArray: Uint8ClampedArray | undefined;
 
-    fileStream.pipeThrough(parseDisplaySets()).pipeTo(
+    void fileStream.pipeThrough(parseDisplaySets()).pipeTo(
         new WritableStream<DisplaySet>({
             close() {
                 postMessage({

@@ -269,7 +269,7 @@ class FileAudioClipper {
         } else {
             const audio = await this._audioElement(this._file.blobUrl, true);
             audio.oncanplay = async (e) => {
-                audio.play();
+                void audio.play();
                 invokeCallbacks('play', this._callbacks);
                 audio.oncanplay = null;
             };
@@ -559,10 +559,10 @@ class FileAudioData implements AudioData {
                     this._callbacks,
                     this._trackId
                 );
-            this._playClipper.play();
+            void this._playClipper.play();
             invokeCallbacks('play', this._callbacks);
         } else if (this._blobClipper.finishedRecording) {
-            this._blobClipper.play();
+            void this._blobClipper.play();
             invokeCallbacks('play', this._callbacks);
             this._playClipper = undefined;
         } else {

@@ -60,7 +60,7 @@ export default class TakeScreenshotHandler {
         if (takeScreenshotCommand.message.ankiUiState) {
             ankiUiState = takeScreenshotCommand.message.ankiUiState;
             ankiUiState.image = imageModel;
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     audio: ankiUiState.audio,
                     image: ankiUiState.image,
@@ -86,6 +86,6 @@ export default class TakeScreenshotHandler {
             src: takeScreenshotCommand.src,
         };
 
-        browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
+        void browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
     }
 }

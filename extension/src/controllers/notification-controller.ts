@@ -47,7 +47,7 @@ export default class NotificationController {
         await this._prepareAndShowFrame('asbplayer-ui-frame');
 
         if (document.fullscreenElement) {
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
 
         this._client!.updateState({

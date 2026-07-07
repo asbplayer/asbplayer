@@ -96,7 +96,7 @@ export default class StartRecordingMediaHandler {
                     src: startRecordingCommand.src,
                 };
 
-                browser.tabs.sendMessage(sender.tab!.id!, screenshotTakenCommand);
+                void browser.tabs.sendMessage(sender.tab!.id!, screenshotTakenCommand);
             }
         }
 
@@ -132,7 +132,7 @@ export default class StartRecordingMediaHandler {
                           error: AudioErrorCode.drmProtected,
                       };
 
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     subtitle: subtitle,
                     surroundingSubtitles: [],

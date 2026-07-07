@@ -37,7 +37,7 @@ export default class ToggleSidePanelHandler {
 
         let sidePanelOpen = false;
 
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => {
                 if (asbplayer.sidePanel) {
                     sidePanelOpen = true;
@@ -65,7 +65,7 @@ export default class ToggleSidePanelHandler {
             if (!isFirefoxBuild) {
                 browser.windows.getLastFocused((w) => {
                     const windowId = w.id;
-                    browser.sidePanel.open({ windowId: windowId! });
+                    void browser.sidePanel.open({ windowId: windowId! });
                 });
             }
         }
