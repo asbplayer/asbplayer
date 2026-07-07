@@ -12,7 +12,7 @@ const ANKI_MOD_BATCH_SIZE = 10000;
 const ankiQuerySpecialCharacters = ['"', '*', '_', '\\', ':'];
 const ankiQueryDeckSpecialCharacters = ['"', '*', '_', '\\'];
 const alphaNumericCharacters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-const unsafeURLChars = /[:\/\?#\[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
+const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
 
 const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {

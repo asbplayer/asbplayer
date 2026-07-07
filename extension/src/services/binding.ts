@@ -1643,7 +1643,11 @@ export default class Binding {
                 // Otherwise, sync with the target asbplayer.
 
                 const withSyncedAsbplayerOnly = syncWithAsbplayerId === undefined;
-                syncWithAsbplayerTab(withSyncedAsbplayerOnly, syncWithAsbplayerId);
+                try {
+                    await syncWithAsbplayerTab(withSyncedAsbplayerOnly, syncWithAsbplayerId);
+                } catch (error) {
+                    console.error('Failed to sync with asbplayer tab when loading subtitles:', error);
+                }
 
                 this._updateSubtitles(
                     subtitles.map((s, index) => ({

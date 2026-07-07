@@ -342,7 +342,7 @@ const Player = React.memo(function Player({
                 if (isAutoPauseAtEndEnabled) {
                     pendingAutoRepeatTargetTimestamp.current = subtitle.start;
                 } else {
-                    seek(subtitle.start, clock, true);
+                    await seek(subtitle.start, clock, true);
                 }
                 return;
             }
@@ -1371,7 +1371,7 @@ const Player = React.memo(function Player({
         }
 
         webSocketClient.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
-            seek(timestamp * 1000, clock, true, true);
+            await seek(timestamp * 1000, clock, true, true);
         };
     }, [webSocketClient, extension, seek, clock]);
 

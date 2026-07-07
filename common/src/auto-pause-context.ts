@@ -13,8 +13,10 @@ export default class AutoPauseContext {
             return;
         }
 
-        this.onWillStopShowing?.(subtitle);
         this.lastWillStopShowing = subtitle;
+        if (this.onWillStopShowing !== undefined) {
+            await this.onWillStopShowing(subtitle);
+        }
     }
 
     startedShowing(subtitle: SubtitleModel) {

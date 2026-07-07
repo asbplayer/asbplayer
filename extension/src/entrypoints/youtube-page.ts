@@ -267,7 +267,13 @@ export default defineUnlistedScript(() => {
                 const targetTranslationLanguageCodes: string[] =
                     ((e as CustomEvent).detail?.targetTranslationLanguageCodes as string[] | undefined) ?? [];
                 lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes });
-            })();
+            })().catch((error) => {
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-synced-data', {
+                        detail: { error: error instanceof Error ? error.message : String(error) },
+                    })
+                );
+            });
         },
         false
     );
@@ -290,6 +296,6 @@ export default defineUnlistedScript(() => {
             } finally {
                 publishing = false;
             }
-        })();
+        })().catch(console.error);
     }, 500);
 });

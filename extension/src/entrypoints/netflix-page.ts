@@ -214,7 +214,14 @@ export default defineUnlistedScript(() => {
                             detail: response,
                         })
                     );
-                })();
+                })().catch((e) => {
+                    const error = e instanceof Error ? e.message : String(e);
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: { error },
+                        })
+                    );
+                });
             },
             false
         );
@@ -297,15 +304,18 @@ export default defineUnlistedScript(() => {
         document.addEventListener(
             'asbplayer-get-synced-language-data',
             // Fetch data for specific language, since Netflix does not provide all URLs in the initial data sync
-            async (e) => {
-                if (currentFetchForLanguagePromise === undefined) {
-                    currentFetchForLanguagePromise = fetchDataForLanguage(e);
-                } else {
-                    currentFetchForLanguagePromise.then(() => fetchDataForLanguage(e));
-                }
+            (e) => {
+                const previousFetchForLanguagePromise = currentFetchForLanguagePromise ?? Promise.resolve();
+                const nextFetchForLanguagePromise = previousFetchForLanguagePromise
+                    .catch(() => undefined)
+                    .then(() => fetchDataForLanguage(e));
+                currentFetchForLanguagePromise = nextFetchForLanguagePromise;
 
-                await currentFetchForLanguagePromise;
-                currentFetchForLanguagePromise = undefined;
+                void nextFetchForLanguagePromise.catch(console.error).finally(() => {
+                    if (currentFetchForLanguagePromise === nextFetchForLanguagePromise) {
+                        currentFetchForLanguagePromise = undefined;
+                    }
+                });
             },
             false
         );
@@ -337,7 +347,7 @@ export default defineUnlistedScript(() => {
                         detail: apiAvailable,
                     })
                 );
-            })();
+            })().catch(console.error);
         });
     }, 0);
 });

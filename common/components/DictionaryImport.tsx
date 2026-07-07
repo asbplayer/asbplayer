@@ -245,7 +245,7 @@ const DictionaryImport: React.FC<Props> = ({
         const file = dictionaryDBFileInputRef.current?.files?.[0];
         if (file === undefined) return;
         try {
-            void tryImportFile(file);
+            await tryImportFile(file);
         } catch (e) {
             console.error(e);
         } finally {

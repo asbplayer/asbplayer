@@ -86,7 +86,7 @@ export default defineBackground(() => {
     const settings = new SettingsProvider(new ExtensionSettingsStorage());
 
     const startListener = async () => {
-        primeLocalization(await settings.getSingle('language'));
+        await primeLocalization(await settings.getSingle('language'));
     };
 
     const globalStateProvider = new ExtensionGlobalStateProvider();
@@ -111,7 +111,7 @@ export default defineBackground(() => {
 
     const installListener = async (details: Browser.runtime.InstalledDetails) => {
         if (details.reason === browser.runtime.OnInstalledReason.UPDATE) {
-            primeLocalization(await settings.getSingle('language'));
+            await primeLocalization(await settings.getSingle('language'));
 
             // Existing users who upgrade to 1.14.0 should see the annotation tutorial
             if (details.previousVersion !== undefined && semverLt(details.previousVersion, '1.14.0')) {
@@ -522,7 +522,7 @@ export default defineBackground(() => {
                         console.error(e);
                     }
                 }
-            })();
+            })().catch(console.error);
         });
     } else {
         if (!isMobile) {
@@ -550,8 +550,7 @@ export default defineBackground(() => {
 
                 for (const header of responseHeaders) {
                     if (header.name.toLowerCase() === 'content-security-policy') {
-                        let cspValue = header.value;
-                        cspValue += ` ; script-src moz-extension://${browser.runtime.id}`;
+                        header.value += ` ; script-src moz-extension://${browser.runtime.id}`;
                     }
                 }
 

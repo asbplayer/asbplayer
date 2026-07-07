@@ -68,12 +68,12 @@ const useSearchAnki = ({ anki, querier }: { anki: Anki; querier: (anki: Anki) =>
             }
 
             setNotes(noteInfos);
-        } catch {
-            setError(error);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
-    }, [querier, error, anki]);
+    }, [querier, anki]);
 
     // Search at least once to provide initial list
     const searchRef = useRef<typeof search>(search);

@@ -207,7 +207,7 @@ export class CardPublisher {
     private async _saveCardToRepository(id: string, card: CardModel) {
         try {
             const storageLimit = await this._settingsProvider.getSingle('miningHistoryStorageLimit');
-            new IndexedDBCopyHistoryRepository(storageLimit).save({
+            await new IndexedDBCopyHistoryRepository(storageLimit).save({
                 ...card,
                 id: card.id ?? id,
                 timestamp: Date.now(),

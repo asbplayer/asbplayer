@@ -204,7 +204,7 @@ export class TabAnkiUiController {
                             return;
                         }
                     }
-                })();
+                })().catch(console.error);
             });
         }
 

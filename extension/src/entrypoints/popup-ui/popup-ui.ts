@@ -32,5 +32,5 @@ document.addEventListener('DOMContentLoaded', () => {
         const commands = await commandsPromise;
         const rootElement = document.getElementById('root')!;
         await renderPopupUi(rootElement, { currentSettings, commands });
-    })();
+    })().catch(console.error);
 });

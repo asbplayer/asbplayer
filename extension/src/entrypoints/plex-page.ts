@@ -295,7 +295,14 @@ export default defineUnlistedScript(() => {
                         detail: response,
                     })
                 );
-            })();
+            })().catch((e) => {
+                const error = e instanceof Error ? e.message : String(e);
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-synced-data', {
+                        detail: { error },
+                    })
+                );
+            });
         },
         false
     );
