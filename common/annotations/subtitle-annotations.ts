@@ -1450,6 +1450,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
     private async _updatePitchAccent(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token pitch accent');
+        // TODO: Move this check to applyPitchAccentAnnotation() once pitch accent from tokenize is released
         if (token.status == null || !shouldUseAnnotation('pitchAccent', token.status, token.states, ts.dt)) return;
         if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkPitchAccent()) {
             token.pitchAccent = await ts.yt.pitchAccent(trimmedToken);
