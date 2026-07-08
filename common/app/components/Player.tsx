@@ -1453,6 +1453,12 @@ const Player = React.memo(function Player({
                             onUnloadVideo={() => videoFileUrl && onUnloadVideo(videoFileUrl)}
                             onOffsetChange={handleOffsetChange}
                             onPlayMode={handlePlayMode}
+                            subtitleSync={{
+                                subtitles: subtitles ?? [],
+                                subtitleFileNames: subtitleFiles?.map((f) => f.name) ?? [],
+                                subtitleReader,
+                                onApplyOffset: handleOffsetChange,
+                            }}
                             disableKeyEvents={disableKeyEvents}
                             playbackPreferences={playbackPreferences}
                             showOnMouseMovement={true}

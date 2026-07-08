@@ -8,7 +8,7 @@ import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Fade from '@mui/material/Fade';
 import Badge from '@mui/material/Badge';
-import { ForwardedRef, useEffect, useState } from 'react';
+import { ForwardedRef, ReactNode, useEffect, useState } from 'react';
 import React from 'react';
 import Tooltip from '@project/common/components/Tooltip';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,7 @@ interface Props {
     miningHistoryCount: number;
     onShowStatistics: () => void;
     disableBulkExport?: boolean;
+    subtitleSyncButton?: ReactNode;
 }
 
 const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
@@ -36,6 +37,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
         miningHistoryCount,
         onShowStatistics,
         disableBulkExport,
+        subtitleSyncButton,
     }: Props,
     ref: ForwardedRef<HTMLDivElement>
 ) {
@@ -58,6 +60,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                             </IconButton>
                         </Tooltip>
                     </Grid>
+                    {subtitleSyncButton && <Grid item>{subtitleSyncButton}</Grid>}
                     {canDownloadSubtitles && (
                         <>
                             <Grid item>
