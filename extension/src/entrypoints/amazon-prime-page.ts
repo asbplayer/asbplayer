@@ -52,8 +52,8 @@ export default defineUnlistedScript(() => {
     };
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
-    window.XMLHttpRequest.prototype.open = function () {
-        const url = arguments[1];
+    window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+        const url = args[1];
 
         if (typeof url === 'string') {
             const titleId = captureRequestUrl(url);
@@ -64,17 +64,17 @@ export default defineUnlistedScript(() => {
         }
 
         // @ts-expect-error: forwarding original XHR arguments
-        originalXhrOpen.apply(this, arguments);
+        originalXhrOpen.apply(this, args);
     };
 
     const originalXhrSend = window.XMLHttpRequest.prototype.send;
-    window.XMLHttpRequest.prototype.send = function () {
-        if (this._vodPlaybackResourcesTitleId && typeof arguments[0] === 'string') {
-            metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = arguments[0];
+    window.XMLHttpRequest.prototype.send = function (...args: unknown[]) {
+        if (this._vodPlaybackResourcesTitleId && typeof args[0] === 'string') {
+            metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = args[0];
         }
 
         // @ts-expect-error: forwarding original XHR arguments
-        originalXhrSend.apply(this, arguments);
+        originalXhrSend.apply(this, args);
     };
 
     // Prime's player issues these calls via fetch, so mirror the capture there too.
@@ -110,8 +110,7 @@ export default defineUnlistedScript(() => {
             // Never let our interceptor break the page's fetches.
         }
 
-        // @ts-expect-error: forwarding original fetch arguments
-        return originalFetch.apply(this, arguments);
+        return originalFetch.call(this, input, init);
     };
 
     const basenameFromUrl = async (url: string) => {

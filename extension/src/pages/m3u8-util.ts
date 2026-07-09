@@ -91,15 +91,15 @@ export const inferTracksFromInterceptedM3u8 = (urlRegex: RegExp) => {
     let lastManifestUrl: string | undefined;
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
-    window.XMLHttpRequest.prototype.open = function () {
-        const url = arguments[1];
+    window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+        const url = args[1];
 
         if (typeof url === 'string' && urlRegex.test(url)) {
             lastManifestUrl = url;
         }
 
         // @ts-expect-error: forwarding original XHR arguments
-        originalXhrOpen.apply(this, arguments);
+        originalXhrOpen.apply(this, args);
     };
 
     inferTracks({

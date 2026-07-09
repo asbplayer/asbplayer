@@ -62,13 +62,13 @@ export default defineUnlistedScript(() => {
         };
 
         const originalXhrSend = window.XMLHttpRequest.prototype.send;
-        window.XMLHttpRequest.prototype.send = function () {
+        window.XMLHttpRequest.prototype.send = function (...args: unknown[]) {
             this.addEventListener('load', function () {
                 void tryExtractMetadata(this.response);
             });
 
             // @ts-expect-error: forwarding original XHR arguments
-            originalXhrSend.apply(this, arguments);
+            originalXhrSend.apply(this, args);
         };
 
         const videoIdFromUrl = () => {

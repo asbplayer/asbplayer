@@ -58,9 +58,9 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
         if (onJson !== undefined) {
             const originalParse = JSON.parse;
 
-            JSON.parse = function () {
+            JSON.parse = function (...args: unknown[]) {
                 // @ts-expect-error: forwarding original parse arguments
-                const value = originalParse.apply(this, arguments);
+                const value = originalParse.apply(this, args);
                 let tracksFound = false;
                 let basenameFound = false;
 

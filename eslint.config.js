@@ -71,7 +71,6 @@ module.exports = [
                 },
             ],
             '@typescript-eslint/no-explicit-any': 'off',
-            'prefer-rest-params': 'off',
         },
         languageOptions: {
             parser: typescriptParser,

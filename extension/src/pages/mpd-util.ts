@@ -61,15 +61,15 @@ export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
     let lastManifestUrl: string | undefined;
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
-    window.XMLHttpRequest.prototype.open = function () {
-        const url = arguments[1];
+    window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+        const url = args[1];
 
         if (typeof url === 'string' && mpdUrlRegex.test(url)) {
             lastManifestUrl = url;
         }
 
         // @ts-expect-error: forwarding original XHR arguments
-        originalXhrOpen.apply(this, arguments);
+        originalXhrOpen.apply(this, args);
     };
 
     inferTracks({
