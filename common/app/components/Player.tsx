@@ -1452,8 +1452,8 @@ const Player = React.memo(function Player({
                             playModes={playModes}
                             onPlay={handlePlay}
                             onPause={handlePause}
-                            onSeek={(progress) => void handleSeek(progress)}
-                            onAudioTrackSelected={(id) => void handleAudioTrackSelected(id)}
+                            onSeek={handleSeek}
+                            onAudioTrackSelected={handleAudioTrackSelected}
                             onTabSelected={onTabSelected}
                             onOffsetChange={handleOffsetChange}
                             onPlayMode={handlePlayMode}
@@ -1484,8 +1484,8 @@ const Player = React.memo(function Player({
                         lastJumpToTopTimestamp={lastJumpToTopTimestamp}
                         hidden={actuallyHideSubtitlePlayer}
                         disabledSubtitleTracks={disabledSubtitleTracks}
-                        onSeek={(progress, shouldPlay) => void handleSeekToTimestamp(progress, shouldPlay)}
-                        onCopy={(...args) => void handleCopyFromSubtitlePlayer(...args)}
+                        onSeek={handleSeekToTimestamp}
+                        onCopy={handleCopyFromSubtitlePlayer}
                         onMouseOver={handleMouseOver}
                         onMouseOut={handleMouseOut}
                         onOffsetChange={handleOffsetChange}

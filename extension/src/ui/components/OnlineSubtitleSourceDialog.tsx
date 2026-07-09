@@ -341,7 +341,7 @@ export default function OnlineSubtitleSourceDialog({
                                             </ToggleButtonGroup>
                                             <IconButton
                                                 loading={searching}
-                                                onClick={() => void handleSearch()}
+                                                onClick={handleSearch}
                                                 disabled={isSearchDisabled}
                                             >
                                                 <SearchIcon fontSize="small" />
@@ -394,7 +394,7 @@ export default function OnlineSubtitleSourceDialog({
                                 {filteredJimakuEntries.map((entry) => (
                                     <ListItemButton
                                         key={entry.id}
-                                        onClick={() => void handleLoadJimakuFiles(entry)}
+                                        onClick={() => handleLoadJimakuFiles(entry)}
                                         disabled={loadingFiles || loadingJimakuFiles || isApiKeyMissing}
                                     >
                                         <ListItemText primary={entry.name} />
@@ -451,7 +451,7 @@ export default function OnlineSubtitleSourceDialog({
                                 {filteredJimakuFiles?.map((file) => (
                                     <ListItemButton
                                         key={file.url}
-                                        onClick={() => void handleImport(file)}
+                                        onClick={() => handleImport(file)}
                                         disabled={loadingFiles}
                                     >
                                         <ListItemText primary={file.name} />
@@ -483,7 +483,7 @@ export default function OnlineSubtitleSourceDialog({
                                 {jimakuRecentWorks.map((entry) => (
                                     <ListItemButton
                                         key={entry.id}
-                                        onClick={() => void handleLoadJimakuFiles(entry)}
+                                        onClick={() => handleLoadJimakuFiles(entry)}
                                         disabled={loadingFiles || loadingJimakuFiles || isApiKeyMissing}
                                     >
                                         <ListItemText primary={entry.name} />

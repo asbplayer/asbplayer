@@ -333,7 +333,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                 value={fastForwardModePlaybackRate}
                                 color="primary"
                                 onChange={(event) =>
-                                    void onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
+                                    onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
                                 }
                                 slotProps={{
                                     htmlInput: {
@@ -390,7 +390,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                 fullWidth
                                 value={seekDuration}
                                 color="primary"
-                                onChange={(event) => void onSettingChanged('seekDuration', Number(event.target.value))}
+                                onChange={(event) => onSettingChanged('seekDuration', Number(event.target.value))}
                                 slotProps={{
                                     htmlInput: {
                                         min: 1,
@@ -415,7 +415,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                             <Switch
                                 checked={alwaysPlayOnSubtitleRepeat}
                                 onChange={(event) =>
-                                    void onSettingChanged('alwaysPlayOnSubtitleRepeat', event.target.checked)
+                                    onSettingChanged('alwaysPlayOnSubtitleRepeat', event.target.checked)
                                 }
                             />
                         }
@@ -446,9 +446,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                                 fullWidth
                                 value={speedChangeStep}
                                 color="primary"
-                                onChange={(event) =>
-                                    void onSettingChanged('speedChangeStep', Number(event.target.value))
-                                }
+                                onChange={(event) => onSettingChanged('speedChangeStep', Number(event.target.value))}
                                 slotProps={{
                                     htmlInput: {
                                         min: 0.1,

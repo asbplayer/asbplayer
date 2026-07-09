@@ -62,7 +62,14 @@ module.exports = [
             '@typescript-eslint/return-await': 'error',
             '@typescript-eslint/await-thenable': 'error',
             '@typescript-eslint/no-floating-promises': 'error',
-            '@typescript-eslint/no-misused-promises': 'error',
+            '@typescript-eslint/no-misused-promises': [
+                'error',
+                {
+                    checksVoidReturn: {
+                        attributes: false,
+                    },
+                },
+            ],
             '@typescript-eslint/no-explicit-any': 'off',
             'prefer-rest-params': 'off',
         },

@@ -118,7 +118,7 @@ export default function WordField({
                                     <span>
                                         <IconButton
                                             disabled={disabled || !wordField || !text || text.trim() === ''}
-                                            onClick={() => void anki.findNotesWithWordGui(text.trim())}
+                                            onClick={() => anki.findNotesWithWordGui(text.trim())}
                                             edge="end"
                                         >
                                             <SearchIcon />

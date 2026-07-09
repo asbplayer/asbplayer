@@ -2102,7 +2102,7 @@ export default function Statistics({
                     miningDisabledReason={t('statistics.miningDisabledUntilComplete')}
                     onClose={handleCloseSentenceBucketDetails}
                     onSeekToSentence={handleSeekSentence}
-                    onMineSentence={(...args) => void handleMineSentence(...args)}
+                    onMineSentence={handleMineSentence}
                 />
             )}
         </Paper>

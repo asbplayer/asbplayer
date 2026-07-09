@@ -357,12 +357,12 @@ const DictionaryImport: React.FC<Props> = ({
                     <Button disabled={importingFromFile} onClick={handleCloseImportClipboardDialog}>
                         {t('action.cancel')}
                     </Button>
-                    <Button loading={importingFromFile} onClick={() => void handleImportDictionaryDB()}>
+                    <Button loading={importingFromFile} onClick={handleImportDictionaryDB}>
                         {t('action.importFile')}
                     </Button>
                     {isPreviewRequiredBeforeImport && (
                         <Button
-                            onClick={() => void handlePreviewImportClipboard()}
+                            onClick={handlePreviewImportClipboard}
                             disabled={!importClipboardText.trim().length || importClipboardLoading}
                         >
                             {t('action.preview')}
@@ -372,7 +372,7 @@ const DictionaryImport: React.FC<Props> = ({
                         <Button
                             variant="contained"
                             color="primary"
-                            onClick={() => void handleSaveImportClipboard()}
+                            onClick={handleSaveImportClipboard}
                             disabled={!importClipboardPreview?.length || importClipboardLoading || importingFromFile}
                         >
                             {t('action.save')}
@@ -382,7 +382,7 @@ const DictionaryImport: React.FC<Props> = ({
             </Dialog>
             <input
                 ref={dictionaryDBFileInputRef}
-                onChange={() => void handleDictionaryDBFileInputChange()}
+                onChange={handleDictionaryDBFileInputChange}
                 type="file"
                 accept=".json,.txt"
                 hidden

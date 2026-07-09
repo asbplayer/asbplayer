@@ -1075,7 +1075,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
-                                onClick={() => void handleExportDictionaryDB()}
+                                onClick={handleExportDictionaryDB}
                                 loading={exportingDictionaryDB}
                             >
                                 {t('action.exportDictionaryLocalRecords')}
@@ -1098,7 +1098,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             variant="contained"
                             color="primary"
                             style={{ width: '100%' }}
-                            onClick={() => void handleBuildAnkiCache()}
+                            onClick={handleBuildAnkiCache}
                             loading={buildingAnkiCache}
                             disabled={buildAnkiCacheDisabled}
                             startIcon={<RefreshIcon />}
@@ -1135,7 +1135,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ width: '100%' }}
-                                onClick={() => void handleBuildWaniKaniCache()}
+                                onClick={handleBuildWaniKaniCache}
                                 loading={buildingWaniKaniCache}
                                 disabled={buildWaniKaniCacheDisabled}
                                 startIcon={<RefreshIcon />}
@@ -1585,7 +1585,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         input: {
                             endAdornment: (
                                 <InputAdornment position="end">
-                                    <IconButton onClick={() => void dictionaryRequestYomitan()}>
+                                    <IconButton onClick={dictionaryRequestYomitan}>
                                         <RefreshIcon />
                                     </IconButton>
                                 </InputAdornment>
@@ -1880,7 +1880,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     <IconButton
                                                         disabled={!selectedDictionary.dictionaryWaniKaniApiToken.trim()}
                                                         onClick={() =>
-                                                            void requestDictionaryWaniKaniUserInfo(
+                                                            requestDictionaryWaniKaniUserInfo(
                                                                 selectedDictionary.dictionaryWaniKaniApiToken
                                                             )
                                                         }

@@ -221,8 +221,8 @@ const StatisticsOverlayUi = () => {
                     ref={handleOverlayRef}
                     open
                     dictionaryProvider={dictionaryProvider}
-                    onOpenStatistics={() => void handleOpenStatistics()}
-                    onReceivedSnapshot={(...args) => void handleReceivedSnapshot(...args)}
+                    onOpenStatistics={handleOpenStatistics}
+                    onReceivedSnapshot={handleReceivedSnapshot}
                     onSnapshotCleared={handleStatisticsSnapshotCleared}
                     onClose={handleCloseStatisticsOverlay}
                     onMoveBy={handleMoveOverlayBy}

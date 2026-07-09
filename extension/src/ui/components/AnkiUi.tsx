@@ -375,11 +375,11 @@ export default function AnkiUi({ bridge }: Props) {
                         activeProfile={activeProfile}
                         onSetActiveProfile={handleSetActiveProfile}
                         anki={anki}
-                        onProceed={(params) => handleProceed(params)}
-                        onRerecord={canRerecord ? () => void handleRerecord() : undefined}
+                        onProceed={handleProceed}
+                        onRerecord={canRerecord ? handleRerecord : undefined}
                         onCancel={handleCancel}
                         onOpenSettings={handleOpenSettings}
-                        onCopyToClipboard={(blob) => void handleCopyToClipboard(blob)}
+                        onCopyToClipboard={handleCopyToClipboard}
                         source={source}
                         initialTimestampInterval={initialTimestampInterval}
                         timestampBoundaryInterval={timestampBoundaryInterval}

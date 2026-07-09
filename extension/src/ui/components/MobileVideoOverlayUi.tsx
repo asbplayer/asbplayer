@@ -230,7 +230,7 @@ const MobileVideoOverlayUi = () => {
                     tooltipsEnabled={tooltipsEnabled}
                     initialControlType={lastControlType}
                     onScrollToControlType={setLastControlType}
-                    onMineSubtitle={() => void handleMineSubtitle()}
+                    onMineSubtitle={handleMineSubtitle}
                     onLoadSubtitles={handleLoadSubtitles}
                     onOffset={handleOffset}
                     onSeek={handleSeek}

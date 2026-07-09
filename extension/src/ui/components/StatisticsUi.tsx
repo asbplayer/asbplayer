@@ -79,8 +79,8 @@ const StatisticsUi = () => {
                     contentPadding={1}
                     onSeekWasRequested={uiTabRegistry.focusTabForMediaId}
                     onMineWasRequested={uiTabRegistry.focusTabForMediaId}
-                    onViewAnnotationSettings={() => void handleViewAnnotationSettings()}
-                    onOpenOverlay={(mediaId) => void handleOpenStatisticsOverlay(mediaId)}
+                    onViewAnnotationSettings={handleViewAnnotationSettings}
+                    onOpenOverlay={handleOpenStatisticsOverlay}
                     sx={{ m: 2, width: '100%', flexGrow: 1 }}
                 />
             </Paper>

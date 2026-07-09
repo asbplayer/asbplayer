@@ -896,9 +896,9 @@ const AnkiDialog = ({
                                     )}
                                     {image && !model.custom && model.key === 'image' && model.field.display && (
                                         <ImageField
-                                            onViewImage={(e) => void handleViewImage(e)}
+                                            onViewImage={handleViewImage}
                                             image={image}
-                                            onCopyImageToClipboard={(e) => void handleCopyImageToClipboard(e)}
+                                            onCopyImageToClipboard={handleCopyImageToClipboard}
                                             copyEnabled={!isFirefox}
                                         />
                                     )}
@@ -910,7 +910,7 @@ const AnkiDialog = ({
                                                 timestampInterval?.[1] !== lastAppliedTimestampIntervalToAudio?.[1]
                                             }
                                             onRerecord={onRerecord}
-                                            onPlayAudio={(e) => void handlePlayAudio(e)}
+                                            onPlayAudio={handlePlayAudio}
                                         />
                                     )}
                                     {!model.custom && model.key === 'source' && model.field.display && (
@@ -977,7 +977,7 @@ const AnkiDialog = ({
                             fullWidth
                             color="primary"
                             items={tags}
-                            onItemsChange={(newTags) => setTags(newTags)}
+                            onItemsChange={setTags}
                         />
                         {timestampInterval && timestampBoundaryInterval && timestampMarks && (
                             <Grid container direction="row">
@@ -1093,7 +1093,7 @@ const AnkiDialog = ({
                         disabled={disabled}
                         focusVisible={focusedAction === 'gui'}
                         onBlurVisible={handleActionBlur}
-                        onClick={() => void handleOpenInAnki()}
+                        onClick={handleOpenInAnki}
                     >
                         {t('ankiDialog.openInAnki')}
                     </AnkiDialogButton>
@@ -1102,7 +1102,7 @@ const AnkiDialog = ({
                         disabled={disabled}
                         focusVisible={focusedAction === 'updateLast'}
                         onBlurVisible={handleActionBlur}
-                        onClick={() => void handleUpdateLastCard()}
+                        onClick={handleUpdateLastCard}
                     >
                         {t('ankiDialog.updateLastCard')}
                     </AnkiDialogButton>
@@ -1111,7 +1111,7 @@ const AnkiDialog = ({
                         disabled={disabled}
                         focusVisible={focusedAction === 'default'}
                         onBlurVisible={handleActionBlur}
-                        onClick={() => void handleExport()}
+                        onClick={handleExport}
                     >
                         {t('ankiDialog.export')}
                     </AnkiDialogButton>
@@ -1133,7 +1133,7 @@ const AnkiDialog = ({
                 disabled={disabled}
                 selectedNoteIds={selectedNoteIdsToUpdate ?? []}
                 onSelect={setSelectedNoteIdsToUpdate}
-                onUpdate={(noteIds) => handleUpdateSelectedCards(noteIds)}
+                onUpdate={handleUpdateSelectedCards}
                 onClose={() => setCardSelectDialogOpen(false)}
             />
         </>

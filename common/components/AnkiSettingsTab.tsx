@@ -417,12 +417,12 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     error={Boolean(ankiConnectUrlError)}
                     helperText={ankiConnectUrlError}
                     color="primary"
-                    onChange={(event) => void onSettingChanged('ankiConnectUrl', event.target.value)}
+                    onChange={(event) => onSettingChanged('ankiConnectUrl', event.target.value)}
                     slotProps={{
                         input: {
                             endAdornment: (
                                 <InputAdornment position="end">
-                                    <IconButton onClick={() => void requestAnkiConnect()}>
+                                    <IconButton onClick={requestAnkiConnect}>
                                         <RefreshIcon />
                                     </IconButton>
                                 </InputAdornment>
@@ -437,7 +437,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     value={ankiConnectApiKeyVisible ? ankiConnectApiKey : maskApiToken(ankiConnectApiKey)}
                     type="text"
                     color="primary"
-                    onChange={(event) => void onSettingChanged('ankiConnectApiKey', event.target.value)}
+                    onChange={(event) => onSettingChanged('ankiConnectApiKey', event.target.value)}
                     sx={{ '& input': { fontFamily: 'monospace' } }}
                     slotProps={{
                         input: {
@@ -487,7 +487,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     label={t('settings.deck')}
                     value={deck}
                     selections={deckNames}
-                    onValueChange={(value) => void onSettingChanged('deck', value)}
+                    onValueChange={(value) => onSettingChanged('deck', value)}
                     onOpen={() => {
                         if (tutorialStep === TutorialStep.deck) {
                             onTutorialStepChanged(TutorialStep.noteType);
@@ -505,7 +505,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     label={t('settings.noteType')}
                     value={noteType}
                     selections={modelNames}
-                    onValueChange={(value) => void onSettingChanged('noteType', value)}
+                    onValueChange={(value) => onSettingChanged('noteType', value)}
                     onOpen={() => {
                         if (tutorialStep === TutorialStep.noteType) {
                             onTutorialStepChanged(TutorialStep.ankiFields);
@@ -554,7 +554,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                     label={t('settings.sentenceField')}
                                     value={sentenceField}
                                     selections={fieldNames}
-                                    onValueChange={(value) => void onSettingChanged('sentenceField', value)}
+                                    onValueChange={(value) => onSettingChanged('sentenceField', value)}
                                     {...rest}
                                 />
                             </TutorialBubble>
@@ -564,7 +564,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 label={t('settings.definitionField')}
                                 value={definitionField}
                                 selections={fieldNames}
-                                onValueChange={(value) => void onSettingChanged('definitionField', value)}
+                                onValueChange={(value) => onSettingChanged('definitionField', value)}
                                 {...rest}
                             />
                         )}
@@ -573,7 +573,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 label={t('settings.wordField')}
                                 value={wordField}
                                 selections={fieldNames}
-                                onValueChange={(value) => void onSettingChanged('wordField', value)}
+                                onValueChange={(value) => onSettingChanged('wordField', value)}
                                 {...rest}
                             />
                         )}
@@ -582,7 +582,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 label={t('settings.audioField')}
                                 value={audioField}
                                 selections={fieldNames}
-                                onValueChange={(value) => void onSettingChanged('audioField', value)}
+                                onValueChange={(value) => onSettingChanged('audioField', value)}
                                 {...rest}
                             />
                         )}
@@ -591,7 +591,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 label={t('settings.imageField')}
                                 value={imageField}
                                 selections={fieldNames}
-                                onValueChange={(value) => void onSettingChanged('imageField', value)}
+                                onValueChange={(value) => onSettingChanged('imageField', value)}
                                 {...rest}
                             />
                         )}
@@ -600,7 +600,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 label={t('settings.sourceField')}
                                 value={sourceField}
                                 selections={fieldNames}
-                                onValueChange={(value) => void onSettingChanged('sourceField', value)}
+                                onValueChange={(value) => onSettingChanged('sourceField', value)}
                                 {...rest}
                             />
                         )}
@@ -609,7 +609,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 label={t('settings.urlField')}
                                 value={urlField}
                                 selections={fieldNames}
-                                onValueChange={(value) => void onSettingChanged('urlField', value)}
+                                onValueChange={(value) => onSettingChanged('urlField', value)}
                                 {...rest}
                             />
                         )}
@@ -620,7 +620,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                     label={t('settings.track1Field')}
                                     value={track1Field}
                                     selections={fieldNames}
-                                    onValueChange={(value) => void onSettingChanged('track1Field', value)}
+                                    onValueChange={(value) => onSettingChanged('track1Field', value)}
                                     {...rest}
                                 />
                             )}
@@ -631,7 +631,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                     label={t('settings.track2Field')}
                                     value={track2Field}
                                     selections={fieldNames}
-                                    onValueChange={(value) => void onSettingChanged('track2Field', value)}
+                                    onValueChange={(value) => onSettingChanged('track2Field', value)}
                                     {...rest}
                                 />
                             )}
@@ -642,7 +642,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                     label={t('settings.track3Field')}
                                     value={track3Field}
                                     selections={fieldNames}
-                                    onValueChange={(value) => void onSettingChanged('track3Field', value)}
+                                    onValueChange={(value) => onSettingChanged('track3Field', value)}
                                     {...rest}
                                 />
                             )}
@@ -667,7 +667,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                 fullWidth
                 color="primary"
                 items={tags}
-                onItemsChange={(tags) => void onSettingChanged('tags', tags)}
+                onItemsChange={(tags) => onSettingChanged('tags', tags)}
             />
             {testCard && (
                 <TutorialBubble
@@ -677,7 +677,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     text={t('ftue.testCard')}
                     onConfirm={() => onTutorialStepChanged(TutorialStep.done)}
                 >
-                    <Button variant="contained" onClick={() => void handleCreateTestCard()}>
+                    <Button variant="contained" onClick={handleCreateTestCard}>
                         {t('settings.createTestCard')}
                     </Button>
                 </TutorialBubble>

@@ -739,9 +739,7 @@ const BulkUpdateDialog: React.FC<{
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setConfirmApplyOpen(false)}>{t('action.cancel')}</Button>
-                    <Button onClick={() => void handleApplyToSelected()}>
-                        {t('settings.dictionaryBrowser.applyToSelected')}
-                    </Button>
+                    <Button onClick={handleApplyToSelected}>{t('settings.dictionaryBrowser.applyToSelected')}</Button>
                 </DialogActions>
             </Dialog>
 
@@ -755,7 +753,7 @@ const BulkUpdateDialog: React.FC<{
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setConfirmDeleteOpen(false)}>{t('action.cancel')}</Button>
-                    <Button color="error" onClick={() => void handleDeleteSelected()}>
+                    <Button color="error" onClick={handleDeleteSelected}>
                         {t('action.delete')}
                     </Button>
                 </DialogActions>
@@ -2050,7 +2048,7 @@ export default function WordBrowserDialog({
                     )}
                     <Button
                         startIcon={<RefreshIcon />}
-                        onClick={() => void loadRecords(draftViewCriteria)}
+                        onClick={() => loadRecords(draftViewCriteria)}
                         loading={loading}
                         disabled={mutating}
                     >

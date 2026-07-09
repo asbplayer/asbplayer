@@ -131,10 +131,10 @@ export function PopupUi({ commands }: Props) {
                             commands={commands}
                             dictionaryProvider={dictionaryProvider}
                             settings={settings}
-                            onSettingsChanged={(settings) => void handleSettingsChanged(settings)}
-                            onOpenApp={() => void handleOpenApp()}
-                            onOpenSidePanel={() => void handleOpenSidePanel()}
-                            onOpenExtensionShortcuts={() => void handleOpenExtensionShortcuts()}
+                            onSettingsChanged={handleSettingsChanged}
+                            onOpenApp={handleOpenApp}
+                            onOpenSidePanel={handleOpenSidePanel}
+                            onOpenExtensionShortcuts={handleOpenExtensionShortcuts}
                             onOpenUserGuide={handleOpenUserGuide}
                             {...profilesContext}
                         />

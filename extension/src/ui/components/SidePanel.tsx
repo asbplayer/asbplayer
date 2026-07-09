@@ -631,10 +631,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     items={copyHistoryItems}
                     forceShowDownloadOptions={true}
                     onClose={noOp}
-                    onDelete={(item) => void deleteCopyHistoryItem(item)}
-                    onDeleteAll={() => void deleteAllCopyHistoryItems()}
+                    onDelete={deleteCopyHistoryItem}
+                    onDeleteAll={deleteAllCopyHistoryItems}
                     onAnki={handleAnki}
-                    onClipAudio={(item) => void handleClipAudio(item)}
+                    onClipAudio={handleClipAudio}
                     onDownloadImage={handleDownloadImage}
                     onSelect={handleJumpToSubtitle}
                 />
@@ -660,10 +660,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                         open={showCopyHistory || extensionRequestedLocation === 'mining-history'}
                         items={copyHistoryItems}
                         onClose={handleCloseCopyHistory}
-                        onDelete={(item) => void deleteCopyHistoryItem(item)}
-                        onDeleteAll={() => void deleteAllCopyHistoryItems()}
+                        onDelete={deleteCopyHistoryItem}
+                        onDeleteAll={deleteAllCopyHistoryItems}
                         onAnki={handleAnki}
-                        onClipAudio={(item) => void handleClipAudio(item)}
+                        onClipAudio={handleClipAudio}
                         onDownloadImage={handleDownloadImage}
                     />
                     {subtitles === undefined ? (
@@ -672,7 +672,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                             videoElementCount={videoElementCount}
                             miningHistoryCount={copyHistoryItems.length}
                             onLoadSubtitles={handleLoadSubtitles}
-                            onShowMiningHistory={() => void handleShowCopyHistory()}
+                            onShowMiningHistory={handleShowCopyHistory}
                             onOpenUserGuide={handleOpenUserGuide}
                         />
                     ) : (
@@ -723,8 +723,8 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onClose={handleCloseStatistics}
                                 onMineWasRequested={uiTabRegistry.focusTabForMediaId}
                                 onViewAnnotationSettings={handleViewAnnotationSettings}
-                                onOpenOverlay={(mediaId) => void handleOpenStatisticsOverlay(mediaId)}
-                                onOpenInNewWindow={() => void createStatisticsPopup()}
+                                onOpenOverlay={handleOpenStatisticsOverlay}
+                                onOpenInNewWindow={createStatisticsPopup}
                                 sx={{ p: 2 }}
                             />
                             <SidePanelTopControls
@@ -733,9 +733,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onLoadSubtitles={handleLoadSubtitles}
                                 canDownloadSubtitles={canDownloadSubtitles}
                                 onDownloadSubtitles={handleDownloadSubtitles}
-                                onBulkExportSubtitles={() => void handleBulkExportSubtitles()}
+                                onBulkExportSubtitles={handleBulkExportSubtitles}
                                 disableBulkExport={recordingAudio}
-                                onShowMiningHistory={() => void handleShowCopyHistory()}
+                                onShowMiningHistory={handleShowCopyHistory}
                                 miningHistoryCount={copyHistoryItems.length}
                                 onShowStatistics={handleShowStatistics}
                             />
@@ -757,7 +757,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 open={bulkOpen}
                 currentIndex={bulkCurrent}
                 totalItems={bulkTotal}
-                onCancel={() => void handleBulkExportCancel()}
+                onCancel={handleBulkExportCancel}
             />
         </div>
     );
