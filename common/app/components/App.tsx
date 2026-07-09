@@ -163,7 +163,6 @@ async function extractDropFileHandles(items: DataTransferItemList): Promise<File
 
 function extractSources(files: FileList | File[]): MediaSources {
     const subtitleFiles: File[] = [];
-    const audioFile: File | undefined = undefined;
     let videoFile: File | undefined = undefined;
 
     for (let i = 0; i < files.length; ++i) {
@@ -191,10 +190,6 @@ function extractSources(files: FileList | File[]): MediaSources {
                 extension: extension.startsWith('.') ? extension.substring(1) : extension,
             });
         }
-    }
-
-    if (videoFile && audioFile) {
-        throw new LocalizedError('error.bothAudioAndVideNotAllowed');
     }
 
     return { subtitleFiles: subtitleFiles, videoFile: videoFile };
