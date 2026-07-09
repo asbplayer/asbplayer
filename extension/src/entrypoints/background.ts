@@ -530,6 +530,204 @@ export default defineBackground(() => {
     }
 
     if (isFirefoxBuild) {
+        const jwPlayerHostRegex = /^(vidwish\.live|watching\.onl|vidcloud\..+|megaplay\.buzz)$/;
+        const subtitlePathRegex = /(?:\/subtitles\/|\.(?:vtt|srt|ass|ssa)(?:$|[?#]))/i;
+        const subtitleRequestPatterns = [
+            '*://*/*/subtitles/*',
+            '*://*/*.vtt*',
+            '*://*/*.srt*',
+            '*://*/*.ass*',
+            '*://*/*.ssa*',
+        ];
+        // JW Player iframe URL registries. Time-bound so stale entries cannot leak
+        // the Referer/Origin rewrite to unrelated requests. Reaped on tab close
+        // and on tab navigation away from a JW Player host. The asbplayer
+        // overlay iframe fetches arrive with tabId === -1, so the
+        // `anyJwPlayer` fallback uses the most recent fresh entry.
+        const JW_PLAYER_REGISTRATION_TTL_MS = 60_000;
+        const jwPlayerFrameReferersByFrame = new Map<string, { url: string; ts: number }>();
+        const jwPlayerFrameReferersByTab = new Map<number, { url: string; ts: number }>();
+        const jwPlayerTabUrls = new Map<number, { url: string; ts: number }>();
+        const jwPlayerTabUrlInflight = new Map<number, Promise<string | undefined>>();
+
+        const jwPlayerFrameKey = (tabId: number, frameId: number) => `${tabId}:${frameId}`;
+
+        const isJwPlayerRefererFresh = (entry: { url: string; ts: number } | undefined, now: number) =>
+            entry !== undefined && now - entry.ts < JW_PLAYER_REGISTRATION_TTL_MS;
+
+        const jwPlayerRefererFromUrl = (url: string | undefined) => {
+            if (typeof url !== 'string') {
+                return undefined;
+            }
+
+            try {
+                const parsed = new URL(url);
+                if (
+                    (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+                    jwPlayerHostRegex.test(parsed.host)
+                ) {
+                    return parsed.toString();
+                }
+            } catch {
+                return undefined;
+            }
+
+            return undefined;
+        };
+
+        const resolveJwPlayerTabUrl = async (tabId: number): Promise<string | undefined> => {
+            const cached = jwPlayerTabUrls.get(tabId);
+            if (cached !== undefined && isJwPlayerRefererFresh(cached, Date.now())) {
+                return cached.url;
+            }
+            jwPlayerTabUrls.delete(tabId);
+            const inflight = jwPlayerTabUrlInflight.get(tabId);
+            if (inflight !== undefined) {
+                return inflight;
+            }
+            const promise = (async () => {
+                try {
+                    const tab = await browser.tabs.get(tabId);
+                    const referer = jwPlayerRefererFromUrl(tab.url);
+                    if (referer !== undefined) {
+                        const entry = { url: referer, ts: Date.now() };
+                        jwPlayerTabUrls.set(tabId, entry);
+                        return referer;
+                    }
+                    return undefined;
+                } catch {
+                    return undefined;
+                } finally {
+                    jwPlayerTabUrlInflight.delete(tabId);
+                }
+            })();
+            jwPlayerTabUrlInflight.set(tabId, promise);
+            return promise;
+        };
+
+        const registerJwPlayerReferer = (
+            tabId: number | undefined,
+            frameId: number | undefined,
+            referer: string | undefined
+        ) => {
+            if (referer === undefined) {
+                return;
+            }
+            const entry = { url: referer, ts: Date.now() };
+            if (tabId !== undefined) {
+                jwPlayerFrameReferersByTab.set(tabId, entry);
+                jwPlayerTabUrls.set(tabId, entry);
+            }
+            if (tabId !== undefined && frameId !== undefined) {
+                jwPlayerFrameReferersByFrame.set(jwPlayerFrameKey(tabId, frameId), entry);
+            }
+        };
+
+        const evictJwPlayerFrameEntriesForTab = (tabId: number) => {
+            jwPlayerFrameReferersByTab.delete(tabId);
+            jwPlayerTabUrls.delete(tabId);
+            jwPlayerTabUrlInflight.delete(tabId);
+            for (const key of jwPlayerFrameReferersByFrame.keys()) {
+                if (key.startsWith(`${tabId}:`)) {
+                    jwPlayerFrameReferersByFrame.delete(key);
+                }
+            }
+        };
+
+        browser.runtime.onMessage.addListener((message, sender) => {
+            if (message?.command !== 'asbplayer-register-jwplayer-frame') {
+                return;
+            }
+
+            const tabId = sender.tab?.id;
+            const frameId = sender.frameId;
+            const referer = jwPlayerRefererFromUrl(message.url);
+            if (tabId === undefined || referer === undefined) {
+                return;
+            }
+
+            registerJwPlayerReferer(tabId, frameId, referer);
+        });
+
+        browser.tabs.onRemoved.addListener((tabId) => {
+            evictJwPlayerFrameEntriesForTab(tabId);
+        });
+
+        browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+            if (changeInfo.url !== undefined) {
+                if (jwPlayerRefererFromUrl(changeInfo.url) === undefined) {
+                    evictJwPlayerFrameEntriesForTab(tabId);
+                } else {
+                    registerJwPlayerReferer(tabId, undefined, changeInfo.url);
+                }
+            } else if (changeInfo.status === 'loading' && !jwPlayerTabUrls.has(tabId)) {
+                const referer = jwPlayerRefererFromUrl(tab.url);
+                if (referer !== undefined) {
+                    registerJwPlayerReferer(tabId, undefined, referer);
+                }
+            }
+        });
+
+        browser.webRequest.onBeforeSendHeaders.addListener(
+            (details) => {
+                if (!subtitlePathRegex.test(details.url)) {
+                    return;
+                }
+
+                const now = Date.now();
+                const sourceUrl = (details as any).documentUrl ?? (details as any).originUrl;
+                const sourceReferer = jwPlayerRefererFromUrl(sourceUrl);
+                const frameEntry = jwPlayerFrameReferersByFrame.get(jwPlayerFrameKey(details.tabId, details.frameId));
+                const tabEntry = jwPlayerFrameReferersByTab.get(details.tabId);
+
+                const frameReferer = isJwPlayerRefererFresh(frameEntry, now) ? frameEntry!.url : undefined;
+                const tabReferer = isJwPlayerRefererFresh(tabEntry, now) ? tabEntry!.url : undefined;
+
+                let anyJwPlayer: string | undefined;
+                if (details.tabId === -1) {
+                    for (const candidate of jwPlayerFrameReferersByTab.values()) {
+                        if (isJwPlayerRefererFresh(candidate, now)) {
+                            anyJwPlayer = candidate.url;
+                            break;
+                        }
+                    }
+                }
+
+                const referer = sourceReferer ?? frameReferer ?? tabReferer ?? anyJwPlayer;
+
+                if (referer === undefined) {
+                    void resolveJwPlayerTabUrl(details.tabId).then((fallback) => {
+                        if (fallback === undefined) {
+                            return;
+                        }
+                        jwPlayerFrameReferersByTab.set(details.tabId, { url: fallback, ts: Date.now() });
+                    });
+                    return;
+                }
+
+                const requestHeaders = (details.requestHeaders ?? []).filter((header) => {
+                    const name = header.name.toLowerCase();
+                    return name !== 'referer' && name !== 'origin';
+                });
+
+                requestHeaders.push({ name: 'Referer', value: referer });
+
+                let origin: string | undefined;
+                try {
+                    origin = new URL(referer).origin;
+                } catch {
+                    origin = undefined;
+                }
+                if (origin !== undefined) {
+                    requestHeaders.push({ name: 'Origin', value: origin });
+                }
+
+                return { requestHeaders };
+            },
+            { urls: subtitleRequestPatterns },
+            ['blocking', 'requestHeaders']
+        );
+
         // Firefox requires the use of iframe.srcdoc in order to load UI into an about:blank iframe
         // (which is required for UI to be scannable by other extensions like Yomitan).
         // However, such an iframe inherits the content security directives of the parent document,

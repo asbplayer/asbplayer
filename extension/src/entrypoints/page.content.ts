@@ -15,6 +15,15 @@ export default defineContentScript({
     runAt: 'document_start',
 
     main(ctx: ContentScriptContext) {
-        currentPageDelegate().then((pageDelegate) => pageDelegate?.loadScripts());
+        currentPageDelegate().then((pageDelegate) => {
+            pageDelegate?.loadScripts();
+
+            if (pageDelegate?.config.key === 'jwPlayer') {
+                browser.runtime.sendMessage({
+                    command: 'asbplayer-register-jwplayer-frame',
+                    url: window.location.href,
+                });
+            }
+        });
     },
 });
