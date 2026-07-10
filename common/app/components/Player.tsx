@@ -1214,9 +1214,6 @@ const Player = React.memo(function Player({
 
             if (progress >= 1) {
                 pause(clock, mediaAdapter, true);
-
-                await seek(0, clock, true, true);
-                setLastJumpToTopTimestamp(Date.now());
             }
         }, 1000);
 
