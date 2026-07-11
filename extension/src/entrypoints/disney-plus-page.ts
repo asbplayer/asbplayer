@@ -11,7 +11,7 @@ export default defineUnlistedScript(() => {
     const seekEventName = 'asbplayer-disney-plus-seek';
     const playEventName = 'asbplayer-disney-plus-play';
     const pauseEventName = 'asbplayer-disney-plus-pause';
-    const timeEventName = 'asbplayer-disney-plus-time';
+    const seekedEventName = 'asbplayer-disney-plus-seeked';
 
     const isDisneyPlusPlayer = (value: any) =>
         value &&
@@ -107,6 +107,14 @@ export default defineUnlistedScript(() => {
         return undefined;
     };
 
+    const dispatchSeekedEvent = (player: any) => {
+        const ms = player?.timeline?.info?.playheadPositionMs;
+
+        if (typeof ms === 'number' && isFinite(ms)) {
+            document.dispatchEvent(new CustomEvent(seekedEventName, { detail: ms }));
+        }
+    };
+
     let cachedPlayer: any;
     const disneyPlusPlayer = (): any => {
         if (isDisneyPlusPlayer(cachedPlayer)) {
@@ -114,6 +122,24 @@ export default defineUnlistedScript(() => {
         }
 
         cachedPlayer = findDisneyPlusPlayer();
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_SEEK_COMPLETE', () => {
+            dispatchSeekedEvent(cachedPlayer);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/TIMECODE', () => {
+            dispatchSeekedEvent(cachedPlayer);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_PAUSED', () => {
+            dispatchSeekedEvent(cachedPlayer);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_SEEKING', () => {
+            dispatchSeekedEvent(cachedPlayer);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_RESUMED', () => {
+            dispatchSeekedEvent(cachedPlayer);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_STARTED', () => {
+            dispatchSeekedEvent(cachedPlayer);
+        });
         return cachedPlayer;
     };
 
@@ -123,17 +149,6 @@ export default defineUnlistedScript(() => {
     });
     document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());
     document.addEventListener(pauseEventName, () => disneyPlusPlayer()?.pause());
-
-    // Push the player's true content time (ms) to the content script, since
-    // video.currentTime is unreliable on Disney+. The content script caches and
-    // interpolates this value for subtitle overlay sync.
-    setInterval(() => {
-        const ms = disneyPlusPlayer()?.timeline?.info?.playheadPositionMs;
-
-        if (typeof ms === 'number' && isFinite(ms)) {
-            document.dispatchEvent(new CustomEvent(timeEventName, { detail: ms }));
-        }
-    }, 250);
 
     setTimeout(() => {
         let lastM3U8Url: string | undefined = undefined;

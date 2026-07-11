@@ -104,15 +104,6 @@ document.addEventListener('asbplayer-netflix-enabled', (e) => {
 });
 document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 
-// Disney+ pushes its true content time (ms) here, since video.currentTime is
-// per-MediaSource relative time and does not reflect content position.
-let disneyPlusContentTimeMs: number | undefined;
-let disneyPlusContentTimeAt: number | undefined;
-document.addEventListener('asbplayer-disney-plus-time', (e) => {
-    disneyPlusContentTimeMs = (e as CustomEvent).detail;
-    disneyPlusContentTimeAt = performance.now();
-});
-
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 
 enum RecordingState {
@@ -216,6 +207,10 @@ export default class Binding {
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private _registeredVideoSrc: string;
 
+    private disneyPlusSeekedListener?: EventListener;
+    private disneyPlusContentTimeMs: number | undefined;
+    private disneyPlusContentTimeAt: number | undefined;
+
     // In the case of firefox, we need to avoid capturing the audio stream more than once,
     // so we keep a reference to the first one we capture here.
     private audioStream?: MediaStream;
@@ -229,13 +224,13 @@ export default class Binding {
     private readonly pageConfigKey?: string;
 
     get contentTimeMs(): number {
-        if (this._isDisneyPlus() && disneyPlusContentTimeMs !== undefined) {
+        if (this._isDisneyPlus() && this.disneyPlusContentTimeMs !== undefined) {
             // Disney+: video.currentTime is unreliable; use the player's true content
             // time pushed from the page script, interpolated while playing.
             const elapsed = this.video.paused
                 ? 0
-                : (performance.now() - (disneyPlusContentTimeAt ?? 0)) * this.video.playbackRate;
-            return disneyPlusContentTimeMs + elapsed;
+                : (performance.now() - (this.disneyPlusContentTimeAt ?? 0)) * this.video.playbackRate;
+            return this.disneyPlusContentTimeMs + elapsed;
         }
 
         return this.video.currentTime * 1000;
@@ -681,35 +676,19 @@ export default class Binding {
         this.video.addEventListener('play', this.playListener);
         this.video.addEventListener('pause', this.pauseListener);
         this.video.addEventListener('seeked', this.seekedListener);
-        this.video.addEventListener('ratechange', this.playbackRateListener);
 
         if (this._isDisneyPlus()) {
-            // Disney+ does not fire 'seeked' on player-API seeks, and its video.currentTime
-            // is not content time, so the asbplayer player clock cannot self-sync from those.
-            // Push the true content time on timeupdate (throttled) to keep the subtitle list
-            // highlight aligned. Uses the same 'currentTime' command as seekedListener.
-            let lastContentTimeSent = 0;
-            this.disneyPlusTimeUpdateListener = () => {
-                const now = performance.now();
-
-                if (now - lastContentTimeSent < 500) {
-                    return;
-                }
-
-                lastContentTimeSent = now;
-                const command: VideoToExtensionCommand<CurrentTimeFromVideoMessage> = {
-                    sender: 'asbplayer-video',
-                    message: {
-                        command: 'currentTime',
-                        value: this.contentTimeMs / 1000,
-                        echo: false,
-                    },
-                    src: this.video.src,
-                };
-                void browser.runtime.sendMessage(command);
+            // Video element on Disney Plus does not fire 'seeked' event.
+            // Listen instead for custom 'seeked' events dispatched from the page script.
+            this.disneyPlusSeekedListener = (e: Event) => {
+                this.disneyPlusContentTimeMs = (e as CustomEvent).detail;
+                this.disneyPlusContentTimeAt = performance.now();
+                this.seekedListener?.(new Event('seeked'));
             };
-            this.video.addEventListener('timeupdate', this.disneyPlusTimeUpdateListener);
+            document.addEventListener('asbplayer-disney-plus-seeked', this.disneyPlusSeekedListener);
         }
+
+        this.video.addEventListener('ratechange', this.playbackRateListener);
 
         this.subtitleController.onMouseOver = (mouseEvent: MouseEvent) => {
             if (this.pauseOnHoverMode !== PauseOnHoverMode.disabled && !this.video.paused) {
@@ -1280,6 +1259,11 @@ export default class Binding {
             this.seekedListener = undefined;
         }
 
+        if (this.disneyPlusSeekedListener) {
+            document.removeEventListener('asbplayer-disney-plus-seeked', this.disneyPlusSeekedListener);
+            this.disneyPlusSeekedListener = undefined;
+        }
+
         if (this.disneyPlusTimeUpdateListener) {
             this.video.removeEventListener('timeupdate', this.disneyPlusTimeUpdateListener);
             this.disneyPlusTimeUpdateListener = undefined;
@@ -1402,11 +1386,6 @@ export default class Binding {
             this.recordingMediaWithScreenshot = this.takeScreenshot;
             const start = Math.max(0, subtitle.start - this.audioPaddingStart);
             this.seek(start / 1000);
-
-            if (this._isDisneyPlus()) {
-                await this._waitForDisneyPlusSeek(start / 1000);
-            }
-
             await this.play();
         }
 
@@ -1549,10 +1528,6 @@ export default class Binding {
         const rerecordSeekTargetSec = Math.max(0, start - audioPaddingStart) / 1000;
         this.seek(rerecordSeekTargetSec);
 
-        if (this._isDisneyPlus()) {
-            await this._waitForDisneyPlusSeek(rerecordSeekTargetSec);
-        }
-
         await this.play();
 
         const command: VideoToExtensionCommand<RerecordMediaMessage> = {
@@ -1669,22 +1644,6 @@ export default class Binding {
             this.video.addEventListener('play', listener);
             this.video.addEventListener('playing', listener);
         });
-    }
-
-    // Disney+ player-API seeks are asynchronous: the player's content time updates with a
-    // delay after the seek is requested. Wait until it reaches the target before recording,
-    // otherwise mined audio is captured from the pre-seek position.
-    private async _waitForDisneyPlusSeek(targetSec: number, timeoutMs = 3000) {
-        const targetMs = targetSec * 1000;
-        const startWait = performance.now();
-
-        while (performance.now() - startWait < timeoutMs) {
-            if (Math.abs(this.contentTimeMs - targetMs) < 700) {
-                return;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 100));
-        }
     }
 
     pause() {
