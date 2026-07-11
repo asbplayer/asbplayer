@@ -52,8 +52,8 @@ export default defineUnlistedScript(() => {
     };
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
-    window.XMLHttpRequest.prototype.open = function () {
-        const url = arguments[1];
+    window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+        const url = args[1];
 
         if (typeof url === 'string') {
             const titleId = captureRequestUrl(url);
@@ -63,25 +63,25 @@ export default defineUnlistedScript(() => {
             }
         }
 
-        // @ts-ignore
-        originalXhrOpen.apply(this, arguments);
+        // @ts-expect-error: forwarding original XHR arguments
+        originalXhrOpen.apply(this, args);
     };
 
     const originalXhrSend = window.XMLHttpRequest.prototype.send;
-    window.XMLHttpRequest.prototype.send = function () {
-        if (this._vodPlaybackResourcesTitleId && typeof arguments[0] === 'string') {
-            metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = arguments[0];
+    window.XMLHttpRequest.prototype.send = function (...args: unknown[]) {
+        if (this._vodPlaybackResourcesTitleId && typeof args[0] === 'string') {
+            metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = args[0];
         }
 
-        // @ts-ignore
-        originalXhrSend.apply(this, arguments);
+        // @ts-expect-error: forwarding original XHR arguments
+        originalXhrSend.apply(this, args);
     };
 
     // Prime's player issues these calls via fetch, so mirror the capture there too.
     const originalFetch = window.fetch;
     window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
         try {
-            const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+            const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
 
             if (typeof url === 'string') {
                 const titleId = captureRequestUrl(url);
@@ -110,8 +110,7 @@ export default defineUnlistedScript(() => {
             // Never let our interceptor break the page's fetches.
         }
 
-        // @ts-ignore
-        return originalFetch.apply(this, arguments);
+        return originalFetch.call(this, input, init);
     };
 
     const basenameFromUrl = async (url: string) => {
@@ -187,8 +186,8 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async () => {
-            try {
+        () => {
+            void (async () => {
                 if (lastEntityId) {
                     const entityId = lastEntityId;
                     const capturedUrls = await poll(() => {
@@ -236,14 +235,14 @@ export default defineUnlistedScript(() => {
                         })
                     );
                 }
-            } catch (e) {
+            })().catch((e) => {
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {
                         detail: { error },
                     })
                 );
-            }
+            });
         },
         false
     );

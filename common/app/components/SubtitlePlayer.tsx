@@ -45,7 +45,7 @@ import {
     RenderedRichText,
     SubtitleAnnotations,
     renderRichTextForSubtitle,
-} from '@project/common/subtitle-annotations';
+} from '@project/common/annotations';
 import { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
@@ -262,20 +262,24 @@ const SubtitleScroller = React.forwardRef<HTMLDivElement, ScrollerProps & Contex
     }
 );
 
-const SubtitleTable = ({ context, children, ...rest }: TableProps & ContextProp<SubtitleRowContext>) => (
-    <Table {...rest}>
-        {children}
-        {/* Trailing spacer so the last row clears the controls. */}
-        <tbody aria-hidden="true">
-            <tr>
-                <td style={{ height: 75, border: 0, padding: 0 }} />
-            </tr>
-        </tbody>
-    </Table>
-);
+const SubtitleTable = ({ context, children, ...rest }: TableProps & ContextProp<SubtitleRowContext>) => {
+    void context;
+    return (
+        <Table {...rest}>
+            {children}
+            {/* Trailing spacer so the last row clears the controls. */}
+            <tbody aria-hidden="true">
+                <tr>
+                    <td style={{ height: 75, border: 0, padding: 0 }} />
+                </tr>
+            </tbody>
+        </Table>
+    );
+};
 
 const SubtitleTableBody = React.forwardRef<HTMLTableSectionElement, TableBodyProps & ContextProp<SubtitleRowContext>>(
     function SubtitleTableBody({ context, ...rest }, ref) {
+        void context;
         return <TableBody {...rest} ref={ref} />;
     }
 );
@@ -285,6 +289,7 @@ const SubtitleTableRow = ({
     context,
     ...props
 }: ItemProps<DisplaySubtitleModel> & ContextProp<SubtitleRowContext>) => {
+    void item;
     const classes = useSubtitleRowStyles();
     const index = props['data-item-index'];
     const selectionState = selectionStateForIndex(
@@ -365,7 +370,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
                 __html: getAnnotationsHtml(subtitle.text, rendered?.richText, rendered?.richTextOnHover),
             }}
             data-track={subtitle.track}
-            style={tokenAnnotationStyleValues(tokenAnnotationConfig) as React.CSSProperties}
+            style={tokenAnnotationStyleValues(tokenAnnotationConfig)}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}
         />
@@ -378,7 +383,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
                     disabled={!showCopyButton}
                     enterDelay={1500}
                     enterNextDelay={1500}
-                    title={t('subtitlePlayer.multiSubtitleSelectHelp')!}
+                    title={t('subtitlePlayer.multiSubtitleSelectHelp')}
                     placement="top"
                 >
                     <TableCell className={className}>{content}</TableCell>
@@ -723,7 +728,7 @@ export default function SubtitlePlayer({
             const currentSubtitleIndexes: { [index: number]: boolean } = {};
             const timestamp = clock.time(lengthRef.current);
 
-            let slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
+            const slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
             const showing = slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing;
             let smallestIndex: number | undefined;
 
@@ -758,7 +763,7 @@ export default function SubtitlePlayer({
             }
 
             if (slice.willStopShowing !== undefined) {
-                autoPauseContextRef.current?.willStopShowing(slice.willStopShowing);
+                void autoPauseContextRef.current?.willStopShowing(slice.willStopShowing);
             }
 
             requestAnimationRef.current = requestAnimationFrame(update);
@@ -1035,7 +1040,7 @@ export default function SubtitlePlayer({
                 }
             }
 
-            const subtitle = index === -1 ? calculateCurrentSubtitle() : subtitles![index];
+            const subtitle = index === -1 ? calculateCurrentSubtitle() : subtitles[index];
 
             if (subtitle) {
                 const surroundingSubtitles =
@@ -1086,7 +1091,7 @@ export default function SubtitlePlayer({
 
                         return [asbplayerFieldName, fieldValue];
                     })
-                    .filter((entry) => entry !== undefined) as string[][]
+                    .filter((entry) => entry !== undefined)
             );
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
             return copyFromWebSocketClient({ postMineAction, text, word, definition, customFieldValues });
@@ -1262,7 +1267,7 @@ export default function SubtitlePlayer({
             const selectedSubtitles = selectedSubtitleIndexes
                 .map((selected, index) => (selected ? subtitles[index] : undefined))
                 .filter((s) => s !== undefined)
-                .filter((s) => !disabledSubtitleTracks[s!.track]) as SubtitleModel[];
+                .filter((s) => !disabledSubtitleTracks[s.track]) as SubtitleModel[];
 
             if (selectedSubtitles.length > 0) {
                 const startTimestamp = Math.min(...selectedSubtitles.map((s) => s.start));

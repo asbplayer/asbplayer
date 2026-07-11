@@ -5,6 +5,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Autocomplete from '@mui/material/Autocomplete';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
@@ -28,7 +29,6 @@ import {
     AsbplayerSettings,
     TokenMatchStrategy,
     TokenMatchStrategyPriority,
-    TokenReadingAnnotation,
     TokenStyling,
     getFullyKnownTokenStatus,
     NUM_DICTIONARY_TRACKS,
@@ -37,7 +37,6 @@ import {
     compareDTField,
     Profile,
     dictionaryStatusCollectionEnabled,
-    TokenFrequencyAnnotation,
     TokenStatusConfig,
     textSubtitleSettingsForTrack,
     TextSubtitleSettings,
@@ -48,10 +47,11 @@ import {
     EnabledAnnotations,
     TokenAnnotationConfigTarget,
     tokenAnnotationStyleValues,
+    dictionaryTrackEnabled,
 } from '@project/common/settings';
 import { Anki } from '../anki';
 import { WaniKani, WaniKaniUser } from '../wanikani';
-import { Yomitan } from '../yomitan/yomitan';
+import { Yomitan } from '../yomitan';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import SettingsTextField from './SettingsTextField';
 import SettingsSection from './SettingsSection';
@@ -81,10 +81,14 @@ import {
     percentToHex2,
 } from '../util';
 import DictionaryImport from './DictionaryImport';
-import { computeRichText, getAnnotationsForRender, getAnnotationsHtml, InternalToken } from '../subtitle-annotations';
+import {
+    computeRichText,
+    getAnnotationsForRender,
+    getAnnotationsHtml,
+    InternalToken,
+} from '@project/common/annotations';
 import WordBrowserDialog from './WordBrowserDialog';
 import '../app/components/subtitles.css';
-import ButtonGroup from '@mui/material/ButtonGroup';
 import SettingsGroups from './SettingsGroups';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
@@ -154,7 +158,6 @@ const tokenAnnotationTriggerOptions: { annotation: TokenAnnotationTriggerKey; la
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenFrequencyAnnotation' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenPitchAccentAnnotation' },
 ];
-const legacyVideoHoverAnnotationKeys: TokenAnnotationHoverKey[] = ['color', 'reading', 'frequency'];
 
 const tokenAnnotationStatusOptionValue = (status: TokenStatus) => status;
 const tokenAnnotationStateOptionValue = (state: TokenState) => NUM_TOKEN_STATUSES + state;
@@ -219,18 +222,6 @@ const withTokenAnnotationHoverEnabled = (
         },
     },
 });
-
-const withTokenAnnotationsHoverEnabled = (
-    config: DictionaryTokenAnnotationConfig,
-    target: TokenAnnotationConfigTarget,
-    annotations: TokenAnnotationHoverKey[],
-    onHoverEnabled: boolean
-): DictionaryTokenAnnotationConfig =>
-    annotations.reduce<DictionaryTokenAnnotationConfig>(
-        (updatedConfig, annotation) =>
-            withTokenAnnotationHoverEnabled(updatedConfig, target, annotation, onHoverEnabled),
-        config
-    );
 
 const withTokenAnnotationSize = (
     config: DictionaryTokenAnnotationConfig,
@@ -307,7 +298,7 @@ const useBuildAnkiCacheState: () => {
         const { state, receivedAt } = buildAnkiCacheState;
 
         switch (state.type) {
-            case DictionaryBuildAnkiCacheStateType.error:
+            case DictionaryBuildAnkiCacheStateType.error: {
                 const error = state.body as DictionaryBuildAnkiCacheStateError;
                 switch (error.code) {
                     case DictionaryBuildAnkiCacheStateErrorCode.concurrentBuild:
@@ -332,16 +323,18 @@ const useBuildAnkiCacheState: () => {
                         break;
                 }
                 break;
+            }
             case DictionaryBuildAnkiCacheStateType.start:
                 msg = t('settings.dictionaryBuildAnkiStarted');
                 break;
-            case DictionaryBuildAnkiCacheStateType.progress:
+            case DictionaryBuildAnkiCacheStateType.progress: {
                 const progress = state.body as DictionaryBuildAnkiCacheProgress;
                 const rate = progress.current / (receivedAt - progress.buildTimestamp);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
                 msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(receivedAt + eta)} (${humanReadableTime(eta)})]`;
                 break;
-            case DictionaryBuildAnkiCacheStateType.stats:
+            }
+            case DictionaryBuildAnkiCacheStateType.stats: {
                 const stats = state.body as DictionaryBuildAnkiCacheStats;
                 const parts: string[] = [];
                 if (stats.tracksToBuild !== undefined) {
@@ -370,6 +363,7 @@ const useBuildAnkiCacheState: () => {
                 }
                 msg = parts.join(' | ');
                 break;
+            }
         }
     }
 
@@ -529,7 +523,6 @@ interface Props {
     supportsDictionaryBrowser: boolean;
     supportsDictionaryWaniKani: boolean;
     supportsDictionaryMatchAcrossScripts: boolean;
-    supportsDictionaryTokenAnnotationConfig: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -546,7 +539,6 @@ const DictionarySettingsTab: React.FC<Props> = ({
     supportsDictionaryBrowser,
     supportsDictionaryWaniKani,
     supportsDictionaryMatchAcrossScripts,
-    supportsDictionaryTokenAnnotationConfig,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
     onSettingChanged,
@@ -660,7 +652,6 @@ const DictionarySettingsTab: React.FC<Props> = ({
         [selectedDictionary.dictionaryTokenAnnotationConfig]
     );
     const dictionaryTokenPitchAccentUnderlineOverlineStyleWarning =
-        supportsDictionaryTokenAnnotationConfig &&
         dictionaryTokenUnderlineOverlineStyleLabelKey !== undefined &&
         dictionaryTokenPitchAccentAnnotationEnabled &&
         !dictionaryTokenPitchAccentHoverOnlyForAllTargets
@@ -688,7 +679,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 ...newTracks[selectedDictionaryTrack],
                 dictionaryTokenAnnotationConfig,
             };
-            onSettingChanged('dictionaryTracks', newTracks);
+            void onSettingChanged('dictionaryTracks', newTracks);
         },
         [dictionaryTracks, onSettingChanged, selectedDictionaryTrack]
     );
@@ -767,7 +758,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryMatchAcrossScripts: e.target.checked,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                 />
             }
@@ -864,12 +855,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
     useEffect(() => {
         let canceled = false;
 
-        const timeout = setTimeout(async () => {
+        const timeout = setTimeout(() => {
             if (canceled) {
                 return;
             }
 
-            dictionaryRequestYomitan();
+            void dictionaryRequestYomitan();
         }, 3000);
 
         return () => {
@@ -1011,6 +1002,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
         [settings, selectedDictionaryTrack]
     );
     const theme = useTheme();
+    const dictionaryAnnotationsEnabled = dictionaryTrackEnabled(selectedDictionary);
     const selectedTokenAnnotationTargetIndex = tokenAnnotationTargets.findIndex(
         ({ target }) => target === tokenAnnotationTarget
     );
@@ -1143,7 +1135,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ width: '100%' }}
-                                onClick={() => void handleBuildWaniKaniCache()}
+                                onClick={handleBuildWaniKaniCache}
                                 loading={buildingWaniKaniCache}
                                 disabled={buildWaniKaniCacheDisabled}
                                 startIcon={<RefreshIcon />}
@@ -1171,7 +1163,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     color="primary"
                     variant="outlined"
                     size="small"
-                    label={t('settings.subtitleTrack')!}
+                    label={t('settings.subtitleTrack')}
                     value={selectedDictionaryTrack}
                     onChange={(e) => {
                         const track = Number(e.target.value);
@@ -1185,310 +1177,128 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </MenuItem>
                     ))}
                 </SettingsTextField>
-                <SwitchLabelWithHoverEffect
-                    control={
-                        <Switch
-                            checked={selectedDictionary.dictionaryTokenAnnotationConfig.colorizeEnabled}
-                            onChange={(e) => {
-                                const colorizeEnabled = e.target.checked;
-                                const newTracks = [...dictionaryTracks];
-                                newTracks[selectedDictionaryTrack] = {
-                                    ...newTracks[selectedDictionaryTrack],
-                                    dictionaryColorizeSubtitles: colorizeEnabled,
-                                    dictionaryTokenAnnotationConfig: {
-                                        ...newTracks[selectedDictionaryTrack].dictionaryTokenAnnotationConfig,
-                                        colorizeEnabled,
-                                    },
-                                };
-                                onSettingChanged('dictionaryTracks', newTracks);
+                <Box>
+                    <Box
+                        component="fieldset"
+                        sx={{
+                            m: 0,
+                            p: 1.5,
+                            border: (theme) => `1px solid ${theme.palette.action.focus}`,
+                            borderRadius: 1,
+                        }}
+                    >
+                        <Typography
+                            component="legend"
+                            variant="caption"
+                            sx={{
+                                px: 0.5,
+                                color: dictionaryAnnotationsEnabled ? 'primary.main' : 'text.secondary',
                             }}
-                        />
-                    }
-                    label={t('settings.dictionaryColorizeSubtitles')}
-                    labelPlacement="start"
-                />
-                <SwitchLabelWithHoverEffect
-                    control={
-                        <Switch
-                            checked={selectedDictionary.dictionaryAutoGenerateStatistics}
-                            onChange={(e) => {
-                                const newTracks = [...dictionaryTracks];
-                                newTracks[selectedDictionaryTrack] = {
-                                    ...newTracks[selectedDictionaryTrack],
-                                    dictionaryAutoGenerateStatistics: e.target.checked,
-                                };
-                                onSettingChanged('dictionaryTracks', newTracks);
-                            }}
-                        />
-                    }
-                    label={t('settings.dictionaryAutoGenerateStatistics')}
-                    labelPlacement="start"
-                />
-                {supportsDictionaryTokenAnnotationConfig &&
-                    tokenAnnotationTriggerOptions.map(({ annotation, labelKey }) => {
-                        const value = tokenAnnotationSelectionOptionValues(
-                            tokenAnnotationSelection(selectedDictionary.dictionaryTokenAnnotationConfig, annotation)
-                        );
-                        return (
-                            <SettingsTextField
-                                key={annotation}
-                                select
-                                fullWidth
-                                color="primary"
-                                variant="outlined"
-                                size="small"
-                                label={t(labelKey)!}
-                                value={value}
-                                helperText={
-                                    annotation === 'pitchAccent'
-                                        ? dictionaryTokenPitchAccentUnderlineOverlineStyleWarning
-                                        : undefined
+                        >
+                            {t('settings.dictionaryEnableAnnotations')}
+                        </Typography>
+                        <Stack spacing={1}>
+                            <SwitchLabelWithHoverEffect
+                                control={
+                                    <Switch
+                                        checked={selectedDictionary.dictionaryTokenAnnotationConfig.colorizeEnabled}
+                                        onChange={(e) => {
+                                            const colorizeEnabled = e.target.checked;
+                                            const newTracks = [...dictionaryTracks];
+                                            newTracks[selectedDictionaryTrack] = {
+                                                ...newTracks[selectedDictionaryTrack],
+                                                dictionaryColorizeSubtitles: colorizeEnabled,
+                                                dictionaryTokenAnnotationConfig: {
+                                                    ...newTracks[selectedDictionaryTrack]
+                                                        .dictionaryTokenAnnotationConfig,
+                                                    colorizeEnabled,
+                                                },
+                                            };
+                                            void onSettingChanged('dictionaryTracks', newTracks);
+                                        }}
+                                    />
                                 }
-                                SelectProps={{
-                                    multiple: true,
-                                    renderValue: (selected) => {
-                                        const selectedValues = tokenAnnotationOptionValues(selected);
-                                        const selection = tokenAnnotationSelectionFromOptionValues(selectedValues);
-                                        const statusLabels = tokenAnnotationStatusSelectionLabels(
-                                            selection.statuses,
-                                            tokenAnnotationStatusLabel
-                                        );
-                                        const stateLabels = selection.states.map(tokenAnnotationStateLabel);
-                                        return ([...statusLabels, ...stateLabels].join(', ') ||
-                                            t('settings.dictionaryTokenReadingAnnotationNever'))!;
-                                    },
-                                }}
-                                onChange={(e) => {
-                                    const selectedValues = tokenAnnotationOptionValues(e.target.value);
-                                    updateDictionaryTokenAnnotationStatusesAndStates(
-                                        annotation,
-                                        tokenAnnotationSelectionFromOptionValues(selectedValues)
-                                    );
-                                }}
-                            >
-                                {tokenAnnotationSelectOptions.map((option) => (
-                                    <MenuItem key={option.value} value={option.value}>
-                                        <ListItemIcon>
-                                            <Checkbox checked={value.includes(option.value)} />
-                                        </ListItemIcon>
-                                        <ListItemText primary={option.label} />
-                                    </MenuItem>
-                                ))}
-                            </SettingsTextField>
-                        );
-                    })}
-                {!supportsDictionaryTokenAnnotationConfig && (
-                    <>
-                        <FormControl>
-                            <FormLabel component="legend">{t('settings.dictionaryTokenReadingAnnotation')}</FormLabel>
-                            <RadioGroup row={false}>
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenReadingAnnotation ===
-                                                TokenReadingAnnotation.ALWAYS
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenReadingAnnotation: TokenReadingAnnotation.ALWAYS,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenReadingAnnotationAlways')}
-                                />
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenReadingAnnotation ===
-                                                TokenReadingAnnotation.LEARNING_OR_BELOW
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenReadingAnnotation:
-                                                        TokenReadingAnnotation.LEARNING_OR_BELOW,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenReadingAnnotationLearningOrBelow')}
-                                />
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenReadingAnnotation ===
-                                                TokenReadingAnnotation.UNKNOWN_OR_BELOW
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenReadingAnnotation:
-                                                        TokenReadingAnnotation.UNKNOWN_OR_BELOW,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenReadingAnnotationUnknownOrBelow')}
-                                />
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenReadingAnnotation ===
-                                                TokenReadingAnnotation.NEVER
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenReadingAnnotationNever')}
-                                />
-                            </RadioGroup>
-                        </FormControl>
-                        <SwitchLabelWithHoverEffect
-                            control={
-                                <Switch
-                                    checked={selectedDictionary.dictionaryDisplayIgnoredTokenReadings}
-                                    onChange={(e) => {
-                                        const newTracks = [...dictionaryTracks];
-                                        newTracks[selectedDictionaryTrack] = {
-                                            ...newTracks[selectedDictionaryTrack],
-                                            dictionaryDisplayIgnoredTokenReadings: e.target.checked,
-                                        };
-                                        onSettingChanged('dictionaryTracks', newTracks);
-                                    }}
-                                />
-                            }
-                            label={t('settings.dictionaryDisplayIgnoredTokenReadings')}
-                            labelPlacement="start"
-                        />
-                        <FormControl>
-                            <FormLabel component="legend">{t('settings.dictionaryTokenFrequencyAnnotation')}</FormLabel>
-                            <RadioGroup row={false}>
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenFrequencyAnnotation ===
-                                                TokenFrequencyAnnotation.ALWAYS
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.ALWAYS,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenFrequencyAnnotationAlways')}
-                                />
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenFrequencyAnnotation ===
-                                                TokenFrequencyAnnotation.UNCOLLECTED_ONLY
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenFrequencyAnnotation:
-                                                        TokenFrequencyAnnotation.UNCOLLECTED_ONLY,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenFrequencyAnnotationUncollectedOnly')}
-                                />
-                                <LabelWithHoverEffect
-                                    control={
-                                        <Radio
-                                            checked={
-                                                selectedDictionary.dictionaryTokenFrequencyAnnotation ===
-                                                TokenFrequencyAnnotation.NEVER
-                                            }
-                                            onChange={() => {
-                                                const newTracks = [...dictionaryTracks];
-                                                newTracks[selectedDictionaryTrack] = {
-                                                    ...newTracks[selectedDictionaryTrack],
-                                                    dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.NEVER,
-                                                };
-                                                onSettingChanged('dictionaryTracks', newTracks);
-                                            }}
-                                        />
-                                    }
-                                    label={t('settings.dictionaryTokenFrequencyAnnotationNever')}
-                                />
-                            </RadioGroup>
-                        </FormControl>
-                    </>
-                )}
-                {!supportsDictionaryTokenAnnotationConfig && (
-                    <>
-                        <SwitchLabelWithHoverEffect
-                            control={
-                                <Switch
-                                    checked={selectedDictionary.dictionaryColorizeOnHoverOnly}
-                                    onChange={(e) => {
-                                        const onHoverEnabled = e.target.checked;
-                                        const newTracks = [...dictionaryTracks];
-                                        newTracks[selectedDictionaryTrack] = {
-                                            ...newTracks[selectedDictionaryTrack],
-                                            dictionaryColorizeOnHoverOnly: onHoverEnabled,
-                                            dictionaryTokenAnnotationConfig: withTokenAnnotationsHoverEnabled(
-                                                newTracks[selectedDictionaryTrack].dictionaryTokenAnnotationConfig,
-                                                'video',
-                                                legacyVideoHoverAnnotationKeys,
-                                                onHoverEnabled
-                                            ),
-                                        };
-                                        onSettingChanged('dictionaryTracks', newTracks);
-                                    }}
-                                />
-                            }
-                            label={t('settings.dictionaryColorizeOnHoverOnly')}
-                            labelPlacement="start"
-                        />
-                        <SwitchLabelWithHoverEffect
-                            control={
-                                <Switch
-                                    checked={selectedDictionary.dictionaryHighlightOnHover}
-                                    onChange={(e) => {
-                                        const newTracks = [...dictionaryTracks];
-                                        newTracks[selectedDictionaryTrack] = {
-                                            ...newTracks[selectedDictionaryTrack],
-                                            dictionaryHighlightOnHover: e.target.checked,
-                                        };
-                                        onSettingChanged('dictionaryTracks', newTracks);
-                                    }}
-                                />
-                            }
-                            label={t('settings.dictionaryHighlightOnHover')}
-                            labelPlacement="start"
-                        />
-                    </>
-                )}
+                                label={t('settings.dictionaryColorizeSubtitles')}
+                                labelPlacement="start"
+                            />
+                            <SwitchLabelWithHoverEffect
+                                control={
+                                    <Switch
+                                        checked={selectedDictionary.dictionaryAutoGenerateStatistics}
+                                        onChange={(e) => {
+                                            const newTracks = [...dictionaryTracks];
+                                            newTracks[selectedDictionaryTrack] = {
+                                                ...newTracks[selectedDictionaryTrack],
+                                                dictionaryAutoGenerateStatistics: e.target.checked,
+                                            };
+                                            void onSettingChanged('dictionaryTracks', newTracks);
+                                        }}
+                                    />
+                                }
+                                label={t('settings.dictionaryAutoGenerateStatistics')}
+                                labelPlacement="start"
+                            />
+                            {tokenAnnotationTriggerOptions.map(({ annotation, labelKey }) => {
+                                const value = tokenAnnotationSelectionOptionValues(
+                                    tokenAnnotationSelection(
+                                        selectedDictionary.dictionaryTokenAnnotationConfig,
+                                        annotation
+                                    )
+                                );
+                                return (
+                                    <SettingsTextField
+                                        key={annotation}
+                                        select
+                                        fullWidth
+                                        color="primary"
+                                        variant="outlined"
+                                        size="small"
+                                        label={t(labelKey)}
+                                        value={value}
+                                        helperText={
+                                            annotation === 'pitchAccent'
+                                                ? dictionaryTokenPitchAccentUnderlineOverlineStyleWarning
+                                                : undefined
+                                        }
+                                        SelectProps={{
+                                            multiple: true,
+                                            renderValue: (selected) => {
+                                                const selectedValues = tokenAnnotationOptionValues(selected);
+                                                const selection =
+                                                    tokenAnnotationSelectionFromOptionValues(selectedValues);
+                                                const statusLabels = tokenAnnotationStatusSelectionLabels(
+                                                    selection.statuses,
+                                                    tokenAnnotationStatusLabel
+                                                );
+                                                const stateLabels = selection.states.map(tokenAnnotationStateLabel);
+                                                return (
+                                                    [...statusLabels, ...stateLabels].join(', ') ||
+                                                    t('settings.dictionaryTokenReadingAnnotationNever')
+                                                );
+                                            },
+                                        }}
+                                        onChange={(e) => {
+                                            const selectedValues = tokenAnnotationOptionValues(e.target.value);
+                                            updateDictionaryTokenAnnotationStatusesAndStates(
+                                                annotation,
+                                                tokenAnnotationSelectionFromOptionValues(selectedValues)
+                                            );
+                                        }}
+                                    >
+                                        {tokenAnnotationSelectOptions.map((option) => (
+                                            <MenuItem key={option.value} value={option.value}>
+                                                <ListItemIcon>
+                                                    <Checkbox checked={value.includes(option.value)} />
+                                                </ListItemIcon>
+                                                <ListItemText primary={option.label} />
+                                            </MenuItem>
+                                        ))}
+                                    </SettingsTextField>
+                                );
+                            })}
+                        </Stack>
+                    </Box>
+                </Box>
                 <SettingsSection>{t('settings.coloringStrategy')}</SettingsSection>
                 <FormControl>
                     <FormLabel component="legend">{t('settings.dictionaryTokenMatchStrategy')}</FormLabel>
@@ -1506,7 +1316,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1526,7 +1336,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryTokenMatchStrategy:
                                                 TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1545,7 +1355,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenMatchStrategy: TokenMatchStrategy.LEMMA_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1564,7 +1374,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1590,7 +1400,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 ...newTracks[selectedDictionaryTrack],
                                                 dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1609,7 +1419,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 ...newTracks[selectedDictionaryTrack],
                                                 dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.LEMMA,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1629,7 +1439,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 dictionaryTokenMatchStrategyPriority:
                                                     TokenMatchStrategyPriority.BEST_KNOWN,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1649,7 +1459,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 dictionaryTokenMatchStrategyPriority:
                                                     TokenMatchStrategyPriority.LEAST_KNOWN,
                                             };
-                                            onSettingChanged('dictionaryTracks', newTracks);
+                                            void onSettingChanged('dictionaryTracks', newTracks);
                                         }}
                                     />
                                 }
@@ -1675,7 +1485,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.ANY_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1695,7 +1505,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1715,7 +1525,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.LEMMA_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1735,7 +1545,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryAnkiSentenceTokenMatchStrategy:
                                                 TokenMatchStrategy.EXACT_FORM_COLLECTED,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -1769,7 +1579,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryYomitanUrl: e.target.value,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     slotProps={{
                         input: {
@@ -1802,7 +1612,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 ...newTracks[selectedDictionaryTrack],
                                 dictionaryYomitanParser: e.target.value as DictionaryTrack['dictionaryYomitanParser'],
                             };
-                            onSettingChanged('dictionaryTracks', newTracks);
+                            void onSettingChanged('dictionaryTracks', newTracks);
                         }}
                     >
                         <MenuItem value="scanning-parser">{t('settings.dictionaryYomitanScanningParser')}</MenuItem>
@@ -1826,7 +1636,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 ...newTracks[selectedDictionaryTrack],
                                 dictionaryYomitanScanLength: Number(e.target.value),
                             };
-                            onSettingChanged('dictionaryTracks', newTracks);
+                            void onSettingChanged('dictionaryTracks', newTracks);
                         }}
                         slotProps={{
                             htmlInput: { min: 1, max: 128, step: 1 },
@@ -1839,13 +1649,13 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     options={deckNames ?? []}
                     value={selectedDictionary.dictionaryAnkiDecks}
                     onChange={(_, newValue) => {
-                        const items = newValue as string[];
+                        const items = newValue;
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiDecks: items,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     disableCloseOnSelect
                     renderOption={({ key, ...restOfProps }, option, { selected }) => (
@@ -1876,13 +1686,13 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     options={allFieldNames ?? []}
                     value={selectedDictionary.dictionaryAnkiWordFields}
                     onChange={(_, newValue) => {
-                        const items = newValue as string[];
+                        const items = newValue;
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiWordFields: items,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     disableCloseOnSelect
                     renderOption={(props, option, { selected }) => (
@@ -1913,13 +1723,13 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     options={allFieldNames ?? []}
                     value={selectedDictionary.dictionaryAnkiSentenceFields}
                     onChange={(_, newValue) => {
-                        const items = newValue as string[];
+                        const items = newValue;
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiSentenceFields: items,
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     disableCloseOnSelect
                     renderOption={(props, option, { selected }) => (
@@ -1960,7 +1770,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             ...newTracks[selectedDictionaryTrack],
                             dictionaryAnkiMatureCutoff: Number(e.target.value),
                         };
-                        onSettingChanged('dictionaryTracks', newTracks);
+                        void onSettingChanged('dictionaryTracks', newTracks);
                     }}
                     slotProps={{
                         htmlInput: { min: 1, max: 36500, step: 1 },
@@ -1981,7 +1791,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryAnkiTreatSuspended: 'NORMAL',
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2003,7 +1813,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     ...newTracks[selectedDictionaryTrack],
                                                     dictionaryAnkiTreatSuspended: tokenStatus,
                                                 };
-                                                onSettingChanged('dictionaryTracks', newTracks);
+                                                void onSettingChanged('dictionaryTracks', newTracks);
                                             }}
                                         />
                                     }
@@ -2044,7 +1854,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 };
                                 clearWaniKaniUserInfo();
                                 setPendingDictionaryWaniKaniApiToken(apiToken);
-                                onSettingChanged('dictionaryTracks', newTracks);
+                                void onSettingChanged('dictionaryTracks', newTracks);
                             }}
                             slotProps={{
                                 input: {
@@ -2070,7 +1880,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     <IconButton
                                                         disabled={!selectedDictionary.dictionaryWaniKaniApiToken.trim()}
                                                         onClick={() =>
-                                                            void requestDictionaryWaniKaniUserInfo(
+                                                            requestDictionaryWaniKaniUserInfo(
                                                                 selectedDictionary.dictionaryWaniKaniApiToken
                                                             )
                                                         }
@@ -2100,7 +1910,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.TEXT,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2116,7 +1926,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.BACKGROUND,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2132,7 +1942,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.UNDERLINE,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2148,7 +1958,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.OVERLINE,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2164,7 +1974,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             ...newTracks[selectedDictionaryTrack],
                                             dictionaryTokenStyling: TokenStyling.OUTLINE,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2190,7 +2000,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 ...newTracks[selectedDictionaryTrack],
                                 dictionaryTokenStylingThickness: Number(e.target.value),
                             };
-                            onSettingChanged('dictionaryTracks', newTracks);
+                            void onSettingChanged('dictionaryTracks', newTracks);
                         }}
                         slotProps={{
                             htmlInput: {
@@ -2203,98 +2013,95 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         }}
                     />
                 )}
-                {supportsDictionaryTokenAnnotationConfig && (
-                    <>
+
+                <SwitchLabelWithHoverEffect
+                    control={
+                        <Switch
+                            checked={selectedDictionary.dictionaryHighlightOnHover}
+                            onChange={(e) => {
+                                const newTracks = [...dictionaryTracks];
+                                newTracks[selectedDictionaryTrack] = {
+                                    ...newTracks[selectedDictionaryTrack],
+                                    dictionaryHighlightOnHover: e.target.checked,
+                                };
+                                void onSettingChanged('dictionaryTracks', newTracks);
+                            }}
+                        />
+                    }
+                    label={t('settings.dictionaryHighlightOnHover')}
+                    labelPlacement="start"
+                />
+                <SettingsGroups
+                    groupLabels={tokenAnnotationTargets.map(({ labelKey }) => t(labelKey))}
+                    selectedGroupIndex={selectedTokenAnnotationTargetIndex}
+                    onGroupSelected={(index) => setTokenAnnotationTarget(tokenAnnotationTargets[index].target)}
+                >
+                    {tokenAnnotationHoverOptions.map(({ annotation, labelKey }) => (
                         <SwitchLabelWithHoverEffect
+                            key={annotation}
                             control={
                                 <Switch
-                                    checked={selectedDictionary.dictionaryHighlightOnHover}
-                                    onChange={(e) => {
-                                        const newTracks = [...dictionaryTracks];
-                                        newTracks[selectedDictionaryTrack] = {
-                                            ...newTracks[selectedDictionaryTrack],
-                                            dictionaryHighlightOnHover: e.target.checked,
-                                        };
-                                        onSettingChanged('dictionaryTracks', newTracks);
-                                    }}
+                                    checked={
+                                        selectedDictionary.dictionaryTokenAnnotationConfig[tokenAnnotationTarget][
+                                            annotation
+                                        ].onHoverEnabled
+                                    }
+                                    onChange={(e) =>
+                                        updateDictionaryTokenHoverAnnotation(
+                                            tokenAnnotationTarget,
+                                            annotation,
+                                            e.target.checked
+                                        )
+                                    }
                                 />
                             }
-                            label={t('settings.dictionaryHighlightOnHover')}
+                            label={t(labelKey)}
                             labelPlacement="start"
                         />
-                        <SettingsGroups
-                            groupLabels={tokenAnnotationTargets.map(({ labelKey }) => t(labelKey))}
-                            selectedGroupIndex={selectedTokenAnnotationTargetIndex}
-                            onGroupSelected={(index) => setTokenAnnotationTarget(tokenAnnotationTargets[index].target)}
+                    ))}
+                    {tokenAnnotationSizeOptions.map(({ annotation, labelKey }) => (
+                        <Stack
+                            key={annotation}
+                            direction="row"
+                            spacing={1}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                            }}
                         >
-                            {tokenAnnotationHoverOptions.map(({ annotation, labelKey }) => (
-                                <SwitchLabelWithHoverEffect
-                                    key={annotation}
-                                    control={
-                                        <Switch
-                                            checked={
-                                                selectedDictionary.dictionaryTokenAnnotationConfig[
-                                                    tokenAnnotationTarget
-                                                ][annotation].onHoverEnabled
-                                            }
-                                            onChange={(e) =>
-                                                updateDictionaryTokenHoverAnnotation(
-                                                    tokenAnnotationTarget,
-                                                    annotation,
-                                                    e.target.checked
-                                                )
-                                            }
-                                        />
+                            <Typography sx={{ minWidth: 'min(50%,110px)' }}>{t(labelKey)}</Typography>
+                            <div style={{ flexGrow: 1 }} />
+                            <div style={{ width: 'min(50%,110px)', flexShrink: 0 }}>
+                                <SettingsTextField
+                                    type="number"
+                                    size="small"
+                                    value={
+                                        selectedDictionary.dictionaryTokenAnnotationConfig[tokenAnnotationTarget][
+                                            annotation
+                                        ].size
                                     }
-                                    label={t(labelKey)}
-                                    labelPlacement="start"
-                                />
-                            ))}
-                            {tokenAnnotationSizeOptions.map(({ annotation, labelKey }) => (
-                                <Stack
-                                    key={annotation}
-                                    direction="row"
-                                    spacing={1}
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        width: '100%',
+                                    onChange={(e) =>
+                                        updateDictionaryTokenAnnotationSize(
+                                            tokenAnnotationTarget,
+                                            annotation,
+                                            Number(e.target.value)
+                                        )
+                                    }
+                                    slotProps={{
+                                        htmlInput: {
+                                            min: 0.1,
+                                            step: 0.1,
+                                        },
+                                        input: {
+                                            endAdornment: <InputAdornment position="end">em</InputAdornment>,
+                                        },
                                     }}
-                                >
-                                    <Typography sx={{ minWidth: 'min(50%,110px)' }}>{t(labelKey)}</Typography>
-                                    <div style={{ flexGrow: 1 }} />
-                                    <div style={{ width: 'min(50%,110px)', flexShrink: 0 }}>
-                                        <SettingsTextField
-                                            type="number"
-                                            size="small"
-                                            value={
-                                                selectedDictionary.dictionaryTokenAnnotationConfig[
-                                                    tokenAnnotationTarget
-                                                ][annotation].size
-                                            }
-                                            onChange={(e) =>
-                                                updateDictionaryTokenAnnotationSize(
-                                                    tokenAnnotationTarget,
-                                                    annotation,
-                                                    Number(e.target.value)
-                                                )
-                                            }
-                                            slotProps={{
-                                                htmlInput: {
-                                                    min: 0.1,
-                                                    step: 0.1,
-                                                },
-                                                input: {
-                                                    endAdornment: <InputAdornment position="end">em</InputAdornment>,
-                                                },
-                                            }}
-                                        />
-                                    </div>
-                                </Stack>
-                            ))}
-                        </SettingsGroups>
-                    </>
-                )}
+                                />
+                            </div>
+                        </Stack>
+                    ))}
+                </SettingsGroups>
                 {supportsDictionaryTokenStatusDisplayAlpha ? (
                     <Stack spacing={1}>
                         {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
@@ -2311,7 +2118,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     dictionaryTokenStatusColors: newConfigs.map((config) => config.color),
                                     dictionaryColorizeFullyKnownTokens: newConfigs[getFullyKnownTokenStatus()].display,
                                 };
-                                onSettingChanged('dictionaryTracks', newTracks);
+                                void onSettingChanged('dictionaryTracks', newTracks);
                             };
 
                             // Create a dummy token for previewing the styles
@@ -2499,7 +2306,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryColorizeFullyKnownTokens: e.target.checked,
                                             dictionaryTokenStatusConfig: newConfigs,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             }
@@ -2532,7 +2339,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             dictionaryTokenStatusColors: newColors,
                                             dictionaryTokenStatusConfig: newConfigs,
                                         };
-                                        onSettingChanged('dictionaryTracks', newTracks);
+                                        void onSettingChanged('dictionaryTracks', newTracks);
                                     }}
                                 />
                             );

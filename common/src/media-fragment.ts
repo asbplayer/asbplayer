@@ -115,7 +115,7 @@ export const resolveWebmMediaFragmentRange = (
 };
 
 export const createVideoElement = async (blobUrl: string): Promise<HTMLVideoElement> =>
-    await new Promise((resolve, reject) => {
+    new Promise((resolve, reject) => {
         const video = document.createElement('video');
         let settled = false;
         const t0 = Date.now();
@@ -205,7 +205,7 @@ export class Base64MediaFragmentData implements MediaFragmentData {
         return this._error;
     }
 
-    atTimestamp(_: number) {
+    atTimestamp() {
         return this;
     }
 
@@ -218,7 +218,7 @@ export class Base64MediaFragmentData implements MediaFragmentData {
     }
 
     async blob() {
-        return await this._blob();
+        return this._blob();
     }
 
     async _blob() {
@@ -366,15 +366,15 @@ export default class MediaFragment {
     }
 
     async base64() {
-        return await this.data.base64();
+        return this.data.base64();
     }
 
     async dataUrl() {
-        return await this.data.dataUrl();
+        return this.data.dataUrl();
     }
 
     async blob() {
-        return await this.data.blob();
+        return this.data.blob();
     }
 
     async pngBlob() {
@@ -402,7 +402,7 @@ export default class MediaFragment {
             imageBitmap.close();
         }
 
-        return await this._canvasToBlob(canvas, 'image/png');
+        return this._canvasToBlob(canvas, 'image/png');
     }
 
     atTimestamp(timestamp: number) {
@@ -423,7 +423,7 @@ export default class MediaFragment {
     }
 
     private async _canvasToBlob(canvas: HTMLCanvasElement, type: string) {
-        return await new Promise<Blob>((resolve, reject) => {
+        return new Promise<Blob>((resolve, reject) => {
             canvas.toBlob((blob) => {
                 if (blob) {
                     resolve(blob);

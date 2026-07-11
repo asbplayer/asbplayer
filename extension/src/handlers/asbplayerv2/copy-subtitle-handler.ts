@@ -22,9 +22,9 @@ export default class CopySubtitleHandler {
         return 'copy-subtitle';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const copySubtitleCommand = command as AsbPlayerToVideoCommand<CopySubtitleMessage>;
-        this._tabRegistry.publishCommandToVideoElements(
+        void this._tabRegistry.publishCommandToVideoElements(
             (videoElement): ExtensionToVideoCommand<Message> | undefined => {
                 if (videoElement.src !== copySubtitleCommand.src || videoElement.tab.id !== copySubtitleCommand.tabId) {
                     return undefined;

@@ -17,11 +17,11 @@ export default class ClearCopyHistoryHandler {
     }
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
-        this._settings
+        void this._settings
             .getSingle('miningHistoryStorageLimit')
             .then((limit) => new IndexedDBCopyHistoryRepository(limit))
             .then((copyHistoryRepository) => {
-                copyHistoryRepository.clear().then(() => {
+                void copyHistoryRepository.clear().then(() => {
                     sendResponse({});
                 });
             });

@@ -50,11 +50,11 @@ export class CachingElementOverlay implements ElementOverlay {
     private defaultContentElement?: HTMLElement;
     private nonFullscreenContainerElement?: HTMLElement;
     private nonFullscreenElementFullscreenChangeListener?: (this: any, event: Event) => any;
-    private nonFullscreenStylesInterval?: NodeJS.Timeout;
-    private nonFullscreenElementFullscreenPollingInterval?: NodeJS.Timeout;
+    private nonFullscreenStylesInterval?: ReturnType<typeof setInterval>;
+    private nonFullscreenElementFullscreenPollingInterval?: ReturnType<typeof setInterval>;
     private fullscreenElementFullscreenChangeListener?: (this: any, event: Event) => any;
-    private fullscreenElementFullscreenPollingInterval?: NodeJS.Timeout;
-    private fullscreenStylesInterval?: NodeJS.Timeout;
+    private fullscreenElementFullscreenPollingInterval?: ReturnType<typeof setInterval>;
+    private fullscreenStylesInterval?: ReturnType<typeof setInterval>;
     private onMouseOver: (event: MouseEvent) => void;
     private onMouseOut: (event: MouseEvent) => void;
     private onContainerStyles?: (container: HTMLElement) => void;
@@ -102,7 +102,7 @@ export class CachingElementOverlay implements ElementOverlay {
             for (const content of container.childNodes) {
                 for (const el of content.childNodes) {
                     if (el instanceof HTMLElement) {
-                        yield el as HTMLElement;
+                        yield el;
                     }
                 }
             }
@@ -205,7 +205,7 @@ export class CachingElementOverlay implements ElementOverlay {
         };
 
         toggle();
-        this.nonFullscreenElementFullscreenChangeListener = (e) => toggle();
+        this.nonFullscreenElementFullscreenChangeListener = () => toggle();
         this.nonFullscreenStylesInterval = setInterval(() => this._applyContainerStyles(container), 1000);
         this.nonFullscreenElementFullscreenPollingInterval = setInterval(() => toggle(), 1000);
         document.addEventListener('fullscreenchange', this.nonFullscreenElementFullscreenChangeListener);
@@ -225,14 +225,13 @@ export class CachingElementOverlay implements ElementOverlay {
         this._applyContainerStyles(container);
         this._findFullscreenParentElement(container).appendChild(container);
         container.style.setProperty('display', 'none', 'important');
-        const that = this;
 
         const toggle = () => {
             if (document.fullscreenElement) {
                 if (container.style.display === 'none') {
                     container.style.display = '';
                     container.remove();
-                    that._findFullscreenParentElement(container).appendChild(container);
+                    this._findFullscreenParentElement(container).appendChild(container);
                 }
 
                 if (this.nonFullscreenContainerElement) {
@@ -245,7 +244,7 @@ export class CachingElementOverlay implements ElementOverlay {
         };
 
         toggle();
-        this.fullscreenElementFullscreenChangeListener = (e) => toggle();
+        this.fullscreenElementFullscreenChangeListener = () => toggle();
         this.fullscreenStylesInterval = setInterval(() => this._applyContainerStyles(container), 1000);
         this.fullscreenElementFullscreenPollingInterval = setInterval(() => toggle(), 1000);
         document.addEventListener('fullscreenchange', this.fullscreenElementFullscreenChangeListener);

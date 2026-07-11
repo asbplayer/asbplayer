@@ -86,9 +86,6 @@ const boundaryIntervalSubtitleCountRadius = 1;
 const boundaryIntervalSubtitleTimeRadius = 5000;
 
 const boundaryIntervalFromCard = (subtitle: SubtitleModel, theSurroundingSubtitles: SubtitleModel[]) => {
-    let index = theSurroundingSubtitles.findIndex((s) => s.start === subtitle.start);
-    index = index === -1 ? theSurroundingSubtitles.length / 2 : index;
-
     const { surroundingSubtitles: subtitlesToDisplay } = surroundingSubtitlesAroundInterval(
         theSurroundingSubtitles,
         subtitle.start,
@@ -136,7 +133,7 @@ const sliderMarksFromCard = (surroundingSubtitles: SubtitleModel[], boundary: nu
             };
         })
         .filter((mark: Mark | null) => mark !== null)
-        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]) as Mark[];
+        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]);
 };
 
 const sliderValueLabelFormat = (ms: number) => {
@@ -773,7 +770,7 @@ const AnkiDialog = ({
                     await onProceed(buildExportParams(mode, noteId));
                 }
             } else {
-                onProceed(buildExportParams(mode));
+                void onProceed(buildExportParams(mode));
             }
         },
         [buildExportParams, onProceed]
@@ -841,7 +838,7 @@ const AnkiDialog = ({
                             placement="bottom"
                             disabled={!effectiveInTutorial}
                             show={tutorialStep === TutorialStep.configure}
-                            text={t('ftue.configureAnki')!}
+                            text={t('ftue.configureAnki')}
                             onConfirm={() => setTutorialStep(TutorialStep.export)}
                         >
                             <IconButton
@@ -876,7 +873,7 @@ const AnkiDialog = ({
                                     {!model.custom && model.key === 'sentence' && model.field.display && (
                                         <SentenceField
                                             text={text}
-                                            label={t('ankiDialog.sentence')!}
+                                            label={t('ankiDialog.sentence')}
                                             width={width}
                                             onChangeText={handleSentenceTextChange}
                                             selectedSubtitles={selectedSubtitles}
@@ -980,7 +977,7 @@ const AnkiDialog = ({
                             fullWidth
                             color="primary"
                             items={tags}
-                            onItemsChange={(newTags) => setTags(newTags)}
+                            onItemsChange={setTags}
                         />
                         {timestampInterval && timestampBoundaryInterval && timestampMarks && (
                             <Grid container direction="row">
@@ -1000,7 +997,7 @@ const AnkiDialog = ({
                                     />
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.resetSlider')!}>
+                                    <Tooltip title={t('ankiDialog.resetSlider')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1013,7 +1010,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.zoomIn')!}>
+                                    <Tooltip title={t('ankiDialog.zoomIn')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1026,7 +1023,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.zoomOut')!}>
+                                    <Tooltip title={t('ankiDialog.zoomOut')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1039,7 +1036,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.applySelection')!}>
+                                    <Tooltip title={t('ankiDialog.applySelection')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1136,7 +1133,7 @@ const AnkiDialog = ({
                 disabled={disabled}
                 selectedNoteIds={selectedNoteIdsToUpdate ?? []}
                 onSelect={setSelectedNoteIdsToUpdate}
-                onUpdate={(noteIds) => handleUpdateSelectedCards(noteIds)}
+                onUpdate={handleUpdateSelectedCards}
                 onClose={() => setCardSelectDialogOpen(false)}
             />
         </>

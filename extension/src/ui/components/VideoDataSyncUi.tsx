@@ -283,7 +283,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
 
                     for (let i = 0; i < files.length; ++i) {
                         const f = files[i];
-                        const base64 = await bufferToBase64(await f.arrayBuffer());
+                        const base64 = bufferToBase64(await f.arrayBuffer());
 
                         subtitles.push({
                             name: f.name,

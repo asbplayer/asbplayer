@@ -3,7 +3,6 @@ import {
     AnkiFieldSettings,
     AnkiSettings,
     AsbplayerSettings,
-    CustomAnkiFieldSettings,
     KeyBindName,
     SubtitleListPreference,
     SubtitleSettings,
@@ -22,7 +21,7 @@ import {
 } from '.';
 import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
-// @ts-ignore
+// @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;
 
 const defaultSubtitleTextSettings = {
@@ -274,7 +273,7 @@ export const defaultSettings: AsbplayerSettings = {
 };
 
 export const NUM_DICTIONARY_TRACKS = defaultSettings.dictionaryTracks.length;
-export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenStatusColors.length;
+export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStatuses.length;
 export const NUM_TOKEN_STATES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStates.length;
 
 export interface AnkiFieldUiModel {
@@ -356,7 +355,7 @@ export const textSubtitleSettingsForTrack = (
             return true;
         };
 
-        let mergedSettings: any = {};
+        const mergedSettings: any = {};
 
         for (const key of textSubtitleSettingsKeys) {
             if (valuesAllSame(key)) {
@@ -370,12 +369,10 @@ export const textSubtitleSettingsForTrack = (
     }
 
     if (track === 0 || track > subtitleSettings.subtitleTracksV2.length) {
-        return Object.fromEntries(
-            textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]])
-        ) as unknown as TextSubtitleSettings;
+        return Object.fromEntries(textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]]));
     }
 
-    return subtitleSettings.subtitleTracksV2[track - 1] as TextSubtitleSettings;
+    return subtitleSettings.subtitleTracksV2[track - 1];
 };
 
 export const changeForTextSubtitleSetting = (
@@ -621,9 +618,9 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     ensureDictionaryTracksConsistency(settings);
 
     let keyBindSetModified = false;
-    let newKeyBindSet: any = {};
+    const newKeyBindSet: any = {};
     let ankiFieldSettingsModified = false;
-    let newAnkiFieldSettings: any = {};
+    const newAnkiFieldSettings: any = {};
 
     if (settings.keyBindSet !== undefined) {
         const keyBindSet = settings.keyBindSet;
@@ -689,7 +686,7 @@ export class SettingsProvider {
     }
 
     async get<K extends keyof AsbplayerSettings>(keys: K[]): Promise<Pick<AsbplayerSettings, K>> {
-        let parameters: Partial<AsbplayerSettings> = {};
+        const parameters: Partial<AsbplayerSettings> = {};
 
         for (const key of keys) {
             parameters[key] = defaultSettings[key];
@@ -730,11 +727,11 @@ export class SettingsProvider {
         }
         const customAnkiFieldSettings =
             settings.customAnkiFieldSettings ??
-            ((
+            (
                 await this._storage.get({
                     customAnkiFieldSettings: defaultSettings.customAnkiFieldSettings,
                 })
-            ).customAnkiFieldSettings as CustomAnkiFieldSettings);
+            ).customAnkiFieldSettings!;
 
         let modifyCustomAnkiFieldSettings = false;
 
@@ -753,7 +750,7 @@ export class SettingsProvider {
     }
 
     async activeProfile() {
-        return await this._storage.activeProfile();
+        return this._storage.activeProfile();
     }
 
     async setActiveProfile(name: string | undefined) {
@@ -761,7 +758,7 @@ export class SettingsProvider {
     }
 
     async profiles() {
-        return await this._storage.profiles();
+        return this._storage.profiles();
     }
 
     async addProfile(name: string) {
@@ -786,7 +783,7 @@ export const prefixKey = (key: string, profile: string) => {
 };
 
 export const unprefixKey = (key: string, profile: string) => {
-    return (key as string).substring(profile.length + 7);
+    return key.substring(profile.length + 7);
 };
 
 export const prefixedSettings = <P extends string>(
@@ -796,7 +793,7 @@ export const prefixedSettings = <P extends string>(
     const prefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        prefixed[prefixKey(key as keyof AsbplayerSettings, profile)] = settings[key as keyof AsbplayerSettings];
+        prefixed[prefixKey(key, profile)] = settings[key as keyof AsbplayerSettings];
     }
 
     return prefixed;
@@ -806,7 +803,7 @@ export const unprefixedSettings = <P extends string>(settings: Partial<Asbplayer
     const unprefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        const unprefixedKey = unprefixKey(key as keyof AsbplayerSettingsProfile<P>, profile);
+        const unprefixedKey = unprefixKey(key, profile);
         unprefixed[unprefixedKey] = settings[key as keyof AsbplayerSettingsProfile<P>];
     }
 

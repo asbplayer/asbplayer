@@ -19,7 +19,7 @@ export default class SaveCopyHistoryHandler {
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as SaveCopyHistoryMessage;
 
-        this._settings
+        void this._settings
             .getSingle('miningHistoryStorageLimit')
             .then((limit) => new IndexedDBCopyHistoryRepository(limit))
             .then((copyHistoryRepository) => {

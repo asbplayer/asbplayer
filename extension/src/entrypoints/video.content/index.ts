@@ -17,7 +17,6 @@ import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
 import { isFirefoxBuild } from '@/services/build-flags';
 
-import type { ContentScriptContext } from '#imports';
 import './video.css';
 
 const excludeGlobs = ['*://app.asbplayer.dev/*'];
@@ -33,14 +32,14 @@ export default defineContentScript({
     allFrames: true,
     runAt: 'document_idle',
 
-    main(ctx: ContentScriptContext) {
+    main() {
         const extensionSettingsStorage = new ExtensionSettingsStorage();
         const settingsProvider = new SettingsProvider(extensionSettingsStorage);
 
         let unbindToggleSidePanel: (() => void) | undefined;
 
         const bindToggleSidePanel = () => {
-            settingsProvider.getSingle('keyBindSet').then((keyBindSet) => {
+            void settingsProvider.getSingle('keyBindSet').then((keyBindSet) => {
                 unbindToggleSidePanel?.();
                 unbindToggleSidePanel = new DefaultKeyBinder(keyBindSet).bindToggleSidePanel(
                     (event) => {
@@ -53,7 +52,7 @@ export default defineContentScript({
                                 command: 'toggle-side-panel',
                             },
                         };
-                        browser.runtime.sendMessage(command);
+                        void browser.runtime.sendMessage(command);
                     },
                     () => false,
                     true
@@ -99,7 +98,7 @@ export default defineContentScript({
         const bind = async () => {
             const bindings: Binding[] = [];
             const page = await currentPageDelegate();
-            let hasPageScript = page?.config.pageScript !== undefined;
+            const hasPageScript = page?.config.pageScript !== undefined;
             let frameInfoListener: FrameInfoListener | undefined;
             let frameInfoBroadcaster: FrameInfoBroadcaster | undefined;
             const isParentDocument = window.self === window.top;
@@ -204,9 +203,9 @@ export default defineContentScript({
                 }
 
                 switch (request.message.command) {
-                    case 'copy-to-clipboard':
+                    case 'copy-to-clipboard': {
                         const copyToClipboardMessage = request.message as CopyToClipboardMessage;
-                        fetch(copyToClipboardMessage.dataUrl)
+                        void fetch(copyToClipboardMessage.dataUrl)
                             .then((response) => response.blob())
                             .then((blob) => {
                                 if (isFirefoxBuild) {
@@ -224,7 +223,8 @@ export default defineContentScript({
                                 }
                             });
                         break;
-                    case 'crop-and-resize':
+                    }
+                    case 'crop-and-resize': {
                         const cropAndResizeMessage = request.message as CropAndResizeMessage;
                         let rect = cropAndResizeMessage.rect;
 
@@ -242,22 +242,23 @@ export default defineContentScript({
                             }
                         }
 
-                        cropAndResize(
+                        void cropAndResize(
                             cropAndResizeMessage.maxWidth,
                             cropAndResizeMessage.maxHeight,
                             rect,
                             cropAndResizeMessage.dataUrl
                         ).then((dataUrl) => sendResponse({ dataUrl }));
                         return true;
+                    }
                     case 'show-anki-ui':
                         if (request.src === undefined) {
                             // Message intended for the tab, and not a specific video binding
-                            ankiUiController.show(request.message);
+                            void ankiUiController.show(request.message);
                         }
                         break;
                     case 'settings-updated':
                         bindToggleSidePanel();
-                        ankiUiController.updateSettings();
+                        void ankiUiController.updateSettings();
                         break;
                     default:
                     // ignore
@@ -266,8 +267,8 @@ export default defineContentScript({
 
             browser.runtime.onMessage.addListener(messageListener);
 
-            window.addEventListener('beforeunload', (event) => {
-                for (let b of bindings) {
+            window.addEventListener('beforeunload', () => {
+                for (const b of bindings) {
                     b.unbind();
                 }
 
@@ -291,7 +292,7 @@ export default defineContentScript({
         if (document.readyState === 'complete') {
             bind().catch(console.error);
         } else {
-            document.addEventListener('readystatechange', (event) => {
+            document.addEventListener('readystatechange', () => {
                 if (document.readyState === 'complete') {
                     bind().catch(console.error);
                 }

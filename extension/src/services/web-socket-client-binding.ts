@@ -4,6 +4,7 @@ import {
     LoadSubtitlesCommand,
     MineSubtitleCommand,
     SeekTimestampCommand,
+    SubtitleCue,
     WebSocketClient,
 } from '@project/common/web-socket-client';
 import TabRegistry from './tab-registry';
@@ -14,6 +15,11 @@ import {
     ExtensionToVideoCommand,
     Message,
     PostMineAction,
+    LocalSubtitlesResponseMessage,
+    RequestLocalSubtitlesMessage,
+    RequestSubtitlesMessage,
+    RequestSubtitlesResponse,
+    SubtitleModel,
     ToggleVideoSelectMessage,
 } from '@project/common';
 
@@ -43,6 +49,39 @@ const cyrb53 = (str: string) => {
 
 const boundMediaId = (key: string) => cyrb53(key);
 
+// Filters subtitles to the requested tracks, or returns all of them when none are specified.
+const filterByTracks = (subtitles: SubtitleModel[], trackNumbers: number[] | undefined) => {
+    if (trackNumbers === undefined || trackNumbers.length === 0) {
+        return subtitles;
+    }
+
+    return subtitles.filter((subtitle) => trackNumbers.includes(subtitle.track));
+};
+
+const toSubtitleCues = (subtitles: SubtitleModel[]): SubtitleCue[] =>
+    subtitles.map(({ text, start, end, track }) => ({ text, start, end, track }));
+
+// Requests the loaded subtitles from a local asbplayer app instance
+const requestSubtitlesFromAsbplayer = async (
+    tabRegistry: TabRegistry,
+    asbplayerId: string
+): Promise<SubtitleModel[] | undefined> => {
+    const response = await tabRegistry.publishCommandToAsbplayersAndAwaitResponse<
+        RequestLocalSubtitlesMessage,
+        LocalSubtitlesResponseMessage
+    >({
+        asbplayerId,
+        responseCommand: 'local-subtitles-response',
+        commandFactory: (asbplayer, messageId): ExtensionToAsbPlayerCommand<RequestLocalSubtitlesMessage> => ({
+            sender: 'asbplayer-extension-to-player',
+            message: { command: 'request-local-subtitles', messageId },
+            asbplayerId: asbplayer.id,
+        }),
+    });
+
+    return response?.response.subtitles;
+};
+
 export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistry: TabRegistry) => {
     client?.unbind();
     const url = await settings.getSingle('webSocketServerUrl');
@@ -52,85 +91,86 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
     }
 
     client = new WebSocketClient();
-    client.bind(url);
+    void client.bind(url);
     client.onMineSubtitle = async ({
         body: { fields: receivedFields, postMineAction: receivedPostMineAction },
     }: MineSubtitleCommand) => {
         return new Promise((resolve, reject) => {
-            browser.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-                const ankiSettings = await settings.get(ankiSettingsKeys);
-                const fields = receivedFields ?? {};
-                const word = fields[ankiSettings.wordField] || undefined;
-                const definition = fields[ankiSettings.definitionField] || undefined;
-                const text = fields[ankiSettings.sentenceField] || undefined;
-                const customFieldValues = Object.fromEntries(
-                    Object.entries(ankiSettings.customAnkiFields)
-                        .map(([asbplayerFieldName, ankiFieldName]) => {
-                            const fieldValue = fields[ankiFieldName];
+            browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                void (async () => {
+                    const ankiSettings = await settings.get(ankiSettingsKeys);
+                    const fields = receivedFields ?? {};
+                    const word = fields[ankiSettings.wordField] || undefined;
+                    const definition = fields[ankiSettings.definitionField] || undefined;
+                    const text = fields[ankiSettings.sentenceField] || undefined;
+                    const customFieldValues = Object.fromEntries(
+                        Object.entries(ankiSettings.customAnkiFields)
+                            .map(([asbplayerFieldName, ankiFieldName]) => {
+                                const fieldValue = fields[ankiFieldName];
 
-                            if (fieldValue === undefined) {
-                                return undefined;
-                            }
+                                if (fieldValue === undefined) {
+                                    return undefined;
+                                }
 
-                            return [asbplayerFieldName, fieldValue];
-                        })
-                        .filter((entry) => entry !== undefined) as string[][]
-                );
-                const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
-                let published = false;
+                                return [asbplayerFieldName, fieldValue];
+                            })
+                            .filter((entry) => entry !== undefined)
+                    );
+                    const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
+                    let published = false;
 
-                const publishToVideoElements = tabRegistry.publishCommandToVideoElements((videoElement) => {
-                    if (!videoElement.loadedSubtitles) {
-                        return undefined;
-                    }
+                    const publishToVideoElements = tabRegistry.publishCommandToVideoElements((videoElement) => {
+                        if (!videoElement.loadedSubtitles) {
+                            return undefined;
+                        }
 
-                    if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
-                        return undefined;
-                    }
-
-                    published = true;
-                    const extensionToVideoCommand: ExtensionToVideoCommand<CopySubtitleMessage> = {
-                        sender: 'asbplayer-extension-to-video',
-                        message: {
-                            command: 'copy-subtitle',
-                            word,
-                            definition,
-                            text,
-                            postMineAction,
-                            customFieldValues,
-                        },
-                        src: videoElement.src,
-                    };
-                    return extensionToVideoCommand;
-                });
-
-                const publishToAsbplayers = await tabRegistry.publishCommandToAsbplayers({
-                    commandFactory: (asbplayer) => {
-                        if (asbplayer.sidePanel || !asbplayer.loadedSubtitles) {
+                        if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
                             return undefined;
                         }
 
                         published = true;
-                        const extensionToPlayerCommand: ExtensionToAsbPlayerCommand<CopySubtitleWithAdditionalFieldsMessage> =
-                            {
-                                sender: 'asbplayer-extension-to-player',
-                                message: {
-                                    command: 'copy-subtitle-with-additional-fields',
-                                    word,
-                                    definition,
-                                    text,
-                                    postMineAction,
-                                    customFieldValues,
-                                },
-                                asbplayerId: asbplayer.id,
-                            };
-                        return extensionToPlayerCommand;
-                    },
-                });
+                        const extensionToVideoCommand: ExtensionToVideoCommand<CopySubtitleMessage> = {
+                            sender: 'asbplayer-extension-to-video',
+                            message: {
+                                command: 'copy-subtitle',
+                                word,
+                                definition,
+                                text,
+                                postMineAction,
+                                customFieldValues,
+                            },
+                            src: videoElement.src,
+                        };
+                        return extensionToVideoCommand;
+                    });
 
-                await publishToVideoElements;
-                await publishToAsbplayers;
-                resolve(published);
+                    await tabRegistry.publishCommandToAsbplayers({
+                        commandFactory: (asbplayer) => {
+                            if (asbplayer.sidePanel || !asbplayer.loadedSubtitles) {
+                                return undefined;
+                            }
+
+                            published = true;
+                            const extensionToPlayerCommand: ExtensionToAsbPlayerCommand<CopySubtitleWithAdditionalFieldsMessage> =
+                                {
+                                    sender: 'asbplayer-extension-to-player',
+                                    message: {
+                                        command: 'copy-subtitle-with-additional-fields',
+                                        word,
+                                        definition,
+                                        text,
+                                        postMineAction,
+                                        customFieldValues,
+                                    },
+                                    asbplayerId: asbplayer.id,
+                                };
+                            return extensionToPlayerCommand;
+                        },
+                    });
+
+                    await publishToVideoElements;
+                    resolve(published);
+                })().catch(reject);
             });
         });
     };
@@ -143,7 +183,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                 subtitleFiles,
             },
         };
-        tabRegistry.publishCommandToVideoElementTabs((tab): ExtensionToVideoCommand<Message> | undefined => {
+        void tabRegistry.publishCommandToVideoElementTabs((): ExtensionToVideoCommand<Message> | undefined => {
             return toggleVideoSelectCommand;
         });
     };
@@ -151,7 +191,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
         return new Promise<void>((resolve) => {
             // Publish the command to the active tab video element
             browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                tabRegistry.publishCommandToVideoElements((videoElement) => {
+                void tabRegistry.publishCommandToVideoElements((videoElement) => {
                     if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
                         return undefined;
                     }
@@ -213,6 +253,56 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
             });
 
         return [...streamingMedia, ...localMedia];
+    };
+    client.onGetSubtitles = async (
+        mediaId: string | undefined,
+        trackNumbers: number[] | undefined
+    ): Promise<SubtitleCue[]> => {
+        const videoElements = await tabRegistry.activeVideoElements();
+        let match: (typeof videoElements)[number] | undefined;
+
+        if (mediaId !== undefined) {
+            match = videoElements.find(
+                (videoElement) => boundMediaId(`streaming:${videoElement.id}:${videoElement.src}`) === mediaId
+            );
+        } else {
+            // Default to the active tab's video element
+            const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+            match = videoElements.find((videoElement) => videoElement.id === activeTab?.id);
+        }
+
+        const target = match && { tabId: match.id, src: match.src };
+
+        let subtitles: SubtitleModel[] | undefined;
+
+        if (target !== undefined) {
+            const requestSubtitlesCommand: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
+                sender: 'asbplayer-extension-to-video',
+                src: target.src,
+                message: { command: 'request-subtitles' },
+            };
+
+            try {
+                const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+                    target.tabId,
+                    requestSubtitlesCommand
+                );
+                subtitles = response?.subtitles;
+            } catch {
+                // Targeting a non-active/discarded tab can fail
+                subtitles = undefined;
+            }
+        } else if (mediaId !== undefined) {
+            // Fall back to a local asbplayer app instance (only resolvable by explicit mediaId)
+            const asbplayerInstances = await tabRegistry.asbplayerInstances();
+            const asbplayer = asbplayerInstances.find((instance) => boundMediaId(`local:${instance.id}`) === mediaId);
+
+            if (asbplayer !== undefined) {
+                subtitles = await requestSubtitlesFromAsbplayer(tabRegistry, asbplayer.id);
+            }
+        }
+
+        return toSubtitleCues(filterByTracks(subtitles ?? [], trackNumbers));
     };
 };
 

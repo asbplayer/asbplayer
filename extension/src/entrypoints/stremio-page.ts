@@ -1,4 +1,4 @@
-import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import { VideoDataSubtitleTrack } from '@project/common';
 import { trackFromDef } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
@@ -55,7 +55,7 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async () => {
+        () => {
             dispatchSubtitles();
         },
         false

@@ -33,7 +33,7 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
             setModel(initialModel);
         };
 
-        let timeout: NodeJS.Timeout | undefined;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
         let cancelled = false;
 
         const init = async () => {
@@ -48,11 +48,13 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
                     'Failed to request overlay model, retrying in 1s. Message: ' +
                         (e instanceof Error ? e.message : String(e))
                 );
-                timeout = setTimeout(() => init(), 1000);
+                timeout = setTimeout(() => {
+                    void init();
+                }, 1000);
             }
         };
 
-        init();
+        void init();
 
         return () => {
             if (timeout !== undefined) {
@@ -68,11 +70,7 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
             return;
         }
 
-        const listener = (
-            message: any,
-            sender: Browser.runtime.MessageSender,
-            sendResponse?: (message: any) => void
-        ) => {
+        const listener = (message: any) => {
             if (message.sender !== 'asbplayer-video-to-mobile-overlay' || message.src !== location.src) {
                 return;
             }

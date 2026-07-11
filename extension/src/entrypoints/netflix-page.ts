@@ -86,7 +86,7 @@ export default defineUnlistedScript(() => {
                     ) {
                         urls.set(node.trackId, node.urls[0].url);
                     }
-                } catch (e) {
+                } catch {
                     // Ignore properties that throw on access
                 }
 
@@ -102,7 +102,7 @@ export default defineUnlistedScript(() => {
 
                         try {
                             value = node[key];
-                        } catch (e) {
+                        } catch {
                             continue;
                         }
 
@@ -157,7 +157,7 @@ export default defineUnlistedScript(() => {
 
             if (shouldRetry) {
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                return await determineBasenameWithRetries(titleId, --retries);
+                return determineBasenameWithRetries(titleId, --retries);
             }
 
             return basename;
@@ -205,14 +205,23 @@ export default defineUnlistedScript(() => {
 
         document.addEventListener(
             'asbplayer-get-synced-data',
-            async () => {
-                const response: VideoData = await buildResponse();
+            () => {
+                void (async () => {
+                    const response: VideoData = await buildResponse();
 
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
+                        })
+                    );
+                })().catch((e) => {
+                    const error = e instanceof Error ? e.message : String(e);
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: { error },
+                        })
+                    );
+                });
             },
             false
         );
@@ -295,15 +304,18 @@ export default defineUnlistedScript(() => {
         document.addEventListener(
             'asbplayer-get-synced-language-data',
             // Fetch data for specific language, since Netflix does not provide all URLs in the initial data sync
-            async (e) => {
-                if (currentFetchForLanguagePromise === undefined) {
-                    currentFetchForLanguagePromise = fetchDataForLanguage(e);
-                } else {
-                    currentFetchForLanguagePromise.then(() => fetchDataForLanguage(e));
-                }
+            (e) => {
+                const previousFetchForLanguagePromise = currentFetchForLanguagePromise ?? Promise.resolve();
+                const nextFetchForLanguagePromise = previousFetchForLanguagePromise
+                    .catch(() => undefined)
+                    .then(() => fetchDataForLanguage(e));
+                currentFetchForLanguagePromise = nextFetchForLanguagePromise;
 
-                await currentFetchForLanguagePromise;
-                currentFetchForLanguagePromise = undefined;
+                void nextFetchForLanguagePromise.catch(console.error).finally(() => {
+                    if (currentFetchForLanguagePromise === nextFetchForLanguagePromise) {
+                        currentFetchForLanguagePromise = undefined;
+                    }
+                });
             },
             false
         );
@@ -322,18 +334,20 @@ export default defineUnlistedScript(() => {
                     }
                 }
 
-                // @ts-ignore
+                // @ts-expect-error: keeping args as any[]
                 return target.call(originalThis, ...args);
             },
         });
 
-        document.addEventListener('asbplayer-query-netflix', async () => {
-            const apiAvailable = await poll(() => getVideoPlayer() !== undefined, 30000);
-            document.dispatchEvent(
-                new CustomEvent('asbplayer-netflix-enabled', {
-                    detail: apiAvailable,
-                })
-            );
+        document.addEventListener('asbplayer-query-netflix', () => {
+            void (async () => {
+                const apiAvailable = await poll(() => getVideoPlayer() !== undefined, 30000);
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-netflix-enabled', {
+                        detail: apiAvailable,
+                    })
+                );
+            })().catch(console.error);
         });
     }, 0);
 });

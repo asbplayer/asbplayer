@@ -24,7 +24,6 @@ import { useI18n } from '../hooks/use-i18n';
 import { isMobile } from '@project/common/device-detection/mobile';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
 import { createTheme } from '@project/common/theme';
-import type { PaletteMode } from '@mui/material/styles';
 import { StyledEngineProvider } from '@mui/material/styles';
 
 const settings = new SettingsProvider(new ExtensionSettingsStorage());
@@ -62,7 +61,7 @@ const MobileVideoOverlayUi = () => {
             tabId: location.tabId,
             src: location.src,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, [location]);
 
     const handleLoadSubtitles = useCallback(() => {
@@ -76,7 +75,7 @@ const MobileVideoOverlayUi = () => {
             tabId: location.tabId,
             src: location.src,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, [location]);
 
     const handleOffset = useCallback(
@@ -91,7 +90,7 @@ const MobileVideoOverlayUi = () => {
                 tabId: location.tabId,
                 src: location.src,
             };
-            browser.runtime.sendMessage(command);
+            void browser.runtime.sendMessage(command);
         },
         [location]
     );
@@ -108,7 +107,7 @@ const MobileVideoOverlayUi = () => {
                 tabId: location.tabId,
                 src: location.src,
             };
-            browser.runtime.sendMessage(command);
+            void browser.runtime.sendMessage(command);
         },
         [location]
     );
@@ -125,7 +124,7 @@ const MobileVideoOverlayUi = () => {
                 tabId: location.tabId,
                 src: location.src,
             };
-            browser.runtime.sendMessage(command);
+            void browser.runtime.sendMessage(command);
         },
         [location]
     );
@@ -146,7 +145,7 @@ const MobileVideoOverlayUi = () => {
                 },
                 src: location.src,
             };
-            browser.runtime.sendMessage(command);
+            void browser.runtime.sendMessage(command);
         },
         [location]
     );
@@ -163,7 +162,7 @@ const MobileVideoOverlayUi = () => {
             },
             src: location.src,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, [location]);
 
     useEffect(() => {
@@ -184,7 +183,7 @@ const MobileVideoOverlayUi = () => {
                         },
                         src: location.src,
                     };
-                    browser.runtime.sendMessage(command);
+                    void browser.runtime.sendMessage(command);
                     hiddenRef.current = true;
                 }
             }
@@ -213,7 +212,7 @@ const MobileVideoOverlayUi = () => {
         fetchLastControlType,
     });
     const theme = useMemo(
-        () => (model?.themeType === undefined ? undefined : createTheme(model?.themeType as PaletteMode)),
+        () => (model?.themeType === undefined ? undefined : createTheme(model?.themeType)),
         [model?.themeType]
     );
 

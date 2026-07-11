@@ -18,7 +18,7 @@ export default class AsbplayerHeartbeatHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         const message = command.message as AckTabsMessage;
-        this.tabRegistry.onAsbplayerAckTabs(sender.tab, message);
+        void this.tabRegistry.onAsbplayerAckTabs(sender.tab, message);
         return false;
     }
 }

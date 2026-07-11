@@ -7,6 +7,7 @@ import { useLocationHash } from '@project/common/hooks/use-location-hash';
 import {
     MediaFragment,
     OpenStatisticsOverlayMessage,
+    RequestLocalSubtitlesMessage,
     SubtitleModel,
     VideoTabModel,
     LegacyPlayerSyncMessage,
@@ -161,8 +162,7 @@ async function extractDropFileHandles(items: DataTransferItemList): Promise<File
 }
 
 function extractSources(files: FileList | File[]): MediaSources {
-    let subtitleFiles: File[] = [];
-    let audioFile: File | undefined = undefined;
+    const subtitleFiles: File[] = [];
     let videoFile: File | undefined = undefined;
 
     for (let i = 0; i < files.length; ++i) {
@@ -190,10 +190,6 @@ function extractSources(files: FileList | File[]): MediaSources {
                 extension: extension.startsWith('.') ? extension.substring(1) : extension,
             });
         }
-    }
-
-    if (videoFile && audioFile) {
-        throw new LocalizedError('error.bothAudioAndVideNotAllowed');
     }
 
     return { subtitleFiles: subtitleFiles, videoFile: videoFile };
@@ -456,7 +452,7 @@ function App({
                 truncatedError = error;
             }
 
-            setAlert(t('info.copiedSubtitle', { text: truncatedError })!);
+            setAlert(t('info.copiedSubtitle', { text: truncatedError }));
             setAlertOpen(true);
         },
         [t]
@@ -464,7 +460,7 @@ function App({
 
     const handleAnkiDialogRequest = useCallback(
         (ankiDialogItem?: CopyHistoryItem) => {
-            if (!ankiDialogItem && copyHistoryItemsRef.current!.length === 0) {
+            if (!ankiDialogItem && copyHistoryItemsRef.current.length === 0) {
                 return;
             }
 
@@ -519,11 +515,11 @@ function App({
                 if (params.mode !== 'gui') {
                     if (params.mode === 'default') {
                         setAlertSeverity('success');
-                        setAlert(t('info.exportedCard', { result })!);
+                        setAlert(t('info.exportedCard', { result }));
                         setAlertOpen(true);
                     } else if (params.mode === 'updateLast') {
                         setAlertSeverity('success');
-                        setAlert(t('info.updatedCard', { result })!);
+                        setAlert(t('info.updatedCard', { result }));
                         setAlertOpen(true);
                     }
 
@@ -563,7 +559,7 @@ function App({
     const handleCopy = useCallback(
         async (card: CardModel, postMineAction?: PostMineAction, id?: string) => {
             if (card.subtitle && settingsRef.current.copyToClipboardOnMine) {
-                navigator.clipboard.writeText(card.subtitle.text);
+                void navigator.clipboard.writeText(card.subtitle.text);
             }
 
             const newCard = {
@@ -576,7 +572,7 @@ function App({
             if (extension.supportsSidePanel) {
                 extension.publishCard(newCard);
             } else {
-                saveCopyHistoryItem(newCard);
+                void saveCopyHistoryItem(newCard);
             }
 
             switch (postMineAction ?? PostMineAction.none) {
@@ -584,8 +580,8 @@ function App({
                     setAlertSeverity('success');
                     setAlert(
                         card.subtitle.text === ''
-                            ? t('info.savedTimestamp', { timestamp: humanReadableTime(card.subtitle.start) })!
-                            : t('info.copiedSubtitle2', { result: card.subtitle.text })!
+                            ? t('info.savedTimestamp', { timestamp: humanReadableTime(card.subtitle.start) })
+                            : t('info.copiedSubtitle2', { result: card.subtitle.text })
                     );
                     setAlertOpen(true);
                     break;
@@ -596,7 +592,7 @@ function App({
                     handleAnkiDialogRequest(newCard);
                     break;
                 case PostMineAction.exportCard:
-                case PostMineAction.updateLastCard:
+                case PostMineAction.updateLastCard: {
                     miningContext.started();
                     let audioClip = AudioClip.fromCard(
                         newCard,
@@ -609,7 +605,7 @@ function App({
                         audioClip = audioClip.toMp3(() => new mp3WorkerFactory());
                     }
 
-                    handleAnkiDialogProceed({
+                    void handleAnkiDialogProceed({
                         text: extractText(card.subtitle, card.surroundingSubtitles),
                         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
                         track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
@@ -633,6 +629,7 @@ function App({
                         mode: postMineAction === PostMineAction.updateLastCard ? 'updateLast' : 'default',
                     });
                     break;
+                }
                 default:
                     throw new Error('Unknown post mine action: ' + postMineAction);
             }
@@ -722,10 +719,10 @@ function App({
     useEffect(() => {
         if (videoFullscreen) {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
+                void document.documentElement.requestFullscreen();
             }
         } else if (document.fullscreenElement) {
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
     }, [videoFullscreen]);
     useEffect(() => {
@@ -789,9 +786,9 @@ function App({
 
                 if (clip?.error === undefined) {
                     if (settings.preferMp3) {
-                        clip!.toMp3(() => new mp3WorkerFactory()).download();
+                        void clip!.toMp3(() => new mp3WorkerFactory()).download();
                     } else {
-                        clip!.download();
+                        void clip!.download();
                     }
                 } else {
                     handleError(t(clip.errorLocKey!));
@@ -817,7 +814,7 @@ function App({
                 )!;
 
                 if (image.error === undefined) {
-                    image.download();
+                    void image.download();
                 } else if (image.error === MediaFragmentErrorCode.fileLinkLost) {
                     handleError(t('ankiDialog.imageFileLinkLost'));
                 } else if (image.error === MediaFragmentErrorCode.captureFailed) {
@@ -956,11 +953,11 @@ function App({
                 }
             }
 
-            let selectedTabMissing = tab && tabs.filter((t) => t.id === tab.id && t.src === tab.src).length === 0;
+            const selectedTabMissing = tab && tabs.filter((t) => t.id === tab.id && t.src === tab.src).length === 0;
 
             if (selectedTabMissing) {
                 setTab(undefined);
-                handleError(t('error.lostTabConnection', { tabName: tab!.id + ' ' + tab!.title }));
+                handleError(t('error.lostTabConnection', { tabName: tab.id + ' ' + tab.title }));
             }
 
             const isSidePanelOpen = extension.asbplayers?.find((a) => a.sidePanel) !== undefined;
@@ -976,7 +973,9 @@ function App({
     const handleFiles = useCallback(
         ({ files, flattenSubtitleFiles }: { files: FileList | File[]; flattenSubtitleFiles?: boolean }): boolean => {
             try {
-                let { subtitleFiles, videoFile } = extractSources(files);
+                const mediaSources = extractSources(files);
+                let videoFile = mediaSources.videoFile;
+                const subtitleFiles = mediaSources.subtitleFiles;
 
                 if (videoFile || subtitleFiles.length > 0) {
                     setJumpToSubtitle(undefined);
@@ -1002,13 +1001,13 @@ function App({
 
                     const sources = {
                         subtitleFiles: subtitleFiles.length === 0 ? previous.subtitleFiles : subtitleFiles,
-                        videoFile: videoFile,
+                        videoFile,
                         videoFileUrl: videoFileUrl,
                         flattenSubtitleFiles,
                     };
 
                     const sourcesToList = (s: MediaSources) =>
-                        [...s.subtitleFiles, s.videoFile].filter((f) => f !== undefined) as File[];
+                        [...s.subtitleFiles, s.videoFile].filter((f) => f !== undefined);
 
                     const previousLoadingSources = sourcesToList(previous);
                     const loadingSources = sourcesToList(sources).filter((f) => {
@@ -1239,10 +1238,18 @@ function App({
                 } else {
                     openStatisticsOverlay();
                 }
+            } else if (message.data.command === 'request-local-subtitles') {
+                const requestMessage = message.data as RequestLocalSubtitlesMessage;
+                extension.sendSubtitles(requestMessage.messageId, {
+                    subtitles,
+                    subtitleFileNames: sources.subtitleFiles.map((f) => f.name),
+                });
             }
         }
 
-        const unsubscribe = extension.subscribe(onMessage);
+        const unsubscribe = extension.subscribe((message) => {
+            void onMessage(message);
+        });
         extension.videoPlayer = false;
         extension.loadedSubtitles = subtitles.length > 0;
         extension.setSubtitleTracks(
@@ -1300,7 +1307,7 @@ function App({
 
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'download-audio') {
-                handleDownloadAudio(message.data as DownloadAudioMessage);
+                void handleDownloadAudio(message.data as DownloadAudioMessage);
             }
         });
     }, [extension, inVideoPlayer, handleDownloadAudio]);
@@ -1312,21 +1319,21 @@ function App({
                     return;
                 }
 
-                setAlert(t('info.disabledAllPlayModes')!);
+                setAlert(t('info.disabledAllPlayModes'));
             } else {
                 const enabling = !playModes.has(targetMode);
                 switch (targetMode) {
                     case PlayMode.autoPause:
-                        setAlert(t(enabling ? 'info.enabledAutoPause' : 'info.disabledAutoPause')!);
+                        setAlert(t(enabling ? 'info.enabledAutoPause' : 'info.disabledAutoPause'));
                         break;
                     case PlayMode.condensed:
-                        setAlert(t(enabling ? 'info.enabledCondensedPlayback' : 'info.disabledCondensedPlayback')!);
+                        setAlert(t(enabling ? 'info.enabledCondensedPlayback' : 'info.disabledCondensedPlayback'));
                         break;
                     case PlayMode.fastForward:
-                        setAlert(t(enabling ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback')!);
+                        setAlert(t(enabling ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback'));
                         break;
                     case PlayMode.repeat:
-                        setAlert(t(enabling ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback')!);
+                        setAlert(t(enabling ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback'));
                         break;
                 }
 
@@ -1365,7 +1372,7 @@ function App({
             }
 
             if (dataTransfer.items && dataTransfer.items.length > 0 && allDirectories(dataTransfer.items)) {
-                handleDirectory(dataTransfer.items);
+                void handleDirectory(dataTransfer.items);
             } else if (dataTransfer.files && dataTransfer.files.length > 0) {
                 // Copy files synchronously; DataTransfer may be cleared after this handler returns.
                 const droppedFiles = Array.from(dataTransfer.files);
@@ -1548,11 +1555,11 @@ function App({
                 if (extension.supportsSidePanel) {
                     extension.toggleSidePanel();
                 } else if (copyHistoryOpen) {
-                    handleOpenCopyHistory();
+                    void handleOpenCopyHistory();
                 } else if (statisticsOpen) {
                     handleOpenStatistics();
                 } else {
-                    handleOpenCopyHistory();
+                    void handleOpenCopyHistory();
                 }
             },
             () => ankiDialogOpen || !extension.supportsSidePanel,
@@ -1581,13 +1588,13 @@ function App({
         );
     }, [keyBinder, ankiDialogOpen, supportsDictionaryStatistics, handleOpenStatistics]);
 
-    const fetchStatisticsMediaInfo = useCallback(async (_: string) => {
+    const fetchStatisticsMediaInfo = useCallback(async () => {
         // In-app statistics can only show the current media - no need to display redundant information like the source string
         return { sourceString: '' };
     }, []);
 
-    const mp3Encoder = useCallback(async (blob: Blob, extension: string) => {
-        return await Mp3Encoder.encode(blob, () => new mp3WorkerFactory());
+    const mp3Encoder = useCallback(async (blob: Blob) => {
+        return Mp3Encoder.encode(blob, () => new mp3WorkerFactory());
     }, []);
 
     useEffect(() => {

@@ -78,7 +78,7 @@ export default class PlaybackPreferences {
 
     set offset(offset: number) {
         if (this._extension.supportsAppIntegration) {
-            this._extension.setSettings({ lastSubtitleOffset: offset });
+            void this._extension.setSettings({ lastSubtitleOffset: offset });
         } else {
             this._storage.set(offsetKey, String(offset));
         }

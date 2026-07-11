@@ -23,25 +23,14 @@ import {
     DictionaryTokenSource,
     DictionaryTrack,
     dictionaryTrackEnabled,
-    dictionaryTokenSourcePriority,
-    externalWordSourcePriority,
     getFullyKnownTokenStatus,
-    isExternalWordSource,
     SettingsProvider,
     TokenMatchStrategy,
-    TokenMatchStrategyPriority,
     TokenState,
     TokenStatus,
-    TokenStyling,
-    isWordSource,
-    getEnabledAnnotations,
-    getEnabledAnnotationsForHover,
-    EnabledAnnotations,
-    defaultSettings,
     shouldUseAnnotation,
-    TokenAnnotationConfigTarget,
 } from '@project/common/settings';
-import { TokenStatusInfo, DictionaryProvider, LemmaResults, TokenResults } from '@project/common/dictionary-db';
+import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
 import {
     DictionaryStatistics,
     DictionaryStatisticsAnkiDueCardsSnapshot,
@@ -55,19 +44,12 @@ import {
     HAS_LETTER_REGEX,
     inBatches,
     iterateOverStringInBlocks,
-    ONLY_ASCII_LETTERS_REGEX,
     areTokenizationsEqual,
-    getTokenStatus,
-    dedupeTokenStatusInfos,
     isKanaOnly,
-    getKanaMoras,
-    isKanaMoraPitchHigh,
     normalizeToken,
-    isAttachedParticlePitchHigh,
-    PitchAccentContext,
-    clearPitchAccentContext,
 } from '@project/common/util';
-import { Yomitan } from '@project/common/yomitan/yomitan';
+import { Yomitan } from '@project/common/yomitan';
+import { InternalToken, resolveTokenStatus, TokenCollection, TokenCollectionArray } from '@project/common/annotations';
 
 const TOKEN_CACHE_BUILD_AHEAD_INIT = 10;
 const TOKEN_CACHE_BUILD_AHEAD = 100;
@@ -80,20 +62,10 @@ const YOMITAN_RETRY_DELAY = 10000;
 const ANKI_REFRESH_INTERVAL = 10000; // We need to poll in-case the user mines to Anki outside of asbplayer (e.g directly from Yomitan), local requests so no rate concerns
 const WANIKANI_REFRESH_INTERVAL = 10000; // Only until the first successful refresh since users can't mine to it and it's an external server
 
-const ASB_TOKEN_CLASS = 'asb-token';
-const ASB_TOKEN_HIGHLIGHT_CLASS = 'asb-token-highlight';
-const ASB_READING_CLASS = 'asb-reading';
-const ASB_FREQUENCY_CLASS = 'asb-frequency';
-const ASB_PITCH_ACCENT_CLASS = 'asb-pitch-accent';
-const ASB_PITCH_ACCENT_MORA_CLASS = 'asb-pitch-accent-mora';
-const ASB_PITCH_ACCENT_MORA_HIGH_CLASS = 'asb-pitch-accent-mora-high';
-const ASB_PITCH_ACCENT_MORA_LOW_CLASS = 'asb-pitch-accent-mora-low';
-const ASB_PITCH_ACCENT_LINE_CLASS = 'asb-pitch-accent-line';
-
 /**
  * Contains all information specific to a track
  */
-class TrackState {
+export class TrackState {
     readonly track: number;
     readonly dt: DictionaryTrack;
     readonly yt: Yomitan | undefined;
@@ -109,42 +81,49 @@ class TrackState {
         this.dt = dt;
         this.yt = undefined;
         this.ytLastResetAt = 0;
-        this.tokenCollectionExact = new TokenCollection(this, TokenMatchStrategy.EXACT_FORM_COLLECTED);
-        this.tokenCollectionLemma = new TokenCollection(this, TokenMatchStrategy.LEMMA_FORM_COLLECTED);
-        this.tokenCollectionAny = new TokenCollectionArray(this, TokenMatchStrategy.ANY_FORM_COLLECTED);
         this.tokenStates = new Map();
         this.indexTokenOccurrences = new Map();
+
+        /**
+         * The logic will need to be revisited if new states are added.
+         * It also currently relies on the fact that only local tokens can have states.
+         */
+        const updateTokenStates = (normalizedToken: string, states: TokenState[]) => {
+            if (!states.length) return;
+            const existingStates = this.tokenStates.get(normalizedToken);
+            if (!existingStates) {
+                this.tokenStates.set(normalizedToken, states);
+                return;
+            }
+            for (const state of states) {
+                if (!existingStates.includes(state)) existingStates.push(state);
+            }
+        };
+        this.tokenCollectionExact = new TokenCollection(TokenMatchStrategy.EXACT_FORM_COLLECTED, dt, updateTokenStates);
+        this.tokenCollectionLemma = new TokenCollection(TokenMatchStrategy.LEMMA_FORM_COLLECTED, dt, updateTokenStates);
+        this.tokenCollectionAny = new TokenCollectionArray(
+            TokenMatchStrategy.ANY_FORM_COLLECTED,
+            dt,
+            updateTokenStates
+        );
     }
 
     updateDictionaryTrack(dt: DictionaryTrack) {
-        (this.dt as DictionaryTrack) = dt;
+        (this.dt as any) = dt;
+        this.tokenCollectionExact.updateDictionaryTrack(dt);
+        this.tokenCollectionLemma.updateDictionaryTrack(dt);
+        this.tokenCollectionAny.updateDictionaryTrack(dt);
     }
 
     updateYomitan(yt: Yomitan | undefined) {
-        (this.yt as Yomitan | undefined) = yt;
+        (this.yt as any) = yt;
     }
 
     resetYomitan() {
-        (this.ytLastResetAt as number) = Date.now();
+        (this.ytLastResetAt as any) = Date.now();
         if (!this.yt) return;
         this.yt.resetCache();
         this.updateYomitan(undefined);
-    }
-
-    /**
-     * The logic will need to be revisited if new states are added.
-     * It also currently relies on the fact that only local tokens can have states.
-     */
-    updateTokenStates(normalizedToken: string, states: TokenState[]): void {
-        if (!states.length) return;
-        const existingStates = this.tokenStates.get(normalizedToken);
-        if (!existingStates) {
-            this.tokenStates.set(normalizedToken, states);
-            return;
-        }
-        for (const state of states) {
-            if (!existingStates.includes(state)) existingStates.push(state);
-        }
     }
 
     /**
@@ -195,285 +174,6 @@ class TrackState {
 
         return { groupingKey, lemmasGroupingKey };
     }
-}
-
-/**
- * The processed data from the db.
- */
-interface TokenStatusResult {
-    status: TokenStatus;
-    source: DictionaryTokenSource;
-    normalizedToken?: string; // For ANY_FORM_COLLECTED to prefer exact, then lemma, then any form.
-    externalCandidateStatuses?: TokenStatusInfo[];
-}
-
-/**
- * The final status after applying strategies.
- */
-interface ResolvedTokenStatusResult {
-    status: TokenStatus;
-    source?: DictionaryTokenSource;
-    externalCandidateStatuses?: TokenStatusInfo[];
-}
-
-/**
- * Contains the tokens from the db depending on strategy configured.
- */
-class TokenCollectionBase<T = TokenStatusResult | TokenStatusResult[]> {
-    protected readonly collection: Map<string, T>;
-    protected readonly ts: TrackState;
-    readonly enabled: boolean;
-    readonly wordEnabled: boolean;
-    readonly sentenceEnabled: boolean;
-
-    constructor(
-        ts: TrackState,
-        classType:
-            | TokenMatchStrategy.EXACT_FORM_COLLECTED
-            | TokenMatchStrategy.LEMMA_FORM_COLLECTED
-            | TokenMatchStrategy.ANY_FORM_COLLECTED
-    ) {
-        this.collection = new Map();
-        this.ts = ts;
-        switch (classType) {
-            case TokenMatchStrategy.EXACT_FORM_COLLECTED:
-                this.wordEnabled =
-                    ts.dt.dictionaryTokenMatchStrategy === TokenMatchStrategy.EXACT_FORM_COLLECTED ||
-                    ts.dt.dictionaryTokenMatchStrategy === TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED;
-                this.sentenceEnabled =
-                    ts.dt.dictionaryAnkiSentenceTokenMatchStrategy === TokenMatchStrategy.EXACT_FORM_COLLECTED ||
-                    ts.dt.dictionaryAnkiSentenceTokenMatchStrategy === TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED;
-                break;
-            case TokenMatchStrategy.LEMMA_FORM_COLLECTED:
-                this.wordEnabled =
-                    ts.dt.dictionaryTokenMatchStrategy === TokenMatchStrategy.LEMMA_FORM_COLLECTED ||
-                    ts.dt.dictionaryTokenMatchStrategy === TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED;
-                this.sentenceEnabled =
-                    ts.dt.dictionaryAnkiSentenceTokenMatchStrategy === TokenMatchStrategy.LEMMA_FORM_COLLECTED ||
-                    ts.dt.dictionaryAnkiSentenceTokenMatchStrategy === TokenMatchStrategy.LEMMA_OR_EXACT_FORM_COLLECTED;
-                break;
-            case TokenMatchStrategy.ANY_FORM_COLLECTED:
-                this.wordEnabled = ts.dt.dictionaryTokenMatchStrategy === TokenMatchStrategy.ANY_FORM_COLLECTED;
-                this.sentenceEnabled =
-                    ts.dt.dictionaryAnkiSentenceTokenMatchStrategy === TokenMatchStrategy.ANY_FORM_COLLECTED;
-                break;
-            default:
-                throw new Error(`Unsupported TokenMatchStrategy: ${classType}`);
-        }
-        this.enabled = this.wordEnabled || this.sentenceEnabled;
-    }
-
-    get(normalizedKey: string): T | undefined {
-        return this.collection.get(normalizedKey);
-    }
-
-    delete(normalizedKey: string): boolean {
-        return this.collection.delete(normalizedKey);
-    }
-
-    addQuery(queryMap: Map<string, string[]>, key: string): void {
-        const normalizedKey = normalizeToken(key);
-        const queries = queryMap.get(normalizedKey);
-        if (queries) {
-            if (!queries.includes(key)) queries.push(key); // Send all original forms for backwards compatibility with older extension db lookups
-            return;
-        }
-        if (!this.collection.has(normalizedKey)) queryMap.set(normalizedKey, [key]);
-    }
-
-    getAllQueries(queryMap: Map<string, string[]>): string[] {
-        return Array.from(queryMap.values()).flat();
-    }
-
-    protected tokenStatusResult(
-        statuses: TokenStatusInfo[],
-        source: DictionaryTokenSource,
-        externalCandidateStatuses?: TokenStatusInfo[],
-        normalizedToken?: string
-    ): TokenStatusResult {
-        const candidateStatuses = externalCandidateStatuses ?? statuses;
-        return {
-            status: getTokenStatus(statuses, this.ts.dt.dictionaryAnkiTreatSuspended),
-            source,
-            normalizedToken,
-            externalCandidateStatuses: candidateStatuses.length ? candidateStatuses : undefined,
-        };
-    }
-
-    private compareTokenStatusResults(left: TokenStatusResult, right: TokenStatusResult): number {
-        const sourcePriority = dictionaryTokenSourcePriority(left.source) - dictionaryTokenSourcePriority(right.source);
-        if (sourcePriority !== 0) return sourcePriority;
-        const statusPriority = left.status - right.status;
-        if (statusPriority !== 0) return statusPriority;
-        if (isExternalWordSource(left.source) && isExternalWordSource(right.source)) {
-            return externalWordSourcePriority(left.source) - externalWordSourcePriority(right.source);
-        }
-        return 0;
-    }
-
-    protected mergeTokenStatusResults(left: TokenStatusResult, right: TokenStatusResult): TokenStatusResult {
-        return {
-            ...(this.compareTokenStatusResults(left, right) >= 0 ? left : right),
-            externalCandidateStatuses: dedupeTokenStatusInfos([
-                ...(left.externalCandidateStatuses ?? []),
-                ...(right.externalCandidateStatuses ?? []),
-            ]),
-        };
-    }
-
-    static resolveTokenStatusResults(
-        tokenStatusResults: TokenStatusResult[],
-        cmp: (tokenStatuses: TokenStatus[]) => TokenStatus = (tokenStatuses) => Math.max(...tokenStatuses)
-    ): ResolvedTokenStatusResult {
-        const status = cmp(tokenStatusResults.map((result) => result.status));
-        const selectedResult = tokenStatusResults.find((result) => result.status === status)!;
-        return {
-            status: selectedResult.status,
-            source: selectedResult.source,
-            externalCandidateStatuses: dedupeTokenStatusInfos(
-                tokenStatusResults.flatMap((result) => result.externalCandidateStatuses ?? [])
-            ),
-        };
-    }
-}
-
-class TokenCollection extends TokenCollectionBase<TokenStatusResult> {
-    add(
-        statuses: TokenStatusInfo[],
-        source: DictionaryTokenSource,
-        externalCandidateStatuses: TokenStatusInfo[] | undefined,
-        key: string,
-        states: TokenState[]
-    ): void {
-        const normalizedKey = normalizeToken(key);
-        this.ts.updateTokenStates(normalizedKey, states);
-        const statusResult = this.tokenStatusResult(statuses, source, externalCandidateStatuses);
-        const existing = this.collection.get(normalizedKey);
-        this.collection.set(
-            normalizedKey,
-            existing ? super.mergeTokenStatusResults(existing, statusResult) : statusResult
-        );
-    }
-
-    private resolve(
-        normalizedTokens: string[],
-        sourceMatches: (source: DictionaryTokenSource) => boolean
-    ): TokenStatusResult[] {
-        const statusResults: TokenStatusResult[] = [];
-        for (const normalizedToken of normalizedTokens) {
-            const statusResult = this.collection.get(normalizedToken);
-            if (statusResult && sourceMatches(statusResult.source)) statusResults.push(statusResult);
-        }
-        return statusResults;
-    }
-
-    resolveForWord(normalizedTokens: string[]): TokenStatusResult[] {
-        if (!this.wordEnabled) return [];
-        return this.resolve(normalizedTokens, (source) => isWordSource(source));
-    }
-
-    resolveForSentence(normalizedTokens: string[]): TokenStatusResult[] {
-        if (!this.sentenceEnabled) return [];
-        return this.resolve(normalizedTokens, (source) => !isWordSource(source));
-    }
-}
-
-class TokenCollectionArray extends TokenCollectionBase<TokenStatusResult[]> {
-    add(
-        statuses: TokenStatusInfo[],
-        source: DictionaryTokenSource,
-        externalCandidateStatuses: TokenStatusInfo[] | undefined,
-        normalizedKey: string,
-        states: TokenState[],
-        token: string
-    ): void {
-        const normalizedToken = normalizeToken(token);
-        this.ts.updateTokenStates(normalizedToken, states);
-        const statusResult = this.tokenStatusResult(statuses, source, externalCandidateStatuses, normalizedToken);
-        const statusResults = this.collection.get(normalizedKey);
-        if (!statusResults) {
-            this.collection.set(normalizedKey, [statusResult]);
-            return;
-        }
-        const duplicateIndex = statusResults.findIndex((r) => r.normalizedToken === statusResult.normalizedToken);
-        if (duplicateIndex === -1) {
-            statusResults.push(statusResult);
-        } else {
-            statusResults[duplicateIndex] = super.mergeTokenStatusResults(statusResults[duplicateIndex], statusResult);
-        }
-    }
-
-    /**
-     * Need to check ANY_FORM_COLLECTED results against dictionaryMatchAcrossScripts explicitly since we never checked
-     * the token, only the lemmas. EXACT_FORM_COLLECTED and LEMMA_FORM_COLLECTED looks for an exact match with either the
-     * surface form or lemma form so they don't need this extra filtering.
-     */
-    private getStatusResults(
-        normalizedToken: string,
-        normalizedLemmas: string[],
-        sourceMatches: (source: DictionaryTokenSource) => boolean
-    ): TokenStatusResult[] {
-        const tokenIsKanaOnly = isKanaOnly(normalizedToken);
-        const anyFormStatusResults: TokenStatusResult[] = [];
-        for (const normalizedLemma of normalizedLemmas) {
-            const statusResults = this.collection.get(normalizedLemma);
-            if (!statusResults) continue;
-            for (const statusResult of statusResults) {
-                if (!sourceMatches(statusResult.source)) continue;
-                const collectedTokenIsKanaOnly = isKanaOnly(statusResult.normalizedToken!);
-                if (this.ts.dt.dictionaryMatchAcrossScripts) {
-                    if (tokenIsKanaOnly || !collectedTokenIsKanaOnly) anyFormStatusResults.push(statusResult);
-                } else {
-                    if (tokenIsKanaOnly === collectedTokenIsKanaOnly) anyFormStatusResults.push(statusResult);
-                }
-            }
-        }
-        return anyFormStatusResults;
-    }
-
-    private tokenMatchesKey(normalizedToken: string, normalizedKey: string): boolean {
-        return normalizedToken === normalizedKey;
-    }
-
-    private tokenMatchesAnyKey(normalizedToken: string, normalizedKeys: string[]): boolean {
-        return normalizedKeys.some((normalizedKey) => this.tokenMatchesKey(normalizedToken, normalizedKey));
-    }
-
-    private resolve(
-        normalizedToken: string,
-        lemmas: string[],
-        sourceMatches: (source: DictionaryTokenSource) => boolean,
-        exactPriority: boolean | null
-    ): TokenStatusResult[] {
-        const statusResults = this.getStatusResults(normalizedToken, lemmas, sourceMatches);
-        if (!statusResults.length || exactPriority === null) return statusResults;
-        if (exactPriority === true) {
-            const exactMatches = statusResults.filter((r) => this.tokenMatchesKey(r.normalizedToken!, normalizedToken));
-            if (exactMatches.length) return exactMatches;
-            const lemmaMatches = statusResults.filter((r) => this.tokenMatchesAnyKey(r.normalizedToken!, lemmas));
-            if (lemmaMatches.length) return lemmaMatches;
-        } else if (exactPriority === false) {
-            const lemmaMatches = statusResults.filter((r) => this.tokenMatchesAnyKey(r.normalizedToken!, lemmas));
-            if (lemmaMatches.length) return lemmaMatches;
-            const exactMatches = statusResults.filter((r) => this.tokenMatchesKey(r.normalizedToken!, normalizedToken));
-            if (exactMatches.length) return exactMatches;
-        }
-        return statusResults;
-    }
-
-    resolveForWord(normalizedToken: string, lemmas: string[], exactPriority: boolean | null): TokenStatusResult[] {
-        if (!this.wordEnabled) return [];
-        return this.resolve(normalizedToken, lemmas, (source) => isWordSource(source), exactPriority);
-    }
-
-    resolveForSentence(normalizedToken: string, lemmas: string[], exactPriority: boolean | null): TokenStatusResult[] {
-        if (!this.sentenceEnabled) return [];
-        return this.resolve(normalizedToken, lemmas, (source) => !isWordSource(source), exactPriority);
-    }
-}
-
-export interface InternalToken extends Token {
-    __internal?: boolean;
 }
 
 interface InternalSubtitleModel extends TokenizedSubtitleModel {
@@ -1151,7 +851,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         if (!this.subtitles.length) return true;
         if (this.annotationsBuilding) return false;
         let tokensRefreshed: string[] = [];
-        let skipTracks: number[] = [];
+        const skipTracks: number[] = [];
         let buildWasCancelled = false;
         let updateThresholds = false;
         let statisticsBatching = false;
@@ -1429,6 +1129,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             try {
                 if (!ts.yt) continue;
                 const tokenizeBulkRes = await ts.yt.tokenizeBulk(texts);
+                // TODO: Remove this block once pitch accent from tokenize is released
                 if (
                     (ts.dt.dictionaryTokenAnnotationConfig.onStatuses.some((l) => l.pitchAccent) ||
                         ts.dt.dictionaryTokenAnnotationConfig.onStates.some((l) => l.pitchAccent)) &&
@@ -1480,6 +1181,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 }
                 if (this.shouldCancelBuild) return;
 
+                const emptyTokenResults: TokenResults = {};
                 const [exactFormResultMap, lemmaFormResultMap, anyFormResultsMap] = await Promise.all([
                     forExactFormQuery.size
                         ? this.dictionaryProvider.getBulk(
@@ -1487,21 +1189,21 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                               track,
                               ts.tokenCollectionExact.getAllQueries(forExactFormQuery)
                           )
-                        : ({} as TokenResults),
+                        : emptyTokenResults,
                     forLemmaFormQuery.size
                         ? this.dictionaryProvider.getBulk(
                               profile,
                               track,
                               ts.tokenCollectionLemma.getAllQueries(forLemmaFormQuery)
                           )
-                        : ({} as TokenResults),
+                        : emptyTokenResults,
                     forAnyFormQuery.size
                         ? this.dictionaryProvider.getByLemmaBulk(
                               profile,
                               track,
                               ts.tokenCollectionAny.getAllQueries(forAnyFormQuery)
                           )
-                        : ({} as LemmaResults),
+                        : emptyTokenResults,
                 ]);
                 if (this.shouldCancelBuild) return;
 
@@ -1604,7 +1306,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                         const tokenStatusResult =
                             states.includes(TokenState.IGNORED) || !HAS_LETTER_REGEX.test(trimmedToken)
                                 ? { status: getFullyKnownTokenStatus() }
-                                : ((await this._tokenStatus(trimmedToken, normalizedToken, ts)) ?? { status: null });
+                                : ((await resolveTokenStatus(trimmedToken, normalizedToken, ts)) ?? { status: null });
                         const status = tokenStatusResult.status;
                         const source = 'source' in tokenStatusResult ? tokenStatusResult.source : undefined;
                         const token: Token = {
@@ -1658,7 +1360,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
             const tokens: Token[] = [];
             let currentOffset = 0;
-            let reconstructedTextParts = [];
+            const reconstructedTextParts = [];
             for (const tokenParts of tokenizeRes) {
                 const tokenText = tokenParts.map((p) => p.text).join('');
                 reconstructedTextParts.push(tokenText);
@@ -1714,7 +1416,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 const tokenStatusResult =
                     token.states.includes(TokenState.IGNORED) || !HAS_LETTER_REGEX.test(trimmedToken)
                         ? { status: getFullyKnownTokenStatus() }
-                        : ((await this._tokenStatus(trimmedToken, normalizedToken, ts)) ?? { status: null });
+                        : ((await resolveTokenStatus(trimmedToken, normalizedToken, ts)) ?? { status: null });
                 const source = 'source' in tokenStatusResult ? tokenStatusResult.source : undefined;
                 token.status = tokenStatusResult.status;
                 const { groupingKey, lemmasGroupingKey } = ts.groupingKeysForToken(trimmedToken, lemmas, source);
@@ -1749,115 +1451,13 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
     private async _updatePitchAccent(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token pitch accent');
+        // TODO: Move this check to applyPitchAccentAnnotation() once pitch accent from tokenize is released
         if (token.status == null || !shouldUseAnnotation('pitchAccent', token.status, token.states, ts.dt)) return;
         if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkPitchAccent()) {
             token.pitchAccent = await ts.yt.pitchAccent(trimmedToken);
         } else {
             this.refreshCache.add(index);
         }
-    }
-
-    private async _tokenStatus(
-        trimmedToken: string,
-        normalizedToken: string,
-        ts: TrackState
-    ): Promise<ResolvedTokenStatusResult | null> {
-        if (!ts.yt) throw new Error('Yomitan uninitialized - cannot calculate token status');
-        const lemmas = await ts.lemmatizeForScript(trimmedToken);
-        if (this.shouldCancelBuild) return null;
-        if (!lemmas) return null;
-
-        let tokenStatusResult: ResolvedTokenStatusResult | null;
-        switch (ts.dt.dictionaryTokenMatchStrategyPriority) {
-            case TokenMatchStrategyPriority.EXACT:
-                tokenStatusResult = await this._handlePriorityExact(normalizedToken, lemmas, ts);
-                break;
-            case TokenMatchStrategyPriority.LEMMA:
-                tokenStatusResult = await this._handlePriorityLemma(normalizedToken, lemmas, ts);
-                break;
-            case TokenMatchStrategyPriority.BEST_KNOWN:
-                tokenStatusResult = await this._handlePriorityKnown(normalizedToken, lemmas, ts, (tokenStatuses) =>
-                    Math.max(...tokenStatuses)
-                );
-                break;
-            case TokenMatchStrategyPriority.LEAST_KNOWN:
-                tokenStatusResult = await this._handlePriorityKnown(normalizedToken, lemmas, ts, (tokenStatuses) =>
-                    Math.min(...tokenStatuses)
-                );
-                break;
-            default:
-                throw new Error(`Unknown strategy priority: ${ts.dt.dictionaryTokenMatchStrategyPriority}`);
-        }
-        return tokenStatusResult;
-    }
-
-    private async _handlePriorityExact(
-        normalizedToken: string,
-        lemmas: string[],
-        ts: TrackState
-    ): Promise<ResolvedTokenStatusResult | null> {
-        const statusResults: TokenStatusResult[] = [];
-
-        statusResults.push(...ts.tokenCollectionExact.resolveForWord([normalizedToken]));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionLemma.resolveForWord(lemmas));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionAny.resolveForWord(normalizedToken, lemmas, true));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-
-        statusResults.push(...ts.tokenCollectionExact.resolveForSentence([normalizedToken]));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionLemma.resolveForSentence(lemmas));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionAny.resolveForSentence(normalizedToken, lemmas, true));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-
-        return { status: TokenStatus.UNCOLLECTED };
-    }
-
-    private async _handlePriorityLemma(
-        normalizedToken: string,
-        lemmas: string[],
-        ts: TrackState
-    ): Promise<ResolvedTokenStatusResult | null> {
-        const statusResults: TokenStatusResult[] = [];
-
-        statusResults.push(...ts.tokenCollectionLemma.resolveForWord(lemmas));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionExact.resolveForWord([normalizedToken]));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionAny.resolveForWord(normalizedToken, lemmas, false));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-
-        statusResults.push(...ts.tokenCollectionLemma.resolveForSentence(lemmas));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionExact.resolveForSentence([normalizedToken]));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-        statusResults.push(...ts.tokenCollectionAny.resolveForSentence(normalizedToken, lemmas, false));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults);
-
-        return { status: TokenStatus.UNCOLLECTED };
-    }
-
-    private async _handlePriorityKnown(
-        normalizedToken: string,
-        lemmas: string[],
-        ts: TrackState,
-        cmp: (tokenStatuses: TokenStatus[]) => TokenStatus
-    ): Promise<ResolvedTokenStatusResult | null> {
-        const statusResults: TokenStatusResult[] = [];
-
-        statusResults.push(...ts.tokenCollectionExact.resolveForWord([normalizedToken]));
-        statusResults.push(...ts.tokenCollectionLemma.resolveForWord(lemmas));
-        statusResults.push(...ts.tokenCollectionAny.resolveForWord(normalizedToken, lemmas, null));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults, cmp);
-
-        statusResults.push(...ts.tokenCollectionExact.resolveForSentence([normalizedToken]));
-        statusResults.push(...ts.tokenCollectionLemma.resolveForSentence(lemmas));
-        statusResults.push(...ts.tokenCollectionAny.resolveForSentence(normalizedToken, lemmas, null));
-        if (statusResults.length) return TokenCollectionBase.resolveTokenStatusResults(statusResults, cmp);
-
-        return { status: TokenStatus.UNCOLLECTED };
     }
 
     unbind() {
@@ -1888,435 +1488,3 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         }
     }
 }
-
-export class HoveredToken {
-    private _hoveredElement: HTMLElement | null;
-
-    constructor() {
-        this._hoveredElement = null;
-    }
-
-    handleMouseOver(mouseEvent: MouseEvent): void {
-        if (!(mouseEvent.target instanceof HTMLElement)) return;
-        this._hoveredElement = mouseEvent.target;
-    }
-
-    handleMouseOut(mouseEvent: MouseEvent): void {
-        if (!(mouseEvent.target instanceof HTMLElement) || this._hoveredElement === mouseEvent.target) {
-            this._hoveredElement = null;
-        }
-    }
-
-    parse(): { token: string; track: number } | null {
-        const tokenEl = this._hoveredElement?.closest(`.${ASB_TOKEN_CLASS}`);
-        if (!tokenEl) return null;
-
-        const trackStr = tokenEl.closest('[data-track]')?.getAttribute('data-track');
-        if (!trackStr) return null;
-
-        let token = '';
-        for (const child of tokenEl.childNodes) token += this._extractTokenFromNode(child);
-        token = token.trim();
-        if (!token.length) return null;
-        return { token, track: parseInt(trackStr) };
-    }
-
-    private _extractTokenFromNode(node: Node): string {
-        if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
-        if (node.nodeType !== Node.ELEMENT_NODE) return '';
-
-        let token = '';
-        const el = node as HTMLElement;
-        if (el.tagName === 'RUBY') {
-            for (const child of el.childNodes) {
-                if (child.nodeType === Node.ELEMENT_NODE && (child as HTMLElement).tagName === 'RT') continue;
-                token += this._extractTokenFromNode(child);
-            }
-            return token;
-        }
-
-        for (const child of el.childNodes) token += this._extractTokenFromNode(child);
-        return token;
-    }
-}
-
-export const getAnnotationsHtml = (text: string, richText: string | undefined, richTextOnHover: string | undefined) => {
-    if (!richTextOnHover) return richText ?? text;
-    return `<span class="asbplayer-subtitle-text">${richText ?? text}</span><span class="asbplayer-subtitle-rich">${richTextOnHover}</span>`;
-};
-
-export const getAnnotationsForRender = (dt: DictionaryTrack, target: TokenAnnotationConfigTarget) => {
-    const enabledAnnotations = getEnabledAnnotations(dt);
-    const enabledAnnotationsUnhover = getEnabledAnnotationsForHover(enabledAnnotations, dt, target, false);
-    const enabledAnnotationsHover = getEnabledAnnotationsForHover(enabledAnnotations, dt, target, true);
-    return {
-        dt,
-        isRichTextEnabled: Object.values(enabledAnnotationsUnhover).some((v) => v),
-        richTextEnabledAnnotations: enabledAnnotationsUnhover, // Hide annotations configured to appear only on hover
-        isRichTextOnHoverEnabled: Object.values(enabledAnnotationsHover).some((v) => v),
-        richTextOnHoverEnabledAnnotations: enabledAnnotations, // Show all enabled annotations on hover
-    };
-};
-
-export const ANNOTATIONS_VIDEO_RENDER_BEHIND_MS = 15000; // Seeking backwards is usually 5-10s
-export const ANNOTATIONS_VIDEO_RENDER_AHEAD_MS = 60000; // Seeking forward is usually 5-30s
-
-export interface RenderedRichText {
-    richText?: string;
-    richTextOnHover?: string;
-}
-
-interface CachedRenderedRichText extends RenderedRichText {
-    text: string;
-    tokenization?: Tokenization;
-    tokenAnnotationTarget: TokenAnnotationConfigTarget;
-    dictionaryTracks?: DictionaryTrack[];
-}
-
-const cachedRichTextIsCurrent = (
-    cached: CachedRenderedRichText,
-    subtitle: RichTextRenderable,
-    tokenAnnotationTarget: TokenAnnotationConfigTarget,
-    dictionaryTracks: DictionaryTrack[] | undefined
-) =>
-    cached.text === subtitle.text &&
-    areTokenizationsEqual(cached.tokenization, subtitle.tokenization) &&
-    cached.tokenAnnotationTarget === tokenAnnotationTarget &&
-    cached.dictionaryTracks?.every((dt, i) => areDictionaryTracksEqual(dt, dictionaryTracks?.[i]));
-
-interface IndexRange {
-    min: number;
-    max: number;
-}
-
-export interface RichTextWindow {
-    range?: IndexRange;
-    buffer: Map<number, CachedRenderedRichText>;
-}
-
-export const emptyRichTextWindow = (): RichTextWindow => ({ buffer: new Map() });
-
-interface RichTextRenderable {
-    index: number;
-    text: string;
-    track: number;
-    tokenization?: Tokenization;
-}
-
-export const renderRichTextOntoSubtitles = (
-    subtitles: RichTextRenderable[],
-    tokenAnnotationTarget: TokenAnnotationConfigTarget,
-    dictionaryTracks: DictionaryTrack[] | undefined
-): Map<number, RenderedRichText> => {
-    const rendered = new Map<number, RenderedRichText>();
-    if (dictionaryTracks?.length !== defaultSettings.dictionaryTracks.length) return rendered;
-
-    const trackAnnotations = dictionaryTracks.map((dt) => getAnnotationsForRender(dt, tokenAnnotationTarget));
-    const allowAsciiReading = false; // Allowing is only for preview purposes for status names to show reading
-
-    for (const subtitle of subtitles) {
-        if (!subtitle.tokenization) continue;
-        const ta = trackAnnotations[subtitle.track];
-        const hasExternalReading = subtitle.tokenization.tokens.some(
-            (token) => !(token as InternalToken).__internal && token.readings.length > 0
-        ); // Display external readings even if no annotations are enabled, unnecessary for richTextOnHover
-
-        const richText =
-            ta.isRichTextEnabled || hasExternalReading
-                ? computeRichText(subtitle.text, subtitle.tokenization, {
-                      dt: ta.dt,
-                      enabledAnnotations: ta.richTextEnabledAnnotations,
-                      allowAsciiReading,
-                  })
-                : undefined;
-        const richTextOnHover = ta.isRichTextOnHoverEnabled
-            ? computeRichText(subtitle.text, subtitle.tokenization, {
-                  dt: ta.dt,
-                  enabledAnnotations: ta.richTextOnHoverEnabledAnnotations,
-                  allowAsciiReading,
-              })
-            : undefined;
-
-        if (richText !== undefined || richTextOnHover !== undefined) {
-            rendered.set(subtitle.index, { richText, richTextOnHover });
-        }
-    }
-
-    return rendered;
-};
-
-export const renderRichTextWindow = (
-    prev: RichTextWindow,
-    windowSubtitles: RichTextRenderable[],
-    tokenAnnotationTarget: TokenAnnotationConfigTarget,
-    dictionaryTracks: DictionaryTrack[] | undefined
-): RichTextWindow => {
-    if (!windowSubtitles.length) return emptyRichTextWindow();
-    const windowSubtitleIndexes = windowSubtitles.map((s) => s.index);
-    const range: IndexRange = { min: Math.min(...windowSubtitleIndexes), max: Math.max(...windowSubtitleIndexes) };
-    const buffer = new Map<number, CachedRenderedRichText>();
-
-    const toRender: RichTextRenderable[] = [];
-    for (const subtitle of windowSubtitles) {
-        if (prev.range && subtitle.index >= prev.range.min && subtitle.index <= prev.range.max) {
-            const reused = prev.buffer.get(subtitle.index);
-            if (reused && cachedRichTextIsCurrent(reused, subtitle, tokenAnnotationTarget, dictionaryTracks)) {
-                buffer.set(subtitle.index, reused);
-                continue;
-            }
-        }
-        toRender.push(subtitle);
-    }
-    if (toRender.length) {
-        const rendered = renderRichTextOntoSubtitles(toRender, tokenAnnotationTarget, dictionaryTracks);
-        for (const subtitle of toRender) {
-            const value = rendered.get(subtitle.index);
-            buffer.set(subtitle.index, {
-                ...value,
-                text: subtitle.text,
-                tokenization: subtitle.tokenization,
-                tokenAnnotationTarget,
-                dictionaryTracks,
-            });
-        }
-    }
-
-    return { range, buffer };
-};
-
-export const renderRichTextForSubtitle = (
-    window: RichTextWindow,
-    subtitle: RichTextRenderable,
-    tokenAnnotationTarget: TokenAnnotationConfigTarget,
-    dictionaryTracks: DictionaryTrack[] | undefined
-): RenderedRichText | undefined => {
-    const cached = window.buffer.get(subtitle.index);
-    if (cached && cachedRichTextIsCurrent(cached, subtitle, tokenAnnotationTarget, dictionaryTracks)) return cached;
-
-    const rendered = renderRichTextOntoSubtitles([subtitle], tokenAnnotationTarget, dictionaryTracks).get(
-        subtitle.index
-    );
-    window.buffer.set(subtitle.index, {
-        ...rendered,
-        text: subtitle.text,
-        tokenization: subtitle.tokenization,
-        tokenAnnotationTarget,
-        dictionaryTracks,
-    });
-    return rendered;
-};
-
-interface TokenStyleState {
-    dt: DictionaryTrack;
-    enabledAnnotations: EnabledAnnotations;
-    allowAsciiReading: boolean;
-}
-
-export const computeRichText = (fullText: string, tokenization: Tokenization, ss: TokenStyleState) => {
-    if (tokenization.error) return `<span ${ERROR_STYLE}>${fullText}</span>`;
-    if (!tokenization.tokens.length) return;
-
-    const parts: string[] = [];
-    const prevPitch: PitchAccentContext = {}; // Context from the previous token to correctly determine pitch for attached particle
-    iterateOverStringInBlocks(
-        fullText,
-        (_, blockIndex) => tokenization.tokens[blockIndex],
-        (left, right, token?: Token) => {
-            if (token === undefined) {
-                clearPitchAccentContext(prevPitch);
-                parts.push(fullText.substring(left, right));
-            } else {
-                parts.push(applyTokenStyle(fullText, token, prevPitch, ss));
-            }
-        }
-    );
-    return parts.join('');
-};
-
-const ERROR_STYLE = `style="text-decoration: line-through red 3px;"`;
-const LOGIC_ERROR_STYLE = `style="text-decoration: line-through red 3px double;"`;
-
-const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentContext, ss: TokenStyleState) => {
-    const rawTokenText = fullText.substring(token.pos[0], token.pos[1]);
-    if (!HAS_LETTER_REGEX.test(rawTokenText)) {
-        clearPitchAccentContext(prevPitch);
-        return rawTokenText;
-    }
-    const tokenText = applyFrequencyAnnotation(applyReadingAnnotation(rawTokenText, token, prevPitch, ss), token, ss);
-    if (token.status === null) return `<span ${ERROR_STYLE}>${tokenText}</span>`;
-    if (token.status === undefined && dictionaryTrackEnabled(ss.dt))
-        return `<span ${LOGIC_ERROR_STYLE}>${tokenText}</span>`; // External tokens may flash this on initial load
-    if (!ss.enabledAnnotations.color) return tokenText;
-
-    const s = `<span class="${ASB_TOKEN_CLASS}${ss.dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : ''}"`; // Only allow collection and highlighting if colors is enabled so that user has feedback
-    const config = ss.dt.dictionaryTokenStatusConfig[token.status!];
-    if (!config.display) return `${s}>${tokenText}</span>`;
-    if (
-        token.pitchAccent != null &&
-        ss.enabledAnnotations.pitchAccent &&
-        (!token.readings.length ||
-            (ss.enabledAnnotations.reading && shouldUseAnnotation('reading', token.status!, token.states, ss.dt)))
-    ) {
-        return `${s}>${tokenText}</span>`; // Colorize the pitch accent annotation only when being shown
-    }
-
-    const c = `${config.color}${config.alpha}`;
-    const t = ss.dt.dictionaryTokenStylingThickness;
-    switch (ss.dt.dictionaryTokenStyling) {
-        case TokenStyling.TEXT:
-            return `${s} style="-webkit-text-fill-color: ${c};">${tokenText}</span>`;
-        case TokenStyling.BACKGROUND:
-            return `${s} style="background-color: ${c};">${tokenText}</span>`;
-        case TokenStyling.UNDERLINE:
-        case TokenStyling.OVERLINE:
-            return `${s} style="text-decoration: ${ss.dt.dictionaryTokenStyling} ${c} ${t}px;">${tokenText}</span>`;
-        case TokenStyling.OUTLINE:
-            return `${s} style="-webkit-text-stroke: ${t}px ${c};">${tokenText}</span>`;
-        default:
-            return `${s} ${LOGIC_ERROR_STYLE}>${tokenText}</span>`;
-    }
-};
-
-const applyReadingAnnotation = (
-    tokenText: string,
-    token: Token,
-    prevPitch: PitchAccentContext,
-    ss: TokenStyleState
-) => {
-    if (ONLY_ASCII_LETTERS_REGEX.test(tokenText) && !ss.allowAsciiReading) {
-        clearPitchAccentContext(prevPitch);
-        return tokenText; // Prevent english words from getting readings
-    }
-    if (!token.readings.length) {
-        if (isKanaOnly(tokenText)) return applyPitchAccentAnnotation(tokenText, token, prevPitch, ss, tokenText);
-        clearPitchAccentContext(prevPitch);
-        return tokenText;
-    }
-
-    // Only apply skip logic for tokens generated by this class i.e. marked __internal: true
-    if ((token as InternalToken).__internal) {
-        if (!ss.enabledAnnotations.reading) {
-            clearPitchAccentContext(prevPitch);
-            return tokenText;
-        }
-        if (token.status == null || !shouldUseAnnotation('reading', token.status, token.states, ss.dt)) {
-            clearPitchAccentContext(prevPitch);
-            return tokenText;
-        }
-    }
-
-    // We want to use a single reading for the entire token if we're applying pitch accent annotations.
-    // e.g. 飛び切り readings would be `と き ` so make it contiguous as `とびきり` so connecting and reading pitch is easier
-    const tokenForDisplay = { ...token };
-    if (token.pitchAccent != null && ss.enabledAnnotations.pitchAccent) {
-        tokenForDisplay.readings = [{ pos: [0, tokenText.length], reading: '' }];
-        iterateOverStringInBlocks(
-            tokenText,
-            (_, blockIndex) => token.readings[blockIndex],
-            (left, right, reading?: TokenReading) => {
-                if (reading === undefined) tokenForDisplay.readings[0].reading += tokenText.substring(left, right);
-                else tokenForDisplay.readings[0].reading += reading.reading;
-            }
-        );
-    }
-
-    const parts: string[] = [];
-    iterateOverStringInBlocks(
-        tokenText,
-        (_, blockIndex) => tokenForDisplay.readings[blockIndex],
-        (left, right, reading?: TokenReading) => {
-            if (reading === undefined) {
-                parts.push(tokenText.substring(left, right));
-            } else {
-                const part = tokenText.substring(reading.pos[0], reading.pos[1]);
-                const readingText = applyPitchAccentAnnotation(reading.reading, tokenForDisplay, prevPitch, ss);
-                parts.push(`<ruby class="${ASB_READING_CLASS}">${part}<rt>${readingText}</rt></ruby>`);
-            }
-        }
-    );
-    return parts.join('');
-};
-
-const applyPitchAccentAnnotation = (
-    readingText: string,
-    token: Token,
-    prevPitch: PitchAccentContext,
-    ss: TokenStyleState,
-    attachedParticleCandidateText?: string
-) => {
-    if (!ss.enabledAnnotations.pitchAccent) {
-        clearPitchAccentContext(prevPitch);
-        return readingText;
-    }
-    if (!HAS_LETTER_REGEX.test(readingText)) {
-        clearPitchAccentContext(prevPitch);
-        return readingText;
-    }
-
-    const pitchAccentColor = () => {
-        if (token.status == null || !ss.enabledAnnotations.color) return 'currentColor';
-        const config = ss.dt.dictionaryTokenStatusConfig[token.status];
-        if (!config.display) return 'currentColor';
-        return `${config.color}${config.alpha}`;
-    };
-
-    if (prevPitch.prevMoras !== undefined && prevPitch.prevPitchAccent !== undefined) {
-        const pitchHigh = isAttachedParticlePitchHigh(attachedParticleCandidateText, prevPitch);
-        if (pitchHigh !== null) {
-            prevPitch.prevMoras = undefined;
-            prevPitch.prevPitchAccent = undefined;
-            const html = pitchAccentHtml(getKanaMoras(readingText), pitchAccentColor(), () => pitchHigh, prevPitch);
-            prevPitch.prevPitchHigh = undefined; // Draw vertical line for attached particles if pitched changed from previous token
-            return html;
-        }
-    }
-
-    if (token.pitchAccent == null) {
-        clearPitchAccentContext(prevPitch);
-        return readingText;
-    }
-
-    const moras = getKanaMoras(readingText);
-    prevPitch.prevMoras = moras;
-    prevPitch.prevPitchAccent = token.pitchAccent;
-    prevPitch.prevPitchHigh = undefined; // Only attached particles care about the change from the previous pitch
-    const html = pitchAccentHtml(
-        moras,
-        pitchAccentColor(),
-        (i) => isKanaMoraPitchHigh(i, token.pitchAccent!),
-        prevPitch
-    );
-    if (!attachedParticleCandidateText) prevPitch.prevPitchHigh = undefined; // For furigana we don't want the vertical line since it won't be connected to the particle
-    return html;
-};
-
-const pitchAccentHtml = (
-    moras: string[],
-    color: string,
-    pitchHigh: (index: number) => boolean,
-    prevPitch: PitchAccentContext
-) => {
-    const parts: string[] = [];
-    let prevHigh = prevPitch.prevPitchHigh;
-    for (let i = 0; i < moras.length; i++) {
-        const high = pitchHigh(i);
-        if (prevHigh !== undefined && prevHigh !== high) {
-            parts.push(`<span class="${ASB_PITCH_ACCENT_LINE_CLASS}"></span>`);
-        }
-        prevHigh = high;
-        parts.push(
-            `<span class="${ASB_PITCH_ACCENT_MORA_CLASS} ${
-                high ? ASB_PITCH_ACCENT_MORA_HIGH_CLASS : ASB_PITCH_ACCENT_MORA_LOW_CLASS
-            }">${moras[i]}</span>`
-        );
-    }
-    prevPitch.prevPitchHigh = prevHigh;
-    return `<span class="${ASB_PITCH_ACCENT_CLASS}" style="--asb-pitch-accent-color: ${color};">${parts.join('')}</span>`;
-};
-
-const applyFrequencyAnnotation = (tokenText: string, token: Token, ss: TokenStyleState) => {
-    if (!ss.enabledAnnotations.frequency) return tokenText;
-    if (token.frequency == null) return tokenText;
-    if (token.status == null || !shouldUseAnnotation('frequency', token.status, token.states, ss.dt)) return tokenText;
-    return `<ruby class="${ASB_FREQUENCY_CLASS}">${tokenText}<rt>${token.frequency}</rt></ruby>`;
-};

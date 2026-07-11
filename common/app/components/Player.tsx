@@ -28,7 +28,7 @@ import {
 } from '@project/common/settings';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { HoveredToken, SubtitleAnnotations } from '@project/common/subtitle-annotations';
+import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
 import { surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
@@ -342,7 +342,7 @@ const Player = React.memo(function Player({
                 if (isAutoPauseAtEndEnabled) {
                     pendingAutoRepeatTargetTimestamp.current = subtitle.start;
                 } else {
-                    seek(subtitle.start, clock, true);
+                    void seek(subtitle.start, clock, true);
                 }
                 return;
             }
@@ -527,7 +527,7 @@ const Player = React.memo(function Player({
             }
         }
 
-        init().then(() => onLoaded(subtitleFiles ?? []));
+        void init().then(() => onLoaded(subtitleFiles ?? []));
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
@@ -614,7 +614,7 @@ const Player = React.memo(function Player({
         // If the user is on the app's tab in the same window where the chrome side panel is now displaying
         // the mining history, the subtitle side panel on the video will not receive the updated subtitles.
         // Once the subtitle side panel is active, we only need to refresh the colors once to get anything missed.
-        (async () => {
+        void (async () => {
             if (!subtitlesRef.current) return;
             const response = (await extension.requestSubtitles(tab.id, tab.src)) as
                 | RequestSubtitlesResponse
@@ -717,7 +717,7 @@ const Player = React.memo(function Player({
     useEffect(() => {
         return channel?.onSaveTokenLocal((track, token, status, states, applyStates) => {
             if (!(subtitleCollectionRef.current instanceof SubtitleAnnotations)) return;
-            subtitleCollectionRef.current.saveTokenLocal(track, token, status, states, applyStates);
+            void subtitleCollectionRef.current.saveTokenLocal(track, token, status, states, applyStates);
         });
     }, [channel]);
 
@@ -805,7 +805,7 @@ const Player = React.memo(function Player({
                 (playModesRef.current.has(PlayMode.repeat) || playModesRef.current.has(PlayMode.autoPause)) &&
                 pendingAutoRepeatTargetTimestamp.current > 0
             ) {
-                seek(pendingAutoRepeatTargetTimestamp.current, clock, forwardToMedia);
+                void seek(pendingAutoRepeatTargetTimestamp.current, clock, forwardToMedia);
                 resetPendingAutoRepeatTargetTimestamp();
             }
 
@@ -880,40 +880,44 @@ const Player = React.memo(function Player({
     );
     useEffect(
         () =>
-            channel?.onCurrentTime(async (currentTime, forwardToMedia) => {
-                const playing = clock.running;
+            channel?.onCurrentTime((currentTime, forwardToMedia) => {
+                void (async () => {
+                    const playing = clock.running;
 
-                if (playing) {
-                    clock.stop();
-                }
+                    if (playing) {
+                        clock.stop();
+                    }
 
-                // When forwardToMedia is false, the message came from the video element's seeked event,
-                // which is typically triggered by user actions (progress bar, keyboard shortcuts)
-                const isUserInitiated = !forwardToMedia;
+                    // When forwardToMedia is false, the message came from the video element's seeked event,
+                    // which is typically triggered by user actions (progress bar, keyboard shortcuts)
+                    const isUserInitiated = !forwardToMedia;
 
-                await seek(currentTime * 1000, clock, forwardToMedia, isUserInitiated);
+                    await seek(currentTime * 1000, clock, forwardToMedia, isUserInitiated);
 
-                if (playing) {
-                    clock.start();
-                }
+                    if (playing) {
+                        clock.start();
+                    }
+                })();
             }),
         [channel, clock, seek]
     );
     useEffect(
         () =>
-            channel?.onAudioTrackSelected(async (id) => {
-                const playing = clock.running;
+            channel?.onAudioTrackSelected((id) => {
+                void (async () => {
+                    const playing = clock.running;
 
-                if (playing) {
-                    clock.stop();
-                }
+                    if (playing) {
+                        clock.stop();
+                    }
 
-                await mediaAdapter.onReady();
-                if (playing) {
-                    clock.start();
-                }
+                    await mediaAdapter.onReady();
+                    if (playing) {
+                        clock.start();
+                    }
 
-                setSelectedAudioTrack(id);
+                    setSelectedAudioTrack(id);
+                })();
             }),
         [channel, clock, mediaAdapter]
     );
@@ -972,37 +976,39 @@ const Player = React.memo(function Player({
         let seeking = false;
         let expectedSeekTime = 1000;
 
-        const interval = setInterval(async () => {
-            const timestamp = clock.time(calculateLength());
-            const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
+        const interval = setInterval(() => {
+            void (async () => {
+                const timestamp = clock.time(calculateLength());
+                const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
 
-            if (slice.nextToShow && slice.nextToShow.length > 0) {
-                const nextSubtitle = slice.nextToShow[0];
+                if (slice.nextToShow && slice.nextToShow.length > 0) {
+                    const nextSubtitle = slice.nextToShow[0];
 
-                if (nextSubtitle.start - timestamp < expectedSeekTime + 500) {
-                    return;
-                }
+                    if (nextSubtitle.start - timestamp < expectedSeekTime + 500) {
+                        return;
+                    }
 
-                const playing = clock.running;
+                    const playing = clock.running;
 
-                if (pendingAutoRepeatTargetTimestamp.current > 0) {
-                    return;
-                }
+                    if (pendingAutoRepeatTargetTimestamp.current > 0) {
+                        return;
+                    }
 
-                if (playing) {
-                    clock.stop();
+                    if (playing) {
+                        clock.stop();
+                    }
+                    if (!seeking) {
+                        seeking = true;
+                        const t0 = Date.now();
+                        await seek(nextSubtitle.start, clock, true);
+                        expectedSeekTime = Date.now() - t0;
+                        seeking = false;
+                    }
+                    if (playing) {
+                        clock.start();
+                    }
                 }
-                if (!seeking) {
-                    seeking = true;
-                    const t0 = Date.now();
-                    await seek(nextSubtitle.start, clock, true);
-                    expectedSeekTime = Date.now() - t0;
-                    seeking = false;
-                }
-                if (playing) {
-                    clock.start();
-                }
-            }
+            })();
         }, 100);
 
         return () => clearInterval(interval);
@@ -1017,7 +1023,7 @@ const Player = React.memo(function Player({
             return;
         }
 
-        const interval = setInterval(async () => {
+        const interval = setInterval(() => {
             if (!playModesRef.current.has(PlayMode.fastForward)) return;
 
             const timestamp = clock.time(calculateLength());
@@ -1196,7 +1202,7 @@ const Player = React.memo(function Player({
                 .join('\n');
 
             if (text) {
-                navigator.clipboard.writeText(text).catch((e) => {
+                navigator.clipboard.writeText(text).catch(() => {
                     // ignore
                 });
             }
@@ -1209,15 +1215,14 @@ const Player = React.memo(function Player({
             return;
         }
 
-        const interval = setInterval(async () => {
-            const progress = clock.progress(calculateLength());
+        const interval = setInterval(() => {
+            void (async () => {
+                const progress = clock.progress(calculateLength());
 
-            if (progress >= 1) {
-                pause(clock, mediaAdapter, true);
-
-                await seek(0, clock, true, true);
-                setLastJumpToTopTimestamp(Date.now());
-            }
+                if (progress >= 1) {
+                    pause(clock, mediaAdapter, true);
+                }
+            })();
         }, 1000);
 
         return () => clearInterval(interval);
@@ -1328,7 +1333,7 @@ const Player = React.memo(function Player({
 
         pause(clock, mediaAdapter, true);
 
-        seek(rewindSubtitle.start, clock, true, true);
+        void seek(rewindSubtitle.start, clock, true, true);
     }, [clock, rewindSubtitle?.start, mediaAdapter, seek]);
 
     useEffect(() => {
@@ -1366,7 +1371,7 @@ const Player = React.memo(function Player({
         }
 
         webSocketClient.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
-            seek(timestamp * 1000, clock, true, true);
+            void seek(timestamp * 1000, clock, true, true);
         };
     }, [webSocketClient, extension, seek, clock]);
 
@@ -1450,7 +1455,6 @@ const Player = React.memo(function Player({
                             onSeek={handleSeek}
                             onAudioTrackSelected={handleAudioTrackSelected}
                             onTabSelected={onTabSelected}
-                            onUnloadVideo={() => videoFileUrl && onUnloadVideo(videoFileUrl)}
                             onOffsetChange={handleOffsetChange}
                             onPlayMode={handlePlayMode}
                             disableKeyEvents={disableKeyEvents}

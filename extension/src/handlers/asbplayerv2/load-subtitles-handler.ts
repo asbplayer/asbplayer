@@ -24,22 +24,19 @@ export default class LoadSubtitlesHandler {
         return 'load-subtitles';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const loadSubtitlesCommand = command as AsbPlayerToTabCommand<LoadSubtitlesMessage>;
         const toggleVideoSelectCommand: ExtensionToVideoCommand<ToggleVideoSelectMessage> = {
             sender: 'asbplayer-extension-to-video',
             // Target specific video element by 'src' if the command specifies a 'src'
-            src:
-                'src' in command
-                    ? ((command as AsbPlayerToVideoCommandV2<LoadSubtitlesMessage>).src as string)
-                    : undefined,
+            src: 'src' in command ? (command as AsbPlayerToVideoCommandV2<LoadSubtitlesMessage>).src : undefined,
             message: {
                 command: 'toggle-video-select',
                 fromAsbplayerId: loadSubtitlesCommand.message.fromAsbplayerId,
             },
         };
         let published = false;
-        this._tabRegistry
+        void this._tabRegistry
             .publishCommandToVideoElementTabs((tab) => {
                 if (tab.id === loadSubtitlesCommand.tabId) {
                     published = true;
@@ -50,7 +47,7 @@ export default class LoadSubtitlesHandler {
             })
             .then(() => {
                 if (published) {
-                    browser.tabs.update(loadSubtitlesCommand.tabId, { active: true });
+                    void browser.tabs.update(loadSubtitlesCommand.tabId, { active: true });
                 }
             });
 

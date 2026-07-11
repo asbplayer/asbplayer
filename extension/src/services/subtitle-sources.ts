@@ -47,47 +47,6 @@ const parseJsonSafely = (text: string): unknown | undefined => {
 
 const defaultJimakuBaseUrl = 'https://jimaku.cc/api';
 
-type TrustedHtmlPolicyLike = {
-    createHTML: (value: string) => string | TrustedHTML;
-};
-
-let trustedHtmlPolicy: TrustedHtmlPolicyLike | undefined;
-
-const createTrustedHtml = (html: string): string | TrustedHTML => {
-    const trustedTypesApi = (
-        globalThis as typeof globalThis & {
-            trustedTypes?: {
-                createPolicy: (
-                    name: string,
-                    policy: { createHTML: (value: string) => string }
-                ) => TrustedHtmlPolicyLike;
-                getPolicy?: (name: string) => TrustedHtmlPolicyLike | null;
-            };
-        }
-    ).trustedTypes;
-
-    if (!trustedTypesApi) {
-        return html;
-    }
-
-    if (!trustedHtmlPolicy) {
-        try {
-            trustedHtmlPolicy = trustedTypesApi.createPolicy('asbplayer-subtitle-sources', {
-                createHTML: (value) => value,
-            });
-        } catch (error) {
-            trustedHtmlPolicy = trustedTypesApi.getPolicy?.('asbplayer-subtitle-sources') ?? undefined;
-        }
-    }
-
-    return trustedHtmlPolicy ? trustedHtmlPolicy.createHTML(html) : html;
-};
-
-const parseHtmlDocument = (html: string) => {
-    const trustedHtml = createTrustedHtml(html);
-    return new DOMParser().parseFromString(trustedHtml as string, 'text/html');
-};
-
 const parseRateLimit = (headers: Headers): JimakuRateLimit => ({
     limit: parseOptionalInt(headers.get('x-ratelimit-limit')),
     remaining: parseOptionalInt(headers.get('x-ratelimit-remaining')),
@@ -143,11 +102,11 @@ export class JimakuClient {
         if (anime !== undefined) {
             searchParams.set('anime', `${anime}`);
         }
-        return await this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
+        return this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
     }
 
     async getEntry(id: number): Promise<JimakuResponse<JimakuEntry>> {
-        return await this._request<JimakuEntry>(`entries/${id}`);
+        return this._request<JimakuEntry>(`entries/${id}`);
     }
 
     async getFiles(
@@ -164,7 +123,7 @@ export class JimakuClient {
 
         const query = searchParams.toString();
         const endpoint = query.length > 0 ? `entries/${id}/files?${query}` : `entries/${id}/files`;
-        return await this._request<JimakuFile[]>(endpoint);
+        return this._request<JimakuFile[]>(endpoint);
     }
 
     private async _request<T>(endpoint: string): Promise<JimakuResponse<T>> {

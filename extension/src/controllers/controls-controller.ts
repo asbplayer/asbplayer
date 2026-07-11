@@ -26,7 +26,7 @@ export default class ControlsController {
             e.classList.add('asbplayer-hide');
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             setTimeout(() => resolve(undefined), 0);
         });
     }

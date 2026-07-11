@@ -64,7 +64,7 @@ const estimateVideoBitsPerSecond = (width: number, height: number, frameRate: nu
 };
 
 const blobToDataUrl = async (blob: Blob): Promise<string> =>
-    await new Promise((resolve, reject) => {
+    new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(reader.error ?? new Error('Could not read blob as data URL'));
@@ -250,7 +250,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
     }
 
     async dataUrl() {
-        return await blobToDataUrl(await this.blob());
+        return blobToDataUrl(await this.blob());
     }
 
     async blob(): Promise<Blob> {
@@ -300,7 +300,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         const settings = this._captureSettings(video, mimeType);
         const { canvas, ctx } = this._setupCanvasContext(video, settings.outputWidth, settings.outputHeight);
 
-        return await this._captureBlob({
+        return this._captureBlob({
             video,
             canvas,
             ctx,
@@ -477,7 +477,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         let manualCaptureStream: MediaStream | undefined;
         try {
             manualCaptureStream = canvas.captureStream(0);
-        } catch (_) {
+        } catch {
             manualCaptureStream = undefined;
         }
 
@@ -820,7 +820,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
             recorder.stop();
         }
 
-        return await stopRecorder;
+        return stopRecorder;
     }
 
     private _pauseRecorder(recorder: MediaRecorder | undefined) {
@@ -848,7 +848,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
             throwIfAborted(abortSignal);
         }
 
-        return await new Promise<void>((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             const maxTimestamp = Number.isFinite(video.duration) ? video.duration : timestamp;
             const seekTo = clamp(timestamp, 0, maxTimestamp);
             let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -959,7 +959,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         this._cancelRendering();
 
         if (this._blobPromise) {
-            this._blobPromise.finally(() => {
+            void this._blobPromise.finally(() => {
                 if (this._disposed) {
                     this._disposeResources();
                 }

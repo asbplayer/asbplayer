@@ -3,7 +3,7 @@ import { Rgb, SubtitleModel, SubtitleTrack, Token, Tokenization, TokenReading } 
 import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
 import { Progress } from '..';
 import { TokenStatusInfo } from '../dictionary-db';
-import { PitchAccentPosition } from '../yomitan/yomitan';
+import { PitchAccentPosition } from '../yomitan';
 
 export function arrayEquals<T>(
     a: readonly T[] | undefined,
@@ -434,7 +434,7 @@ export function isKanaOnly(text: string) {
 }
 
 const KATAKANA_ONLY_REGEX =
-    /^[\u30A0-\u30FF\u31F0-\u31FF\u3099\u309A\uFF61-\uFF9F\u{1B000}-\u{1B0FF}\u{1B100}-\u{1B12F}\u{1B130}-\u{1B16F}\u{1AFF0}-\u{1AFFF}]+$/u;
+    /^(?:[\u30A0-\u30FF\u31F0-\u31FF\uFF61-\uFF9F\u{1B000}-\u{1B0FF}\u{1B100}-\u{1B12F}\u{1B130}-\u{1B16F}\u{1AFF0}-\u{1AFFF}]|\u3099|\u309A)+$/u;
 export function isKatakanaOnly(text: string) {
     return KATAKANA_ONLY_REGEX.test(text.normalize('NFC'));
 }
@@ -572,7 +572,7 @@ export function computeStyleString(
 
 // https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
 export function hexToRgb(hex: string): Rgb {
-    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 
     if (!result) {
         return { r: 255, g: 255, b: 255 };
@@ -691,11 +691,11 @@ type Block = {
 /**
  * Iterates over a string in "blocks" where a "block" represents a collection of substrings of the passed-in string.
  * @param str The string to iterate over.
- * @param block Function respresenting the substrings to iterate over.
+ * @param block Function representing the substrings to iterate over.
  * @param callback Called when iterating over each block, and also gaps between blocks. When iterating over a gap,
  * the optional block argument is undefined.
  */
-export function iterateOverStringInBlocks<T, B extends Block>(
+export function iterateOverStringInBlocks<B extends Block>(
     str: string,
     block: (str: string, blockIndex: number) => B | undefined,
     callback: (left: number, right: number, block?: B) => void
@@ -745,7 +745,7 @@ const tokenReadingComparators: TokenReadingComparators = {
 } satisfies Required<TokenReadingComparators>;
 
 function compareTokenReadingField<K extends keyof TokenReading>(key: K, a: TokenReading, b: TokenReading): boolean {
-    return tokenReadingComparators[key]!(a[key], b[key]);
+    return tokenReadingComparators[key](a[key], b[key]);
 }
 
 const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) => {

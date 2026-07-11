@@ -27,8 +27,8 @@ export function fetchM3U8(url: string): Promise<any> {
 
 export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSubtitleTrack[]> {
     return new Promise((resolve, reject) => {
-        setTimeout(async () => {
-            try {
+        setTimeout(() => {
+            void (async () => {
                 const manifest = await fetchM3U8(url);
                 const subtitleGroups = manifest.mediaGroups?.SUBTITLES;
 
@@ -82,9 +82,7 @@ export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSub
                     (t): t is VideoDataSubtitleTrack => t !== undefined
                 );
                 resolve(tracks);
-            } catch (e) {
-                reject(e);
-            }
+            })().catch(reject);
         }, 0);
     });
 }
@@ -93,15 +91,15 @@ export const inferTracksFromInterceptedM3u8 = (urlRegex: RegExp) => {
     let lastManifestUrl: string | undefined;
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
-    window.XMLHttpRequest.prototype.open = function () {
-        const url = arguments[1];
+    window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+        const url = args[1];
 
         if (typeof url === 'string' && urlRegex.test(url)) {
             lastManifestUrl = url;
         }
 
-        // @ts-ignore
-        originalXhrOpen.apply(this, arguments);
+        // @ts-expect-error: forwarding original XHR arguments
+        originalXhrOpen.apply(this, args);
     };
 
     inferTracks({

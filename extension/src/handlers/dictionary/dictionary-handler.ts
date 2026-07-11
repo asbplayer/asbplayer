@@ -65,64 +65,66 @@ export default class DictionaryHandler {
             }
             case 'dictionary-get-by-lemma-bulk': {
                 const message = command.message as DictionaryGetByLemmaBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .getByLemmaBulk(message.profile, message.track, message.lemmas)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-save-record-local-bulk': {
                 const message = command.message as DictionarySaveRecordLocalBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .saveRecordLocalBulk(message.profile, message.localTokenInputs, message.applyStates)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-delete-record-local-bulk': {
                 const message = command.message as DictionaryDeleteRecordLocalBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .deleteRecordLocalBulk(message.profile, message.tokens)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-delete-profile': {
                 const message = command.message as DictionaryDeleteProfileMessage;
-                this.dictionaryDB.deleteProfile(message.profile).then((result) => sendResponse(result));
+                void this.dictionaryDB.deleteProfile(message.profile).then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-export-record-local-bulk': {
-                this.dictionaryDB.exportRecordLocalBulk().then((result) => sendResponse(result));
+                void this.dictionaryDB.exportRecordLocalBulk().then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-import-record-local-bulk': {
                 const message = command.message as DictionaryImportRecordLocalBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .importRecordLocalBulk(message.records, message.profiles)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-get-records': {
                 const message = command.message as DictionaryGetRecordsMessage;
-                this.dictionaryDB.getRecords(message.profile, message.track).then((result) => sendResponse(result));
+                void this.dictionaryDB
+                    .getRecords(message.profile, message.track)
+                    .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-update-records': {
                 const message = command.message as DictionaryUpdateRecordsMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .updateRecords(message.profile, message.updates, message.applyStates)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-delete-records': {
                 const message = command.message as DictionaryDeleteRecordsMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .deleteRecords(message.profile, message.tokenKeys)
                     .then((result) => sendResponse(result));
                 return true;
             }
             case 'dictionary-build-anki-cache': {
                 const message = command.message as DictionaryBuildAnkiCacheMessage;
-                this.dictionaryDB
-                    .buildAnkiCache(message.profile, async (state: DictionaryBuildAnkiCacheState) => {
+                void this.dictionaryDB
+                    .buildAnkiCache(message.profile, (state: DictionaryBuildAnkiCacheState) => {
                         const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
                             sender: 'asbplayer-extension-to-player',
                             message: { command: 'dictionary-build-anki-cache-state', ...state },

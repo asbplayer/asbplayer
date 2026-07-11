@@ -29,7 +29,7 @@ export interface AudioRecorderDelegate {
 
 export class OffscreenAudioRecorder implements AudioRecorderDelegate {
     private _mediaStreamId(tabId: number): Promise<string> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             browser.tabCapture.getMediaStreamId(
                 {
                     targetTabId: tabId,
@@ -43,7 +43,7 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
         time: number,
         encodeAsMp3: boolean,
         requestId: string,
-        { tabId, src }: Requester
+        { tabId }: Requester
     ): Promise<StartRecordingResponse> {
         await ensureOffscreenAudioServiceDocument();
 
@@ -58,10 +58,10 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
                 requestId,
             },
         };
-        return (await browser.runtime.sendMessage(command)) as StartRecordingResponse;
+        return browser.runtime.sendMessage(command);
     }
 
-    async start(requestId: string, { tabId, src }: Requester) {
+    async start(requestId: string, { tabId }: Requester) {
         await ensureOffscreenAudioServiceDocument();
         const streamId = await this._mediaStreamId(tabId);
 
@@ -73,7 +73,7 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
                 requestId,
             },
         };
-        return (await browser.runtime.sendMessage(command)) as StartRecordingResponse;
+        return browser.runtime.sendMessage(command);
     }
 
     async stop(encodeAsMp3: boolean): Promise<StopRecordingResponse> {
@@ -84,7 +84,7 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
                 encodeAsMp3,
             },
         };
-        return (await browser.runtime.sendMessage(command)) as StopRecordingResponse;
+        return browser.runtime.sendMessage(command);
     }
 }
 
@@ -106,7 +106,7 @@ export class CaptureStreamAudioRecorder implements AudioRecorderDelegate {
             src,
         };
 
-        return (await browser.tabs.sendMessage(tabId, command)) as StartRecordingResponse;
+        return browser.tabs.sendMessage(tabId, command);
     }
 
     async start(requestId: string, { tabId, src }: Requester) {
@@ -118,7 +118,7 @@ export class CaptureStreamAudioRecorder implements AudioRecorderDelegate {
             },
             src,
         };
-        return (await browser.tabs.sendMessage(tabId, command)) as StartRecordingResponse;
+        return browser.tabs.sendMessage(tabId, command);
     }
 
     async stop(encodeAsMp3: boolean, { tabId, src }: Requester): Promise<StopRecordingResponse> {
@@ -130,6 +130,6 @@ export class CaptureStreamAudioRecorder implements AudioRecorderDelegate {
             },
             src,
         };
-        return (await browser.tabs.sendMessage(tabId, command)) as StopRecordingResponse;
+        return browser.tabs.sendMessage(tabId, command);
     }
 }

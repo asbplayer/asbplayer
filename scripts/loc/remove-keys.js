@@ -26,7 +26,7 @@ const removeKeys = (locale, keysToRemove) => {
 
 fs.readdir(localesPath, (err, files) => {
     if (err) {
-        console.error(error);
+        console.error(err);
         return;
     }
 

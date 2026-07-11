@@ -13,6 +13,6 @@ export const createTheme = (themeType: PaletteMode) =>
             background: {
                 default: 'rgba(0, 0, 0, 0)',
             },
-            mode: themeType as PaletteMode,
+            mode: themeType,
         },
     });

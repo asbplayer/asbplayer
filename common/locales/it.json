@@ -495,6 +495,7 @@
         "dictionaryLocalWordDatabase": "Database parole locale",
         "dictionaryAnkiWordDatabase": "Database parole Anki",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "Colora i sottotitoli in base alle parole conosciute",
         "dictionaryAutoGenerateStatistics": "Genera statistiche automaticamente",
         "dictionaryColorizeOnHoverOnly": "Mostra annotazioni solo al passaggio del mouse",

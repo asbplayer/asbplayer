@@ -47,6 +47,13 @@ import PlaybackRateInput from '../../components/PlaybackRateInput';
 import VideoElementFavicon from './VideoElementFavicon';
 import PlayModeSelector from '../../components/PlayModeSelector';
 import TimeDisplay from '../../components/TimeDisplay';
+import {
+    centeredProgressBarPreviewLeft,
+    clampProgressBarPreviewLeft,
+    formatProgressTimestamp,
+    progressBarProgress,
+    progressBarTrackWidth,
+} from './progress-bar';
 
 const useControlStyles = makeStyles<Theme>((theme) => ({
     container: {
@@ -203,6 +210,31 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
         height: 79,
         borderRadius: 5,
     },
+    timestampPreview: {
+        position: 'absolute',
+        top: -36,
+        height: 24,
+        padding: '1px 8px',
+        boxSizing: 'border-box',
+        border: '1px solid rgba(255, 255, 255, 0.16)',
+        borderRadius: 5,
+        backgroundColor: 'rgba(24, 24, 24, 0.94)',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 13,
+        fontWeight: 600,
+        fontVariantNumeric: 'tabular-nums',
+        letterSpacing: 0,
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+        zIndex: 2,
+        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
+    },
+    timestampPreviewWithThumbnail: {
+        top: -120,
+    },
     fillContainer: {
         background: 'rgba(30,30,30,0.7)',
         width: '100%',
@@ -246,7 +278,7 @@ const useProgressBarStyles = makeStyles<Theme>((theme) => ({
     },
 }));
 
-const VolumeSlider = withStyles((theme) => ({
+const VolumeSlider = withStyles(() => ({
     root: {
         color: 'white',
         verticalAlign: 'middle',
@@ -275,15 +307,27 @@ interface ProgressBarProps {
     onSeek: (progress: number) => void;
     onSeekPreview?: (progress: number) => string | undefined;
     value: number;
+    length: number;
     videoHeight: number | undefined;
     videoWidth: number | undefined;
     previewEnabled: boolean;
+    timestampPreviewEnabled: boolean;
 }
 
-function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, previewEnabled }: ProgressBarProps) {
+function ProgressBar({
+    onSeek,
+    onSeekPreview,
+    value,
+    length,
+    videoHeight,
+    videoWidth,
+    previewEnabled,
+    timestampPreviewEnabled,
+}: ProgressBarProps) {
     const classes = useProgressBarStyles();
     const [mouseOver, setMouseOver] = useState(false);
-    const containerRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [hoverState, setHoverState] = useState({ progress: 0, trackWidth: 0 });
     // x position of mouse
     const [hoverX, setHoverX] = useState(0);
     const [thumbnailSrc, setThumbnailSrc] = useState<string | undefined>(undefined);
@@ -293,13 +337,25 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, pr
         videoWidth = Math.round((videoWidth / videoHeight) * 79);
     }
 
+    const thumbnailPreviewEnabled = previewEnabled && onSeekPreview !== undefined;
+    const thumbnailWidth = videoWidth ?? 145;
+    const timestampPreviewWidth = length >= 3600000 ? 88 : 64;
+    const hoverTimestamp = timestampPreviewEnabled ? formatProgressTimestamp(hoverState.progress, length) : undefined;
+    const timestampPreviewClassName = thumbnailPreviewEnabled
+        ? classes.timestampPreview + ' ' + classes.timestampPreviewWithThumbnail
+        : classes.timestampPreview;
+    const timestampPreviewLeft = thumbnailPreviewEnabled
+        ? clampProgressBarPreviewLeft(
+              hoverX + (thumbnailWidth - timestampPreviewWidth) / 2,
+              hoverState.trackWidth,
+              timestampPreviewWidth
+          )
+        : centeredProgressBarPreviewLeft(hoverState.progress, hoverState.trackWidth, timestampPreviewWidth);
+
     const handleClick = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            // Account for margins by subtracting 10 from left/right sides
-            const width = rect.right - rect.left - 20;
-            const progress = Math.min(1, Math.max(0, (e.pageX - rect.left - 10) / width));
-            onSeek(progress);
+            onSeek(progressBarProgress(e.pageX, rect));
         },
         [onSeek]
     );
@@ -307,15 +363,14 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, pr
     const handleMouseOver = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
             setMouseOver(true);
-            if (onSeekPreview == undefined) return;
             const rect = e.currentTarget.getBoundingClientRect();
-            // Account for margins by subtracting 10 from left/right sides
-            const width = rect.right - rect.left - 20;
-            const progress = Math.min(1, Math.max(0, (e.pageX - rect.left - 10) / width));
-            const positionInPixels = progress * width;
+            const trackWidth = progressBarTrackWidth(rect);
+            const progress = progressBarProgress(e.pageX, rect);
+            setHoverState({ progress, trackWidth });
             // subtract to center the mouse in the center of the preview box
-            setHoverX(positionInPixels - 145 / 2 + 10);
+            setHoverX(progress * trackWidth - 145 / 2 + 10);
 
+            if (onSeekPreview == undefined) return;
             const previewSrc = onSeekPreview(progress);
             if (previewSrc) {
                 setThumbnailSrc(previewSrc);
@@ -336,6 +391,18 @@ function ProgressBar({ onSeek, onSeekPreview, value, videoHeight, videoWidth, pr
 
     return (
         <div className={classes.root}>
+            {mouseOver && hoverTimestamp && (
+                <div
+                    aria-hidden="true"
+                    style={{
+                        left: timestampPreviewLeft,
+                        width: timestampPreviewWidth,
+                    }}
+                    className={timestampPreviewClassName}
+                >
+                    {hoverTimestamp}
+                </div>
+            )}
             {mouseOver && (
                 <div
                     style={{ left: hoverX, width: videoWidth ?? 145, display: previewEnabled ? 'block' : 'none' }}
@@ -463,14 +530,6 @@ function TabSelector({ open, anchorEl, onClose, tabs, selectedTab, onTabSelected
     );
 }
 
-interface MediaUnloaderProps {
-    open: boolean;
-    anchorEl?: Element;
-    file?: string;
-    onUnload: () => void;
-    onClose: () => void;
-}
-
 interface ResponsiveButtonGroupProps {
     children: React.ReactNode[];
 }
@@ -542,7 +601,6 @@ interface ControlsProps {
     onPause: () => void;
     onPlay: () => void;
     onTabSelected?: (tab: VideoTabModel) => void;
-    onUnloadVideo?: () => void;
     onOffsetChange: (offset: number) => void;
     onPlaybackRateChange: (playbackRate: number) => void;
     onVolumeChange?: (volume: number) => void;
@@ -584,6 +642,7 @@ interface ControlsProps {
     onBlurOverlayToggle?: () => void;
     videoWidth?: number | undefined;
     videoHeight?: number | undefined;
+    timestampPreviewEnabled?: boolean;
 }
 
 export default function Controls({
@@ -602,7 +661,6 @@ export default function Controls({
     onPause,
     onPlay,
     onTabSelected,
-    onUnloadVideo,
     onOffsetChange,
     onPlaybackRateChange,
     onVolumeChange,
@@ -644,6 +702,7 @@ export default function Controls({
     videoWidth,
     videoHeight,
     previewEnabled,
+    timestampPreviewEnabled = false,
 }: ControlsProps) {
     const classes = useControlStyles();
     const { t } = useTranslation();
@@ -887,7 +946,7 @@ export default function Controls({
                 <Grid container style={{ position: 'absolute', top: 0 }}>
                     <Grid item>
                         {closeEnabled && (
-                            <Tooltip title={t('controls.unloadVideo')!}>
+                            <Tooltip title={t('controls.unloadVideo')}>
                                 <IconButton
                                     color="inherit"
                                     className={classes.topButton}
@@ -916,7 +975,7 @@ export default function Controls({
                     <Grid item style={{ flexGrow: 1 }} />
                     <Grid item>
                         {theaterModeToggleEnabled && (
-                            <Tooltip title={t('controls.toggleTheaterMode')!}>
+                            <Tooltip title={t('controls.toggleTheaterMode')}>
                                 <IconButton
                                     color="inherit"
                                     className={theaterModeEnabled ? classes.topButton : classes.inactiveTopButton}
@@ -929,7 +988,7 @@ export default function Controls({
                             </Tooltip>
                         )}
                         {fullscreenEnabled && (
-                            <Tooltip title={t('controls.toggleFullscreen')!}>
+                            <Tooltip title={t('controls.toggleFullscreen')}>
                                 <IconButton color="inherit" onClick={onFullscreenToggle}>
                                     {fullscreen ? (
                                         <FullscreenExitIcon className={classes.topButton} />
@@ -943,8 +1002,8 @@ export default function Controls({
                             <Tooltip
                                 title={
                                     subtitlePlayerHidden
-                                        ? t('controls.showSubtitlePlayer')!
-                                        : t('controls.hideSubtitlePlayer')!
+                                        ? t('controls.showSubtitlePlayer')
+                                        : t('controls.hideSubtitlePlayer')
                                 }
                             >
                                 <IconButton
@@ -973,9 +1032,11 @@ export default function Controls({
                             onSeekPreview={onSeekPreview}
                             onSeek={handleSeek}
                             value={progress * 100}
+                            length={length}
                             videoHeight={videoHeight}
                             videoWidth={videoWidth}
                             previewEnabled={previewEnabled}
+                            timestampPreviewEnabled={timestampPreviewEnabled}
                         />
                         {!hideToolbar && (
                             <Grid container className={classes.gridContainer} direction="row" wrap="nowrap">
@@ -1040,7 +1101,7 @@ export default function Controls({
                                     </Grid>
                                 )}
                                 {offsetEnabled && !showVolumeBar && !isReallySmallScreen && (
-                                    <Tooltip title={t('controls.subtitleOffset')!}>
+                                    <Tooltip title={t('controls.subtitleOffset')}>
                                         <Grid item style={{ marginLeft: 10 }}>
                                             <SubtitleOffsetInput
                                                 inputRef={offsetInputRef}
@@ -1053,7 +1114,7 @@ export default function Controls({
                                 )}
                                 {playbackRateEnabled && !showVolumeBar && !isReallySmallScreen && (
                                     <Grid item style={{ marginLeft: 10 }}>
-                                        <Tooltip title={t('controls.playbackRate')!}>
+                                        <Tooltip title={t('controls.playbackRate')}>
                                             <PlaybackRateInput
                                                 inputRef={playbackRateInputRef}
                                                 playbackRate={playbackRate}
@@ -1065,7 +1126,7 @@ export default function Controls({
                                 <Grid item style={{ flexGrow: 1 }}></Grid>
                                 <ResponsiveButtonGroup>
                                     {subtitleAlignmentEnabled && subtitleAlignment !== undefined && (
-                                        <Tooltip title={t('controls.subtitleAlignment')!}>
+                                        <Tooltip title={t('controls.subtitleAlignment')}>
                                             <IconButton color="inherit" onClick={handleSubtitleAlignment}>
                                                 {subtitleAlignment === 'top' ? (
                                                     <VerticalAlignTopIcon />
@@ -1076,7 +1137,7 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {subtitlesToggle && (
-                                        <Tooltip title={t('controls.toggleSubtitles')!}>
+                                        <Tooltip title={t('controls.toggleSubtitles')}>
                                             <IconButton color="inherit" onClick={onSubtitlesToggle}>
                                                 <SubtitlesIcon
                                                     className={
@@ -1087,14 +1148,14 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {audioTracks && audioTracks.length > 1 && (
-                                        <Tooltip title={t('controls.selectAudioTrack')!}>
+                                        <Tooltip title={t('controls.selectAudioTrack')}>
                                             <IconButton color="inherit" onClick={handleAudioTrackSelectorOpened}>
                                                 <QueueMusicIcon className={classes.button} />
                                             </IconButton>
                                         </Tooltip>
                                     )}
                                     {tabs && tabs.length > 0 && (
-                                        <Tooltip title={t('controls.selectVideoElement')!}>
+                                        <Tooltip title={t('controls.selectVideoElement')}>
                                             <IconButton color="inherit" onClick={handleTabSelectorOpened}>
                                                 <VideocamIcon
                                                     className={selectedTab ? classes.button : classes.inactiveButton}
@@ -1103,7 +1164,7 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {playModeEnabled && (
-                                        <Tooltip title={t('controls.playbackMode')!}>
+                                        <Tooltip title={t('controls.playbackMode')}>
                                             <IconButton color="inherit" onClick={handlePlayModeSelectorOpened}>
                                                 <TuneIcon
                                                     className={
@@ -1114,7 +1175,7 @@ export default function Controls({
                                         </Tooltip>
                                     )}
                                     {popOutEnabled && (
-                                        <Tooltip title={popOut ? t('controls.popIn')! : t('controls.popOut')!}>
+                                        <Tooltip title={popOut ? t('controls.popIn') : t('controls.popOut')}>
                                             <IconButton color="inherit" onClick={onPopOutToggle}>
                                                 <OpenInNewIcon
                                                     className={classes.button}

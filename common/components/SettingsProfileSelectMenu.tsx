@@ -165,7 +165,7 @@ export default function SettingsProfileSelectMenu({
                     variant="outlined"
                     style={{ paddingRight: 0 }}
                     label={t('settings.profileName')}
-                    placeholder={t('settings.enterProfileName')!}
+                    placeholder={t('settings.enterProfileName')}
                     value={newProfile}
                     onChange={(e) => {
                         setNewProfile(e.target.value);

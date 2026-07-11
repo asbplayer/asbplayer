@@ -143,54 +143,60 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             return;
         }
 
-        return extension.subscribeTabs(async (tabs) => {
-            const currentVideoTabs = tabs.filter((t) => t.id === currentTabId);
+        return extension.subscribeTabs((tabs) => {
+            void (async () => {
+                const currentVideoTabs = tabs.filter((t) => t.id === currentTabId);
 
-            if (currentVideoTabs.length > 0) {
-                let lastSyncedVideoTab: VideoTabModel | undefined;
+                if (currentVideoTabs.length > 0) {
+                    let lastSyncedVideoTab: VideoTabModel | undefined;
 
-                for (const t of currentVideoTabs) {
-                    if (!t.synced) {
-                        continue;
+                    for (const t of currentVideoTabs) {
+                        if (!t.synced) {
+                            continue;
+                        }
+
+                        if (
+                            lastSyncedVideoTab === undefined ||
+                            t.syncedTimestamp! > lastSyncedVideoTab.syncedTimestamp!
+                        ) {
+                            lastSyncedVideoTab = t;
+                        }
                     }
 
-                    if (lastSyncedVideoTab === undefined || t.syncedTimestamp! > lastSyncedVideoTab.syncedTimestamp!) {
-                        lastSyncedVideoTab = t;
-                    }
-                }
-
-                if (
-                    lastSyncedVideoTab !== undefined &&
-                    (syncedVideoTab === undefined || !sameVideoTab(lastSyncedVideoTab, syncedVideoTab))
-                ) {
-                    const message: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
-                        sender: 'asbplayer-extension-to-video',
-                        message: {
-                            command: 'request-subtitles',
-                        },
-                        src: lastSyncedVideoTab.src,
-                    };
-                    const response = (await browser.tabs.sendMessage(lastSyncedVideoTab.id, message)) as
-                        | RequestSubtitlesResponse
-                        | undefined;
-
-                    if (response !== undefined) {
-                        const subs = response.subtitles;
-                        const length = subs.length > 0 ? subs[subs.length - 1].end : 0;
-                        setSyncedVideoElement(lastSyncedVideoTab);
-                        setSubtitles(
-                            subs.map((s, index) => ({
-                                ...s,
-                                index,
-                                displayTime: timeDurationDisplay(s.start, length),
-                            }))
+                    if (
+                        lastSyncedVideoTab !== undefined &&
+                        (syncedVideoTab === undefined || !sameVideoTab(lastSyncedVideoTab, syncedVideoTab))
+                    ) {
+                        const message: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
+                            sender: 'asbplayer-extension-to-video',
+                            message: {
+                                command: 'request-subtitles',
+                            },
+                            src: lastSyncedVideoTab.src,
+                        };
+                        const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+                            lastSyncedVideoTab.id,
+                            message
                         );
-                        setSubtitleFileNames(response.subtitleFileNames);
+
+                        if (response !== undefined) {
+                            const subs = response.subtitles;
+                            const length = subs.length > 0 ? subs[subs.length - 1].end : 0;
+                            setSyncedVideoElement(lastSyncedVideoTab);
+                            setSubtitles(
+                                subs.map((s, index) => ({
+                                    ...s,
+                                    index,
+                                    displayTime: timeDurationDisplay(s.start, length),
+                                }))
+                            );
+                            setSubtitleFileNames(response.subtitleFileNames);
+                        }
                     }
                 }
-            }
 
-            setInitializing(false);
+                setInitializing(false);
+            })().catch(console.error);
         });
     }, [extension, subtitles, initializing, currentTabId, syncedVideoTab]);
 
@@ -301,7 +307,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             tabId: syncedVideoTab.id,
             src: syncedVideoTab.src,
         };
-        browser.runtime.sendMessage(message);
+        void browser.runtime.sendMessage(message);
     }, [syncedVideoTab, settings.clickToMineDefaultAction]);
 
     const handleLoadSubtitles = useCallback(() => {
@@ -314,7 +320,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             message: { command: 'load-subtitles' },
             tabId: currentTabId,
         };
-        browser.runtime.sendMessage(message);
+        void browser.runtime.sendMessage(message);
     }, [currentTabId]);
 
     const handleDownloadSubtitles = useCallback(() => {
@@ -331,22 +337,22 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
         if (!syncedVideoTab) return;
         const startCommand: AsbPlayerToVideoCommandV2<Message> = {
             sender: 'asbplayerv2',
-            message: { command: 'start-bulk-export' } as Message,
+            message: { command: 'start-bulk-export' },
             tabId: syncedVideoTab.id,
             src: syncedVideoTab.src,
         };
-        browser.runtime.sendMessage(startCommand);
+        void browser.runtime.sendMessage(startCommand);
     }, [syncedVideoTab]);
 
     const handleBulkExportCancel = useCallback(async () => {
         if (!syncedVideoTab) return;
         const cancelCommand: AsbPlayerToVideoCommandV2<Message> = {
             sender: 'asbplayerv2',
-            message: { command: 'cancel-bulk-export' } as Message,
+            message: { command: 'cancel-bulk-export' },
             tabId: syncedVideoTab.id,
             src: syncedVideoTab.src,
         };
-        browser.runtime.sendMessage(cancelCommand);
+        void browser.runtime.sendMessage(cancelCommand);
     }, [syncedVideoTab]);
 
     // Local bulk export UI state
@@ -420,7 +426,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     );
     useEffect(() => {
         if (viewingAsbplayer) {
-            refreshCopyHistory();
+            void refreshCopyHistory();
         }
     }, [refreshCopyHistory, viewingAsbplayer]);
     const [showCopyHistory, setShowCopyHistory] = useState<boolean>(false);
@@ -443,7 +449,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                             ...item,
                         },
                     };
-                    browser.tabs.sendMessage(currentTabId, downloadAudioCommand);
+                    void browser.tabs.sendMessage(currentTabId, downloadAudioCommand);
                 }
             } else {
                 const clip = AudioClip.fromCard(item, settings.audioPaddingStart, settings.audioPaddingEnd, false);
@@ -451,9 +457,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 if (clip) {
                     if (settings.preferMp3) {
                         const worker = await mp3WorkerFactory();
-                        clip.toMp3(() => worker).download();
+                        void clip.toMp3(() => worker).download();
                     } else {
-                        clip.download();
+                        void clip.download();
                     }
                 }
             }
@@ -471,7 +477,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                             ...item,
                         },
                     };
-                    browser.tabs.sendMessage(currentTabId, downloadImageCommand);
+                    void browser.tabs.sendMessage(currentTabId, downloadImageCommand);
                 }
             } else {
                 const image = MediaFragment.fromCard(
@@ -485,7 +491,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 );
 
                 if (image) {
-                    image.download();
+                    void image.download();
                 }
             }
         },
@@ -505,7 +511,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     subtitleFileName: card.subtitleFileName,
                 },
             };
-            browser.tabs.sendMessage(currentTabId, asbplayerCommand);
+            void browser.tabs.sendMessage(currentTabId, asbplayerCommand);
         },
         [currentTabId, viewingAsbplayer]
     );
@@ -527,8 +533,8 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 sender: 'asbplayer-extension-to-player',
                 message,
             };
-            browser.tabs.sendMessage(currentTabId, videoCommand);
-            browser.tabs.sendMessage(currentTabId, asbplayerCommand);
+            void browser.tabs.sendMessage(currentTabId, videoCommand);
+            void browser.tabs.sendMessage(currentTabId, asbplayerCommand);
         },
         [currentTabId]
     );
@@ -557,13 +563,13 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 tabId: syncedVideoTab.id,
                 src: syncedVideoTab.src,
             };
-            browser.runtime.sendMessage(message);
+            void browser.runtime.sendMessage(message);
         },
         [syncedVideoTab, settings.clickToMineDefaultAction, currentTabId]
     );
 
     const handleOpenUserGuide = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
     }, []);
     const noOp = useCallback(() => {}, []);
 
@@ -588,12 +594,12 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     force: true,
                 },
             };
-            browser.runtime.sendMessage(command);
+            void browser.runtime.sendMessage(command);
         },
         [currentTabId]
     );
     const handleViewAnnotationSettings = useCallback(() => {
-        browser.tabs.create({
+        void browser.tabs.create({
             url: `${browser.runtime.getURL('/options.html')}#annotation`,
             active: true,
         });

@@ -30,13 +30,15 @@ export default class TakeScreenshotHandler {
     }
 
     async handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
-        const senderTab = sender.tab!;
         const takeScreenshotCommand = command as VideoToExtensionCommand<TakeScreenshotFromExtensionMessage>;
         const { maxWidth, maxHeight, rect, frameId } = takeScreenshotCommand.message;
         let imageModel: ImageModel;
 
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) throw new Error('Cannot take screenshot without a valid tab ID');
+
         try {
-            const imageBase64 = await this._imageCapturer.capture(sender.tab!.id!, takeScreenshotCommand.src, 0, {
+            const imageBase64 = await this._imageCapturer.capture(tabId, takeScreenshotCommand.src, 0, {
                 maxWidth,
                 maxHeight,
                 rect,
@@ -60,7 +62,7 @@ export default class TakeScreenshotHandler {
         if (takeScreenshotCommand.message.ankiUiState) {
             ankiUiState = takeScreenshotCommand.message.ankiUiState;
             ankiUiState.image = imageModel;
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     audio: ankiUiState.audio,
                     image: ankiUiState.image,
@@ -72,7 +74,7 @@ export default class TakeScreenshotHandler {
                     mediaTimestamp: takeScreenshotCommand.message.mediaTimestamp,
                 },
                 undefined,
-                senderTab.id!,
+                tabId,
                 takeScreenshotCommand.src
             );
         }
@@ -86,6 +88,6 @@ export default class TakeScreenshotHandler {
             src: takeScreenshotCommand.src,
         };
 
-        browser.tabs.sendMessage(senderTab.id!, screenshotTakenCommand);
+        void browser.tabs.sendMessage(tabId, screenshotTakenCommand);
     }
 }

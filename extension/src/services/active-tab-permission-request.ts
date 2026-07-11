@@ -32,7 +32,7 @@ export const setRequestingActiveTabPermission = async (tabId: number, src: strin
         if (tab === undefined) {
             await browser.storage.session.remove(key);
         } else if (tab.id !== undefined) {
-            const savedTab = { tabId, src, url: tab.url } as SavedTab;
+            const savedTab = { tabId, src, url: tab.url };
             await browser.storage.session.set({ [key]: savedTab });
         }
     } else {
@@ -41,5 +41,5 @@ export const setRequestingActiveTabPermission = async (tabId: number, src: strin
 };
 
 const tabInfo = async (tabId: number) => {
-    return await browser.tabs.get(tabId);
+    return browser.tabs.get(tabId);
 };

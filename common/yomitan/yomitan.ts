@@ -485,10 +485,14 @@ export class Yomitan {
             if (count > maxCount) {
                 maxCount = count;
                 selected = position;
-                continue;
+                continue; // Prefer the most frequent result
             }
-            if (typeof position !== 'string' || typeof selected === 'string') continue;
-            selected = position; // Prefer the first string result when tied
+            if (typeof position !== 'string') continue; // Prefer string results
+            if (typeof selected === 'string') {
+                if (position.length > selected.length) selected = position; // Prefer the longer string result when tied
+            } else {
+                selected = position; // Prefer the first string result when tied
+            }
         }
         this.pitchAccentCache.set(token, selected);
     }
@@ -766,10 +770,14 @@ export class Yomitan {
             if (count > maxCount) {
                 maxCount = count;
                 selected = position;
-                continue;
+                continue; // Prefer the most frequent result
             }
-            if (typeof position !== 'string' || typeof selected === 'string') continue;
-            selected = position; // Prefer the first string result when tied
+            if (typeof position !== 'string') continue; // Prefer string results
+            if (typeof selected === 'string') {
+                if (position.length > selected.length) selected = position; // Prefer the longer string result when tied
+            } else {
+                selected = position; // Prefer the first string result when tied
+            }
         }
         this.pitchAccentCache.set(token, selected);
         return selected;
@@ -956,6 +964,7 @@ export class Yomitan {
             }
             this.supportsTokenizeFrequency = true;
             this.supportsTermEntriesBulk = true;
+            this.supportsTokenizePronunciations = true;
             return version;
         }
         const semver = coerce(version)?.version;
@@ -974,6 +983,12 @@ export class Yomitan {
         } else {
             this.supportsTokenizeFrequency = false;
             this.supportsTermEntriesBulk = false;
+        }
+        // TODO: Use actual released version
+        if (gte(semver, '26.7.1')) {
+            this.supportsTokenizePronunciations = true;
+        } else {
+            this.supportsTokenizePronunciations = false;
         }
         return version;
     }

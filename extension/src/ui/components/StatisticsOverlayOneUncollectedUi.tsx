@@ -51,10 +51,12 @@ const StatisticsOverlayOneUncollectedUi: React.FC<Props> = ({ bridge }) => {
         });
     }, [bridge]);
 
-    useEffect(() => bridge.serverIsReady(), [bridge]);
+    useEffect(() => {
+        void bridge.serverIsReady();
+    }, [bridge]);
 
     useEffect(() => {
-        settingsProvider
+        void settingsProvider
             .get(['themeType', 'language', 'dictionaryTracks'])
             .then(({ themeType, language, dictionaryTracks }) => {
                 setThemeType(themeType);

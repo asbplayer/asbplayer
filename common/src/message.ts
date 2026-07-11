@@ -28,7 +28,6 @@ import {
     AnkiDialogSettings,
     AnkiExportMode,
     BrowserFeatures,
-    Tokenization,
     IndexedSubtitleModel,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';
@@ -437,6 +436,15 @@ export interface SubtitlesUpdatedFromVideoMessage extends Message {
 
 export interface RequestSubtitlesFromAppMessage extends MessageWithId {
     readonly command: 'request-subtitles';
+}
+
+export interface RequestLocalSubtitlesMessage extends MessageWithId {
+    readonly command: 'request-local-subtitles';
+}
+
+export interface LocalSubtitlesResponseMessage extends MessageWithId {
+    readonly command: 'local-subtitles-response';
+    readonly response: RequestSubtitlesResponse;
 }
 
 export interface SubtitleSettingsToVideoMessage extends Message {

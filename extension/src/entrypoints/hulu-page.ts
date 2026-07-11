@@ -19,7 +19,6 @@ export default defineUnlistedScript(() => {
 
     const originalFetch = window.fetch;
     window.fetch = function (...args) {
-        // @ts-ignore
         const promise = originalFetch.apply(this, args);
         const input = args[0];
         const url =

@@ -16,13 +16,13 @@ export const useSettings = () => {
     const refreshSettings = useCallback(() => settingsProvider.getAll().then(setSettings), [settingsProvider]);
 
     useEffect(() => {
-        refreshSettings();
+        void refreshSettings();
     }, [refreshSettings]);
 
     useEffect(() => {
-        browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        browser.runtime.onMessage.addListener((request) => {
             if (request.message?.command === 'settings-updated') {
-                settingsProvider.getAll().then(setSettings);
+                void settingsProvider.getAll().then(setSettings);
             }
         });
     }, [settingsProvider]);
@@ -34,19 +34,19 @@ export const useSettings = () => {
                 command: 'settings-updated',
             },
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, []);
 
     const onSettingsChanged = useCallback(
         (settings: Partial<AsbplayerSettings>) => {
             setSettings((s) => ({ ...s!, ...settings }));
-            settingsProvider.set(settings).then(() => notifySettingsUpdated());
+            void settingsProvider.set(settings).then(() => notifySettingsUpdated());
         },
         [settingsProvider, notifySettingsUpdated]
     );
 
     const handleProfileChanged = useCallback(() => {
-        refreshSettings();
+        void refreshSettings();
         notifySettingsUpdated();
     }, [refreshSettings, notifySettingsUpdated]);
 

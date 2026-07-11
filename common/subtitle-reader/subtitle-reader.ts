@@ -1,5 +1,6 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
+import { subtitlesToSrt } from './subtitles-to-srt';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
 import { SubtitleHtml, SubtitleTextImage, Token, Tokenization } from '@project/common';
@@ -98,7 +99,7 @@ export default class SubtitleReader {
 
         try {
             regex = regexFilter.trim() === '' ? undefined : new RegExp(regexFilter, 'gv');
-        } catch (e) {
+        } catch {
             regex = undefined;
         }
 
@@ -176,7 +177,7 @@ export default class SubtitleReader {
         }
 
         if (file.name.endsWith('.vtt') || file.name.endsWith('.nfvtt')) {
-            return new Promise(async (resolve, reject) => {
+            return new Promise((resolve, reject) => {
                 const isFromNetflix = file.name.endsWith('.nfvtt');
                 const parser = new WebVTT.Parser(window, WebVTT.StringDecoder());
                 const allBuffers: VTTCue[][] = [];
@@ -226,8 +227,12 @@ export default class SubtitleReader {
 
                     resolve(nodes);
                 };
-                parser.parse(await file.text());
-                parser.flush();
+                file.text()
+                    .then((text) => {
+                        parser.parse(text);
+                        parser.flush();
+                    })
+                    .catch(reject);
             });
         }
 
@@ -265,7 +270,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                let parts = [];
+                const parts = [];
 
                 if (typeof row['#text'] === 'string') {
                     parts.push(row['#text']);
@@ -290,7 +295,7 @@ export default class SubtitleReader {
                 const text = parts.join('').trim();
 
                 if (text) {
-                    let nextRow = subtitleRows[i + 1];
+                    const nextRow = subtitleRows[i + 1];
 
                     // Prevent subtitle from overlapping with next one by reading ahead to see where the next one starts.
                     // Usually text rows are separated by empty newline rows.
@@ -371,7 +376,7 @@ export default class SubtitleReader {
         }
 
         if (file.name.endsWith('.sup')) {
-            return await this._parsePgs(file, track);
+            return this._parsePgs(file, track);
         }
 
         if (file.name.endsWith('.nfimsc')) {
@@ -429,46 +434,57 @@ export default class SubtitleReader {
 
     private _parsePgs(file: File, track: number): Promise<SubtitleNode[]> {
         const subtitles: SubtitleNode[] = [];
-        return new Promise(async (resolve, reject) => {
-            const worker = await this._pgsWorkerFactory();
-            worker.onmessage = async (e) => {
-                switch (e.data.command) {
-                    case 'subtitle':
-                        const subtitle = { ...e.data.subtitle, track };
-                        const imageBlob = e.data.imageBlob;
-                        subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
-                        subtitles.push(subtitle);
-                        break;
-                    case 'finished':
-                        worker.terminate();
-                        resolve(subtitles);
-                        break;
-                    case 'error':
-                        worker.terminate();
-                        reject(e.data.error);
-                        break;
-                }
-            };
-            worker.onerror = (e) => {
-                const error = e?.error ?? new Error('PGS decoding failed: ' + e?.message);
+        return new Promise((resolve, reject) => {
+            let worker: Worker | undefined;
+
+            void (async () => {
+                worker = await this._pgsWorkerFactory();
+                worker.onmessage = (e) => {
+                    void (async () => {
+                        switch (e.data.command) {
+                            case 'subtitle': {
+                                const subtitle = { ...e.data.subtitle, track };
+                                const imageBlob = e.data.imageBlob;
+                                subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
+                                subtitles.push(subtitle);
+                                break;
+                            }
+                            case 'finished':
+                                worker?.terminate();
+                                resolve(subtitles);
+                                break;
+                            case 'error':
+                                worker?.terminate();
+                                reject(e.data.error);
+                                break;
+                        }
+                    })().catch((error) => {
+                        worker?.terminate();
+                        reject(error);
+                    });
+                };
+                worker.onerror = (e) => {
+                    const error = e?.error ?? new Error('PGS decoding failed: ' + e?.message);
+                    reject(error);
+                    worker?.terminate();
+                };
+                const canvas = document.createElement('canvas');
+
+                const offscreenCanvas = canvas.transferControlToOffscreen();
+
+                // Node ReadableStream clashes with web ReadableStream
+                const fileStream = file.stream() as unknown as ReadableStream;
+                worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
+            })().catch((error) => {
+                worker?.terminate();
                 reject(error);
-                worker.terminate();
-            };
-            const canvas = document.createElement('canvas');
-
-            // transferControlToOffscreen is not in lib.dom.d.ts
-            // @ts-ignore
-            const offscreenCanvas = canvas.transferControlToOffscreen();
-
-            // Node ReadableStream clashes with web ReadableStream
-            const fileStream = (await file.stream()) as unknown as ReadableStream;
-            worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
+            });
         });
     }
 
     private _blobToDataUrl(blob: Blob) {
-        return new Promise((resolve, reject) => {
-            var reader = new FileReader();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = () => {
                 resolve(reader.result);
@@ -764,16 +780,7 @@ export default class SubtitleReader {
     }
 
     subtitlesToSrt(subtitles: SubtitleNode[]) {
-        const parser = new SrtParser({ numericTimestamps: true });
-        const nodes = subtitles.map((subtitleNode, i) => {
-            return {
-                id: String(i),
-                startTime: subtitleNode.start,
-                endTime: subtitleNode.end,
-                text: subtitleNode.text,
-            };
-        });
-        return parser.toSrt(nodes);
+        return subtitlesToSrt(subtitles);
     }
 
     async filesToSrt(files: File[]) {

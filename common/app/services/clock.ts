@@ -83,7 +83,7 @@ export default class Clock {
         }
     }
 
-    _remove(callback: Function, callbacks: Function[]) {
+    _remove(callback: () => void, callbacks: (() => void)[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

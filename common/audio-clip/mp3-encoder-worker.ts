@@ -82,8 +82,8 @@ async function encode(audioBuffer: SerializableAudioBuffer) {
     if (channels === 1) {
         left = new Int16Array(samples);
     } else if (channels === 2) {
-        let leftSamples: number[] = [];
-        let rightSamples: number[] = [];
+        const leftSamples: number[] = [];
+        const rightSamples: number[] = [];
 
         for (let i = 0; i < samples.length; i += 2) {
             leftSamples.push(samples[i]);
@@ -100,9 +100,9 @@ async function encode(audioBuffer: SerializableAudioBuffer) {
     const encoder = new Mp3Encoder(channels, sampleRate, bitRate);
     let remaining = samples.length;
 
-    for (var i = 0; remaining >= samplesPerFrame; i += samplesPerFrame) {
+    for (let i = 0; remaining >= samplesPerFrame; i += samplesPerFrame) {
         const rightSubArray = right === null ? null : right.subarray(i, i + samplesPerFrame);
-        var mp3Buff = encoder.encodeBuffer(left.subarray(i, i + samplesPerFrame), rightSubArray);
+        const mp3Buff = encoder.encodeBuffer(left.subarray(i, i + samplesPerFrame), rightSubArray);
 
         if (mp3Buff.length > 0) {
             buffer.push(new Int8Array(mp3Buff));

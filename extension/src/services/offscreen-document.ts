@@ -5,7 +5,7 @@ export const ensureOffscreenAudioServiceDocument = async () => {
         documentPromise = offscreenAudioServiceDocumentPromise();
     }
 
-    let promise = documentPromise;
+    const promise = documentPromise;
     try {
         await promise;
     } catch (e) {

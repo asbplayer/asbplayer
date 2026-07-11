@@ -6,7 +6,6 @@ import Box from '@mui/material/Box';
 import { type Theme } from '@mui/material';
 import { CardModel } from '@project/common';
 import { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
-import { isNumeric } from '@project/common/util';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -182,7 +181,6 @@ interface Props {
     extensionSupportsDictionaryBrowser: boolean;
     extensionSupportsDictionaryWaniKani: boolean;
     extensionSupportsDictionaryMatchAcrossScripts: boolean;
-    extensionSupportsDictionaryTokenAnnotationConfig: boolean;
     extensionSupportsSeekableTrackSetting: boolean;
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
@@ -211,9 +209,6 @@ interface Props {
     onUnlockLocalFonts: () => void;
 }
 
-// Filter out keys that look like '0', '1', ... as those are invalid
-const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
-
 export default function SettingsForm({
     anki,
     dictionaryProvider,
@@ -236,7 +231,6 @@ export default function SettingsForm({
     extensionSupportsDictionaryBrowser,
     extensionSupportsDictionaryWaniKani,
     extensionSupportsDictionaryMatchAcrossScripts,
-    extensionSupportsDictionaryTokenAnnotationConfig,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
@@ -265,8 +259,6 @@ export default function SettingsForm({
     const supportsDictionaryMatchAcrossScripts = !extensionInstalled || extensionSupportsDictionaryMatchAcrossScripts;
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
-    const supportsDictionaryTokenAnnotationConfig =
-        !extensionInstalled || extensionSupportsDictionaryTokenAnnotationConfig;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const theme = useTheme();
     const settingsTheme = useMemo(
@@ -505,7 +497,6 @@ export default function SettingsForm({
                         supportsDictionaryBrowser={supportsDictionaryBrowser}
                         supportsDictionaryWaniKani={supportsDictionaryWaniKani}
                         supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
-                        supportsDictionaryTokenAnnotationConfig={supportsDictionaryTokenAnnotationConfig}
                         supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                         supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                         onSettingChanged={handleSettingChanged}

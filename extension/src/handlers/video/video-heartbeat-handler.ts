@@ -20,7 +20,7 @@ export default class VideoHeartbeatHandler {
         const videoToExtensionCommand = command as VideoToExtensionCommand<VideoHeartbeatMessage>;
 
         if (sender.tab) {
-            this.tabRegistry.onVideoElementHeartbeat(
+            void this.tabRegistry.onVideoElementHeartbeat(
                 sender.tab,
                 videoToExtensionCommand.src,
                 videoToExtensionCommand.message

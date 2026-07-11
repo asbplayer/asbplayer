@@ -99,7 +99,7 @@ export default defineUnlistedScript(() => {
                 const sessionMatch = selectedSubUrl.match(/&session=(?:[^&]+)/i);
                 if (sessionMatch) {
                     selectedSubUrl = selectedSubUrl.replace(sessionMatch[0], `&session=${session}`);
-                    decisionUrl = decisionUrl!.replace(sessionMatch[0], `&session=${session}`);
+                    decisionUrl = decisionUrl.replace(sessionMatch[0], `&session=${session}`);
                 } else {
                     selectedSubUrl += `&session=${session}`;
                     decisionUrl += `&session=${session}`;
@@ -111,7 +111,7 @@ export default defineUnlistedScript(() => {
                         plexSessionIdentifierMatch[0],
                         `&X-Plex-Session-Identifier=${plexSessionIdentifier}`
                     );
-                    decisionUrl = decisionUrl!.replace(
+                    decisionUrl = decisionUrl.replace(
                         plexSessionIdentifierMatch[0],
                         `&X-Plex-Session-Identifier=${plexSessionIdentifier}`
                     );
@@ -126,7 +126,7 @@ export default defineUnlistedScript(() => {
                         plexSessionIdMatch[0],
                         `&X-Plex-Session-Id=${plexSessionId}`
                     );
-                    decisionUrl = decisionUrl!.replace(plexSessionIdMatch[0], `&X-Plex-Session-Id=${plexSessionId}`);
+                    decisionUrl = decisionUrl.replace(plexSessionIdMatch[0], `&X-Plex-Session-Id=${plexSessionId}`);
                 } else {
                     selectedSubUrl += `&X-Plex-Session-Id=${plexSessionId}`;
                     decisionUrl += `&X-Plex-Session-Id=${plexSessionId}`;
@@ -138,7 +138,7 @@ export default defineUnlistedScript(() => {
                         plexPlaybackSessionIdMatch[0],
                         `&X-Plex-Playback-Session-Id=${plexPlaybackSessionId}`
                     );
-                    decisionUrl = decisionUrl!.replace(
+                    decisionUrl = decisionUrl.replace(
                         plexPlaybackSessionIdMatch[0],
                         `&X-Plex-Playback-Session-Id=${plexPlaybackSessionId}`
                     );
@@ -153,7 +153,7 @@ export default defineUnlistedScript(() => {
                         plexPlaybackIdMatch[0],
                         `&X-Plex-Playback-Id=${plexPlaybackId}`
                     );
-                    decisionUrl = decisionUrl!.replace(plexPlaybackIdMatch[0], `&X-Plex-Playback-Id=${plexPlaybackId}`);
+                    decisionUrl = decisionUrl.replace(plexPlaybackIdMatch[0], `&X-Plex-Playback-Id=${plexPlaybackId}`);
                 } else {
                     selectedSubUrl += `&X-Plex-Playback-Id=${plexPlaybackId}`;
                     decisionUrl += `&X-Plex-Playback-Id=${plexPlaybackId}`;
@@ -165,135 +165,144 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async () => {
-            const response: VideoData = { error: '', basename: '', subtitles: [] };
-            const miniPlayerWarn =
-                'Automatic detection does not work for Plex if you resume playing your previous session from the mini player. Try stopping the video and hitting play on the media directly.';
-            const internalSubWarn =
-                'To use an internal subtitle, it must be selected on Plex. You can unselect it once asbplayer has it loaded after Plex transcodes it in the background which may take a few minutes. Set Plex to the lowest video quality before choosing internal here for a quicker load, 4K or HDR videos will take longer. If an error appears, try stopping the video and waiting a few minutes before refreshing the page.';
-            const parser = new DOMParser();
+        () => {
+            void (async () => {
+                const response: VideoData = { error: '', basename: '', subtitles: [] };
+                const miniPlayerWarn =
+                    'Automatic detection does not work for Plex if you resume playing your previous session from the mini player. Try stopping the video and hitting play on the media directly.';
+                const internalSubWarn =
+                    'To use an internal subtitle, it must be selected on Plex. You can unselect it once asbplayer has it loaded after Plex transcodes it in the background which may take a few minutes. Set Plex to the lowest video quality before choosing internal here for a quicker load, 4K or HDR videos will take longer. If an error appears, try stopping the video and waiting a few minutes before refreshing the page.';
+                const parser = new DOMParser();
 
-            if (!serverUrl || !plexToken) {
-                response.error = `Could not get the Plex server URL or token. ${miniPlayerWarn}`;
-                return document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
-            }
-            if (!ratingKey) {
-                response.error = `Could not get the ratingKey for the Plex media. ${miniPlayerWarn}`;
-                return document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
-            }
-
-            const xmlText = await (
-                await fetch(`${serverUrl}/library/metadata/${ratingKey}?X-Plex-Token=${plexToken}`)
-            ).text();
-            const metadata = parser.parseFromString(xmlText, 'application/xml').querySelector('Video');
-            if (!metadata) {
-                response.error = `No metadata found for Plex video. ${miniPlayerWarn}: ${xmlText}`;
-                return document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response,
-                    })
-                );
-            }
-            const seriesTitle = metadata.getAttribute('grandparentTitle');
-            if (seriesTitle) {
-                const seasonNum = metadata.getAttribute('parentIndex');
-                if (seasonNum) {
-                    const episodeNum = metadata.getAttribute('index');
-                    if (episodeNum) {
-                        response.basename = `${seriesTitle} · S${seasonNum.padStart(2, '0')}E${episodeNum.padStart(2, '0')}`;
-                    }
-                }
-            }
-            const title = metadata.getAttribute('title');
-            if (title) {
-                response.basename = response.basename.length ? `${response.basename} · ${title}` : title;
-                if (metadata.getAttribute('type') === 'movie') {
-                    const year = metadata.getAttribute('year');
-                    if (year) {
-                        response.basename += ` · ${year}`;
-                    }
-                }
-            } else if (!response.basename.length) {
-                response.basename = 'Unknown';
-            }
-
-            let selectedSubId: string | null = null;
-            let isBurn = false;
-            if (decisionUrl) {
-                const decisionText = await (await fetch(decisionUrl)).text();
-                const decision = parser.parseFromString(decisionText, 'application/xml');
-                const stream = decision.querySelector('Stream[streamType="3"][selected="1"]');
-                if (stream) {
-                    selectedSubId = stream.getAttribute('id');
-                    isBurn = stream.getAttribute('burn') === '1';
-                }
-            }
-
-            const subtitles: VideoDataSubtitleTrack[] = [];
-            const parts = metadata.querySelectorAll('Part');
-            parts.forEach((part) => {
-                const streams = part.querySelectorAll('Stream[streamType="3"]');
-                streams.forEach((stream) => {
-                    const streamKey = stream.getAttribute('key');
-                    if (streamKey) {
-                        const codec = stream.getAttribute('codec');
-                        subtitles.push(
-                            trackFromDef({
-                                label: buildPlexLabel(stream, codec, true),
-                                language: stream.getAttribute('languageCode') ?? undefined,
-                                url: `${serverUrl}${streamKey}?X-Plex-Token=${plexToken}`, // Only external can be downloaded directly
-                                extension: codec ?? '',
-                            })
-                        );
-                        return;
-                    }
-                    if (!response.error) {
-                        response.error = internalSubWarn; // Always display if internal subs are present
-                    }
-                    if (stream.getAttribute('selected') !== '1') return; // Internal subtitles must be selected in Plex
-
-                    if (selectedSubId && stream.getAttribute('id') !== selectedSubId) {
-                        return; // Multiple versions of the media, each has its own selected audio/subtitle
-                    }
-                    if (!selectedSubUrl) {
-                        response.error = `Could not get transcoding url for internal subtitle. ${internalSubWarn}`;
-                        return;
-                    }
-                    const codec = stream.getAttribute('codec');
-                    if (codec && SUBTITLE_IMAGE_CODECS.includes(codec)) {
-                        response.error = `${codec.toUpperCase()} subtitles are not supported, Plex always burns in image formats. ${internalSubWarn}`;
-                        return;
-                    }
-                    if (isBurn) {
-                        response.error = `Plex is burning in the selected subtitle, set "Only image formats" for Plex Settings > Player > Burn Subtitles. ${internalSubWarn}`;
-                        return;
-                    }
-                    subtitles.push(
-                        trackFromDef({
-                            label: buildPlexLabel(stream, codec, false),
-                            language: stream.getAttribute('languageCode') ?? undefined,
-                            url: selectedSubUrl,
-                            extension: 'ass', // Plex always transcode to ass it seems
+                if (!serverUrl || !plexToken) {
+                    response.error = `Could not get the Plex server URL or token. ${miniPlayerWarn}`;
+                    return document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
                         })
                     );
-                });
-            });
-            subtitles.sort((a, b) => a.label.localeCompare(b.label));
-            response.subtitles = subtitles;
+                }
+                if (!ratingKey) {
+                    response.error = `Could not get the ratingKey for the Plex media. ${miniPlayerWarn}`;
+                    return document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
+                        })
+                    );
+                }
 
-            document.dispatchEvent(
-                new CustomEvent('asbplayer-synced-data', {
-                    detail: response,
-                })
-            );
+                const xmlText = await (
+                    await fetch(`${serverUrl}/library/metadata/${ratingKey}?X-Plex-Token=${plexToken}`)
+                ).text();
+                const metadata = parser.parseFromString(xmlText, 'application/xml').querySelector('Video');
+                if (!metadata) {
+                    response.error = `No metadata found for Plex video. ${miniPlayerWarn}: ${xmlText}`;
+                    return document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response,
+                        })
+                    );
+                }
+                const seriesTitle = metadata.getAttribute('grandparentTitle');
+                if (seriesTitle) {
+                    const seasonNum = metadata.getAttribute('parentIndex');
+                    if (seasonNum) {
+                        const episodeNum = metadata.getAttribute('index');
+                        if (episodeNum) {
+                            response.basename = `${seriesTitle} · S${seasonNum.padStart(2, '0')}E${episodeNum.padStart(2, '0')}`;
+                        }
+                    }
+                }
+                const title = metadata.getAttribute('title');
+                if (title) {
+                    response.basename = response.basename.length ? `${response.basename} · ${title}` : title;
+                    if (metadata.getAttribute('type') === 'movie') {
+                        const year = metadata.getAttribute('year');
+                        if (year) {
+                            response.basename += ` · ${year}`;
+                        }
+                    }
+                } else if (!response.basename.length) {
+                    response.basename = 'Unknown';
+                }
+
+                let selectedSubId: string | null = null;
+                let isBurn = false;
+                if (decisionUrl) {
+                    const decisionText = await (await fetch(decisionUrl)).text();
+                    const decision = parser.parseFromString(decisionText, 'application/xml');
+                    const stream = decision.querySelector('Stream[streamType="3"][selected="1"]');
+                    if (stream) {
+                        selectedSubId = stream.getAttribute('id');
+                        isBurn = stream.getAttribute('burn') === '1';
+                    }
+                }
+
+                const subtitles: VideoDataSubtitleTrack[] = [];
+                const parts = metadata.querySelectorAll('Part');
+                parts.forEach((part) => {
+                    const streams = part.querySelectorAll('Stream[streamType="3"]');
+                    streams.forEach((stream) => {
+                        const streamKey = stream.getAttribute('key');
+                        if (streamKey) {
+                            const codec = stream.getAttribute('codec');
+                            subtitles.push(
+                                trackFromDef({
+                                    label: buildPlexLabel(stream, codec, true),
+                                    language: stream.getAttribute('languageCode') ?? undefined,
+                                    url: `${serverUrl}${streamKey}?X-Plex-Token=${plexToken}`, // Only external can be downloaded directly
+                                    extension: codec ?? '',
+                                })
+                            );
+                            return;
+                        }
+                        if (!response.error) {
+                            response.error = internalSubWarn; // Always display if internal subs are present
+                        }
+                        if (stream.getAttribute('selected') !== '1') return; // Internal subtitles must be selected in Plex
+
+                        if (selectedSubId && stream.getAttribute('id') !== selectedSubId) {
+                            return; // Multiple versions of the media, each has its own selected audio/subtitle
+                        }
+                        if (!selectedSubUrl) {
+                            response.error = `Could not get transcoding url for internal subtitle. ${internalSubWarn}`;
+                            return;
+                        }
+                        const codec = stream.getAttribute('codec');
+                        if (codec && SUBTITLE_IMAGE_CODECS.includes(codec)) {
+                            response.error = `${codec.toUpperCase()} subtitles are not supported, Plex always burns in image formats. ${internalSubWarn}`;
+                            return;
+                        }
+                        if (isBurn) {
+                            response.error = `Plex is burning in the selected subtitle, set "Only image formats" for Plex Settings > Player > Burn Subtitles. ${internalSubWarn}`;
+                            return;
+                        }
+                        subtitles.push(
+                            trackFromDef({
+                                label: buildPlexLabel(stream, codec, false),
+                                language: stream.getAttribute('languageCode') ?? undefined,
+                                url: selectedSubUrl,
+                                extension: 'ass', // Plex always transcode to ass it seems
+                            })
+                        );
+                    });
+                });
+                subtitles.sort((a, b) => a.label.localeCompare(b.label));
+                response.subtitles = subtitles;
+
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-synced-data', {
+                        detail: response,
+                    })
+                );
+            })().catch((e) => {
+                const error = e instanceof Error ? e.message : String(e);
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-synced-data', {
+                        detail: { error },
+                    })
+                );
+            });
         },
         false
     );

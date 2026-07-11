@@ -61,12 +61,17 @@ const tracksToSubtitleTracks = (tracks: any[]): VideoDataSubtitleTrack[] =>
         return subtitleTrack === undefined ? [] : [subtitleTrack];
     });
 
+interface YouTubeMoviePlayerElement extends Element {
+    getAudioTrack?: () => { captionTracks?: any[] };
+    getVideoData?: () => { title?: string; video_id?: string };
+}
+
 const tracksFromPlayerAudioTrack = async (videoId: string) => {
     // YouTube's player exposes caption URLs after it has initialized the audio track. These URLs can include
     // runtime-only params such as POT that are not available in ytInitialPlayerResponse or sessionStorage.
     let info: { basename: string; subtitles: VideoDataSubtitleTrack[] } | undefined;
     const ready = await poll(() => {
-        const player = document.querySelector('#movie_player') as any;
+        const player = document.querySelector<YouTubeMoviePlayerElement>('#movie_player');
         const playerVideoId = player?.getVideoData?.()?.video_id;
         const tracks = player?.getAudioTrack?.()?.captionTracks;
 
@@ -257,10 +262,18 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async (e) => {
-            const targetTranslationLanguageCodes: string[] =
-                ((e as CustomEvent).detail?.targetTranslationLanguageCodes as string[] | undefined) ?? [];
-            lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes });
+        (e) => {
+            void (async () => {
+                const targetTranslationLanguageCodes: string[] =
+                    ((e as CustomEvent).detail?.targetTranslationLanguageCodes as string[] | undefined) ?? [];
+                lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes });
+            })().catch((error) => {
+                document.dispatchEvent(
+                    new CustomEvent('asbplayer-synced-data', {
+                        detail: { error: error instanceof Error ? error.message : String(error) },
+                    })
+                );
+            });
         },
         false
     );
@@ -268,19 +281,21 @@ export default defineUnlistedScript(() => {
     let publishing = false;
 
     // Handle YT shorts: Publish subtitle tracks according to current video ID
-    setInterval(async () => {
-        if (publishing) {
-            return;
-        }
-
-        try {
-            publishing = true;
-            const videoId = inferVideoId();
-            if (lastVideoIdDispatched && videoId && lastVideoIdDispatched !== videoId) {
-                lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes: [] });
+    setInterval(() => {
+        void (async () => {
+            if (publishing) {
+                return;
             }
-        } finally {
-            publishing = false;
-        }
+
+            try {
+                publishing = true;
+                const videoId = inferVideoId();
+                if (lastVideoIdDispatched && videoId && lastVideoIdDispatched !== videoId) {
+                    lastVideoIdDispatched = await publishCurrentTracks({ targetTranslationLanguageCodes: [] });
+                }
+            } finally {
+                publishing = false;
+            }
+        })().catch(console.error);
     }, 500);
 });

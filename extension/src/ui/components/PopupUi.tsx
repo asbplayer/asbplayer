@@ -32,7 +32,7 @@ const notifySettingsUpdated = () => {
             command: 'settings-updated',
         },
     };
-    browser.runtime.sendMessage(settingsUpdatedCommand);
+    void browser.runtime.sendMessage(settingsUpdatedCommand);
 };
 
 export function PopupUi({ commands }: Props) {
@@ -42,7 +42,7 @@ export function PopupUi({ commands }: Props) {
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
 
     useEffect(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, [settingsProvider]);
 
     const handleSettingsChanged = useCallback(
@@ -55,27 +55,28 @@ export function PopupUi({ commands }: Props) {
     );
 
     const handleOpenExtensionShortcuts = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
+        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
     }, []);
 
     const handleOpenApp = useCallback(async () => {
         if (settings?.streamingAppUrl) {
-            browser.tabs.create({ active: true, url: settings.streamingAppUrl });
+            void browser.tabs.create({ active: true, url: settings.streamingAppUrl });
         }
     }, [settings]);
 
     const handleOpenSidePanel = useCallback(async () => {
         if (isFirefoxBuild) {
-            // @ts-ignore
+            // @ts-expect-error: browser.sidebarAction is not yet in the TypeScript lib.dom.d.ts
             browser.sidebarAction.open();
         } else {
-            // @ts-ignore
-            browser.windows.getLastFocused((window) => browser.sidePanel.open({ windowId: window.id }));
+            browser.windows.getLastFocused((window) => {
+                void browser.sidePanel.open({ windowId: window.id! });
+            });
         }
     }, []);
 
     const handleOpenUserGuide = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
     }, []);
 
     const { requestingActiveTabPermission, tabRequestingActiveTabPermission } = useRequestingActiveTabPermission();
@@ -92,12 +93,12 @@ export function PopupUi({ commands }: Props) {
             },
             src: tabRequestingActiveTabPermission.src,
         };
-        browser.tabs.sendMessage(tabRequestingActiveTabPermission.tabId, command);
+        void browser.tabs.sendMessage(tabRequestingActiveTabPermission.tabId, command);
         window.close();
     }, [requestingActiveTabPermission, tabRequestingActiveTabPermission]);
 
     const handleProfileChanged = useCallback(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
         notifySettingsUpdated();
     }, [settingsProvider]);
 

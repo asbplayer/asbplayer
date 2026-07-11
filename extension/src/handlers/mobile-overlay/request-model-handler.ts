@@ -14,7 +14,7 @@ export default class RequestModelHandler {
             return;
         }
 
-        browser.tabs.sendMessage(sender.tab.id, command).then((model) => sendResponse(model));
+        void browser.tabs.sendMessage(sender.tab.id, command).then((model) => sendResponse(model));
         return true;
     }
 }

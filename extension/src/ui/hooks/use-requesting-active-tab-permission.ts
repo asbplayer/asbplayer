@@ -27,7 +27,7 @@ export const useRequestingActiveTabPermission = () => {
             }
         };
 
-        init();
+        void init();
     }, []);
 
     return { requestingActiveTabPermission, tabRequestingActiveTabPermission };

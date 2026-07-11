@@ -19,7 +19,7 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
-import { Yomitan } from '@project/common/yomitan/yomitan';
+import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
 import {
     _DictionaryDatabase,

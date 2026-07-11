@@ -12,7 +12,7 @@ const ANKI_MOD_BATCH_SIZE = 10000;
 const ankiQuerySpecialCharacters = ['"', '*', '_', '\\', ':'];
 const ankiQueryDeckSpecialCharacters = ['"', '*', '_', '\\'];
 const alphaNumericCharacters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-const unsafeURLChars = /[:\/\?#\[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
+const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
 
 const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {
@@ -95,7 +95,7 @@ const anyHtmlTagRegex = /<[^>]+>/;
 const tagContent = (html: string) => {
     const htmlTagRegex = new RegExp(htmlTagRegexString);
     let content = html;
-    let contents = [html];
+    const contents = [html];
 
     while (true) {
         const match = htmlTagRegex.exec(content);
@@ -181,7 +181,7 @@ export async function exportCard(
 ): Promise<string> {
     const anki = new Anki(ankiSettings);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
-    let audioClip =
+    const audioClip =
         card.audio === undefined
             ? undefined
             : AudioClip.fromBase64(
@@ -194,7 +194,7 @@ export async function exportCard(
                   card.audio.error
               );
 
-    return await anki.export({
+    return anki.export({
         text: card.text ?? extractText(card.subtitle, card.surroundingSubtitles),
         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
         track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
@@ -578,14 +578,14 @@ export class Anki {
                     throw new Error('Could not find note to update');
                 }
 
-                return await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
+                return this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
             }
             case 'updateSpecific': {
                 if (noteId === undefined) {
                     throw new Error('noteId is required for updateSpecific mode');
                 }
 
-                return await this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
+                return this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
             }
             case 'default':
                 return (await this._executeAction('addNote', params, ankiConnectUrl)).result;

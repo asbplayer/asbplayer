@@ -1,12 +1,10 @@
 import { DisplaySet, parseDisplaySets } from 'pgs-parser';
 
-// OffscreenCanvas not in lib.dom.d.ts
-// @ts-ignore
 function parse(fileStream: ReadableStream, canvas: OffscreenCanvas) {
     let currentImageDisplaySet: DisplaySet | undefined;
     let imageDataArray: Uint8ClampedArray | undefined;
 
-    fileStream.pipeThrough(parseDisplaySets()).pipeTo(
+    void fileStream.pipeThrough(parseDisplaySets()).pipeTo(
         new WritableStream<DisplaySet>({
             close() {
                 postMessage({
@@ -19,7 +17,7 @@ function parse(fileStream: ReadableStream, canvas: OffscreenCanvas) {
                     error,
                 });
             },
-            async write(displaySet, controller) {
+            async write(displaySet) {
                 if (displaySet.objectDefinitionSegments.length > 0) {
                     if (currentImageDisplaySet === undefined) {
                         currentImageDisplaySet = displaySet;

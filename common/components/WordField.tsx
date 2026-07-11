@@ -50,13 +50,15 @@ export default function WordField({
             return;
         }
 
-        const timeout = setTimeout(async () => {
-            try {
-                setDuplicateNotes(await anki.findNotesWithWord(trimmedWord));
-                setLastSearchedWord(trimmedWord);
-            } catch (e) {
-                console.error(e);
-            }
+        const timeout = setTimeout(() => {
+            void (async () => {
+                try {
+                    setDuplicateNotes(await anki.findNotesWithWord(trimmedWord));
+                    setLastSearchedWord(trimmedWord);
+                } catch (e) {
+                    console.error(e);
+                }
+            })();
         }, 500);
 
         return () => clearTimeout(timeout);
@@ -112,7 +114,7 @@ export default function WordField({
                     input: {
                         endAdornment: (
                             <InputAdornment position="end">
-                                <Tooltip title={t('ankiDialog.searchInAnki')!}>
+                                <Tooltip title={t('ankiDialog.searchInAnki')}>
                                     <span>
                                         <IconButton
                                             disabled={disabled || !wordField || !text || text.trim() === ''}

@@ -48,10 +48,10 @@ const useImageHelperText = (image?: MediaFragment) => {
                 setImageHelperText(undefined);
             } else if (image.error === MediaFragmentErrorCode.fileLinkLost) {
                 setImageAvailable(false);
-                setImageHelperText(t('ankiDialog.imageFileLinkLost')!);
+                setImageHelperText(t('ankiDialog.imageFileLinkLost'));
             } else if (image.error === MediaFragmentErrorCode.captureFailed) {
                 setImageAvailable(false);
-                setImageHelperText(t('ankiDialog.imageCaptureFailed')!);
+                setImageHelperText(t('ankiDialog.imageCaptureFailed'));
             }
         }
     }, [image, t]);
@@ -114,7 +114,7 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
                                 <>
                                     <Tooltip
                                         disabled={!image.canChangeTimestamp || !imageAvailable}
-                                        title={t('ankiDialog.imagePreview')!}
+                                        title={t('ankiDialog.imagePreview')}
                                     >
                                         <span>
                                             <IconButton disabled={!imageAvailable} onClick={() => {}} edge="end">
@@ -123,7 +123,7 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
                                         </span>
                                     </Tooltip>
                                     {copyAllowed && (
-                                        <Tooltip disabled={!imageAvailable} title={t('ankiDialog.copyToClipboard')!}>
+                                        <Tooltip disabled={!imageAvailable} title={t('ankiDialog.copyToClipboard')}>
                                             <span>
                                                 <IconButton
                                                     disabled={!imageAvailable}

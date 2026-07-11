@@ -9,15 +9,18 @@
         ]
     },
     "devDependencies": {
+        "@eslint/js": "^9.32.0",
         "@typescript-eslint/parser": "^8.38.0",
         "eslint": "^9.32.0",
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^5.2.0",
         "prettier": "^3.6.2",
+        "typescript": "^5.8.3",
+        "typescript-eslint": "^8.59.1",
         "yarn-upgrade-all": "^0.7.5"
     },
     "scripts": {
-        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && yarn workspace @project/common run test && yarn workspace @project/client run test && yarn workspace @project/extension run test && yarn run eslint common extension/src && yarn run pretty:check",
+        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && yarn workspace @project/common run test && yarn workspace @project/client run test && yarn workspace @project/extension run test && yarn run eslint common extension/src client/src && yarn run pretty:check",
         "pretty": "yarn prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)'",
         "pretty:check": "yarn prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)'"
     },

@@ -21,7 +21,7 @@ import {
     ApplyStrategy,
     Profile,
 } from '@project/common/settings';
-import { Yomitan } from '../yomitan/yomitan';
+import { Yomitan } from '../yomitan';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import SettingsTextField from './SettingsTextField';
 import { DictionaryLocalTokenInput, DictionaryProvider, DictionaryTokenRecord } from '../dictionary-db';
@@ -217,7 +217,7 @@ const DictionaryImport: React.FC<Props> = ({
 
             try {
                 records = JSON.parse(text);
-            } catch (e) {
+            } catch {
                 // Was not JSON, assume arbitrary text
                 setImportClipboardText(text);
                 setImportClipboardPreviewHasChanges(true);
@@ -245,7 +245,7 @@ const DictionaryImport: React.FC<Props> = ({
         const file = dictionaryDBFileInputRef.current?.files?.[0];
         if (file === undefined) return;
         try {
-            tryImportFile(file);
+            await tryImportFile(file);
         } catch (e) {
             console.error(e);
         } finally {
@@ -339,7 +339,7 @@ const DictionaryImport: React.FC<Props> = ({
                                 size="small"
                                 label={t('settings.dictionaryImportedMaturity')}
                                 value={importClipboardStatus}
-                                onChange={(e) => setImportClipboardStatus(Number(e.target.value) as TokenStatus)}
+                                onChange={(e) => setImportClipboardStatus(Number(e.target.value))}
                             >
                                 {[...Array(NUM_TOKEN_STATUSES).keys()].map((i) => {
                                     const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
