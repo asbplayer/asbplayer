@@ -194,7 +194,6 @@ export default class Binding {
     private playListener?: EventListener;
     private pauseListener?: EventListener;
     private seekedListener?: EventListener;
-    private disneyPlusTimeUpdateListener?: EventListener;
     private playbackRateListener?: EventListener;
     private videoChangeListener?: EventListener;
     private canPlayListener?: EventListener;
@@ -1264,11 +1263,6 @@ export default class Binding {
             this.disneyPlusSeekedListener = undefined;
         }
 
-        if (this.disneyPlusTimeUpdateListener) {
-            this.video.removeEventListener('timeupdate', this.disneyPlusTimeUpdateListener);
-            this.disneyPlusTimeUpdateListener = undefined;
-        }
-
         if (this.playbackRateListener) {
             this.video.removeEventListener('ratechange', this.playbackRateListener);
             this.playbackRateListener = undefined;
@@ -1524,9 +1518,8 @@ export default class Binding {
         const audioPaddingStart = noSubtitles ? 0 : this.audioPaddingStart;
         const audioPaddingEnd = noSubtitles ? 0 : this.audioPaddingEnd;
         this.recordingState = RecordingState.requested;
-        this.recordingMediaStartedTimestamp = this.contentTimeMs;
-        const rerecordSeekTargetSec = Math.max(0, start - audioPaddingStart) / 1000;
-        this.seek(rerecordSeekTargetSec);
+        this.recordingMediaStartedTimestamp = this.video.currentTime * 1000;
+        this.seek(Math.max(0, start - audioPaddingStart) / 1000);
 
         await this.play();
 
@@ -1724,8 +1717,7 @@ export default class Binding {
                     convertNetflixRuby: convertNetflixRuby,
                     pgsParserWorkerFactory: pgsParserWorkerFactory,
                 });
-                const userOffset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
-                const offset = userOffset;
+                const offset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
                 const subtitles = await reader.subtitles(files, flatten);
 
                 // Order is important: sync with tab first, then update our subtitle controller
