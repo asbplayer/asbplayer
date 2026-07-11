@@ -11,7 +11,7 @@ export default class CopyToClipboardHandler {
         return 'copy-to-clipboard';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) {
+    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         const tabId = sender.tab?.id;
 
         if (tabId === undefined) {
@@ -23,7 +23,7 @@ export default class CopyToClipboardHandler {
             sender: 'asbplayer-extension-to-video',
             message: command.message,
         };
-        browser.tabs.sendMessage(tabId, extensionToVideoCommand);
+        void browser.tabs.sendMessage(tabId, extensionToVideoCommand);
         return false;
     }
 }

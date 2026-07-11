@@ -105,7 +105,7 @@ export class MobileVideoOverlayController {
             this._hide();
         };
         this._seekedListener = () => {
-            this.updateModel();
+            void this.updateModel();
         };
 
         this._context.video.addEventListener('pause', this._pauseListener);
@@ -116,12 +116,15 @@ export class MobileVideoOverlayController {
             sender: Browser.runtime.MessageSender,
             sendResponse: (response?: any) => void
         ) => {
-            if (message.sender !== 'asbplayer-mobile-overlay-to-video' || message.src !== this._context.video.src) {
+            if (
+                message.sender !== 'asbplayer-mobile-overlay-to-video' ||
+                message.src !== this._context.registeredVideoSrc
+            ) {
                 return;
             }
 
             if (message.message.command === 'request-mobile-overlay-model') {
-                this._model().then(sendResponse);
+                void this._model().then(sendResponse);
                 this._uiInitialized = true;
                 return true;
             }
@@ -153,9 +156,9 @@ export class MobileVideoOverlayController {
                 command: 'update-mobile-overlay-model',
                 model,
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }
 
     private async _model() {
@@ -243,7 +246,7 @@ export class MobileVideoOverlayController {
         const height = smallScreen ? 64 : 108;
         const tooltips = !smallScreen;
         const width = Math.min(window.innerWidth, 410);
-        const src = encodeURIComponent(this._context.video.src);
+        const src = encodeURIComponent(this._context.registeredVideoSrc);
 
         return { width, height, anchor, src, tooltips };
     }

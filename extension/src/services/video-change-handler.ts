@@ -1,9 +1,6 @@
 const videoChangeDebounceMs = 1000;
 
-export function createVideoChangeHandler(
-    video: HTMLMediaElement,
-    onVideoChange: () => void
-): () => void {
+export function createVideoChangeHandler(video: HTMLMediaElement, onVideoChange: () => void): () => void {
     let lastVideoSrc: string | undefined = video.src;
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 

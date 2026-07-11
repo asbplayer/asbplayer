@@ -25,6 +25,8 @@ it('can retrieve all keys', async () => {
         ftueAnnotation: 0,
         onlineSubtitleSourceConfig: {
             jimakuApiKey: '',
+            jimakuSearchCategory: 'anime',
+            jimakuRecentWorks: [],
         },
     });
 });

@@ -45,7 +45,7 @@ const useThisTabId = () => {
                 command: 'current-tab',
             },
         };
-        browser.runtime.sendMessage(command).then(setTabId);
+        void browser.runtime.sendMessage(command).then(setTabId);
     }, []);
     return tabId;
 };
@@ -60,13 +60,13 @@ const StatisticsOverlayUi = () => {
     mediaIdRef.current = mediaId;
 
     useEffect(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, []);
 
     useEffect(() => {
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'settings-updated') {
-                settingsProvider.getAll().then(setSettings);
+                void settingsProvider.getAll().then(setSettings);
             }
         });
     }, [extension]);
@@ -78,7 +78,7 @@ const StatisticsOverlayUi = () => {
                 command: 'open-statistics',
             },
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, []);
     const sendToTab = useCallback((command: StatisticsOverlayToTabCommand<Message>) => {
         window.parent.postMessage(command, '*');

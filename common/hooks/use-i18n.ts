@@ -26,11 +26,11 @@ export const useI18n = ({ language }: { language: string }) => {
             return;
         }
 
-        init.then(() => setInitialized(true));
+        void init.then(() => setInitialized(true));
     }, [initialized]);
 
     useEffect(() => {
-        init = init.then(() => i18n.changeLanguage(language));
+        init = init.then(() => i18n.changeLanguage(language)).catch((e) => console.error(e));
     }, [language]);
 
     return { initialized };

@@ -33,13 +33,13 @@ const _sendAudioBase64 = async (base64: string, requestId: string, encodeAsMp3: 
         },
     };
 
-    browser.runtime.sendMessage(command);
+    void browser.runtime.sendMessage(command);
 };
 
 const _stream: (streamId: string) => Promise<MediaStream> = async (streamId: string) => {
     return navigator.mediaDevices.getUserMedia({
         audio: {
-            // @ts-ignore
+            // @ts-expect-error: The ts declaration is missing mandatory
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: streamId,
@@ -69,7 +69,7 @@ window.onload = async () => {
     const listener = (request: any, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) => {
         if (request.sender === 'asbplayer-extension-to-offscreen-document') {
             switch (request.message.command) {
-                case 'start-recording-audio-with-timeout':
+                case 'start-recording-audio-with-timeout': {
                     const startRecordingAudioWithTimeoutMessage =
                         request.message as StartRecordingAudioWithTimeoutMessage;
                     _stream(startRecordingAudioWithTimeoutMessage.streamId)
@@ -97,7 +97,8 @@ window.onload = async () => {
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
-                case 'start-recording-audio':
+                }
+                case 'start-recording-audio': {
                     const startRecordingAudioMessage = request.message as StartRecordingAudioMessage;
                     currentRequestId = startRecordingAudioMessage.requestId;
                     _stream(startRecordingAudioMessage.streamId)
@@ -108,7 +109,8 @@ window.onload = async () => {
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
-                case 'stop-recording-audio':
+                }
+                case 'stop-recording-audio': {
                     const stopRecordingAudioMessage = request.message as StopRecordingAudioMessage;
                     audioRecorder
                         .stop()
@@ -118,7 +120,11 @@ window.onload = async () => {
                             };
 
                             sendResponse(successResponse);
-                            _sendAudioBase64(audioBase64, currentRequestId!, stopRecordingAudioMessage.encodeAsMp3);
+                            void _sendAudioBase64(
+                                audioBase64,
+                                currentRequestId!,
+                                stopRecordingAudioMessage.encodeAsMp3
+                            );
                         })
                         .catch((e) => {
                             let errorCode: StopRecordingErrorCode;
@@ -144,7 +150,8 @@ window.onload = async () => {
                             sendResponse(errorResponse);
                         });
                     return true;
-                case 'encode-mp3':
+                }
+                case 'encode-mp3': {
                     const encodeMp3Message = request.message as EncodeMp3InServiceWorkerMessage;
                     const { base64, extension } = encodeMp3Message;
 
@@ -153,12 +160,13 @@ window.onload = async () => {
                         .then((buffer) => sendResponse(bufferToBase64(buffer)))
                         .catch(console.error);
                     return true;
+                }
             }
         }
     };
     browser.runtime.onMessage.addListener(listener);
 
-    window.addEventListener('beforeunload', (event) => {
+    window.addEventListener('beforeunload', () => {
         browser.runtime.onMessage.removeListener(listener);
     });
 };

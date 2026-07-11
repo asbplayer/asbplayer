@@ -1,5 +1,4 @@
 import { CachingElementOverlay, OffsetAnchor } from '@/services/element-overlay';
-import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { frameColorScheme } from '@/services/frame-color-scheme';
 import UiFrame, { uiFrameForSrc } from '@/services/ui-frame';
 import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '@/ui/components/StatisticsOverlayUi';
@@ -13,11 +12,8 @@ import {
     ResizeStatisticsOverlayMessage,
     StatisticsOverlayToTabCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
 
 type State = 'open' | 'fullscreen' | 'closed';
-
-const settings = new SettingsProvider(new ExtensionSettingsStorage());
 
 export class StatisticsOverlayController {
     private _messageListener?: (
@@ -33,7 +29,6 @@ export class StatisticsOverlayController {
     private _restoreWidth?: string;
     private _width?: string;
     private _state: State = 'closed';
-    private _restoreTimeout?: NodeJS.Timeout;
     private _lastClosedMediaId?: string;
     private _xOffset = 0;
     private _yOffset = 0;
@@ -47,9 +42,6 @@ export class StatisticsOverlayController {
             window.removeEventListener('message', this._windowMessageListener);
             this._windowMessageListener = undefined;
         }
-        if (this._restoreTimeout !== undefined) {
-            clearTimeout(this._restoreTimeout);
-        }
         this._overlay?.dispose();
         this._overlay = undefined;
         this._oneUncollectedDialogFrame?.unbind();
@@ -58,11 +50,7 @@ export class StatisticsOverlayController {
 
     bind() {
         this._setHeight('0px');
-        this._messageListener = (
-            message: any,
-            sender: Browser.runtime.MessageSender,
-            sendResponse: (response?: any) => void
-        ) => {
+        this._messageListener = (message: any) => {
             if (message.sender === 'asbplayer-statistics-overlay-to-tab') {
                 this._handleMessageFromOverlay(message);
             } else {
@@ -89,10 +77,10 @@ export class StatisticsOverlayController {
         const command = message as StatisticsOverlayToTabCommand<Message>;
 
         switch (command.message.command) {
-            case 'open-statistics-overlay-one-uncollected-dialog':
+            case 'open-statistics-overlay-one-uncollected-dialog': {
                 const openDialogMessage = command.message as OpenStatisticsOverlayOneUncollectedDialogMessage;
                 const { entries, totalSentences, mediaId } = openDialogMessage;
-                this._getOneUncollectedDialogFrame().then(async (frame) => {
+                void this._getOneUncollectedDialogFrame().then(async (frame) => {
                     const state: UiState = {
                         open: true,
                         mediaId,
@@ -104,11 +92,13 @@ export class StatisticsOverlayController {
                     frame.show();
                 });
                 break;
-            case 'open-statistics-overlay':
+            }
+            case 'open-statistics-overlay': {
                 const openMessage = command.message as OpenStatisticsOverlayMessage;
                 this._handleOpen(openMessage);
                 break;
-            case 'move-statistics-overlay':
+            }
+            case 'move-statistics-overlay': {
                 if (this._state === 'fullscreen') {
                     break;
                 }
@@ -118,14 +108,17 @@ export class StatisticsOverlayController {
                 this._yOffset = Math.max(0, this._yOffset + moveMessage.deltaY);
                 this._applyCurrentContainerStyles();
                 break;
-            case 'close-statistics-overlay':
+            }
+            case 'close-statistics-overlay': {
                 const closeMessage = command.message as CloseStatisticsOverlayMessage;
                 this._close(closeMessage.mediaId);
                 break;
-            case 'resize-statistics-overlay':
+            }
+            case 'resize-statistics-overlay': {
                 const resizeMessage = command.message as ResizeStatisticsOverlayMessage;
                 this._setWidth(`${resizeMessage.width + 50}px`);
                 break;
+            }
         }
     }
 

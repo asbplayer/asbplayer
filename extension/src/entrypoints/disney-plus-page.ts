@@ -30,7 +30,7 @@ export default defineUnlistedScript(() => {
 
         try {
             keys = Object.keys(value);
-        } catch (e) {
+        } catch {
             return undefined;
         }
 
@@ -39,7 +39,7 @@ export default defineUnlistedScript(() => {
 
             try {
                 candidate = value[key];
-            } catch (e) {
+            } catch {
                 continue;
             }
 
@@ -139,9 +139,9 @@ export default defineUnlistedScript(() => {
         let lastM3U8Url: string | undefined = undefined;
         let lastBasename: string | undefined = undefined;
         const originalParse = JSON.parse;
-        JSON.parse = function () {
-            // @ts-ignore
-            const value = originalParse.apply(this, arguments);
+        JSON.parse = function (...args: unknown[]) {
+            // @ts-expect-error: forwarding original parse arguments
+            const value = originalParse.apply(this, args);
             if (value?.stream?.sources instanceof Array && value.stream.sources.length > 0) {
                 const url = value.stream.sources[0].complete?.url;
 

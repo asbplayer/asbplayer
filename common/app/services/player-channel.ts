@@ -6,7 +6,6 @@ import {
     AudioTrackSelectedFromVideoMessage,
     AudioTrackSelectedToVideoMessage,
     CardTextFieldValues,
-    RichSubtitleModel,
     CopyMessage,
     CopyToVideoMessage,
     CurrentTimeToVideoMessage,
@@ -33,6 +32,7 @@ import {
     SubtitlesUpdatedToVideoMessage,
     SaveTokenLocalFromVideoMessage,
     SaveTokenLocalToVideoMessage,
+    IndexedSubtitleModel,
 } from '@project/common';
 import {
     AnkiSettings,
@@ -52,7 +52,7 @@ export default class PlayerChannel {
     private audioTrackSelectedCallbacks: ((id: string) => void)[];
     private closeCallbacks: (() => void)[];
     private subtitlesCallbacks: ((subtitles: SubtitleModel[], subtitleFileName: string) => void)[];
-    private subtitlesUpdatedCallbacks: ((updatedSubtitles: RichSubtitleModel[]) => void)[];
+    private subtitlesUpdatedCallbacks: ((updatedSubtitles: IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
         token: string,
@@ -100,148 +100,162 @@ export default class PlayerChannel {
         this.alertCallbacks = [];
         this.copyCallbacks = [];
 
-        const that = this;
-
         this.channel.onmessage = (event) => {
             switch (event.data.command) {
                 case 'init':
                     // ignore, this is for the chrome extension
                     break;
-                case 'ready':
+                case 'ready': {
                     const readyMessage = event.data as ReadyToVideoMessage;
 
-                    for (let callback of that.readyCallbacks) {
+                    for (const callback of this.readyCallbacks) {
                         callback(readyMessage.duration, readyMessage.videoFileName);
                     }
                     break;
+                }
                 case 'play':
-                    for (let callback of that.playCallbacks) {
+                    for (const callback of this.playCallbacks) {
                         callback();
                     }
                     break;
                 case 'pause':
-                    for (let callback of that.pauseCallbacks) {
+                    for (const callback of this.pauseCallbacks) {
                         callback();
                     }
                     break;
-                case 'currentTime':
+                case 'currentTime': {
                     const currentTimeMessage = event.data as CurrentTimeToVideoMessage;
 
-                    for (let callback of that.currentTimeCallbacks) {
+                    for (const callback of this.currentTimeCallbacks) {
                         callback(currentTimeMessage.value);
                     }
                     break;
-                case 'audioTrackSelected':
+                }
+                case 'audioTrackSelected': {
                     const audioTrackSelectedMessage = event.data as AudioTrackSelectedToVideoMessage;
 
-                    for (let callback of that.audioTrackSelectedCallbacks) {
+                    for (const callback of this.audioTrackSelectedCallbacks) {
                         callback(audioTrackSelectedMessage.id);
                     }
                     break;
+                }
                 case 'close':
-                    for (let callback of that.closeCallbacks) {
+                    for (const callback of this.closeCallbacks) {
                         callback();
                     }
                     break;
-                case 'subtitles':
+                case 'subtitles': {
                     const subtitlesMessage = event.data as SubtitlesToVideoMessage;
 
-                    for (let callback of that.subtitlesCallbacks) {
+                    for (const callback of this.subtitlesCallbacks) {
                         callback(
                             subtitlesMessage.value,
                             subtitlesMessage.names.length > 0 ? subtitlesMessage.names[0] : ''
                         );
                     }
                     break;
-                case 'subtitlesUpdated':
+                }
+                case 'subtitlesUpdated': {
                     const subtitlesUpdatedMessage = event.data as SubtitlesUpdatedToVideoMessage;
 
-                    for (let callback of that.subtitlesUpdatedCallbacks) {
+                    for (const callback of this.subtitlesUpdatedCallbacks) {
                         callback(subtitlesUpdatedMessage.subtitles);
                     }
                     break;
-                case 'saveTokenLocal':
+                }
+                case 'saveTokenLocal': {
                     const { track, token, status, states, applyStates } = event.data as SaveTokenLocalToVideoMessage;
 
-                    for (const callback of that.saveTokenLocalCallbacks) {
+                    for (const callback of this.saveTokenLocalCallbacks) {
                         callback(track, token, status, states, applyStates);
                     }
                     break;
-                case 'offset':
+                }
+                case 'offset': {
                     const offsetMessage = event.data as OffsetToVideoMessage;
 
-                    for (const callback of that.offsetCallbacks) {
+                    for (const callback of this.offsetCallbacks) {
                         callback(offsetMessage.value);
                     }
                     break;
-                case 'playbackRate':
+                }
+                case 'playbackRate': {
                     const playbackRateMessage = event.data as PlaybackRateToVideoMessage;
 
-                    for (const callback of that.playbackRateCallbacks) {
+                    for (const callback of this.playbackRateCallbacks) {
                         callback(playbackRateMessage.value);
                     }
                     break;
-                case 'subtitleSettings':
+                }
+                case 'subtitleSettings': {
                     const subtitleSettingsMessage = event.data as SubtitleSettingsToVideoMessage;
 
-                    for (let callback of that.subtitleSettingsCallbacks) {
+                    for (const callback of this.subtitleSettingsCallbacks) {
                         callback(subtitleSettingsMessage.value);
                     }
                     break;
-                case 'playModes':
+                }
+                case 'playModes': {
                     const playModesMessage = event.data as PlayModesMessage;
 
-                    for (let callback of that.playModesCallbacks) {
+                    for (const callback of this.playModesCallbacks) {
                         const modes = new Set<PlayMode>(playModesMessage.playModes);
                         callback(modes);
                     }
                     break;
-                case 'hideSubtitlePlayerToggle':
+                }
+                case 'hideSubtitlePlayerToggle': {
                     const hideSubtitlePlayerToggleMessage = event.data as HideSubtitlePlayerToggleToVideoMessage;
 
-                    for (let callback of that.hideSubtitlePlayerToggleCallbacks) {
+                    for (const callback of this.hideSubtitlePlayerToggleCallbacks) {
                         callback(hideSubtitlePlayerToggleMessage.value);
                     }
                     break;
-                case 'appBarToggle':
+                }
+                case 'appBarToggle': {
                     const appBarToggleMessage = event.data as AppBarToggleMessageToVideoMessage;
 
-                    for (let callback of that.appBarToggleCallbacks) {
+                    for (const callback of this.appBarToggleCallbacks) {
                         callback(appBarToggleMessage.value);
                     }
                     break;
-                case 'fullscreenToggle':
+                }
+                case 'fullscreenToggle': {
                     const fullscreenToggleMessage = event.data as FullscreenToggleMessageToVideoMessage;
 
-                    for (const callback of that.fullscreenToggleCallbacks) {
+                    for (const callback of this.fullscreenToggleCallbacks) {
                         callback(fullscreenToggleMessage.value);
                     }
                     break;
-                case 'ankiSettings':
+                }
+                case 'ankiSettings': {
                     const ankiSettingsMessage = event.data as AnkiSettingsToVideoMessage;
 
-                    for (let callback of that.ankiSettingsCallbacks) {
+                    for (const callback of this.ankiSettingsCallbacks) {
                         callback(ankiSettingsMessage.value);
                     }
                     break;
-                case 'miscSettings':
+                }
+                case 'miscSettings': {
                     const miscSettingsMessage = event.data as MiscSettingsToVideoMessage;
 
-                    for (let callback of that.miscSettingsCallbacks) {
+                    for (const callback of this.miscSettingsCallbacks) {
                         callback(miscSettingsMessage.value);
                     }
                     break;
-                case 'alert':
+                }
+                case 'alert': {
                     const alertMessage = event.data as AlertMessage;
 
-                    for (const callback of that.alertCallbacks) {
+                    for (const callback of this.alertCallbacks) {
                         callback(alertMessage.message, alertMessage.severity);
                     }
                     break;
-                case 'copy':
+                }
+                case 'copy': {
                     const copyMessage = event.data as CopyToVideoMessage;
 
-                    for (const callback of that.copyCallbacks) {
+                    for (const callback of this.copyCallbacks) {
                         const { text, word, definition, customFieldValues } = copyMessage;
                         const cardTextFieldValues = { text, word, definition, customFieldValues };
                         callback(
@@ -252,6 +266,7 @@ export default class PlayerChannel {
                         );
                     }
                     break;
+                }
                 default:
                     console.error('Unrecognized event ' + event.data.command);
             }
@@ -297,7 +312,7 @@ export default class PlayerChannel {
         return () => this._remove(callback, this.subtitlesCallbacks);
     }
 
-    onSubtitlesUpdated(callback: (updatedSubtitles: RichSubtitleModel[]) => void) {
+    onSubtitlesUpdated(callback: (updatedSubtitles: IndexedSubtitleModel[]) => void) {
         this.subtitlesUpdatedCallbacks.push(callback);
         return () => this._remove(callback, this.subtitlesUpdatedCallbacks);
     }
@@ -484,7 +499,7 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
-    subtitlesUpdated(updatedSubtitles: RichSubtitleModel[]) {
+    subtitlesUpdated(updatedSubtitles: IndexedSubtitleModel[]) {
         const message: SubtitlesUpdatedFromVideoMessage = {
             command: 'subtitlesUpdated',
             updatedSubtitles,
@@ -523,7 +538,7 @@ export default class PlayerChannel {
         }
     }
 
-    _remove(callback: Function, callbacks: Function[]) {
+    _remove<T>(callback: T, callbacks: T[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

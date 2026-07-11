@@ -53,7 +53,7 @@ interface ShowOptions {
 }
 
 const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const listener = (event: Event) => {
             const data = (event as CustomEvent).detail as VideoData;
             resolve(data);
@@ -77,6 +77,8 @@ export default class VideoDataSyncController {
     private _emptySubtitle: VideoDataSubtitleTrack;
     private _syncedData?: VideoData;
     private _wasPaused?: boolean;
+    private _playBlocker?: () => void;
+    private _openedLocation?: string;
     private _fullscreenElement?: Element;
     private _activeElement?: Element;
     private _autoSyncAttempted: boolean = false;
@@ -115,6 +117,8 @@ export default class VideoDataSyncController {
 
         this._dataReceivedListener = undefined;
         this._syncedData = undefined;
+        this._cleanupPlayBlocker();
+        this._openedLocation = undefined;
     }
 
     updateSettings({ streamingAutoSync, streamingLastLanguagesSynced }: AsbplayerSettings) {
@@ -122,10 +126,10 @@ export default class VideoDataSyncController {
         this._lastLanguagesSynced = streamingLastLanguagesSynced;
 
         if (this._frame.clientIfLoaded !== undefined) {
-            this._context.settings.getSingle('themeType').then((themeType) => {
+            void this._context.settings.getSingle('themeType').then((themeType) => {
                 const profilesPromise = this._context.settings.profiles();
                 const activeProfilePromise = this._context.settings.activeProfile();
-                Promise.all([profilesPromise, activeProfilePromise]).then(([profiles, activeProfile]) => {
+                void Promise.all([profilesPromise, activeProfilePromise]).then(([profiles, activeProfile]) => {
                     this._frame.clientIfLoaded?.updateState({
                         settings: {
                             themeType,
@@ -138,9 +142,28 @@ export default class VideoDataSyncController {
         }
     }
 
+    get pickerVisible(): boolean {
+        return !this._frame.hidden;
+    }
+
+    get openedLocation(): string | undefined {
+        return this._openedLocation;
+    }
+
     async requestSubtitles() {
         if (!this._context.hasPageScript) {
             return;
+        }
+
+        // While the picker is open on the same location, skip refresh so
+        // player events do not clobber an in-progress user selection. On a
+        // true soft-navigation, dismiss the stale picker and continue.
+        if (this.pickerVisible) {
+            if (this.openedLocation !== undefined && window.location.href !== this.openedLocation) {
+                this._hideAndResume();
+            } else {
+                return;
+            }
         }
 
         const pageDelegate = await currentPageDelegate();
@@ -155,7 +178,7 @@ export default class VideoDataSyncController {
         if (!this._dataReceivedListener) {
             this._dataReceivedListener = (event: Event) => {
                 const data = (event as CustomEvent).detail as VideoData;
-                this._setSyncedData(data);
+                void this._setSyncedData(data);
             };
             document.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
         }
@@ -251,7 +274,7 @@ export default class VideoDataSyncController {
 
     private _matchLastSyncedWithAvailableTracks() {
         const subtitleTrackChoices = this._syncedData?.subtitles ?? [];
-        let tracks = {
+        const tracks = {
             autoSelectedTracks: [this._emptySubtitle, this._emptySubtitle, this._emptySubtitle],
             completeMatch: false,
         };
@@ -296,6 +319,7 @@ export default class VideoDataSyncController {
     }
 
     private async _setSyncedData(data: VideoData) {
+        const wasLoading = this._syncedData?.subtitles === undefined;
         this._syncedData = data;
 
         if (this._syncedData?.subtitles !== undefined && (await this._canAutoSync())) {
@@ -303,23 +327,22 @@ export default class VideoDataSyncController {
                 this._autoSyncAttempted = true;
                 const subs = this._matchLastSyncedWithAvailableTracks();
 
-                if (subs.completeMatch) {
+                if (subs.completeMatch && !this.pickerVisible) {
                     const autoSelectedTracks: VideoDataSubtitleTrack[] = subs.autoSelectedTracks;
                     await this._syncData(autoSelectedTracks);
-
-                    if (!this._frame.hidden) {
-                        this._hideAndResume();
-                    }
-                } else {
+                } else if (!subs.completeMatch && !this.pickerVisible) {
                     const shouldPrompt = await this._settings.getSingle('streamingAutoSyncPromptOnFailure');
 
                     if (shouldPrompt) {
                         await this.show({ reason: VideoDataUiOpenReason.failedToAutoLoadPreferredTrack });
                     }
+                } else if (wasLoading) {
+                    // Picker is open in loading state. Populate it now that tracks have arrived.
+                    this._frame.clientIfLoaded?.updateState(await this._buildModel({}));
                 }
             }
-        } else if (this._frame.clientIfLoaded !== undefined) {
-            this._frame.clientIfLoaded.updateState(await this._buildModel({}));
+        } else if (!this.pickerVisible || wasLoading) {
+            this._frame.clientIfLoaded?.updateState(await this._buildModel({}));
         }
     }
 
@@ -343,88 +366,95 @@ export default class VideoDataSyncController {
         const client = await this._frame.client();
 
         if (isNewClient) {
-            client.onMessage(async (message) => {
-                if ('openSettings' === message.command) {
-                    const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                        sender: 'asbplayer-video',
-                        message: {
-                            command: 'open-asbplayer-settings',
-                        },
-                        src: this._context.video.src,
-                    };
-                    browser.runtime.sendMessage(openSettingsCommand);
-                    return;
-                }
-
-                if ('activeProfile' === message.command) {
-                    const activeProfileMessage = message as ActiveProfileMessage;
-                    await this._context.settings.setActiveProfile(activeProfileMessage.profile);
-                    const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
-                        sender: 'asbplayer-video',
-                        message: {
-                            command: 'settings-updated',
-                        },
-                        src: this._context.video.src,
-                    };
-                    browser.runtime.sendMessage(settingsUpdatedCommand);
-                    return;
-                }
-
-                if ('dismissFtue' === message.command) {
-                    globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
-                    return;
-                }
-
-                if ('setOnlineSubtitleSourceConfig' === message.command) {
-                    const setOnlineSubtitleSourceConfigMessage =
-                        message as VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage;
-                    const currentOnlineSubtitleSourceConfig = (
-                        await globalStateProvider.get(['onlineSubtitleSourceConfig'])
-                    ).onlineSubtitleSourceConfig;
-
-                    await globalStateProvider.set({
-                        onlineSubtitleSourceConfig: {
-                            ...currentOnlineSubtitleSourceConfig,
-                            ...setOnlineSubtitleSourceConfigMessage.state,
-                        },
-                    });
-                    return;
-                }
-
-                let dataWasSynced = true;
-
-                if ('confirm' === message.command) {
-                    const confirmMessage = message as VideoDataUiBridgeConfirmMessage;
-
-                    if (confirmMessage.shouldRememberTrackChoices) {
-                        this.lastLanguagesSynced = confirmMessage.data
-                            .map((track) => track.language)
-                            .filter((language) => language !== undefined) as string[];
-                        await this._context.settings
-                            .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
-                            .catch(() => {});
+            client.onMessage((message) => {
+                void (async () => {
+                    if ('openSettings' === message.command) {
+                        const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
+                            sender: 'asbplayer-video',
+                            message: {
+                                command: 'open-asbplayer-settings',
+                            },
+                            src: this._context.registeredVideoSrc,
+                        };
+                        void browser.runtime.sendMessage(openSettingsCommand);
+                        return;
                     }
 
-                    const data = confirmMessage.data as ConfirmedVideoDataSubtitleTrack[];
+                    if ('activeProfile' === message.command) {
+                        const activeProfileMessage = message as ActiveProfileMessage;
+                        await this._context.settings.setActiveProfile(activeProfileMessage.profile);
+                        const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+                            sender: 'asbplayer-video',
+                            message: {
+                                command: 'settings-updated',
+                            },
+                            src: this._context.registeredVideoSrc,
+                        };
+                        void browser.runtime.sendMessage(settingsUpdatedCommand);
+                        return;
+                    }
 
-                    dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
-                } else if ('openFile' === message.command) {
-                    const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
-                    const subtitles = openFileMessage.subtitles as SerializedSubtitleFile[];
+                    if ('dismissFtue' === message.command) {
+                        globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
+                        return;
+                    }
 
-                    try {
-                        await this._syncSubtitles(subtitles, false);
-                        dataWasSynced = true;
-                    } catch (e) {
-                        if (e instanceof Error) {
-                            await this._reportError(e.message);
+                    if ('setOnlineSubtitleSourceConfig' === message.command) {
+                        const setOnlineSubtitleSourceConfigMessage =
+                            message as VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage;
+                        const currentOnlineSubtitleSourceConfig = (
+                            await globalStateProvider.get(['onlineSubtitleSourceConfig'])
+                        ).onlineSubtitleSourceConfig;
+
+                        await globalStateProvider.set({
+                            onlineSubtitleSourceConfig: {
+                                ...currentOnlineSubtitleSourceConfig,
+                                ...setOnlineSubtitleSourceConfigMessage.state,
+                            },
+                        });
+                        return;
+                    }
+
+                    if ('cancel' === message.command) {
+                        this._hideAndResume();
+                        return;
+                    }
+
+                    let dataWasSynced = true;
+
+                    if ('confirm' === message.command) {
+                        const confirmMessage = message as VideoDataUiBridgeConfirmMessage;
+
+                        if (confirmMessage.shouldRememberTrackChoices) {
+                            this.lastLanguagesSynced = confirmMessage.data
+                                .map((track) => track.language)
+                                .filter((language) => language !== undefined);
+                            await this._context.settings
+                                .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
+                                .catch(() => {});
+                        }
+
+                        const data = confirmMessage.data;
+
+                        dataWasSynced = await this._syncDataArray(data, confirmMessage.syncWithAsbplayerId);
+                    } else if ('openFile' === message.command) {
+                        const openFileMessage = message as VideoDataUiBridgeOpenFileMessage;
+                        const subtitles = openFileMessage.subtitles;
+
+                        try {
+                            await this._syncSubtitles(subtitles, false);
+                            dataWasSynced = true;
+                        } catch (e) {
+                            if (e instanceof Error) {
+                                await this._reportError(e.message);
+                            }
                         }
                     }
-                }
 
-                if (dataWasSynced) {
-                    this._hideAndResume();
-                }
+                    if (dataWasSynced) {
+                        this._hideAndResume();
+                    }
+                })().catch(console.error);
             });
         }
 
@@ -433,12 +463,23 @@ export default class VideoDataSyncController {
     }
 
     private _prepareShow() {
+        this._openedLocation = window.location.href;
         this._wasPaused = this._wasPaused ?? this._context.video.paused;
         this._context.pause();
 
+        // Some players (e.g. Hulu) call video.play() on an internal timer that
+        // ignores the picker being open. Re-pause on any play event until the
+        // picker is dismissed.
+        if (!this._playBlocker) {
+            this._playBlocker = () => {
+                this._context.pause();
+            };
+            this._context.video.addEventListener('play', this._playBlocker);
+        }
+
         if (document.fullscreenElement) {
             this._fullscreenElement = document.fullscreenElement;
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
 
         if (document.activeElement) {
@@ -450,14 +491,23 @@ export default class VideoDataSyncController {
         this._context.mobileVideoOverlayController.forceHide = true;
     }
 
+    private _cleanupPlayBlocker() {
+        if (this._playBlocker) {
+            this._context.video.removeEventListener('play', this._playBlocker);
+            this._playBlocker = undefined;
+        }
+    }
+
     private _hideAndResume() {
+        this._cleanupPlayBlocker();
+        this._openedLocation = undefined;
         this._context.keyBindings.bind(this._context);
         this._context.subtitleController.forceHideSubtitles = false;
         this._context.mobileVideoOverlayController.forceHide = false;
         this._frame?.hide();
 
         if (this._fullscreenElement) {
-            this._fullscreenElement.requestFullscreen();
+            void this._fullscreenElement.requestFullscreen();
             this._fullscreenElement = undefined;
         }
 
@@ -472,7 +522,7 @@ export default class VideoDataSyncController {
         }
 
         if (!this._wasPaused) {
-            this._context.play();
+            void this._context.play();
         }
 
         this._wasPaused = undefined;
@@ -480,7 +530,7 @@ export default class VideoDataSyncController {
 
     private async _syncData(data: VideoDataSubtitleTrack[]) {
         try {
-            let subtitles: SerializedSubtitleFile[] = [];
+            const subtitles: SerializedSubtitleFile[] = [];
 
             for (let i = 0; i < data.length; i++) {
                 const { extension, url, language, localFile } = data[i];
@@ -512,7 +562,7 @@ export default class VideoDataSyncController {
 
     private async _syncDataArray(data: ConfirmedVideoDataSubtitleTrack[], syncWithAsbplayerId?: string) {
         try {
-            let subtitles: SerializedSubtitleFile[] = [];
+            const subtitles: SerializedSubtitleFile[] = [];
 
             for (let i = 0; i < data.length; i++) {
                 const { name, language, extension, url, localFile } = data[i];
@@ -545,7 +595,7 @@ export default class VideoDataSyncController {
         const files: File[] = await Promise.all(
             serializedFiles.map(async (f) => new File([base64ToBlob(f.base64, 'text/plain')], f.name))
         );
-        this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
+        await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
     }
 
     private async _subtitlesForUrl(
@@ -619,7 +669,7 @@ export default class VideoDataSyncController {
         const fileName = `${name}.${partExtension}`;
         const promises = url.map((u) => fetch(u));
         const tracks = [];
-        let totalPromises = promises.length;
+        const totalPromises = promises.length;
         let finishedPromises = 0;
 
         for (const p of promises) {

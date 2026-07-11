@@ -1,6 +1,14 @@
 import { Fetcher, HttpFetcher, Progress } from '@project/common';
 import { DictionaryTrack } from '@project/common/settings';
-import { AsyncSemaphore, fromBatches, HAS_LETTER_REGEX, inBatches, isKanaOnly } from '@project/common/util';
+import {
+    AsyncSemaphore,
+    fromBatches,
+    HAS_LETTER_REGEX,
+    inBatches,
+    isKanaOnly,
+    NEWLINES_REGEX,
+    STERM_AND_NEWLINES_REGEX,
+} from '@project/common/util';
 import { coerce, lt, gte } from 'semver';
 
 const TOKENIZE_BATCH_SIZE = 100; // 1k can cause 1.5GB memory on Yomitan for subtitles, Anki cards may be larger too
@@ -30,6 +38,7 @@ interface TermHeadword {
     reading: string;
     sources: TermSource[];
     frequencies?: TermFrequency[];
+    pronunciations?: TermPronunciation[];
 }
 
 interface TermSource {
@@ -55,6 +64,35 @@ interface TermFrequency {
     displayValueParsed: boolean;
 }
 
+/**
+ * number: Mora position of the pitch accent downstep. A value of 0 indicates that the word does not have a downstep (heiban).
+ * string: Pitch level of each mora with H representing high and L representing low. For example: HHLL for a 4 mora word. Add an additional pitch level at the end to explicitly define the suffix.
+ *   - pattern: /^[HL]+$/
+ */
+export type PitchAccentPosition = number | string;
+interface PitchAccent {
+    type: 'pitch-accent';
+    positions: PitchAccentPosition;
+    nasalPositions: number[];
+    devoicePositions: number[];
+    tags: object[];
+}
+
+interface PhoneticTranscription {
+    type: 'phonetic-transcription';
+    ipa: string;
+    tags: object[];
+}
+
+interface TermPronunciation {
+    index: number;
+    headwordIndex: number;
+    dictionary: string;
+    dictionaryIndex: number;
+    dictionaryAlias: string;
+    pronunciations: (PitchAccent | PhoneticTranscription)[];
+}
+
 interface TokenizeResult {
     id: string;
     source: string;
@@ -72,6 +110,7 @@ interface TermEntriesResult {
 interface TermDictionaryEntry {
     headwords: TermHeadword[];
     frequencies: TermFrequency[];
+    pronunciations: TermPronunciation[];
 }
 
 export class Yomitan {
@@ -81,6 +120,7 @@ export class Yomitan {
     private readonly tokenizeCache: Map<string, TokenPart[][]>;
     private readonly lemmatizeCache: Map<string, string[]>;
     private readonly frequencyCache: Map<string, number | null>;
+    private readonly pitchAccentCache: Map<string, PitchAccentPosition | null>;
     private readonly frequencyModeInferenceData: Map<string, Map<string, number>>;
     private readonly inferredFrequencyModes: Map<string, FrequencyMode>;
     private readonly lemmaTokenFallback: boolean; // Allow collecting ungrouped segments (no dictionary entry)
@@ -88,6 +128,7 @@ export class Yomitan {
     private supportsMecab: boolean;
     private supportsMecabLemma: boolean;
     private supportsTokenizeFrequency: boolean;
+    private supportsTokenizePronunciations: boolean;
     private supportsTermEntriesBulk: boolean;
     private lastCancelledAt: number;
     private tokenizeBatchSize: number;
@@ -106,6 +147,7 @@ export class Yomitan {
         this.tokenizeCache = new Map();
         this.lemmatizeCache = new Map();
         this.frequencyCache = new Map();
+        this.pitchAccentCache = new Map();
         this.frequencyModeInferenceData = new Map();
         this.inferredFrequencyModes = new Map();
         this.lemmaTokenFallback = options?.lemmaTokenFallback ?? false;
@@ -113,6 +155,7 @@ export class Yomitan {
         this.supportsMecab = false;
         this.supportsMecabLemma = false;
         this.supportsTokenizeFrequency = false;
+        this.supportsTokenizePronunciations = false;
         this.supportsTermEntriesBulk = false;
         this.lastCancelledAt = 0;
         this.tokenizeBatchSize = TOKENIZE_BATCH_SIZE;
@@ -129,8 +172,17 @@ export class Yomitan {
         return this.supportsMecabLemma;
     }
 
+    getSupportsTermEntriesBulk(): boolean {
+        return this.supportsTermEntriesBulk;
+    }
+
     getSupportsBulkFrequency(): boolean {
         if (this.dt.dictionaryYomitanParser === 'scanning-parser') return this.supportsTokenizeFrequency;
+        return this.supportsTermEntriesBulk;
+    }
+
+    getSupportsBulkPitchAccent(): boolean {
+        if (this.dt.dictionaryYomitanParser === 'scanning-parser') return this.supportsTokenizePronunciations;
         return this.supportsTermEntriesBulk;
     }
 
@@ -138,6 +190,7 @@ export class Yomitan {
         this.tokenizeCache.clear();
         this.lemmatizeCache.clear();
         this.frequencyCache.clear();
+        this.pitchAccentCache.clear();
         this.frequencyModeInferenceData.clear();
         this.inferredFrequencyModes.clear();
         this.lastCancelledAt = Date.now();
@@ -150,7 +203,7 @@ export class Yomitan {
     ): Promise<TokenPart[][]> {
         return this.tokenizeBulk(
             text
-                .split(/(?:\p{STerm}|\r?\n)+/u)
+                .split(STERM_AND_NEWLINES_REGEX)
                 .map((p) => p.trim())
                 .filter((p) => HAS_LETTER_REGEX.test(p)),
             statusUpdates,
@@ -174,7 +227,10 @@ export class Yomitan {
         if (!Array.isArray(res)) throw new Error(`Unexpected Yomitan tokenize response: ${JSON.stringify(res)}`);
         const tokenizeResults = this.filterDictionaries(res, this.dt.dictionaryYomitanParser);
 
-        for (const tokenizeResult of tokenizeResults) this.cacheFromTokenize(tokenizeResult, tokens); // Requires this.filterDictionaries to ensure one tokenizeResult per index
+        const newlines: { text: string; index: number }[] = [];
+        for (const m of text.matchAll(NEWLINES_REGEX)) newlines.push({ text: m[0], index: m.index });
+
+        for (const tokenizeResult of tokenizeResults) this.cacheFromTokenize(tokenizeResult, tokens, newlines); // Requires this.filterDictionaries to ensure one tokenizeResult per index
         this.tokenizeCache.set(text, tokens);
         return tokens;
     }
@@ -193,6 +249,7 @@ export class Yomitan {
                     const tokensByText: TokenPart[][][] = [];
                     const textsToFetch: string[] = [];
                     const fetchedTextIndices: number[] = [];
+                    const newlinesByText: { text: string; index: number }[][] = [];
                     for (const [index, text] of texts.entries()) {
                         const tokensForText = this.tokenizeCache.get(text);
                         if (tokensForText) {
@@ -201,6 +258,9 @@ export class Yomitan {
                         }
                         textsToFetch.push(text);
                         fetchedTextIndices.push(index);
+                        const newlines: { text: string; index: number }[] = [];
+                        for (const m of text.matchAll(NEWLINES_REGEX)) newlines.push({ text: m[0], index: m.index });
+                        newlinesByText.push(newlines);
                     }
                     if (!textsToFetch.length) return tokensByText.flat();
 
@@ -225,7 +285,7 @@ export class Yomitan {
                     // Requires this.filterDictionaries to ensure one tokenizeResult per index
                     for (const tokenizeResult of tokenizeResults) {
                         const tokensForText: TokenPart[][] = [];
-                        this.cacheFromTokenize(tokenizeResult, tokensForText);
+                        this.cacheFromTokenize(tokenizeResult, tokensForText, newlinesByText[tokenizeResult.index]);
                         this.tokenizeCache.set(textsToFetch[tokenizeResult.index], tokensForText);
                         tokensByText[fetchedTextIndices[tokenizeResult.index]] = tokensForText;
                     }
@@ -243,7 +303,7 @@ export class Yomitan {
                                 termsToFetch.add(token);
                             }
                         }
-                        await this.termEntriesBulk(Array.from(termsToFetch), yomitanUrl);
+                        await this.termEntriesBulk(Array.from(termsToFetch), false, yomitanUrl);
                     }
 
                     return tokensByText.flat();
@@ -309,15 +369,26 @@ export class Yomitan {
         return results;
     }
 
-    private cacheFromTokenize(tokenizeResult: TokenizeResult, tokensForText: TokenPartResult[][]): void {
+    private cacheFromTokenize(
+        tokenizeResult: TokenizeResult,
+        tokensForText: TokenPart[][],
+        newlines: { text: string; index: number }[]
+    ): void {
+        let currIndex = 0;
         for (const tokenParts of tokenizeResult.content) {
-            tokensForText.push(tokenParts);
             const tokenPart = tokenParts[0];
-            if (!tokenPart) return;
-            const token = tokenParts
-                .map((p) => p.text)
-                .join('')
-                .trim();
+            if (!tokenPart) continue;
+
+            const tokenText = tokenParts.map((p) => p.text).join('');
+            currIndex += tokenText.length;
+            while (newlines.length && newlines[0].index < currIndex) {
+                const { text } = newlines.shift()!;
+                if (tokenText.includes(text)) continue; // scanning-parser includes newlines
+                tokensForText.push([{ text, reading: '' }]);
+                currIndex += text.length;
+            }
+            tokensForText.push(tokenParts.map((p) => ({ text: p.text, reading: p.reading })));
+            const token = tokenText.trim();
 
             if (!this.lemmatizeCache.has(token)) this.extractLemmaFromMecab(token, tokenPart);
 
@@ -325,8 +396,21 @@ export class Yomitan {
             if (headwords) {
                 if (!this.lemmatizeCache.has(token)) this.extractLemmas(token, headwords);
                 if (!this.frequencyCache.has(token)) this.extractFrequencyFromTokenize(token, headwords);
+                if (!this.pitchAccentCache.has(token)) this.extractPitchAccentFromTokenize(token, headwords);
             }
         }
+        while (newlines.length) {
+            const { text } = newlines.shift()!;
+            tokensForText.push([{ text, reading: '' }]);
+        }
+    }
+
+    verifyTokenizeResult(originalText: string, tokenizeRes: TokenPart[][]): void {
+        const originalTextFromTokenize = tokenizeRes.map((t) => t.map((p) => p.text).join('')).join('');
+        if (originalTextFromTokenize === originalText) return;
+        throw new Error(
+            `Tokenize result does not match the original text:\n${originalText}\n--->\n${originalTextFromTokenize}`
+        );
     }
 
     private extractLemmaFromMecab(token: string, tokenPart: TokenPartResult): void {
@@ -373,6 +457,47 @@ export class Yomitan {
     }
 
     /**
+     * Extract the first pitch accent position for a token using Yomitan's tokenize API.
+     */
+    private extractPitchAccentFromTokenize(token: string, tokenizeHeadwords: TermHeadword[][]): void {
+        if (!this.supportsTokenizePronunciations) return;
+        const pitchAccents = new Map<PitchAccentPosition, number>();
+        for (const headwords of tokenizeHeadwords) {
+            for (const headword of headwords) {
+                for (const source of headword.sources) {
+                    if (source.originalText !== token) continue;
+                    if (!source.isPrimary) continue;
+                    if (source.matchType !== 'exact') continue;
+                    if (!headword.pronunciations) continue;
+                    for (const termPronunciations of headword.pronunciations) {
+                        for (const p of termPronunciations.pronunciations) {
+                            if (p.type !== 'pitch-accent') continue;
+                            pitchAccents.set(p.positions, (pitchAccents.get(p.positions) ?? 0) + 1);
+                        }
+                    }
+                }
+            }
+        }
+        let maxCount = 0;
+        let selected: PitchAccentPosition | null = null;
+        for (const [position, count] of pitchAccents.entries()) {
+            if (count < maxCount) continue;
+            if (count > maxCount) {
+                maxCount = count;
+                selected = position;
+                continue; // Prefer the most frequent result
+            }
+            if (typeof position !== 'string') continue; // Prefer string results
+            if (typeof selected === 'string') {
+                if (position.length > selected.length) selected = position; // Prefer the longer string result when tied
+            } else {
+                selected = position; // Prefer the first string result when tied
+            }
+        }
+        this.pitchAccentCache.set(token, selected);
+    }
+
+    /**
      * Lemmatize a token using Yomitan's termEntries API. There will likely always be edge cases but it should perform
      * well nearly all of the time. Returns the first term and reading lemmas (e.g. kanji and kana for Japanese). Examples:
      * 過ぎる   ->  過ぎる, すぎる
@@ -414,6 +539,7 @@ export class Yomitan {
         if (!HAS_LETTER_REGEX.test(token)) {
             this.lemmatizeCache.set(token, []);
             this.frequencyCache.set(token, null);
+            this.pitchAccentCache.set(token, null);
             return [];
         }
         const now = Date.now();
@@ -428,6 +554,7 @@ export class Yomitan {
             }
             const dictionaryEntries: TermDictionaryEntry[] = res.dictionaryEntries;
             if (!this.frequencyCache.has(token)) this.extractFrequency(token, dictionaryEntries);
+            if (!this.pitchAccentCache.has(token)) this.extractPitchAccent(token, dictionaryEntries);
             return this.extractLemmas(
                 token,
                 dictionaryEntries.map((entry) => entry.headwords)
@@ -446,6 +573,7 @@ export class Yomitan {
         if (minFrequency !== undefined) return minFrequency;
         if (!HAS_LETTER_REGEX.test(token)) {
             this.frequencyCache.set(token, null);
+            this.pitchAccentCache.set(token, null);
             this.lemmatizeCache.set(token, []);
             return null;
         }
@@ -469,6 +597,7 @@ export class Yomitan {
                     }
                     const dictionaryEntries: TermDictionaryEntry[] = res.dictionaryEntries;
                     this.extractFrequency(token, dictionaryEntries);
+                    if (!this.pitchAccentCache.has(token)) this.extractPitchAccent(token, dictionaryEntries);
                     if (!this.lemmatizeCache.has(token)) {
                         this.extractLemmas(
                             token,
@@ -494,6 +623,7 @@ export class Yomitan {
                 throw new Error(`Unexpected Yomitan termEntries response: ${JSON.stringify(res)}`);
             }
             const dictionaryEntries: TermDictionaryEntry[] = res.dictionaryEntries;
+            if (!this.pitchAccentCache.has(token)) this.extractPitchAccent(token, dictionaryEntries);
             if (!this.lemmatizeCache.has(token)) {
                 this.extractLemmas(
                     token,
@@ -536,15 +666,145 @@ export class Yomitan {
         return minFrequency;
     }
 
-    async termEntriesBulk(tokens: string[], yomitanUrl?: string, batchSize = this.termEntriesBatchSize): Promise<void> {
+    /**
+     * Extract the first pitch accent position for a token using Yomitan's termEntries API.
+     * This function will return undefined immediately and asynchronously update the cache if tokensWereModified is provided and the token is not in the cache.
+     */
+    async pitchAccent(token: string, yomitanUrl?: string): Promise<PitchAccentPosition | undefined | null> {
+        const positions = this.pitchAccentCache.get(token);
+        if (positions !== undefined) return positions;
+        if (!HAS_LETTER_REGEX.test(token)) {
+            this.pitchAccentCache.set(token, null);
+            this.frequencyCache.set(token, null);
+            this.lemmatizeCache.set(token, []);
+            return null;
+        }
+        if (this.tokensWereModified) {
+            void (async () => {
+                const now = Date.now();
+                const semaphoreId = await this.asyncSemaphore.acquire();
+                try {
+                    if (this.pitchAccentCache.has(token)) return;
+                    if (now < this.lastCancelledAt) {
+                        this.tokensWereModified!(token); // May need to reprocess with the new Yomitan instance
+                        return;
+                    }
+                    const res: TermEntriesResult = await this._executeAction(
+                        'termEntries',
+                        { term: token },
+                        yomitanUrl
+                    );
+                    if (!Array.isArray(res?.dictionaryEntries)) {
+                        throw new Error(`Unexpected Yomitan termEntries response: ${JSON.stringify(res)}`);
+                    }
+                    const dictionaryEntries: TermDictionaryEntry[] = res.dictionaryEntries;
+                    this.extractPitchAccent(token, dictionaryEntries);
+                    if (!this.frequencyCache.has(token)) this.extractFrequency(token, dictionaryEntries);
+                    if (!this.lemmatizeCache.has(token)) {
+                        this.extractLemmas(
+                            token,
+                            dictionaryEntries.map((entry) => entry.headwords)
+                        );
+                    }
+                    this.tokensWereModified!(token);
+                } finally {
+                    setTimeout(() => this.asyncSemaphore.release(semaphoreId), TERM_ENTRIES_DEBOUNCE_MS);
+                }
+            })();
+            return; // undefined means the caller should call again later
+        }
+
+        const now = Date.now();
+        const semaphoreId = await this.asyncSemaphore.acquire();
+        try {
+            const positions = this.pitchAccentCache.get(token);
+            if (positions !== undefined) return positions;
+            if (now < this.lastCancelledAt) return;
+            const res: TermEntriesResult = await this._executeAction('termEntries', { term: token }, yomitanUrl);
+            if (!Array.isArray(res?.dictionaryEntries)) {
+                throw new Error(`Unexpected Yomitan termEntries response: ${JSON.stringify(res)}`);
+            }
+            const dictionaryEntries: TermDictionaryEntry[] = res.dictionaryEntries;
+            if (!this.frequencyCache.has(token)) this.extractFrequency(token, dictionaryEntries);
+            if (!this.lemmatizeCache.has(token)) {
+                this.extractLemmas(
+                    token,
+                    dictionaryEntries.map((entry) => entry.headwords)
+                );
+            }
+            return this.extractPitchAccent(token, dictionaryEntries);
+        } finally {
+            setTimeout(() => this.asyncSemaphore.release(semaphoreId), TERM_ENTRIES_DEBOUNCE_MS);
+        }
+    }
+
+    /**
+     * Extract the first pitch accent position for a token using Yomitan's termEntries API.
+     */
+    private extractPitchAccent(token: string, entries: TermDictionaryEntry[]): PitchAccentPosition | null {
+        const pitchAccents = new Map<PitchAccentPosition, number>();
+        for (const entry of entries) {
+            const matchingHeadwordIndices = new Set<number>();
+            for (const [i, headword] of entry.headwords.entries()) {
+                for (const source of headword.sources) {
+                    if (source.originalText !== token) continue;
+                    if (!source.isPrimary) continue;
+                    if (source.matchType !== 'exact') continue;
+                    matchingHeadwordIndices.add(headword.headwordIndex ?? i); // requires this.supportsTokenizeFrequency otherwise array index is more accurate than headword.index
+                    break;
+                }
+            }
+            if (!matchingHeadwordIndices.size) continue;
+            for (const termPronunciations of entry.pronunciations) {
+                if (!matchingHeadwordIndices.has(termPronunciations.headwordIndex)) continue;
+                for (const p of termPronunciations.pronunciations) {
+                    if (p.type !== 'pitch-accent') continue;
+                    pitchAccents.set(p.positions, (pitchAccents.get(p.positions) ?? 0) + 1);
+                }
+            }
+        }
+        let maxCount = 0;
+        let selected: PitchAccentPosition | null = null;
+        for (const [position, count] of pitchAccents.entries()) {
+            if (count < maxCount) continue;
+            if (count > maxCount) {
+                maxCount = count;
+                selected = position;
+                continue; // Prefer the most frequent result
+            }
+            if (typeof position !== 'string') continue; // Prefer string results
+            if (typeof selected === 'string') {
+                if (position.length > selected.length) selected = position; // Prefer the longer string result when tied
+            } else {
+                selected = position; // Prefer the first string result when tied
+            }
+        }
+        this.pitchAccentCache.set(token, selected);
+        return selected;
+    }
+
+    async termEntriesBulk(
+        tokens: string[],
+        triggerTokensWereModified: boolean,
+        yomitanUrl?: string,
+        batchSize = this.termEntriesBatchSize
+    ): Promise<void> {
         let batchError = false;
         try {
             const tokensToFetch = new Set<string>();
             for (const token of tokens) {
-                if (this.lemmatizeCache.has(token) && this.frequencyCache.has(token)) continue;
+                if (
+                    this.lemmatizeCache.has(token) &&
+                    this.frequencyCache.has(token) &&
+                    this.pitchAccentCache.has(token)
+                ) {
+                    continue;
+                }
                 if (!HAS_LETTER_REGEX.test(token)) {
                     this.lemmatizeCache.set(token, []);
                     this.frequencyCache.set(token, null);
+                    this.pitchAccentCache.set(token, null);
+                    if (triggerTokensWereModified) this.tokensWereModified?.(token);
                     continue;
                 }
                 tokensToFetch.add(token);
@@ -556,7 +816,13 @@ export class Yomitan {
             try {
                 if (now < this.lastCancelledAt) return;
                 for (const token of tokensToFetch) {
-                    if (this.lemmatizeCache.has(token) && this.frequencyCache.has(token)) tokensToFetch.delete(token);
+                    if (
+                        this.lemmatizeCache.has(token) &&
+                        this.frequencyCache.has(token) &&
+                        this.pitchAccentCache.has(token)
+                    ) {
+                        tokensToFetch.delete(token);
+                    }
                 }
                 if (!tokensToFetch.size) return;
 
@@ -576,13 +842,23 @@ export class Yomitan {
                         for (const result of res) dictionaryEntries[result.index] = result.dictionaryEntries;
                         for (const [index, token] of terms.entries()) {
                             const entries = dictionaryEntries[index];
+                            let modified = false;
                             if (!this.lemmatizeCache.has(token)) {
                                 this.extractLemmas(
                                     token,
                                     entries.map((entry) => entry.headwords)
                                 );
+                                modified = true;
                             }
-                            if (!this.frequencyCache.has(token)) this.extractFrequency(token, entries);
+                            if (!this.frequencyCache.has(token)) {
+                                this.extractFrequency(token, entries);
+                                modified = true;
+                            }
+                            if (!this.pitchAccentCache.has(token)) {
+                                this.extractPitchAccent(token, entries);
+                                modified = true;
+                            }
+                            if (modified && triggerTokensWereModified) this.tokensWereModified?.(token);
                         }
                     },
                     { batchSize }
@@ -601,7 +877,7 @@ export class Yomitan {
                 this.termEntriesBatchSize = newDefaultBatchSize;
                 this.termEntriesBatchFailCount = 0;
             }
-            return this.termEntriesBulk(tokens, yomitanUrl, Math.ceil(batchSize / 2));
+            return this.termEntriesBulk(tokens, triggerTokensWereModified, yomitanUrl, Math.ceil(batchSize / 2));
         }
     }
 
@@ -657,8 +933,8 @@ export class Yomitan {
             );
 
             this.inferredFrequencyModes.set(dictionary, frequencyMode);
-            for (const [token, frequency] of frequencies.entries()) {
-                if (frequencyMode === 'rank-based') {
+            if (frequencyMode === 'rank-based') {
+                for (const [token, frequency] of frequencies.entries()) {
                     const cachedFrequency = this.frequencyCache.get(token);
                     this.frequencyCache.set(
                         token,
@@ -667,7 +943,9 @@ export class Yomitan {
                             : Math.min(cachedFrequency, frequency)
                     );
                     this.tokensWereModified?.(token);
-                } else if (previousFrequencyMode === 'rank-based') {
+                }
+            } else if (previousFrequencyMode === 'rank-based') {
+                for (const token of frequencies.keys()) {
                     this.frequencyCache.delete(token);
                     this.tokensWereModified?.(token);
                 }
@@ -686,6 +964,7 @@ export class Yomitan {
             }
             this.supportsTokenizeFrequency = true;
             this.supportsTermEntriesBulk = true;
+            this.supportsTokenizePronunciations = true;
             return version;
         }
         const semver = coerce(version)?.version;
@@ -704,6 +983,12 @@ export class Yomitan {
         } else {
             this.supportsTokenizeFrequency = false;
             this.supportsTermEntriesBulk = false;
+        }
+        // TODO: Use actual released version
+        if (gte(semver, '26.7.1')) {
+            this.supportsTokenizePronunciations = true;
+        } else {
+            this.supportsTokenizePronunciations = false;
         }
         return version;
     }

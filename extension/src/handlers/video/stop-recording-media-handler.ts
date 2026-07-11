@@ -60,13 +60,16 @@ export default class StopRecordingMediaHandler {
 
         let imageModel: ImageModel | undefined = undefined;
 
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) throw new Error('Cannot stop recording media without a valid tab ID');
+
         if (stopRecordingCommand.message.screenshot) {
             try {
                 let lastImageBase64 = this._imageCapturer.lastImageBase64;
 
                 if (lastImageBase64 === undefined) {
                     const { maxWidth, maxHeight, rect, frameId } = stopRecordingCommand.message;
-                    lastImageBase64 = await this._imageCapturer.capture(sender.tab!.id!, stopRecordingCommand.src, 0, {
+                    lastImageBase64 = await this._imageCapturer.capture(tabId, stopRecordingCommand.src, 0, {
                         maxWidth,
                         maxHeight,
                         rect,
@@ -96,7 +99,7 @@ export default class StopRecordingMediaHandler {
             }
 
             const audioBase64 = await this._audioRecorder.stop(encodeAsMp3, {
-                tabId: sender.tab!.id!,
+                tabId,
                 src: stopRecordingCommand.src,
             });
             const audioModel: AudioModel = {
@@ -109,7 +112,7 @@ export default class StopRecordingMediaHandler {
                 playbackRate: stopRecordingCommand.message.playbackRate,
             };
 
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     subtitle: subtitle,
                     surroundingSubtitles: surroundingSubtitles,
@@ -120,7 +123,7 @@ export default class StopRecordingMediaHandler {
                     mediaTimestamp: stopRecordingCommand.message.startTimestamp,
                 },
                 stopRecordingCommand.message.postMineAction,
-                sender.tab!.id!,
+                tabId,
                 stopRecordingCommand.src
             );
         } catch (e) {

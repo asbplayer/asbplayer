@@ -18,7 +18,7 @@ export default class DeleteCopyHistoryHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as DeleteCopyHistoryMessage;
-        this._settings
+        void this._settings
             .getSingle('miningHistoryStorageLimit')
             .then((limit) => new IndexedDBCopyHistoryRepository(limit))
             .then((copyHistoryRepository) => {

@@ -103,7 +103,7 @@ interface CopyHistoryTooltipProps extends TooltipProps {
     show: boolean;
 }
 
-const useCopyHistoryTooltipStyles = makeStyles<Theme, CopyHistoryTooltipStylesProps, string>((theme) => ({
+const useCopyHistoryTooltipStyles = makeStyles<Theme, CopyHistoryTooltipStylesProps, string>(() => ({
     tooltip: ({ show }) => ({
         display: show ? 'block' : 'none',
     }),
@@ -180,7 +180,7 @@ export default function Bar({
             >
                 <Toolbar>
                     {canSaveAsSrt && (
-                        <Tooltip title={t('action.downloadSubtitlesAsSrt')!}>
+                        <Tooltip title={t('action.downloadSubtitlesAsSrt')}>
                             <IconButton
                                 edge="start"
                                 color="inherit"
@@ -197,13 +197,13 @@ export default function Bar({
                     <IconButton edge="end" color="inherit" onClick={handleMenuOpen}>
                         <GitHubIcon />
                     </IconButton>
-                    <Tooltip title={t('bar.settings')!}>
+                    <Tooltip title={t('bar.settings')}>
                         <IconButton edge="end" color="inherit" onClick={onOpenSettings}>
                             <SettingsIcon />
                         </IconButton>
                     </Tooltip>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <CopyHistoryTooltip title={t('bar.miningHistory')!} show={!drawerOpen}>
+                        <CopyHistoryTooltip title={t('bar.miningHistory')} show={!drawerOpen}>
                             <IconButton
                                 edge="end"
                                 color="inherit"
@@ -216,7 +216,7 @@ export default function Bar({
                             </IconButton>
                         </CopyHistoryTooltip>
                         {onOpenStatistics && (
-                            <Tooltip title={t('statistics.title')!}>
+                            <Tooltip title={t('statistics.title')}>
                                 <IconButton
                                     edge="end"
                                     color="inherit"
@@ -253,7 +253,7 @@ export default function Bar({
                                 <ListItemIcon>
                                     <TutorialIcon />
                                 </ListItemIcon>
-                                <ListItemText primary={t('action.userGuide')!} />
+                                <ListItemText primary={t('action.userGuide')} />
                             </ListItemButton>
                         </ListItem>
                     </Link>
@@ -263,7 +263,7 @@ export default function Bar({
                                 <ListItemIcon>
                                     <BugReportIcon />
                                 </ListItemIcon>
-                                <ListItemText primary={t('bar.submitIssue')!} />
+                                <ListItemText primary={t('bar.submitIssue')} />
                             </ListItemButton>
                         </ListItem>
                     </Link>
@@ -273,7 +273,7 @@ export default function Bar({
                                 <ListItemIcon>
                                     <ErrorIcon />
                                 </ListItemIcon>
-                                <ListItemText primary={t('bar.copyLastError')!} />
+                                <ListItemText primary={t('bar.copyLastError')} />
                             </ListItemButton>
                         </ListItem>
                     )}

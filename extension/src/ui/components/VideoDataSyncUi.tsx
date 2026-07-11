@@ -111,6 +111,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
     const [hideRememberTrackPreferenceToggle, setHideRememberTrackPreferenceToggle] = useState<boolean>();
     const [onlineSubtitleSourceConfig, setOnlineSubtitleSourceConfig] = useState<OnlineSubtitleSourceConfig>({
         jimakuApiKey: '',
+        jimakuSearchCategory: 'anime',
     });
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
     const [onlineDialogTrackNumber, setOnlineDialogTrackNumber] = useState<number>();
@@ -282,7 +283,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
 
                     for (let i = 0; i < files.length; ++i) {
                         const f = files[i];
-                        const base64 = await bufferToBase64(await f.arrayBuffer());
+                        const base64 = bufferToBase64(await f.arrayBuffer());
 
                         subtitles.push({
                             name: f.name,
@@ -439,7 +440,20 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     onImport={handleImportOnlineFile}
                     detectedTitleHint={detectedTitleHint}
                     jimakuApiKey={onlineSubtitleSourceConfig.jimakuApiKey}
-                    onJimakuApiKeyChange={(jimakuApiKey) => handleOnlineSubtitleSourceConfigChanged({ jimakuApiKey })}
+                    onJimakuApiKeyChange={(jimakuApiKey) =>
+                        handleOnlineSubtitleSourceConfigChanged({
+                            jimakuApiKey,
+                            jimakuRecentWorks: [],
+                        })
+                    }
+                    jimakuSearchCategory={onlineSubtitleSourceConfig.jimakuSearchCategory}
+                    onJimakuSearchCategoryChange={(jimakuSearchCategory) =>
+                        handleOnlineSubtitleSourceConfigChanged({ jimakuSearchCategory })
+                    }
+                    jimakuRecentWorks={onlineSubtitleSourceConfig.jimakuRecentWorks ?? []}
+                    onJimakuRecentWorksChange={(jimakuRecentWorks) =>
+                        handleOnlineSubtitleSourceConfigChanged({ jimakuRecentWorks })
+                    }
                 />
                 <input
                     ref={fileInputRef}

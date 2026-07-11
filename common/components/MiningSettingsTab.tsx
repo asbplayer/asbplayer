@@ -62,7 +62,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                                 value={PostMineAction.showAnkiDialog}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('clickToMineDefaultAction', PostMineAction.showAnkiDialog)
+                                    void onSettingChanged('clickToMineDefaultAction', PostMineAction.showAnkiDialog)
                                 }
                             />
                         }
@@ -75,7 +75,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                                 value={PostMineAction.updateLastCard}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('clickToMineDefaultAction', PostMineAction.updateLastCard)
+                                    void onSettingChanged('clickToMineDefaultAction', PostMineAction.updateLastCard)
                                 }
                             />
                         }
@@ -84,11 +84,27 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                     <LabelWithHoverEffect
                         control={
                             <Radio
+                                checked={clickToMineDefaultAction === PostMineAction.showUpdateCardDialog}
+                                value={PostMineAction.showUpdateCardDialog}
+                                onChange={(event) =>
+                                    event.target.checked &&
+                                    void onSettingChanged(
+                                        'clickToMineDefaultAction',
+                                        PostMineAction.showUpdateCardDialog
+                                    )
+                                }
+                            />
+                        }
+                        label={t('postMineAction.showUpdateCardDialog')}
+                    />
+                    <LabelWithHoverEffect
+                        control={
+                            <Radio
                                 checked={clickToMineDefaultAction === PostMineAction.exportCard}
                                 value={PostMineAction.exportCard}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('clickToMineDefaultAction', PostMineAction.exportCard)
+                                    void onSettingChanged('clickToMineDefaultAction', PostMineAction.exportCard)
                                 }
                             />
                         }
@@ -101,7 +117,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                                 value={PostMineAction.none}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('clickToMineDefaultAction', PostMineAction.none)
+                                    void onSettingChanged('clickToMineDefaultAction', PostMineAction.none)
                                 }
                             />
                         }
@@ -120,7 +136,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                                 value={PostMinePlayback.remember}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('postMiningPlaybackState', PostMinePlayback.remember)
+                                    void onSettingChanged('postMiningPlaybackState', PostMinePlayback.remember)
                                 }
                             />
                         }
@@ -133,7 +149,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                                 value={PostMinePlayback.play}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('postMiningPlaybackState', PostMinePlayback.play)
+                                    void onSettingChanged('postMiningPlaybackState', PostMinePlayback.play)
                                 }
                             />
                         }
@@ -146,7 +162,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                                 value={PostMinePlayback.pause}
                                 onChange={(event) =>
                                     event.target.checked &&
-                                    onSettingChanged('postMiningPlaybackState', PostMinePlayback.pause)
+                                    void onSettingChanged('postMiningPlaybackState', PostMinePlayback.pause)
                                 }
                             />
                         }
@@ -331,7 +347,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                         setScreenshotDelayInput(value);
 
                         if (integerValueRegex.test(value)) {
-                            onSettingChanged('streamingScreenshotDelay', Number(value));
+                            void onSettingChanged('streamingScreenshotDelay', Number(value));
                         }
                     }}
                     onBlur={() => {

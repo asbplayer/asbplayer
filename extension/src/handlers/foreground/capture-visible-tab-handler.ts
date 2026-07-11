@@ -15,7 +15,7 @@ export default class CaptureVisibleTabHandler {
             return;
         }
 
-        captureVisibleTab(sender.tab.id).then((dataUrl) => {
+        void captureVisibleTab(sender.tab.id).then((dataUrl) => {
             sendResponse(dataUrl);
         });
 

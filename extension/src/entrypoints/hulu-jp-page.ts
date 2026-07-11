@@ -56,19 +56,19 @@ export default defineUnlistedScript(() => {
                 }
 
                 lastVideoId = value?.ref_id;
-            } catch (e) {
+            } catch {
                 // ignore
             }
         };
 
         const originalXhrSend = window.XMLHttpRequest.prototype.send;
-        window.XMLHttpRequest.prototype.send = function () {
+        window.XMLHttpRequest.prototype.send = function (...args: unknown[]) {
             this.addEventListener('load', function () {
-                tryExtractMetadata(this.response);
+                void tryExtractMetadata(this.response);
             });
 
-            // @ts-ignore
-            originalXhrSend.apply(this, arguments);
+            // @ts-expect-error: forwarding original XHR arguments
+            originalXhrSend.apply(this, args);
         };
 
         const videoIdFromUrl = () => {
@@ -77,25 +77,27 @@ export default defineUnlistedScript(() => {
 
         document.addEventListener(
             'asbplayer-get-synced-data',
-            async () => {
-                let response: VideoData | undefined;
-                const pollPromise = poll(() => {
-                    const videoId = videoIdFromUrl() ?? lastVideoId;
-                    if (!videoId) {
-                        return false;
-                    }
-                    response = dataByVideoId.get(videoId);
-                    if (response === undefined) {
-                        return false;
-                    }
-                    return true;
-                });
-                await pollPromise;
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: response ?? { basename: '', error: 'Timed out' },
-                    })
-                );
+            () => {
+                void (async () => {
+                    let response: VideoData | undefined;
+                    const pollPromise = poll(() => {
+                        const videoId = videoIdFromUrl() ?? lastVideoId;
+                        if (!videoId) {
+                            return false;
+                        }
+                        response = dataByVideoId.get(videoId);
+                        if (response === undefined) {
+                            return false;
+                        }
+                        return true;
+                    });
+                    await pollPromise;
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: response ?? { basename: '', error: 'Timed out' },
+                        })
+                    );
+                })().catch(console.error);
             },
             false
         );

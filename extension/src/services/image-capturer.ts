@@ -14,7 +14,7 @@ export default class ImageCapturer {
     private imageBase64Promise: Promise<string> | undefined;
     private imageBase64Resolve: ((value: string) => void) | undefined;
     private imageBase64Reject: ((error: any) => void) | undefined;
-    private lastCaptureTimeoutId?: NodeJS.Timeout;
+    private lastCaptureTimeoutId?: ReturnType<typeof setTimeout>;
 
     private _capturing = false;
     private _lastImageBase64?: string;
@@ -97,32 +97,25 @@ export default class ImageCapturer {
         this.lastCaptureTimeoutId = timeoutId;
     }
 
-    private _cropAndResize(
+    private async _cropAndResize(
         dataUrl: string,
         tabId: number,
         src: string,
         imageCaptureParams: ImageCaptureParams
     ): Promise<string> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const cropScreenshot = await this.settings.getSingle('streamingCropScreenshot');
+        const cropScreenshot = await this.settings.getSingle('streamingCropScreenshot');
 
-                if (!cropScreenshot) {
-                    resolve(dataUrl);
-                    return;
-                }
+        if (!cropScreenshot) {
+            return dataUrl;
+        }
 
-                const cropAndResizeCommand: ExtensionToVideoCommand<CropAndResizeMessage> = {
-                    sender: 'asbplayer-extension-to-video',
-                    message: { command: 'crop-and-resize', dataUrl, ...imageCaptureParams },
-                    src: src,
-                };
+        const cropAndResizeCommand: ExtensionToVideoCommand<CropAndResizeMessage> = {
+            sender: 'asbplayer-extension-to-video',
+            message: { command: 'crop-and-resize', dataUrl, ...imageCaptureParams },
+            src: src,
+        };
 
-                const response = await browser.tabs.sendMessage(tabId, cropAndResizeCommand);
-                resolve(response.dataUrl);
-            } catch (e) {
-                reject(e);
-            }
-        });
+        const response = await browser.tabs.sendMessage(tabId, cropAndResizeCommand);
+        return response.dataUrl;
     }
 }

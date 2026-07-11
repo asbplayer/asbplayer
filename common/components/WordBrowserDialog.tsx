@@ -55,7 +55,7 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, normalizeForSearch } from '@project/common/util';
+import { getTokenStatus, normalizedLookupTerms } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import Box from '@mui/material/Box';
 
@@ -165,27 +165,6 @@ interface CyclingFilterListProps<T extends FilterModeValue> {
     renderMenuItemLabel: (value: T) => React.ReactNode;
 }
 
-function normalizeSearchText(text: string) {
-    return text.normalize('NFKC').trim().toLocaleLowerCase();
-}
-
-function normalizedLookupTerms(...texts: Array<string | null | undefined>) {
-    return Array.from(
-        new Set(
-            texts
-                .flatMap((text) => {
-                    if (!text) return [];
-                    const normalized = normalizeForSearch(text);
-                    if (!normalized.length || normalized === text) return [text];
-                    return [text, normalized];
-                })
-                .filter((text) => Boolean(text))
-                .map(normalizeSearchText)
-                .filter((text) => text.length)
-        )
-    );
-}
-
 function matchesSearchTerm(searchTerms: string[], term: string) {
     return searchTerms.some((searchTerm) => searchTerm.includes(term));
 }
@@ -225,7 +204,7 @@ function cycleViewCriteriaFilter<K extends FilterCriteriaKey>(
     return {
         ...criteria,
         [key]: cycleFilterMode(criteria[key] as FilterMap<FilterCriteriaValue<K>>, value),
-    } as ViewCriteria;
+    };
 }
 
 function tokenKeyToString(key: DictionaryTokenKey) {
@@ -256,7 +235,7 @@ function dedupedTrackErrors(errors: TrackError[]) {
 function filterableTokenStatuses() {
     const statuses: TokenStatus[] = [];
     for (let status = getFullyKnownTokenStatus(); status >= TokenStatus.UNCOLLECTED; --status) {
-        statuses.push(status as TokenStatus);
+        statuses.push(status);
     }
     return statuses;
 }
@@ -690,9 +669,7 @@ const BulkUpdateDialog: React.FC<{
                             value={bulkStatus}
                             label={t('settings.dictionaryBrowser.bulkStatus')}
                             onChange={(event) =>
-                                setBulkStatus(
-                                    event.target.value === '' ? '' : (Number(event.target.value) as TokenStatus)
-                                )
+                                setBulkStatus(event.target.value === '' ? '' : Number(event.target.value))
                             }
                         >
                             <MenuItem value="">
@@ -762,9 +739,7 @@ const BulkUpdateDialog: React.FC<{
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setConfirmApplyOpen(false)}>{t('action.cancel')}</Button>
-                    <Button onClick={() => void handleApplyToSelected()}>
-                        {t('settings.dictionaryBrowser.applyToSelected')}
-                    </Button>
+                    <Button onClick={handleApplyToSelected}>{t('settings.dictionaryBrowser.applyToSelected')}</Button>
                 </DialogActions>
             </Dialog>
 
@@ -778,7 +753,7 @@ const BulkUpdateDialog: React.FC<{
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setConfirmDeleteOpen(false)}>{t('action.cancel')}</Button>
-                    <Button color="error" onClick={() => void handleDeleteSelected()}>
+                    <Button color="error" onClick={handleDeleteSelected}>
                         {t('action.delete')}
                     </Button>
                 </DialogActions>
@@ -884,8 +859,9 @@ export default function WordBrowserDialog({
                 if (requestId !== loadRequestIdRef.current) return;
                 setLoadError(errorMessage(error));
             } finally {
-                if (requestId !== loadRequestIdRef.current) return;
-                setLoading(false);
+                if (requestId === loadRequestIdRef.current) {
+                    setLoading(false);
+                }
             }
         },
         [dictionaryProvider, activeProfile]
@@ -2072,7 +2048,7 @@ export default function WordBrowserDialog({
                     )}
                     <Button
                         startIcon={<RefreshIcon />}
-                        onClick={() => void loadRecords(draftViewCriteria)}
+                        onClick={() => loadRecords(draftViewCriteria)}
                         loading={loading}
                         disabled={mutating}
                     >

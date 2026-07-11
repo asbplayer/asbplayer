@@ -14,11 +14,12 @@ import {
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
     DictionaryTrack,
+    isAnkiSource,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
 import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
-import { Yomitan } from '@project/common/yomitan/yomitan';
+import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
 import {
     _DictionaryDatabase,
@@ -132,7 +133,7 @@ export async function buildAnkiCachePipeline(
             }
             activeTracks.push(key);
 
-            if (!dictionaryStatusCollectionEnabled(dt)) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
+            if (!dictionaryStatusCollectionEnabled(dt, { includeStates: false })) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
             if (!dt.dictionaryAnkiWordFields.length && !dt.dictionaryAnkiSentenceFields.length) {
                 tracksToClear.push(track); // Explicitly clear tracks with no Anki fields
                 continue;
@@ -312,10 +313,6 @@ async function _getAnkiCardsByNoteIdBulk(
             }
             return cardRecordsByNoteId;
         });
-}
-
-function isAnkiSource(source: DictionaryTokenSource): boolean {
-    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.ANKI_SENTENCE;
 }
 
 /**
@@ -829,7 +826,9 @@ async function _buildTokensForTracks(
                             const tokenCardsMap = sourceTokensMap.get(source)!;
                             const field = card.fields.get(ankiField);
                             if (!field) continue;
-                            for (const tokenParts of await ts.yomitan.tokenize(field)) {
+                            const tokenizeRes = await ts.yomitan.tokenize(field);
+                            ts.yomitan.verifyTokenizeResult(field, tokenizeRes);
+                            for (const tokenParts of tokenizeRes) {
                                 const trimmedToken = tokenParts
                                     .map((p) => p.text)
                                     .join('')

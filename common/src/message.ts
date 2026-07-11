@@ -14,6 +14,7 @@ import type { DictionaryStatisticsSnapshot } from '../dictionary-statistics';
 import {
     RectModel,
     SubtitleModel,
+    SubtitleTrack,
     AudioTrackModel,
     AnkiUiSavedState,
     ConfirmedVideoDataSubtitleTrack,
@@ -26,9 +27,8 @@ import {
     CopyHistoryItem,
     AnkiDialogSettings,
     AnkiExportMode,
-    RichSubtitleModel,
     BrowserFeatures,
-    Tokenization,
+    IndexedSubtitleModel,
 } from './model';
 import { AsbPlayerToVideoCommandV2 } from './command';
 import {
@@ -53,6 +53,7 @@ export interface AsbplayerInstance {
     timestamp: number;
     videoPlayer: boolean;
     loadedSubtitles: boolean;
+    subtitleTracks?: SubtitleTrack[];
     syncedVideoElement?: VideoTabModel;
 }
 
@@ -64,6 +65,7 @@ export interface AsbplayerHeartbeatMessage extends Message {
     readonly sidePanel?: boolean;
     readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
     readonly syncedVideoElement?: VideoTabModel;
 }
 
@@ -75,6 +77,7 @@ export interface AckTabsMessage extends Message {
     readonly sidePanel?: boolean;
     readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
     readonly syncedVideoElement?: VideoTabModel;
 }
 
@@ -91,6 +94,7 @@ export interface VideoHeartbeatMessage extends Message {
     readonly synced: boolean;
     readonly syncedTimestamp?: number;
     readonly loadedSubtitles: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
 }
 
 export interface VideoDisappearedMessage extends Message {
@@ -248,6 +252,10 @@ export interface ScreenshotTakenMessage extends Message {
 export interface ShowAnkiUiMessage extends Message, CardModel {
     readonly command: 'show-anki-ui';
     readonly id: string;
+}
+
+export interface ShowCardSelectUiMessage extends Message, CardModel {
+    readonly command: 'show-card-select-ui';
 }
 
 export interface RecordingStartedMessage extends Message {
@@ -410,7 +418,7 @@ export interface SubtitlesToVideoMessage extends Message {
 
 export interface SubtitlesUpdatedToVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly subtitles: RichSubtitleModel[];
+    readonly subtitles: IndexedSubtitleModel[];
 }
 
 export interface RequestCurrentSubtitleMessage extends Message {
@@ -423,11 +431,20 @@ export interface RequestSubtitlesMessage extends Message {
 
 export interface SubtitlesUpdatedFromVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly updatedSubtitles: RichSubtitleModel[];
+    readonly updatedSubtitles: IndexedSubtitleModel[];
 }
 
 export interface RequestSubtitlesFromAppMessage extends MessageWithId {
     readonly command: 'request-subtitles';
+}
+
+export interface RequestLocalSubtitlesMessage extends MessageWithId {
+    readonly command: 'request-local-subtitles';
+}
+
+export interface LocalSubtitlesResponseMessage extends MessageWithId {
+    readonly command: 'local-subtitles-response';
+    readonly response: RequestSubtitlesResponse;
 }
 
 export interface SubtitleSettingsToVideoMessage extends Message {
@@ -742,7 +759,7 @@ export interface AckMessage extends MessageWithId {
 }
 
 export interface RequestSubtitlesResponse {
-    subtitles: RichSubtitleModel[];
+    subtitles: IndexedSubtitleModel[];
     subtitleFileNames: string[];
 }
 

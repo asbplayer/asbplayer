@@ -27,7 +27,7 @@ export default class ToggleSidePanelHandler {
      * If a location is not specified, toggles the side panel open or closed.
      * Otherwise, sets the app-requested location state, which will update the side panel's location.
      */
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const toggleSidePanelMessage = command.message as ToggleSidePanelMessage;
 
         // Currently we do not support the extension specifying a location inside the side panel.
@@ -37,7 +37,7 @@ export default class ToggleSidePanelHandler {
 
         let sidePanelOpen = false;
 
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => {
                 if (asbplayer.sidePanel) {
                     sidePanelOpen = true;
@@ -63,12 +63,10 @@ export default class ToggleSidePanelHandler {
             // Open the side panel at the app-requested location
             void setAppRequestedLocation(appRequestedLocation!);
             if (!isFirefoxBuild) {
-                browser.windows
-                    // @ts-ignore
-                    .getLastFocused((w) => {
-                        const windowId = w.id;
-                        browser.sidePanel.open({ windowId: windowId! });
-                    });
+                browser.windows.getLastFocused((w) => {
+                    const windowId = w.id;
+                    void browser.sidePanel.open({ windowId: windowId! });
+                });
             }
         }
 

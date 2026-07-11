@@ -34,7 +34,8 @@
         "revert": "还原",
         "userGuide": "用户指南",
         "search": "Search",
-        "reload": "Reload"
+        "reload": "Reload",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "关于 asbplayer",
@@ -49,6 +50,7 @@
         "none": "无",
         "showAnkiDialog": "显示 Anki 对话框",
         "updateLastCard": "更新上一张卡片",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "导出卡片"
     },
     "postMinePlayback": {
@@ -91,12 +93,17 @@
         "tagList": "标签（以逗号分隔）",
         "title": "导出至 Anki",
         "updateLastCard": "更新上一张导出的卡片",
+        "updateSelectedCards": "Update selected cards ({{count}})",
         "url": "链接",
         "word": "单词",
         "zoomIn": "缩小",
         "zoomOut": "放大",
         "imagePreview": "预览与编辑",
         "quickSelectFtue": "按 {{shortcut}} 执行最近一次操作。"
+    },
+    "cardSelectUi": {
+        "title": "Select cards to update",
+        "noResults": "No cards found."
     },
     "bar": {
         "donate": "赞助作者",
@@ -204,7 +211,6 @@
         "unknownExtension": "无法识别 {{fileName}} 的文件格式",
         "unsupportedExtension": "不支持该文件格式：{{extension}}",
         "videoPlayerDragAndDropNotAllowed": "播放器无法接收拖放文件，请拖至视频画面外。",
-        "restoreSessionPermissionDenied": "权限被拒绝，无法恢复上次会话。",
         "restoreSessionFailed": "恢复上次会话失败，文件可能已被移动或删除。"
     },
     "extension": {
@@ -356,6 +362,7 @@
         "alwaysPlayOnSubtitleRepeat": "触发单句复读后自动继续播放",
         "anki": "Anki 设置",
         "ankiConnectUrl": "AnkiConnect 链接",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "音频字段",
         "audioPaddingEnd": "音频结尾留白",
         "audioPaddingStart": "音频开头留白",
@@ -488,6 +495,7 @@
         "dictionaryLocalWordDatabase": "本地生词本",
         "dictionaryAnkiWordDatabase": "Anki 词汇库",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "根据词汇掌握度着色",
         "dictionaryAutoGenerateStatistics": "自动生成数据统计",
         "dictionaryColorizeOnHoverOnly": "仅在鼠标悬停时显示颜色",
@@ -517,6 +525,8 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "仅对“未知”及以下显示",
         "dictionaryTokenReadingAnnotationNever": "从不显示",
         "dictionaryDisplayIgnoredTokenReadings": "显示被忽略词汇的读音",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "下方词频显示",
         "dictionaryTokenFrequencyAnnotationAlways": "始终显示",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "仅对未收集词汇显示",
@@ -532,6 +542,7 @@
         "dictionaryAnkiTreatSuspendedNormal": "正常处理",
         "dictionaryWaniKaniSection": "WaniKani",
         "dictionaryWaniKaniApiToken": "WaniKani API token",
+        "dictionaryWaniKaniApiTokenHelperText": "Instructions to get an API token are <0>here</0>.",
         "dictionaryTokenStyling": "词汇高亮样式",
         "dictionaryTokenStylingText": "文本颜色",
         "dictionaryTokenStylingBackground": "背景高亮",
@@ -540,6 +551,15 @@
         "dictionaryTokenStylingOutline": "外围描边",
         "dictionaryTokenStylingOutlineHelperText": "为获最佳效果，建议将“字幕外观”中的“字幕描边粗细”设为 0。",
         "dictionaryTokenStylingThickness": "线条粗细",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "为完全掌握的词汇着色",
         "dictionaryTokenStatus5": "熟练",
         "dictionaryTokenStatusReading5": "读音区",
@@ -554,6 +574,7 @@
         "dictionaryTokenStatus0": "未收集",
         "dictionaryTokenStatusReading0": "读音区",
         "dictionaryTokenStateIgnored": "已忽略",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "正在查询 Anki 更新卡片状态",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "透明度",
@@ -710,8 +731,12 @@
         "jimakuApiKey": "Jimaku API key",
         "jimakuApiKeyAutosaveHint": "Saved automatically. Get an API key <0>here</0>.",
         "entries": "Search results",
+        "recentEntries": "最近",
         "noEntries": "No search results",
         "availableFiles": "Files",
-        "noFiles": "No files"
+        "noFiles": "No files",
+        "searchCategory": "搜索类别",
+        "categoryAnime": "动画",
+        "categoryDrama": "剧集"
     }
 }

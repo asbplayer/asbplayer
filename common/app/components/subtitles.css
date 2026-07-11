@@ -17,9 +17,59 @@
 }
 
 .asb-reading rt {
-    font-size: 0.5em !important;
+    font-size: var(--asb-reading-size) !important;
     line-height: 1 !important;
     display: revert !important; /* Safari doesn't support 'ruby-text' */
+}
+
+.asb-pitch-accent {
+    --asb-pitch-accent-lift: var(--asb-pitch-accent-size); /* Extra space to clear diacritics */
+    display: inline-block;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.asb-pitch-accent-mora {
+    display: inline-block;
+    position: relative;
+    padding: 0 0.12ch;
+    line-height: 1;
+}
+
+.asb-pitch-accent-mora::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--asb-pitch-accent-size);
+    background: var(--asb-pitch-accent-color);
+    pointer-events: none;
+}
+
+.asb-pitch-accent-mora-high::after {
+    top: calc(-1 * var(--asb-pitch-accent-lift));
+}
+
+.asb-pitch-accent-mora-low::after {
+    bottom: 0;
+}
+
+.asb-pitch-accent-line {
+    display: inline-block;
+    width: var(--asb-pitch-accent-size);
+    height: calc(1em + var(--asb-pitch-accent-lift));
+    margin: 0 calc(var(--asb-pitch-accent-size) / -2);
+    position: relative;
+    vertical-align: bottom;
+    line-height: 0;
+}
+
+.asb-pitch-accent-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--asb-pitch-accent-color);
+    pointer-events: none;
 }
 
 .asb-frequency {
@@ -27,22 +77,8 @@
 }
 
 .asb-frequency rt {
-    font-size: 0.3em; /* This is overridden for SubtitlePlayer as it's too small */
+    font-size: var(--asb-frequency-size);
     line-height: 1;
-}
-
-.asb-frequency-hover {
-    ruby-position: under;
-}
-
-.asb-frequency-hover rt {
-    font-size: 0.3em; /* This is overridden for SubtitlePlayer as it's too small */
-    line-height: 1;
-    display: none;
-}
-
-.asb-frequency-hover:hover rt {
-    display: revert; /* Safari doesn't support 'ruby-text' */
 }
 
 .asbplayer-subtitles-blurred {
@@ -57,11 +93,11 @@
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-text {
+.asb-subtitles:hover .asbplayer-subtitle-text {
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-rich {
+.asb-subtitles:hover .asbplayer-subtitle-rich {
     display: inline;
 }
 

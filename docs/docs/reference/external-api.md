@@ -103,12 +103,101 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
 }
 ```
 
+### `get-bound-media`
+
+> This command is only available when extension v1.20.0+ (unreleased) is installed
+
+Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
+
+#### Request
+
+```javascript
+{
+    "command": "get-bound-media",
+    // Message ID to correlate with asbplayer's response
+    "messageId": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
+    "body": {}
+}
+```
+
+#### Response
+
+```javascript
+{
+    "command": "response",
+    // Same message ID received in request
+    "messageId": "9f1c2b3a-4d5e-6f70-8190-a1b2c3d4e5f6",
+    "body": {
+        "media": [{
+            // Identifier for the media
+            "id": "a1b2c3d4e5f6",
+            // Type of media: "streaming" or "local"
+            "type": "streaming",
+            // Display title for the media, if available
+            "title": "Title of the Video",
+            // Favicon of the tab containing the media, if available
+            "faviconUrl": "https://example.com/favicon.ico",
+            // Subtitle tracks currently loaded for this media. Empty if none are loaded.
+            "loadedSubtitles": [{
+                // Track number
+                "trackNumber": 0,
+                // File name of the subtitle track
+                "fileName": "subtitles.srt"
+            }],
+            // Whether the media's tab is the active tab of its window
+            "active": true
+        }]
+    }
+}
+```
+
+### `get-subtitles`
+
+> This command is only available when extension v1.20.0+ (unreleased) is installed
+
+Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's video element; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
+Returns an empty list when no matching media is found or no subtitles are loaded.
+
+#### Request
+
+```javascript
+{
+    "command": "get-subtitles",
+    // Message ID to correlate with asbplayer's response
+    "messageId": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
+    "body": {
+        // Optional media id from `get-bound-media`. Defaults to the active tab when omitted.
+        "mediaId": "a1b2c3d4e5f6",
+        // Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.
+        "trackNumbers": [0]
+    }
+}
+```
+
+#### Response
+
+```javascript
+{
+    "command": "response",
+    // Same message ID received in request
+    "messageId": "2d7e8a1b-9c4f-4e3a-8b6d-1f0c5a2e9d7b",
+    "body": {
+        // Loaded subtitles. `start`/`end` are in milliseconds; `track` is the loaded track number.
+        "subtitles": [
+            { "text": "Hello", "start": 1000, "end": 2000, "track": 0 }
+        ]
+    }
+}
+```
+
 ## HTTP-based API
 
 The WebSocket server also implements an HTTP-based API which can trigger the commands above.
 
 - `POST asbplayer/load-subtitles` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
 - `POST asbplayer/seek` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
+- `GET asbplayer/bound-media` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/bound-media))
+- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))
 
 ## AnkiConnect proxy
 

@@ -35,7 +35,7 @@ export class LocalSettingsStorage implements AppSettingsStorage {
             if (value === null) {
                 settings[originalKey] = defaultValue;
             } else {
-                settings[originalKey] = settingsDeserializers[originalKey as keyof AsbplayerSettings]!(value);
+                settings[originalKey] = settingsDeserializers[originalKey as keyof AsbplayerSettings](value);
             }
         }
 
@@ -55,7 +55,7 @@ export class LocalSettingsStorage implements AppSettingsStorage {
             const value = cachedLocalStorage.get(actualKey);
 
             if (value !== null) {
-                settings[key] = settingsDeserializers[key as keyof AsbplayerSettings]!(value);
+                settings[key] = settingsDeserializers[key](value);
             }
         }
 

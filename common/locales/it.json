@@ -34,7 +34,8 @@
         "revert": "Ripristina",
         "userGuide": "Guida Utente",
         "search": "Cerca",
-        "reload": "Ricarica"
+        "reload": "Ricarica",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "A proposito di asbplayer",
@@ -49,6 +50,7 @@
         "none": "Nessuno",
         "showAnkiDialog": "Mostra Dialogo Anki",
         "updateLastCard": "Aggiorna l'ultima carta",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Esporta carta"
     },
     "postMinePlayback": {
@@ -91,12 +93,17 @@
         "tagList": "Elenco di stringhe separate da virgola",
         "title": "Esportazione Anki",
         "updateLastCard": "Aggiorna Ultima Carta",
+        "updateSelectedCards": "Update selected cards ({{count}})",
         "url": "URL",
         "word": "Parola",
         "zoomIn": "Zoom +",
         "zoomOut": "Zoom -",
         "imagePreview": "Anteprima/modifica",
         "quickSelectFtue": "{{shortcut}} seleziona/esegue l'ultima azione usata."
+    },
+    "cardSelectUi": {
+        "title": "Select cards to update",
+        "noResults": "No cards found."
     },
     "bar": {
         "donate": "Dona",
@@ -204,7 +211,6 @@
         "unknownExtension": "Impossibile determinare l'estensione di {{fileName}}",
         "unsupportedExtension": "Estensione non supportata: {{extension}}",
         "videoPlayerDragAndDropNotAllowed": "Il lettore video non può ricevere file trascinati. Trascina al di fuori del riquadro video.",
-        "restoreSessionPermissionDenied": "Permission denied. Unable to restore last session.",
         "restoreSessionFailed": "Failed to restore last session. The files may have been moved or deleted."
     },
     "extension": {
@@ -356,6 +362,7 @@
         "alwaysPlayOnSubtitleRepeat": "Riproduci sempre (togli pausa) dopo aver usato la scorciatoia precedente",
         "anki": "Anki",
         "ankiConnectUrl": "URL di Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Campo audio",
         "audioPaddingEnd": "Padding audio finale",
         "audioPaddingStart": "Padding audio iniziale",
@@ -488,6 +495,7 @@
         "dictionaryLocalWordDatabase": "Database parole locale",
         "dictionaryAnkiWordDatabase": "Database parole Anki",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "Colora i sottotitoli in base alle parole conosciute",
         "dictionaryAutoGenerateStatistics": "Genera statistiche automaticamente",
         "dictionaryColorizeOnHoverOnly": "Mostra annotazioni solo al passaggio del mouse",
@@ -517,6 +525,8 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "Sconosciuto o inferiore",
         "dictionaryTokenReadingAnnotationNever": "Mai",
         "dictionaryDisplayIgnoredTokenReadings": "Mostra letture per le parole ignorate",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "Mostra frequenza delle parole",
         "dictionaryTokenFrequencyAnnotationAlways": "Sempre",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "Solo non raccolte",
@@ -532,6 +542,7 @@
         "dictionaryAnkiTreatSuspendedNormal": "Normale",
         "dictionaryWaniKaniSection": "WaniKani",
         "dictionaryWaniKaniApiToken": "WaniKani API token",
+        "dictionaryWaniKaniApiTokenHelperText": "Instructions to get an API token are <0>here</0>.",
         "dictionaryTokenStyling": "Stile colore parole",
         "dictionaryTokenStylingText": "Testo",
         "dictionaryTokenStylingBackground": "Sfondo",
@@ -540,6 +551,15 @@
         "dictionaryTokenStylingOutline": "Contorno",
         "dictionaryTokenStylingOutlineHelperText": "Potrebbe essere necessario impostare lo Spessore contorno sottotitoli in Aspetto sottotitoli a 0 per i migliori risultati.",
         "dictionaryTokenStylingThickness": "Spessore",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "Colora le parole completamente conosciute",
         "dictionaryTokenStatus5": "Maturo",
         "dictionaryTokenStatusReading5": "Lettura",
@@ -554,6 +574,7 @@
         "dictionaryTokenStatus0": "Non raccolto",
         "dictionaryTokenStatusReading0": "Lettura",
         "dictionaryTokenStateIgnored": "Ignorato",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "Interrogazione di Anki per le carte modificate",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",
@@ -710,8 +731,12 @@
         "jimakuApiKey": "Chiave API Jimaku",
         "jimakuApiKeyAutosaveHint": "Salvata automaticamente. Ottieni una chiave API <0>qui</0>.",
         "entries": "Risultati della ricerca",
+        "recentEntries": "Recent",
         "noEntries": "Nessun risultato",
         "availableFiles": "File",
-        "noFiles": "Nessun file"
+        "noFiles": "Nessun file",
+        "searchCategory": "Search category",
+        "categoryAnime": "Anime",
+        "categoryDrama": "Drama"
     }
 }

@@ -36,7 +36,7 @@ export const fetchSupportedLanguages = async (): Promise<string[]> => {
 
 export const primeLocalization = async (lang: string): Promise<void> => {
     try {
-        let config = await fetchExtensionConfig();
+        const config = await fetchExtensionConfig();
 
         if (config === undefined) {
             return;

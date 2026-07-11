@@ -66,7 +66,10 @@ export default class SyncHandler {
             };
 
             if (asbplayerId !== undefined) {
-                this.tabRegistry.publishCommandToAsbplayers({ asbplayerId, commandFactory: () => playerSyncCommand });
+                void this.tabRegistry.publishCommandToAsbplayers({
+                    asbplayerId,
+                    commandFactory: () => playerSyncCommand,
+                });
             }
         } catch (error) {
             console.error(error);

@@ -1,12 +1,11 @@
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type CreateCSSProperties, makeStyles } from '@mui/styles';
-import { useTheme } from '@mui/material/styles';
+import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import { type Theme } from '@mui/material';
 import { CardModel } from '@project/common';
 import { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
-import { isNumeric } from '@project/common/util';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -210,9 +209,6 @@ interface Props {
     onUnlockLocalFonts: () => void;
 }
 
-// Filter out keys that look like '0', '1', ... as those are invalid
-const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
-
 export default function SettingsForm({
     anki,
     dictionaryProvider,
@@ -265,6 +261,24 @@ export default function SettingsForm({
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const theme = useTheme();
+    const settingsTheme = useMemo(
+        () =>
+            createTheme(theme, {
+                components: {
+                    MuiFormHelperText: {
+                        styleOverrides: {
+                            root: {
+                                marginLeft: 0,
+                            },
+                            contained: {
+                                marginLeft: 0,
+                            },
+                        },
+                    },
+                },
+            }),
+        [theme]
+    );
     const smallScreen = useMediaQuery(theme.breakpoints.down(500)) && !forceVerticalTabs;
     const classes = useStyles({ smallScreen, heightConstrained });
     const handleSettingChanged = useCallback(
@@ -378,177 +392,188 @@ export default function SettingsForm({
     const [annotationTutorialPosition, setAnnotationTutorialPosition] = useState<AnnotationTutorialPosition>();
 
     return (
-        <div ref={handleRootRef} className={classes.root}>
-            {annotationTutorialPosition && (
-                <TutorialBubble
-                    show={inAnnotationTutorial}
-                    placement={annotationTutorialPosition.placement}
-                    text={t('settings.ftueAnnotation')}
-                    onConfirm={handleAnnotationTutorialSeen}
+        <ThemeProvider theme={settingsTheme}>
+            <div ref={handleRootRef} className={classes.root}>
+                {annotationTutorialPosition && (
+                    <TutorialBubble
+                        show={inAnnotationTutorial}
+                        placement={annotationTutorialPosition.placement}
+                        text={t('settings.ftueAnnotation')}
+                        onConfirm={handleAnnotationTutorialSeen}
+                    >
+                        <div
+                            style={{
+                                position: 'absolute',
+                                left: annotationTutorialPosition.left,
+                                top: annotationTutorialPosition.top,
+                            }}
+                        />
+                    </TutorialBubble>
+                )}
+                <Tabs
+                    orientation={tabsOrientation}
+                    variant="scrollable"
+                    value={tabIndex}
+                    className={classes.tabs}
+                    scrollButtons={false}
+                    onChange={(event, index) => {
+                        setTabIndex(index);
+                        if (supportsDictionary && inAnnotationTutorial && index === 4) {
+                            onAnnotationTutorialSeen?.();
+                        }
+                    }}
+                    sx={{
+                        maxWidth: '100vw',
+                        marginLeft: smallScreen ? 'auto' : 0,
+                        marginRight: smallScreen ? 'auto' : 0,
+                    }}
                 >
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left: annotationTutorialPosition.left,
-                            top: annotationTutorialPosition.top,
+                    <Tab tabIndex={0} label={t('settings.anki')} id="anki-settings" />
+                    <Tab tabIndex={1} label={t('settings.mining')} id="mining-settings" />
+                    <Tab tabIndex={2} label={t('settings.subtitleAppearance')} id="subtitle-appearance" />
+                    <Tab tabIndex={3} label={t('settings.keyboardShortcuts')} id="keyboard-shortcuts" />
+                    {supportsDictionary && (
+                        <Tab
+                            ref={handleAnnotationTabRef}
+                            tabIndex={4}
+                            label={t('settings.annotation')}
+                            id="annotation"
+                        />
+                    )}
+                    {extensionSupportsAppIntegration && (
+                        <Tab
+                            tabIndex={4 + Number(supportsDictionary)}
+                            label={t('settings.streamingVideo')}
+                            id="streaming-video"
+                        />
+                    )}
+                    <Tab
+                        tabIndex={4 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
+                        label={t('settings.misc')}
+                        id="misc-settings"
+                    />
+                    <Tab
+                        tabIndex={5 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
+                        label={t('about.title')}
+                        id="about"
+                    />
+                </Tabs>
+                <TabPanel
+                    ref={ankiPanelRef}
+                    value={tabIndex}
+                    index={tabIndicesById['anki-settings']}
+                    tabsOrientation={tabsOrientation}
+                >
+                    <AnkiSettingsTab
+                        settings={settings}
+                        extensionInstalled={extensionInstalled}
+                        extensionSupportsOrderableAnkiFields={extensionSupportsOrderableAnkiFields}
+                        isMobile={isMobile}
+                        insideApp={insideApp}
+                        inTutorial={inTutorial}
+                        onSettingChanged={handleSettingChanged}
+                        onSettingsChanged={onSettingsChanged}
+                        tutorialStep={tutorialStep}
+                        onTutorialStepChanged={setTutorialStep}
+                        anki={anki}
+                        testCard={testCard}
+                    />
+                </TabPanel>
+                <TabPanel value={tabIndex} index={tabIndicesById['mining-settings']} tabsOrientation={tabsOrientation}>
+                    <MiningSettingsTab
+                        settings={settings}
+                        onSettingChanged={handleSettingChanged}
+                        showWebmMediaFragmentSettings={Boolean(insideApp)}
+                    />
+                </TabPanel>
+                <TabPanel value={tabIndex} index={tabIndicesById['annotation']} tabsOrientation={tabsOrientation}>
+                    <DictionarySettingsTab
+                        anki={anki}
+                        dictionaryProvider={dictionaryProvider}
+                        settings={settings}
+                        profiles={profiles}
+                        activeProfile={activeProfile}
+                        extensionInstalled={extensionInstalled}
+                        supportsDictionaryBrowser={supportsDictionaryBrowser}
+                        supportsDictionaryWaniKani={supportsDictionaryWaniKani}
+                        supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
+                        supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
+                        supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
+                        onSettingChanged={handleSettingChanged}
+                        onViewKeyboardShortcuts={() => {
+                            setTabIndex(tabIndicesById['keyboard-shortcuts']);
+                            setTimeout(
+                                () => keyboardShortcutsPanelRef.current?.scrollBy({ top: 10000, behavior: 'smooth' }),
+                                0
+                            );
                         }}
                     />
-                </TutorialBubble>
-            )}
-            <Tabs
-                orientation={tabsOrientation}
-                variant="scrollable"
-                value={tabIndex}
-                className={classes.tabs}
-                scrollButtons={false}
-                onChange={(event, index) => {
-                    setTabIndex(index);
-                    if (supportsDictionary && inAnnotationTutorial && index === 4) {
-                        onAnnotationTutorialSeen?.();
-                    }
-                }}
-                sx={{
-                    maxWidth: '100vw',
-                    marginLeft: smallScreen ? 'auto' : 0,
-                    marginRight: smallScreen ? 'auto' : 0,
-                }}
-            >
-                <Tab tabIndex={0} label={t('settings.anki')} id="anki-settings" />
-                <Tab tabIndex={1} label={t('settings.mining')} id="mining-settings" />
-                <Tab tabIndex={2} label={t('settings.subtitleAppearance')} id="subtitle-appearance" />
-                <Tab tabIndex={3} label={t('settings.keyboardShortcuts')} id="keyboard-shortcuts" />
-                {supportsDictionary && (
-                    <Tab ref={handleAnnotationTabRef} tabIndex={4} label={t('settings.annotation')} id="annotation" />
-                )}
-                {extensionSupportsAppIntegration && (
-                    <Tab
-                        tabIndex={4 + Number(supportsDictionary)}
-                        label={t('settings.streamingVideo')}
-                        id="streaming-video"
+                </TabPanel>
+                <TabPanel
+                    value={tabIndex}
+                    index={tabIndicesById['subtitle-appearance']}
+                    tabsOrientation={tabsOrientation}
+                >
+                    <SubtitleAppearanceSettingsTab
+                        settings={settings}
+                        onSettingChanged={handleSettingChanged}
+                        onSettingsChanged={onSettingsChanged}
+                        extensionInstalled={extensionInstalled}
+                        extensionSupportsTrackSpecificSettings={extensionSupportsTrackSpecificSettings}
+                        extensionSupportsSubtitlesWidthSetting={extensionSupportsSubtitlesWidthSetting}
+                        localFontsAvailable={localFontsAvailable}
+                        localFontsPermission={localFontsPermission}
+                        localFontFamilies={localFontFamilies}
+                        onUnlockLocalFonts={onUnlockLocalFonts}
                     />
-                )}
-                <Tab
-                    tabIndex={4 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
-                    label={t('settings.misc')}
-                    id="misc-settings"
-                />
-                <Tab
-                    tabIndex={5 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
-                    label={t('about.title')}
-                    id="about"
-                />
-            </Tabs>
-            <TabPanel
-                ref={ankiPanelRef}
-                value={tabIndex}
-                index={tabIndicesById['anki-settings']}
-                tabsOrientation={tabsOrientation}
-            >
-                <AnkiSettingsTab
-                    settings={settings}
-                    extensionInstalled={extensionInstalled}
-                    extensionSupportsOrderableAnkiFields={extensionSupportsOrderableAnkiFields}
-                    isMobile={isMobile}
-                    insideApp={insideApp}
-                    inTutorial={inTutorial}
-                    onSettingChanged={handleSettingChanged}
-                    onSettingsChanged={onSettingsChanged}
-                    tutorialStep={tutorialStep}
-                    onTutorialStepChanged={setTutorialStep}
-                    anki={anki}
-                    testCard={testCard}
-                />
-            </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['mining-settings']} tabsOrientation={tabsOrientation}>
-                <MiningSettingsTab
-                    settings={settings}
-                    onSettingChanged={handleSettingChanged}
-                    showWebmMediaFragmentSettings={Boolean(insideApp)}
-                />
-            </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['annotation']} tabsOrientation={tabsOrientation}>
-                <DictionarySettingsTab
-                    anki={anki}
-                    dictionaryProvider={dictionaryProvider}
-                    settings={settings}
-                    profiles={profiles}
-                    activeProfile={activeProfile}
-                    extensionInstalled={extensionInstalled}
-                    supportsDictionaryBrowser={supportsDictionaryBrowser}
-                    supportsDictionaryWaniKani={supportsDictionaryWaniKani}
-                    supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
-                    supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
-                    supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
-                    onSettingChanged={handleSettingChanged}
-                    onViewKeyboardShortcuts={() => {
-                        setTabIndex(tabIndicesById['keyboard-shortcuts']);
-                        setTimeout(
-                            () => keyboardShortcutsPanelRef.current?.scrollBy({ top: 10000, behavior: 'smooth' }),
-                            0
-                        );
-                    }}
-                />
-            </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['subtitle-appearance']} tabsOrientation={tabsOrientation}>
-                <SubtitleAppearanceSettingsTab
-                    settings={settings}
-                    onSettingChanged={handleSettingChanged}
-                    onSettingsChanged={onSettingsChanged}
-                    extensionInstalled={extensionInstalled}
-                    extensionSupportsTrackSpecificSettings={extensionSupportsTrackSpecificSettings}
-                    extensionSupportsSubtitlesWidthSetting={extensionSupportsSubtitlesWidthSetting}
-                    localFontsAvailable={localFontsAvailable}
-                    localFontsPermission={localFontsPermission}
-                    localFontFamilies={localFontFamilies}
-                    onUnlockLocalFonts={onUnlockLocalFonts}
-                />
-            </TabPanel>
-            <TabPanel
-                ref={keyboardShortcutsPanelRef}
-                value={tabIndex}
-                index={tabIndicesById['keyboard-shortcuts']}
-                tabsOrientation={tabsOrientation}
-            >
-                <KeyboardShortcutsSettingsTab
-                    settings={settings}
-                    onSettingChanged={handleSettingChanged}
-                    chromeKeyBinds={chromeKeyBinds}
-                    extensionInstalled={extensionInstalled}
-                    extensionSupportsExportCardBind={extensionSupportsExportCardBind}
-                    extensionSupportsSidePanel={extensionSupportsSidePanel}
-                    onOpenChromeExtensionShortcuts={onOpenChromeExtensionShortcuts}
-                />
-            </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['streaming-video']} tabsOrientation={tabsOrientation}>
-                <StreamingVideoSettingsTab
-                    settings={settings}
-                    onSettingChanged={handleSettingChanged}
-                    onSettingsChanged={onSettingsChanged}
-                    insideApp={insideApp}
-                    extensionSupportsOverlay={extensionSupportsOverlay}
-                    extensionSupportsPageSettings={extensionSupportsPageSettings}
-                    pageConfigs={pageConfigs}
-                />
-            </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['misc-settings']} tabsOrientation={tabsOrientation}>
-                <MiscSettingsTab
-                    settings={settings}
-                    onSettingChanged={handleSettingChanged}
-                    onSettingsChanged={onSettingsChanged}
-                    supportedLanguages={supportedLanguages}
-                    insideApp={insideApp}
-                    extensionInstalled={extensionInstalled}
-                    extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
-                    extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
-                    extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
-                />
-            </TabPanel>
-            <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>
-                <About
-                    appVersion={insideApp ? appVersion : undefined}
-                    extensionVersion={extensionInstalled ? extensionVersion : undefined}
-                />
-            </TabPanel>
-        </div>
+                </TabPanel>
+                <TabPanel
+                    ref={keyboardShortcutsPanelRef}
+                    value={tabIndex}
+                    index={tabIndicesById['keyboard-shortcuts']}
+                    tabsOrientation={tabsOrientation}
+                >
+                    <KeyboardShortcutsSettingsTab
+                        settings={settings}
+                        onSettingChanged={handleSettingChanged}
+                        chromeKeyBinds={chromeKeyBinds}
+                        extensionInstalled={extensionInstalled}
+                        extensionSupportsExportCardBind={extensionSupportsExportCardBind}
+                        extensionSupportsSidePanel={extensionSupportsSidePanel}
+                        onOpenChromeExtensionShortcuts={onOpenChromeExtensionShortcuts}
+                    />
+                </TabPanel>
+                <TabPanel value={tabIndex} index={tabIndicesById['streaming-video']} tabsOrientation={tabsOrientation}>
+                    <StreamingVideoSettingsTab
+                        settings={settings}
+                        onSettingChanged={handleSettingChanged}
+                        onSettingsChanged={onSettingsChanged}
+                        insideApp={insideApp}
+                        extensionSupportsOverlay={extensionSupportsOverlay}
+                        extensionSupportsPageSettings={extensionSupportsPageSettings}
+                        pageConfigs={pageConfigs}
+                    />
+                </TabPanel>
+                <TabPanel value={tabIndex} index={tabIndicesById['misc-settings']} tabsOrientation={tabsOrientation}>
+                    <MiscSettingsTab
+                        settings={settings}
+                        onSettingChanged={handleSettingChanged}
+                        onSettingsChanged={onSettingsChanged}
+                        supportedLanguages={supportedLanguages}
+                        insideApp={insideApp}
+                        extensionInstalled={extensionInstalled}
+                        extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
+                        extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
+                        extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
+                    />
+                </TabPanel>
+                <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>
+                    <About
+                        appVersion={insideApp ? appVersion : undefined}
+                        extensionVersion={extensionInstalled ? extensionVersion : undefined}
+                    />
+                </TabPanel>
+            </div>
+        </ThemeProvider>
     );
 }

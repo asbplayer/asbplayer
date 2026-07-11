@@ -84,6 +84,46 @@ export enum DictionaryTokenSource {
     WANIKANI = 3,
 }
 
+export function dictionaryTokenSourcePriority(source: DictionaryTokenSource): number {
+    switch (source) {
+        case DictionaryTokenSource.LOCAL:
+            return 3;
+        case DictionaryTokenSource.ANKI_WORD:
+        case DictionaryTokenSource.WANIKANI:
+            return 2;
+        case DictionaryTokenSource.ANKI_SENTENCE:
+            return 1;
+        default:
+            throw new Error(`Unsupported DictionaryTokenSource: ${source}`);
+    }
+}
+
+export type AnkiSource = DictionaryTokenSource.ANKI_WORD | DictionaryTokenSource.ANKI_SENTENCE;
+export function isAnkiSource(source: DictionaryTokenSource): source is AnkiSource {
+    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.ANKI_SENTENCE;
+}
+
+export type ExternalWordSource = DictionaryTokenSource.ANKI_WORD | DictionaryTokenSource.WANIKANI;
+export function isExternalWordSource(source: DictionaryTokenSource): source is ExternalWordSource {
+    return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.WANIKANI;
+}
+
+export function externalWordSourcePriority(source: ExternalWordSource): number {
+    switch (source) {
+        case DictionaryTokenSource.ANKI_WORD:
+            return 2;
+        case DictionaryTokenSource.WANIKANI:
+            return 1;
+        default:
+            throw new Error(`Unsupported DictionaryTokenSource: ${source}`);
+    }
+}
+
+export type WordSource = DictionaryTokenSource.LOCAL | ExternalWordSource;
+export function isWordSource(source: DictionaryTokenSource): source is WordSource {
+    return source === DictionaryTokenSource.LOCAL || isExternalWordSource(source);
+}
+
 /*
 These are all the possible scenarios which can result in a match. We don't need to support every possible combination,
 as some are not useful or inconsistent. Inconsistent meaning the order the user collects forms affects what future forms
@@ -179,6 +219,156 @@ export function areTokenStatusConfigsEqual(a: TokenStatusConfig, b: TokenStatusC
     return true;
 }
 
+export interface TokenAnnotationTriggerOptions {
+    reading: boolean;
+    frequency: boolean;
+    pitchAccent: boolean;
+}
+
+export interface TokenAnnotationConfigOptions {
+    onHoverEnabled: boolean;
+    size: number;
+}
+
+export interface TokenAnnotationConfig {
+    color: TokenAnnotationConfigOptions;
+    reading: TokenAnnotationConfigOptions;
+    frequency: TokenAnnotationConfigOptions;
+    pitchAccent: TokenAnnotationConfigOptions;
+}
+
+export type TokenAnnotationStyleValues = Record<string, string>;
+
+export function tokenAnnotationStyleValues(config: TokenAnnotationConfig | undefined): TokenAnnotationStyleValues {
+    return {
+        '--asb-reading-size': `${config?.reading.size ?? 0.5}em`,
+        '--asb-frequency-size': `${config?.frequency.size ?? 0.3}em`,
+        '--asb-pitch-accent-size': `${config?.pitchAccent.size ?? 0.1}em`,
+    };
+}
+
+export interface TokenAnnotationConfigs {
+    colorizeEnabled: boolean;
+    video: TokenAnnotationConfig;
+    subtitlePlayer: TokenAnnotationConfig;
+    onStatuses: TokenAnnotationTriggerOptions[];
+    onStates: TokenAnnotationTriggerOptions[];
+}
+
+export type TokenAnnotationConfigTarget = keyof Pick<TokenAnnotationConfigs, 'video' | 'subtitlePlayer'>;
+
+const tokenAnnotationTriggerOptionsComparators: {
+    [K in keyof TokenAnnotationTriggerOptions]: (
+        a: TokenAnnotationTriggerOptions[K],
+        b: TokenAnnotationTriggerOptions[K]
+    ) => boolean;
+} = {
+    reading: (a, b) => a === b,
+    frequency: (a, b) => a === b,
+    pitchAccent: (a, b) => a === b,
+};
+
+export function compareTokenAnnotationTriggerOptionsField<K extends keyof TokenAnnotationTriggerOptions>(
+    key: K,
+    a: TokenAnnotationTriggerOptions,
+    b: TokenAnnotationTriggerOptions
+): boolean {
+    return tokenAnnotationTriggerOptionsComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationTriggerOptionsEqual(
+    a: TokenAnnotationTriggerOptions,
+    b: TokenAnnotationTriggerOptions
+): boolean {
+    if (a === b) return true;
+    for (const key in tokenAnnotationTriggerOptionsComparators) {
+        if (!compareTokenAnnotationTriggerOptionsField(key as keyof TokenAnnotationTriggerOptions, a, b)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+const tokenAnnotationConfigOptionsComparators: {
+    [K in keyof TokenAnnotationConfigOptions]: (
+        a: TokenAnnotationConfigOptions[K],
+        b: TokenAnnotationConfigOptions[K]
+    ) => boolean;
+} = {
+    onHoverEnabled: (a, b) => a === b,
+    size: (a, b) => a === b,
+};
+
+export function compareTokenAnnotationConfigOptionsField<K extends keyof TokenAnnotationConfigOptions>(
+    key: K,
+    a: TokenAnnotationConfigOptions,
+    b: TokenAnnotationConfigOptions
+): boolean {
+    return tokenAnnotationConfigOptionsComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationConfigOptionsEqual(
+    a: TokenAnnotationConfigOptions,
+    b: TokenAnnotationConfigOptions
+): boolean {
+    if (a === b) return true;
+    for (const key in tokenAnnotationConfigOptionsComparators) {
+        if (!compareTokenAnnotationConfigOptionsField(key as keyof TokenAnnotationConfigOptions, a, b)) return false;
+    }
+    return true;
+}
+
+const tokenAnnotationConfigComparators: {
+    [K in keyof TokenAnnotationConfig]: (a: TokenAnnotationConfig[K], b: TokenAnnotationConfig[K]) => boolean;
+} = {
+    color: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    reading: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    frequency: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    pitchAccent: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+};
+
+export function compareTokenAnnotationConfigField<K extends keyof TokenAnnotationConfig>(
+    key: K,
+    a: TokenAnnotationConfig,
+    b: TokenAnnotationConfig
+): boolean {
+    return tokenAnnotationConfigComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationConfigEqual(a: TokenAnnotationConfig, b: TokenAnnotationConfig): boolean {
+    if (a === b) return true;
+    for (const key in tokenAnnotationConfigComparators) {
+        if (!compareTokenAnnotationConfigField(key as keyof TokenAnnotationConfig, a, b)) return false;
+    }
+    return true;
+}
+
+const tokenAnnotationConfigsComparators: {
+    [K in keyof TokenAnnotationConfigs]: (a: TokenAnnotationConfigs[K], b: TokenAnnotationConfigs[K]) => boolean;
+} = {
+    colorizeEnabled: (a, b) => a === b,
+    video: (a, b) => areTokenAnnotationConfigEqual(a, b),
+    subtitlePlayer: (a, b) => areTokenAnnotationConfigEqual(a, b),
+    onStatuses: (a, b) => arrayEquals(a, b, areTokenAnnotationTriggerOptionsEqual),
+    onStates: (a, b) => arrayEquals(a, b, areTokenAnnotationTriggerOptionsEqual),
+};
+
+export function compareTokenAnnotationConfigsField<K extends keyof TokenAnnotationConfigs>(
+    key: K,
+    a: TokenAnnotationConfigs,
+    b: TokenAnnotationConfigs
+): boolean {
+    return tokenAnnotationConfigsComparators[key](a[key], b[key]);
+}
+
+export function areTokenAnnotationConfigsEqual(a: TokenAnnotationConfigs, b: TokenAnnotationConfigs): boolean {
+    if (a === b) return true;
+    for (const key in tokenAnnotationConfigsComparators) {
+        if (!compareTokenAnnotationConfigsField(key as keyof TokenAnnotationConfigs, a, b)) return false;
+    }
+    return true;
+}
+
 export enum TokenState {
     IGNORED = 0, // If ever adding more states, they should go last (if adding colors for states, use a separate array from dictionaryTokenStatusColors indexed by TokenState)
 }
@@ -205,28 +395,74 @@ export enum TokenFrequencyAnnotation {
 
 export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
     return (
-        dt.dictionaryColorizeSubtitles ||
-        dt.dictionaryAutoGenerateStatistics ||
-        dt.dictionaryTokenReadingAnnotation !== TokenReadingAnnotation.NEVER ||
-        dt.dictionaryDisplayIgnoredTokenReadings ||
-        dt.dictionaryTokenFrequencyAnnotation !== TokenFrequencyAnnotation.NEVER
+        dt.dictionaryTokenAnnotationConfig.colorizeEnabled ||
+        dt.dictionaryTokenAnnotationConfig.onStatuses.some((s) => Object.values(s).some((v) => v)) ||
+        dt.dictionaryTokenAnnotationConfig.onStates.some((s) => Object.values(s).some((v) => v)) ||
+        dt.dictionaryAutoGenerateStatistics
     );
 }
 
-export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack): boolean {
-    return (
-        dt.dictionaryColorizeSubtitles ||
-        dt.dictionaryAutoGenerateStatistics ||
-        dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.LEARNING_OR_BELOW ||
-        dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.UNKNOWN_OR_BELOW ||
-        dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.UNCOLLECTED_ONLY
-    );
+export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack, options: { includeStates: boolean }): boolean {
+    const { includeStates } = options;
+    if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled || dt.dictionaryAutoGenerateStatistics) return true;
+    const { onStatuses, onStates } = dt.dictionaryTokenAnnotationConfig;
+    for (const annotation of Object.keys(onStatuses[0]) as (keyof TokenAnnotationTriggerOptions)[]) {
+        const numStatusEnabled = onStatuses.filter((s) => s[annotation]).length;
+        if (numStatusEnabled > 0 && numStatusEnabled < onStatuses.length) return true;
+        if (includeStates && onStates.some((s) => s[annotation])) return true; // Check states for lookups but not building
+    }
+    return false;
+}
+
+export function getEnabledAnnotations(dt: DictionaryTrack): EnabledAnnotations {
+    const { colorizeEnabled, onStatuses, onStates } = dt.dictionaryTokenAnnotationConfig;
+    const annotationTriggerValues: { [K in keyof TokenAnnotationTriggerOptions]: boolean } = {} as any;
+    for (const ano of Object.keys(onStatuses[0]) as (keyof TokenAnnotationTriggerOptions)[]) {
+        annotationTriggerValues[ano] = onStatuses.some((s) => s[ano]) || onStates.some((s) => s[ano]);
+    }
+    return { color: colorizeEnabled, ...annotationTriggerValues };
+}
+
+export interface EnabledAnnotations {
+    color: boolean;
+    reading: boolean;
+    frequency: boolean;
+    pitchAccent: boolean;
+}
+
+export function getEnabledAnnotationsForHover(
+    enabledAnnotations: EnabledAnnotations,
+    dt: DictionaryTrack,
+    target: TokenAnnotationConfigTarget,
+    onHoverEnabled: boolean
+): EnabledAnnotations {
+    const config = dt.dictionaryTokenAnnotationConfig[target];
+    const enabledAnnotationsForHover: EnabledAnnotations = {} as any;
+    for (const ano of Object.keys(enabledAnnotations) as (keyof EnabledAnnotations)[]) {
+        enabledAnnotationsForHover[ano] = enabledAnnotations[ano] && config[ano].onHoverEnabled === onHoverEnabled;
+    }
+    return enabledAnnotationsForHover;
+}
+
+export function shouldUseAnnotation(
+    annotation: keyof TokenAnnotationTriggerOptions,
+    tokenStatus: TokenStatus,
+    tokenStates: TokenState[],
+    dt: DictionaryTrack
+): boolean {
+    if (tokenStates.includes(TokenState.IGNORED)) {
+        return dt.dictionaryTokenAnnotationConfig.onStates[TokenState.IGNORED][annotation]; // Ignored state gets treated like mature, don't fallback if marked ignored
+    }
+    if (dt.dictionaryTokenAnnotationConfig.onStatuses[tokenStatus][annotation]) return true;
+    return false;
 }
 
 export interface DictionaryTrack {
+    /** @deprecated Use dictionaryTokenAnnotationConfig.colorizeEnabled */
     readonly dictionaryColorizeSubtitles: boolean;
     readonly dictionaryAutoGenerateStatistics: boolean;
-    readonly dictionaryColorizeOnHoverOnly: boolean; // Currently applies to both colorization and reading annotations, named in case we want to separate later
+    /** @deprecated Use dictionaryTokenAnnotationConfig.target.annotation.onHoverEnabled */
+    readonly dictionaryColorizeOnHoverOnly: boolean;
     readonly dictionaryHighlightOnHover: boolean;
     readonly dictionaryTokenMatchStrategy: TokenMatchStrategy;
     readonly dictionaryMatchAcrossScripts: boolean;
@@ -234,8 +470,11 @@ export interface DictionaryTrack {
     readonly dictionaryYomitanUrl: string;
     readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
     readonly dictionaryYomitanScanLength: number;
+    /** @deprecated Use dictionaryTokenAnnotationConfig.onStatuses[].reading */
     readonly dictionaryTokenReadingAnnotation: TokenReadingAnnotation;
+    /** @deprecated Use dictionaryTokenAnnotationConfig.onStates[TokenState.IGNORED].reading */
     readonly dictionaryDisplayIgnoredTokenReadings: boolean;
+    /** @deprecated Use dictionaryTokenAnnotationConfig.onStatuses[].frequency */
     readonly dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation;
     readonly dictionaryAnkiDecks: string[];
     readonly dictionaryAnkiWordFields: string[];
@@ -246,9 +485,12 @@ export interface DictionaryTrack {
     readonly dictionaryWaniKaniApiToken: string;
     readonly dictionaryTokenStyling: TokenStyling;
     readonly dictionaryTokenStylingThickness: number;
-    readonly dictionaryColorizeFullyKnownTokens: boolean; // Deprecated in favor of dictionaryTokenStatusConfig
-    readonly dictionaryTokenStatusColors: string[]; // Deprecated in favor of dictionaryTokenStatusConfig
+    /** @deprecated Use dictionaryTokenStatusConfig[].display */
+    readonly dictionaryColorizeFullyKnownTokens: boolean;
+    /** @deprecated Use dictionaryTokenStatusConfig[].colors */
+    readonly dictionaryTokenStatusColors: string[];
     readonly dictionaryTokenStatusConfig: TokenStatusConfig[]; // Indexed by TokenStatus (if adding config for states, use a separate array indexed by TokenState)
+    readonly dictionaryTokenAnnotationConfig: TokenAnnotationConfigs;
 }
 
 export interface DictionarySettings {
@@ -283,6 +525,7 @@ const dictionaryTrackComparators: {
     dictionaryColorizeFullyKnownTokens: (a, b) => a === b,
     dictionaryTokenStatusColors: (a, b) => arrayEquals(a, b),
     dictionaryTokenStatusConfig: (a, b) => arrayEquals(a, b, areTokenStatusConfigsEqual),
+    dictionaryTokenAnnotationConfig: (a, b) => areTokenAnnotationConfigsEqual(a, b),
 };
 
 export function compareDTField<K extends keyof DictionaryTrack>(
@@ -293,8 +536,10 @@ export function compareDTField<K extends keyof DictionaryTrack>(
     return dictionaryTrackComparators[key](a[key], b[key]);
 }
 
-export function areDictionaryTracksEqual(dt1: DictionaryTrack, dt2: DictionaryTrack): boolean {
+export function areDictionaryTracksEqual(dt1: DictionaryTrack | undefined, dt2: DictionaryTrack | undefined): boolean {
     if (dt1 === dt2) return true;
+    if (!dt1 || !dt2) return false;
+
     for (const key in dictionaryTrackComparators) {
         if (!compareDTField(key as keyof DictionaryTrack, dt1, dt2)) {
             return false;
@@ -319,6 +564,7 @@ export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
 
 export interface AnkiSettings {
     readonly ankiConnectUrl: string;
+    readonly ankiConnectApiKey: string;
     readonly deck: string;
     readonly noteType: string;
     readonly sentenceField: string;
@@ -371,6 +617,7 @@ export type CustomAnkiFieldSettings = { [key: string]: AnkiField };
 
 const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     ankiConnectUrl: true,
+    ankiConnectApiKey: true,
     deck: true,
     noteType: true,
     sentenceField: true,
@@ -547,7 +794,13 @@ export interface WebSocketClientSettings {
     readonly webSocketClientEnabled: boolean;
 }
 
-export type ChromeBoundKeyBindName = 'copySubtitle' | 'ankiExport' | 'updateLastCard' | 'exportCard' | 'takeScreenshot';
+export type ChromeBoundKeyBindName =
+    | 'copySubtitle'
+    | 'ankiExport'
+    | 'updateLastCard'
+    | 'updateSelectedCard'
+    | 'exportCard'
+    | 'takeScreenshot';
 export type SubtitleAlignment = 'top' | 'bottom';
 export enum SubtitleListPreference {
     noSubtitleList = 'noSubtitleList',
@@ -645,6 +898,7 @@ const keyBindNameMap: any = {
     'copy-subtitle': 'copySubtitle',
     'copy-subtitle-with-dialog': 'ankiExport',
     'update-last-card': 'updateLastCard',
+    'update-selected-card': 'updateSelectedCard',
     'export-card': 'exportCard',
     'take-screenshot': 'takeScreenshot',
     'toggle-recording': 'toggleRecording',

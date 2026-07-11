@@ -144,7 +144,7 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         window.parent.postMessage({
             sender: 'asbplayer-dictionary',
             message: { command: 'card-updated-dialog' },
-        } as DictionaryDBCommand<CardUpdatedDialogMessage>);
+        });
     }
 
     onAnkiCardModified(callback: () => void) {
@@ -379,7 +379,7 @@ export class LocalDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    _removeCallback(callback: Function, callbacks: Function[]) {
+    _removeCallback<T>(callback: T, callbacks: T[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

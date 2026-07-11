@@ -21,7 +21,7 @@ export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
 };
 
 export const uiFrameForSrc = (src: string) => {
-    return new UiFrame(async (frame: HTMLIFrameElement, _: string) => {
+    return new UiFrame(async (frame: HTMLIFrameElement) => {
         frame.src = src;
     });
 };
@@ -71,7 +71,7 @@ export default class UiFrame {
     }
 
     async bind(): Promise<boolean> {
-        return await this._init();
+        return this._init();
     }
 
     async client() {
@@ -99,7 +99,7 @@ export default class UiFrame {
         document.body.appendChild(this._frame);
 
         await this._frameInitializer(this._frame, this._language);
-        await this._client!.bind();
+        await this._client.bind();
         return true;
     }
 

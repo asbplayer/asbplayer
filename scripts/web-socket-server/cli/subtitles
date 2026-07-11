@@ -1,0 +1,11 @@
+#!/bin/bash
+
+MEDIA_ID="$1"
+TRACK_NUMBERS="$2"
+
+QUERY=""
+[ -n "$MEDIA_ID" ] && QUERY="mediaId=$MEDIA_ID"
+[ -n "$TRACK_NUMBERS" ] && QUERY="${QUERY:+$QUERY&}trackNumbers=$TRACK_NUMBERS"
+
+curl -H "content-type: application/json" \
+    -X GET "http://127.0.0.1:8766/asbplayer/subtitles${QUERY:+?$QUERY}"

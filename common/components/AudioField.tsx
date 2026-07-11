@@ -40,12 +40,12 @@ const useAudioHelperText = (audioClip?: AudioClip, onRerecord?: () => void) => {
 
             if (playable) {
                 if (onRerecord === undefined && !audioClip.isSliceable()) {
-                    setAudioHelperText(t('ankiDialog.cannotUpdateAudio')!);
+                    setAudioHelperText(t('ankiDialog.cannotUpdateAudio'));
                 } else {
                     setAudioHelperText(undefined);
                 }
             } else {
-                setAudioHelperText(t(audioClip.errorLocKey!)!);
+                setAudioHelperText(t(audioClip.errorLocKey!));
             }
         }
     }, [audioClip, onRerecord, t]);
@@ -70,13 +70,13 @@ export default function AudioField({
 
     audioActionElement = (
         <>
-            <Tooltip title={t('action.downloadAudio')!}>
+            <Tooltip title={t('action.downloadAudio')}>
                 <span>
                     <IconButton
                         disabled={audioClip?.error !== undefined}
                         onClick={(e) => {
                             e.stopPropagation();
-                            audioClip.download();
+                            void audioClip.download();
                         }}
                         edge="end"
                     >
@@ -92,8 +92,8 @@ export default function AudioField({
                 <Tooltip
                     title={
                         timestampIntervalSelectionNotApplied
-                            ? t('ankiDialog.rerecordAndApplySelection')!
-                            : t('ankiDialog.rerecord')!
+                            ? t('ankiDialog.rerecordAndApplySelection')
+                            : t('ankiDialog.rerecord')
                     }
                 >
                     <span>

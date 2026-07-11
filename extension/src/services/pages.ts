@@ -94,7 +94,7 @@ async function pageConfigsMergedWithSettingsOverrides(): Promise<PageConfigFile>
         };
     });
 
-    return { pages: mergedPages } as PageConfigFile;
+    return { pages: mergedPages };
 }
 
 export async function currentPageDelegate(): Promise<PageDelegate | undefined> {
@@ -178,8 +178,8 @@ export class PageDelegate {
     }
 
     isVideoPage() {
-        var hashMatch = true;
-        var pathMatch = true;
+        let hashMatch = true;
+        let pathMatch = true;
         if (this.config.syncAllowedAtHash) {
             hashMatch = new RegExp(this.config.syncAllowedAtHash).test(this.url.hash);
         }

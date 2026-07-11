@@ -16,11 +16,7 @@ export default class OpenStatisticsOverlayHandler {
         return 'open-statistics-overlay';
     }
 
-    async handle(
-        command: Command<Message>,
-        sender: Browser.runtime.MessageSender,
-        sendResponse: (response?: any) => void
-    ) {
+    async handle(command: Command<Message>) {
         const openCommand: Command<OpenStatisticsOverlayMessage> = command as Command<OpenStatisticsOverlayMessage>;
         void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => {

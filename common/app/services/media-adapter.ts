@@ -20,7 +20,7 @@ export default class MediaAdapter {
     }
 
     async seek(time: number) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (this.ref.current) {
                 this.ref.current.currentTime = time;
                 this._onMediaCanPlay(() => resolve(undefined));
@@ -31,7 +31,7 @@ export default class MediaAdapter {
     }
 
     async onReady() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (this.ref.current) {
                 this._onMediaCanPlay(() => resolve(undefined));
             } else {
@@ -47,7 +47,7 @@ export default class MediaAdapter {
         }
 
         if (this.ref.current && !this.ref.current.oncanplay) {
-            this.ref.current.oncanplay = (e) => {
+            this.ref.current.oncanplay = () => {
                 for (const resolve of this.readyResolves) {
                     resolve();
                 }
@@ -64,7 +64,7 @@ export default class MediaAdapter {
     }
 
     play() {
-        this.ref.current?.play();
+        void this.ref.current?.play();
     }
 
     pause() {

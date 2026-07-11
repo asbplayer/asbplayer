@@ -1,5 +1,5 @@
 import { IndexedSubtitleModel, OffscreenDomCache } from '@project/common';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export const useSubtitleDomCache = (
     subtitles: IndexedSubtitleModel[],
@@ -13,15 +13,33 @@ export const useSubtitleDomCache = (
         return () => domCache.clear();
     }, [subtitles, render]);
 
-    return {
-        getSubtitleDomCache: () => {
-            if (domCache.empty) {
-                for (const subtitle of subtitles) {
-                    domCache.add(String(subtitle.index), render(subtitle));
-                }
+    const refreshSubtitleDomCacheForSubtitles = useCallback(
+        (windowSubtitles: IndexedSubtitleModel[]) => {
+            const keep = new Set(windowSubtitles.map((s) => String(s.index)));
+            for (const key of domCache.keys()) {
+                if (!keep.has(key)) domCache.delete(key);
             }
-
-            return domCache;
+            for (const subtitle of windowSubtitles) {
+                const key = String(subtitle.index);
+                if (!domCache.has(key)) domCache.add(key, render(subtitle));
+            }
         },
+        [domCache, render]
+    );
+
+    const updateSubtitleDomCache = useCallback(
+        (updatedSubtitles: IndexedSubtitleModel[]) => {
+            for (const subtitle of updatedSubtitles) {
+                const key = String(subtitle.index);
+                if (domCache.has(key)) domCache.add(key, render(subtitle)); // Re-render updated subtitles that already exist in the cache
+            }
+        },
+        [domCache, render]
+    );
+
+    return {
+        getSubtitleDomCache: () => domCache,
+        refreshSubtitleDomCacheForSubtitles,
+        updateSubtitleDomCache,
     };
 };

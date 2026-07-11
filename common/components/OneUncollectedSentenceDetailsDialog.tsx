@@ -23,7 +23,7 @@ const OneUncollectedSentenceDetailsDialog: React.FC<Props> = ({ dictionaryProvid
             if (!mediaId) {
                 return;
             }
-            dictionaryProvider.requestStatisticsSeek(mediaId, sentence.start);
+            void dictionaryProvider.requestStatisticsSeek(mediaId, sentence.start);
         },
         [mediaId, dictionaryProvider]
     );
@@ -32,7 +32,7 @@ const OneUncollectedSentenceDetailsDialog: React.FC<Props> = ({ dictionaryProvid
             if (!mediaId) {
                 return;
             }
-            dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]);
+            void dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]);
         },
         [mediaId, dictionaryProvider]
     );

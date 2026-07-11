@@ -1,73 +1,73 @@
 {
     "latest": {
-        "version": "1.16.0",
-        "url": "https://github.com/asbplayer/asbplayer/releases/tag/v1.16.0"
+        "version": "1.18.0",
+        "url": "https://github.com/asbplayer/asbplayer/releases/tag/v1.18.0"
     },
     "languages": [
         {
             "code": "en",
             "url": "/locales/en.json",
-            "version": 22
+            "version": 25
         },
         {
             "code": "es",
             "url": "/locales/es.json",
-            "version": 19
+            "version": 22
         },
         {
             "code": "ja",
             "url": "/locales/ja.json",
-            "version": 27
+            "version": 30
         },
         {
             "code": "de",
             "url": "/locales/de.json",
-            "version": 20
+            "version": 23
         },
         {
             "code": "pl",
             "url": "/locales/pl.json",
-            "version": 20
+            "version": 23
         },
         {
             "code": "pt_BR",
             "url": "/locales/pt_BR.json",
-            "version": 19
+            "version": 22
         },
         {
             "code": "zh_CN",
             "url": "/locales/zh_CN.json",
-            "version": 19
+            "version": 22
         },
         {
             "code": "ru",
             "url": "/locales/ru.json",
-            "version": 18
+            "version": 21
         },
         {
             "code": "fi",
             "url": "/locales/fi.json",
-            "version": 11
+            "version": 14
         },
         {
             "code": "fr",
             "url": "/locales/fr.json",
-            "version": 11
+            "version": 14
         },
         {
             "code": "ko",
             "url": "/locales/ko.json",
-            "version": 11
+            "version": 14
         },
         {
             "code": "id",
             "url": "/locales/id.json",
-            "version": 10
+            "version": 13
         },
         {
             "code": "it",
             "url": "/locales/it.json",
-            "version": 1
+            "version": 4
         }
     ]
 }

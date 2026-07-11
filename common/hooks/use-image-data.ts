@@ -71,7 +71,7 @@ export const useImageData = ({ image, smoothTransition }: { image?: MediaFragmen
             })
             .catch((e) => {
                 if (!(e instanceof CancelledMediaFragmentDataRenderingError)) {
-                    throw e;
+                    console.error(e);
                 }
             });
 

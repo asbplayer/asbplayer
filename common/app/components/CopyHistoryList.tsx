@@ -145,7 +145,7 @@ function Menu({
 }: MenuProps) {
     const { t } = useTranslation();
     const handleCopy = useCallback(() => {
-        navigator.clipboard.writeText(item!.subtitle.text);
+        void navigator.clipboard.writeText(item.subtitle.text);
         onClose();
     }, [item, onClose]);
 
@@ -154,22 +154,22 @@ function Menu({
             return;
         }
 
-        onSelect(item!);
+        onSelect(item);
         onClose();
     }, [item, onSelect, onClose]);
 
     const handleClipAudio = useCallback(() => {
-        onClipAudio(item!);
+        onClipAudio(item);
         onClose();
     }, [item, onClipAudio, onClose]);
 
     const handleDownloadImage = useCallback(() => {
-        onDownloadImage(item!);
+        onDownloadImage(item);
         onClose();
     }, [item, onDownloadImage, onClose]);
 
     const handleDelete = useCallback(() => {
-        onDelete(item!);
+        onDelete(item);
         onClose();
     }, [item, onDelete, onClose]);
 
@@ -294,7 +294,7 @@ export default function CopyHistoryList({
         let lastSeenItemName: string | null = null;
         let i = 0;
         const itemNameCounters: { [name: string]: number } = {};
-        let itemsBySection: { [key: string]: CopyHistoryItem[] } = {};
+        const itemsBySection: { [key: string]: CopyHistoryItem[] } = {};
         let currentKey: string | undefined;
 
         for (const item of items) {
@@ -315,7 +315,7 @@ export default function CopyHistoryList({
                         <Typography color="textSecondary">{item.subtitleFileName}</Typography>
                         {onDownloadSectionAsSrt && (
                             <ListItemSecondaryAction>
-                                <Tooltip title={t('copyHistory.downloadMinedSubsAsSrt')!}>
+                                <Tooltip title={t('copyHistory.downloadMinedSubsAsSrt')}>
                                     <IconButton
                                         onClick={() =>
                                             onDownloadSectionAsSrt?.(item.subtitleFileName, itemsBySection[key])
@@ -342,7 +342,7 @@ export default function CopyHistoryList({
                     classes={{ gutters: classes.listItemGutters }}
                 >
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
-                        <Tooltip title={t('copyHistory.exportToAnki')!}>
+                        <Tooltip title={t('copyHistory.exportToAnki')}>
                             <IconButton onClick={() => onAnki(item)}>
                                 <NoteAddIcon fontSize="small" />
                             </IconButton>

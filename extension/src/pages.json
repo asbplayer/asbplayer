@@ -69,6 +69,9 @@
             "autoSync": {
                 "enabled": true,
                 "elementId": "content-video-player"
+            },
+            "ignoreVideoElements": {
+                "class": "VideoPreviewPlayer"
             }
         },
         {

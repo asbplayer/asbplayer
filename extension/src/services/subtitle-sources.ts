@@ -6,7 +6,7 @@ export interface JimakuEntry {
     english_name?: string;
     created_at?: string;
     last_updated_at?: string;
-    flags?: number;
+    anime?: boolean;
 }
 
 export interface JimakuFile {
@@ -46,47 +46,6 @@ const parseJsonSafely = (text: string): unknown | undefined => {
 };
 
 const defaultJimakuBaseUrl = 'https://jimaku.cc/api';
-
-type TrustedHtmlPolicyLike = {
-    createHTML: (value: string) => string | TrustedHTML;
-};
-
-let trustedHtmlPolicy: TrustedHtmlPolicyLike | undefined;
-
-const createTrustedHtml = (html: string): string | TrustedHTML => {
-    const trustedTypesApi = (
-        globalThis as typeof globalThis & {
-            trustedTypes?: {
-                createPolicy: (
-                    name: string,
-                    policy: { createHTML: (value: string) => string }
-                ) => TrustedHtmlPolicyLike;
-                getPolicy?: (name: string) => TrustedHtmlPolicyLike | null;
-            };
-        }
-    ).trustedTypes;
-
-    if (!trustedTypesApi) {
-        return html;
-    }
-
-    if (!trustedHtmlPolicy) {
-        try {
-            trustedHtmlPolicy = trustedTypesApi.createPolicy('asbplayer-subtitle-sources', {
-                createHTML: (value) => value,
-            });
-        } catch (error) {
-            trustedHtmlPolicy = trustedTypesApi.getPolicy?.('asbplayer-subtitle-sources') ?? undefined;
-        }
-    }
-
-    return trustedHtmlPolicy ? trustedHtmlPolicy.createHTML(html) : html;
-};
-
-const parseHtmlDocument = (html: string) => {
-    const trustedHtml = createTrustedHtml(html);
-    return new DOMParser().parseFromString(trustedHtml as string, 'text/html');
-};
 
 const parseRateLimit = (headers: Headers): JimakuRateLimit => ({
     limit: parseOptionalInt(headers.get('x-ratelimit-limit')),
@@ -137,14 +96,17 @@ export class JimakuClient {
         this._minRequestIntervalMs = minRequestIntervalMs;
     }
 
-    async searchEntries(query: string): Promise<JimakuResponse<JimakuEntry[]>> {
+    async searchEntries(query: string, anime?: boolean): Promise<JimakuResponse<JimakuEntry[]>> {
         const searchParams = new URLSearchParams();
         searchParams.set('query', query);
-        return await this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
+        if (anime !== undefined) {
+            searchParams.set('anime', `${anime}`);
+        }
+        return this._request<JimakuEntry[]>(`entries/search?${searchParams.toString()}`);
     }
 
     async getEntry(id: number): Promise<JimakuResponse<JimakuEntry>> {
-        return await this._request<JimakuEntry>(`entries/${id}`);
+        return this._request<JimakuEntry>(`entries/${id}`);
     }
 
     async getFiles(
@@ -161,7 +123,7 @@ export class JimakuClient {
 
         const query = searchParams.toString();
         const endpoint = query.length > 0 ? `entries/${id}/files?${query}` : `entries/${id}/files`;
-        return await this._request<JimakuFile[]>(endpoint);
+        return this._request<JimakuFile[]>(endpoint);
     }
 
     private async _request<T>(endpoint: string): Promise<JimakuResponse<T>> {

@@ -26,7 +26,7 @@ export default class VideoToAsbplayerCommandForwardingHandler {
                 tabId: sender.tab.id,
                 src: videoToExtensionCommand.src,
             };
-            this.tabRegistry.publishCommandToAsbplayers({ commandFactory: () => extensionToPlayerCommand });
+            void this.tabRegistry.publishCommandToAsbplayers({ commandFactory: () => extensionToPlayerCommand });
         }
 
         return false;

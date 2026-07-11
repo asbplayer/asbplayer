@@ -34,7 +34,8 @@
         "revert": "Revert",
         "userGuide": "User guide",
         "search": "Search",
-        "reload": "Reload"
+        "reload": "Reload",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "asbplayer 소개",
@@ -49,6 +50,7 @@
         "none": "아무것도 하지 않기",
         "showAnkiDialog": "Anki 익스포트 윈도우 열기",
         "updateLastCard": "이전 카드 업데이트",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Anki로 카드 보내기"
     },
     "postMinePlayback": {
@@ -91,12 +93,17 @@
         "tagList": "쉼표(,)로 구분된 텍스트 목록",
         "title": "Anki로 익스포트",
         "updateLastCard": "이전 카드 업데이트",
+        "updateSelectedCards": "Update selected cards ({{count}})",
         "url": "URL",
         "word": "단어",
         "zoomIn": "확대",
         "zoomOut": "축소",
         "imagePreview": "미리보기 / 수정",
         "quickSelectFtue": "{{shortcut}}으로 마지막으로 사용한 동작을 선택/실행합니다."
+    },
+    "cardSelectUi": {
+        "title": "Select cards to update",
+        "noResults": "No cards found."
     },
     "bar": {
         "donate": "후원하기",
@@ -204,7 +211,6 @@
         "unknownExtension": "{{fileName}}의 확장자를 확인할 수 없습니다.",
         "unsupportedExtension": "{{extension}} 확장자는 지원되지 않습니다.",
         "videoPlayerDragAndDropNotAllowed": "동영상 프레임에는 파일을 드롭할 수 없습니다. 화면 밖 영역에 드롭해 주세요.",
-        "restoreSessionPermissionDenied": "권한이 거부되어 마지막 세션을 복원할 수 없습니다.",
         "restoreSessionFailed": "마지막 세션을 복원하지 못했습니다. 파일이 이동되었거나 삭제되었을 수 있습니다."
     },
     "extension": {
@@ -356,6 +362,7 @@
         "alwaysPlayOnSubtitleRepeat": "‘현재/이전 자막으로 이동’ 후 자동 재생",
         "anki": "Anki",
         "ankiConnectUrl": "Anki 연결 URL",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "오디오 필드",
         "audioPaddingEnd": "오디오 종료 지점 여백 시간",
         "audioPaddingStart": "오디오 시작 지점 여백 시간",
@@ -488,6 +495,7 @@
         "dictionaryLocalWordDatabase": "Local word database",
         "dictionaryAnkiWordDatabase": "Anki word database",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "Colorize subtitles based on known words",
         "dictionaryAutoGenerateStatistics": "Generate statistics automatically",
         "dictionaryColorizeOnHoverOnly": "On Hover Only",
@@ -517,6 +525,8 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "Unknown or below",
         "dictionaryTokenReadingAnnotationNever": "Never",
         "dictionaryDisplayIgnoredTokenReadings": "Display readings for ignored words",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "Display word frequency",
         "dictionaryTokenFrequencyAnnotationAlways": "Always",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "Uncollected only",
@@ -532,6 +542,7 @@
         "dictionaryAnkiTreatSuspendedNormal": "Normal",
         "dictionaryWaniKaniSection": "WaniKani",
         "dictionaryWaniKaniApiToken": "WaniKani API token",
+        "dictionaryWaniKaniApiTokenHelperText": "Instructions to get an API token are <0>here</0>.",
         "dictionaryTokenStyling": "Word color style",
         "dictionaryTokenStylingText": "Text",
         "dictionaryTokenStylingBackground": "Background",
@@ -540,6 +551,15 @@
         "dictionaryTokenStylingOutline": "Outline",
         "dictionaryTokenStylingOutlineHelperText": "You may need to set Subtitle Outline Thickness in Subtitle Appearance to 0 for the best results.",
         "dictionaryTokenStylingThickness": "Thickness",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "Colorize fully known words",
         "dictionaryTokenStatus5": "Mature",
         "dictionaryTokenStatusReading5": "Reading",
@@ -554,6 +574,7 @@
         "dictionaryTokenStatus0": "Uncollected",
         "dictionaryTokenStatusReading0": "Reading",
         "dictionaryTokenStateIgnored": "Ignored",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "Querying Anki for modified cards",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",
@@ -710,8 +731,12 @@
         "jimakuApiKey": "Jimaku API key",
         "jimakuApiKeyAutosaveHint": "Saved automatically. Get an API key <0>here</0>.",
         "entries": "Search results",
+        "recentEntries": "Recent",
         "noEntries": "No search results",
         "availableFiles": "Files",
-        "noFiles": "No files"
+        "noFiles": "No files",
+        "searchCategory": "Search category",
+        "categoryAnime": "Anime",
+        "categoryDrama": "Drama"
     }
 }

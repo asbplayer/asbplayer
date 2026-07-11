@@ -12,8 +12,8 @@ export const useSettingsProfileContext = ({ dictionaryProvider, settingsProvider
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [activeProfile, setActiveProfile] = useState<string>();
     const refreshProfileContext = useCallback(() => {
-        settingsProvider.profiles().then(setProfiles);
-        settingsProvider.activeProfile().then((p) => setActiveProfile(p?.name));
+        void settingsProvider.profiles().then(setProfiles);
+        void settingsProvider.activeProfile().then((p) => setActiveProfile(p?.name));
     }, [settingsProvider]);
     useEffect(() => {
         refreshProfileContext();
@@ -38,7 +38,7 @@ export const useSettingsProfileContext = ({ dictionaryProvider, settingsProvider
                 setActiveProfile(undefined);
                 onProfileChanged();
             }
-            settingsProvider.removeProfile(name).then(() => settingsProvider.profiles().then(setProfiles));
+            void settingsProvider.removeProfile(name).then(() => settingsProvider.profiles().then(setProfiles));
         },
         [dictionaryProvider, settingsProvider, activeProfile, onProfileChanged]
     );

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { DictionaryProvider } from '../dictionary-db';
 import {
     DictionarySimplifiedStatisticsTrackSnapshot,
@@ -17,7 +17,6 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import CloseIcon from '@mui/icons-material/Close';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import StatisticsSentenceDetailsDialog from './StatisticsSentenceDetailsDialog';
 import LogoIcon from './LogoIcon';
 import LinearProgress from '@mui/material/LinearProgress';
 

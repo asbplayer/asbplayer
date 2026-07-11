@@ -47,9 +47,12 @@ export default class StartRecordingMediaHandler {
         const startRecordingCommand = command as VideoToExtensionCommand<StartRecordingMediaMessage>;
         let drmProtectedStreamError: DrmProtectedStreamError | undefined;
 
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) throw new Error('Cannot start recording media without a valid tab ID');
+
         if (startRecordingCommand.message.record) {
             try {
-                await this._audioRecorder.start({ src: startRecordingCommand.src, tabId: sender.tab?.id! });
+                await this._audioRecorder.start({ src: startRecordingCommand.src, tabId });
             } catch (e) {
                 if (!(e instanceof DrmProtectedStreamError)) {
                     throw e;
@@ -65,17 +68,12 @@ export default class StartRecordingMediaHandler {
             const imageDelay = startRecordingCommand.message.record ? startRecordingCommand.message.imageDelay : 0;
             const { maxWidth, maxHeight, rect, frameId } = startRecordingCommand.message;
             try {
-                const imageBase64 = await this._imageCapturer.capture(
-                    sender.tab!.id!,
-                    startRecordingCommand.src,
-                    imageDelay,
-                    {
-                        maxWidth,
-                        maxHeight,
-                        rect,
-                        frameId,
-                    }
-                );
+                const imageBase64 = await this._imageCapturer.capture(tabId, startRecordingCommand.src, imageDelay, {
+                    maxWidth,
+                    maxHeight,
+                    rect,
+                    frameId,
+                });
                 imageModel = {
                     base64: imageBase64,
                     extension: 'jpeg',
@@ -96,7 +94,7 @@ export default class StartRecordingMediaHandler {
                     src: startRecordingCommand.src,
                 };
 
-                browser.tabs.sendMessage(sender.tab!.id!, screenshotTakenCommand);
+                void browser.tabs.sendMessage(tabId, screenshotTakenCommand);
             }
         }
 
@@ -132,7 +130,7 @@ export default class StartRecordingMediaHandler {
                           error: AudioErrorCode.drmProtected,
                       };
 
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     subtitle: subtitle,
                     surroundingSubtitles: [],
@@ -143,7 +141,7 @@ export default class StartRecordingMediaHandler {
                     mediaTimestamp: startRecordingCommand.message.mediaTimestamp,
                 },
                 startRecordingCommand.message.postMineAction,
-                sender.tab!.id!,
+                tabId,
                 startRecordingCommand.src
             );
         }

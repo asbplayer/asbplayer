@@ -15,7 +15,7 @@ export default class CardExportedDialogHandler {
         return 'card-exported-dialog';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) {
+    handle(command: Command<Message>) {
         const { tabId, src } = command as AsbPlayerToVideoCommandV2<CardExportedDialogMessage>;
         const cardExportedDialogFromTabCommand: ExtensionToVideoCommand<CardExportedDialogMessage> = {
             sender: 'asbplayer-extension-to-video',
@@ -24,7 +24,7 @@ export default class CardExportedDialogHandler {
                 command: 'card-exported-dialog',
             },
         };
-        browser.tabs.sendMessage(tabId, cardExportedDialogFromTabCommand);
+        void browser.tabs.sendMessage(tabId, cardExportedDialogFromTabCommand);
         return true;
     }
 }

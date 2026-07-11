@@ -17,7 +17,7 @@ import {
     WaniKaniSpacedRepetitionSystem,
     WaniKaniSubject,
 } from '@project/common/wanikani';
-import { Yomitan } from '@project/common/yomitan/yomitan';
+import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
 import {
     _DictionaryDatabase,
@@ -135,7 +135,7 @@ export async function buildWaniKaniCachePipeline(
                 return; // Since we set the buildId for all tracks regardless of enabled status, concurrent builds are prevented
             }
             activeTracks.push(key);
-            if (!dictionaryStatusCollectionEnabled(dt)) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
+            if (!dictionaryStatusCollectionEnabled(dt, { includeStates: false })) continue; // Keep cache but don't update it TODO: Clear tracks that have been disabled for a while from db?
             tracksWithStatus.add(track);
 
             statusUpdates({
@@ -621,7 +621,9 @@ async function _buildWaniKaniTokensForTrack(
                 await ts.yomitan.tokenizeBulk(subjectsToTokenize.map((subject) => subject.characters));
                 for (const { subjectId, characters } of subjectsToTokenize) {
                     const tokens = new Set<string>();
-                    for (const tokenParts of await ts.yomitan.tokenize(characters)) {
+                    const tokenizeRes = await ts.yomitan.tokenize(characters);
+                    ts.yomitan.verifyTokenizeResult(characters, tokenizeRes);
+                    for (const tokenParts of tokenizeRes) {
                         const token = tokenParts
                             .map((part) => part.text)
                             .join('')

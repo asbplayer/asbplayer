@@ -69,7 +69,7 @@ const ScrollableNumberControls = ({
     const initialScrollRef = useRef<InitialScrollState>(undefined);
     initialScrollRef.current = initialScroll;
     const containerRef = useRef<HTMLDivElement>(undefined);
-    const programmaticallyScrollingTimeoutRef = useRef<NodeJS.Timeout>(undefined);
+    const programmaticallyScrollingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
     const controlTypeRef = useRef<number>(controlType);
     const onScrollToRef = useRef<(controlType: ControlType) => void>(undefined);
     onScrollToRef.current = onScrollTo;

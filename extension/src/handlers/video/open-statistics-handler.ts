@@ -1,4 +1,3 @@
-import { Command, Message } from '@project/common';
 import TabRegistry from '../../services/tab-registry';
 import { setExtensionRequestedLocation } from '@/services/side-panel';
 import { isFirefoxBuild } from '@/services/build-flags';
@@ -19,11 +18,11 @@ export default class OpenStatisticsHandler {
         return 'open-statistics';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle() {
         if (isFirefoxBuild) {
             void setExtensionRequestedLocation('statistics');
 
-            this._tabRegistry
+            void this._tabRegistry
                 .findAsbplayer({
                     filter: (a) => a.sidePanel ?? false,
                     allowTabCreation: false,
@@ -40,12 +39,10 @@ export default class OpenStatisticsHandler {
         } else if (browser.sidePanel !== undefined) {
             void setExtensionRequestedLocation('statistics');
 
-            browser.windows
-                // @ts-ignore
-                .getLastFocused((w) => {
-                    const windowId = w.id;
-                    browser.sidePanel.open({ windowId: windowId! });
-                });
+            browser.windows.getLastFocused((w) => {
+                const windowId = w.id;
+                void browser.sidePanel.open({ windowId: windowId! });
+            });
         } else {
             createStatisticsPopup();
         }

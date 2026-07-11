@@ -1,5 +1,5 @@
 import { CardModel, HttpFetcher } from '@project/common';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
@@ -88,7 +88,7 @@ const SettingsPage = ({
     const commands = useCommandKeyBinds();
 
     const handleOpenExtensionShortcuts = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
+        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
     }, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });

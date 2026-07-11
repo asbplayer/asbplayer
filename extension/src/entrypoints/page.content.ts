@@ -1,5 +1,4 @@
 import { currentPageDelegate } from '@/services/pages';
-import type { ContentScriptContext } from '#imports';
 
 const excludeGlobs = ['*://app.asbplayer.dev/*'];
 
@@ -14,7 +13,7 @@ export default defineContentScript({
     allFrames: true,
     runAt: 'document_start',
 
-    main(ctx: ContentScriptContext) {
-        currentPageDelegate().then((pageDelegate) => pageDelegate?.loadScripts());
+    main() {
+        void currentPageDelegate().then((pageDelegate) => pageDelegate?.loadScripts());
     },
 });

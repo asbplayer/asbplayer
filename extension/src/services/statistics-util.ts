@@ -1,6 +1,6 @@
 export const createStatisticsPopup = () => {
     browser.windows.getLastFocused((window) => {
-        browser.windows.create({
+        void browser.windows.create({
             type: 'popup',
             focused: true,
             width: window.width === undefined ? 800 : Math.floor(window.width / 2),

@@ -93,7 +93,7 @@ const FtueUi = () => {
     };
 
     useEffect(() => {
-        settingsProvider.getSingle('themeType').then(setThemeType);
+        void settingsProvider.getSingle('themeType').then(setThemeType);
     }, []);
 
     if (!i18Initialized) {

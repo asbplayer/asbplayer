@@ -1,3 +1,7 @@
+import type { SubtitleTrack } from '../src/model';
+
+export type { SubtitleTrack };
+
 export interface MineSubtitleCommand {
     command: 'mine-subtitle';
     messageId: string;
@@ -17,7 +21,7 @@ interface MineSubtitleResponseBody {
     published: boolean;
 }
 
-interface LoadSubtitlesResponseBody {}
+type LoadSubtitlesResponseBody = Record<string, never>;
 
 export interface SubtitleFile {
     base64: string;
@@ -40,9 +44,48 @@ export interface SeekTimestampCommand {
     };
 }
 
+export interface GetBoundMediaCommand {
+    command: 'get-bound-media';
+    messageId: string;
+    body: Record<string, never>;
+}
+
+export interface BoundMedia {
+    id: string; // Derived from a hash of `streaming:<tabId>:<src>` or `local:<asbplayerId>`.
+    type: 'streaming' | 'local';
+    title?: string;
+    faviconUrl?: string;
+    loadedSubtitles: SubtitleTrack[];
+    active: boolean;
+}
+
+interface GetBoundMediaResponseBody {
+    media: BoundMedia[];
+}
+
+export interface GetSubtitlesCommand {
+    command: 'get-subtitles';
+    messageId: string;
+    body: {
+        mediaId?: string;
+        trackNumbers?: number[];
+    };
+}
+
+export interface SubtitleCue {
+    text: string;
+    start: number;
+    end: number;
+    track: number;
+}
+
+interface GetSubtitlesResponseBody {
+    subtitles: SubtitleCue[];
+}
+
 export class WebSocketClient {
     private _socket?: WebSocket;
-    private _pingInterval?: NodeJS.Timeout;
+    private _pingInterval?: ReturnType<typeof setInterval>;
     private _lastPingTimestampMs?: number;
     private _pongReceived: boolean = false;
     private _pingPromises: { resolve: (value: unknown) => void; reject: (error: any) => void }[] = [];
@@ -50,6 +93,8 @@ export class WebSocketClient {
     onMineSubtitle?: (command: MineSubtitleCommand) => Promise<boolean>;
     onLoadSubtitles?: (command: LoadSubtitlesCommand) => Promise<void>;
     onSeekTimestamp?: (command: SeekTimestampCommand) => Promise<void>;
+    onGetBoundMedia?: () => Promise<BoundMedia[]>;
+    onGetSubtitles?: (mediaId: string | undefined, trackNumbers: number[] | undefined) => Promise<SubtitleCue[]>;
 
     get socket() {
         return this._socket;
@@ -72,7 +117,7 @@ export class WebSocketClient {
                 }
 
                 this._pingPromises = [];
-                this._connect(url);
+                void this._connect(url);
             } else {
                 this.ping().catch(console.info);
             }
@@ -124,12 +169,37 @@ export class WebSocketClient {
                     } else if (payload.command === 'seek-timestamp') {
                         const messageId = payload.messageId;
                         await this.onSeekTimestamp?.(payload);
-                        const response: Response<{}> = {
+                        const response: Response<Record<string, never>> = {
                             command: 'response',
                             messageId,
                             body: {},
                         };
                         this._socket?.send(JSON.stringify(response));
+                    } else if (payload.command === 'get-bound-media') {
+                        if (this.onGetBoundMedia !== undefined) {
+                            const messageId = payload.messageId;
+                            const media = await this.onGetBoundMedia();
+                            const response: Response<GetBoundMediaResponseBody> = {
+                                command: 'response',
+                                messageId,
+                                body: { media },
+                            };
+                            this._socket?.send(JSON.stringify(response));
+                        }
+                    } else if (payload.command === 'get-subtitles') {
+                        if (this.onGetSubtitles !== undefined) {
+                            const messageId = payload.messageId;
+                            const subtitles = await this.onGetSubtitles(
+                                payload.body?.mediaId,
+                                payload.body?.trackNumbers
+                            );
+                            const response: Response<GetSubtitlesResponseBody> = {
+                                command: 'response',
+                                messageId,
+                                body: { subtitles },
+                            };
+                            this._socket?.send(JSON.stringify(response));
+                        }
                     }
                 }
             };
@@ -199,5 +269,7 @@ export class WebSocketClient {
         this.onMineSubtitle = undefined;
         this.onSeekTimestamp = undefined;
         this.onLoadSubtitles = undefined;
+        this.onGetBoundMedia = undefined;
+        this.onGetSubtitles = undefined;
     }
 }

@@ -7,14 +7,6 @@ export interface BulkExportStartedPayload extends Message {
     total: number;
 }
 
-interface BulkExportCompletedPayload extends Message {
-    command: 'bulk-export-completed';
-}
-
-interface BulkExportCancelledPayload extends Message {
-    command: 'bulk-export-cancelled';
-}
-
 export default class BulkExportController {
     private readonly _context: Binding;
     private _exporting = false;
@@ -46,7 +38,7 @@ export default class BulkExportController {
                 request?.sender === 'asbplayer-extension-to-video' &&
                 request.message &&
                 request.message.command === 'card-exported' &&
-                request.src === this._context.video.src
+                request.src === this._context.registeredVideoSrc
             ) {
                 const exported = request.message as CardExportedMessage;
                 const isBulk = exported.isBulkExport;
@@ -127,7 +119,7 @@ export default class BulkExportController {
                 command: 'bulk-export-started',
                 total: this._queue.length,
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
         browser.runtime.sendMessage(startedMessage).catch(console.error);
 
@@ -154,9 +146,9 @@ export default class BulkExportController {
             message: {
                 command: 'bulk-export-cancelled',
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(cancelledMessage);
+        void browser.runtime.sendMessage(cancelledMessage);
     }
 
     private _sendNext() {
@@ -165,13 +157,13 @@ export default class BulkExportController {
         }
 
         if (this._currentIndex >= this._queue.length) {
-            this._complete();
+            void this._complete();
             return;
         }
 
         const subtitles = this._context.subtitleController.subtitles;
         if (!subtitles || subtitles.length === 0) {
-            this._complete();
+            void this._complete();
             return;
         }
 
@@ -218,9 +210,9 @@ export default class BulkExportController {
             message: {
                 command: 'bulk-export-completed',
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(completedMessage);
+        void browser.runtime.sendMessage(completedMessage);
     }
 
     private _notifyProgress() {

@@ -62,7 +62,7 @@ function AddCustomStyle({ styleKey, onStyleKey, onAddCustomStyle }: AddCustomSty
             }}
             renderInput={(params) => (
                 <SettingsTextField
-                    placeholder={t('settings.styleKey')!}
+                    placeholder={t('settings.styleKey')}
                     label={t('settings.addCustomCss')}
                     color="primary"
                     {...params}
@@ -101,7 +101,7 @@ function CustomStyleSetting({ customStyle, onCustomStyle, onDelete }: CustomStyl
         <SettingsTextField
             color="primary"
             label={t('settings.customCssField', { styleKey: customStyle.key })}
-            placeholder={t('settings.styleValue')!}
+            placeholder={t('settings.styleValue')}
             value={customStyle.value}
             onChange={(e) => onCustomStyle({ key: customStyle.key, value: e.target.value })}
             slotProps={{
@@ -366,7 +366,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                     localFontFamilies.length === 0 &&
                                     localFontsAvailable &&
                                     localFontsPermission === 'prompt' ? (
-                                        <Tooltip title={t('settings.unlockLocalFonts')!}>
+                                        <Tooltip title={t('settings.unlockLocalFonts')}>
                                             <IconButton onClick={onUnlockLocalFonts}>
                                                 <LockIcon fontSize="small" />
                                             </IconButton>
@@ -424,7 +424,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
             )}
 
             {subtitleBlur !== undefined && (
-                <Tooltip placement="bottom-end" title={t('settings.subtitleBlurDescription')!}>
+                <Tooltip placement="bottom-end" title={t('settings.subtitleBlurDescription')}>
                     <SwitchLabelWithHoverEffect
                         control={
                             <Switch
@@ -535,7 +535,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 const numberValue = Number(e.target.value);
 
                                 if (!Number.isNaN(numberValue) && numberValue >= 0 && numberValue <= 100) {
-                                    onSettingChanged('subtitlesWidth', numberValue);
+                                    void onSettingChanged('subtitlesWidth', numberValue);
                                 }
                             }}
                             slotProps={{

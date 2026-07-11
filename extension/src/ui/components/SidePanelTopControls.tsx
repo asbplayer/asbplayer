@@ -52,7 +52,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
             <Box ref={ref} style={{ position: 'absolute', top: 12, right: 12 }}>
                 <Grid container direction="column">
                     <Grid item>
-                        <Tooltip title={t('action.loadSubtitles')!}>
+                        <Tooltip title={t('action.loadSubtitles')}>
                             <IconButton onClick={onLoadSubtitles}>
                                 <LoadSubtitlesIcon />
                             </IconButton>
@@ -61,14 +61,14 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                     {canDownloadSubtitles && (
                         <>
                             <Grid item>
-                                <Tooltip title={t('action.downloadSubtitlesAsSrt')!}>
+                                <Tooltip title={t('action.downloadSubtitlesAsSrt')}>
                                     <IconButton onClick={onDownloadSubtitles}>
                                         <SaveAltIcon />
                                     </IconButton>
                                 </Tooltip>
                             </Grid>
                             <Grid item>
-                                <Tooltip title={t('action.bulkExportSubtitles')!} disabled={!!disableBulkExport}>
+                                <Tooltip title={t('action.bulkExportSubtitles')} disabled={!!disableBulkExport}>
                                     <span>
                                         <IconButton onClick={onBulkExportSubtitles} disabled={!!disableBulkExport}>
                                             <ImportExportIcon />
@@ -80,7 +80,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                     )}
                     <Grid item>
                         <IconButton onClick={onShowMiningHistory}>
-                            <Tooltip title={t('bar.miningHistory')!}>
+                            <Tooltip title={t('bar.miningHistory')}>
                                 <Badge badgeContent={miningHistoryCount} color="default" showZero>
                                     <HistoryIcon />
                                 </Badge>
@@ -89,7 +89,7 @@ const SidePanelTopControls = React.forwardRef(function SidePanelTopControls(
                     </Grid>
                     <Grid item>
                         <IconButton onClick={onShowStatistics}>
-                            <Tooltip title={t('statistics.title')!}>
+                            <Tooltip title={t('statistics.title')}>
                                 <BarChartIcon />
                             </Tooltip>
                         </IconButton>

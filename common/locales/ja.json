@@ -34,7 +34,8 @@
         "revert": "元に戻す",
         "userGuide": "ユーザーガイド",
         "search": "検索",
-        "reload": "再読み込み"
+        "reload": "再読み込み",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "asbplayerについて",
@@ -49,6 +50,7 @@
         "none": "何もしない",
         "showAnkiDialog": "Anki のエクスポートウィンドウを開く",
         "updateLastCard": "最後のカードを更新する",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "カードをエクスポート"
     },
     "postMinePlayback": {
@@ -91,12 +93,17 @@
         "tagList": "テキストのリスト（カンマ「,」区切り）",
         "title": "Anki エクスポート",
         "updateLastCard": "最後のカードを更新する",
+        "updateSelectedCards": "Update selected cards ({{count}})",
         "url": "URL",
         "word": "単語",
         "zoomIn": "ズームイン",
         "zoomOut": "ズームアウト",
         "imagePreview": "プレビュー・編集",
         "quickSelectFtue": "{{shortcut}}は最後に使用したアクションを選択/実行します。"
+    },
+    "cardSelectUi": {
+        "title": "Select cards to update",
+        "noResults": "No cards found."
     },
     "bar": {
         "donate": "寄付",
@@ -204,8 +211,7 @@
         "unknownExtension": "{{fileName}}の拡張子を確認できません",
         "unsupportedExtension": "対応していない拡張子です：{{extension}}",
         "videoPlayerDragAndDropNotAllowed": "動画プレイヤーはドロップしたファイルを受け取れません。動画のフレーム外にファイルをドロップしてください。",
-        "restoreSessionPermissionDenied": "権限が拒否されました。前回のセッションを復元できません。",
-        "restoreSessionFailed": "前回のセッションを復元できませんでした。ファイルが移動または削除された可能性があります。"
+        "restoreSessionFailed": "前回のセッションの復元に失敗しました。"
     },
     "extension": {
         "settings": {
@@ -356,6 +362,7 @@
         "alwaysPlayOnSubtitleRepeat": "「今の、または前の字幕冒頭に移動」の実行後、再生する",
         "anki": "Anki",
         "ankiConnectUrl": "AnkiConnect の URL",
+        "ankiConnectApiKey": "Anki Connect の API キー",
         "audioField": "音声フィールド",
         "audioPaddingEnd": "音声の余白終了",
         "audioPaddingStart": "音声の余白開始",
@@ -488,6 +495,7 @@
         "dictionaryLocalWordDatabase": "ローカルの単語データベース",
         "dictionaryAnkiWordDatabase": "Ankiの単語データベース",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "単語の成熟度をもとに字幕を色づけます",
         "dictionaryAutoGenerateStatistics": "統計を自動的に生成",
         "dictionaryColorizeOnHoverOnly": "マウスカーソルを字幕に重ねるときにのみアノテーションを表示",
@@ -517,6 +525,8 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "新規以下",
         "dictionaryTokenReadingAnnotationNever": "表示しない",
         "dictionaryDisplayIgnoredTokenReadings": "無視した単語の読み方を表示",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "単語頻度を表示",
         "dictionaryTokenFrequencyAnnotationAlways": "いつも",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "未収集のみ",
@@ -532,6 +542,7 @@
         "dictionaryAnkiTreatSuspendedNormal": "普通",
         "dictionaryWaniKaniSection": "WaniKani",
         "dictionaryWaniKaniApiToken": "WaniKani API token",
+        "dictionaryWaniKaniApiTokenHelperText": "Instructions to get an API token are <0>here</0>.",
         "dictionaryTokenStyling": "色づけた単語のスタイル",
         "dictionaryTokenStylingText": "テキスト",
         "dictionaryTokenStylingBackground": "背景",
@@ -540,6 +551,15 @@
         "dictionaryTokenStylingOutline": "縁取り",
         "dictionaryTokenStylingOutlineHelperText": "「字幕の縁取りの太さ」を0に設定する必要があるかもしれません。",
         "dictionaryTokenStylingThickness": "線の太さ",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "熟知している単語を色づける",
         "dictionaryTokenStatus5": "熟知",
         "dictionaryTokenStatusReading5": "じゅくち",
@@ -554,6 +574,7 @@
         "dictionaryTokenStatus0": "未収集",
         "dictionaryTokenStatusReading0": "みしゅうしゅう",
         "dictionaryTokenStateIgnored": "無視",
+        "dictionaryTokenStateIgnoredReading": "むし",
         "dictionaryBuildAnkiStarted": "変更されたカードをクエリしています",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "アルファ値",
@@ -710,8 +731,12 @@
         "jimakuApiKey": "JimakuのAPIキー",
         "jimakuApiKeyAutosaveHint": "自動的に保存されます。APIキーは<0>こちらから</0>入手できます。",
         "entries": "検索結果",
+        "recentEntries": "Recent",
         "noEntries": "検索結果はありません",
         "availableFiles": "ファイル",
-        "noFiles": "ファイルはありません"
+        "noFiles": "ファイルはありません",
+        "searchCategory": "Search category",
+        "categoryAnime": "Anime",
+        "categoryDrama": "Drama"
     }
 }

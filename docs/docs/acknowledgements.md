@@ -52,7 +52,9 @@ We epecially acknowledge the wonderful humans below.
 [@jprostko](https://github.com/jprostko),
 [@rodrigo-suarezmajor](https://github.com/rodrigo-suarezmajor),
 [@Roka20012](https://github.com/Roka20012),
-[@RonzyOnGIT](https://github.com/RonzyOnGIT)
+[@RonzyOnGIT](https://github.com/RonzyOnGIT),
+[@Dr-TNineS](https://github.com/Dr-TNineS),
+[@thntx](https://github.com/thntx)
 
 ## Translators
 
@@ -70,7 +72,7 @@ We epecially acknowledge the wonderful humans below.
 **[@Jaybird1291](https://github.com/jaybird1291)** (French),
 **Tigerbabe aka Gyaru Jinsei Juku** (Korean),
 **yaacha** (Indonesian),
-**NeriSald** (Italian)
+**[@NeriSal](https://github.com/nerisal)** (Italian)
 
 If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the [issues page](https://github.com/asbplayer/asbplayer/issues).
 

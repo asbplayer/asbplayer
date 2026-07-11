@@ -34,7 +34,8 @@
         "revert": "Revert",
         "userGuide": "User guide",
         "search": "Search",
-        "reload": "Reload"
+        "reload": "Reload",
+        "findPlaceholder": "Search by text or /regex/"
     },
     "about": {
         "title": "О asbplayer",
@@ -49,6 +50,7 @@
         "none": "Не делать ничего",
         "showAnkiDialog": "Показать диалоговое окно Anki",
         "updateLastCard": "Обновить последнюю карточку",
+        "showUpdateCardDialog": "Select cards to update",
         "exportCard": "Экспортировать карточку"
     },
     "postMinePlayback": {
@@ -91,12 +93,17 @@
         "tagList": "Список тегов, разделенных запятыми",
         "title": "Экспорт в Anki",
         "updateLastCard": "Обновить последнюю карточку",
+        "updateSelectedCards": "Update selected cards ({{count}})",
         "url": "URL",
         "word": "Слово",
         "zoomIn": "Приблизить",
         "zoomOut": "Отдалить",
         "imagePreview": "Нажмите для предварительного просмотра",
         "quickSelectFtue": "{{shortcut}} выбирает последнее использованное действие."
+    },
+    "cardSelectUi": {
+        "title": "Select cards to update",
+        "noResults": "No cards found."
     },
     "bar": {
         "donate": "Донатить",
@@ -204,7 +211,6 @@
         "unknownExtension": "Невозможно определить расширение файла {{fileName}}",
         "unsupportedExtension": "Неподдерживаемое расширение: {{extension}}",
         "videoPlayerDragAndDropNotAllowed": "Нельзя перетаскивать файлы в сам видеоплеер. Перетащите и отпустите их вне рамки видео.",
-        "restoreSessionPermissionDenied": "Доступ запрещён. Не удалось восстановить последнюю сессию.",
         "restoreSessionFailed": "Не удалось восстановить последнюю сессию. Возможно, файлы были перемещены или удалены."
     },
     "extension": {
@@ -356,6 +362,7 @@
         "alwaysPlayOnSubtitleRepeat": "Всегда воспроизводить после вызова 'Перемотать к началу текущего/предыдущего субтитра'",
         "anki": "Anki",
         "ankiConnectUrl": "URL Anki Connect",
+        "ankiConnectApiKey": "Anki Connect API Key",
         "audioField": "Поле аудио",
         "audioPaddingEnd": "Отступ аудио в конце",
         "audioPaddingStart": "Отступ аудио в начале",
@@ -488,6 +495,7 @@
         "dictionaryLocalWordDatabase": "Local word database",
         "dictionaryAnkiWordDatabase": "Anki word database",
         "dictionaryWaniKaniWordDatabase": "WaniKani word database",
+        "dictionaryEnableAnnotations": "Enable Annotations",
         "dictionaryColorizeSubtitles": "Colorize subtitles based on known words",
         "dictionaryAutoGenerateStatistics": "Generate statistics automatically",
         "dictionaryColorizeOnHoverOnly": "On Hover Only",
@@ -517,6 +525,8 @@
         "dictionaryTokenReadingAnnotationUnknownOrBelow": "Unknown or below",
         "dictionaryTokenReadingAnnotationNever": "Never",
         "dictionaryDisplayIgnoredTokenReadings": "Display readings for ignored words",
+        "dictionaryTokenPitchAccentAnnotation": "Display pitch accent (Japanese)",
+        "dictionaryTokenPitchAccentAnnotationUnderlineOverlineStyle": "The \"{{style}}\" style may get mistaken for pitch accent markings, enabling \"{{pitchAccentOnHover}}\" is recommended.",
         "dictionaryTokenFrequencyAnnotation": "Display word frequency",
         "dictionaryTokenFrequencyAnnotationAlways": "Always",
         "dictionaryTokenFrequencyAnnotationUncollectedOnly": "Uncollected only",
@@ -532,6 +542,7 @@
         "dictionaryAnkiTreatSuspendedNormal": "Normal",
         "dictionaryWaniKaniSection": "WaniKani",
         "dictionaryWaniKaniApiToken": "WaniKani API token",
+        "dictionaryWaniKaniApiTokenHelperText": "Instructions to get an API token are <0>here</0>.",
         "dictionaryTokenStyling": "Word color style",
         "dictionaryTokenStylingText": "Text",
         "dictionaryTokenStylingBackground": "Background",
@@ -540,6 +551,15 @@
         "dictionaryTokenStylingOutline": "Outline",
         "dictionaryTokenStylingOutlineHelperText": "You may need to set Subtitle Outline Thickness in Subtitle Appearance to 0 for the best results.",
         "dictionaryTokenStylingThickness": "Thickness",
+        "dictionaryTokenAnnotationTargetVideo": "Video",
+        "dictionaryTokenAnnotationTargetSubtitlePlayer": "Subtitle list",
+        "dictionaryTokenAnnotationHoverColor": "Only display word color on hover",
+        "dictionaryTokenAnnotationHoverReading": "Only display word reading on hover",
+        "dictionaryTokenAnnotationHoverFrequency": "Only display word frequency on hover",
+        "dictionaryTokenAnnotationHoverPitchAccent": "Only display pitch accent on hover",
+        "dictionaryTokenAnnotationReadingSize": "Word reading size",
+        "dictionaryTokenAnnotationFrequencySize": "Word frequency size",
+        "dictionaryTokenAnnotationPitchAccentSize": "Pitch accent size",
         "dictionaryColorizeFullyKnownTokens": "Colorize fully known words",
         "dictionaryTokenStatus5": "Mature",
         "dictionaryTokenStatusReading5": "Reading",
@@ -554,6 +574,7 @@
         "dictionaryTokenStatus0": "Uncollected",
         "dictionaryTokenStatusReading0": "Reading",
         "dictionaryTokenStateIgnored": "Ignored",
+        "dictionaryTokenStateIgnoredReading": "Reading",
         "dictionaryBuildAnkiStarted": "Querying Anki for modified cards",
         "dictionaryBuildWaniKaniStarted": "Syncing WaniKani vocabulary",
         "dictionaryTokenStatusAlpha": "Alpha",
@@ -710,8 +731,12 @@
         "jimakuApiKey": "Jimaku API key",
         "jimakuApiKeyAutosaveHint": "Saved automatically. Get an API key <0>here</0>.",
         "entries": "Search results",
+        "recentEntries": "Recent",
         "noEntries": "No search results",
         "availableFiles": "Files",
-        "noFiles": "No files"
+        "noFiles": "No files",
+        "searchCategory": "Search category",
+        "categoryAnime": "Anime",
+        "categoryDrama": "Drama"
     }
 }

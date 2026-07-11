@@ -18,6 +18,7 @@ import {
     PostMinePlayback,
     SettingsUpdatedMessage,
     ShowAnkiUiMessage,
+    ShowCardSelectUiMessage,
     VideoToExtensionCommand,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
@@ -75,7 +76,7 @@ export default class AnkiUiController {
         this._settings = settings;
 
         if (this.frame?.bound) {
-            this.frame.client().then(async (client) => {
+            void this.frame.client().then(async (client) => {
                 const profilesPromise = settingsProvider.profiles();
                 const activeProfilePromise = settingsProvider.activeProfile();
                 const message: AnkiDialogSettingsMessage = {
@@ -116,6 +117,48 @@ export default class AnkiUiController {
             surroundingSubtitles: surroundingSubtitles,
             image: image,
             audio: audio,
+            dialogRequestedTimestamp: context.contentTimeMs,
+            text,
+            word,
+            definition,
+            customFieldValues,
+            inTutorial: this._inTutorial,
+            ...(await this._additionalUiState(context)),
+        };
+        client.updateState(state);
+    }
+
+    async showCardSelect(
+        context: Binding,
+        {
+            subtitle,
+            surroundingSubtitles,
+            image,
+            audio,
+            text,
+            definition,
+            word,
+            customFieldValues,
+        }: ShowCardSelectUiMessage
+    ) {
+        if (!this._settings) {
+            throw new Error('Unable to show card select UI because settings are missing.');
+        }
+
+        this._prepareShow(context);
+        const client = await this._client(context);
+        const state: AnkiUiInitialState = {
+            type: 'initial',
+            open: true,
+            cardSelectOpen: true,
+            canRerecord: true,
+            settings: this._settings,
+            source: sourceString(context.subtitleFileName(), subtitle.start),
+            url: context.url(subtitle.start, subtitle.end),
+            subtitle,
+            surroundingSubtitles,
+            image,
+            audio,
             dialogRequestedTimestamp: context.contentTimeMs,
             text,
             word,
@@ -180,7 +223,7 @@ export default class AnkiUiController {
 
         if (document.fullscreenElement) {
             this.fullscreenElement = document.fullscreenElement;
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
 
         context.keyBindings.unbind();
@@ -190,7 +233,7 @@ export default class AnkiUiController {
 
     private async _client(context: Binding) {
         this.frame.fetchOptions = {
-            videoSrc: context.video.src,
+            videoSrc: context.registeredVideoSrc,
             allowedFetchUrl: this._settings!.ankiConnectUrl,
         };
         this.frame.language = await context.settings.getSingle('language');
@@ -198,7 +241,7 @@ export default class AnkiUiController {
         const client = await this.frame.client();
 
         if (isNewClient) {
-            this.focusInListener = (event: FocusEvent) => {
+            this.focusInListener = () => {
                 if (this.frame === undefined || this.frame.hidden) {
                     return;
                 }
@@ -209,161 +252,173 @@ export default class AnkiUiController {
             };
             window.addEventListener('focusin', this.focusInListener);
 
-            client.onMessage(async (message) => {
-                switch (message.command) {
-                    case 'openSettings':
-                        const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                            sender: 'asbplayer-video',
-                            message: {
-                                command: 'open-asbplayer-settings',
-                                tutorial: this._inTutorial,
-                            },
-                            src: context.video.src,
-                        };
-                        browser.runtime.sendMessage(openSettingsCommand);
-                        return;
-                    case 'copy-to-clipboard':
-                        const copyToClipboardMessage = message as CopyToClipboardMessage;
-                        const copyToClipboardCommand: VideoToExtensionCommand<CopyToClipboardMessage> = {
-                            sender: 'asbplayer-video',
-                            message: {
-                                command: 'copy-to-clipboard',
-                                dataUrl: copyToClipboardMessage.dataUrl,
-                            },
-                            src: context.video.src,
-                        };
-                        browser.runtime.sendMessage(copyToClipboardCommand);
-                        return;
-                    case 'encode-mp3':
-                        const { base64, messageId, extension } = message as EncodeMp3Message;
-                        const encodeMp3Command: VideoToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
-                            sender: 'asbplayer-video',
-                            message: {
-                                command: 'encode-mp3',
-                                base64,
-                                extension,
-                            },
-                            src: context.video.src,
-                        };
-                        const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
-                        client.sendMessage({
-                            messageId,
-                            base64: encodedBase64,
-                        });
-                        return;
-                    case 'activeProfile':
-                        const activeProfileMessage = message as ActiveProfileMessage;
-                        context.settings.setActiveProfile(activeProfileMessage.profile).then(() => {
-                            const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+            client.onMessage((message) => {
+                void (async () => {
+                    switch (message.command) {
+                        case 'openSettings': {
+                            const openSettingsCommand: VideoToExtensionCommand<OpenAsbplayerSettingsMessage> = {
                                 sender: 'asbplayer-video',
                                 message: {
-                                    command: 'settings-updated',
+                                    command: 'open-asbplayer-settings',
+                                    tutorial: this._inTutorial,
                                 },
-                                src: context.video.src,
+                                src: context.registeredVideoSrc,
                             };
-                            browser.runtime.sendMessage(settingsUpdatedCommand);
-                        });
-                        return;
-                    case 'dismissedQuickSelectFtue':
-                        globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
-                        return;
-                    case 'exported':
-                        const exportedMessage = message as AnkiUiBridgeExportedMessage;
-                        context.settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
-                            const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+                            void browser.runtime.sendMessage(openSettingsCommand);
+                            return;
+                        }
+                        case 'copy-to-clipboard': {
+                            const copyToClipboardMessage = message as CopyToClipboardMessage;
+                            const copyToClipboardCommand: VideoToExtensionCommand<CopyToClipboardMessage> = {
                                 sender: 'asbplayer-video',
                                 message: {
-                                    command: 'settings-updated',
+                                    command: 'copy-to-clipboard',
+                                    dataUrl: copyToClipboardMessage.dataUrl,
                                 },
-                                src: context.video.src,
+                                src: context.registeredVideoSrc,
                             };
-                            browser.runtime.sendMessage(settingsUpdatedCommand);
-                        });
-                        return;
-                    case 'card-updated-dialog':
-                        const cardUpdatedDialogCommand: VideoToExtensionCommand<CardUpdatedDialogMessage> = {
-                            sender: 'asbplayer-video',
-                            message: message as CardUpdatedDialogMessage,
-                            src: context.video.src,
-                        };
-                        browser.runtime.sendMessage(cardUpdatedDialogCommand);
-                        return;
-                    case 'card-exported-dialog':
-                        const cardExportedDialogCommand: VideoToExtensionCommand<CardExportedDialogMessage> = {
-                            sender: 'asbplayer-video',
-                            message: message as CardExportedDialogMessage,
-                            src: context.video.src,
-                        };
-                        browser.runtime.sendMessage(cardExportedDialogCommand);
-                        return;
-                }
-
-                context.keyBindings.bind(context);
-                context.subtitleController.forceHideSubtitles = false;
-                context.mobileVideoOverlayController.forceHide = false;
-                this.frame?.hide();
-
-                if (this.fullscreenElement) {
-                    this.fullscreenElement.requestFullscreen();
-                    this.fullscreenElement = undefined;
-                }
-
-                if (this.activeElement) {
-                    const activeHtmlElement = this.activeElement as HTMLElement;
-
-                    if (typeof activeHtmlElement.focus === 'function') {
-                        activeHtmlElement.focus();
+                            void browser.runtime.sendMessage(copyToClipboardCommand);
+                            return;
+                        }
+                        case 'encode-mp3': {
+                            const { base64, messageId, extension } = message as EncodeMp3Message;
+                            const encodeMp3Command: VideoToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
+                                sender: 'asbplayer-video',
+                                message: {
+                                    command: 'encode-mp3',
+                                    base64,
+                                    extension,
+                                },
+                                src: context.registeredVideoSrc,
+                            };
+                            const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
+                            client.sendMessage({
+                                messageId,
+                                base64: encodedBase64,
+                            });
+                            return;
+                        }
+                        case 'activeProfile': {
+                            const activeProfileMessage = message as ActiveProfileMessage;
+                            void context.settings.setActiveProfile(activeProfileMessage.profile).then(() => {
+                                const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+                                    sender: 'asbplayer-video',
+                                    message: {
+                                        command: 'settings-updated',
+                                    },
+                                    src: context.registeredVideoSrc,
+                                };
+                                void browser.runtime.sendMessage(settingsUpdatedCommand);
+                            });
+                            return;
+                        }
+                        case 'dismissedQuickSelectFtue':
+                            globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                            return;
+                        case 'exported': {
+                            const exportedMessage = message as AnkiUiBridgeExportedMessage;
+                            void context.settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
+                                const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+                                    sender: 'asbplayer-video',
+                                    message: {
+                                        command: 'settings-updated',
+                                    },
+                                    src: context.registeredVideoSrc,
+                                };
+                                void browser.runtime.sendMessage(settingsUpdatedCommand);
+                            });
+                            return;
+                        }
+                        case 'card-updated-dialog': {
+                            const cardUpdatedDialogCommand: VideoToExtensionCommand<CardUpdatedDialogMessage> = {
+                                sender: 'asbplayer-video',
+                                message: message as CardUpdatedDialogMessage,
+                                src: context.registeredVideoSrc,
+                            };
+                            void browser.runtime.sendMessage(cardUpdatedDialogCommand);
+                            return;
+                        }
+                        case 'card-exported-dialog': {
+                            const cardExportedDialogCommand: VideoToExtensionCommand<CardExportedDialogMessage> = {
+                                sender: 'asbplayer-video',
+                                message: message as CardExportedDialogMessage,
+                                src: context.registeredVideoSrc,
+                            };
+                            void browser.runtime.sendMessage(cardExportedDialogCommand);
+                            return;
+                        }
                     }
 
-                    this.activeElement = undefined;
-                } else {
-                    window.focus();
-                }
+                    context.keyBindings.bind(context);
+                    context.subtitleController.forceHideSubtitles = false;
+                    context.mobileVideoOverlayController.forceHide = false;
+                    this.frame?.hide();
 
-                switch (message.command) {
-                    case 'resume':
-                        const resumeMessage = message as AnkiUiBridgeResumeMessage;
-                        context.ankiUiSavedState = resumeMessage.uiState;
+                    if (this.fullscreenElement) {
+                        void this.fullscreenElement.requestFullscreen();
+                        this.fullscreenElement = undefined;
+                    }
 
-                        if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
-                            const seekTo = resumeMessage.uiState.dialogRequestedTimestamp / 1000;
+                    if (this.activeElement) {
+                        const activeHtmlElement = this.activeElement as HTMLElement;
 
-                            if (context.contentTimeMs / 1000 !== seekTo) {
-                                context.seek(seekTo);
-                            }
+                        if (typeof activeHtmlElement.focus === 'function') {
+                            activeHtmlElement.focus();
                         }
 
-                        switch (context.postMinePlayback) {
-                            case PostMinePlayback.remember:
-                                if (context.wasPlayingBeforeRecordingMedia) {
-                                    context.play();
+                        this.activeElement = undefined;
+                    } else {
+                        window.focus();
+                    }
+
+                    switch (message.command) {
+                        case 'resume': {
+                            const resumeMessage = message as AnkiUiBridgeResumeMessage;
+                            context.ankiUiSavedState = resumeMessage.uiState;
+
+                            if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
+                                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp / 1000;
+
+                                if (context.contentTimeMs / 1000 !== seekTo) {
+                                    context.seek(seekTo);
                                 }
-                                break;
-                            case PostMinePlayback.play:
-                                context.play();
-                                break;
-                            case PostMinePlayback.pause:
-                                // already paused, don't need to do anything
-                                break;
+                            }
+
+                            switch (context.postMinePlayback) {
+                                case PostMinePlayback.remember:
+                                    if (context.wasPlayingBeforeRecordingMedia) {
+                                        void context.play();
+                                    }
+                                    break;
+                                case PostMinePlayback.play:
+                                    void context.play();
+                                    break;
+                                case PostMinePlayback.pause:
+                                    // already paused, don't need to do anything
+                                    break;
+                            }
+                            break;
                         }
-                        break;
-                    case 'rewind':
-                        const rewindMessage = message as AnkiUiBridgeRewindMessage;
-                        context.ankiUiSavedState = rewindMessage.uiState;
-                        context.pause();
-                        context.seek(rewindMessage.uiState.subtitle.start / 1000);
-                        break;
-                    case 'rerecord':
-                        const rerecordMessage = message as AnkiUiBridgeRerecordMessage;
-                        context.rerecord(
-                            rerecordMessage.recordStart,
-                            rerecordMessage.recordEnd,
-                            rerecordMessage.uiState
-                        );
-                        break;
-                    default:
-                        console.error('Unknown message received from bridge: ' + message.command);
-                }
+                        case 'rewind': {
+                            const rewindMessage = message as AnkiUiBridgeRewindMessage;
+                            context.ankiUiSavedState = rewindMessage.uiState;
+                            context.pause();
+                            context.seek(rewindMessage.uiState.subtitle.start / 1000);
+                            break;
+                        }
+                        case 'rerecord': {
+                            const rerecordMessage = message as AnkiUiBridgeRerecordMessage;
+                            void context.rerecord(
+                                rerecordMessage.recordStart,
+                                rerecordMessage.recordEnd,
+                                rerecordMessage.uiState
+                            );
+                            break;
+                        }
+                        default:
+                            console.error('Unknown message received from bridge: ' + message.command);
+                    }
+                })().catch(console.error);
             });
         }
 

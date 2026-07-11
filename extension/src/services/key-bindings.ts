@@ -65,7 +65,7 @@ export default class KeyBindings {
                 event.stopImmediatePropagation();
 
                 if (context.video.paused) {
-                    context.play();
+                    void context.play();
                 } else {
                     context.pause();
                 }
@@ -154,7 +154,7 @@ export default class KeyBindings {
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 context.seek(subtitle.start / 1000);
-                if (context.alwaysPlayOnSubtitleRepeat) context.play();
+                if (context.alwaysPlayOnSubtitleRepeat) void context.play();
             },
             () => context.subtitleController.subtitles.length === 0,
             () => context.contentTimeMs,
@@ -173,10 +173,10 @@ export default class KeyBindings {
                     message: {
                         command: 'toggle-subtitles',
                     },
-                    src: context.video.src,
+                    src: context.registeredVideoSrc,
                 };
 
-                browser.runtime.sendMessage(toggleSubtitlesCommand);
+                void browser.runtime.sendMessage(toggleSubtitlesCommand);
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -251,10 +251,10 @@ export default class KeyBindings {
                     message: {
                         command: 'open-statistics',
                     },
-                    src: context.video.src,
+                    src: context.registeredVideoSrc,
                 };
 
-                browser.runtime.sendMessage(command);
+                void browser.runtime.sendMessage(command);
             },
             () => false,
             true
@@ -270,9 +270,9 @@ export default class KeyBindings {
                         command: 'toggleSubtitleTrackInList',
                         track: track,
                     },
-                    src: context.video.src,
+                    src: context.registeredVideoSrc,
                 };
-                browser.runtime.sendMessage(command);
+                void browser.runtime.sendMessage(command);
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -347,9 +347,9 @@ export default class KeyBindings {
                             message: {
                                 command: 'settings-updated',
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
-                        browser.runtime.sendMessage(settingsUpdatedCommand);
+                        void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
                     .catch(console.error);
             },
@@ -374,9 +374,9 @@ export default class KeyBindings {
                             message: {
                                 command: 'settings-updated',
                             },
-                            src: context.video.src,
+                            src: context.registeredVideoSrc,
                         };
-                        browser.runtime.sendMessage(settingsUpdatedCommand);
+                        void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
                     .catch(console.error);
             },

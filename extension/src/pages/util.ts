@@ -6,26 +6,24 @@ export function extractExtension(url: string, fallback: string) {
     return dotIndex === -1 ? fallback : path.substring(dotIndex + 1);
 }
 
-export function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
-    return new Promise<boolean>(async (resolve, reject) => {
-        if (test()) {
-            resolve(true);
-        }
+export async function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
+    if (test()) {
+        return true;
+    }
 
-        const t0 = Date.now();
-        let passed = false;
+    const t0 = Date.now();
+    let passed = false;
 
-        while (!passed && Date.now() < t0 + timeout) {
-            await new Promise<void>((loopResolve) => {
-                setTimeout(() => {
-                    passed = test();
-                    loopResolve();
-                }, 1000);
-            });
-        }
+    while (!passed && Date.now() < t0 + timeout) {
+        await new Promise<void>((loopResolve) => {
+            setTimeout(() => {
+                passed = test();
+                loopResolve();
+            }, 1000);
+        });
+    }
 
-        resolve(passed);
-    });
+    return passed;
 }
 
 type SubtitlesByPath = { [key: string]: VideoDataSubtitleTrack[] };
@@ -36,7 +34,10 @@ export interface InferHooks {
         addTrack: (track: VideoDataSubtitleTrackDef) => void,
         setBasename: (basename: string) => void
     ) => void;
-    onRequest?: (addTrack: (track: VideoDataSubtitleTrackDef) => void, setBasename: (basename: string) => void) => void;
+    onRequest?: (
+        addTrack: (track: VideoDataSubtitleTrackDef) => void,
+        setBasename: (basename: string) => void
+    ) => Promise<void>;
     waitForBasename: boolean;
 }
 
@@ -51,15 +52,15 @@ export const trackId = (def: VideoDataSubtitleTrackDef) => {
 export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, timeout?: number) {
     setTimeout(() => {
         const subtitlesByPath: SubtitlesByPath = {};
-        let basename = '';
+        const basenameByPath: { [key: string]: string } = {};
         let trackDataRequestHandled = false;
 
         if (onJson !== undefined) {
             const originalParse = JSON.parse;
 
-            JSON.parse = function () {
-                // @ts-ignore
-                const value = originalParse.apply(this, arguments);
+            JSON.parse = function (...args: unknown[]) {
+                // @ts-expect-error: forwarding original parse arguments
+                const value = originalParse.apply(this, args);
                 let tracksFound = false;
                 let basenameFound = false;
 
@@ -80,19 +81,20 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
                         }
                     },
                     (theBasename) => {
-                        basename = theBasename;
+                        basenameByPath[window.location.pathname] = theBasename;
                         basenameFound = true;
                     }
                 );
 
                 if (trackDataRequestHandled && (tracksFound || basenameFound)) {
                     // Only notify additional tracks after the initial request for track info
+                    const currentPath = window.location.pathname;
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-synced-data', {
                             detail: {
                                 error: '',
-                                basename: basename,
-                                subtitles: subtitlesByPath[window.location.pathname],
+                                basename: basenameByPath[currentPath] ?? '',
+                                subtitles: subtitlesByPath[currentPath],
                             },
                         })
                     );
@@ -103,66 +105,82 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
         }
 
         function garbageCollect() {
+            const currentPath = window.location.pathname;
             for (const path of Object.keys(subtitlesByPath)) {
-                if (path !== window.location.pathname) {
+                if (path !== currentPath) {
                     delete subtitlesByPath[path];
+                }
+            }
+            for (const path of Object.keys(basenameByPath)) {
+                if (path !== currentPath) {
+                    delete basenameByPath[path];
                 }
             }
         }
 
         document.addEventListener(
             'asbplayer-get-synced-data',
-            async () => {
-                onRequest?.(
-                    (track) => {
-                        const path = window.location.pathname;
+            () => {
+                void (async () => {
+                    // Pin the pathname at request-start time so async onRequest
+                    // callbacks resolving after a soft-navigation still file their
+                    // tracks and basename under the path they were fetched for.
+                    const requestPath = window.location.pathname;
 
-                        if (typeof subtitlesByPath[path] === 'undefined') {
-                            subtitlesByPath[path] = [];
-                        }
+                    if (onRequest !== undefined) {
+                        void onRequest(
+                            (track) => {
+                                if (typeof subtitlesByPath[requestPath] === 'undefined') {
+                                    subtitlesByPath[requestPath] = [];
+                                }
 
-                        const newId = trackId(track);
+                                const newId = trackId(track);
 
-                        if (subtitlesByPath[path].find((s) => s.id === newId) === undefined) {
-                            subtitlesByPath[path].push({ id: newId, ...track });
-                        }
-                    },
-                    (theBasename) => {
-                        basename = theBasename;
-                        if (!trackDataRequestHandled) {
-                            // Notify basename even if still waiting for subtitle track info
-                            document.dispatchEvent(
-                                new CustomEvent('asbplayer-synced-data', {
-                                    detail: {
-                                        error: '',
-                                        basename: basename,
-                                        subtitles: undefined,
-                                    },
-                                })
-                            );
-                        }
+                                if (subtitlesByPath[requestPath].find((s) => s.id === newId) === undefined) {
+                                    subtitlesByPath[requestPath].push({ id: newId, ...track });
+                                }
+                            },
+                            (theBasename) => {
+                                basenameByPath[requestPath] = theBasename;
+                                if (!trackDataRequestHandled && requestPath === window.location.pathname) {
+                                    // Notify basename even if still waiting for subtitle track info
+                                    document.dispatchEvent(
+                                        new CustomEvent('asbplayer-synced-data', {
+                                            detail: {
+                                                error: '',
+                                                basename: theBasename,
+                                                subtitles: undefined,
+                                            },
+                                        })
+                                    );
+                                }
+                            }
+                        ).catch(console.error);
                     }
-                );
 
-                const ready = () =>
-                    (!waitForBasename || basename !== '') && window.location.pathname in subtitlesByPath;
+                    const ready = () => {
+                        const path = window.location.pathname;
+                        return (!waitForBasename || (basenameByPath[path] ?? '') !== '') && path in subtitlesByPath;
+                    };
 
-                if (!ready()) {
-                    await poll(ready, timeout);
-                }
+                    if (!ready()) {
+                        await poll(ready, timeout);
+                    }
 
-                document.dispatchEvent(
-                    new CustomEvent('asbplayer-synced-data', {
-                        detail: {
-                            error: '',
-                            basename: basename,
-                            subtitles: subtitlesByPath[window.location.pathname] ?? [],
-                        },
-                    })
-                );
+                    const currentPath = window.location.pathname;
+                    document.dispatchEvent(
+                        new CustomEvent('asbplayer-synced-data', {
+                            detail: {
+                                error: '',
+                                basename: basenameByPath[currentPath] ?? '',
+                                subtitles: subtitlesByPath[currentPath] ?? [],
+                            },
+                        })
+                    );
 
-                garbageCollect();
-                trackDataRequestHandled = true;
+                    garbageCollect();
+                    trackDataRequestHandled = true;
+                })().catch(console.error);
             },
             false
         );

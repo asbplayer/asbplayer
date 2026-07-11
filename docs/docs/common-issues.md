@@ -75,11 +75,12 @@ This can happen because `Experimental Web Platform features` is enabled in `chro
 
 Annotation is considered disabled if the following settings are set to these values:
 - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
-- [`Display word readings`](./reference/settings.md#display-word-readings): **Never**
-- [`Display readings for ignored words`](./reference/settings.md#display-readings-for-ignored-words): **Off**
-- [`Display word frequency`](./reference/settings.md#display-word-frequency): **Never**
+- [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
+- [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
+- [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
+- [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
 
-To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Also check whether **Only show annotations on hover** is enabled.
+To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
 
 :::tip
 The [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) and [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) buttons will be disabled unless the above settings have specific values that benefit from their integration.

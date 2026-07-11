@@ -7,25 +7,36 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"golang.org/x/net/websocket"
 )
 
+// gorilla/websocket allows only one concurrent writer per connection, so each client
+// serializes its writes (PONG replies and published commands) behind a mutex.
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
 type (
+	wsClient struct {
+		conn     *websocket.Conn
+		writeMux sync.Mutex
+	}
 	forwarder struct {
-		WebsocketClients map[*websocket.Conn]bool
+		WebsocketClients map[*wsClient]bool
 		ResponseChannel  chan clientResponse
 		Mutex            *sync.Mutex
 		AnkiConnectUrl   string
 		PostMineAction   int
-		InterceptField  string
-		InterceptValue  string
+		InterceptField   string
+		InterceptValue   string
 	}
 	ankiConnectRequest struct {
 		Action string                 `json:"action"`
@@ -63,45 +74,56 @@ func getenv(key string, fallback string) string {
 	return fallback
 }
 
-func (forwarder forwarder) addClient(ws *websocket.Conn) {
-	forwarder.Mutex.Lock()
-	defer forwarder.Mutex.Unlock()
-	forwarder.WebsocketClients[ws] = true
-	fmt.Printf("Client connected: %s\n", ws.RemoteAddr())
+func (client *wsClient) send(messageType int, data []byte) error {
+	client.writeMux.Lock()
+	defer client.writeMux.Unlock()
+	return client.conn.WriteMessage(messageType, data)
 }
 
-func (forwarder forwarder) removeClient(ws *websocket.Conn) {
+func (forwarder forwarder) addClient(client *wsClient) {
 	forwarder.Mutex.Lock()
 	defer forwarder.Mutex.Unlock()
-	delete(forwarder.WebsocketClients, ws)
-	fmt.Printf("Client disconnected: %s\n", ws.RemoteAddr())
+	forwarder.WebsocketClients[client] = true
+	fmt.Printf("Client connected: %s\n", client.conn.RemoteAddr())
+}
+
+func (forwarder forwarder) removeClient(client *wsClient) {
+	forwarder.Mutex.Lock()
+	defer forwarder.Mutex.Unlock()
+	delete(forwarder.WebsocketClients, client)
+	fmt.Printf("Client disconnected: %s\n", client.conn.RemoteAddr())
 }
 
 func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
-	websocket.Handler(func(ws *websocket.Conn) {
-		defer ws.Close()
-		defer forwarder.removeClient(ws)
-		forwarder.addClient(ws)
-		for {
-			msg := ""
-			err := websocket.Message.Receive(ws, &msg)
+	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		c.Logger().Error(err)
+		return err
+	}
 
-			if err != nil {
-				c.Logger().Error(err)
-				break
-			} else {
-				if msg == "PING" {
-					websocket.Message.Send(ws, "PONG")
-				} else {
-					response := clientResponse{}
-					err = json.Unmarshal([]byte(msg), &response)
-					if err == nil {
-						forwarder.ResponseChannel <- response
-					}
-				}
+	client := &wsClient{conn: conn}
+	defer conn.Close()
+	defer forwarder.removeClient(client)
+	forwarder.addClient(client)
+
+	for {
+		_, msg, err := conn.ReadMessage()
+
+		if err != nil {
+			c.Logger().Error(err)
+			break
+		}
+
+		if string(msg) == "PING" {
+			client.send(websocket.TextMessage, []byte("PONG"))
+		} else {
+			response := clientResponse{}
+			if err := json.Unmarshal(msg, &response); err == nil {
+				forwarder.ResponseChannel <- response
 			}
 		}
-	}).ServeHTTP(c.Response(), c.Request())
+	}
+
 	return nil
 }
 
@@ -114,8 +136,8 @@ func (forwarder forwarder) publishMessage(command clientCommand) error {
 		return err
 	}
 
-	for conn := range forwarder.WebsocketClients {
-		websocket.Message.Send(conn, string(bytes))
+	for client := range forwarder.WebsocketClients {
+		client.send(websocket.TextMessage, bytes)
 	}
 
 	return nil
@@ -318,13 +340,54 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 	return nil
 }
 
+func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) error {
+	command := clientCommand{Command: "get-bound-media", MessageId: uuid.NewString(), Body: map[string]interface{}{}}
+	responseChannel := make(chan clientResponse)
+
+	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
+	response, ok := <-responseChannel
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	}
+
+	return c.JSONBlob(http.StatusOK, response.Body)
+}
+
+func (forwarder forwarder) handleAsbplayerSubtitlesRequest(c echo.Context) error {
+	body := map[string]interface{}{}
+	if mediaId := c.QueryParam("mediaId"); mediaId != "" {
+		body["mediaId"] = mediaId
+	}
+	if trackNumbers := c.QueryParam("trackNumbers"); trackNumbers != "" {
+		parsed := []int{}
+		for _, trackNumber := range strings.Split(trackNumbers, ",") {
+			if n, err := strconv.Atoi(strings.TrimSpace(trackNumber)); err == nil {
+				parsed = append(parsed, n)
+			}
+		}
+		if len(parsed) > 0 {
+			body["trackNumbers"] = parsed
+		}
+	}
+	command := clientCommand{Command: "get-subtitles", MessageId: uuid.NewString(), Body: body}
+	responseChannel := make(chan clientResponse)
+
+	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
+	response, ok := <-responseChannel
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, nil)
+	}
+
+	return c.JSONBlob(http.StatusOK, response.Body)
+}
+
 func (forwarder forwarder) disconnectWebsocketClients(c echo.Context) error {
 	forwarder.Mutex.Lock()
 	defer forwarder.Mutex.Unlock()
-	for ws, _ := range forwarder.WebsocketClients {
-		ws.Close()
-		delete(forwarder.WebsocketClients, ws)
-		fmt.Printf("Forcefully disconnected client: %s\n", ws.RemoteAddr())
+	for client := range forwarder.WebsocketClients {
+		client.conn.Close()
+		delete(forwarder.WebsocketClients, client)
+		fmt.Printf("Forcefully disconnected client: %s\n", client.conn.RemoteAddr())
 	}
 	return nil
 }
@@ -360,7 +423,7 @@ func main() {
 	}))
 	forwarder := forwarder{
 		Mutex:            &sync.Mutex{},
-		WebsocketClients: make(map[*websocket.Conn]bool),
+		WebsocketClients: make(map[*wsClient]bool),
 		ResponseChannel:  make(chan clientResponse),
 		AnkiConnectUrl:   ankiConnectUrl,
 		PostMineAction:   postMineAction,
@@ -372,6 +435,8 @@ func main() {
 	e.POST("/", forwarder.handlePostRequest)
 	e.POST("/asbplayer/load-subtitles", forwarder.handleAsbplayerLoadSubtitlesRequest)
 	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
+	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
+	e.GET("/asbplayer/subtitles", forwarder.handleAsbplayerSubtitlesRequest)
 	e.OPTIONS("/", forwarder.handleOptionsRequest)
 	e.Logger.Fatal(e.Start(":" + port))
 }

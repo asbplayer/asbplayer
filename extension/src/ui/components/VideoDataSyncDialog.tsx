@@ -23,7 +23,7 @@ import type { Profile } from '@project/common/settings';
 import Alert from '@mui/material/Alert';
 import { type ButtonBaseActions } from '@mui/material';
 
-const createClasses = makeStyles((theme) => ({
+const createClasses = makeStyles(() => ({
     relative: {
         position: 'relative',
     },

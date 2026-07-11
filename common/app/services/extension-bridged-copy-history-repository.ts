@@ -25,7 +25,7 @@ export class ExtensionBridgedCopyHistoryRepository implements CopyHistoryReposit
         await this._extension.saveCopyHistory(copyHistoryItem);
     }
 
-    liveFetch(count: number, callback: (items: CopyHistoryItem[]) => void): () => void {
+    liveFetch(): () => void {
         // Not supported
         return () => {};
     }

@@ -9,8 +9,15 @@ export enum AnnotationTutorialState {
     hasSeen = 2,
 }
 
+export interface JimakuCachedWork {
+    id: number;
+    name: string;
+}
+
 export interface OnlineSubtitleSourceConfig {
     jimakuApiKey: string;
+    jimakuSearchCategory: 'anime' | 'drama';
+    jimakuRecentWorks?: JimakuCachedWork[];
 }
 
 export const initialGlobalState: GlobalState = {
@@ -19,6 +26,8 @@ export const initialGlobalState: GlobalState = {
     ftueAnnotation: AnnotationTutorialState.hasNotSeen,
     onlineSubtitleSourceConfig: {
         jimakuApiKey: '',
+        jimakuSearchCategory: 'anime',
+        jimakuRecentWorks: [],
     },
 };
 

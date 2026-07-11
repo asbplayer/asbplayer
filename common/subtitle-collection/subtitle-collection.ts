@@ -102,4 +102,8 @@ export class SubtitleCollection<T extends SubtitleModel> {
 
         return { showing, lastShown, nextToShow, startedShowing, willStopShowing };
     }
+
+    subtitlesIn(startTimestamp: number, endTimestamp: number): T[] {
+        return this.tree.search([startTimestamp, endTimestamp]) as T[];
+    }
 }

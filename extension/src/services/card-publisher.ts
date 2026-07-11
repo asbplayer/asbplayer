@@ -7,6 +7,7 @@ import {
     NotifyErrorMessage,
     PostMineAction,
     ShowAnkiUiMessage,
+    ShowCardSelectUiMessage,
 } from '@project/common';
 import { humanReadableTime } from '@project/common/util';
 import { AnkiSettings, ankiSettingsKeys, SettingsProvider } from '@project/common/settings';
@@ -35,6 +36,8 @@ export class CardPublisher {
                 this._showAnkiDialog(card, id, src, tabId);
             } else if (postMineAction == PostMineAction.updateLastCard) {
                 await this._updateLastCard(card, src, tabId);
+            } else if (postMineAction === PostMineAction.showUpdateCardDialog) {
+                this._showUpdateCardDialog(card, src, tabId);
             } else if (postMineAction === PostMineAction.exportCard) {
                 await this._exportCard(card, src, tabId);
             } else if (postMineAction === PostMineAction.none) {
@@ -51,7 +54,7 @@ export class CardPublisher {
         // (agloo) n.b. this could lead to out-of-order card saves if Anki is taking a while,
         // which matters to users if they plan on reviewing cards in save order. If we get reports of this,
         // consider putting a promise from here into a save queue.
-        this._saveCardToRepository(id, card);
+        void this._saveCardToRepository(id, card);
 
         if (tabId === undefined || src === undefined) {
             return;
@@ -65,7 +68,7 @@ export class CardPublisher {
     }
 
     private _notifySaved(savePromise: Promise<any>, card: CardModel, src: string, tabId: number) {
-        savePromise.then((saved: boolean) => {
+        void savePromise.then((saved: boolean) => {
             if (saved) {
                 const cardSavedCommand: ExtensionToVideoCommand<CardSavedMessage> = {
                     sender: 'asbplayer-extension-to-video',
@@ -77,7 +80,7 @@ export class CardPublisher {
                     src: src,
                 };
 
-                browser.tabs.sendMessage(tabId, cardSavedCommand);
+                void browser.tabs.sendMessage(tabId, cardSavedCommand);
             }
         });
     }
@@ -96,7 +99,7 @@ export class CardPublisher {
             src,
         };
 
-        browser.tabs.sendMessage(tabId, cardExportedCommand);
+        void browser.tabs.sendMessage(tabId, cardExportedCommand);
     }
 
     private async _exportCardBulk(card: CardModel, src: string | undefined, tabId: number) {
@@ -121,7 +124,7 @@ export class CardPublisher {
                     },
                     src,
                 };
-                browser.tabs.sendMessage(tabId, cardExportedCommand);
+                void browser.tabs.sendMessage(tabId, cardExportedCommand);
                 return;
             }
             // If we're in the middle of a bulk export, a failure will hang the app.
@@ -138,7 +141,7 @@ export class CardPublisher {
                 },
                 src,
             };
-            browser.tabs.sendMessage(tabId, cardExportedCommand);
+            void browser.tabs.sendMessage(tabId, cardExportedCommand);
             return;
         }
 
@@ -153,8 +156,8 @@ export class CardPublisher {
             src,
         };
 
-        browser.tabs.sendMessage(tabId, cardExportedCommand);
-        browser.runtime.sendMessage(cardExportedCommand);
+        void browser.tabs.sendMessage(tabId, cardExportedCommand);
+        void browser.runtime.sendMessage(cardExportedCommand);
     }
 
     private async _updateLastCard(card: CardModel, src: string | undefined, tabId: number) {
@@ -171,7 +174,7 @@ export class CardPublisher {
             src,
         };
 
-        browser.tabs.sendMessage(tabId, cardUpdatedCommand);
+        void browser.tabs.sendMessage(tabId, cardUpdatedCommand);
     }
 
     private _showAnkiDialog(card: CardModel, id: string, src: string | undefined, tabId: number) {
@@ -185,13 +188,26 @@ export class CardPublisher {
             src,
         };
 
-        browser.tabs.sendMessage(tabId, showAnkiUiCommand);
+        void browser.tabs.sendMessage(tabId, showAnkiUiCommand);
+    }
+
+    private _showUpdateCardDialog(card: CardModel, src: string | undefined, tabId: number) {
+        const showCardSelectUiCommand: ExtensionToVideoCommand<ShowCardSelectUiMessage> = {
+            sender: 'asbplayer-extension-to-video',
+            message: {
+                ...card,
+                command: 'show-card-select-ui',
+            },
+            src,
+        };
+
+        void browser.tabs.sendMessage(tabId, showCardSelectUiCommand);
     }
 
     private async _saveCardToRepository(id: string, card: CardModel) {
         try {
             const storageLimit = await this._settingsProvider.getSingle('miningHistoryStorageLimit');
-            new IndexedDBCopyHistoryRepository(storageLimit).save({
+            await new IndexedDBCopyHistoryRepository(storageLimit).save({
                 ...card,
                 id: card.id ?? id,
                 timestamp: Date.now(),
@@ -222,6 +238,6 @@ export class CardPublisher {
             },
             src,
         };
-        browser.tabs.sendMessage(tabId, notifyErrorCommand);
+        void browser.tabs.sendMessage(tabId, notifyErrorCommand);
     }
 }

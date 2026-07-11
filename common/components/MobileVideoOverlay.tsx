@@ -372,6 +372,8 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                 return t('action.mine');
             case PostMineAction.updateLastCard:
                 return t('action.updateLastCard');
+            case PostMineAction.showUpdateCardDialog:
+                return t('postMineAction.showUpdateCardDialog');
         }
     }
 
@@ -387,7 +389,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             <GridContainer ref={ref} direction="row" wrap="nowrap" className={containerClassName}>
                 {onLoadSubtitles && (
                     <Grid item>
-                        <Tooltip {...defaultTooltipProps} title={t('action.loadSubtitles')!}>
+                        <Tooltip {...defaultTooltipProps} title={t('action.loadSubtitles')}>
                             <span>
                                 <IconButton disabled={model.recording} onClick={onLoadSubtitles}>
                                     <LogoIcon className={model.recording ? classes.inactiveButton : classes.button} />
@@ -397,7 +399,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                     </Grid>
                 )}
                 <Grid item>
-                    <Tooltip {...defaultTooltipProps} title={miningButtonTooltip(model)!}>
+                    <Tooltip {...defaultTooltipProps} title={miningButtonTooltip(model)}>
                         {model.emptySubtitleTrack && model.recordingEnabled ? (
                             // Wrap in span so that Tooltip doesn't complain about disabled child. Spacing also looks better.
                             <span>
@@ -420,7 +422,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                 </Grid>
                 {!model.emptySubtitleTrack && (
                     <Grid item>
-                        <Tooltip {...defaultTooltipProps} title={t('binds.toggleSubtitles')!}>
+                        <Tooltip {...defaultTooltipProps} title={t('binds.toggleSubtitles')}>
                             <span>
                                 <IconButton disabled={model.recording} onClick={onToggleSubtitles}>
                                     {model.subtitlesAreVisible && (
@@ -440,7 +442,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                 )}
                 {!model.emptySubtitleTrack && (
                     <Grid item>
-                        <Tooltip {...defaultTooltipProps} title={t('controls.playbackMode')!}>
+                        <Tooltip {...defaultTooltipProps} title={t('controls.playbackMode')}>
                             <span>
                                 <IconButton disabled={model.recording} onClick={handleOpenPlayModeSelector}>
                                     <TuneIcon className={model.recording ? classes.inactiveButton : classes.button} />

@@ -3,7 +3,6 @@ import {
     AnkiFieldSettings,
     AnkiSettings,
     AsbplayerSettings,
-    CustomAnkiFieldSettings,
     KeyBindName,
     SubtitleListPreference,
     SubtitleSettings,
@@ -17,10 +16,12 @@ import {
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     getFullyKnownTokenStatus,
+    TokenStatus,
+    TokenState,
 } from '.';
 import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
-// @ts-ignore
+// @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;
 
 const defaultSubtitleTextSettings = {
@@ -38,6 +39,33 @@ const defaultSubtitleTextSettings = {
     subtitleCustomStyles: [],
     subtitleBlur: false,
 };
+
+function makeDefaultDictionaryTokenAnnotationConfigs() {
+    return {
+        colorizeEnabled: false,
+        video: {
+            color: { onHoverEnabled: false, size: 1 },
+            reading: { onHoverEnabled: false, size: 0.5 },
+            frequency: { onHoverEnabled: false, size: 0.3 },
+            pitchAccent: { onHoverEnabled: true, size: 0.1 },
+        },
+        subtitlePlayer: {
+            color: { onHoverEnabled: false, size: 1 },
+            reading: { onHoverEnabled: false, size: 0.5 },
+            frequency: { onHoverEnabled: false, size: 0.5 },
+            pitchAccent: { onHoverEnabled: true, size: 0.1 },
+        },
+        onStatuses: [
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, pitchAccent: false },
+        ],
+        onStates: [{ reading: false, frequency: false, pitchAccent: false }],
+    };
+}
 
 const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryColorizeSubtitles: false,
@@ -72,10 +100,12 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
         { display: true, color: '#0000FF', alpha: 'FF' },
         { display: false, color: '#FFFFFF', alpha: 'FF' },
     ],
+    dictionaryTokenAnnotationConfig: makeDefaultDictionaryTokenAnnotationConfigs(),
 };
 
 export const defaultSettings: AsbplayerSettings = {
     ankiConnectUrl: 'http://127.0.0.1:8765',
+    ankiConnectApiKey: '',
     deck: '',
     noteType: '',
     sentenceField: '',
@@ -243,7 +273,8 @@ export const defaultSettings: AsbplayerSettings = {
 };
 
 export const NUM_DICTIONARY_TRACKS = defaultSettings.dictionaryTracks.length;
-export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenStatusColors.length;
+export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStatuses.length;
+export const NUM_TOKEN_STATES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStates.length;
 
 export interface AnkiFieldUiModel {
     key: string;
@@ -324,7 +355,7 @@ export const textSubtitleSettingsForTrack = (
             return true;
         };
 
-        let mergedSettings: any = {};
+        const mergedSettings: any = {};
 
         for (const key of textSubtitleSettingsKeys) {
             if (valuesAllSame(key)) {
@@ -338,12 +369,10 @@ export const textSubtitleSettingsForTrack = (
     }
 
     if (track === 0 || track > subtitleSettings.subtitleTracksV2.length) {
-        return Object.fromEntries(
-            textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]])
-        ) as unknown as TextSubtitleSettings;
+        return Object.fromEntries(textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]]));
     }
 
-    return subtitleSettings.subtitleTracksV2[track - 1] as TextSubtitleSettings;
+    return subtitleSettings.subtitleTracksV2[track - 1];
 };
 
 export const changeForTextSubtitleSetting = (
@@ -466,6 +495,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
     const defaultTrack = defaultSettings.dictionaryTracks[0];
     const fullyKnownStatus = getFullyKnownTokenStatus();
     for (const dt of dictionaryTracks) {
+        // Ensure dictionaryTokenStatusColors exists and has the correct length
         if (!dt.dictionaryTokenStatusColors) (dt as any).dictionaryTokenStatusColors = [];
         while (dt.dictionaryTokenStatusColors.length < NUM_TOKEN_STATUSES) {
             const color = defaultTrack.dictionaryTokenStatusColors[dt.dictionaryTokenStatusColors.length];
@@ -475,6 +505,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenStatusColors.pop();
         }
 
+        // Ensure dictionaryTokenStatusConfig exists and has the correct length
         if (!dt.dictionaryTokenStatusConfig) (dt as any).dictionaryTokenStatusConfig = [];
         while (dt.dictionaryTokenStatusConfig.length < NUM_TOKEN_STATUSES) {
             const config = {
@@ -487,7 +518,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenStatusConfig.pop();
         }
 
-        // Migrate to config, both are updated on settings change
+        // Migrate dictionaryTokenStatusColors to dictionaryTokenStatusConfig, both are updated on settings change
         for (let i = 0; i < NUM_TOKEN_STATUSES; ++i) {
             if (dt.dictionaryTokenStatusConfig[i].color !== dt.dictionaryTokenStatusColors[i]) {
                 dt.dictionaryTokenStatusConfig[i] = {
@@ -501,6 +532,66 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
                 ...dt.dictionaryTokenStatusConfig[fullyKnownStatus],
                 display: dt.dictionaryColorizeFullyKnownTokens,
             };
+        }
+
+        // Ensure dictionaryTokenAnnotationConfig exists
+        if (!dt.dictionaryTokenAnnotationConfig) {
+            const config = makeDefaultDictionaryTokenAnnotationConfigs();
+
+            // Migrate dictionaryColorizeOnHoverOnly to dictionaryTokenAnnotationConfig
+            config.video.color.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
+            config.video.reading.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
+            config.video.frequency.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
+
+            // Migrate dictionaryTokenReadingAnnotation to dictionaryTokenAnnotationConfig
+            if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.ALWAYS) {
+                config.onStatuses.forEach((s) => (s.reading = true));
+                config.onStates[TokenState.IGNORED].reading = true;
+            } else if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.LEARNING_OR_BELOW) {
+                for (let tokenStatus: TokenStatus = 0; tokenStatus <= TokenStatus.LEARNING; ++tokenStatus) {
+                    config.onStatuses[tokenStatus].reading = true;
+                }
+            } else if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.UNKNOWN_OR_BELOW) {
+                for (let tokenStatus: TokenStatus = 0; tokenStatus <= TokenStatus.UNKNOWN; ++tokenStatus) {
+                    config.onStatuses[tokenStatus].reading = true;
+                }
+            }
+            if (dt.dictionaryDisplayIgnoredTokenReadings) config.onStates[TokenState.IGNORED].reading = true;
+
+            // Migrate dictionaryTokenFrequencyAnnotation to dictionaryTokenAnnotationConfig
+            if (dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.ALWAYS) {
+                config.onStatuses.forEach((s) => (s.frequency = true));
+                config.onStates[TokenState.IGNORED].frequency = true;
+            } else if (dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.UNCOLLECTED_ONLY) {
+                config.onStatuses[TokenStatus.UNCOLLECTED].frequency = true;
+            }
+
+            (dt as any).dictionaryTokenAnnotationConfig = config;
+        }
+        if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled !== dt.dictionaryColorizeSubtitles) {
+            dt.dictionaryTokenAnnotationConfig.colorizeEnabled = dt.dictionaryColorizeSubtitles;
+        }
+
+        // Ensure dictionaryTokenAnnotationConfig has the correct length
+        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length < NUM_TOKEN_STATUSES) {
+            dt.dictionaryTokenAnnotationConfig.onStatuses.push({
+                reading: false,
+                frequency: false,
+                pitchAccent: false,
+            });
+        }
+        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length > NUM_TOKEN_STATUSES) {
+            dt.dictionaryTokenAnnotationConfig.onStatuses.pop();
+        }
+        while (dt.dictionaryTokenAnnotationConfig.onStates.length < NUM_TOKEN_STATES) {
+            dt.dictionaryTokenAnnotationConfig.onStates.push({
+                reading: false,
+                frequency: false,
+                pitchAccent: false,
+            });
+        }
+        while (dt.dictionaryTokenAnnotationConfig.onStates.length > NUM_TOKEN_STATES) {
+            dt.dictionaryTokenAnnotationConfig.onStates.pop();
         }
 
         // Default for new settings
@@ -527,9 +618,9 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     ensureDictionaryTracksConsistency(settings);
 
     let keyBindSetModified = false;
-    let newKeyBindSet: any = {};
+    const newKeyBindSet: any = {};
     let ankiFieldSettingsModified = false;
-    let newAnkiFieldSettings: any = {};
+    const newAnkiFieldSettings: any = {};
 
     if (settings.keyBindSet !== undefined) {
         const keyBindSet = settings.keyBindSet;
@@ -595,7 +686,7 @@ export class SettingsProvider {
     }
 
     async get<K extends keyof AsbplayerSettings>(keys: K[]): Promise<Pick<AsbplayerSettings, K>> {
-        let parameters: Partial<AsbplayerSettings> = {};
+        const parameters: Partial<AsbplayerSettings> = {};
 
         for (const key of keys) {
             parameters[key] = defaultSettings[key];
@@ -636,11 +727,11 @@ export class SettingsProvider {
         }
         const customAnkiFieldSettings =
             settings.customAnkiFieldSettings ??
-            ((
+            (
                 await this._storage.get({
                     customAnkiFieldSettings: defaultSettings.customAnkiFieldSettings,
                 })
-            ).customAnkiFieldSettings as CustomAnkiFieldSettings);
+            ).customAnkiFieldSettings!;
 
         let modifyCustomAnkiFieldSettings = false;
 
@@ -659,7 +750,7 @@ export class SettingsProvider {
     }
 
     async activeProfile() {
-        return await this._storage.activeProfile();
+        return this._storage.activeProfile();
     }
 
     async setActiveProfile(name: string | undefined) {
@@ -667,7 +758,7 @@ export class SettingsProvider {
     }
 
     async profiles() {
-        return await this._storage.profiles();
+        return this._storage.profiles();
     }
 
     async addProfile(name: string) {
@@ -692,7 +783,7 @@ export const prefixKey = (key: string, profile: string) => {
 };
 
 export const unprefixKey = (key: string, profile: string) => {
-    return (key as string).substring(profile.length + 7);
+    return key.substring(profile.length + 7);
 };
 
 export const prefixedSettings = <P extends string>(
@@ -702,7 +793,7 @@ export const prefixedSettings = <P extends string>(
     const prefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        prefixed[prefixKey(key as keyof AsbplayerSettings, profile)] = settings[key as keyof AsbplayerSettings];
+        prefixed[prefixKey(key, profile)] = settings[key as keyof AsbplayerSettings];
     }
 
     return prefixed;
@@ -712,7 +803,7 @@ export const unprefixedSettings = <P extends string>(settings: Partial<Asbplayer
     const unprefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        const unprefixedKey = unprefixKey(key as keyof AsbplayerSettingsProfile<P>, profile);
+        const unprefixedKey = unprefixKey(key, profile);
         unprefixed[unprefixedKey] = settings[key as keyof AsbplayerSettingsProfile<P>];
     }
 

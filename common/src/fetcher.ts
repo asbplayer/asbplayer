@@ -8,6 +8,6 @@ export class HttpFetcher implements Fetcher {
             method: 'POST',
             body: JSON.stringify(body),
         });
-        return await response.json();
+        return response.json();
     }
 }
