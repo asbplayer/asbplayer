@@ -32,7 +32,7 @@ export const useSubtitleStyles = (
             tracks.push({
                 styles: computeStyles(s, annotationStyleValues),
                 styleString: computeStyleString(s, annotationStyleValues),
-                classes: s.subtitleBlur ? 'asbplayer-subtitles-blurred' : '',
+                classes: s.subtitleBlur ? 'asbplayer-subtitles-blurred asb-subtitles' : 'asb-subtitles',
             });
         }
         return tracks;
