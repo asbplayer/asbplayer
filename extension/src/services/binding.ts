@@ -96,6 +96,7 @@ import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-pro
 import { ExtensionDictionaryStorage } from './extension-dictionary-storage';
 import { HoveredToken } from '@project/common/annotations';
 import { v4 as uuidv4 } from 'uuid';
+import { debounced } from './debounced';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -737,6 +738,13 @@ export default class Binding {
         this.subtitleController.onMouseOut = (mouseEvent: MouseEvent) => this.hoveredToken.handleMouseOut(mouseEvent);
 
         if (this.hasPageScript) {
+            const debouncedChangeListener = debounced(
+                () => {
+                    void this.videoDataSyncController.requestSubtitles();
+                    this._resetSubtitles();
+                },
+                this._isDisneyPlus() ? 1000 : 0
+            );
             this.videoChangeListener = () => {
                 this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
 
@@ -754,8 +762,7 @@ export default class Binding {
                     return;
                 }
 
-                void this.videoDataSyncController.requestSubtitles();
-                this._resetSubtitles();
+                debouncedChangeListener();
             };
             this.video.addEventListener('loadedmetadata', this.videoChangeListener);
         }
