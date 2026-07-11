@@ -64,7 +64,13 @@ export class SubtitleCollection<T extends SubtitleModel> {
 
     subtitlesAt(timestamp: number): SubtitleSlice<T> {
         const interval: NumericTuple = [timestamp, timestamp];
-        const showing = this.tree.search(interval) as T[];
+        // IntervalTree#search orders results by (start, end) of its
+        // internal keys, not by insertion order. Two cues sharing a start
+        // time can therefore come back in the wrong order relative to the
+        // source subtitle file whenever the earlier cue's end is later.
+        const showing = (this.tree.search(interval) as T[]).sort(
+            (a, b) => a.start - b.start || (a.index ?? 0) - (b.index ?? 0)
+        );
         let lastShown: T[] | undefined;
         let nextToShow: T[] | undefined;
         let startedShowing: T | undefined;
