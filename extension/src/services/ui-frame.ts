@@ -1,6 +1,6 @@
 import { isFirefoxBuild } from './build-flags';
 import FrameBridgeClient, { FetchOptions } from './frame-bridge-client';
-import { frameColorScheme } from './frame-color-scheme';
+import { frameColorSchemeClass } from './frame-color-scheme';
 
 export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
     return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {
@@ -90,9 +90,8 @@ export default class UiFrame {
         this._frame?.remove();
 
         this._frame = document.createElement('iframe');
-        this._frame.className = 'asbplayer-ui-frame';
-
-        this._frame.style.colorScheme = frameColorScheme();
+        this._frame.classList.add('asbplayer-ui-frame');
+        this._frame.classList.add(frameColorSchemeClass());
         this._frame.setAttribute('allowtransparency', 'true');
 
         this._client = new FrameBridgeClient(this._frame, this._fetchOptions);

@@ -295,3 +295,32 @@
     z-index: 2147483647 !important;
     pointer-events: auto !important;
 }
+
+/* Contains the iframe with class "asbplayer-statistics-overlay-frame " */
+.asbplayer-statistics-overlay-content {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.asbplayer-statistics-overlay-frame {
+    display: block !important;
+    border: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.asbplayer-color-scheme-normal {
+    color-scheme: normal !important;
+}
+
+.asbplayer-color-scheme-light {
+    color-scheme: light !important;
+}
+
+.asbplayer-color-scheme-dark {
+    color-scheme: dark !important;
+}
+
+.asbplayer-color-scheme-light-dark {
+    color-scheme: light dark !important;
+}

@@ -1,5 +1,5 @@
 import { CachingElementOverlay, OffsetAnchor } from '@/services/element-overlay';
-import { frameColorScheme } from '@/services/frame-color-scheme';
+import { frameColorSchemeClass } from '@/services/frame-color-scheme';
 import UiFrame, { uiFrameForSrc } from '@/services/ui-frame';
 import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '@/ui/components/StatisticsOverlayUi';
 import { type UiState } from '@/ui/components/StatisticsOverlayOneUncollectedUi';
@@ -200,22 +200,12 @@ export class StatisticsOverlayController {
 
     private _setHeight(height: string) {
         this._height = height;
-        if (this._overlay !== undefined) {
-            for (const elm of this._overlay.displayingElements()) {
-                (elm as HTMLIFrameElement).style.setProperty('height', height, 'important');
-            }
-            this._overlay.refresh();
-        }
+        this._overlay?.refresh();
     }
 
     private _setWidth(width: string) {
         this._width = width;
-        if (this._overlay !== undefined) {
-            for (const elm of this._overlay.displayingElements()) {
-                (elm as HTMLIFrameElement).style.setProperty('width', width, 'important');
-            }
-            this._overlay.refresh();
-        }
+        this._overlay?.refresh();
     }
 
     private _ensureOverlay() {
@@ -225,9 +215,9 @@ export class StatisticsOverlayController {
         this._overlay = new CachingElementOverlay({
             targetElement: document.body,
             nonFullscreenContainerClassName: 'asbplayer-statistics-overlay-container',
-            nonFullscreenContentClassName: '',
+            nonFullscreenContentClassName: 'asbplayer-statistics-overlay-content',
             fullscreenContainerClassName: 'asbplayer-statistics-overlay-container',
-            fullscreenContentClassName: '',
+            fullscreenContentClassName: 'asbplayer-statistics-overlay-content',
             offsetAnchor: OffsetAnchor.bottom,
             contentWidthPercentage: -1,
             onMouseOut: () => {},
@@ -236,12 +226,12 @@ export class StatisticsOverlayController {
                 this._applyOverlayContainerStyles(container);
             },
         });
-        const colorScheme = frameColorScheme();
+        const colorSchemeClass = frameColorSchemeClass();
         this._overlay.setHtml([
             {
                 key: 'ui',
                 html: () =>
-                    `<iframe style="display: block !important; border: 0 !important; color-scheme: ${colorScheme} !important; width: 100% !important; height: 0px !important" src="${browser.runtime.getURL(
+                    `<iframe class="${colorSchemeClass} asbplayer-statistics-overlay-frame " src="${browser.runtime.getURL(
                         '/statistics-overlay-ui.html'
                     )}"/>`,
             },
