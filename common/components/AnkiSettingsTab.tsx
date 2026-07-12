@@ -16,6 +16,7 @@ import NoteTypeTutorialBubble from './NoteTypeTutorialBubble';
 import ListField from './ListField';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
+import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import {
     AnkiFieldSettings,
@@ -28,6 +29,7 @@ import { CardModel } from '../src/model';
 import { Direction, TutorialStep } from './settings-model';
 import { Anki, exportCard } from '../anki';
 import Stack from '@mui/material/Stack';
+import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 
 const defaultDeckName = 'Sentences';
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
@@ -174,6 +176,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
     const {
         ankiConnectUrl,
         ankiConnectApiKey,
+        ankiRefreshBrowserAfterUpdate,
         deck,
         noteType,
         sentenceField,
@@ -477,6 +480,17 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     />
                 </FormHelperText>
             )}
+            <SwitchLabelWithHoverEffect
+                control={
+                    <Switch
+                        checked={ankiRefreshBrowserAfterUpdate}
+                        onChange={(event) => onSettingChanged('ankiRefreshBrowserAfterUpdate', event.target.checked)}
+                    />
+                }
+                label={t('settings.ankiRefreshBrowserAfterUpdate')}
+                labelPlacement="start"
+            />
+            <FormHelperText>{t('settings.ankiRefreshBrowserAfterUpdateHelperText')}</FormHelperText>
             <DeckFieldTutorialBubble
                 show={tutorialStep === TutorialStep.deck && !ankiConnectUrlError && !deck}
                 disabled={!inTutorial}

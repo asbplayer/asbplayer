@@ -304,6 +304,9 @@ const settingsSchema = {
         ankiConnectApiKey: {
             type: 'string',
         },
+        ankiRefreshBrowserAfterUpdate: {
+            type: 'boolean',
+        },
         deck: {
             type: 'string',
         },

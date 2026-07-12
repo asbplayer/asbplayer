@@ -106,6 +106,7 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
 export const defaultSettings: AsbplayerSettings = {
     ankiConnectUrl: 'http://127.0.0.1:8765',
     ankiConnectApiKey: '',
+    ankiRefreshBrowserAfterUpdate: false,
     deck: '',
     noteType: '',
     sentenceField: '',
