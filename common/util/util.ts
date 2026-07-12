@@ -5,6 +5,16 @@ import { Progress } from '..';
 import { TokenStatusInfo } from '../dictionary-db';
 import { PitchAccentPosition } from '../yomitan';
 
+// Cues on the same track can share a start time (e.g. Netflix splitting one line into
+// multiple cues), and SubtitleCollection does not guarantee source order in that case, so
+// callers displaying subtitles should sort by track and fall back to source index for ties.
+export function compareSubtitlesForDisplay(
+    s1: Pick<SubtitleModel, 'track' | 'index'>,
+    s2: Pick<SubtitleModel, 'track' | 'index'>
+): number {
+    return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
+}
+
 export function arrayEquals<T>(
     a: readonly T[] | undefined,
     b: readonly T[] | undefined,

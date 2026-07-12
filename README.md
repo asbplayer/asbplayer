@@ -131,7 +131,8 @@ Thank you to all those who have contributed to asbplayer:
 [@Roka20012](https://github.com/Roka20012),
 [@RonzyOnGIT](https://github.com/RonzyOnGIT),
 [@Dr-TNineS](https://github.com/Dr-TNineS),
-[@thntx](https://github.com/thntx)
+[@thntx](https://github.com/thntx),
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904)
 
 Thank you to all those who have translated asbplayer:
 

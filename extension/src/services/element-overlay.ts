@@ -18,7 +18,7 @@ export interface ElementOverlayParams {
     fullscreenContentClassName: string;
     offsetAnchor: OffsetAnchor;
     contentPositionOffset?: number;
-    contentWidthPercentage: number;
+    contentWidthPercentage?: number;
     onContainerStyles?: (container: HTMLElement) => void;
     onMouseOver: (event: MouseEvent) => void;
     onMouseOut: (event: MouseEvent) => void;
@@ -36,7 +36,7 @@ export interface ElementOverlay {
     fullscreenContentClassName: string;
     offsetAnchor: OffsetAnchor;
     contentPositionOffset: number;
-    contentWidthPercentage: number;
+    contentWidthPercentage?: number;
     displayingElements: () => Iterable<HTMLElement>;
     containerElement: HTMLElement | undefined;
 }
@@ -65,7 +65,7 @@ export class CachingElementOverlay implements ElementOverlay {
     fullscreenContentClassName: string;
     offsetAnchor: OffsetAnchor = OffsetAnchor.bottom;
     contentPositionOffset: number;
-    contentWidthPercentage: number;
+    contentWidthPercentage?: number;
 
     constructor({
         targetElement,
@@ -391,7 +391,7 @@ export class CachingElementOverlay implements ElementOverlay {
         if (this.contentWidthPercentage === -1) {
             container.style.maxWidth = rect.width + 'px';
             container.style.width = '';
-        } else {
+        } else if (this.contentWidthPercentage !== undefined) {
             container.style.maxWidth = '';
             container.style.width =
                 Math.min(window.innerWidth, (rect.width * this.contentWidthPercentage) / 100) + 'px';

@@ -32,6 +32,7 @@ import {
 } from '@project/common/settings';
 import {
     arrayEquals,
+    compareSubtitlesForDisplay,
     surroundingSubtitles,
     mockSurroundingSubtitles,
     seekWithNudge,
@@ -899,7 +900,7 @@ export default function VideoPlayer({
                 void autoPauseContext.willStopShowing(slice.willStopShowing);
             }
 
-            showSubtitles = showSubtitles.sort((s1, s2) => s1.track - s2.track);
+            showSubtitles = showSubtitles.sort(compareSubtitlesForDisplay);
 
             if (!arrayEquals(showSubtitles, showSubtitlesRef.current, (s1, s2) => s1.index === s2.index)) {
                 setShowSubtitles(showSubtitles);
@@ -1252,6 +1253,9 @@ export default function VideoPlayer({
                 return;
             }
 
+            const currentTimestamp = clock.time(length);
+            let mediaTimestamp: number;
+
             if (subtitle === undefined || surroundingSubtitles === undefined) {
                 const extracted = extractSubtitles();
 
@@ -1261,9 +1265,12 @@ export default function VideoPlayer({
 
                 subtitle = extracted.currentSubtitle;
                 surroundingSubtitles = extracted.surroundingSubtitles;
+                mediaTimestamp = currentTimestamp;
+            } else if (currentTimestamp >= subtitle.start && currentTimestamp <= subtitle.end) {
+                mediaTimestamp = currentTimestamp;
+            } else {
+                mediaTimestamp = subtitleTimestampWithDelay(subtitle, settings.streamingScreenshotDelay);
             }
-
-            const mediaTimestamp = subtitleTimestampWithDelay(subtitle, settings.streamingScreenshotDelay);
 
             mineSubtitle(
                 postMineAction,
@@ -1280,10 +1287,12 @@ export default function VideoPlayer({
         [
             mineSubtitle,
             extractSubtitles,
+            clock,
             settings.streamingScreenshotDelay,
             selectedAudioTrack,
             videoFile,
             videoFileName,
+            length,
         ]
     );
 
