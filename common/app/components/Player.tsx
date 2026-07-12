@@ -153,6 +153,7 @@ interface PlayerProps {
     onPlayModeChangedViaBind: (playModes: Set<PlayMode>, targetMode: PlayMode) => void;
     onSubtitles: React.Dispatch<React.SetStateAction<DisplaySubtitleModel[] | undefined>>;
     onLoadFiles?: () => void;
+    onLoadSubtitles?: () => void;
     disableKeyEvents: boolean;
     jumpToSubtitle?: SubtitleModel;
     onJumpToSubtitleHandled?: () => void;
@@ -198,6 +199,7 @@ const Player = React.memo(function Player({
     onPlayModeChangedViaBind,
     onSubtitles,
     onLoadFiles,
+    onLoadSubtitles,
     disableKeyEvents,
     jumpToSubtitle,
     onJumpToSubtitleHandled,
@@ -935,7 +937,7 @@ const Player = React.memo(function Player({
         [channel]
     );
     useEffect(() => channel?.onLoadFiles(() => onLoadFiles?.()), [channel, onLoadFiles]);
-
+    useEffect(() => channel?.onLoadSubtitles(() => onLoadSubtitles?.()), [channel, onLoadSubtitles]);
     useEffect(() => {
         return miningContext.onEvent('stopped-mining', () => {
             switch (settings.postMiningPlaybackState) {
@@ -1458,6 +1460,7 @@ const Player = React.memo(function Player({
                             onTabSelected={onTabSelected}
                             onOffsetChange={handleOffsetChange}
                             onPlayMode={handlePlayMode}
+                            onLoadSubtitles={onLoadSubtitles}
                             disableKeyEvents={disableKeyEvents}
                             playbackPreferences={playbackPreferences}
                             showOnMouseMovement={true}

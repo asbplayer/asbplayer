@@ -85,6 +85,7 @@ export default class VideoChannel {
         applyStates: ApplyStrategy
     ) => void)[];
     private loadFilesCallbacks: (() => void)[];
+    private loadSubtitlesCallbacks: (() => void)[];
     private playModesCallbacks: ((modes: Set<PlayMode>) => void)[];
     private cardUpdatedDialogCallbacks: (() => void)[];
     private cardExportedDialogCallbacks: (() => void)[];
@@ -121,6 +122,7 @@ export default class VideoChannel {
         this.subtitlesUpdatedCallbacks = [];
         this.saveTokenLocalCallbacks = [];
         this.loadFilesCallbacks = [];
+        this.loadSubtitlesCallbacks = [];
         this.playModesCallbacks = [];
         this.cardUpdatedDialogCallbacks = [];
         this.cardExportedDialogCallbacks = [];
@@ -273,28 +275,38 @@ export default class VideoChannel {
                     }
                     break;
                 }
-                case 'loadFiles':
+                case 'loadFiles': {
                     for (const callback of this.loadFilesCallbacks) {
                         callback();
                     }
                     break;
-                case 'playModes':
+                }
+                case 'loadSubtitles': {
+                    for (const callback of this.loadSubtitlesCallbacks) {
+                        callback();
+                    }
+                    break;
+                }
+                case 'playModes': {
                     for (const callback of this.playModesCallbacks) {
                         const playModesMessage = event.data as PlayModesMessage;
                         const modes = new Set<PlayMode>(playModesMessage.playModes);
                         callback(modes);
                     }
                     break;
-                case 'card-updated-dialog':
+                }
+                case 'card-updated-dialog': {
                     for (const callback of this.cardUpdatedDialogCallbacks) {
                         callback();
                     }
                     break;
-                case 'card-exported-dialog':
+                }
+                case 'card-exported-dialog': {
                     for (const callback of this.cardExportedDialogCallbacks) {
                         callback();
                     }
                     break;
+                }
                 default:
                     console.error('Unrecognized event ' + event.data.command);
             }
@@ -427,6 +439,11 @@ export default class VideoChannel {
     onLoadFiles(callback: () => void) {
         this.loadFilesCallbacks.push(callback);
         return () => this._remove(callback, this.loadFilesCallbacks);
+    }
+
+    onLoadSubtitles(callback: () => void) {
+        this.loadSubtitlesCallbacks.push(callback);
+        return () => this._remove(callback, this.loadSubtitlesCallbacks);
     }
 
     onPlayModes(callback: (modes: Set<PlayMode>) => void) {

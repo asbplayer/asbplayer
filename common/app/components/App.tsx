@@ -24,6 +24,9 @@ import {
     CardTextFieldValues,
     MediaFragmentErrorCode,
     RequestSubtitlesResponse,
+    VideoDataUiOpenReason,
+    VideoDataSubtitleTrack,
+    ConfirmedVideoDataSubtitleTrack,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
 import { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
@@ -75,6 +78,7 @@ import { DictionaryProvider } from '../../dictionary-db';
 import { isFirefox } from '../../browser-detection';
 import StatisticsOverlay, { StatisticsOverlayProps } from '../../components/StatisticsOverlay';
 import OneUncollectedSentenceDetailsDialog from '../../components/OneUncollectedSentenceDetailsDialog';
+import VideoDataSyncDialog from '../../components/VideoDataSyncDialog';
 
 const latestExtensionVersion = '1.16.0';
 const extensionUrl =
@@ -1623,6 +1627,59 @@ function App({
         setSettingsDialogOpen(true);
     }, []);
 
+    const [subtitleTrackSelectorOpen, setSubtitleTrackSelectorOpen] = useState<boolean>(false);
+    const [subtitleTrackSelectorDisabled, setSubtitleTrackSelectorDisabled] = useState<boolean>(false);
+    const [subtitleTrackSelectorTracks, setSubtitleTrackSelectorTracks] = useState<VideoDataSubtitleTrack[]>([
+        {
+            id: '-',
+            language: '-',
+            url: '-',
+            label: t('extension.videoDataSync.emptySubtitleTrack'),
+            extension: 'srt',
+        },
+    ]);
+    useEffect(() => {
+        for (const track of subtitleTrackSelectorTracks) {
+            if (track.id === '-') {
+                track.label = t('extension.videoDataSync.emptySubtitleTrack');
+            }
+        }
+    }, [t, subtitleTrackSelectorTracks]);
+    const [subtitleTrackSelectorSelectedTrackIds, setSubtitleTrackSelectorSelectedTrackIds] = useState<string[]>([
+        '-',
+        '-',
+        '-',
+    ]);
+    const handleOpenSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(true), []);
+    const handleCloseSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(false), []);
+    const handleConfirmSubtitleTrackSelection = useCallback(
+        (tracks: ConfirmedVideoDataSubtitleTrack[]) => {
+            void (async () => {
+                setSubtitleTrackSelectorDisabled(false);
+                try {
+                    const files: File[] = [];
+                    for (const t of tracks) {
+                        if (t.file !== undefined) {
+                            files.push(t.file);
+                        } else if (!Array.isArray(t.url)) {
+                            const url = t.url as string;
+                            files.push(new File([await (await fetch(url)).blob()], `${t.name}.${t.extension}`));
+                        } else {
+                            console.warn('unexpected url array when downloading subtitle track selection', t);
+                        }
+                    }
+                    handleFiles({ files });
+                    setSubtitleTrackSelectorOpen(false);
+                } catch (e) {
+                    handleError(e);
+                } finally {
+                    setSubtitleTrackSelectorDisabled(false);
+                }
+            })();
+        },
+        [handleFiles, handleError]
+    );
+
     if (!i18nInitialized) {
         return null;
     }
@@ -1750,6 +1807,41 @@ function App({
                                 scrollToId={settingsDialogScrollToId}
                                 {...profilesContext}
                             />
+                            {globalState && (
+                                <VideoDataSyncDialog
+                                    open={subtitleTrackSelectorOpen}
+                                    disabled={subtitleTrackSelectorDisabled}
+                                    isLoading={false}
+                                    suggestedName=""
+                                    subtitleTracks={subtitleTrackSelectorTracks}
+                                    selectedSubtitleTrackIds={subtitleTrackSelectorSelectedTrackIds}
+                                    onSelectedSubtitleTrackIds={setSubtitleTrackSelectorSelectedTrackIds}
+                                    defaultCheckboxState={false}
+                                    error=""
+                                    openReason={VideoDataUiOpenReason.userRequested}
+                                    profiles={profilesContext.profiles}
+                                    activeProfile={profilesContext.activeProfile}
+                                    onlineSubtitleSourceConfig={globalState.onlineSubtitleSourceConfig}
+                                    hasSeenFtue={true}
+                                    hideRememberTrackPreferenceToggle={true}
+                                    hideVideoNameTextField={true}
+                                    onCancel={handleCloseSubtitleTrackSelector}
+                                    onOpenFiles={(files) => handleFiles({ files })}
+                                    onOpenSettings={handleOpenSettings}
+                                    onConfirm={handleConfirmSubtitleTrackSelection}
+                                    onDismissFtue={() => {}}
+                                    onOnlineSourceConfigChanged={(state) =>
+                                        onGlobalStateChanged({
+                                            onlineSubtitleSourceConfig: {
+                                                ...globalState.onlineSubtitleSourceConfig,
+                                                ...state,
+                                            },
+                                        })
+                                    }
+                                    onSubtitleTracks={setSubtitleTrackSelectorTracks}
+                                    onSetActiveProfile={profilesContext.onSetActiveProfile}
+                                />
+                            )}
                             <NeedRefreshDialog
                                 open={needRefreshDialogOpen}
                                 onRefresh={updateFromServiceWorker}
@@ -1791,6 +1883,7 @@ function App({
                                             onFileSelector={handleFileSelector}
                                             onVideoElementSelected={handleVideoElementSelected}
                                             onRestoreLastSession={handleRestoreLastSession}
+                                            onOpenSubtitleTrackSelector={handleOpenSubtitleTrackSelector}
                                         />
                                     )}
                                     <DragOverlay
@@ -1838,6 +1931,7 @@ function App({
                                         />
                                     }
                                     onLoadFiles={handleFileSelector}
+                                    onLoadSubtitles={handleOpenSubtitleTrackSelector}
                                     tab={tab}
                                     availableTabs={availableTabs ?? []}
                                     sources={sources}

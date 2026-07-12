@@ -865,6 +865,10 @@ export default function VideoPlayer({
         playerChannel.loadFiles();
     }, [playerChannel]);
 
+    const handleLoadSubtitles = useCallback(() => {
+        playerChannel.loadSubtitles();
+    }, [playerChannel]);
+
     useEffect(() => {
         if (!subtitles?.length) return;
 
@@ -2004,6 +2008,7 @@ export default function VideoPlayer({
                 onSubtitleAlignment={handleSubtitleAlignment}
                 hideToolbar={isMobile}
                 onLoadFiles={popOut ? undefined : handleLoadFiles}
+                onLoadSubtitles={popOut ? undefined : handleLoadSubtitles}
                 blurOverlayEnabled={blurOverlayVisible}
                 onBlurOverlayToggle={handleBlurOverlayToggle}
                 timestampPreviewEnabled={!isMobile}
