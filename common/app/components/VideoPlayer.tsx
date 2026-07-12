@@ -32,6 +32,7 @@ import {
 } from '@project/common/settings';
 import {
     arrayEquals,
+    compareSubtitlesForDisplay,
     surroundingSubtitles,
     mockSurroundingSubtitles,
     seekWithNudge,
@@ -899,7 +900,7 @@ export default function VideoPlayer({
                 void autoPauseContext.willStopShowing(slice.willStopShowing);
             }
 
-            showSubtitles = showSubtitles.sort((s1, s2) => s1.track - s2.track);
+            showSubtitles = showSubtitles.sort(compareSubtitlesForDisplay);
 
             if (!arrayEquals(showSubtitles, showSubtitlesRef.current, (s1, s2) => s1.index === s2.index)) {
                 setShowSubtitles(showSubtitles);

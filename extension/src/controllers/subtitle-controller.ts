@@ -33,7 +33,7 @@ import {
     ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
     ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
 } from '@project/common/annotations';
-import { arrayEquals, computeStyleString, surroundingSubtitles } from '@project/common/util';
+import { arrayEquals, compareSubtitlesForDisplay, computeStyleString, surroundingSubtitles } from '@project/common/util';
 import i18n from 'i18next';
 import {
     CachingElementOverlay,
@@ -583,7 +583,7 @@ export default class SubtitleController {
     }
 
     private _findShowingSubtitles(slice: SubtitleSlice<IndexedSubtitleModel>): IndexedSubtitleModel[] {
-        return slice.showing.filter((s) => this._trackEnabled(s)).sort((s1, s2) => s1.track - s2.track);
+        return slice.showing.filter((s) => this._trackEnabled(s)).sort(compareSubtitlesForDisplay);
     }
 
     private _trackEnabled(subtitle: SubtitleModel) {
