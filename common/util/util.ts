@@ -15,6 +15,29 @@ export function compareSubtitlesForDisplay(
     return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
 }
 
+export function clampSubtitleOffset(
+    subtitles: readonly Pick<SubtitleModel, 'originalStart' | 'originalEnd'>[],
+    offset: number,
+    mediaLength?: number
+): number {
+    if (!subtitles.length) return offset;
+
+    let earliestTimestamp = Number.POSITIVE_INFINITY;
+    let latestTimestamp = Number.NEGATIVE_INFINITY;
+    for (const subtitle of subtitles) {
+        earliestTimestamp = Math.min(earliestTimestamp, subtitle.originalStart, subtitle.originalEnd);
+        latestTimestamp = Math.max(latestTimestamp, subtitle.originalStart, subtitle.originalEnd);
+    }
+
+    const minimumOffset = -Math.max(0, earliestTimestamp);
+    const maximumOffset =
+        mediaLength !== undefined && Number.isFinite(mediaLength) && mediaLength > 0
+            ? Math.max(0, mediaLength - latestTimestamp)
+            : Number.POSITIVE_INFINITY;
+    const clampedOffset = Math.min(maximumOffset, Math.max(offset, minimumOffset));
+    return clampedOffset === 0 ? 0 : clampedOffset; // Guard against -0
+}
+
 export function arrayEquals<T>(
     a: readonly T[] | undefined,
     b: readonly T[] | undefined,

@@ -32,6 +32,7 @@ import {
 } from '@project/common/settings';
 import {
     arrayEquals,
+    clampSubtitleOffset,
     compareSubtitlesForDisplay,
     surroundingSubtitles,
     mockSurroundingSubtitles,
@@ -382,6 +383,8 @@ export default function VideoPlayer({
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [wasPlayingOnAnkiDialogRequest, setWasPlayingOnAnkiDialogRequest] = useState<boolean>(false);
     const [subtitles, setSubtitles] = useState<IndexedSubtitleModel[]>([]);
+    const subtitlesRef = useRef<IndexedSubtitleModel[]>([]);
+    subtitlesRef.current = subtitles;
     const subtitleCollection = useMemo<SubtitleCollection<IndexedSubtitleModel>>(() => {
         const newCol = new SubtitleCollection<IndexedSubtitleModel>({
             showingCheckRadiusMs: 150,
@@ -571,6 +574,7 @@ export default function VideoPlayer({
     }
 
     const updateSubtitlesWithOffset = useCallback((offset: number) => {
+        offset = clampSubtitleOffset(subtitlesRef.current, offset, 1000 * (videoRef.current?.duration ?? 0));
         setOffset(offset);
         setAlertSeverity('info');
         const addedSign = offset >= 0 ? '+' : '';
@@ -589,6 +593,8 @@ export default function VideoPlayer({
                 index: i,
             }))
         );
+
+        return offset;
     }, []);
 
     playModesRef.current = playModes;
@@ -931,8 +937,8 @@ export default function VideoPlayer({
 
     const handleOffsetChange = useCallback(
         (offset: number) => {
-            updateSubtitlesWithOffset(offset);
-            playerChannel.offset(offset);
+            const clampedOffset = updateSubtitlesWithOffset(offset);
+            playerChannel.offset(clampedOffset);
         },
         [playerChannel, updateSubtitlesWithOffset]
     );

@@ -31,7 +31,7 @@ import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
-import { surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
+import { clampSubtitleOffset, surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
 import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
 import Clock from '../services/clock';
@@ -240,6 +240,8 @@ const Player = React.memo(function Player({
     const [loadingSubtitles, setLoadingSubtitles] = useState<boolean>(false);
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
+    const offsetRef = useRef<number>(0);
+    offsetRef.current = offset;
     const [playbackRate, setPlaybackRate] = useState<number>(1);
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
@@ -416,6 +418,7 @@ const Player = React.memo(function Player({
 
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
+            offset = clampSubtitleOffset(subtitles ?? [], offset, 1000 * (channel?.duration ?? 0));
             setOffset(offset);
 
             if (!subtitles) {
@@ -453,6 +456,8 @@ const Player = React.memo(function Player({
         },
         [subtitleFiles, subtitles, extension, playbackPreferences, tab, channel, onSubtitles]
     );
+    const applyOffsetRef = useRef(applyOffset);
+    applyOffsetRef.current = applyOffset;
 
     useEffect(() => {
         if (!videoFile && !tab) {
@@ -486,8 +491,8 @@ const Player = React.memo(function Player({
 
     useEffect(() => {
         async function init() {
-            const offset = playbackPreferencesRef.current?.offset ?? 0;
-            setOffset(offset);
+            const requestedOffset = playbackPreferencesRef.current?.offset ?? 0;
+            setOffset(requestedOffset);
             let subtitles: DisplaySubtitleModel[] | undefined;
 
             if (subtitleFiles !== undefined && subtitleFiles.length > 0) {
@@ -495,7 +500,17 @@ const Player = React.memo(function Player({
 
                 try {
                     const nodes = await subtitleReader.subtitles(subtitleFiles, flattenSubtitleFiles);
+                    const offset = clampSubtitleOffset(
+                        nodes.map((s) => ({ originalStart: s.start, originalEnd: s.end })),
+                        requestedOffset,
+                        1000 * (channelRef.current?.duration ?? 0)
+                    );
                     const length = nodes.length > 0 ? nodes[nodes.length - 1].end + offset : 0;
+
+                    setOffset(offset);
+                    if (settingsRef.current.rememberSubtitleOffset && offset !== requestedOffset) {
+                        playbackPreferencesRef.current!.offset = offset;
+                    }
 
                     subtitles = nodes.map((s, i) => ({
                         text: s.text,
@@ -758,6 +773,7 @@ const Player = React.memo(function Player({
             );
         });
     }, [subtitles, channel, flattenSubtitleFiles, subtitleFiles, subtitlesSentThroughChannel]);
+    useEffect(() => channel?.onReady(() => applyOffsetRef.current(offsetRef.current, true)), [channel]);
     useEffect(() => channel?.onReady(() => channel?.subtitleSettings(settings)), [channel, settings]);
     useEffect(
         () => channel?.onReady(() => channel?.hideSubtitlePlayerToggle(hideSubtitlePlayer)),
@@ -827,7 +843,7 @@ const Player = React.memo(function Player({
         [channel, mediaAdapter, clock]
     );
     useEffect(() => {
-        return channel?.onOffset((offset) => applyOffset(Math.max(-calculateLength() || 0, offset), false));
+        return channel?.onOffset((offset) => applyOffset(offset, false));
     }, [channel, applyOffset]);
     useEffect(() => channel?.onPlaybackRate(updatePlaybackRate), [channel, updatePlaybackRate]);
     useEffect(
@@ -1160,8 +1176,7 @@ const Player = React.memo(function Player({
 
     const handleOffsetChange = useCallback(
         (offset: number) => {
-            const length = calculateLength();
-            applyOffset(Math.max(-length || 0, offset), true);
+            applyOffset(offset, true);
         },
         [applyOffset]
     );
