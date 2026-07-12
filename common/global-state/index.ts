@@ -20,6 +20,19 @@ export interface OnlineSubtitleSourceConfig {
     jimakuRecentWorks?: JimakuCachedWork[];
 }
 
+export interface PlaybackPositionRecord {
+    fileName: string;
+    position: number;
+}
+
+const maxPlaybackPositions = 50;
+export function upsertPlaybackPosition(
+    positions: PlaybackPositionRecord[],
+    record: PlaybackPositionRecord
+): PlaybackPositionRecord[] {
+    return [record, ...positions.filter((p) => p.fileName !== record.fileName)].slice(0, maxPlaybackPositions);
+}
+
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
     ftueHasSeenSubtitleTrackSelector: false,
@@ -29,6 +42,7 @@ export const initialGlobalState: GlobalState = {
         jimakuSearchCategory: 'anime',
         jimakuRecentWorks: [],
     },
+    playbackPositions: [],
 };
 
 export interface GlobalState {
@@ -36,6 +50,7 @@ export interface GlobalState {
     ftueHasSeenSubtitleTrackSelector: boolean;
     ftueAnnotation: AnnotationTutorialState;
     onlineSubtitleSourceConfig: OnlineSubtitleSourceConfig;
+    playbackPositions: PlaybackPositionRecord[];
 }
 
 export interface GlobalStateProvider {

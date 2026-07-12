@@ -72,7 +72,7 @@ import {
     FileSystemFileHandleWithId,
 } from '../../file-system-access';
 import { isMobile } from 'react-device-detect';
-import { GlobalState } from '../../global-state';
+import { GlobalState, PlaybackPositionRecord } from '../../global-state';
 import mp3WorkerFactory from '../../audio-clip/mp3-encoder-worker.ts?worker';
 import pgsParserWorkerFactory from '../../subtitle-reader/pgs-parser-worker.ts?worker';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -477,6 +477,11 @@ function App({
             setAlertOpen(true);
         },
         [t]
+    );
+
+    const handlePlaybackPositionsChanged = useCallback(
+        (playbackPositions: PlaybackPositionRecord[]) => onGlobalStateChanged({ playbackPositions }),
+        [onGlobalStateChanged]
     );
 
     const handleAnkiDialogRequest = useCallback(
@@ -2093,6 +2098,8 @@ function App({
                                     miningContext={miningContext}
                                     keyBinder={keyBinder}
                                     webSocketClient={webSocketClient}
+                                    playbackPositions={globalState?.playbackPositions ?? []}
+                                    onPlaybackPositionsChanged={handlePlaybackPositionsChanged}
                                 />
                             </Content>
                         </Paper>

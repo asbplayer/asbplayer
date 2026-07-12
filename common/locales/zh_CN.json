@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "已复制：{{text}}",
         "copiedSubtitle2": "已复制：{{result}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "disabledAutoPause": "自动暂停：已禁用",
         "disabledCondensedPlayback": "紧凑播放：已禁用",
         "disabledFastForwardPlayback": "快进播放：已禁用",

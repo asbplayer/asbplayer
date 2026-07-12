@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "コピーしました：{{text}}",
         "copiedSubtitle2": "コピーしました：{{result}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "disabledAutoPause": "自動一時停止：オフ",
         "disabledCondensedPlayback": "短縮プレイバック：オフ",
         "disabledFastForwardPlayback": "早送りプレイバック：オフ",
