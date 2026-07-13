@@ -1,5 +1,7 @@
 import { JimakuClient } from './subtitle-sources';
-import { describe, expect, it, jest } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
+
+const originalFetch = globalThis.fetch;
 
 const createResponse = ({
     ok = true,
@@ -27,13 +29,19 @@ const createResponse = ({
     } as unknown as Response;
 };
 
+afterEach(() => {
+    globalThis.fetch = originalFetch;
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+});
+
 describe('JimakuClient', () => {
     it('validates api key at construction', () => {
         expect(() => new JimakuClient({ apiKey: '   ' })).toThrow('Jimaku API key cannot be empty or whitespace-only');
     });
 
     it('searches entries with authorization header', async () => {
-        const fetchMock = jest.fn().mockResolvedValue(
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
             createResponse({
                 jsonData: [{ id: 729, name: 'Sousou no Frieren' }],
                 headers: {
@@ -59,7 +67,7 @@ describe('JimakuClient', () => {
     });
 
     it('searches entries with anime parameter', async () => {
-        const fetchMock = jest.fn().mockResolvedValue(
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(
             createResponse({
                 jsonData: [{ id: 999, name: 'Some Drama', flags: 2 }],
                 headers: {
@@ -81,7 +89,7 @@ describe('JimakuClient', () => {
     });
 
     it('requests files with optional filters', async () => {
-        const fetchMock = jest.fn().mockResolvedValue(createResponse({ jsonData: [] }));
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(createResponse({ jsonData: [] }));
         global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
@@ -92,9 +100,131 @@ describe('JimakuClient', () => {
         });
     });
 
+    it('waits for server rate-limit reset before the next request', async () => {
+        jest.useFakeTimers();
+        try {
+            const fetchMock = jest
+                .fn<typeof fetch>()
+                .mockResolvedValueOnce(
+                    createResponse({
+                        jsonData: [],
+                        headers: {
+                            'x-ratelimit-remaining': '0',
+                            'x-ratelimit-reset-after': '0.25',
+                        },
+                    })
+                )
+                .mockResolvedValueOnce(createResponse({ jsonData: [] }));
+            global.fetch = fetchMock;
+            const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 10000 });
+
+            await client.searchEntries('first');
+            const secondRequest = client.searchEntries('second');
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(249);
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(1);
+            await secondRequest;
+
+            expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://jimaku.cc/api/entries/search?query=second', {
+                headers: { Authorization: 'test-key' },
+            });
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('does not wait when server rate-limit headers report remaining quota', async () => {
+        jest.useFakeTimers();
+        try {
+            const fetchMock = jest
+                .fn<typeof fetch>()
+                .mockResolvedValueOnce(
+                    createResponse({
+                        jsonData: [],
+                        headers: {
+                            'x-ratelimit-remaining': '2',
+                            'x-ratelimit-reset-after': '10',
+                        },
+                    })
+                )
+                .mockResolvedValueOnce(createResponse({ jsonData: [] }));
+            global.fetch = fetchMock;
+            const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 10000 });
+
+            await client.searchEntries('first');
+            const secondRequest = client.searchEntries('second');
+            await Promise.resolve();
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            await secondRequest;
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('falls back to the minimum request interval without server quota headers', async () => {
+        jest.useFakeTimers();
+        try {
+            const fetchMock = jest
+                .fn<typeof fetch>()
+                .mockResolvedValueOnce(createResponse({ jsonData: [] }))
+                .mockResolvedValueOnce(createResponse({ jsonData: [] }));
+            global.fetch = fetchMock;
+            const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 100 });
+
+            await client.searchEntries('first');
+            await jest.advanceTimersByTimeAsync(40);
+            const secondRequest = client.searchEntries('second');
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(59);
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(1);
+            await secondRequest;
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('falls back to the minimum request interval when quota is exhausted without reset timing', async () => {
+        jest.useFakeTimers();
+        try {
+            const fetchMock = jest
+                .fn<typeof fetch>()
+                .mockResolvedValueOnce(
+                    createResponse({
+                        jsonData: [],
+                        headers: {
+                            'x-ratelimit-remaining': '0',
+                        },
+                    })
+                )
+                .mockResolvedValueOnce(createResponse({ jsonData: [] }));
+            global.fetch = fetchMock;
+            const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 100 });
+
+            await client.searchEntries('first');
+            const secondRequest = client.searchEntries('second');
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(99);
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(1);
+            await secondRequest;
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     it('throws parsed error message on failed request', async () => {
         const fetchMock = jest
-            .fn()
+            .fn<typeof fetch>()
             .mockResolvedValue(createResponse({ ok: false, status: 401, jsonData: { error: 'Unauthorized' } }));
         global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
@@ -103,7 +233,9 @@ describe('JimakuClient', () => {
     });
 
     it('falls back to status-based error when response is not json', async () => {
-        const fetchMock = jest.fn().mockResolvedValue(createResponse({ ok: false, status: 503, textData: '<html/>' }));
+        const fetchMock = jest
+            .fn<typeof fetch>()
+            .mockResolvedValue(createResponse({ ok: false, status: 503, textData: '<html/>' }));
         global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 
@@ -111,7 +243,9 @@ describe('JimakuClient', () => {
     });
 
     it('throws when successful response does not contain valid json', async () => {
-        const fetchMock = jest.fn().mockResolvedValue(createResponse({ ok: true, status: 200, textData: '<html/>' }));
+        const fetchMock = jest
+            .fn<typeof fetch>()
+            .mockResolvedValue(createResponse({ ok: true, status: 200, textData: '<html/>' }));
         global.fetch = fetchMock;
         const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
 

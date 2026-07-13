@@ -52,6 +52,8 @@ import {
     DictionaryTokenSource,
     DictionaryTrack,
     getFullyKnownTokenStatus,
+    isAnkiSource,
+    isWaniKaniSource,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
@@ -1151,10 +1153,8 @@ export default function WordBrowserDialog({
             const trackConfig =
                 record.track === LOCAL_TOKEN_TRACK ? defaultDictionaryTrack : dictionaryTracks[record.track];
             const treatSuspended = trackConfig?.dictionaryAnkiTreatSuspended ?? 'NORMAL';
-            const isAnkiRecord =
-                record.source === DictionaryTokenSource.ANKI_WORD ||
-                record.source === DictionaryTokenSource.ANKI_SENTENCE;
-            const isWaniKaniRecord = record.source === DictionaryTokenSource.WANIKANI;
+            const isAnkiRecord = isAnkiSource(record.source);
+            const isWaniKaniRecord = isWaniKaniSource(record.source);
             const trackCardRecords = records.ankiCardRecords[record.track];
             const cardRecords = isAnkiRecord
                 ? record.cardIds
@@ -1353,10 +1353,7 @@ export default function WordBrowserDialog({
             if (includedTrackFilters.length > 0 && !includedTrackFilters.includes(row.trackSortValue)) return false;
             if (excludedTrackFilters.includes(row.trackSortValue)) return false;
             if (appliedViewCriteria.suspendedFilter !== 'all') {
-                if (
-                    row.source === DictionaryTokenSource.ANKI_WORD ||
-                    row.source === DictionaryTokenSource.ANKI_SENTENCE
-                ) {
+                if (isAnkiSource(row.source)) {
                     if (row.suspendedFilterValue !== appliedViewCriteria.suspendedFilter) return false;
                 } else {
                     if (appliedViewCriteria.suspendedFilter !== 'no') return false;

@@ -7,7 +7,6 @@ import {
     AudioTrackModel,
     PostMineAction,
     PlayMode,
-    AutoPausePreference,
     AutoPauseContext,
     OffscreenDomCache,
     CardTextFieldValues,
@@ -27,7 +26,6 @@ import {
     allTextSubtitleSettings,
     TokenState,
     ApplyStrategy,
-    isTrackSeekable,
     DictionaryTrack,
 } from '@project/common/settings';
 import {
@@ -71,6 +69,7 @@ import BlurOverlay from './BlurOverlay';
 import { CachedLocalStorage } from '../services/cached-local-storage';
 import useLastScrollableControlType from '../../hooks/use-last-scrollable-control-type';
 import { type Theme } from '@mui/material/styles';
+import { shouldAutoPauseAtSubtitleEnd, shouldAutoPauseAtSubtitleStart } from '../services/playback-mode-effects';
 
 const overlayContainerHeight = 48;
 
@@ -452,25 +451,27 @@ export default function VideoPlayer({
         const context = new AutoPauseContext();
         context.onStartedShowing = (subtitle: SubtitleModel) => {
             if (
-                !playModes.has(PlayMode.autoPause) ||
-                miscSettings.autoPausePreference !== AutoPausePreference.atStart ||
-                !isTrackSeekable(miscSettings.seekableTracks, subtitle.track)
-            ) {
-                return;
-            }
-
-            playerChannel.pause();
+                shouldAutoPauseAtSubtitleStart({
+                    playModes,
+                    autoPausePreference: miscSettings.autoPausePreference,
+                    seekableTracks: miscSettings.seekableTracks,
+                    subtitle,
+                    delegatedToVideoPlayer: false,
+                })
+            )
+                playerChannel.pause();
         };
         context.onWillStopShowing = async (subtitle: SubtitleModel) => {
             if (
-                !playModes.has(PlayMode.autoPause) ||
-                miscSettings.autoPausePreference !== AutoPausePreference.atEnd ||
-                !isTrackSeekable(miscSettings.seekableTracks, subtitle.track)
-            ) {
-                return;
-            }
-
-            playerChannel.pause();
+                shouldAutoPauseAtSubtitleEnd({
+                    playModes,
+                    autoPausePreference: miscSettings.autoPausePreference,
+                    seekableTracks: miscSettings.seekableTracks,
+                    subtitle,
+                    delegatedToVideoPlayer: false,
+                })
+            )
+                playerChannel.pause();
         };
         return context;
     }, [playerChannel, miscSettings, playModes]);

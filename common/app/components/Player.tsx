@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from 'uuid';
 import {
     AudioTrackModel,
     AutoPauseContext,
-    AutoPausePreference,
     CardModel,
     CardTextFieldValues,
     IndexedSubtitleModel,
@@ -43,6 +42,14 @@ import VideoChannel from '../services/video-channel';
 import ChromeExtension from '../services/chrome-extension';
 import PlaybackPreferences from '../services/playback-preferences';
 import PlayModeManager from '../services/play-mode-manager';
+import {
+    applySubtitleStopPlaybackModeEffect,
+    pendingPlaybackModeSeekTimestamp,
+    selectCondensedPlaybackSeekTimestamp,
+    selectFastForwardPlaybackRate,
+    selectSubtitleStopPlaybackModeEffect,
+    shouldAutoPauseAtSubtitleStart,
+} from '../services/playback-mode-effects';
 import { useWindowSize } from '../hooks/use-window-size';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { createBlobUrl } from '../../blob-url';
@@ -308,79 +315,45 @@ const Player = React.memo(function Player({
     const handleOnStartedShowingSubtitle = useCallback(
         (subtitle: SubtitleModel) => {
             if (
-                !playModes.has(PlayMode.autoPause) ||
-                settings.autoPausePreference !== AutoPausePreference.atStart ||
-                !isTrackSeekable(settings.seekableTracks, subtitle.track) ||
-                videoFileUrl // Let VideoPlayer do the auto-pausing
+                shouldAutoPauseAtSubtitleStart({
+                    playModes,
+                    autoPausePreference: settings.autoPausePreference,
+                    seekableTracks: settings.seekableTracks,
+                    subtitle,
+                    delegatedToVideoPlayer: Boolean(videoFileUrl),
+                })
             ) {
-                return;
+                pause(clock, mediaAdapter, true);
             }
-
-            pause(clock, mediaAdapter, true);
         },
         [playModes, clock, mediaAdapter, videoFileUrl, settings.autoPausePreference, settings.seekableTracks]
     );
 
     const handleOnWillStopShowingSubtitle = useCallback(
         async (subtitle: SubtitleModel) => {
-            if (!isTrackSeekable(settings.seekableTracks, subtitle.track)) {
-                return;
-            }
+            const effect = selectSubtitleStopPlaybackModeEffect({
+                playModes,
+                autoPausePreference: settings.autoPausePreference,
+                seekableTracks: settings.seekableTracks,
+                subtitle,
+                subtitleCollection,
+                delegatedToVideoPlayer: Boolean(videoFileUrl),
+                lastSeekDuration: lastSeekDurationRef.current,
+            });
 
-            resetPendingAutoRepeatTargetTimestamp();
-
-            const isAutoPauseAtEndEnabled =
-                playModes.has(PlayMode.autoPause) && settings.autoPausePreference === AutoPausePreference.atEnd;
-            const isAutoPauseAtStartEnabled =
-                playModes.has(PlayMode.autoPause) && settings.autoPausePreference === AutoPausePreference.atStart;
-            const isRepeatEnabled = playModes.has(PlayMode.repeat);
-            const isCondensedEnabled = playModes.has(PlayMode.condensed);
-
-            if (!isAutoPauseAtEndEnabled && !isRepeatEnabled && !isAutoPauseAtStartEnabled) return;
-
-            if (isAutoPauseAtEndEnabled && !videoFileUrl) {
-                pause(clock, mediaAdapter, true);
-            }
-
-            if (isRepeatEnabled) {
-                if (isAutoPauseAtEndEnabled) {
-                    pendingAutoRepeatTargetTimestamp.current = subtitle.start;
-                } else {
-                    void seek(subtitle.start, clock, true);
-                }
-                return;
-            }
-
-            if (isCondensedEnabled) {
-                const slice = subtitleCollection.subtitlesAt(subtitle.end + 1);
-
-                if (slice.nextToShow && slice.nextToShow.length > 0) {
-                    const nextSubtitle = slice.nextToShow[0];
-                    const timeGap = nextSubtitle.start - subtitle.end;
-
-                    const baseThreshold = lastSeekDurationRef.current || 1000;
-                    const safetyBuffer = 500;
-                    const seekThreshold = baseThreshold + safetyBuffer;
-
-                    if (timeGap < seekThreshold) {
-                        return;
-                    }
-
-                    if (isAutoPauseAtEndEnabled) {
-                        pendingAutoRepeatTargetTimestamp.current = nextSubtitle.start;
-                    } else {
-                        const wasPlaying = clock.running;
-
-                        if (wasPlaying) clock.stop();
-
-                        const t0 = Date.now();
-                        await seek(nextSubtitle.start, clock, true);
-                        lastSeekDurationRef.current = Date.now() - t0;
-
-                        if (wasPlaying) clock.start();
-                    }
-                }
-            }
+            await applySubtitleStopPlaybackModeEffect({
+                effect,
+                clock,
+                pause: () => pause(clock, mediaAdapter, true),
+                seek: (timestamp) => seek(timestamp, clock, true),
+                resetPendingAutoRepeatTargetTimestamp,
+                setPendingAutoRepeatTargetTimestamp: (timestamp) => {
+                    pendingAutoRepeatTargetTimestamp.current = timestamp;
+                },
+                setLastSeekDuration: (duration) => {
+                    lastSeekDurationRef.current = duration;
+                },
+            });
         },
         [
             playModes,
@@ -808,11 +781,12 @@ const Player = React.memo(function Player({
     );
     const play = useCallback(
         (clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) => {
-            if (
-                (playModesRef.current.has(PlayMode.repeat) || playModesRef.current.has(PlayMode.autoPause)) &&
-                pendingAutoRepeatTargetTimestamp.current > 0
-            ) {
-                void seek(pendingAutoRepeatTargetTimestamp.current, clock, forwardToMedia);
+            const pendingSeekTimestamp = pendingPlaybackModeSeekTimestamp(
+                playModesRef.current,
+                pendingAutoRepeatTargetTimestamp.current
+            );
+            if (pendingSeekTimestamp !== undefined) {
+                void seek(pendingSeekTimestamp, clock, forwardToMedia);
                 resetPendingAutoRepeatTargetTimestamp();
             }
 
@@ -986,20 +960,15 @@ const Player = React.memo(function Player({
         const interval = setInterval(() => {
             void (async () => {
                 const timestamp = clock.time(calculateLength());
-                const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
+                const seekTimestamp = selectCondensedPlaybackSeekTimestamp({
+                    slice: seekableSubtitleCollection.subtitlesAt(timestamp),
+                    timestamp,
+                    expectedSeekTime,
+                    pendingAutoRepeatTargetTimestamp: pendingAutoRepeatTargetTimestamp.current,
+                });
 
-                if (slice.nextToShow && slice.nextToShow.length > 0) {
-                    const nextSubtitle = slice.nextToShow[0];
-
-                    if (nextSubtitle.start - timestamp < expectedSeekTime + 500) {
-                        return;
-                    }
-
+                if (seekTimestamp !== undefined) {
                     const playing = clock.running;
-
-                    if (pendingAutoRepeatTargetTimestamp.current > 0) {
-                        return;
-                    }
 
                     if (playing) {
                         clock.stop();
@@ -1007,7 +976,7 @@ const Player = React.memo(function Player({
                     if (!seeking) {
                         seeking = true;
                         const t0 = Date.now();
-                        await seek(nextSubtitle.start, clock, true);
+                        await seek(seekTimestamp, clock, true);
                         expectedSeekTime = Date.now() - t0;
                         seeking = false;
                     }
@@ -1036,15 +1005,14 @@ const Player = React.memo(function Player({
             const timestamp = clock.time(calculateLength());
             const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
 
-            if (
-                slice.showing.length === 0 &&
-                (slice.nextToShow === undefined ||
-                    (slice.nextToShow.length > 0 && slice.nextToShow[0].start - timestamp > 1000))
-            ) {
-                updatePlaybackRate(settings.fastForwardModePlaybackRate, true);
-            } else {
-                updatePlaybackRate(1, true);
-            }
+            updatePlaybackRate(
+                selectFastForwardPlaybackRate({
+                    slice,
+                    timestamp,
+                    fastForwardModePlaybackRate: settings.fastForwardModePlaybackRate,
+                }),
+                true
+            );
         }, 100);
 
         return () => clearInterval(interval);

@@ -25,13 +25,13 @@ export interface TokenPart {
     reading: string;
 }
 
-interface TokenPartResult extends TokenPart {
+export interface TokenPartResult extends TokenPart {
     lemma?: string;
     lemmaReading?: string;
     headwords?: TermHeadword[][];
 }
 
-interface TermHeadword {
+export interface TermHeadword {
     index: number;
     headwordIndex?: number;
     term: string;
@@ -41,7 +41,7 @@ interface TermHeadword {
     pronunciations?: TermPronunciation[];
 }
 
-interface TermSource {
+export interface TermSource {
     originalText: string;
     transformedText: string;
     deinflectedText: string;
@@ -101,13 +101,13 @@ interface TokenizeResult {
     content: TokenPartResult[][];
 }
 
-interface TermEntriesResult {
+export interface TermEntriesResult {
     dictionaryEntries: TermDictionaryEntry[];
     originalTextLength: number;
     index: number;
 }
 
-interface TermDictionaryEntry {
+export interface TermDictionaryEntry {
     headwords: TermHeadword[];
     frequencies: TermFrequency[];
     pronunciations: TermPronunciation[];
