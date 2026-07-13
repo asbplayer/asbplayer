@@ -35,7 +35,6 @@ import {
 } from '@project/common/annotations';
 import {
     arrayEquals,
-    clampSubtitleOffset,
     compareSubtitlesForDisplay,
     computeStyleString,
     surroundingSubtitles,
@@ -724,8 +723,6 @@ export default class SubtitleController {
         if (!this.subtitles || this.subtitles.length === 0) {
             return;
         }
-
-        offset = clampSubtitleOffset(this.subtitles, offset, 1000 * this.context.video.duration);
 
         this.subtitles = this.subtitles.map((s) => ({
             text: s.text,

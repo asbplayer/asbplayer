@@ -1,52 +1,9 @@
 import {
-    clampSubtitleOffset,
     compareSubtitlesForDisplay,
     subtitleTimestampWithDelay,
     surroundingSubtitlesAroundInterval,
     timeDurationDisplay,
-} from '@project/common/util';
-import { describe, expect, it } from '@jest/globals';
-
-describe('clampSubtitleOffset', () => {
-    it('leaves the offset unchanged for 0 subtitles', () => {
-        expect(clampSubtitleOffset([], -1000)).toBe(-1000);
-    });
-
-    it('clamps an offset that would make a subtitle timestamp negative', () => {
-        const subtitles = [subtitle('first', 500, 1000)];
-
-        expect(clampSubtitleOffset(subtitles, -1000)).toBe(-500);
-    });
-
-    it('uses the earliest timestamp across multiple subtitles and leaves safe offsets unchanged', () => {
-        const subtitles = [subtitle('later', 2000, 2500), subtitle('earlier', 500, 1000)];
-
-        expect(clampSubtitleOffset(subtitles, -600)).toBe(-500);
-        expect(clampSubtitleOffset(subtitles, -400)).toBe(-400);
-        expect(clampSubtitleOffset(subtitles, 100)).toBe(100);
-    });
-
-    it('clamps an offset that would move a subtitle past the end of the media', () => {
-        const subtitles = [subtitle('earlier', 500, 1000), subtitle('later', 1500, 2000)];
-
-        expect(clampSubtitleOffset(subtitles, 1000, 2500)).toBe(500);
-    });
-
-    it('does not apply an upper bound when the media length is unavailable', () => {
-        const subtitles = [subtitle('only', 500, 1000)];
-
-        expect(clampSubtitleOffset(subtitles, 1000)).toBe(1000);
-        expect(clampSubtitleOffset(subtitles, 1000, 0)).toBe(1000);
-        expect(clampSubtitleOffset(subtitles, 1000, Number.POSITIVE_INFINITY)).toBe(1000);
-    });
-
-    it('does not shift subtitles solely because their original timestamps are outside the media bounds', () => {
-        const subtitles = [subtitle('starts early', -100, 500), subtitle('ends late', 900, 1100)];
-
-        expect(clampSubtitleOffset(subtitles, -100, 1000)).toBe(0);
-        expect(clampSubtitleOffset(subtitles, 100, 1000)).toBe(0);
-    });
-});
+} from './util';
 
 it('correctly displays timestamps less than 100 ms', () => {
     expect(timeDurationDisplay(50, 100, true)).toEqual('00:00.050');

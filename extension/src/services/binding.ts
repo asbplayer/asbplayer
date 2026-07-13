@@ -68,7 +68,6 @@ import { SubtitleSlice } from '@project/common/subtitle-collection';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import {
     buildSubtitleTracks,
-    clampSubtitleOffset,
     extractText,
     seekWithNudge,
     sourceString,
@@ -1641,17 +1640,8 @@ export default class Binding {
                     convertNetflixRuby: convertNetflixRuby,
                     pgsParserWorkerFactory: pgsParserWorkerFactory,
                 });
-                const requestedOffset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
+                const offset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
                 const subtitles = await reader.subtitles(files, flatten);
-                const offset = clampSubtitleOffset(
-                    subtitles.map((s) => ({ originalStart: s.start, originalEnd: s.end })),
-                    requestedOffset,
-                    1000 * this.video.duration
-                );
-
-                if (rememberSubtitleOffset && offset !== requestedOffset) {
-                    void this.settings.set({ lastSubtitleOffset: offset });
-                }
 
                 // Order is important: sync with tab first, then update our subtitle controller
                 // since the subtitle controller may send coloring messages as soon as it gets
