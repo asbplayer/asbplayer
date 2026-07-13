@@ -83,32 +83,37 @@ export function timeDurationDisplay(
     totalMilliseconds: number,
     includeMilliseconds = true
 ): string {
-    if (milliseconds < 0) {
-        return timeDurationDisplay(0, totalMilliseconds, includeMilliseconds);
-    }
-
     milliseconds = Math.round(milliseconds);
+    const sign = milliseconds < 0 ? '-' : '';
+    milliseconds = Math.abs(milliseconds);
+    const includeHours = totalMilliseconds >= 3600000 || milliseconds >= 3600000;
     const remainingMilliseconds = milliseconds % 1000;
     milliseconds = (milliseconds - remainingMilliseconds) / 1000;
     const seconds = milliseconds % 60;
     milliseconds = (milliseconds - seconds) / 60;
     const minutes = milliseconds % 60;
 
-    if (totalMilliseconds >= 3600000) {
+    if (includeHours) {
         const hours = (milliseconds - minutes) / 60;
 
         if (includeMilliseconds) {
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
+            return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
         }
 
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
     if (includeMilliseconds) {
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
+        return `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
     }
 
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function clampMediaTimestamp(timestamp: number, mediaLength?: number): number {
+    const clampedTimestamp = Math.max(0, timestamp);
+    if (mediaLength === undefined || !Number.isFinite(mediaLength) || mediaLength <= 0) return clampedTimestamp;
+    return Math.min(clampedTimestamp, mediaLength);
 }
 
 export function getCurrentTimeString(): string {
@@ -618,6 +623,7 @@ export function buildSubtitleTracks(subtitles: { track: number }[], subtitleFile
 }
 
 export function seekWithNudge(media: HTMLMediaElement, timestampSeconds: number) {
+    timestampSeconds = clampMediaTimestamp(timestampSeconds, media.duration);
     media.currentTime = timestampSeconds;
 
     if (media.currentTime < timestampSeconds) {

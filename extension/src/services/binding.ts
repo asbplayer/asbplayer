@@ -68,6 +68,7 @@ import { SubtitleSlice } from '@project/common/subtitle-collection';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import {
     buildSubtitleTracks,
+    clampMediaTimestamp,
     extractText,
     seekWithNudge,
     sourceString,
@@ -1504,14 +1505,16 @@ export default class Binding {
     }
 
     seek(timestamp: number) {
+        const clampedTimestamp = clampMediaTimestamp(timestamp, this.video.duration);
+
         if (netflix) {
             document.dispatchEvent(
                 new CustomEvent('asbplayer-netflix-seek', {
-                    detail: timestamp * 1000,
+                    detail: clampedTimestamp * 1000,
                 })
             );
         } else {
-            seekWithNudge(this.video, timestamp);
+            seekWithNudge(this.video, clampedTimestamp);
         }
     }
 

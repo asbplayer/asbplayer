@@ -31,7 +31,7 @@ import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
-import { surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
+import { clampMediaTimestamp, surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
 import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
 import Clock from '../services/clock';
@@ -278,10 +278,11 @@ const Player = React.memo(function Player({
                 resetPendingAutoRepeatTargetTimestamp();
             }
 
-            clock.setTime(time);
+            const clampedTime = clampMediaTimestamp(time, (channelRef.current?.duration ?? 0) * 1000);
+            clock.setTime(clampedTime);
 
             if (forwardToMedia) {
-                await mediaAdapter.seek(time / 1000);
+                await mediaAdapter.seek(clampedTime / 1000);
             }
 
             autoPauseContextRef.current?.clear();
