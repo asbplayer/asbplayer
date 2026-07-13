@@ -1,5 +1,6 @@
 import { defaultSettings } from '@project/common/settings';
 import pagesConfig from '../pages.json';
+import { expect, it } from '@jest/globals';
 
 it('page settings and page configs are consistent', () => {
     for (const page of pagesConfig.pages) {

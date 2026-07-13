@@ -9,6 +9,7 @@ import {
 } from './settings';
 import { validateSettings } from './settings-import-export';
 import { defaultSettings } from './settings-provider';
+import { expect, it } from '@jest/globals';
 
 it('validates the default settings', () => {
     validateSettings(defaultSettings);

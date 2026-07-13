@@ -1,4 +1,5 @@
 import { inheritHtmlMarkup } from './anki';
+import { expect, it } from '@jest/globals';
 
 it('inherits marked up html', () => {
     expect(inheritHtmlMarkup('a foo bar', '<c>foo</c> <b>bar</b> is')).toEqual('a <c>foo</c> <b>bar</b>');

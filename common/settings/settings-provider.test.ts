@@ -12,6 +12,7 @@ import {
     textSubtitleSettingsForTrack,
     unprefixedSettings,
 } from '@project/common/settings';
+import { expect, it } from '@jest/globals';
 
 export class MockSettingsStorage implements SettingsStorage {
     private _activeProfile?: string;
