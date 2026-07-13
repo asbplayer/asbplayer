@@ -177,9 +177,10 @@ interface Base64Exportable {
 export async function exportCard(
     card: CardModel,
     ankiSettings: AnkiSettings,
-    exportMode: AnkiExportMode = 'default'
+    exportMode: AnkiExportMode = 'default',
+    fetcher?: Fetcher
 ): Promise<string> {
-    const anki = new Anki(ankiSettings);
+    const anki = new Anki(ankiSettings, fetcher);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
     const audioClip =
         card.audio === undefined

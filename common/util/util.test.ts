@@ -40,6 +40,7 @@ import {
     clampMediaTimestamp,
 } from '@project/common/util';
 import { TextSubtitleSettings } from '@project/common/settings';
+import { Progress } from '@project/common';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 function subtitle(text: string, start: number, end: number, track = 0, index = 0) {
@@ -128,14 +129,7 @@ describe('humanReadableTime', () => {
     });
 
     it('formats localized dates with hour, minute, and second fields', () => {
-        const toLocaleTimeString = jest.spyOn(Date.prototype, 'toLocaleTimeString').mockReturnValue('01:02:03 PM');
-
-        expect(localizedDate(123456)).toBe('01:02:03 PM');
-        expect(toLocaleTimeString).toHaveBeenCalledWith([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-        });
+        expect(localizedDate(Date.UTC(2026, 0, 1, 13, 2, 3), 'en-US', 'UTC')).toBe('01:02:03 PM');
     });
 
     it('formats 0 milliseconds', () => {
@@ -166,18 +160,32 @@ describe('humanReadableTime', () => {
 describe('download', () => {
     it('downloads a sanitized filename and cleans up the temporary object URL and element', () => {
         const blob = new Blob(['content'], { type: 'text/plain' });
-        const createElement = jest.spyOn(document, 'createElement');
         const originalCreateObjectURL = window.URL.createObjectURL;
         const originalRevokeObjectURL = window.URL.revokeObjectURL;
-        const createObjectURL = jest.fn(() => 'blob:test-url');
-        const revokeObjectURL = jest.fn();
-        const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-        Object.defineProperty(window.URL, 'createObjectURL', { configurable: true, value: createObjectURL });
-        Object.defineProperty(window.URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL });
+        const createdBlobs: Blob[] = [];
+        const revokedUrls: string[] = [];
+        let clickedAnchor: HTMLAnchorElement | undefined;
+        const onClick = (event: Event) => {
+            event.preventDefault();
+            clickedAnchor = event.target as HTMLAnchorElement;
+        };
+        document.addEventListener('click', onClick);
+        Object.defineProperty(window.URL, 'createObjectURL', {
+            configurable: true,
+            value: (value: Blob) => {
+                createdBlobs.push(value);
+                return 'blob:test-url';
+            },
+        });
+        Object.defineProperty(window.URL, 'revokeObjectURL', {
+            configurable: true,
+            value: (value: string) => revokedUrls.push(value),
+        });
 
         try {
             download(blob, '../bad:name?.txt');
         } finally {
+            document.removeEventListener('click', onClick);
             Object.defineProperty(window.URL, 'createObjectURL', {
                 configurable: true,
                 value: originalCreateObjectURL,
@@ -188,12 +196,10 @@ describe('download', () => {
             });
         }
 
-        expect(createObjectURL).toHaveBeenCalledWith(blob);
-        expect(click).toHaveBeenCalledTimes(1);
-        expect(revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+        expect(createdBlobs).toEqual([blob]);
+        expect(revokedUrls).toEqual(['blob:test-url']);
         expect(document.querySelectorAll('a')).toHaveLength(0);
-        const anchor = createElement.mock.results[0].value as HTMLAnchorElement;
-        expect(anchor.download).toBe('..badname.txt');
+        expect(clickedAnchor).toMatchObject({ download: '..badname.txt', href: 'blob:test-url' });
     });
 });
 
@@ -671,24 +677,28 @@ describe('batch helpers', () => {
     });
 
     it('filterAsync preserves input order while filtering through async batches', async () => {
-        const progress = jest.fn(async () => undefined);
+        const progress: Progress[] = [];
 
         await expect(
-            filterAsync([1, 2, 3, 4], async (value) => value % 2 === 0, { batchSize: 2, statusUpdates: progress })
+            filterAsync([1, 2, 3, 4], async (value) => value % 2 === 0, {
+                batchSize: 2,
+                statusUpdates: async (update) => {
+                    progress.push(update);
+                },
+            })
         ).resolves.toEqual([2, 4]);
-        expect(progress).toHaveBeenCalledTimes(2);
+        expect(progress.map(({ current, total }) => ({ current, total }))).toEqual([
+            { current: 2, total: 4 },
+            { current: 4, total: 4 },
+        ]);
     });
 });
 
 describe('ensureStoragePersisted', () => {
     const originalStorage = navigator.storage;
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-
-    beforeEach(() => {
-        warn.mockClear();
-    });
 
     afterEach(() => {
+        jest.restoreAllMocks();
         Object.defineProperty(navigator, 'storage', {
             configurable: true,
             value: originalStorage,
@@ -702,7 +712,6 @@ describe('ensureStoragePersisted', () => {
         });
 
         await expect(ensureStoragePersisted()).resolves.toBeUndefined();
-        expect(warn).not.toHaveBeenCalled();
     });
 
     it('returns early when storage is already persisted', async () => {
@@ -714,11 +723,11 @@ describe('ensureStoragePersisted', () => {
             },
         });
 
-        await ensureStoragePersisted();
-        expect(warn).not.toHaveBeenCalled();
+        await expect(ensureStoragePersisted()).resolves.toBe(true);
     });
 
     it('warns when requesting persistence fails', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         Object.defineProperty(navigator, 'storage', {
             configurable: true,
             value: {
@@ -727,7 +736,7 @@ describe('ensureStoragePersisted', () => {
             },
         });
 
-        await ensureStoragePersisted();
+        await expect(ensureStoragePersisted()).resolves.toBe(false);
         expect(warn).toHaveBeenCalledWith('Storage could not be persisted, data may be cleared by the browser');
     });
 });

@@ -9,8 +9,7 @@ import {
     NoteInfo,
 } from '@project/common/anki';
 import { AnkiSettings } from '@project/common/settings';
-import { CardModel, Fetcher, MediaFragment } from '@project/common';
-import { AudioClip } from '@project/common/audio-clip';
+import { CardModel, Fetcher } from '@project/common';
 import { extractText, sourceString } from '@project/common/util';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
@@ -117,21 +116,34 @@ const makeSubtitle = (text: string, track = 0) => ({
     track,
 });
 
-const makeAudioClip = (overrides: Record<string, unknown> = {}) =>
-    ({
+const makeAudioClip = (overrides: Record<string, unknown> & { base64Result?: string; base64Error?: Error } = {}) => {
+    const media = {
         name: 'clip:name?.mp3',
         error: undefined,
-        base64: jest.fn<() => Promise<string>>().mockResolvedValue('audio-base64'),
+        base64Reads: 0,
+        base64: async () => {
+            media.base64Reads++;
+            if (overrides.base64Error) throw overrides.base64Error;
+            return overrides.base64Result ?? 'audio-base64';
+        },
         ...overrides,
-    }) as any;
+    };
+    return media as any;
+};
 
-const makeImage = (overrides: Record<string, unknown> = {}) =>
-    ({
+const makeImage = (overrides: Record<string, unknown> & { base64Result?: string } = {}) => {
+    const media = {
         name: 'image:name?.jpeg',
         error: undefined,
-        base64: jest.fn<() => Promise<string>>().mockResolvedValue('image-base64'),
+        base64Reads: 0,
+        base64: async () => {
+            media.base64Reads++;
+            return overrides.base64Result ?? 'image-base64';
+        },
         ...overrides,
-    }) as any;
+    };
+    return media as any;
+};
 
 const makeExportArguments = (overrides: Partial<ExportArguments> = {}): ExportArguments => ({
     text: 'line 1\nline 2',
@@ -229,11 +241,8 @@ it('preserves target markup instead of replacing it with shallower source markup
 });
 
 it('maps CardModel data into export params in exportCard', async () => {
-    const exportSpy = jest.spyOn(Anki.prototype, 'export').mockResolvedValue('stored-word');
-    const audioClip = { kind: 'audio' } as any;
-    const image = { kind: 'image' } as any;
-    const audioFromBase64Spy = jest.spyOn(AudioClip, 'fromBase64').mockReturnValue(audioClip);
-    const imageFromBase64Spy = jest.spyOn(MediaFragment, 'fromBase64').mockReturnValue(image);
+    const fetcher = new MockFetcher();
+    fetcher.fetch.mockResolvedValue(ankiConnectResponse('stored-word'));
     const card = makeCardModel({
         text: undefined,
         mediaTimestamp: 0,
@@ -246,45 +255,62 @@ it('maps CardModel data into export params in exportCard', async () => {
         },
     });
 
-    const result = await exportCard(card, testAnkiSettings, 'gui');
+    const result = await exportCard(card, testAnkiSettings, 'default', fetcher);
 
     expect(result).toEqual('stored-word');
-    expect(audioFromBase64Spy).toHaveBeenCalledWith('episode.ass', 1000, 2000, 1, 'audio-base64', 'mp3', undefined);
-    expect(imageFromBase64Spy).toHaveBeenCalledWith('episode.ass', 1000, 'image-base64', 'jpeg', undefined);
-    expect(exportSpy).toHaveBeenCalledWith({
-        text: extractText(card.subtitle, card.surroundingSubtitles),
-        track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
-        track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
-        track3: extractText(card.subtitle, card.surroundingSubtitles, 2),
-        definition: card.definition,
-        audioClip,
-        image,
-        word: card.word,
-        source: sourceString(card.subtitleFileName, 0),
-        url: card.url,
-        customFieldValues: {},
-        tags: testAnkiSettings.tags,
-        mode: 'gui',
+    expect(fetcher.fetch).toHaveBeenCalledWith(testAnkiSettings.ankiConnectUrl, {
+        action: 'addNote',
+        version: 6,
+        params: {
+            note: {
+                deckName: 'Sentences',
+                modelName: 'Sentence',
+                tags: [],
+                options: {
+                    allowDuplicate: true,
+                    duplicateScope: 'deck',
+                    duplicateScopeOptions: { deckName: 'Sentences', checkChildren: false },
+                },
+                audio: { filename: 'asbp_episode_1000.mp3', data: 'audio-base64', fields: ['Audio'] },
+                picture: { filename: 'asbp_episode_1000.jpeg', data: 'image-base64', fields: ['Image'] },
+                fields: {
+                    Sentence: extractText(card.subtitle, card.surroundingSubtitles).replaceAll('\n', '<br>'),
+                    Track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
+                    Track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
+                    Track3: extractText(card.subtitle, card.surroundingSubtitles, 2),
+                    Definition: card.definition,
+                    Word: card.word,
+                    Source: sourceString(card.subtitleFileName, 0),
+                    Url: card.url,
+                },
+            },
+        },
     });
 });
 
+it('forwards GUI export mode in exportCard', async () => {
+    const fetcher = new MockFetcher();
+    fetcher.fetch.mockResolvedValue(ankiConnectResponse('stored-word'));
+    const card = makeCardModel({ audio: undefined, image: undefined });
+
+    await expect(exportCard(card, testAnkiSettings, 'gui', fetcher)).resolves.toBe('stored-word');
+    expect(fetcher.fetch).toHaveBeenCalledWith(
+        testAnkiSettings.ankiConnectUrl,
+        expect.objectContaining({ action: 'guiAddCards' })
+    );
+});
+
 it('passes through missing media in exportCard without constructing clips', async () => {
-    const exportSpy = jest.spyOn(Anki.prototype, 'export').mockResolvedValue('stored-word');
-    const audioFromBase64Spy = jest.spyOn(AudioClip, 'fromBase64');
-    const imageFromBase64Spy = jest.spyOn(MediaFragment, 'fromBase64');
+    const fetcher = new MockFetcher();
+    fetcher.fetch.mockResolvedValue(ankiConnectResponse('stored-word'));
     const card = makeCardModel({ audio: undefined, image: undefined, mediaTimestamp: 12345 });
 
-    await exportCard(card, testAnkiSettings);
+    await exportCard(card, testAnkiSettings, 'default', fetcher);
 
-    expect(audioFromBase64Spy).not.toHaveBeenCalled();
-    expect(imageFromBase64Spy).not.toHaveBeenCalled();
-    expect(exportSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-            audioClip: undefined,
-            image: undefined,
-            source: sourceString(card.subtitleFileName, card.mediaTimestamp),
-        })
-    );
+    const request = fetcher.fetch.mock.calls[0][1];
+    expect(request.params.note.audio).toBeUndefined();
+    expect(request.params.note.picture).toBeUndefined();
+    expect(request.params.note.fields.Source).toBe(sourceString(card.subtitleFileName, card.mediaTimestamp));
 });
 
 describe('Anki', () => {
@@ -872,8 +898,8 @@ describe('Anki', () => {
         );
 
         expect(result).toEqual(321);
-        expect(audioClip.base64).toHaveBeenCalled();
-        expect(image.base64).toHaveBeenCalled();
+        expect(audioClip.base64Reads).toBe(1);
+        expect(image.base64Reads).toBe(1);
         expect(fetcher.fetch).toHaveBeenCalledWith(testAnkiSettings.ankiConnectUrl, {
             action: 'addNote',
             version: 6,
@@ -918,13 +944,13 @@ describe('Anki', () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValue(ankiConnectResponse(321));
         const audioClip = makeAudioClip({ error: new Error('audio failed') });
-        const image = makeImage({ base64: jest.fn<() => Promise<string>>().mockResolvedValue('') });
+        const image = makeImage({ base64Result: '' });
         const anki = new Anki(testAnkiSettings, fetcher);
 
         await expect(anki.export(makeExportArguments({ audioClip, image }))).resolves.toEqual(321);
 
-        expect(audioClip.base64).not.toHaveBeenCalled();
-        expect(image.base64).toHaveBeenCalledTimes(1);
+        expect(audioClip.base64Reads).toBe(0);
+        expect(image.base64Reads).toBe(1);
         const body = fetcher.fetch.mock.calls[0][1];
         expect(body.action).toBe('addNote');
         expect(body.params.note.audio).toBeUndefined();
@@ -936,7 +962,7 @@ describe('Anki', () => {
     it('rejects media encoding failures before creating an Anki note', async () => {
         const fetcher = new MockFetcher();
         const audioClip = makeAudioClip({
-            base64: jest.fn<() => Promise<string>>().mockRejectedValue(new Error('encode failed')),
+            base64Error: new Error('encode failed'),
         });
         const anki = new Anki(testAnkiSettings, fetcher);
 
@@ -959,7 +985,7 @@ describe('Anki', () => {
         );
 
         expect(result).toEqual(322);
-        expect(image.base64).toHaveBeenCalled();
+        expect(image.base64Reads).toBe(1);
         expect(fetcher.fetch.mock.calls).toEqual([
             [
                 testAnkiSettings.ankiConnectUrl,

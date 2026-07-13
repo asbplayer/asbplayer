@@ -5,11 +5,13 @@ import {
     type AsbplayerSettings,
     defaultSettings,
     type DictionaryTrack,
+    SettingsProvider,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 import { SubtitleAnnotations } from './subtitle-annotations';
 
 export const cloneAnnotationConfig = (track: DictionaryTrack) => ({
@@ -130,17 +132,12 @@ export const makeStorage = () => ({
     _removeCallback: jest.fn(),
 });
 
-export const makeSettingsProvider = (settings: AsbplayerSettings) =>
-    ({
-        getAll: jest.fn(async () => settings),
-        getSingle: jest.fn(async (key: keyof AsbplayerSettings) => settings[key]),
-        activeProfile: jest.fn(async () => ({ name: 'Profile' })),
-    }) as any;
-
 export const makeSubtitleAnnotations = (settings = makeSettings()) => {
     const storage = makeStorage();
     const provider = new DictionaryProvider(storage as any);
-    const settingsProvider = makeSettingsProvider(settings);
+    const settingsStorage = new MockSettingsStorage();
+    settingsStorage.setData(settings);
+    const settingsProvider = new SettingsProvider(settingsStorage);
     const subtitleAnnotationsUpdated = jest.fn();
     const subtitleAnnotations = new SubtitleAnnotations(
         provider,

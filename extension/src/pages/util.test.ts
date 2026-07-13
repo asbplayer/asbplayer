@@ -38,13 +38,16 @@ describe('poll', () => {
     });
 
     it('resolves immediately and stops polling after the condition passes', async () => {
-        const test = jest.fn(() => true);
+        let calls = 0;
 
-        const promise = poll(test, 5000);
+        const promise = poll(() => {
+            calls++;
+            return true;
+        }, 5000);
         await expect(promise).resolves.toBe(true);
         await jest.advanceTimersByTimeAsync(10000);
 
-        expect(test).toHaveBeenCalledTimes(1);
+        expect(calls).toBe(1);
     });
 
     it('resolves after the condition passes on the second poll', async () => {
@@ -58,13 +61,16 @@ describe('poll', () => {
     });
 
     it('returns false when the timeout expires', async () => {
-        const test = jest.fn(() => false);
-        const promise = poll(test, 1500);
+        let calls = 0;
+        const promise = poll(() => {
+            calls++;
+            return false;
+        }, 1500);
 
         await jest.advanceTimersByTimeAsync(2000);
 
         await expect(promise).resolves.toBe(false);
-        expect(test).toHaveBeenCalledTimes(3);
+        expect(calls).toBe(3);
     });
 });
 

@@ -4,11 +4,13 @@ import {
     defaultSettings,
     DictionaryTokenSource,
     DictionaryTrack,
+    SettingsProvider,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 import {
     averageDisplay,
     clampPercent,
@@ -89,16 +91,12 @@ const makeStorage = () => ({
     publishStatisticsSnapshot: jest.fn(async () => undefined),
 });
 
-const makeSettingsProvider = (settings: ReturnType<typeof makeSettings>) =>
-    ({
-        getAll: jest.fn(async () => settings),
-        getSingle: jest.fn(async (key: keyof typeof settings) => settings[key]),
-    }) as any;
-
 const makeStatistics = (settings = makeSettings([makeDisabledDictionaryTrack()])) => {
     const storage = makeStorage();
     const provider = new DictionaryProvider(storage as any);
-    const settingsProvider = makeSettingsProvider(settings);
+    const settingsStorage = new MockSettingsStorage();
+    settingsStorage.setData(settings);
+    const settingsProvider = new SettingsProvider(settingsStorage);
     const statistics = new DictionaryStatistics(settingsProvider, provider, 'media-id');
 
     return { statistics, settingsProvider, storage };
@@ -504,9 +502,14 @@ describe('DictionaryStatistics', () => {
         });
     });
 
-    it('refreshes dictionary tokens for enabled tracks, skips disabled tracks, and fills default status colors', async () => {
+    it('refreshes dictionary tokens for enabled tracks, skips disabled tracks, and normalizes status colors', async () => {
         const enabledWithPartialConfig = makeDictionaryTrack({
             dictionaryAutoGenerateStatistics: true,
+            dictionaryTokenStatusColors: [
+                '#111111',
+                '#222222',
+                ...defaultSettings.dictionaryTracks[0].dictionaryTokenStatusColors.slice(2),
+            ],
             dictionaryTokenStatusConfig: [
                 { color: '#111111', alpha: 'AA', display: true },
                 { color: '#222222', alpha: 'BB', display: true },
@@ -526,11 +529,12 @@ describe('DictionaryStatistics', () => {
 
         await statistics.refreshDictionaryTokens('profile');
 
-        expect(settingsProvider.getSingle).toHaveBeenCalledWith('dictionaryTracks');
         expect((storage.getAllTokens.mock.calls as any[][]).map((call) => call[1])).toEqual([0, 2]);
 
         const snapshot = lastPublishedSnapshot(storage)!;
-        expect(snapshot.settings).toEqual({ dictionaryTracks: settings.dictionaryTracks });
+        expect(snapshot.settings).toEqual({
+            dictionaryTracks: await settingsProvider.getSingle('dictionaryTracks'),
+        });
         expect(snapshot.snapshots[0].stats.dictionary.tokens).toEqual({
             alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] },
         });
@@ -539,7 +543,9 @@ describe('DictionaryStatistics', () => {
         });
         expect(snapshot.snapshots[0].statusColors[0]).toBe('#111111AA');
         expect(snapshot.snapshots[0].statusColors[1]).toBe('#222222BB');
-        expect(snapshot.snapshots[0].statusColors[2]).toBe('#9E9E9EFF');
+        expect(snapshot.snapshots[0].statusColors[2]).toBe(
+            `${defaultSettings.dictionaryTracks[0].dictionaryTokenStatusConfig[2].color}${defaultSettings.dictionaryTracks[0].dictionaryTokenStatusConfig[2].alpha}`
+        );
         expect(snapshot.snapshots[1].statusColors[0]).toBe(
             `${enabledWithDefaults.dictionaryTokenStatusConfig[0].color}${enabledWithDefaults.dictionaryTokenStatusConfig[0].alpha}`
         );
@@ -552,10 +558,14 @@ describe('DictionaryStatistics', () => {
             deferred<Record<string, { source: DictionaryTokenSource; statuses: never[]; states: never[] }>>();
 
         statistics.init(0, 1);
-        storage.getAllTokens.mockReturnValueOnce(pendingTokens.promise);
+        const tokenRequestStarted = deferred<void>();
+        storage.getAllTokens.mockImplementationOnce(() => {
+            tokenRequestStarted.resolve();
+            return pendingTokens.promise;
+        });
 
         const refreshPromise = statistics.refreshDictionaryTokens('profile');
-        await Promise.resolve();
+        await tokenRequestStarted.promise;
 
         statistics.reset();
         pendingTokens.resolve({ alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] } });
@@ -575,18 +585,29 @@ describe('DictionaryStatistics', () => {
             deferred<Record<string, { source: DictionaryTokenSource; statuses: never[]; states: never[] }>>();
         const secondTrackTokens =
             deferred<Record<string, { source: DictionaryTokenSource; statuses: never[]; states: never[] }>>();
+        const firstTrackRequestStarted = deferred<void>();
+        const secondTrackRequestStarted = deferred<void>();
+        const firstTrackPublished = deferred<void>();
 
         statistics.init(0, 1);
         statistics.init(1, 1);
         storage.getAllTokens
-            .mockReturnValueOnce(firstTrackTokens.promise)
-            .mockReturnValueOnce(secondTrackTokens.promise);
+            .mockImplementationOnce(() => {
+                firstTrackRequestStarted.resolve();
+                return firstTrackTokens.promise;
+            })
+            .mockImplementationOnce(() => {
+                secondTrackRequestStarted.resolve();
+                return secondTrackTokens.promise;
+            });
+        storage.publishStatisticsSnapshot.mockImplementationOnce(async () => {
+            firstTrackPublished.resolve();
+        });
 
         const refreshPromise = statistics.refreshDictionaryTokens('profile');
-        await Promise.resolve();
+        await Promise.all([firstTrackRequestStarted.promise, secondTrackRequestStarted.promise]);
         firstTrackTokens.resolve({ alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] } });
-        await Promise.resolve();
-        await Promise.resolve();
+        await firstTrackPublished.promise;
 
         expect(lastPublishedSnapshot(storage)?.snapshots[0].stats.dictionary.tokens).toEqual({
             alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] },

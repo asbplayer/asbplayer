@@ -29,11 +29,12 @@ export function arrayEquals<T>(
     return true;
 }
 
-export const localizedDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], {
+export const localizedDate = (timestamp: number, locales: Intl.LocalesArgument = [], timeZone?: string) => {
+    return new Date(timestamp).toLocaleTimeString(locales, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
+        timeZone,
     });
 };
 
@@ -693,11 +694,12 @@ export async function filterAsync<T>(
     return arr.filter((_, index) => results[index]);
 }
 
-export async function ensureStoragePersisted(): Promise<void> {
+export async function ensureStoragePersisted(): Promise<boolean | undefined> {
     if (!navigator.storage?.persist) return;
-    if (await navigator.storage.persisted()) return;
+    if (await navigator.storage.persisted()) return true;
     const persisted = await navigator.storage.persist();
     if (!persisted) console.warn('Storage could not be persisted, data may be cleared by the browser');
+    return persisted;
 }
 
 type Block = {

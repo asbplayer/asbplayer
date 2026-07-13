@@ -48,11 +48,11 @@ describe('SubtitleCollection', () => {
         const nearEnd = collection.subtitlesAt(900);
 
         expect(nearStart.showing).toEqual([subtitle]);
-        expect(nearStart.startedShowing).toBe(subtitle);
+        expect(nearStart.startedShowing).toEqual(subtitle);
         expect(nearStart.willStopShowing).toBeUndefined();
         expect(nearEnd.showing).toEqual([subtitle]);
         expect(nearEnd.startedShowing).toBeUndefined();
-        expect(nearEnd.willStopShowing).toBe(subtitle);
+        expect(nearEnd.willStopShowing).toEqual(subtitle);
     });
 
     it('returns lastShown and nextToShow across a 2-item gap', () => {
