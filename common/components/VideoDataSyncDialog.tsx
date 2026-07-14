@@ -24,6 +24,8 @@ import Alert from '@mui/material/Alert';
 import { type ButtonBaseActions } from '@mui/material';
 import { OnlineSubtitleSourceConfig } from '../global-state';
 import OnlineSubtitleSourceDialog from './OnlineSubtitleSourceDialog';
+import { TFunction } from 'i18next';
+import { FileSelector, FileWithId } from '@project/common/file-selector';
 
 const createClasses = makeStyles(() => ({
     relative: {
@@ -109,6 +111,50 @@ const normalizeOnlineSubtitleFileName = (name: string, sourceUrl: string) => {
     };
 };
 
+export const emptySubtitleTrack = (t: TFunction) => {
+    return {
+        id: '-',
+        language: '-',
+        url: '-',
+        label: t('extension.videoDataSync.emptySubtitleTrack'),
+        extension: 'srt',
+    };
+};
+
+const initialTrackIds = ['-', '-', '-'];
+
+export const useVideoDataSyncDialogState = () => {
+    const { t } = useTranslation();
+    const [subtitleTrackSelectorOpen, setSubtitleTrackSelectorOpen] = useState<boolean>(false);
+    const [subtitleTrackSelectorDisabled, setSubtitleTrackSelectorDisabled] = useState<boolean>(false);
+    const [subtitleTrackSelectorTracks, setSubtitleTrackSelectorTracks] = useState<VideoDataSubtitleTrack[]>([
+        emptySubtitleTrack(t),
+    ]);
+    useEffect(() => {
+        for (const track of subtitleTrackSelectorTracks) {
+            if (track.id === '-') {
+                track.label = t('extension.videoDataSync.emptySubtitleTrack');
+            }
+        }
+    }, [t, subtitleTrackSelectorTracks]);
+    const [subtitleTrackSelectorSelectedTrackIds, setSubtitleTrackSelectorSelectedTrackIds] =
+        useState<string[]>(initialTrackIds);
+    const openSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(true), []);
+    const closeSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(false), []);
+
+    return {
+        subtitleTrackSelectorOpen,
+        openSubtitleTrackSelector,
+        closeSubtitleTrackSelector,
+        subtitleTrackSelectorSelectedTrackIds,
+        setSubtitleTrackSelectorSelectedTrackIds,
+        subtitleTrackSelectorTracks,
+        setSubtitleTrackSelectorTracks,
+        subtitleTrackSelectorDisabled,
+        setSubtitleTrackSelectorDisabled,
+    };
+};
+
 interface Props {
     open: boolean;
     disabled: boolean;
@@ -127,13 +173,14 @@ interface Props {
     hasSeenFtue?: boolean;
     hideRememberTrackPreferenceToggle?: boolean;
     hideVideoNameTextField?: boolean;
+    fileSelector: FileSelector;
     onCancel: () => void;
     onOpenSettings: () => void;
     onConfirm: (track: ConfirmedVideoDataSubtitleTrack[], shouldRememberTrackChoices: boolean) => void;
     onSetActiveProfile: (profile: string | undefined) => void;
     onOnlineSourceConfigChanged: (state: Partial<OnlineSubtitleSourceConfig>) => void;
     onDismissFtue: () => void;
-    onOpenFiles: (files: FileList) => void;
+    onOpenFiles: (files: FileWithId[]) => void;
     onSubtitleTracks: (tracks: VideoDataSubtitleTrack[]) => void;
     onSelectedSubtitleTrackIds: (trackIds: string[]) => void;
 }
@@ -154,6 +201,7 @@ export default function VideoDataSyncDialog({
     hasSeenFtue,
     hideRememberTrackPreferenceToggle,
     hideVideoNameTextField,
+    fileSelector,
     onCancel,
     onOpenSettings,
     onConfirm,
@@ -300,40 +348,37 @@ export default function VideoDataSyncDialog({
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
     const [onlineDialogTrackNumber, setOnlineDialogTrackNumber] = useState<number>();
     const detectedTitleHint = useMemo(() => detectOnlineSubtitleTitleHint(suggestedName), [suggestedName]);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileInputChange = useCallback(async () => {
-        const files = fileInputRef.current?.files;
+    useEffect(() => {
+        return fileSelector.onFilesSelected((files) => {
+            if (!files || files.length === 0) {
+                return;
+            }
 
-        if (files && files.length > 0) {
-            try {
-                if (fileInputTrackNumber === undefined) {
-                    onOpenFiles(files);
-                } else {
-                    const fileTracks: VideoDataSubtitleTrack[] = [...files].map((f) => {
-                        const extension = f.name.substring(f.name.lastIndexOf('.') + 1, f.name.length);
-                        return {
-                            label: f.name,
-                            id: f.name,
-                            file: f,
-                            extension,
-                        };
-                    });
+            if (fileInputTrackNumber === undefined) {
+                onOpenFiles(files);
+            } else {
+                const fileTracks: VideoDataSubtitleTrack[] = [...files].map((fileWithId) => {
+                    const { file, id } = fileWithId;
+                    const extension = file.name.substring(file.name.lastIndexOf('.') + 1, file.name.length);
+                    return {
+                        label: file.name,
+                        id,
+                        file,
+                        extension,
+                    };
+                });
 
-                    if (fileTracks.length > 0) {
-                        onSubtitleTracks([...subtitleTracks, ...fileTracks]);
-                        const selectedIdsByTrackNumber = [...selectedSubtitleTrackIds];
-                        selectedIdsByTrackNumber[fileInputTrackNumber] = fileTracks[0].id;
-                        onSelectedSubtitleTrackIds(selectedIdsByTrackNumber);
-                    }
-                }
-            } finally {
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
+                if (fileTracks.length > 0) {
+                    onSubtitleTracks([...subtitleTracks, ...fileTracks]);
+                    const selectedIdsByTrackNumber = [...selectedSubtitleTrackIds];
+                    selectedIdsByTrackNumber[fileInputTrackNumber] = fileTracks[0].id;
+                    onSelectedSubtitleTrackIds(selectedIdsByTrackNumber);
                 }
             }
-        }
+        });
     }, [
+        fileSelector,
         fileInputTrackNumber,
         subtitleTracks,
         selectedSubtitleTrackIds,
@@ -342,10 +387,13 @@ export default function VideoDataSyncDialog({
         onSelectedSubtitleTrackIds,
     ]);
 
-    const handleOpenFile = useCallback((track?: number) => {
-        setFileInputTrackNumber(track);
-        fileInputRef.current?.click();
-    }, []);
+    const handleOpenFile = useCallback(
+        (track?: number) => {
+            setFileInputTrackNumber(track);
+            fileSelector.open();
+        },
+        [fileSelector]
+    );
 
     const handleOpenOnline = useCallback((track?: number) => {
         setOnlineDialogTrackNumber(track);
@@ -509,14 +557,6 @@ export default function VideoDataSyncDialog({
                 }
                 jimakuRecentWorks={onlineSubtitleSourceConfig.jimakuRecentWorks ?? []}
                 onJimakuRecentWorksChange={(jimakuRecentWorks) => onOnlineSourceConfigChanged({ jimakuRecentWorks })}
-            />
-            <input
-                ref={fileInputRef}
-                onChange={handleFileInputChange}
-                type="file"
-                accept=".srt,.ass,.vtt,.sup,.dfxp,.ttml2"
-                multiple
-                hidden
             />
         </>
     );
