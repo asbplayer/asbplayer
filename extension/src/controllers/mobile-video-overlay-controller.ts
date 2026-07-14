@@ -8,7 +8,7 @@ import {
 import Binding from '../services/binding';
 import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
 import { adjacentSubtitle } from '@project/common/key-binder';
-import { frameColorScheme } from '@/services/frame-color-scheme';
+import { frameColorSchemeClass } from '@/services/frame-color-scheme';
 
 const smallScreenVideoHeightThreshold = 300;
 
@@ -224,12 +224,12 @@ export class MobileVideoOverlayController {
             this._overlay.uncacheHtml();
         }
 
-        const colorScheme = frameColorScheme();
+        const colorSchemeClass = frameColorSchemeClass();
         this._overlay.setHtml([
             {
                 key: 'ui',
                 html: () =>
-                    `<iframe style="border: 0; color-scheme: ${colorScheme}; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
+                    `<iframe class="${colorSchemeClass}" style="border: 0; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
                         '/mobile-video-overlay-ui.html'
                     )}?src=${src}&anchor=${anchor}&tooltips=${tooltips}"/>`,
             },

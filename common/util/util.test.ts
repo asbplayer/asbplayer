@@ -1,4 +1,11 @@
-import { subtitleTimestampWithDelay, surroundingSubtitlesAroundInterval, timeDurationDisplay } from './util';
+import {
+    clampMediaTimestamp,
+    compareSubtitlesForDisplay,
+    seekWithNudge,
+    subtitleTimestampWithDelay,
+    surroundingSubtitlesAroundInterval,
+    timeDurationDisplay,
+} from './util';
 
 it('correctly displays timestamps less than 100 ms', () => {
     expect(timeDurationDisplay(50, 100, true)).toEqual('00:00.050');
@@ -18,6 +25,53 @@ it('correctly displays timestamps', () => {
 
 it('correctly displays timestamps (2)', () => {
     expect(timeDurationDisplay(1250, 1250, true)).toEqual('00:01.250');
+});
+
+it('displays negative timestamps with a leading minus sign', () => {
+    expect(timeDurationDisplay(-1250, 1250, true)).toEqual('-00:01.250');
+    expect(timeDurationDisplay(-1250, 1250, false)).toEqual('-00:01');
+});
+
+it('displays negative timestamps with hours when the media is at least one hour long', () => {
+    expect(timeDurationDisplay(-3_723_004, 3_723_004, true)).toEqual('-01:02:03.004');
+});
+
+it('displays negative timestamps with hours when their magnitude exceeds the adjusted media length', () => {
+    expect(timeDurationDisplay(-5_400_000, 1_800_000, true)).toEqual('-01:30:00.000');
+});
+
+it('clamps negative media timestamps to zero', () => {
+    expect(clampMediaTimestamp(-1)).toBe(0);
+    expect(clampMediaTimestamp(0)).toBe(0);
+    expect(clampMediaTimestamp(1)).toBe(1);
+});
+
+it('clamps media timestamps to an optional media length', () => {
+    expect(clampMediaTimestamp(-1, 100)).toBe(0);
+    expect(clampMediaTimestamp(50, 100)).toBe(50);
+    expect(clampMediaTimestamp(100, 100)).toBe(100);
+    expect(clampMediaTimestamp(101, 100)).toBe(100);
+});
+
+it('does not apply an unavailable or invalid media length', () => {
+    expect(clampMediaTimestamp(100, 0)).toBe(100);
+    expect(clampMediaTimestamp(100, -1)).toBe(100);
+    expect(clampMediaTimestamp(100, Number.NaN)).toBe(100);
+    expect(clampMediaTimestamp(100, Number.POSITIVE_INFINITY)).toBe(100);
+});
+
+it('clamps negative seeks before updating the media element', () => {
+    const media = { currentTime: 10, duration: 100 } as HTMLMediaElement;
+
+    expect(seekWithNudge(media, -1)).toBe(0);
+    expect(media.currentTime).toBe(0);
+});
+
+it('clamps seeks past the media duration before updating the media element', () => {
+    const media = { currentTime: 10, duration: 100 } as HTMLMediaElement;
+
+    expect(seekWithNudge(media, 101)).toBe(100);
+    expect(media.currentTime).toBe(100);
 });
 
 function subtitle(text: string, start: number, end: number) {
@@ -59,4 +113,32 @@ it('computes subtitle timestamp with delay and clamps to subtitle interval', () 
     expect(subtitleTimestampWithDelay(sample, 1500)).toBe(2000);
     expect(subtitleTimestampWithDelay(sample, -300)).toBe(1700);
     expect(subtitleTimestampWithDelay(sample, -1500)).toBe(1000);
+});
+
+// Regression test for https://github.com/asbplayer/asbplayer/issues/1064:
+// cues sharing a start time (e.g. Netflix splitting one line into multiple cues)
+// can be returned out of source order by SubtitleCollection, so display code
+// must fall back to source index to keep cues in the order they were authored.
+it('sorts subtitles by track, falling back to source index for ties', () => {
+    const cues = [
+        { track: 0, index: 1 },
+        { track: 0, index: 0 },
+    ];
+
+    expect([...cues].sort(compareSubtitlesForDisplay)).toEqual([
+        { track: 0, index: 0 },
+        { track: 0, index: 1 },
+    ]);
+});
+
+it('sorts subtitles by track first, regardless of source index', () => {
+    const cues = [
+        { track: 1, index: 0 },
+        { track: 0, index: 1 },
+    ];
+
+    expect([...cues].sort(compareSubtitlesForDisplay)).toEqual([
+        { track: 0, index: 1 },
+        { track: 1, index: 0 },
+    ]);
 });

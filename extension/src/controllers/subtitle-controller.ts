@@ -33,7 +33,12 @@ import {
     ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
     ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
 } from '@project/common/annotations';
-import { arrayEquals, computeStyleString, surroundingSubtitles } from '@project/common/util';
+import {
+    arrayEquals,
+    compareSubtitlesForDisplay,
+    computeStyleString,
+    surroundingSubtitles,
+} from '@project/common/util';
 import i18n from 'i18next';
 import {
     CachingElementOverlay,
@@ -591,7 +596,7 @@ export default class SubtitleController {
     }
 
     private _findShowingSubtitles(slice: SubtitleSlice<IndexedSubtitleModel>): IndexedSubtitleModel[] {
-        return slice.showing.filter((s) => this._trackEnabled(s)).sort((s1, s2) => s1.track - s2.track);
+        return slice.showing.filter((s) => this._trackEnabled(s)).sort(compareSubtitlesForDisplay);
     }
 
     private _trackEnabled(subtitle: SubtitleModel) {
@@ -776,9 +781,21 @@ export default class SubtitleController {
         return roundedOffset >= 0 ? '+' + roundedOffset + ' ms' : roundedOffset + ' ms';
     }
 
-    notification(locKey: string, replacements?: { [key: string]: string }) {
-        const text = i18n.t(locKey, replacements ?? {});
-        this.notificationElementOverlay.setHtml([{ html: () => this._buildTextHtml(text) }]);
+    notification({
+        replacements,
+        locKey,
+        text,
+    }: {
+        replacements?: { [key: string]: string };
+        locKey?: string;
+        text?: string;
+    }) {
+        if (!text && !locKey) {
+            return;
+        }
+
+        const notificationText = text ?? i18n.t(locKey!, replacements ?? {});
+        this.notificationElementOverlay.setHtml([{ html: () => this._buildTextHtml(notificationText) }]);
 
         if (this.notificationElementOverlayHideTimeout) {
             clearTimeout(this.notificationElementOverlayHideTimeout);

@@ -680,9 +680,9 @@ export default class VideoDataSyncController {
             }
 
             ++finishedPromises;
-            this._context.subtitleController.notification(
-                `${fileName} (${Math.floor((finishedPromises / totalPromises) * 100)}%)`
-            );
+            this._context.subtitleController.notification({
+                text: `${fileName} (${Math.floor((finishedPromises / totalPromises) * 100)}%)`,
+            });
 
             tracks.push({
                 name: fileName,

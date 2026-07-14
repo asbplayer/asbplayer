@@ -52,8 +52,11 @@ export default class BulkExportController {
                 if (exported.exportError) {
                     console.error('Bulk export error:', exported.exportError);
                 } else if (exported.skippedDuplicate) {
-                    this._context.subtitleController.notification('info.cardNotExported', {
-                        reason: 'Duplicate',
+                    this._context.subtitleController.notification({
+                        locKey: 'info.cardNotExported',
+                        replacements: {
+                            reason: 'Duplicate',
+                        },
                     });
                 } else {
                     this._notifyProgress();
@@ -221,8 +224,11 @@ export default class BulkExportController {
         }
         const total = this._queue.length;
         const current = Math.min(this._currentIndex, total);
-        this._context.subtitleController.notification('info.exportedCard', {
-            result: `${current}/${total}`,
+        this._context.subtitleController.notification({
+            locKey: 'info.exportedCard',
+            replacements: {
+                result: `${current}/${total}`,
+            },
         });
     }
 }

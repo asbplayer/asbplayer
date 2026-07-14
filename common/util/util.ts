@@ -5,6 +5,16 @@ import { Progress } from '..';
 import { TokenStatusInfo } from '../dictionary-db';
 import { PitchAccentPosition } from '../yomitan';
 
+// Cues on the same track can share a start time (e.g. Netflix splitting one line into
+// multiple cues), and SubtitleCollection does not guarantee source order in that case, so
+// callers displaying subtitles should sort by track and fall back to source index for ties.
+export function compareSubtitlesForDisplay(
+    s1: Pick<SubtitleModel, 'track' | 'index'>,
+    s2: Pick<SubtitleModel, 'track' | 'index'>
+): number {
+    return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
+}
+
 export function arrayEquals<T>(
     a: readonly T[] | undefined,
     b: readonly T[] | undefined,
@@ -73,32 +83,37 @@ export function timeDurationDisplay(
     totalMilliseconds: number,
     includeMilliseconds = true
 ): string {
-    if (milliseconds < 0) {
-        return timeDurationDisplay(0, totalMilliseconds, includeMilliseconds);
-    }
-
     milliseconds = Math.round(milliseconds);
+    const sign = milliseconds < 0 ? '-' : '';
+    milliseconds = Math.abs(milliseconds);
+    const includeHours = totalMilliseconds >= 3600000 || milliseconds >= 3600000;
     const remainingMilliseconds = milliseconds % 1000;
     milliseconds = (milliseconds - remainingMilliseconds) / 1000;
     const seconds = milliseconds % 60;
     milliseconds = (milliseconds - seconds) / 60;
     const minutes = milliseconds % 60;
 
-    if (totalMilliseconds >= 3600000) {
+    if (includeHours) {
         const hours = (milliseconds - minutes) / 60;
 
         if (includeMilliseconds) {
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
+            return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
         }
 
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
     if (includeMilliseconds) {
-        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
+        return `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(remainingMilliseconds).padStart(3, '0')}`;
     }
 
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return `${sign}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+export function clampMediaTimestamp(timestamp: number, mediaLength?: number): number {
+    const clampedTimestamp = Math.max(0, timestamp);
+    if (mediaLength === undefined || !Number.isFinite(mediaLength) || mediaLength <= 0) return clampedTimestamp;
+    return Math.min(clampedTimestamp, mediaLength);
 }
 
 export function getCurrentTimeString(): string {
@@ -608,6 +623,7 @@ export function buildSubtitleTracks(subtitles: { track: number }[], subtitleFile
 }
 
 export function seekWithNudge(media: HTMLMediaElement, timestampSeconds: number) {
+    timestampSeconds = clampMediaTimestamp(timestampSeconds, media.duration);
     media.currentTime = timestampSeconds;
 
     if (media.currentTime < timestampSeconds) {

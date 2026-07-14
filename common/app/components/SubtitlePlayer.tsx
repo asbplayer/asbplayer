@@ -358,7 +358,6 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
 }: SubtitleRowCellsProps) {
     const classes = useSubtitleRowStyles();
     const { t } = useTranslation();
-    if (subtitle.start < 0 || subtitle.end < 0) return null;
     const className = `${compressed ? classes.compressedSubtitle : classes.subtitle} asb-subtitles`.trim();
     const disabledClassName = disabled ? classes.disabledSubtitle : '';
     const content = subtitle.textImage ? (

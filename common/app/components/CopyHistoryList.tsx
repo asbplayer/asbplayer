@@ -248,21 +248,34 @@ export default function CopyHistoryList({
 }: CopyHistoryListProps) {
     const classes = useStyles();
     const listContainerRef = useRef<HTMLDivElement | null>(null);
-    const scrollToBottomRefCallback = useCallback((element: HTMLElement | null) => {
-        if (!element || !listContainerRef.current) {
+    const bottomElementRef = useRef<HTMLElement | null>(null);
+    const scrollToBottomRefCallback = useCallback((bottomElement: HTMLElement | null) => {
+        if (bottomElement) {
+            // Scroll to bottom on first mount.
+            const isMounting = !bottomElementRef.current;
+            bottomElementRef.current = bottomElement;
+
+            if (isMounting) {
+                bottomElement.scrollIntoView();
+            }
+        }
+
+        if (!bottomElement || !listContainerRef.current) {
             return;
         }
 
+        // Stick to bottom if already at bottom and a new item is added.
         const listElement = listContainerRef.current;
         const threshold = 20;
         const distanceToBottom =
-            listElement.scrollHeight - listElement.scrollTop - listElement.clientHeight - element.clientHeight;
+            listElement.scrollHeight - listElement.scrollTop - listElement.clientHeight - bottomElement.clientHeight;
         const shouldAutoScroll = distanceToBottom <= threshold;
 
         if (shouldAutoScroll) {
-            element.scrollIntoView();
+            bottomElement.scrollIntoView();
         }
     }, []);
+
     const [menuItem, setMenuItem] = useState<CopyHistoryItem>();
     const [menuOpen, setMenuOpen] = useState<boolean>(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<Element>();
