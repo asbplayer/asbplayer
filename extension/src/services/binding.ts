@@ -105,6 +105,7 @@ document.addEventListener('asbplayer-netflix-enabled', (e) => {
 document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
+const disneyPlus = /www\.disneyplus\..+/.test(window.location.host);
 
 enum RecordingState {
     requested,
@@ -194,7 +195,6 @@ export default class Binding {
     private playListener?: EventListener;
     private pauseListener?: EventListener;
     private seekedListener?: EventListener;
-    private disneyPlusTimeUpdateListener?: EventListener;
     private playbackRateListener?: EventListener;
     private videoChangeListener?: EventListener;
     private canPlayListener?: EventListener;
@@ -224,7 +224,7 @@ export default class Binding {
     private readonly pageConfigKey?: string;
 
     get contentTimeMs(): number {
-        if (this._isDisneyPlus() && this.disneyPlusContentTimeMs !== undefined) {
+        if (disneyPlus && this.disneyPlusContentTimeMs !== undefined) {
             // Disney+: video.currentTime is unreliable; use the player's true content
             // time pushed from the page script, interpolated while playing.
             const elapsed = this.video.paused
@@ -236,11 +236,10 @@ export default class Binding {
         return this.video.currentTime * 1000;
     }
 
-    constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string, pageConfigKey?: string) {
+    constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string) {
         this.video = video;
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
         this.hasPageScript = hasPageScript;
-        this.pageConfigKey = pageConfigKey;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(
@@ -677,7 +676,7 @@ export default class Binding {
         this.video.addEventListener('pause', this.pauseListener);
         this.video.addEventListener('seeked', this.seekedListener);
 
-        if (this._isDisneyPlus()) {
+        if (disneyPlus) {
             // Video element on Disney Plus does not fire 'seeked' event.
             // Listen instead for custom 'seeked' events dispatched from the page script.
             this.disneyPlusSeekedListener = (e: Event) => {
@@ -722,7 +721,7 @@ export default class Binding {
                     void this.videoDataSyncController.requestSubtitles();
                     this._resetSubtitles();
                 },
-                this._isDisneyPlus() ? 1000 : 0
+                disneyPlus ? 1000 : 0
             );
             this.videoChangeListener = () => {
                 this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
@@ -1264,11 +1263,6 @@ export default class Binding {
             this.disneyPlusSeekedListener = undefined;
         }
 
-        if (this.disneyPlusTimeUpdateListener) {
-            this.video.removeEventListener('timeupdate', this.disneyPlusTimeUpdateListener);
-            this.disneyPlusTimeUpdateListener = undefined;
-        }
-
         if (this.playbackRateListener) {
             this.video.removeEventListener('ratechange', this.playbackRateListener);
             this.playbackRateListener = undefined;
@@ -1555,7 +1549,7 @@ export default class Binding {
                     detail: timestamp * 1000,
                 })
             );
-        } else if (this._isDisneyPlus()) {
+        } else if (disneyPlus) {
             // Disney+ ignores direct video.currentTime writes; drive the player API
             // instead. detail is absolute content time in milliseconds.
             document.dispatchEvent(
@@ -1574,7 +1568,7 @@ export default class Binding {
             return;
         }
 
-        if (this._isDisneyPlus()) {
+        if (disneyPlus) {
             await this._playDisneyPlus();
             return;
         }
@@ -1652,7 +1646,7 @@ export default class Binding {
             return;
         }
 
-        if (this._isDisneyPlus()) {
+        if (disneyPlus) {
             document.dispatchEvent(new CustomEvent('asbplayer-disney-plus-pause'));
             return;
         }
@@ -1836,10 +1830,6 @@ export default class Binding {
             src,
         };
         void browser.runtime.sendMessage(command);
-    }
-
-    private _isDisneyPlus(): boolean {
-        return this.pageConfigKey === 'disneyPlus';
     }
 
     private _captureStream(): Promise<MediaStream> {

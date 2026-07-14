@@ -138,12 +138,7 @@ export default defineContentScript({
                         hasValidVideoSource(videoElement, page) &&
                         !page?.shouldIgnore(videoElement)
                     ) {
-                        const b = new Binding(
-                            videoElement,
-                            hasPageScript,
-                            frameInfoBroadcaster?.frameId,
-                            page?.config.key
-                        );
+                        const b = new Binding(videoElement, hasPageScript, frameInfoBroadcaster?.frameId);
                         b.bind();
                         bindings.push(b);
                     }
