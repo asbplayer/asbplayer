@@ -3496,6 +3496,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@plausible-analytics/tracker@npm:^0.4.5":
+  version: 0.4.5
+  resolution: "@plausible-analytics/tracker@npm:0.4.5"
+  checksum: fbfb229db4998a750cbf8634eaa03b989f29a15c803f3750cfceac818cd10ae7db2110e8fba163a7adb7b68fd885a0759b1a6af1710c6e79a4d81db91a1853a1
+  languageName: node
+  linkType: hard
+
 "@pnpm/config.env-replace@npm:^1.1.0":
   version: 1.1.0
   resolution: "@pnpm/config.env-replace@npm:1.1.0"
@@ -3568,6 +3575,7 @@ __metadata:
   resolution: "@project/common@workspace:common"
   dependencies:
     "@flatten-js/interval-tree": ^1.0.19
+    "@plausible-analytics/tracker": ^0.4.5
     "@qgustavor/srt-parser": ^2.0.0
     "@types/jest": ^29.5.14
     "@types/semver": ^7.3.9
