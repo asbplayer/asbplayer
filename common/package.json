@@ -4,6 +4,7 @@
     "version": "0.1.0",
     "dependencies": {
         "@flatten-js/interval-tree": "^1.0.19",
+        "@plausible-analytics/tracker": "^0.4.5",
         "@qgustavor/srt-parser": "^2.0.0",
         "@types/semver": "^7.3.9",
         "ass-compiler": "0.1.1",
