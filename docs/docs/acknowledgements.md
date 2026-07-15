@@ -122,6 +122,7 @@ Vannde3,
 Champ,
 marcman3001,
 [@vladysor](https://github.com/vladysor),
-[@Otto-Deviant1904](https://github.com/Otto-Deviant1904)
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark)
 
 and those who have donated privately.

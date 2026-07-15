@@ -137,10 +137,18 @@ export default class SubtitleController {
     onMouseOver?: (event: MouseEvent) => void;
     onMouseOut?: (event: MouseEvent) => void;
 
-    constructor(context: Binding, dictionary: DictionaryProvider, settings: SettingsProvider) {
+    private readonly _currentTimeMs: () => number;
+
+    constructor(
+        context: Binding,
+        dictionary: DictionaryProvider,
+        settings: SettingsProvider,
+        currentTimeMs: () => number
+    ) {
         this.context = context;
         this.dictionary = dictionary;
         this.settings = settings;
+        this._currentTimeMs = currentTimeMs;
         this._preCacheDom = false;
         this.showingSubtitles = [];
         this.shouldRenderBottomOverlay = true;
@@ -175,7 +183,7 @@ export default class SubtitleController {
             subtitleCollectionOptions,
             this.context.registeredVideoSrc,
             (updatedSubtitles) => this._subtitleAnnotationsUpdated(updatedSubtitles),
-            () => this.context.video.currentTime * 1000,
+            this._currentTimeMs,
             new VideoFetcher(() => this.context.registeredVideoSrc)
         );
         this.seekableSubtitleCollection = new SubtitleCollection(subtitleCollectionOptions);
@@ -476,8 +484,8 @@ export default class SubtitleController {
 
             const showOffset = this.lastOffsetChangeTimestamp > 0 && Date.now() - this.lastOffsetChangeTimestamp < 1000;
             const offset = showOffset ? this._computeOffset() : 0;
-            const slice = this.subtitleAnnotations.subtitlesAt(this.context.video.currentTime * 1000);
-            const seekableSlice = this.seekableSubtitleCollection.subtitlesAt(this.context.video.currentTime * 1000);
+            const slice = this.subtitleAnnotations.subtitlesAt(this._currentTimeMs());
+            const seekableSlice = this.seekableSubtitleCollection.subtitlesAt(this._currentTimeMs());
 
             const showingSubtitles = this._findShowingSubtitles(slice);
 
@@ -685,7 +693,7 @@ export default class SubtitleController {
     }
 
     currentSubtitle(): [IndexedSubtitleModel | null, SubtitleModel[] | null] {
-        const now = 1000 * this.context.video.currentTime;
+        const now = this._currentTimeMs();
         let index = null;
 
         for (let i = 0; i < this.subtitles.length; ++i) {

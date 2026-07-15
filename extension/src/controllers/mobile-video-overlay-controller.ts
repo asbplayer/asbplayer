@@ -165,7 +165,7 @@ export class MobileVideoOverlayController {
         const subtitles = this._context.subtitleController.subtitles;
         const subtitleDisplaying =
             subtitles.length > 0 && this._context.subtitleController.currentSubtitle()[0] !== null;
-        const timestamp = this._context.video.currentTime * 1000;
+        const timestamp = this._context.contentTimeMs;
         const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles, seekableTracks } =
             await this._context.settings.get([
                 'language',

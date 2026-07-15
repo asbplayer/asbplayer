@@ -117,7 +117,7 @@ export default class AnkiUiController {
             surroundingSubtitles: surroundingSubtitles,
             image: image,
             audio: audio,
-            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            dialogRequestedTimestamp: context.contentTimeMs,
             text,
             word,
             definition,
@@ -159,7 +159,7 @@ export default class AnkiUiController {
             surroundingSubtitles,
             image,
             audio,
-            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            dialogRequestedTimestamp: context.contentTimeMs,
             text,
             word,
             definition,
@@ -183,7 +183,7 @@ export default class AnkiUiController {
             open: true,
             canRerecord: true,
             settings: this._settings,
-            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            dialogRequestedTimestamp: context.contentTimeMs,
             inTutorial: this._inTutorial,
             ...(await this._additionalUiState(context)),
         };
@@ -379,7 +379,7 @@ export default class AnkiUiController {
                             if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
                                 const seekTo = resumeMessage.uiState.dialogRequestedTimestamp / 1000;
 
-                                if (context.video.currentTime !== seekTo) {
+                                if (context.contentTimeMs / 1000 !== seekTo) {
                                     context.seek(seekTo);
                                 }
                             }

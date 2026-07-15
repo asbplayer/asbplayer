@@ -1157,9 +1157,11 @@ export default function Controls({
                                     {tabs && tabs.length > 0 && (
                                         <Tooltip title={t('controls.selectVideoElement')}>
                                             <IconButton color="inherit" onClick={handleTabSelectorOpened}>
-                                                <VideocamIcon
-                                                    className={selectedTab ? classes.button : classes.inactiveButton}
-                                                />
+                                                {selectedTab && selectedTab.faviconUrl ? (
+                                                    <img style={{ maxWidth: 24 }} src={selectedTab.faviconUrl} />
+                                                ) : (
+                                                    <VideocamIcon className={classes.button} />
+                                                )}
                                             </IconButton>
                                         </Tooltip>
                                     )}

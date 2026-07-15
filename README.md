@@ -132,7 +132,8 @@ Thank you to all those who have contributed to asbplayer:
 [@RonzyOnGIT](https://github.com/RonzyOnGIT),
 [@Dr-TNineS](https://github.com/Dr-TNineS),
 [@thntx](https://github.com/thntx),
-[@Otto-Deviant1904](https://github.com/Otto-Deviant1904)
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark)
 
 Thank you to all those who have translated asbplayer:
 
