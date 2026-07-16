@@ -19,7 +19,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { JimakuClient, JimakuEntry } from '@/services/subtitle-sources';
+import { JimakuClient, JimakuEntry, JimakuFile } from '@/services/subtitle-sources';
+import { extractEpisode } from '@/services/jimaku-episode-patterns';
 import type { JimakuCachedWork } from '@project/common/global-state';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -111,6 +112,11 @@ export default function OnlineSubtitleSourceDialog({
     const [jimakuSelectedEntry, setJimakuSelectedEntry] = useState<{ id: number; name: string }>();
     const [jimakuFiles, setJimakuFiles] = useState<OnlineSubtitleImportCandidate[]>();
     const [loadingJimakuFiles, setLoadingJimakuFiles] = useState(false);
+    // Episode number parsed from the page-script basename hint. When set,
+    // it is forwarded to the Jimaku files API so the backend (anitomy) can
+    // filter files down to the current episode. Undefined means "no
+    // confident match" and falls back to requesting all files.
+    const [detectedEpisode, setDetectedEpisode] = useState<number | undefined>(undefined);
     const resultsCache = useRef<Map<string, { anime: JimakuEntry[]; drama: JimakuEntry[] }>>(new Map());
 
     // Ref to avoid stale closure in upsertRecentWork
@@ -160,8 +166,9 @@ export default function OnlineSubtitleSourceDialog({
         if (open) {
             resetState();
             setQuery(normalizedDetectedTitleHint);
+            setDetectedEpisode(extractEpisode(detectedTitleHint));
         }
-    }, [open, normalizedDetectedTitleHint, resetState]);
+    }, [open, normalizedDetectedTitleHint, detectedTitleHint, resetState]);
 
     useEffect(() => {
         resultsCache.current.clear();
@@ -240,9 +247,24 @@ export default function OnlineSubtitleSourceDialog({
 
             try {
                 const client = new JimakuClient({ apiKey: jimakuApiKey });
-                const files = (await client.getFiles(entry.id)).data
-                    .filter((file) => isSupportedSubtitleFile(file.name))
-                    .map((file) => ({ name: file.name, url: file.url }));
+                const toCandidates = (files: JimakuFile[]) =>
+                    files
+                        .filter((file) => isSupportedSubtitleFile(file.name))
+                        .map((file) => ({ name: file.name, url: file.url }));
+
+                // Forward the detected episode so the backend can filter files
+                // down to the current episode via anitomy.
+                let rawFiles = (await client.getFiles(entry.id, { episode: detectedEpisode })).data;
+                if (detectedEpisode !== undefined && rawFiles.length === 0) {
+                    // Episode filter yielded nothing (e.g. non-standard filenames
+                    // anitomy couldn't parse). Fall back to all files so the user
+                    // isn't left looking at an empty list that reads as "no subs".
+                    console.warn(
+                        `[asbplayer] No Jimaku files matched episode ${detectedEpisode}, falling back to all files.`
+                    );
+                    rawFiles = (await client.getFiles(entry.id)).data;
+                }
+                const files = toCandidates(rawFiles);
 
                 if (fileLoadRequestIdRef.current === requestId && selectedEntryIdRef.current === entry.id) {
                     setJimakuFiles(files);
@@ -260,7 +282,7 @@ export default function OnlineSubtitleSourceDialog({
                 }
             }
         },
-        [jimakuApiKey, upsertRecentWork]
+        [jimakuApiKey, upsertRecentWork, detectedEpisode]
     );
 
     const handleImport = useCallback(
