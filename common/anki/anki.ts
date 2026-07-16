@@ -745,6 +745,10 @@ export class Anki {
             await this._executeAction('addTags', { notes: [noteId], tags: tags.join(' ') }, ankiConnectUrl);
         }
 
+        if (this.settingsProvider.ankiRefreshBrowserAfterUpdate) {
+            await this._refreshBrowser(noteId, ankiConnectUrl);
+        }
+
         if (!this.settingsProvider.wordField || !info.fields) {
             return info.noteId;
         }
@@ -756,6 +760,15 @@ export class Anki {
         }
 
         return wordField.value;
+    }
+
+    private async _refreshBrowser(noteId: number, ankiConnectUrl?: string) {
+        try {
+            await this._executeAction('guiBrowse', { query: 'nid:1' }, ankiConnectUrl);
+            await this._executeAction('guiBrowse', { query: `nid:${noteId}` }, ankiConnectUrl);
+        } catch (e) {
+            console.error('Failed to refresh Anki card browser after updating note:', e);
+        }
     }
 
     private _inheritHtmlMarkupFromField(fieldKey: AnkiSettingsFieldKey, info: any, params: any) {

@@ -363,6 +363,8 @@
         "anki": "Anki",
         "ankiConnectUrl": "URL Anki Connect",
         "ankiConnectApiKey": "Anki Connect API Key",
+        "ankiRefreshBrowserAfterUpdate": "Refresh Anki Card Browser after updating cards",
+        "ankiRefreshBrowserAfterUpdateHelperText": "This works around stale fields in an open Anki Card Browser. On macOS, it may bring the Card Browser window to the foreground.",
         "audioField": "Pole na audio",
         "audioPaddingEnd": "Padding audio z końca",
         "audioPaddingStart": "Padding audio z początku",

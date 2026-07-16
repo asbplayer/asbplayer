@@ -363,6 +363,8 @@
         "anki": "Anki",
         "ankiConnectUrl": "AnkiConnect の URL",
         "ankiConnectApiKey": "Anki Connect の API キー",
+        "ankiRefreshBrowserAfterUpdate": "Refresh Anki Card Browser after updating cards",
+        "ankiRefreshBrowserAfterUpdateHelperText": "This works around stale fields in an open Anki Card Browser. On macOS, it may bring the Card Browser window to the foreground.",
         "audioField": "音声フィールド",
         "audioPaddingEnd": "音声の余白終了",
         "audioPaddingStart": "音声の余白開始",
