@@ -485,6 +485,18 @@ This setting only applies if [**Display pitch accent (Japanese)**](#display-pitc
 
 If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
 
+### Word reading size
+
+Controls the size of word readings (furigana) in em units (% of subtitle font size).
+
+### Word frequency size
+
+Controls the size of word frequency in em units (% of subtitle font size).
+
+### Pitch accent size
+
+Controls the size of pitch accent in em units (% of subtitle font size).
+
 ### Word status colors
 
 Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
