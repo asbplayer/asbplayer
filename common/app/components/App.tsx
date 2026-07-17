@@ -1504,7 +1504,7 @@ function App({
     );
 
     const fileSelector = useMemo(
-        () => new DefaultFileSelector(() => handleFileSelector({ doNotLoad: true })),
+        () => new DefaultFileSelector(() => void handleFileSelector({ doNotLoad: true })),
         [handleFileSelector]
     );
 

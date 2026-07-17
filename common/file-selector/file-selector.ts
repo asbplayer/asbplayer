@@ -18,7 +18,7 @@ export class DefaultFileSelector {
     open() {
         const promiseOrVoid = this._opener();
         if (promiseOrVoid instanceof Promise) {
-            promiseOrVoid.then((files) => this.publishFiles(files));
+            void promiseOrVoid.then((files) => this.publishFiles(files));
         }
     }
 

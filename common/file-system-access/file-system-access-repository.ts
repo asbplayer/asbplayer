@@ -49,7 +49,6 @@ class FileSessionDatabase extends Dexie {
     }
 }
 
-// TODO confirmed and unconfirmed file session handles?
 export interface FileSessionRepository {
     fetch: () => Promise<FileSessionRecord | undefined>;
     /** Merge new handles into the existing record, mirroring handleFiles' source-merge logic. */
