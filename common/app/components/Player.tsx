@@ -60,10 +60,8 @@ import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
 import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
 import { FileWithId } from '../../file-selector';
-import { PlaybackPositionRecord, upsertPlaybackPosition } from '../../global-state';
+import { usePlaybackPositionMemory } from '../hooks/use-playback-position-memory';
 import Alert from './Alert';
-
-const playbackPositionSaveIntervalMs = 10000;
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -175,8 +173,6 @@ interface PlayerProps {
     hideControls?: boolean;
     forceCompressedMode?: boolean;
     webSocketClient?: WebSocketClient;
-    playbackPositions?: PlaybackPositionRecord[];
-    onPlaybackPositionsChanged?: (positions: PlaybackPositionRecord[]) => void;
 }
 
 const Player = React.memo(function Player({
@@ -223,8 +219,6 @@ const Player = React.memo(function Player({
     hideControls,
     forceCompressedMode,
     webSocketClient,
-    playbackPositions,
-    onPlaybackPositionsChanged,
 }: PlayerProps) {
     const { t } = useTranslation();
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(new Set([PlayMode.normal]));
@@ -239,10 +233,6 @@ const Player = React.memo(function Player({
     subtitlesRef.current = subtitles;
     const settingsRef = useRef(settings);
     settingsRef.current = settings;
-    const playbackPositionsRef = useRef(playbackPositions ?? []);
-    playbackPositionsRef.current = playbackPositions ?? [];
-    const restoredPlaybackPositionFileNameRef = useRef<string>(undefined);
-    const [pendingResume, setPendingResume] = useState<PlaybackPositionRecord>();
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
     >(SubtitleCollection.empty<DisplaySubtitleModel>());
@@ -314,24 +304,6 @@ const Player = React.memo(function Player({
         },
         [mediaAdapter, resetPendingAutoRepeatTargetTimestamp]
     );
-
-    const savePlaybackPosition = useCallback(() => {
-        if (!videoFile || !onPlaybackPositionsChanged) {
-            return;
-        }
-
-        const position = clockRef.current.time(calculateLength()) - 3000;
-        if (position <= 0) {
-            return;
-        }
-
-        onPlaybackPositionsChanged(
-            upsertPlaybackPosition(playbackPositionsRef.current, {
-                fileName: videoFile.name,
-                position,
-            })
-        );
-    }, [videoFile, onPlaybackPositionsChanged]);
 
     const handleSubtitlePlayerResizeStart = useCallback(() => setSubtitlePlayerResizing(true), []);
     const handleSubtitlePlayerResizeEnd = useCallback(
@@ -1236,47 +1208,15 @@ const Player = React.memo(function Player({
         return () => clearInterval(interval);
     }, [clock, mediaAdapter, seek, tab]);
 
-    useEffect(() => {
-        if (!videoFile) {
-            return;
-        }
-
-        const interval = setInterval(savePlaybackPosition, playbackPositionSaveIntervalMs);
-        return () => clearInterval(interval);
-    }, [videoFile, savePlaybackPosition]);
-
-    useEffect(() => clock.onEvent('stop', savePlaybackPosition), [clock, savePlaybackPosition]);
-
-    useEffect(() => {
-        if (!channel || !videoFile) {
-            return;
-        }
-
-        return channel.onReady(() => {
-            if (restoredPlaybackPositionFileNameRef.current === videoFile.name) {
-                return;
-            }
-
-            restoredPlaybackPositionFileNameRef.current = videoFile.name;
-            const saved = playbackPositionsRef.current.find((p) => p.fileName === videoFile.name);
-
-            if (saved && saved.position > 0) {
-                setPendingResume(saved);
-            }
-        });
-    }, [channel, videoFile]);
-
-    const handleConfirmResume = useCallback(async () => {
-        if (!pendingResume) {
-            return;
-        }
-
-        setPendingResume(undefined);
-        await seek(pendingResume.position, clockRef.current, true, true);
-        play(clockRef.current, mediaAdapter, true);
-    }, [pendingResume, seek, play, mediaAdapter]);
-
-    const handleDismissResume = useCallback(() => setPendingResume(undefined), []);
+    const { pendingResume, onConfirmResume, onDismissResume } = usePlaybackPositionMemory({
+        videoFile,
+        channel,
+        clock,
+        calculateLength,
+        seek,
+        play,
+        mediaAdapter,
+    });
 
     useEffect(() => {
         const unbind = keyBinder.bindPlay(
@@ -1452,7 +1392,7 @@ const Player = React.memo(function Player({
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
             {pendingResume && (
-                <Alert open={true} onClose={handleDismissResume} autoHideDuration={4000} severity="info" anchor="top">
+                <Alert open={true} onClose={onDismissResume} autoHideDuration={4000} severity="info" anchor="top">
                     {t('info.resumePlaybackPrompt', {
                         time: timeDurationDisplay(pendingResume.position, pendingResume.position, false),
                     })}
@@ -1460,7 +1400,7 @@ const Player = React.memo(function Player({
                         size="small"
                         color="inherit"
                         style={{ pointerEvents: 'auto', marginLeft: 12 }}
-                        onClick={handleConfirmResume}
+                        onClick={onConfirmResume}
                     >
                         {t('info.resumePlaybackButton')}
                     </Button>

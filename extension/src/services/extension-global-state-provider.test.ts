@@ -29,6 +29,5 @@ it('can retrieve all keys', async () => {
             jimakuSearchCategory: 'anime',
             jimakuRecentWorks: [],
         },
-        playbackPositions: [],
     });
 });

@@ -1,4 +1,4 @@
-import { PlaybackPositionRecord, upsertPlaybackPosition } from './index';
+import { PlaybackPositionRecord, upsertPlaybackPosition } from './playback-position-store';
 
 const record = (fileName: string, position: number): PlaybackPositionRecord => ({
     fileName,
