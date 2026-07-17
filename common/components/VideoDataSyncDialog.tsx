@@ -55,20 +55,6 @@ function calculateVideoName(baseName: string, label: string, localFile: boolean 
     return baseName;
 }
 
-const detectOnlineSubtitleTitleHint = (suggestedName: string) => {
-    const normalizedSuggestedName = suggestedName.trim();
-
-    if (normalizedSuggestedName.length > 0) {
-        return normalizedSuggestedName;
-    }
-
-    if (typeof document === 'undefined') {
-        return '';
-    }
-
-    return document.title.trim();
-};
-
 const normalizeOnlineSubtitleFileName = (name: string, sourceUrl: string) => {
     const trimmedName = name.trim();
     const defaultExtension = 'srt';
@@ -347,7 +333,7 @@ export default function VideoDataSyncDialog({
     const [fileInputTrackNumber, setFileInputTrackNumber] = useState<number>();
     const [onlineDialogOpen, setOnlineDialogOpen] = useState(false);
     const [onlineDialogTrackNumber, setOnlineDialogTrackNumber] = useState<number>();
-    const detectedTitleHint = useMemo(() => detectOnlineSubtitleTitleHint(suggestedName), [suggestedName]);
+    const detectedTitleHint = useMemo(() => suggestedName.trim(), [suggestedName]);
 
     useEffect(() => {
         return fileSelector.onFilesSelected((files) => {
