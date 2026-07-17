@@ -150,3 +150,24 @@ describe('SubtitleReader dfxp timestamp handling', () => {
         expect(subtitles).toHaveLength(0);
     });
 });
+
+describe('SubtitleReader Bilibili JSON parsing', () => {
+    it('parses Bilibili JSON cues', async () => {
+        const file = {
+            name: 'test.bbjson',
+            text: async () =>
+                JSON.stringify({
+                    body: [
+                        { from: 1.25, to: 3.5, content: 'First subtitle' },
+                        { from: 4, to: 6.75, content: 'Second subtitle' },
+                    ],
+                }),
+        } as unknown as File;
+
+        const subtitles = await createReader().subtitles([file]);
+
+        expect(subtitles).toHaveLength(2);
+        expect(subtitles[0]).toMatchObject({ start: 1250, end: 3500, text: 'First subtitle' });
+        expect(subtitles[1]).toMatchObject({ start: 4000, end: 6750, text: 'Second subtitle' });
+    });
+});
