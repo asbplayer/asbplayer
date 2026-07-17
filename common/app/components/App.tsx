@@ -171,16 +171,16 @@ async function extractDropFileHandles(items: DataTransferItemList): Promise<File
     return handles;
 }
 
-function extractSources(files: FileList | File[]): MediaSources {
-    const subtitleFiles: File[] = [];
-    let videoFile: File | undefined = undefined;
+function extractSources(files: FileWithId[]): MediaSources {
+    const subtitleFiles: FileWithId[] = [];
+    let videoFile: FileWithId | undefined = undefined;
 
     for (let i = 0; i < files.length; ++i) {
         const f = files[i];
-        const extension = getExtension(f.name);
+        const extension = getExtension(f.file.name);
 
         if (extension === '') {
-            throw new LocalizedError('error.unknownExtension', { fileName: f.name });
+            throw new LocalizedError('error.unknownExtension', { fileName: f.file.name });
         }
 
         if (SUBTITLE_EXT_SET.has(extension)) {
@@ -407,7 +407,7 @@ function App({
     const [jumpToSubtitle, setJumpToSubtitle] = useState<SubtitleModel>();
     const [rewindSubtitle, setRewindSubtitle] = useState<SubtitleModel>();
     const [sources, setSources] = useState<MediaSources>({ subtitleFiles: [] });
-    const [loadingSources, setLoadingSources] = useState<File[]>([]);
+    const [loadingSources, setLoadingSources] = useState<FileWithId[]>([]);
     const [dragging, setDragging] = useState<boolean>(false);
     const dragEnterRef = useRef<Element | null>(null);
     const [fileName, setFileName] = useState<string>();
@@ -884,7 +884,7 @@ function App({
 
     const handleJumpToSubtitle = useCallback(
         (subtitle: SubtitleModel, subtitleFileName: string) => {
-            if (!subtitleFiles.find((f) => f.name === subtitleFileName)) {
+            if (!subtitleFiles.find((f) => f.file.name === subtitleFileName)) {
                 handleError(t('error.subtitleFileNotOpen', { fileName: subtitleFileName }));
                 return;
             }
@@ -926,7 +926,7 @@ function App({
             return;
         }
 
-        if (!subtitleFiles.find((f) => f.name === ankiDialogCard.subtitleFileName)) {
+        if (!subtitleFiles.find((f) => f.file.name === ankiDialogCard.subtitleFileName)) {
             handleError(t('error.subtitleFileNotOpen', { fileName: ankiDialogCard.subtitleFileName }));
             return;
         }
@@ -1002,7 +1002,7 @@ function App({
             doNotLoad?: boolean;
         }): boolean => {
             try {
-                const mediaSources = extractSources(files.map((f) => f.file));
+                const mediaSources = extractSources(files);
                 let videoFile = mediaSources.videoFile;
                 const subtitleFiles = mediaSources.subtitleFiles;
 
@@ -1023,7 +1023,7 @@ function App({
                         }
 
                         if (videoFile) {
-                            videoFileUrl = createBlobUrl(videoFile);
+                            videoFileUrl = createBlobUrl(videoFile.file);
                         }
 
                         setTab(undefined);
@@ -1045,7 +1045,7 @@ function App({
                     const previousLoadingSources = sourcesToList(previous);
                     const loadingSources = sourcesToList(sources).filter((f) => {
                         for (const previousLoadingSource of previousLoadingSources) {
-                            if (f === previousLoadingSource) {
+                            if (f.file === previousLoadingSource.file) {
                                 return false;
                             }
                         }
@@ -1053,15 +1053,20 @@ function App({
                         return true;
                     });
                     setLoadingSources(loadingSources);
+
+                    void retainHandlesInFileSession([
+                        ...sources.subtitleFiles.map((f) => f.id),
+                        ...(sources.videoFile === undefined ? [] : [sources.videoFile.id]),
+                    ]);
+
                     return sources;
                 });
 
                 if (subtitleFiles.length > 0) {
-                    const subtitleFileName = subtitleFiles[0].name;
+                    const subtitleFileName = subtitleFiles[0].file.name;
                     setFileName(subtitleFileName.substring(0, subtitleFileName.lastIndexOf('.')));
                 }
 
-                void retainHandlesInFileSession(files.map(({ id }) => id));
                 return true;
             } catch (e) {
                 console.error(e);
@@ -1296,7 +1301,7 @@ function App({
                 const requestMessage = message.data as RequestLocalSubtitlesMessage;
                 extension.sendSubtitles(requestMessage.messageId, {
                     subtitles,
-                    subtitleFileNames: sources.subtitleFiles.map((f) => f.name),
+                    subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
                 });
             }
         }
@@ -1308,7 +1313,7 @@ function App({
         extension.loadedSubtitles = subtitles.length > 0;
         extension.setSubtitleTracks(
             subtitles,
-            sources.subtitleFiles.map((f) => f.name)
+            sources.subtitleFiles.map((f) => f.file.name)
         );
         extension.syncedVideoElement = tab;
         extension.startHeartbeat();
@@ -1564,7 +1569,9 @@ function App({
             return;
         }
 
-        const nonSupSubtitleFiles = sources.subtitleFiles.filter((f) => !f.name.endsWith('.sup'));
+        const nonSupSubtitleFiles = sources.subtitleFiles
+            .filter((f) => !f.file.name.endsWith('.sup'))
+            .map((f) => f.file);
 
         if (nonSupSubtitleFiles.length === 0) {
             return;
@@ -1622,7 +1629,7 @@ function App({
         setLoadingSources((loadingFiles) =>
             loadingFiles?.filter((loadingFile) => {
                 for (const loadedFile of loadedFiles) {
-                    if (loadedFile === loadingFile) {
+                    if (loadedFile === loadingFile.file) {
                         return false;
                     }
                 }
@@ -1750,7 +1757,9 @@ function App({
                             files.push({ file: t.file, id: t.id });
                         } else if (!Array.isArray(t.url)) {
                             const url = t.url as string;
-                            const file = new File([await (await fetch(url)).blob()], `${t.name}.${t.extension}`);
+                            const blob = await (await fetch(url)).blob();
+                            const isEmptyTrack = t.id === '-';
+                            const file = new File([blob], isEmptyTrack ? '.srt' : `${t.name}.${t.extension}`);
                             files.push({ file, id: t.id });
                         } else {
                             console.warn('unexpected url array when downloading subtitle track selection', t);
@@ -1797,6 +1806,16 @@ function App({
         closeSubtitleTrackSelector();
         void clearBufferedHandlesInFileSession();
     }, [closeSubtitleTrackSelector, clearBufferedHandlesInFileSession]);
+
+    useEffect(() => {
+        return keyBinder.bindSelectSubtitleTrack(
+            () => {
+                openSubtitleTrackSelector();
+            },
+            () => ankiDialogOpen,
+            false
+        );
+    }, [keyBinder, ankiDialogOpen, openSubtitleTrackSelector]);
 
     if (!i18nInitialized) {
         return null;

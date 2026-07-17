@@ -25,13 +25,14 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import ErrorIcon from '@mui/icons-material/Error';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import { FileWithId } from '../../file-selector';
 
 interface BarProps {
     drawerWidth: number;
     drawerOpen: boolean;
     hidden: boolean;
     title: string;
-    subtitleFiles?: File[];
+    subtitleFiles?: FileWithId[];
     lastError?: any;
     onFileSelector?: () => void;
     onDownloadSubtitleFilesAsSrt: () => void;
@@ -136,7 +137,7 @@ export default function Bar({
 }: BarProps) {
     const classes = useStyles({ drawerWidth });
     const canSaveAsSrt =
-        subtitleFiles !== undefined && subtitleFiles.find((f) => !f.name.endsWith('.sup')) !== undefined;
+        subtitleFiles !== undefined && subtitleFiles.find((f) => !f.file.name.endsWith('.sup')) !== undefined;
     const { t } = useTranslation();
 
     const handleDownloadSubtitleFilesAsSrt = useCallback(() => {

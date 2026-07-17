@@ -787,6 +787,7 @@ export interface KeyBindSet {
     readonly exportCard: KeyBind;
     readonly takeScreenshot: KeyBind;
     readonly toggleRecording: KeyBind;
+    readonly selectSubtitleTrack: KeyBind;
 }
 
 export interface WebSocketClientSettings {

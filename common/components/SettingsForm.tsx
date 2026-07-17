@@ -185,6 +185,7 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
+    extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     insideApp?: boolean;
     appVersion?: string;
     dictionaryProvider: DictionaryProvider;
@@ -221,6 +222,7 @@ export default function SettingsForm({
     extensionSupportsAppIntegration,
     extensionSupportsOverlay,
     extensionSupportsSidePanel,
+    extensionSupportsSubtitleTrackSelectorInWebApp,
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
@@ -540,6 +542,7 @@ export default function SettingsForm({
                         extensionInstalled={extensionInstalled}
                         extensionSupportsExportCardBind={extensionSupportsExportCardBind}
                         extensionSupportsSidePanel={extensionSupportsSidePanel}
+                        extensionSupportsSubtitleTrackSelectorInWebApp={extensionSupportsSubtitleTrackSelectorInWebApp}
                         onOpenChromeExtensionShortcuts={onOpenChromeExtensionShortcuts}
                     />
                 </TabPanel>

@@ -129,7 +129,10 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 return;
             }
 
-            const subtitleHandles = bufferedSubtitleHandles.filter((h) => ids.includes(h.id));
+            const subtitleHandles = [
+                ...existing.subtitleHandles,
+                ...bufferedSubtitleHandles.filter((h) => ids.includes(h.id)),
+            ];
             await this._db.sessions.clear();
             await this._db.sessions.add({
                 videoHandle: existing.videoHandle,

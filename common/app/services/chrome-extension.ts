@@ -198,6 +198,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsSubtitleTrackSelectorInWebApp() {
+        return this.installed && gte(this.version, '1.20.0');
+    }
+
     get supportsDictionaryTokenAnnotationConfig() {
         return this.installed && gte(this.version, '1.19.0');
     }

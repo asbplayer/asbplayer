@@ -50,6 +50,7 @@ import { MiningContext } from '../services/mining-context';
 import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
 import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
+import { FileWithId } from '../../file-selector';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -110,9 +111,9 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
 }
 
 export interface MediaSources {
-    subtitleFiles: File[];
+    subtitleFiles: FileWithId[];
     flattenSubtitleFiles?: boolean;
-    videoFile?: File;
+    videoFile?: FileWithId;
     videoFileUrl?: string;
 }
 
@@ -446,7 +447,7 @@ const Player = React.memo(function Player({
 
                     // Older versions of extension don't support the offset message
                     if (tab !== undefined && extension.installed && !extension.supportsOffsetMessage) {
-                        channel.subtitles(newSubtitles, subtitleFiles?.map((f) => f.name) ?? ['']);
+                        channel.subtitles(newSubtitles, subtitleFiles?.map((f) => f.file.name) ?? ['']);
                     }
                 }
             }
@@ -468,7 +469,7 @@ const Player = React.memo(function Player({
             const channelId = uuidv4();
             channel = new VideoChannel(new BroadcastChannelVideoProtocol(channelId));
             setChannelId(channelId);
-            onLoaded([videoFile]);
+            onLoaded([videoFile.file]);
         } else {
             channel = new VideoChannel(new ChromeTabVideoProtocol(tab!.id, tab!.src, extension));
             channel.init();
@@ -497,7 +498,10 @@ const Player = React.memo(function Player({
                 setLoadingSubtitles(true);
 
                 try {
-                    const nodes = await subtitleReader.subtitles(subtitleFiles, flattenSubtitleFiles);
+                    const nodes = await subtitleReader.subtitles(
+                        subtitleFiles.map((f) => f.file),
+                        flattenSubtitleFiles
+                    );
                     const length = nodes.length > 0 ? nodes[nodes.length - 1].end + offset : 0;
 
                     subtitles = nodes.map((s, i) => ({
@@ -530,7 +534,7 @@ const Player = React.memo(function Player({
             }
         }
 
-        void init().then(() => onLoaded(subtitleFiles ?? []));
+        void init().then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []));
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
@@ -738,7 +742,7 @@ const Player = React.memo(function Player({
     useEffect(
         () =>
             channel?.onReady(() => {
-                return channel?.ready(trackLength(channel, subtitles), videoFile?.name);
+                return channel?.ready(trackLength(channel, subtitles), videoFile?.file?.name);
             }),
         [channel, subtitles, videoFile]
     );
@@ -757,7 +761,7 @@ const Player = React.memo(function Player({
             setSubtitlesSentThroughChannel(true);
             channel.subtitles(
                 subtitles,
-                flattenSubtitleFiles ? [subtitleFiles[0].name] : subtitleFiles.map((f) => f.name)
+                flattenSubtitleFiles ? [subtitleFiles[0].file.name] : subtitleFiles.map((f) => f.file.name)
             );
         });
     }, [subtitles, channel, flattenSubtitleFiles, subtitleFiles, subtitlesSentThroughChannel]);
@@ -851,13 +855,13 @@ const Player = React.memo(function Player({
                         {
                             subtitle,
                             surroundingSubtitles,
-                            subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.name ?? '') : '',
+                            subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.file?.name ?? '') : '',
                             ...cardTextFieldValues,
                             mediaTimestamp: mediaTimestamp ?? 0,
                             file: videoFile
                                 ? {
-                                      name: videoFile.name,
-                                      blobUrl: createBlobUrl(videoFile),
+                                      name: videoFile.file.name,
+                                      blobUrl: createBlobUrl(videoFile.file),
                                       audioTrack: channel?.selectedAudioTrack,
                                       playbackRate: channel?.playbackRate,
                                   }
@@ -1121,16 +1125,16 @@ const Player = React.memo(function Player({
                     {
                         subtitle,
                         surroundingSubtitles,
-                        subtitleFileName: subtitleFiles?.[subtitle.track]?.name ?? '',
+                        subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
                         mediaTimestamp: clock.time(calculateLength()),
                         file:
                             videoFile === undefined
                                 ? undefined
                                 : {
-                                      name: videoFile.name,
+                                      name: videoFile.file.name,
                                       audioTrack: selectedAudioTrack,
                                       playbackRate,
-                                      blobUrl: createBlobUrl(videoFile),
+                                      blobUrl: createBlobUrl(videoFile.file),
                                   },
                         ...cardTextFieldValues,
                     },
@@ -1481,7 +1485,7 @@ const Player = React.memo(function Player({
                         resizable={videoInWindow}
                         showCopyButton={showCopyButton}
                         loading={loadingSubtitles}
-                        displayHelp={(videoPopOut && videoFile?.name) || undefined}
+                        displayHelp={(videoPopOut && videoFile?.file?.name) || undefined}
                         disableKeyEvents={disableKeyEvents}
                         // On later versions of the extension, VideoPlayer will receive the mining commands instead
                         disableMiningBinds={extension.supportsVideoPlayerMiningCommands && videoFile !== undefined}
