@@ -266,7 +266,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             selectSubtitleTrack: {
                 label: t('binds.extensionSelectSubtitleTrack'),
                 boundViaBrowser: true,
-                hide: !extensionInstalled || !extensionSupportsSubtitleTrackSelectorInWebApp,
+                hide: extensionInstalled && !extensionSupportsSubtitleTrackSelectorInWebApp,
             },
             toggleSidePanel: {
                 label: t('binds.toggleSidePanel'),

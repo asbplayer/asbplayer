@@ -9,14 +9,17 @@ export interface FileSelector {
 
 export class DefaultFileSelector {
     private readonly _callbacks: FilesCallback[] = [];
-    private readonly _opener: () => void;
+    private readonly _opener: () => void | Promise<FileWithId[]>;
 
     constructor(opener: () => void) {
         this._opener = opener;
     }
 
     open() {
-        this._opener();
+        const promiseOrVoid = this._opener();
+        if (promiseOrVoid instanceof Promise) {
+            promiseOrVoid.then((files) => this.publishFiles(files));
+        }
     }
 
     onFilesSelected(callback: FilesCallback): Unsubscriber {

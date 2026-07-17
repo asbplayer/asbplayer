@@ -1466,7 +1466,11 @@ function App({
     const handleFileSelector = useCallback(
         async (params?: { doNotLoad?: boolean }) => {
             if (!supportsFileSystemAccess()) {
-                fileInputRef.current?.click();
+                if (params?.doNotLoad) {
+                    bufferedFileInputRef.current?.click();
+                } else {
+                    fileInputRef.current?.click();
+                }
                 return;
             }
 
@@ -1500,15 +1504,7 @@ function App({
     );
 
     const fileSelector = useMemo(
-        () =>
-            new DefaultFileSelector(() => {
-                void (async () => {
-                    const filesWithId = await handleFileSelector({ doNotLoad: true });
-                    if (filesWithId !== undefined) {
-                        fileSelector.publishFiles(filesWithId);
-                    }
-                })();
-            }),
+        () => new DefaultFileSelector(() => handleFileSelector({ doNotLoad: true })),
         [handleFileSelector]
     );
 
@@ -1949,7 +1945,7 @@ function App({
                                     open={subtitleTrackSelectorOpen}
                                     disabled={subtitleTrackSelectorDisabled}
                                     isLoading={false}
-                                    suggestedName=""
+                                    suggestedName={sources.videoFile?.file?.name ?? ''}
                                     subtitleTracks={subtitleTrackSelectorTracks}
                                     selectedSubtitleTrackIds={subtitleTrackSelectorSelectedTrackIds}
                                     onSelectedSubtitleTrackIds={setSubtitleTrackSelectorSelectedTrackIds}
