@@ -147,7 +147,7 @@
         },
         {
             "key": "bilibili",
-            "host": "www\\.bilibili\\.tv",
+            "host": "www\\.bilibili\\.(tv|com)",
             "pageScript": "bilibili-page.js",
             "syncAllowedAtPath": "play|video",
             "autoSync": {

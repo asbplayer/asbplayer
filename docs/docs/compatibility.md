@@ -42,7 +42,7 @@ sidebar_position: 7
 | Rakuten Viki            |                                                                                            ✓                                                                                             |
 | osnplus                 |                                             Compatibility with osnplus is currently unknown. Reach out if you have more information on this.                                             |
 | Plex                    | Supports external subtitles. As for internal subtitles, first select them from Plex UI to make them selectable from asbplayer. Configure custom domains from the page-specific settings. |
-| BiliBili                |                                                                                            ✓                                                                                             |
+| BiliBili                |                                              ✓ (`bilibili.tv` and desktop `www.bilibili.com/video/*`; mainland subtitles may require login)                                              |
 | NRK TV                  |                                                                                            ✓                                                                                             |
 | HBO Max                 |                                                             See [issue](https://github.com/asbplayer/asbplayer/issues/1006)                                                              |
 | Yle Areena              |                                                                                            ✓                                                                                             |

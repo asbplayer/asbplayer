@@ -345,4 +345,67 @@ describe('inferTracks', () => {
             ],
         });
     });
+
+    it('observes Response.json, dedupes tracks across JSON hooks, and separates custom cache keys', async () => {
+        const originalResponse = globalThis.Response;
+
+        class TestResponse {
+            constructor(private readonly value: unknown) {}
+
+            async json() {
+                return this.value;
+            }
+        }
+
+        Object.defineProperty(globalThis, 'Response', {
+            configurable: true,
+            writable: true,
+            value: TestResponse,
+        });
+
+        try {
+            history.replaceState({}, '', '/video/BV1test?p=1');
+            inferTracks({
+                onJson: (value, addTrack) => {
+                    const inferredTrack = (value as { track?: ReturnType<typeof track> }).track;
+
+                    if (inferredTrack !== undefined) {
+                        addTrack(inferredTrack);
+                    }
+                },
+                onRequest: async (_addTrack, setBasename) => setBasename(document.title),
+                observeResponseJson: true,
+                getCacheKey: () =>
+                    `${window.location.pathname}?p=${new URLSearchParams(window.location.search).get('p') ?? '1'}`,
+                waitForBasename: false,
+            });
+            await jest.runOnlyPendingTimersAsync();
+
+            const firstTrack = track('First part', 'ja', 'https://example.com/first.json');
+            JSON.parse(JSON.stringify({ track: firstTrack }));
+
+            const ResponseConstructor = globalThis.Response as unknown as new (value: unknown) => TestResponse;
+            await new ResponseConstructor({ track: firstTrack }).json();
+            await requestHandler?.(new Event('asbplayer-get-synced-data'));
+            await Promise.resolve();
+
+            expect(dispatchedDetails[dispatchedDetails.length - 1].subtitles).toEqual([
+                expect.objectContaining(firstTrack),
+            ]);
+
+            history.replaceState({}, '', '/video/BV1test?p=2');
+            const secondTrack = track('Second part', 'zh-CN', 'https://example.com/second.json');
+            await new ResponseConstructor({ track: secondTrack }).json();
+
+            expect(dispatchedDetails[dispatchedDetails.length - 1].subtitles).toEqual([
+                expect.objectContaining(secondTrack),
+            ]);
+        } finally {
+            Object.defineProperty(globalThis, 'Response', {
+                configurable: true,
+                writable: true,
+                value: originalResponse,
+            });
+        }
+    });
 });
