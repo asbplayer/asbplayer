@@ -1,10 +1,16 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "usage: $0 <timestamp>"
+    echo "usage: $0 <timestamp> [mediaId]"
     exit 1
+fi
+
+if [ -z "$2" ]; then
+    body='{"timestamp": '$1'}'
+else
+    body='{"timestamp": '$1', "mediaId": "'$2'"}'
 fi
 
 curl -H "content-type: application/json" \
     -X POST "http://127.0.0.1:8766/asbplayer/seek" \
-    -d '{"timestamp": '$1'}'
+    -d "$body"
