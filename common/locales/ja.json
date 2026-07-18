@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "早送りモードの再生速度",
         "coloringStrategy": "色付け戦略",
         "copyOnMine": "マイニングした字幕をクリップボードにコピー",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "<0>この動画</0>を参考に、{{origin}} が AnkiConnect 設定の webCorsOriginList に入っていることを確認してください。",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "デッキ",

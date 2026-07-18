@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "Скорость проигрывания при ускоренном воспроизведении",
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Копировать смайненные субтитры в буфер обмена",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "Убедитесь, что {{origin}} находится в списке webCorsOriginList в настройках AnkiConnect, как в этом <0>видео</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Колода",

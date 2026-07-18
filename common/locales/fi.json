@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "Nopea tilan toistotaajuus",
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Kopioi louhitut tekstitykset leikepöydälle",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "Varmista, että {{origin}} on WebCorsOriginList teidän AnkiConnect asetukset kuten tässä <0>video</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Pakka",
