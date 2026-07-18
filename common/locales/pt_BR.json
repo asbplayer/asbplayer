@@ -219,6 +219,8 @@
             "autoLoadDetectedSubs": "Carregar automaticamente legendas detectadas",
             "autoLoadDetectedSubsFailure": "Prompt sobre falha de carregamento automático de legendas",
             "cleanScreenshot": "Limpar captura de tela ao minerar",
+            "screenshotHiddenSelectors": "Hide elements during clean screenshots",
+            "screenshotHiddenSelectorsHelperText": "CSS selectors (one per line) of page elements to temporarily hide while taking a clean screenshot, e.g. a dictionary pop-up overlay such as Yomitan's.",
             "condensedPlaybackMinSkipInterval": "Intervalo mínimo de salto para reprodução condensada",
             "cropScreenshot": "Cortar captura de tela ao minerar",
             "displaySubtitles": "Exibir legendas",

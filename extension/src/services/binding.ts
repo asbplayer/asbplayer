@@ -180,6 +180,8 @@ export default class Binding {
     private clickToMineDefaultAction: PostMineAction;
     private takeScreenshot: boolean;
     private cleanScreenshot: boolean;
+    private screenshotHiddenSelectors: string;
+    private screenshotHiddenSelectorsStyleElement?: HTMLStyleElement;
     private audioPaddingStart: number;
     private audioPaddingEnd: number;
     private maxImageWidth: number;
@@ -263,6 +265,7 @@ export default class Binding {
         this.recordMedia = true;
         this.takeScreenshot = true;
         this.cleanScreenshot = true;
+        this.screenshotHiddenSelectors = '';
         this.clickToMineDefaultAction = PostMineAction.showAnkiDialog;
         this.audioPaddingStart = 0;
         this.audioPaddingEnd = 500;
@@ -1016,6 +1019,7 @@ export default class Binding {
                         const screenshotTakenMessage = request.message as ScreenshotTakenMessage;
                         this.subtitleController.forceHideSubtitles = false;
                         this.mobileVideoOverlayController.forceHide = false;
+                        this._showScreenshotSelectors();
                         this.controlsController.show();
 
                         if (!this.recordingMedia && screenshotTakenMessage.ankiUiState) {
@@ -1178,6 +1182,7 @@ export default class Binding {
         this.recordMedia = currentSettings.streamingRecordMedia;
         this.takeScreenshot = currentSettings.streamingTakeScreenshot;
         this.cleanScreenshot = currentSettings.streamingTakeScreenshot && currentSettings.streamingCleanScreenshot;
+        this.screenshotHiddenSelectors = currentSettings.streamingScreenshotHiddenSelectors;
         this.condensedPlaybackMinimumSkipIntervalMs = currentSettings.streamingCondensedPlaybackMinimumSkipIntervalMs;
         this.fastForwardModePlaybackRate = currentSettings.fastForwardModePlaybackRate;
         this.imageDelay = currentSettings.streamingScreenshotDelay;
@@ -1516,8 +1521,34 @@ export default class Binding {
             this.notificationController.hide();
             this.subtitleController.forceHideSubtitles = true;
             this.mobileVideoOverlayController.forceHide = true;
+            this._hideScreenshotSelectors();
             await this.controlsController.hide();
         }
+    }
+
+    private _hideScreenshotSelectors() {
+        this._showScreenshotSelectors();
+
+        const selectors = this.screenshotHiddenSelectors
+            .split('\n')
+            .map((selector) => selector.trim())
+            .filter((selector) => selector.length > 0);
+
+        if (selectors.length === 0) {
+            return;
+        }
+
+        // Use `display: none` rather than `visibility: hidden` so this wins the cascade even against
+        // overlays that set an inline `visibility: visible !important` (e.g. Yomitan's popup iframe).
+        const styleElement = document.createElement('style');
+        styleElement.textContent = `${selectors.join(',\n')} { display: none !important; }`;
+        document.head.appendChild(styleElement);
+        this.screenshotHiddenSelectorsStyleElement = styleElement;
+    }
+
+    private _showScreenshotSelectors() {
+        this.screenshotHiddenSelectorsStyleElement?.remove();
+        this.screenshotHiddenSelectorsStyleElement = undefined;
     }
 
     async rerecord(start: number, end: number, uiState: AnkiUiSavedState) {

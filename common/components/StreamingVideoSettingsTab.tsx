@@ -55,6 +55,7 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
         streamingRecordMedia,
         streamingTakeScreenshot,
         streamingCleanScreenshot,
+        streamingScreenshotHiddenSelectors,
         streamingCropScreenshot,
         streamingSubsDragAndDrop,
         streamingAutoSync,
@@ -162,6 +163,18 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     label={t('extension.settings.cleanScreenshot')}
                     labelPlacement="start"
                 />
+                {streamingCleanScreenshot && (
+                    <SettingsTextField
+                        multiline
+                        minRows={2}
+                        color="primary"
+                        fullWidth
+                        label={t('extension.settings.screenshotHiddenSelectors')}
+                        helperText={t('extension.settings.screenshotHiddenSelectorsHelperText')}
+                        value={streamingScreenshotHiddenSelectors}
+                        onChange={(e) => onSettingChanged('streamingScreenshotHiddenSelectors', e.target.value)}
+                    />
+                )}
                 <SwitchLabelWithHoverEffect
                     control={
                         <Switch

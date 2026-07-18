@@ -874,6 +874,9 @@ export interface StreamingVideoSettings {
     readonly streamingRecordMedia: boolean;
     readonly streamingTakeScreenshot: boolean;
     readonly streamingCleanScreenshot: boolean;
+    // Newline-separated CSS selectors of elements to temporarily hide during clean screenshots
+    // (e.g. a third-party dictionary pop-up overlay such as Yomitan's)
+    readonly streamingScreenshotHiddenSelectors: string;
     readonly streamingCropScreenshot: boolean;
     readonly streamingSubsDragAndDrop: boolean;
     readonly streamingAutoSync: boolean;
