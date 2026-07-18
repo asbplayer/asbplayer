@@ -26,6 +26,14 @@
     white-space: pre-wrap !important;
 }
 
+/* Subtitle annotations wrap text in extra token/ruby elements; keep their font
+   size inheriting from the subtitle so the host page's element styles can't
+   resize them. */
+.asbplayer-subtitles > span span,
+.asbplayer-subtitles > span ruby {
+    font-size: inherit !important;
+}
+
 .asbplayer-subtitles-blurred {
     display: inline-block; /* Blur ruby annotations as well */
     filter: blur(10px);
