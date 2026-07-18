@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Clock from '../services/clock';
 import MediaAdapter from '../services/media-adapter';
 import VideoChannel from '../services/video-channel';
+import { FileWithId } from '../../file-selector';
 import {
     PlaybackPositionRecord,
     loadPlaybackPositions,
@@ -12,7 +13,7 @@ const saveIntervalMs = 10000;
 const resumeRewindMs = 3000;
 
 interface Params {
-    videoFile?: File;
+    videoFile?: FileWithId;
     channel?: VideoChannel;
     clock: Clock;
     calculateLength: () => number;
@@ -51,10 +52,10 @@ export const usePlaybackPositionMemory = ({
         }
 
         playbackPositionsRef.current = upsertPlaybackPosition(playbackPositionsRef.current!, {
-            fileName: videoFile.name,
+            fileName: videoFile.file.name,
             position,
         });
-    }, [videoFile, clock]);
+    }, [videoFile, clock, calculateLength]);
 
     useEffect(() => {
         if (!videoFile) {
@@ -73,12 +74,12 @@ export const usePlaybackPositionMemory = ({
         }
 
         return channel.onReady(() => {
-            if (restoredFileNameRef.current === videoFile.name) {
+            if (restoredFileNameRef.current === videoFile.file.name) {
                 return;
             }
 
-            restoredFileNameRef.current = videoFile.name;
-            const saved = playbackPositionsRef.current!.find((p) => p.fileName === videoFile.name);
+            restoredFileNameRef.current = videoFile.file.name;
+            const saved = playbackPositionsRef.current!.find((p) => p.fileName === videoFile.file.name);
 
             if (saved && saved.position > 0) {
                 setPendingResume(saved);

@@ -281,7 +281,7 @@ const Player = React.memo(function Player({
     clockRef.current = clock;
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
-    const calculateLength = () => trackLength(channelRef.current, subtitlesRef.current);
+    const calculateLength = useCallback(() => trackLength(channelRef.current, subtitlesRef.current), []);
 
     useEffect(() => {
         playModesRef.current = playModes;
@@ -1392,7 +1392,7 @@ const Player = React.memo(function Player({
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
             {pendingResume && (
-                <Alert open={true} onClose={onDismissResume} autoHideDuration={4000} severity="info" anchor="top">
+                <Alert open={true} onClose={onDismissResume} autoHideDuration={6000} severity="info" anchor="top">
                     {t('info.resumePlaybackPrompt', {
                         time: timeDurationDisplay(pendingResume.position, pendingResume.position, false),
                     })}
