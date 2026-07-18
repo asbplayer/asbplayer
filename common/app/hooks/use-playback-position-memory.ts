@@ -5,7 +5,6 @@ import VideoChannel from '../services/video-channel';
 import {
     PlaybackPositionRecord,
     loadPlaybackPositions,
-    savePlaybackPositions,
     upsertPlaybackPosition,
 } from '../services/playback-position-store';
 
@@ -51,12 +50,10 @@ export const usePlaybackPositionMemory = ({
             return;
         }
 
-        const next = upsertPlaybackPosition(playbackPositionsRef.current!, {
+        playbackPositionsRef.current = upsertPlaybackPosition(playbackPositionsRef.current!, {
             fileName: videoFile.name,
             position,
         });
-        playbackPositionsRef.current = next;
-        savePlaybackPositions(next);
     }, [videoFile, clock]);
 
     useEffect(() => {

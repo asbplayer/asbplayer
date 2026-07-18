@@ -10,7 +10,15 @@ export function upsertPlaybackPosition(
     positions: PlaybackPositionRecord[],
     record: PlaybackPositionRecord
 ): PlaybackPositionRecord[] {
-    return [record, ...positions.filter((p) => p.fileName !== record.fileName)].slice(0, maxPlaybackPositions);
+    const next = [record, ...positions.filter((p) => p.fileName !== record.fileName)].slice(0, maxPlaybackPositions);
+
+    try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+    } catch (e) {
+        console.error(e);
+    }
+
+    return next;
 }
 
 export function loadPlaybackPositions(): PlaybackPositionRecord[] {
@@ -20,13 +28,5 @@ export function loadPlaybackPositions(): PlaybackPositionRecord[] {
     } catch (e) {
         console.error(e);
         return [];
-    }
-}
-
-export function savePlaybackPositions(positions: PlaybackPositionRecord[]) {
-    try {
-        localStorage.setItem(storageKey, JSON.stringify(positions));
-    } catch (e) {
-        console.error(e);
     }
 }
