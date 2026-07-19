@@ -147,6 +147,7 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly playbackRate: number;
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
+    readonly noteId?: number;
 }
 
 export interface StartRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -196,6 +197,7 @@ export interface CopySubtitleMessage extends Message, CardTextFieldValues {
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
     readonly isBulkExport?: boolean;
+    readonly noteId?: number;
 }
 
 export interface CopySubtitleWithAdditionalFieldsMessage extends Message, CardTextFieldValues {

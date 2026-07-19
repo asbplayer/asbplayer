@@ -178,7 +178,8 @@ export async function exportCard(
     card: CardModel,
     ankiSettings: AnkiSettings,
     exportMode: AnkiExportMode = 'default',
-    fetcher?: Fetcher
+    fetcher?: Fetcher,
+    noteId?: number
 ): Promise<string> {
     const anki = new Anki(ankiSettings, fetcher);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
@@ -218,6 +219,7 @@ export async function exportCard(
         customFieldValues: card.customFieldValues ?? {},
         tags: ankiSettings.tags,
         mode: exportMode,
+        noteId,
     });
 }
 

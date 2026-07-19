@@ -12,6 +12,12 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
 
 ### `mine-subtitle`
 
+Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
+
+When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated.
+
+> `mediaId` and `noteId` require extension v1.20.0 or later.
+
 #### Request
 
     ```javascript
@@ -26,7 +32,11 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
             "fields": {
                 "key1": "value1",
                 "key2": "value2"
-            }
+            },
+            // Optional media id from `get-bound-media`
+            "mediaId": "a1b2c3d4e5f6",
+            // Optional Anki note id to update when postMineAction is 2
+            "noteId": 1752856898044
         }
     }
     ```
@@ -78,6 +88,10 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
 
 ### `seek-timestamp`
 
+Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target streaming media. Local media cannot be targeted by `mediaId`.
+
+> `mediaId` requires extension v1.20.0 or later.
+
 #### Request
 
 ```javascript
@@ -88,6 +102,8 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
     "body": {
         //The timestamp to seek in seconds
         "timestamp": 30.5,
+        // Optional media ID from get-bound-media
+        "mediaId": "a1b2c3d4e5f6"
     }
 }
 ```
@@ -195,7 +211,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 The WebSocket server also implements an HTTP-based API which can trigger the commands above.
 
 - `POST asbplayer/load-subtitles` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
-- `POST asbplayer/seek` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
+- `POST asbplayer/seek` (optional `mediaId` in the request body) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
 - `GET asbplayer/bound-media` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/bound-media))
 - `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))
 
@@ -207,7 +223,7 @@ The proxy passes through all AnkiConnect requests as-is except for `addNote`. Th
 
 ## Server configuration
 
-The server is configured with an `.env` file placd next to it in the same directory. Below is an example file with explanation.
+The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
 
 ```
 # Port that the proxy will listen on

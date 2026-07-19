@@ -51,6 +51,7 @@ type (
 	}
 	asbplayerSeekRequest struct {
 		Timestamp float64 `json:"timestamp"`
+		MediaId   string  `json:"mediaId"`
 	}
 	clientCommand struct {
 		Command   string                 `json:"command"`
@@ -166,7 +167,7 @@ func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand,
 	}
 }
 
-func (forwarder forwarder) forwardToAnkiConnect(buf *bytes.Buffer, c echo.Context, method string) error {
+func (forwarder forwarder) forwardToAnkiConnect(buf *bytes.Buffer, c echo.Context, method string) ([]byte, error) {
 	ankiConnectRequest, err := http.NewRequest(method, forwarder.AnkiConnectUrl, buf)
 
 	for key, values := range c.Request().Header {
@@ -174,13 +175,13 @@ func (forwarder forwarder) forwardToAnkiConnect(buf *bytes.Buffer, c echo.Contex
 	}
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ankiConnectResponse, err := http.DefaultClient.Do(ankiConnectRequest)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ankiConnectResponseBuf := new(bytes.Buffer)
@@ -193,7 +194,20 @@ func (forwarder forwarder) forwardToAnkiConnect(buf *bytes.Buffer, c echo.Contex
 	}
 
 	c.Blob(ankiConnectResponse.StatusCode, ankiConnectResponse.Header["Content-Type"][0], ankiConnectResponseBuf.Bytes())
-	return nil
+	return ankiConnectResponseBuf.Bytes(), nil
+}
+
+// Extracts the created note's id from an AnkiConnect addNote response
+func addNoteIDFromResponse(response []byte) (int64, bool) {
+	parsed := struct {
+		Result *float64 `json:"result"`
+	}{}
+
+	if err := json.Unmarshal(response, &parsed); err != nil || parsed.Result == nil {
+		return 0, false
+	}
+
+	return int64(*parsed.Result), true
 }
 
 func (forwarder forwarder) handleGetRequest(c echo.Context) error {
@@ -224,7 +238,8 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 	c.Set("ankiConnectAction", request.Action)
 
 	if request.Action != "addNote" || len(forwarder.WebsocketClients) == 0 || !shouldInterceptAddNote(request, forwarder.InterceptField, forwarder.InterceptValue) {
-		return forwarder.forwardToAnkiConnect(buf, c, "POST")
+		_, err := forwarder.forwardToAnkiConnect(buf, c, "POST")
+		return err
 	}
 
 	command := clientCommand{Command: "mine-subtitle", MessageId: uuid.NewString(), Body: map[string]interface{}{
@@ -233,14 +248,21 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 	}}
 
 	if forwarder.PostMineAction == 2 {
-		response := forwarder.forwardToAnkiConnect(buf, c, "POST")
+		ankiConnectResponse, responseErr := forwarder.forwardToAnkiConnect(buf, c, "POST")
+
+		if responseErr == nil {
+			if noteId, ok := addNoteIDFromResponse(ankiConnectResponse); ok {
+				command.Body["noteId"] = noteId
+			}
+		}
+
 		err := forwarder.publishMessage(command)
 
 		if err != nil {
 			fmt.Printf("Failed to publish command to asbplayer: %v", err)
 		}
 
-		return response
+		return responseErr
 	}
 
 	responseChannel := make(chan clientResponse)
@@ -255,7 +277,8 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 	err = json.Unmarshal(response.Body, &mineSubtitleResponseBody)
 
 	if err != nil || !mineSubtitleResponseBody.Published {
-		return forwarder.forwardToAnkiConnect(buf, c, "POST")
+		_, err := forwarder.forwardToAnkiConnect(buf, c, "POST")
+		return err
 	}
 
 	c.JSON(http.StatusOK, -1)
@@ -287,7 +310,8 @@ func shouldInterceptAddNote(request ankiConnectRequest, fieldName string, fieldV
 }
 
 func (forwarder forwarder) handleOptionsRequest(c echo.Context) error {
-	return forwarder.forwardToAnkiConnect(new(bytes.Buffer), c, "OPTIONS")
+	_, err := forwarder.forwardToAnkiConnect(new(bytes.Buffer), c, "OPTIONS")
+	return err
 }
 
 func (forwarder forwarder) handleAsbplayerLoadSubtitlesRequest(c echo.Context) error {
@@ -325,9 +349,15 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	command := clientCommand{Command: "seek-timestamp", MessageId: uuid.NewString(), Body: map[string]interface{}{
+	body := map[string]interface{}{
 		"timestamp": request.Timestamp,
-	}}
+	}
+
+	if request.MediaId != "" {
+		body["mediaId"] = request.MediaId
+	}
+
+	command := clientCommand{Command: "seek-timestamp", MessageId: uuid.NewString(), Body: body}
 	responseChannel := make(chan clientResponse)
 
 	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)

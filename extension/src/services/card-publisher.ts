@@ -23,7 +23,7 @@ export class CardPublisher {
         this._settingsProvider = settingsProvider;
     }
 
-    async publish(card: CardModel, postMineAction?: PostMineAction, tabId?: number, src?: string) {
+    async publish(card: CardModel, postMineAction?: PostMineAction, tabId?: number, src?: string, noteId?: number) {
         const id = uuidv4();
         const savePromise = this._saveCardToRepository(id, card);
 
@@ -35,7 +35,7 @@ export class CardPublisher {
             if (postMineAction == PostMineAction.showAnkiDialog) {
                 this._showAnkiDialog(card, id, src, tabId);
             } else if (postMineAction == PostMineAction.updateLastCard) {
-                await this._updateLastCard(card, src, tabId);
+                await this._updateCard(card, src, tabId, noteId);
             } else if (postMineAction === PostMineAction.showUpdateCardDialog) {
                 this._showUpdateCardDialog(card, src, tabId);
             } else if (postMineAction === PostMineAction.exportCard) {
@@ -160,9 +160,15 @@ export class CardPublisher {
         void browser.runtime.sendMessage(cardExportedCommand);
     }
 
-    private async _updateLastCard(card: CardModel, src: string | undefined, tabId: number) {
+    private async _updateCard(card: CardModel, src: string | undefined, tabId: number, noteId?: number) {
         const ankiSettings = (await this._settingsProvider.get(ankiSettingsKeys)) as AnkiSettings;
-        const cardName = await exportCard(card, ankiSettings, 'updateLast');
+        const cardName = await exportCard(
+            card,
+            ankiSettings,
+            noteId === undefined ? 'updateLast' : 'updateSpecific',
+            undefined,
+            noteId
+        );
 
         const cardUpdatedCommand: ExtensionToVideoCommand<CardUpdatedMessage> = {
             sender: 'asbplayer-extension-to-video',
