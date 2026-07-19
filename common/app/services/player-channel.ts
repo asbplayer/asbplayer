@@ -511,6 +511,10 @@ export default class PlayerChannel {
         this.channel?.postMessage({ command: 'loadFiles' });
     }
 
+    loadSubtitles() {
+        this.channel?.postMessage({ command: 'loadSubtitles' });
+    }
+
     close() {
         if (this.channel) {
             this.channel.postMessage({ command: 'exit' });

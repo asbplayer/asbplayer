@@ -88,7 +88,7 @@ const makeUniqueFileName = (fileName: string) => {
     return `${baseName}_${randomString()}.${exension}`;
 };
 
-const htmlTagRegexString = '<([^/ >])*[^>]*>(.*?)</\\1>';
+const htmlTagRegexString = '<([^/ >]+)[^>]*>(.*?)</\\1>';
 const anyHtmlTagRegex = /<[^>]+>/;
 
 // Given <a><b>content</b></a> return ['<a><b>content</b></a>', '<b>content</b>', 'content']
@@ -178,9 +178,10 @@ export async function exportCard(
     card: CardModel,
     ankiSettings: AnkiSettings,
     exportMode: AnkiExportMode = 'default',
+    fetcher?: Fetcher,
     noteId?: number
 ): Promise<string> {
-    const anki = new Anki(ankiSettings);
+    const anki = new Anki(ankiSettings, fetcher);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
     const audioClip =
         card.audio === undefined
@@ -574,7 +575,7 @@ export class Anki {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
             case 'updateLast': {
-                const lastNoteId = [...recentNotes].sort()[recentNotes.length - 1];
+                const lastNoteId = [...recentNotes].sort((a, b) => a - b)[recentNotes.length - 1];
 
                 if (recentNotes.length === 0) {
                     throw new Error('Could not find note to update');

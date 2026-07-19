@@ -497,6 +497,7 @@ const settingsSchema = {
                 exportCard: { $ref: '/KeyBind' },
                 takeScreenshot: { $ref: '/KeyBind' },
                 toggleRecording: { $ref: '/KeyBind' },
+                selectSubtitleTrack: { $ref: '/KeyBind' },
                 decreasePlaybackRate: { $ref: '/KeyBind' },
                 increasePlaybackRate: { $ref: '/KeyBind' },
                 toggleSidePanel: { $ref: '/KeyBind' },

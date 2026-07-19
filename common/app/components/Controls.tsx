@@ -54,6 +54,7 @@ import {
     progressBarProgress,
     progressBarTrackWidth,
 } from './progress-bar';
+import LoadSubtitlesIcon from '../../components/LoadSubtitlesIcon';
 
 const useControlStyles = makeStyles<Theme>((theme) => ({
     container: {
@@ -638,6 +639,7 @@ interface ControlsProps {
     onSubtitleAlignment?: (alignment: SubtitleAlignment) => void;
     hideToolbar?: boolean;
     onLoadFiles?: () => void;
+    onLoadSubtitles?: () => void;
     blurOverlayEnabled?: boolean;
     onBlurOverlayToggle?: () => void;
     videoWidth?: number | undefined;
@@ -697,6 +699,7 @@ export default function Controls({
     onSubtitleAlignment,
     hideToolbar,
     onLoadFiles,
+    onLoadSubtitles,
     blurOverlayEnabled,
     onBlurOverlayToggle,
     videoWidth,
@@ -1151,6 +1154,19 @@ export default function Controls({
                                         <Tooltip title={t('controls.selectAudioTrack')}>
                                             <IconButton color="inherit" onClick={handleAudioTrackSelectorOpened}>
                                                 <QueueMusicIcon className={classes.button} />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {onLoadSubtitles && (
+                                        <Tooltip title={t('action.loadSubtitles')}>
+                                            <IconButton
+                                                color="inherit"
+                                                className={classes.topButton}
+                                                onClick={onLoadSubtitles}
+                                                onMouseOver={handleMouseOver}
+                                                onMouseOut={handleMouseOut}
+                                            >
+                                                <LoadSubtitlesIcon />
                                             </IconButton>
                                         </Tooltip>
                                     )}

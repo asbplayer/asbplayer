@@ -1,4 +1,5 @@
 import { calculateSeekableTracksValue, isTrackSeekable, updateSeekableTracksValue } from '.';
+import { expect, it } from '@jest/globals';
 
 it('can determine seekable tracks correctly', () => {
     expect(isTrackSeekable(0, 0)).toBe(false);

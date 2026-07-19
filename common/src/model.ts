@@ -195,9 +195,9 @@ export interface AnkiUiSavedState {
 export interface VideoDataSubtitleTrackDef {
     label: string;
     language?: string;
-    url: string | string[];
+    url?: string | string[];
+    file?: File;
     extension: string;
-    localFile?: boolean;
 }
 
 export interface VideoDataSubtitleTrack extends VideoDataSubtitleTrackDef {
@@ -233,7 +233,6 @@ export interface VideoDataUiModel {
     subtitles?: VideoDataSubtitleTrack[];
     error?: string;
     selectedSubtitle?: string[];
-    showSubSelect?: boolean;
     openReason?: VideoDataUiOpenReason;
     openedFromAsbplayerId?: string;
     defaultCheckboxState?: boolean;

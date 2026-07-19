@@ -305,7 +305,20 @@ Controls how asbplayer matches a subtitle word against your known words.
 - **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
 - **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, **Match across language scripts** controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+
+### Match across language scripts
+
+Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+
+```
+if true:
+  - Kana subtitles can match kanji in collection, could be homophones but text processing can't handle it so we allow it.
+  - Kanji subtitles only match with kanji in collection, prevents kana collected matches all kanji homophones.
+if false:
+  - Never match across scripts, downside is if kanji is collected kana will need to be collected too.
+  - Essentially a strict mode where the you need to collect all script forms of a word.
+```
 
 ### Card choice priority
 
@@ -320,7 +333,7 @@ If multiple Anki cards match a word, this controls which card is used to determi
 
 Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
 
-When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, **Match across language scripts** controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
 
 :::tip
 Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
@@ -471,6 +484,18 @@ This setting only applies if [**Display pitch accent (Japanese)**](#display-pitc
 :::
 
 If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Word reading size
+
+Controls the size of word readings (furigana) in em units (% of subtitle font size).
+
+### Word frequency size
+
+Controls the size of word frequency in em units (% of subtitle font size).
+
+### Pitch accent size
+
+Controls the size of pitch accent in em units (% of subtitle font size).
 
 ### Word status colors
 

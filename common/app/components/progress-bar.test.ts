@@ -5,6 +5,7 @@ import {
     progressBarProgress,
     progressBarTrackWidth,
 } from './progress-bar';
+import { expect, it } from '@jest/globals';
 
 const bounds = { left: 100, right: 300 };
 

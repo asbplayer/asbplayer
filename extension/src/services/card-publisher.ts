@@ -166,6 +166,7 @@ export class CardPublisher {
             card,
             ankiSettings,
             noteId === undefined ? 'updateLast' : 'updateSpecific',
+            undefined,
             noteId
         );
 

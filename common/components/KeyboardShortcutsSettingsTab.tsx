@@ -219,6 +219,7 @@ interface Props {
     extensionInstalled?: boolean;
     extensionSupportsExportCardBind?: boolean;
     extensionSupportsSidePanel?: boolean;
+    extensionSupportsSubtitleTrackSelectorInWebApp?: boolean;
     onOpenChromeExtensionShortcuts: () => void;
 }
 
@@ -229,6 +230,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     extensionInstalled,
     extensionSupportsExportCardBind,
     extensionSupportsSidePanel,
+    extensionSupportsSubtitleTrackSelectorInWebApp,
     onOpenChromeExtensionShortcuts,
 }) => {
     const { t } = useTranslation();
@@ -264,7 +266,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             selectSubtitleTrack: {
                 label: t('binds.extensionSelectSubtitleTrack'),
                 boundViaBrowser: true,
-                hide: !extensionInstalled,
+                hide: extensionInstalled && !extensionSupportsSubtitleTrackSelectorInWebApp,
             },
             toggleSidePanel: {
                 label: t('binds.toggleSidePanel'),
@@ -513,6 +515,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             extensionInstalled,
             extensionSupportsSidePanel,
             extensionSupportsExportCardBind,
+            extensionSupportsSubtitleTrackSelectorInWebApp,
             onSettingChanged,
             seekDuration,
             alwaysPlayOnSubtitleRepeat,

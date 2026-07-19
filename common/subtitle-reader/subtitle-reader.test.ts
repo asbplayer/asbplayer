@@ -1,3 +1,5 @@
+import { describe, expect, it, jest } from '@jest/globals';
+
 // These deps ship as ESM that the repo's ts-jest setup does not transform, and the
 // IMSC path under test never uses them (they back the srt/ass/vtt branches).
 jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} }));

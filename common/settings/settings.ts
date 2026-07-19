@@ -103,6 +103,11 @@ export function isAnkiSource(source: DictionaryTokenSource): source is AnkiSourc
     return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.ANKI_SENTENCE;
 }
 
+export type WaniKaniSource = DictionaryTokenSource.WANIKANI;
+export function isWaniKaniSource(source: DictionaryTokenSource): source is WaniKaniSource {
+    return source === DictionaryTokenSource.WANIKANI;
+}
+
 export type ExternalWordSource = DictionaryTokenSource.ANKI_WORD | DictionaryTokenSource.WANIKANI;
 export function isExternalWordSource(source: DictionaryTokenSource): source is ExternalWordSource {
     return source === DictionaryTokenSource.ANKI_WORD || source === DictionaryTokenSource.WANIKANI;
@@ -787,6 +792,7 @@ export interface KeyBindSet {
     readonly exportCard: KeyBind;
     readonly takeScreenshot: KeyBind;
     readonly toggleRecording: KeyBind;
+    readonly selectSubtitleTrack: KeyBind;
 }
 
 export interface WebSocketClientSettings {
