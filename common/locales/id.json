@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "Disalin: {{text}}",
         "copiedSubtitle2": "Disalin: {{result}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "disabledAutoPause": "Jeda otomatis: Nonaktif",
         "disabledCondensedPlayback": "Pemutaran ringkas: Nonaktif",
         "disabledFastForwardPlayback": "Pemutaran maju cepat: Nonaktif",

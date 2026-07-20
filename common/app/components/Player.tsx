@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef, MutableRefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
+import Button from '@mui/material/Button';
 import { v4 as uuidv4 } from 'uuid';
 import {
     AudioTrackModel,
@@ -58,6 +60,8 @@ import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
 import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
 import { FileWithId } from '../../file-selector';
+import { usePlaybackPositionMemory } from '../hooks/use-playback-position-memory';
+import Alert from './Alert';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -216,6 +220,7 @@ const Player = React.memo(function Player({
     forceCompressedMode,
     webSocketClient,
 }: PlayerProps) {
+    const { t } = useTranslation();
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(new Set([PlayMode.normal]));
     const playModesRef = useRef<Set<PlayMode>>(new Set([PlayMode.normal]));
     const pendingAutoRepeatTargetTimestamp = useRef<number>(0);
@@ -276,7 +281,7 @@ const Player = React.memo(function Player({
     clockRef.current = clock;
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
-    const calculateLength = () => trackLength(channelRef.current, subtitlesRef.current);
+    const calculateLength = useCallback(() => trackLength(channelRef.current, subtitlesRef.current), []);
 
     useEffect(() => {
         playModesRef.current = playModes;
@@ -1203,6 +1208,16 @@ const Player = React.memo(function Player({
         return () => clearInterval(interval);
     }, [clock, mediaAdapter, seek, tab]);
 
+    const { pendingResume, onConfirmResume, onDismissResume } = usePlaybackPositionMemory({
+        videoFile,
+        channel,
+        clock,
+        calculateLength,
+        seek,
+        play,
+        mediaAdapter,
+    });
+
     useEffect(() => {
         const unbind = keyBinder.bindPlay(
             (event) => {
@@ -1376,6 +1391,21 @@ const Player = React.memo(function Player({
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
+            {pendingResume && (
+                <Alert open={true} onClose={onDismissResume} autoHideDuration={6000} severity="info" anchor="top">
+                    {t('info.resumePlaybackPrompt', {
+                        time: timeDurationDisplay(pendingResume.position, pendingResume.position, false),
+                    })}
+                    <Button
+                        size="small"
+                        color="inherit"
+                        style={{ pointerEvents: 'auto', marginLeft: 12 }}
+                        onClick={onConfirmResume}
+                    >
+                        {t('info.resumePlaybackButton')}
+                    </Button>
+                </Alert>
+            )}
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>
                 {videoInWindow && (

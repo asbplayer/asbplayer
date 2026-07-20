@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "Kopioitu: {{text}}",
         "copiedSubtitle2": "Kopioitu: {{result}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "disabledAutoPause": "Automaattinen pysäytys: Pois Käytöstä",
         "disabledCondensedPlayback": "Lyhennetty soitto: pois päältä",
         "disabledFastForwardPlayback": "Nopea eteenpäin toisto: pois päältä",

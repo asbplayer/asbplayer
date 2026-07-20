@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "{{text}} 복사 완료",
         "copiedSubtitle2": "{{result}} 복사 완료",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "disabledAutoPause": "자동 일시정지: 꺼짐",
         "disabledCondensedPlayback": "자막 없는 부분 건너뛰기: 꺼짐",
         "disabledFastForwardPlayback": "자막 없는 부분 빨리 감기: 꺼짐",

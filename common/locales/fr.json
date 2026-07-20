@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "Copié : {{text}}",
         "copiedSubtitle2": "Copié : {{result}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "disabledAutoPause": "Pause automatique : Désactivé",
         "disabledCondensedPlayback": "Lecture condensée : Désactivé",
         "disabledFastForwardPlayback": "Lecture en avance rapide : Désactivé",

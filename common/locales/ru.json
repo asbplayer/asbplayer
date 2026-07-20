@@ -302,6 +302,8 @@
     "info": {
         "copiedSubtitle": "Скопировано: {{text}}",
         "copiedSubtitle2": "Скопировано: {{result}}",
+        "resumePlaybackPrompt": "Продолжить с {{time}}?",
+        "resumePlaybackButton": "Продолжить",
         "disabledAutoPause": "Автоматическая пауза: Выкл",
         "disabledCondensedPlayback": "Сжатое воспроизведение: Выкл",
         "disabledFastForwardPlayback": "Ускоренное воспроизведение: Выкл",
