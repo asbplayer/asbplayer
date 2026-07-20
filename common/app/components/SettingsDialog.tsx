@@ -121,6 +121,7 @@ export default function SettingsDialog({
                         extension.supportsDictionaryTokenStatusDisplayAlpha
                     }
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
+                    extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersion={import.meta.env.VITE_APP_GIT_COMMIT}

@@ -409,6 +409,7 @@ export default class Binding {
                         if (
                             this.recordingMedia ||
                             seeking ||
+                            this._playModes.has(PlayMode.repeat) ||
                             !isTrackSeekable(this.seekableTracks, subtitle.track) ||
                             this.video.paused ||
                             subtitle.start - this.contentTimeMs <= this.condensedPlaybackMinimumSkipIntervalMs

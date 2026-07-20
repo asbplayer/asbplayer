@@ -6,6 +6,7 @@ import {
     resolveWebmMediaFragmentRange,
 } from './media-fragment';
 import { CardModel } from './model';
+import { afterEach, expect, it } from '@jest/globals';
 
 const originalMediaRecorder = (globalThis as any).MediaRecorder;
 const originalCaptureStream = (HTMLCanvasElement.prototype as any).captureStream;

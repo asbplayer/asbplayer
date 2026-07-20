@@ -187,6 +187,7 @@ export const defaultSettings: AsbplayerSettings = {
         exportCard: { keys: '' },
         takeScreenshot: { keys: isMacOs ? '⇧+⌃+V' : 'ctrl+shift+V' },
         toggleRecording: { keys: isMacOs ? '⇧+⌃+R' : 'ctrl+shift+R' },
+        selectSubtitleTrack: { keys: isMacOs ? '⇧+⌃+F' : 'ctrl+shift+F' },
         decreasePlaybackRate: { keys: isMacOs ? '⇧+⌃+[' : 'ctrl+shift+[' },
         increasePlaybackRate: { keys: isMacOs ? '⇧+⌃+]' : 'ctrl+shift+]' },
         toggleSidePanel: { keys: '`' },

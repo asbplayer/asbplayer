@@ -18,6 +18,8 @@ export default class PlayModeManager {
         this._modes = new Set(initialModes);
         if (this._modes.size === 0) {
             this._modes.add(PlayMode.normal);
+        } else if (this._modes.size > 1) {
+            this._modes.delete(PlayMode.normal);
         }
     }
 
@@ -82,7 +84,9 @@ export default class PlayModeManager {
             resolveConflicts({ mode: PlayMode.fastForward, shouldResetPlaybackRate: true });
         }
 
-        this._resolvePlayModeConflicts(targetMode, resolveConflicts);
+        if (this._modes.has(targetMode)) {
+            this._resolvePlayModeConflicts(targetMode, resolveConflicts);
+        }
 
         return this.getModes();
     }

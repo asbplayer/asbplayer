@@ -1,15 +1,6 @@
 export function keysAreEqual(a: any, b: any) {
-    for (const key in a) {
-        if (!(key in b)) {
-            return false;
-        }
-    }
-
-    for (const key in b) {
-        if (!(key in a)) {
-            return false;
-        }
-    }
-
-    return true;
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key));
 }
