@@ -2,6 +2,18 @@ html {
     overflow: hidden;
 }
 
+@media (prefers-color-scheme: dark) {
+    html {
+        color-scheme: dark;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    html {
+        color-scheme: light;
+    }
+}
+
 #root {
     min-height: 40px;
 }

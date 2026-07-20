@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 import PlaybackPreferences from './playback-preferences';
 
 const makeSettings = (overrides: Record<string, unknown> = {}) => ({
@@ -10,10 +10,15 @@ const makeSettings = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
 });
 
-const makeExtension = (supportsAppIntegration = false) => ({
-    supportsAppIntegration,
-    setSettings: jest.fn(async () => undefined),
-});
+class TestExtension {
+    settings = { lastSubtitleOffset: 0 };
+
+    constructor(readonly supportsAppIntegration = false) {}
+
+    async setSettings(settings: { lastSubtitleOffset: number }) {
+        this.settings = settings;
+    }
+}
 
 beforeEach(() => {
     localStorage.clear();
@@ -21,7 +26,7 @@ beforeEach(() => {
 
 describe('PlaybackPreferences', () => {
     it('uses user-facing defaults when storage is empty', () => {
-        const preferences = new PlaybackPreferences(makeSettings(), makeExtension() as any);
+        const preferences = new PlaybackPreferences(makeSettings(), new TestExtension());
 
         expect(preferences.volume).toBe(100);
         expect(preferences.theaterMode).toBe(false);
@@ -32,7 +37,7 @@ describe('PlaybackPreferences', () => {
     });
 
     it('persists scalar playback preferences with their expected storage representation', () => {
-        const preferences = new PlaybackPreferences(makeSettings(), makeExtension() as any);
+        const preferences = new PlaybackPreferences(makeSettings(), new TestExtension());
 
         preferences.volume = 65;
         preferences.theaterMode = true;
@@ -63,7 +68,7 @@ describe('PlaybackPreferences', () => {
         localStorage.setItem('offset', '900');
         const preferences = new PlaybackPreferences(
             makeSettings({ rememberSubtitleOffset: false }),
-            makeExtension() as any
+            new TestExtension()
         );
 
         expect(preferences.offset).toBe(0);
@@ -71,13 +76,13 @@ describe('PlaybackPreferences', () => {
 
     it('reads and writes the settings-backed offset for app integration', () => {
         localStorage.setItem('offset', '900');
-        const extension = makeExtension(true);
-        const preferences = new PlaybackPreferences(makeSettings({ lastSubtitleOffset: 375 }), extension as any);
+        const extension = new TestExtension(true);
+        const preferences = new PlaybackPreferences(makeSettings({ lastSubtitleOffset: 375 }), extension);
 
         expect(preferences.offset).toBe(375);
         preferences.offset = 500;
 
-        expect(extension.setSettings).toHaveBeenCalledWith({ lastSubtitleOffset: 500 });
+        expect(extension.settings).toEqual({ lastSubtitleOffset: 500 });
         expect(localStorage.getItem('offset')).toBe('900');
     });
 });

@@ -9,11 +9,14 @@ import Stack from '@mui/material/Stack';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
 import SettingsTextField from './SettingsTextField';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from './LabelWithHoverEffect';
 import {
     AsbplayerSettings,
+    autoPausePreferenceForCheckboxChange,
     exportSettings,
     isTrackAutoCopyable,
     isTrackSeekable,
@@ -22,14 +25,14 @@ import {
     updateSeekableTracksValue,
     validateSettings,
 } from '../settings';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SubtitleHtml } from '..';
+import { AutoPausePreference, SubtitleHtml } from '..';
 import { WebSocketClient } from '../web-socket-client';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SettingsSection from './SettingsSection';
+import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import { VideoSubtitleSplitBehavior } from '../settings';
 
 function regexIsValid(regex: string) {
@@ -41,6 +44,14 @@ function regexIsValid(regex: string) {
     }
 }
 
+const responsiveSettingsStackSx = {
+    flexWrap: 'wrap',
+    '& > *': {
+        flex: '1 1 280px',
+        minWidth: 'min(100%, 280px)',
+    },
+} as const;
+
 interface Props {
     settings: AsbplayerSettings;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -51,6 +62,8 @@ interface Props {
     extensionSupportsPauseOnHover?: boolean;
     extensionSupportsSeekableTrackSetting?: boolean;
     extensionSupportsAutoCopyableTrackSetting?: boolean;
+    supportsPlaybackEngine: boolean;
+    onViewPlaybackModeKeyboardShortcuts: () => void;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
@@ -63,6 +76,8 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsPauseOnHover,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
+    supportsPlaybackEngine,
+    onViewPlaybackModeKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -84,7 +99,31 @@ const MiscSettingTab: React.FC<Props> = ({
         webSocketServerUrl,
         subtitleAboveThumbnail,
         thumbnailPreview,
+        autoPausePreference,
+        playbackModeStartOffset,
+        playbackModeEndOffset,
+        playbackModesStartGap,
+        playbackModesEndGap,
+        playbackRate,
+        playbackRateNotificationEnabled,
+        rememberPlaybackRate,
+        fastForwardModePlaybackRate,
+        fastForwardPlaybackMinimumSkipIntervalMs,
+        repeatCountPreference,
+        rememberPlaybackModes,
+        streamingCondensedPlaybackMinimumSkipIntervalMs,
     } = settings;
+    const autoPauseAtStart = autoPausePreference !== AutoPausePreference.atEnd;
+    const autoPauseAtEnd = autoPausePreference !== AutoPausePreference.atStart;
+    const handleAutoPausePreferenceChanged = useCallback(
+        (edge: AutoPausePreference.atStart | AutoPausePreference.atEnd, checked: boolean) => {
+            void onSettingChanged(
+                'autoPausePreference',
+                autoPausePreferenceForCheckboxChange(autoPausePreference, edge, checked)
+            );
+        },
+        [autoPausePreference, onSettingChanged]
+    );
     const validRegex = useMemo(() => regexIsValid(subtitleRegexFilter), [subtitleRegexFilter]);
     const [webSocketConnectionSucceeded, setWebSocketConnectionSucceeded] = useState<boolean>();
     const pingWebSocketServer = useCallback(() => {
@@ -143,6 +182,14 @@ const MiscSettingTab: React.FC<Props> = ({
         <>
             <Stack spacing={1}>
                 <SettingsSection>{t('settings.ui')}</SettingsSection>
+                <Stack direction="row" spacing={1}>
+                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleImportSettings}>
+                        {t('action.importSettings')}
+                    </Button>
+                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleExportSettings}>
+                        {t('action.exportSettings')}
+                    </Button>
+                </Stack>
                 <FormControl>
                     <FormLabel>{t('settings.theme')}</FormLabel>
                     <RadioGroup row>
@@ -411,6 +458,305 @@ const MiscSettingTab: React.FC<Props> = ({
                         </RadioGroup>
                     </FormControl>
                 )}
+                <SettingsSection>{t('settings.playbackModes')}</SettingsSection>
+                <Typography variant="caption" color="textSecondary">
+                    <Trans
+                        i18nKey="settings.playbackModesHelperText"
+                        components={[
+                            <Link key={0} onClick={onViewPlaybackModeKeyboardShortcuts} sx={{ cursor: 'pointer' }} />,
+                        ]}
+                    />
+                </Typography>
+                {supportsPlaybackEngine && (
+                    <>
+                        <SettingsTextField
+                            type="number"
+                            fullWidth
+                            label={t('settings.playbackRate')}
+                            value={playbackRate}
+                            color="primary"
+                            onChange={(event) => onSettingChanged('playbackRate', Number(event.target.value))}
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0.1,
+                                    max: 5,
+                                    step: 0.1,
+                                },
+                            }}
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={playbackRateNotificationEnabled}
+                                    onChange={(event) =>
+                                        onSettingChanged('playbackRateNotificationEnabled', event.target.checked)
+                                    }
+                                />
+                            }
+                            label={t('settings.playbackRateNotificationEnabled')}
+                            labelPlacement="start"
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={rememberPlaybackRate}
+                                    onChange={(event) => onSettingChanged('rememberPlaybackRate', event.target.checked)}
+                                />
+                            }
+                            label={t('settings.rememberPlaybackRate')}
+                            labelPlacement="start"
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={rememberPlaybackModes}
+                                    onChange={(event) =>
+                                        onSettingChanged('rememberPlaybackModes', event.target.checked)
+                                    }
+                                />
+                            }
+                            label={t('settings.rememberPlaybackModes')}
+                            labelPlacement="start"
+                        />
+                    </>
+                )}
+                <SettingsSubSection>{t('settings.subtitleTriggers')}</SettingsSubSection>
+                <FormControl>
+                    <FormLabel component="legend">{t('settings.autoPausePreference')}</FormLabel>
+                    {supportsPlaybackEngine ? (
+                        <>
+                            <FormGroup row>
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Checkbox
+                                            checked={autoPauseAtStart}
+                                            onChange={(event) =>
+                                                handleAutoPausePreferenceChanged(
+                                                    AutoPausePreference.atStart,
+                                                    event.target.checked
+                                                )
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseAtSubtitleStart')}
+                                />
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Checkbox
+                                            checked={autoPauseAtEnd}
+                                            onChange={(event) =>
+                                                handleAutoPausePreferenceChanged(
+                                                    AutoPausePreference.atEnd,
+                                                    event.target.checked
+                                                )
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseAtSubtitleEnd')}
+                                />
+                            </FormGroup>
+                            <Typography variant="caption" color="textSecondary">
+                                {t('settings.autoPausePreferenceHelperText')}
+                            </Typography>
+                        </>
+                    ) : (
+                        <RadioGroup row>
+                            <LabelWithHoverEffect
+                                control={
+                                    <Radio
+                                        checked={autoPausePreference === AutoPausePreference.atStart}
+                                        value={AutoPausePreference.atStart}
+                                        onChange={(event) =>
+                                            event.target.checked &&
+                                            void onSettingChanged('autoPausePreference', AutoPausePreference.atStart)
+                                        }
+                                    />
+                                }
+                                label={t('settings.autoPauseAtSubtitleStart')}
+                            />
+                            <LabelWithHoverEffect
+                                control={
+                                    <Radio
+                                        checked={autoPausePreference === AutoPausePreference.atEnd}
+                                        value={AutoPausePreference.atEnd}
+                                        onChange={(event) =>
+                                            event.target.checked &&
+                                            void onSettingChanged('autoPausePreference', AutoPausePreference.atEnd)
+                                        }
+                                    />
+                                }
+                                label={t('settings.autoPauseAtSubtitleEnd')}
+                            />
+                        </RadioGroup>
+                    )}
+                </FormControl>
+                {supportsPlaybackEngine && (
+                    <>
+                        <SettingsTextField
+                            type="number"
+                            color="primary"
+                            fullWidth
+                            label={t('settings.repeatCountPreference')}
+                            helperText={t('settings.repeatCountPreferenceHelperText')}
+                            value={repeatCountPreference}
+                            onChange={(event) => onSettingChanged('repeatCountPreference', Number(event.target.value))}
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0,
+                                    step: 1,
+                                },
+                            }}
+                        />
+                        <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
+                            <SettingsTextField
+                                type="number"
+                                color="primary"
+                                fullWidth
+                                label={t('settings.playbackModeStartOffset')}
+                                value={playbackModeStartOffset}
+                                onChange={(event) =>
+                                    onSettingChanged('playbackModeStartOffset', Number(event.target.value))
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                            <SettingsTextField
+                                type="number"
+                                color="primary"
+                                fullWidth
+                                label={t('settings.playbackModeEndOffset')}
+                                value={playbackModeEndOffset}
+                                onChange={(event) =>
+                                    onSettingChanged('playbackModeEndOffset', Number(event.target.value))
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                        </Stack>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.playbackModeOffsetHelperText')}
+                        </Typography>
+                    </>
+                )}
+                <SettingsSubSection>{t('settings.gapTriggers')}</SettingsSubSection>
+                <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
+                    {supportsPlaybackEngine && (
+                        <SettingsTextField
+                            type="number"
+                            color="primary"
+                            fullWidth
+                            label={t('settings.fastForwardPlaybackMinimumSkipInterval')}
+                            value={fastForwardPlaybackMinimumSkipIntervalMs}
+                            onChange={(event) =>
+                                onSettingChanged('fastForwardPlaybackMinimumSkipIntervalMs', Number(event.target.value))
+                            }
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0,
+                                    step: 1,
+                                },
+                                input: {
+                                    endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                },
+                            }}
+                        />
+                    )}
+                    <SettingsTextField
+                        type="number"
+                        fullWidth
+                        label={t('settings.fastForwardModePlaybackRate')}
+                        value={fastForwardModePlaybackRate}
+                        color="primary"
+                        onChange={(event) =>
+                            onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
+                        }
+                        slotProps={{
+                            htmlInput: {
+                                min: 0.1,
+                                max: 5,
+                                step: 0.1,
+                            },
+                        }}
+                    />
+                </Stack>
+                <SettingsTextField
+                    type="number"
+                    color="primary"
+                    fullWidth
+                    label={t('settings.condensedPlaybackMinimumSkipInterval')}
+                    value={streamingCondensedPlaybackMinimumSkipIntervalMs}
+                    onChange={(event) =>
+                        onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', Number(event.target.value))
+                    }
+                    slotProps={{
+                        htmlInput: {
+                            min: 0,
+                            step: 1,
+                        },
+                        input: {
+                            endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                        },
+                    }}
+                />
+                {supportsPlaybackEngine && (
+                    <>
+                        <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
+                            <SettingsTextField
+                                type="number"
+                                color="primary"
+                                fullWidth
+                                label={t('settings.playbackModesStartGap')}
+                                value={playbackModesStartGap}
+                                onChange={(event) =>
+                                    onSettingChanged('playbackModesStartGap', Number(event.target.value))
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        max: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                            <SettingsTextField
+                                type="number"
+                                color="primary"
+                                fullWidth
+                                label={t('settings.playbackModesEndGap')}
+                                value={playbackModesEndGap}
+                                onChange={(event) =>
+                                    onSettingChanged('playbackModesEndGap', Number(event.target.value))
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                        </Stack>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.playbackModesGapHelperText')}
+                        </Typography>
+                    </>
+                )}
                 <SettingsSection>{t('settings.webSocketInterface')}</SettingsSection>
                 <SwitchLabelWithHoverEffect
                     control={
@@ -467,15 +813,6 @@ const MiscSettingTab: React.FC<Props> = ({
                         onChange={(event) => onSettingChanged('tabName', event.target.value)}
                     />
                 )}
-                <SettingsSection>{t('settings.title')}</SettingsSection>
-                <Stack direction="row" spacing={1}>
-                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleImportSettings}>
-                        {t('action.importSettings')}
-                    </Button>
-                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleExportSettings}>
-                        {t('action.exportSettings')}
-                    </Button>
-                </Stack>
             </Stack>
             <input
                 ref={settingsFileInputRef}

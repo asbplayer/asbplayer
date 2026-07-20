@@ -98,7 +98,7 @@ describe('track helpers', () => {
 describe('inferTracks', () => {
     const originalParse = JSON.parse;
     const originalPath = window.location.pathname;
-    let requestHandler: ((event: Event) => Promise<void> | void) | undefined;
+    let requestHandler: ((event: Event) => Promise<void>) | undefined;
     let dispatchedDetails: any[];
 
     beforeEach(() => {
@@ -110,7 +110,11 @@ describe('inferTracks', () => {
             (type: string, listener: EventListenerOrEventListenerObject) => {
                 if (type === 'asbplayer-get-synced-data') {
                     requestHandler =
-                        typeof listener === 'function' ? listener : async (event: Event) => listener.handleEvent(event);
+                        typeof listener === 'function'
+                            ? async (event: Event) => {
+                                  listener(event);
+                              }
+                            : async (event: Event) => listener.handleEvent(event);
                 }
             }
         );

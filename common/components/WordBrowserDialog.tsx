@@ -178,7 +178,7 @@ function hasExactSearchTermMatch(searchTerms: string[], term: string) {
 function nextFilterMode(currentMode?: FilterMode) {
     if (currentMode === undefined) return 'include' as const;
     if (currentMode === 'include') return 'exclude' as const;
-    return undefined;
+    return;
 }
 
 function cycleFilterMode<T extends FilterModeValue>(filters: FilterMap<T>, value: T): FilterMap<T> {

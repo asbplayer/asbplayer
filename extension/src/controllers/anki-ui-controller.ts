@@ -117,7 +117,7 @@ export default class AnkiUiController {
             surroundingSubtitles: surroundingSubtitles,
             image: image,
             audio: audio,
-            dialogRequestedTimestamp: context.contentTimeMs,
+            dialogRequestedTimestamp: context.currentTimeMs,
             text,
             word,
             definition,
@@ -159,7 +159,7 @@ export default class AnkiUiController {
             surroundingSubtitles,
             image,
             audio,
-            dialogRequestedTimestamp: context.contentTimeMs,
+            dialogRequestedTimestamp: context.currentTimeMs,
             text,
             word,
             definition,
@@ -183,7 +183,7 @@ export default class AnkiUiController {
             open: true,
             canRerecord: true,
             settings: this._settings,
-            dialogRequestedTimestamp: context.contentTimeMs,
+            dialogRequestedTimestamp: context.currentTimeMs,
             inTutorial: this._inTutorial,
             ...(await this._additionalUiState(context)),
         };
@@ -379,8 +379,8 @@ export default class AnkiUiController {
                             if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
                                 const seekTo = resumeMessage.uiState.dialogRequestedTimestamp / 1000;
 
-                                if (context.contentTimeMs / 1000 !== seekTo) {
-                                    context.seek(seekTo);
+                                if (context.currentTimeMs / 1000 !== seekTo) {
+                                    void context.seek(seekTo);
                                 }
                             }
 
@@ -403,7 +403,7 @@ export default class AnkiUiController {
                             const rewindMessage = message as AnkiUiBridgeRewindMessage;
                             context.ankiUiSavedState = rewindMessage.uiState;
                             context.pause();
-                            context.seek(rewindMessage.uiState.subtitle.start / 1000);
+                            void context.seek(rewindMessage.uiState.subtitle.start / 1000);
                             break;
                         }
                         case 'rerecord': {

@@ -22,6 +22,7 @@ import {
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
     PlayMode,
+    PlayModeMessage,
     PlayModesMessage,
     PostMineAction,
     ReadyFromVideoMessage,
@@ -87,6 +88,7 @@ export default class VideoChannel {
     private loadFilesCallbacks: (() => void)[];
     private loadSubtitlesCallbacks: (() => void)[];
     private playModesCallbacks: ((modes: Set<PlayMode>) => void)[];
+    private pendingPlayModes?: Set<PlayMode>;
     private cardUpdatedDialogCallbacks: (() => void)[];
     private cardExportedDialogCallbacks: (() => void)[];
 
@@ -288,10 +290,11 @@ export default class VideoChannel {
                     break;
                 }
                 case 'playModes': {
+                    const playModesMessage = event.data as PlayModesMessage;
+                    const modes = new Set<PlayMode>(playModesMessage.playModes);
+                    if (this.playModesCallbacks.length === 0) this.pendingPlayModes = modes;
                     for (const callback of this.playModesCallbacks) {
-                        const playModesMessage = event.data as PlayModesMessage;
-                        const modes = new Set<PlayMode>(playModesMessage.playModes);
-                        callback(modes);
+                        callback(new Set(modes));
                     }
                     break;
                 }
@@ -448,6 +451,13 @@ export default class VideoChannel {
 
     onPlayModes(callback: (modes: Set<PlayMode>) => void) {
         this.playModesCallbacks.push(callback);
+
+        if (this.pendingPlayModes !== undefined) {
+            const playModes = this.pendingPlayModes;
+            this.pendingPlayModes = undefined;
+            callback(new Set(playModes));
+        }
+
         return () => this._remove(callback, this.playModesCallbacks);
     }
 
@@ -562,10 +572,10 @@ export default class VideoChannel {
         this.protocol.postMessage(message);
     }
 
-    playModes(playModes: Set<PlayMode>) {
-        const message: PlayModesMessage = {
-            command: 'playModes',
-            playModes: [...playModes],
+    playMode(playMode: PlayMode) {
+        const message: PlayModeMessage = {
+            command: 'playMode',
+            playMode,
         };
         this.protocol.postMessage(message);
     }
@@ -671,11 +681,23 @@ export default class VideoChannel {
             videoSubtitleSplitBehavior,
             copyToClipboardOnMine,
             autoPausePreference,
+            playbackModeStartOffset,
+            playbackModeEndOffset,
+            playbackModesStartGap,
+            playbackModesEndGap,
             seekableTracks,
             autoCopyableTracks,
             seekDuration,
             speedChangeStep,
+            playbackRate,
+            playbackRateNotificationEnabled,
+            rememberPlaybackRate,
             fastForwardModePlaybackRate,
+            fastForwardPlaybackMinimumSkipIntervalMs,
+            streamingCondensedPlaybackMinimumSkipIntervalMs,
+            repeatCountPreference,
+            rememberPlaybackModes,
+            lastPlaybackModes,
             keyBindSet,
             rememberSubtitleOffset,
             autoCopyCurrentSubtitle,
@@ -702,11 +724,23 @@ export default class VideoChannel {
                 videoSubtitleSplitBehavior,
                 copyToClipboardOnMine,
                 autoPausePreference,
+                playbackModeStartOffset,
+                playbackModeEndOffset,
+                playbackModesStartGap,
+                playbackModesEndGap,
                 seekableTracks,
                 autoCopyableTracks,
                 seekDuration,
                 speedChangeStep,
+                playbackRate,
+                playbackRateNotificationEnabled,
+                rememberPlaybackRate,
                 fastForwardModePlaybackRate,
+                fastForwardPlaybackMinimumSkipIntervalMs,
+                streamingCondensedPlaybackMinimumSkipIntervalMs,
+                repeatCountPreference,
+                rememberPlaybackModes,
+                lastPlaybackModes,
                 keyBindSet,
                 rememberSubtitleOffset,
                 autoCopyCurrentSubtitle,
@@ -776,6 +810,7 @@ export default class VideoChannel {
         this.subtitlesUpdatedCallbacks = [];
         this.loadFilesCallbacks = [];
         this.playModesCallbacks = [];
+        this.pendingPlayModes = undefined;
         this.cardUpdatedDialogCallbacks = [];
         this.cardExportedDialogCallbacks = [];
     }

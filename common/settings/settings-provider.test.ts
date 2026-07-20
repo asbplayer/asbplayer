@@ -7,12 +7,20 @@ import {
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
 import { expect, it } from '@jest/globals';
+import { PlayMode } from '@project/common';
 import { MockSettingsStorage } from './mock-settings-storage';
 
 it('starts at default settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());
     const initialSettings = await provider.getAll();
     expect(initialSettings).toEqual(defaultSettings);
+    expect(initialSettings.playbackRate).toBe(1);
+    expect(initialSettings.playbackRateNotificationEnabled).toBe(true);
+    expect(initialSettings.rememberPlaybackRate).toBe(false);
+    expect(initialSettings.fastForwardPlaybackMinimumSkipIntervalMs).toBe(500);
+    expect(initialSettings.repeatCountPreference).toBe(0);
+    expect(initialSettings.rememberPlaybackModes).toBe(false);
+    expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
 });
 
 it('can change the value of object-typed settings', async () => {

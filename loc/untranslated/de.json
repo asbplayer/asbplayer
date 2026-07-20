@@ -67,7 +67,7 @@
         "audioCaptureFailed.message": "DRM-protected audio cannot be captured on the Firefox version of asbplayer.",
         "settings.addCustomCss": "Add Custom CSS",
         "settings.alwaysPlayOnSubtitleRepeat": "Always play (unpause) after invoking above shortcut",
-        "settings.fastForwardModePlaybackRate": "Fast-forward mode playback rate",
+        "settings.fastForwardModePlaybackRate": "Fast-forward playback rate",
         "settings.customCssField": "CSS: {{styleKey}}",
         "settings.clickToMineDefaultAction": "Mining button default action",
         "settings.preCacheSubtitleDom": "Pre-cache Subtitle DOM",

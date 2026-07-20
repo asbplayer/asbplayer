@@ -21,7 +21,7 @@ interface Props extends PopoverProps {
 
 const ListItem = ({ children, ...props }: ListItemProps) => {
     return (
-        <MuiListItem disablePadding dense {...props}>
+        <MuiListItem disablePadding dense sx={{ width: 'auto' }} {...props}>
             {children}
         </MuiListItem>
     );
@@ -61,6 +61,7 @@ export default function PlayModeSelector({
     ...restOfPopoverProps
 }: Props) {
     const { t } = useTranslation();
+
     return (
         <Popover
             disableEnforceFocus={true}
