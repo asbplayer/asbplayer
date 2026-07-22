@@ -29,10 +29,6 @@ class FakeAnimationFrames {
         this.callbacks.clear();
         for (const callback of callbacks) callback(0);
     }
-
-    get pendingCallbacks(): number {
-        return this.callbacks.size;
-    }
 }
 
 const flush = async () => {
@@ -67,7 +63,7 @@ const timingDriver = (
 };
 
 describe('AnimationFrameTimingDriver', () => {
-    it('samples the millisecond clock once per animation frame while running', async () => {
+    it('samples the millisecond clock while running and stops after the clock stops', async () => {
         let nowMs = 0;
         const clock = new Clock(() => nowMs);
         const animationFrames = new FakeAnimationFrames();
@@ -84,19 +80,19 @@ describe('AnimationFrameTimingDriver', () => {
         );
         driver.bind();
 
-        expect(animationFrames.pendingCallbacks).toBe(0);
         clock.start();
-        expect(animationFrames.pendingCallbacks).toBe(1);
 
         nowMs = 250;
         animationFrames.present();
         await flush();
 
         expect(updates).toEqual([250]);
-        expect(animationFrames.pendingCallbacks).toBe(1);
 
         clock.stop();
-        expect(animationFrames.pendingCallbacks).toBe(0);
+        nowMs = 500;
+        animationFrames.present();
+        await flush();
+        expect(updates).toEqual([250]);
         driver.unbind();
     });
 
@@ -152,7 +148,6 @@ describe('AnimationFrameTimingDriver', () => {
         driver.bind();
 
         expect(discontinuities).toEqual([2000]);
-        expect(animationFrames.pendingCallbacks).toBe(1);
         driver.unbind();
     });
 
@@ -221,7 +216,6 @@ describe('AnimationFrameTimingDriver', () => {
 
         expect(updates).toEqual([]);
         expect(discontinuities).toEqual([0, 0, 5000]);
-        expect(animationFrames.pendingCallbacks).toBe(1);
         driver.unbind();
     });
 
@@ -240,11 +234,9 @@ describe('AnimationFrameTimingDriver', () => {
         driver.bind();
 
         clock.setTime(3000);
-        expect(animationFrames.pendingCallbacks).toBe(1);
         animationFrames.present();
 
         expect(discontinuities).toEqual([0, 3000]);
-        expect(animationFrames.pendingCallbacks).toBe(0);
         driver.unbind();
     });
 
@@ -273,6 +265,7 @@ describe('AnimationFrameTimingDriver', () => {
         const showingSubtitles: string[][] = [];
         const playbackActions: string[] = [];
         const executor = new PlaybackPlanExecutor(plan, clock.time(), {
+            play: async () => {},
             paused: () => !clock.running,
             pause: () => playbackActions.push('pause'),
             seek: async () => {
@@ -281,10 +274,11 @@ describe('AnimationFrameTimingDriver', () => {
             setPlaybackRate: () => playbackActions.push('playback-rate'),
             correctTimestamp: async () => {
                 playbackActions.push('correct-timestamp');
+                return true;
             },
             showingSubtitlesChanged: (showing) => showingSubtitles.push(showing.map(({ text }) => text)),
-            afterCondensedSeek: async () => {},
         });
+        playbackActions.length = 0;
         const driver = timingDriver(
             clock,
             {

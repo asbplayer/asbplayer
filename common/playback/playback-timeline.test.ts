@@ -80,17 +80,4 @@ describe('PlaybackTimeline', () => {
 
         expect(result.segmentAt(1750).showingSubtitles).toEqual([playbackSubtitle, displayOnlySubtitle]);
     });
-
-    it('shifts lookup and boundary thresholds without rebuilding segments', () => {
-        const visible = makeSubtitle(1000, 2000, 0);
-        const result = timeline([visible]);
-        const segments = result.segments;
-
-        result.shift(1000);
-
-        expect(result.segments).toBe(segments);
-        expect(result.segmentAt(1500).showingSubtitles).toEqual([]);
-        expect(result.segmentAt(2500).showingSubtitles).toEqual([visible]);
-        expect(result.nextCondensedTarget(1500)).toBe(1999);
-    });
 });

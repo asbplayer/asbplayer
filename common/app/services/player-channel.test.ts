@@ -63,6 +63,16 @@ describe('PlayerChannel playback state', () => {
         channel.close();
     });
 
+    it('sends duration changes from the media owner', () => {
+        const channel = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+
+        channel.duration(12);
+
+        expect(broadcastChannel.sent).toEqual([{ command: 'duration', value: 12 }]);
+        channel.close();
+    });
+
     it('receives mode intents without making playback decisions', () => {
         const channel = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;

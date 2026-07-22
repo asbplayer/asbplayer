@@ -2,7 +2,7 @@ import type { AsbplayerSettings } from '@project/common/settings';
 import { isTrackSeekable } from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import { PlayMode } from '@project/common';
-import { playbackPlansEqual, buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
+import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
 import PlaybackPlanExecutor, {
     playbackPlanCorrectionToleranceMs,
     type PlaybackRateChange,
@@ -10,7 +10,6 @@ import PlaybackPlanExecutor, {
 } from '@project/common/playback/playback-plan-executor';
 import PlaybackModeController, {
     playbackModesFromSettings,
-    shouldShowPlaybackRateNotification,
     type PlayModeTransition,
 } from '@project/common/playback/playback-mode-controller';
 import type { TimingDriver } from '@project/common/playback/timing-driver';
@@ -40,7 +39,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel = IndexedS
  * Owns playback settings, plan lifecycle, timing, and discontinuity policy for a media adapter.
  * The caller owns the media controls and supplies them through callbacks. The media owners can
  * also notify of certain events through methods as well. Generally, PlaybackEngine should own
- * controlling the media and attaching to their related events. However things 'canplay' or
+ * controlling the media and attaching to their related events. However things such as 'canplay' or
  * workarounds for certain sites should live outside this class to not complicate its responsibilities.
  *
  * Binding/VideoPlayer/Player
@@ -94,6 +93,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.plan = this.buildPlan();
 
         const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
+            play: callbacks.play,
             paused: () => this.timingDriver.paused(),
             pause: callbacks.pause,
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
@@ -101,17 +101,17 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.setPlaybackRateMedia(change.playbackRate);
             },
             correctTimestamp: async (targetTimestampMs) => {
-                await this.correctTimestamp(targetTimestampMs);
+                return this.correctTimestamp(targetTimestampMs);
             },
             showingSubtitlesChanged: callbacks.showingSubtitlesChanged,
-            afterCondensedSeek: callbacks.play,
         };
         this.executor = new PlaybackPlanExecutor(this.plan, this.timingDriver.currentTimeMs(), executorCallbacks);
         this.timingDriver.setCallbacks({
             onTime: (currentTimestampMs, lookaheadTimestampMs) =>
                 this.executor.update(currentTimestampMs, lookaheadTimestampMs),
             onDiscontinuity: (currentTimestampMs) => this.onDiscontinuity(currentTimestampMs),
-            onCancel: () => this.executor.cancelPendingOperations(true),
+            onCancel: (preserveExpectedDiscontinuity) =>
+                this.executor.cancelPendingOperations(preserveExpectedDiscontinuity),
             onPlaybackStarted: () => this.executor.playbackStarted(),
             onError: callbacks.onError,
         });
@@ -134,16 +134,18 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
+        const rememberPlaybackModesNow = !this.settings.rememberPlaybackModes && settings.rememberPlaybackModes;
         this.settings = settings;
         this.ready.settings = true;
         this.bind();
-        if (this.settings.rememberPlaybackModes) {
+        if (rememberPlaybackModesNow) {
             this.applyPlaybackModeTransition(
                 this.playbackModeController.setModes(playbackModesFromSettings(settings)),
-                { savePlaybackModes: false }
+                { savePlaybackModes: false, rebuildWhenUnchanged: true }
             );
+        } else {
+            this.rebuildPlan();
         }
-        this.rebuildPlan();
     }
 
     subtitlesChanged(subtitles: readonly T[]): void {
@@ -156,28 +158,29 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.ready.subtitles = false;
             this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
                 savePlaybackModes: false,
+                rebuildWhenUnchanged: true,
             });
-            this.rebuildPlan();
             this.unbind();
         }
     }
 
-    playbackRateChanged(playbackRate: number): { readonly notify: boolean } {
-        if (Number.isFinite(playbackRate)) {
-            const fastForwarding = this.executor.fastForwardingAt(this.timingDriver.currentTimeMs());
-            const setting = fastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
-            if (this.settings[setting] !== playbackRate) {
-                this.settings = { ...this.settings, [setting]: playbackRate };
-                this.rebuildPlan();
-                if (this.settings.rememberPlaybackRate) this.saveSettings({ [setting]: playbackRate });
-            }
+    playbackRateChanged(playbackRate: number): { readonly notify: boolean; readonly playbackRate: number } {
+        const setting = this.executor.isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
+        if (!Number.isFinite(playbackRate) || this.settings[setting] === playbackRate) {
+            return { notify: false, playbackRate };
         }
-        const modes = this.playbackModeController.playModes;
-        return { notify: shouldShowPlaybackRateNotification(this.settings.playbackRateNotificationEnabled, modes) };
+        this.settings = { ...this.settings, [setting]: playbackRate };
+        this.rebuildPlan();
+        if (this.settings.rememberPlaybackRate) this.saveSettings({ [setting]: playbackRate });
+        return { notify: this.settings.playbackRateNotificationEnabled, playbackRate };
     }
 
-    setPlaybackRate(playbackRate: number): { readonly notify: boolean } {
-        return this.playbackRateChanged(playbackRate);
+    adjustPlaybackRate(delta: number): { readonly notify: boolean; readonly playbackRate: number } {
+        const playbackRate = this.executor.isFastForwarding
+            ? this.plan.fastForward!.playbackRate
+            : this.plan.playbackRate;
+        if (!delta || !Number.isFinite(delta)) return { notify: false, playbackRate };
+        return this.playbackRateChanged(Math.round((playbackRate + delta) * 100) / 100);
     }
 
     durationChanged(durationMs: number): void {
@@ -187,10 +190,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     subtitleOffsetChanged(offsetMs: number): void {
         if (!Number.isFinite(offsetMs) || this.subtitleOffsetMs === offsetMs) return;
-
-        const shiftTimelineMs = offsetMs - this.subtitleOffsetMs;
         this.subtitleOffsetMs = offsetMs;
-        this.rebuildPlan({ shiftTimelineMs });
+        this.rebuildPlan();
     }
 
     playbackModesSuppressedChanged(suppressed: boolean): void {
@@ -201,7 +202,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     togglePlaybackMode(targetMode: PlayMode): void {
         const transition = this.playbackModeController.transition(targetMode);
-        this.applyPlaybackModeTransition(transition, { savePlaybackModes: true });
+        this.applyPlaybackModeTransition(transition, { savePlaybackModes: true, rebuildWhenUnchanged: false });
     }
 
     /** Reports a discontinuity from a non-standard media adapter, such as Disney+'s page-script seek event. */
@@ -249,16 +250,15 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
     }
 
-    private rebuildPlan(options: { readonly shiftTimelineMs?: number } = {}): void {
-        const plan = this.buildPlan();
-        if (playbackPlansEqual(this.plan, plan)) return;
-
-        this.plan = plan;
-        if (options.shiftTimelineMs !== undefined) {
-            this.executor.shiftTimeline(options.shiftTimelineMs, this.timingDriver.currentTimeMs(), plan);
-        } else {
-            this.executor.replacePlan(plan, this.timingDriver.currentTimeMs());
-        }
+    /**
+     * We prefer simply rebuilding the plan unconditionally rather than trying to optimize for specific cases.
+     * It takes <1ms to build thus completely negligible. Any runtime check that can be encoded as a part of
+     * the plan or timeline should as rebuilding to update them is always preferred. It also serves to simplify
+     * the overall logic by reducing runtime checks.
+     */
+    private rebuildPlan(): void {
+        this.plan = this.buildPlan();
+        this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs());
     }
 
     private onDiscontinuity(timestampMs: number): void {
@@ -267,22 +267,45 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private applyPlaybackModeTransition(
         transition: PlayModeTransition,
-        options: { readonly savePlaybackModes: boolean }
+        options: { readonly savePlaybackModes: boolean; readonly rebuildWhenUnchanged: boolean }
     ): void {
-        if (!transition.added.size && !transition.removed.size) return;
+        if (!transition.added.size && !transition.removed.size) {
+            if (options.rebuildWhenUnchanged) this.rebuildPlan();
+            return;
+        }
         this.rebuildPlan();
         if (options.savePlaybackModes) this.saveSettings({ lastPlaybackModes: [...transition.modes] });
         this.playbackModesChanged(transition);
     }
 
-    private seek(timestampMs: number): Promise<void> {
-        return this.seekMedia(this.clampTimestamp(timestampMs));
+    private async seek(timestampMs: number): Promise<void> {
+        const targetTimestampMs = this.clampTimestamp(timestampMs);
+        this.timingDriver.expectInternalSeek();
+        const seeked = this.timingDriver.waitForSeeked();
+        try {
+            await this.seekMedia(targetTimestampMs);
+            await seeked;
+        } catch (error) {
+            this.timingDriver.cancelExpectedInternalSeek();
+            throw error;
+        }
     }
 
-    private async correctTimestamp(timestampMs: number): Promise<void> {
+    private async correctTimestamp(timestampMs: number): Promise<boolean> {
         const targetTimestampMs = this.clampTimestamp(timestampMs);
-        if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) return;
-        await this.seekMedia(targetTimestampMs);
+        if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
+            return false;
+        }
+        this.timingDriver.expectInternalSeek();
+        const seeked = this.timingDriver.waitForSeeked();
+        try {
+            await this.seekMedia(targetTimestampMs);
+            await seeked;
+            return true;
+        } catch (error) {
+            this.timingDriver.cancelExpectedInternalSeek();
+            throw error;
+        }
     }
 
     private clampTimestamp(timestampMs: number): number {

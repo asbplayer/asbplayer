@@ -20,6 +20,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     private _bound = false;
     private frameHandle?: number;
     private discontinuityPending = false;
+    private expectedInternalSeek = false;
     private readonly updates: TimingUpdateQueue;
 
     constructor(clock: AnimationFrameTimingSource) {
@@ -40,7 +41,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
                     await this.callbacks.onPlaybackStarted();
                 },
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
-                onCancel: () => this.callbacks.onCancel(),
+                onCancel: (preserveExpectedDiscontinuity) => this.callbacks.onCancel(preserveExpectedDiscontinuity),
                 onError: (error) => this.callbacks.onError(error),
             },
             () => this._bound && !this.clock.paused()
@@ -49,6 +50,18 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
 
     setCallbacks(callbacks: TimingDriverCallbacks): void {
         this.callbacks = callbacks;
+    }
+
+    expectInternalSeek(): void {
+        this.expectedInternalSeek = true;
+    }
+
+    waitForSeeked(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    cancelExpectedInternalSeek(): void {
+        this.expectedInternalSeek = false;
     }
 
     currentTimeMs(): number {
@@ -86,6 +99,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.cancelScheduledUpdate();
         this.updates.clear();
         this.discontinuityPending = false;
+        this.expectedInternalSeek = false;
     }
 
     private reset(): void {
@@ -105,7 +119,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     };
 
     private readonly onSetTime = () => {
-        this.updates.clear();
+        const preserveExpectedDiscontinuity = this.expectedInternalSeek;
+        this.expectedInternalSeek = false;
+        this.updates.clear(preserveExpectedDiscontinuity);
         this.discontinuityPending = true;
         this.schedule();
     };

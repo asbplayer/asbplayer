@@ -58,10 +58,6 @@ class FakeVideo extends EventTarget {
             });
         }
     }
-
-    get pendingFrameCallbacks(): number {
-        return this.callbacks.size;
-    }
 }
 
 const flush = async () => {
@@ -104,7 +100,37 @@ const timingDriver = (
 };
 
 describe('VideoFrameTimingDriver', () => {
-    it('forwards media events through callbacks and detaches them on unbind', () => {
+    it('resolves internal seek completion from the native seeked event', async () => {
+        const video = new FakeVideo();
+        const driver = timingDriver(videoSource(video), {});
+        driver.bind();
+
+        driver.expectInternalSeek();
+        const seeked = driver.waitForSeeked();
+        video.seek(3);
+        await seeked;
+
+        expect(video.currentTime).toBe(3);
+        driver.unbind();
+    });
+
+    it('does not preserve an internal marker for an unassociated seek', () => {
+        const video = new FakeVideo();
+        const cancellations: boolean[] = [];
+        const driver = timingDriver(videoSource(video), {
+            onCancel: (preserveExpectedDiscontinuity) => cancellations.push(Boolean(preserveExpectedDiscontinuity)),
+        });
+        driver.bind();
+
+        driver.expectInternalSeek();
+        video.dispatchEvent(new Event('seeking'));
+        video.dispatchEvent(new Event('seeking'));
+
+        expect(cancellations).toEqual([true, false]);
+        driver.unbind();
+    });
+
+    it('forwards media events through callbacks and detaches them on unbind', async () => {
         const video = new FakeVideo();
         const events: string[] = [];
         const driver = new VideoFrameTimingDriver(videoSource(video), {
@@ -119,6 +145,7 @@ describe('VideoFrameTimingDriver', () => {
         driver.bind();
 
         video.play();
+        await flush();
         video.playbackRate = 1.5;
         video.dispatchEvent(new Event('ratechange'));
         video.dispatchEvent(new Event('durationchange'));
@@ -136,7 +163,34 @@ describe('VideoFrameTimingDriver', () => {
         expect(events).toEqual(['play', 'rate:1.5', 'duration', 'seeked:3000', 'pause', 'error']);
     });
 
-    it('registers one frame callback at a time and stops while paused', async () => {
+    it('does not report transient playback-rate changes while seeking', () => {
+        const video = new FakeVideo();
+        const playbackRates: number[] = [];
+        const driver = new VideoFrameTimingDriver(videoSource(video), {
+            onPlay: () => {},
+            onPause: () => {},
+            onSeeked: () => {},
+            onPlaybackRateChanged: (playbackRate) => playbackRates.push(playbackRate),
+            onDurationChanged: () => {},
+            onTimeUpdate: () => {},
+            onError: () => {},
+        });
+        driver.bind();
+
+        video.dispatchEvent(new Event('seeking'));
+        video.playbackRate = 0;
+        video.dispatchEvent(new Event('ratechange'));
+        expect(playbackRates).toEqual([]);
+
+        video.playbackRate = 1;
+        video.dispatchEvent(new Event('seeked'));
+        video.dispatchEvent(new Event('ratechange'));
+
+        expect(playbackRates).toEqual([1]);
+        driver.unbind();
+    });
+
+    it('samples presented frames while playing and stops updating when paused', async () => {
         const video = new FakeVideo();
         const updates: number[] = [];
         const driver = timingDriver(videoSource(video), {
@@ -147,16 +201,15 @@ describe('VideoFrameTimingDriver', () => {
         });
         driver.bind();
 
-        expect(video.pendingFrameCallbacks).toBe(0);
         video.play();
-        expect(video.pendingFrameCallbacks).toBe(1);
         video.present(100);
         await flush();
         expect(updates).toEqual([100]);
-        expect(video.pendingFrameCallbacks).toBe(1);
 
         video.pause();
-        expect(video.pendingFrameCallbacks).toBe(0);
+        video.present(200);
+        await flush();
+        expect(updates).toEqual([100]);
         driver.unbind();
     });
 
@@ -344,7 +397,6 @@ describe('VideoFrameTimingDriver', () => {
 
         expect(updates).toEqual([]);
         expect(discontinuities).toEqual([0, 5000]);
-        expect(video.pendingFrameCallbacks).toBe(1);
         driver.unbind();
     });
 
@@ -361,7 +413,6 @@ describe('VideoFrameTimingDriver', () => {
         await flush();
 
         expect(discontinuities).toEqual([0, 5000]);
-        expect(video.pendingFrameCallbacks).toBe(0);
         driver.unbind();
     });
 
@@ -392,19 +443,23 @@ describe('VideoFrameTimingDriver', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
         });
         const repeatSeeks: number[] = [];
+        const driverRef: { current?: VideoFrameTimingDriver } = {};
         const executor = new PlaybackPlanExecutor(plan, video.currentTime * 1000, {
+            play: async () => {},
             paused: () => video.paused,
             pause: () => video.pause(),
             seek: async (timestampMs) => {
                 repeatSeeks.push(timestampMs);
+                driverRef.current!.expectInternalSeek();
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
             correctTimestamp: async (timestampMs) => {
+                driverRef.current!.expectInternalSeek();
                 video.seek(timestampMs / 1000);
+                return true;
             },
             showingSubtitlesChanged: () => {},
-            afterCondensedSeek: async () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs),
@@ -412,9 +467,11 @@ describe('VideoFrameTimingDriver', () => {
                 const discontinuity = executor.consumeDiscontinuity(timestampMs);
                 executor.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
             },
-            onCancel: () => executor.cancelPendingOperations(true),
+            onCancel: (preserveExpectedDiscontinuity) =>
+                executor.cancelPendingOperations(preserveExpectedDiscontinuity),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
+        driverRef.current = driver;
         driver.bind();
 
         video.play();
@@ -432,7 +489,7 @@ describe('VideoFrameTimingDriver', () => {
         driver.unbind();
     });
 
-    it('preserves a bounded repeat count for repeat-only native seeks', async () => {
+    it('preserves internal repeat counts but resets them after an external native seek', async () => {
         const video = new FakeVideo();
         const subtitle: IndexedSubtitleModel = {
             text: 'one',
@@ -459,29 +516,37 @@ describe('VideoFrameTimingDriver', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
         });
         const repeatSeeks: number[] = [];
+        const discontinuities: number[] = [];
+        const driverRef: { current?: VideoFrameTimingDriver } = {};
         const executor = new PlaybackPlanExecutor(plan, video.currentTime * 1000, {
+            play: async () => {},
             paused: () => video.paused,
             pause: () => video.pause(),
             seek: async (timestampMs) => {
                 repeatSeeks.push(timestampMs);
+                driverRef.current!.expectInternalSeek();
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
             correctTimestamp: async (timestampMs) => {
+                driverRef.current!.expectInternalSeek();
                 video.seek(timestampMs / 1000);
+                return true;
             },
             showingSubtitlesChanged: () => {},
-            afterCondensedSeek: async () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs),
             onDiscontinuity: (timestampMs) => {
+                discontinuities.push(timestampMs);
                 const discontinuity = executor.consumeDiscontinuity(timestampMs);
                 executor.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
             },
-            onCancel: () => executor.cancelPendingOperations(true),
+            onCancel: (preserveExpectedDiscontinuity) =>
+                executor.cancelPendingOperations(preserveExpectedDiscontinuity),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
+        driverRef.current = driver;
         driver.bind();
 
         video.play();
@@ -491,6 +556,14 @@ describe('VideoFrameTimingDriver', () => {
         await flushAll();
 
         expect(repeatSeeks).toEqual([1000]);
+
+        video.seek(1.5);
+        await flushAll();
+        expect(discontinuities).toContain(1500);
+        video.present(2100);
+        await flushAll();
+
+        expect(repeatSeeks).toEqual([1000, 1000]);
 
         driver.unbind();
     });
@@ -533,19 +606,23 @@ describe('VideoFrameTimingDriver', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
         });
         const seeks: number[] = [];
+        const driverRef: { current?: VideoFrameTimingDriver } = {};
         const executor = new PlaybackPlanExecutor(plan, video.currentTime * 1000, {
+            play: async () => {},
             paused: () => video.paused,
             pause: () => video.pause(),
             seek: async (timestampMs) => {
                 seeks.push(timestampMs);
+                driverRef.current!.expectInternalSeek();
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
             correctTimestamp: async (timestampMs) => {
+                driverRef.current!.expectInternalSeek();
                 video.seek(timestampMs / 1000);
+                return true;
             },
             showingSubtitlesChanged: () => {},
-            afterCondensedSeek: async () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs),
@@ -553,9 +630,11 @@ describe('VideoFrameTimingDriver', () => {
                 const discontinuity = executor.consumeDiscontinuity(timestampMs);
                 executor.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
             },
-            onCancel: () => executor.cancelPendingOperations(true),
+            onCancel: (preserveExpectedDiscontinuity) =>
+                executor.cancelPendingOperations(preserveExpectedDiscontinuity),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
+        driverRef.current = driver;
         driver.bind();
 
         video.play();
@@ -607,7 +686,6 @@ describe('VideoFrameTimingDriver', () => {
         video.play();
 
         expect(discontinuities).toEqual([2345]);
-        expect(video.pendingFrameCallbacks).toBe(1);
 
         driver.unbind();
     });

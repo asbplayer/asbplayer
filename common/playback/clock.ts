@@ -2,7 +2,7 @@ export type ClockEvent = 'stop' | 'start' | 'settime' | 'rate';
 
 export type ClockNow = () => number;
 
-/** A monotonic, millisecond-based media clock for playback without a media element. */
+/** A monotonic millisecond-based media clock for playback without a media element. */
 export default class Clock {
     private accumulatedMs = 0;
     private started = false;

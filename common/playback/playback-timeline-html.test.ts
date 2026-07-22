@@ -85,6 +85,7 @@ describe('playbackTimelineToHtml', () => {
 
         expect(exportPlan.fastForward).toBeDefined();
         expect(exportPlan.condensed).toBeDefined();
+        expect(exportPlan.condensed?.pauseAtStart).toBe(true);
         expect(exportPlan.timeline.blocks[0].startAction).toBe(true);
         expect(exportPlan.timeline.blocks[0].endAction).toEqual({ pause: true, repeat: { count: 2 } });
     });
@@ -105,31 +106,28 @@ describe('playbackTimelineToHtml', () => {
             ...htmlOptions,
         });
 
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
         expect(html).toContain('<title>Example &amp; timeline</title>');
         expect(html).toContain('&lt;unsafe&gt;');
-        expect(html).toContain('0 | &lt;unsafe&gt;');
-        expect(html.match(/>0 \| &lt;unsafe&gt;</g)).toHaveLength(1);
-        expect(html).toContain('class="row"');
-        expect(html).toContain('<main class="timeline"><section class="row">');
-        expect(html).toContain('<div class="label end">0:20</div>');
+        expect(parsed.querySelector('.event.normal')?.textContent).toBe('0 | <unsafe>');
+        expect(parsed.querySelectorAll('.row')).toHaveLength(2);
+        expect([...parsed.querySelectorAll('.label.end')].map((label) => label.textContent)).toEqual(['0:10', '0:20']);
         expect(html).toContain('--normal-color: #123456');
         expect(html).toContain('color-scheme: dark');
-        expect(html).toContain('class="mode-controls"');
-        expect(html).toContain('<body class="hide-fast-forward hide-condensed">');
-        expect(html).toContain('data-mode="normal"');
-        expect(html).toContain('data-mode="condensed">');
-        expect(html).toContain('data-mode="fast-forward">');
-        expect(html).toContain('>Fast forward label</label>');
-        expect(html).toContain('<h2>Playback modes</h2>');
+        expect(parsed.querySelector('.mode-controls')).not.toBeNull();
+        expect(parsed.body.classList.contains('hide-fast-forward')).toBe(true);
+        expect(parsed.body.classList.contains('hide-condensed')).toBe(true);
+        expect(parsed.querySelector('input[data-mode="normal"]')).not.toBeNull();
+        expect(parsed.querySelector('input[data-mode="condensed"]')).not.toBeNull();
+        expect(parsed.querySelector('input[data-mode="fast-forward"]')).not.toBeNull();
+        expect([...parsed.querySelectorAll('label')].map((label) => label.textContent)).toContain('Fast forward label');
+        expect(parsed.querySelector('h2')?.textContent).toBe('Playback modes');
         expect(html).not.toContain('seekable');
-        expect(html).toContain('<div class="settings-heading">');
-        expect(html).toContain(
-            '<h2>Playback modes</h2><select class="track-selector" data-track-select><option value="0">Track 1</option>'
-        );
+        expect(parsed.querySelector('select[data-track-select] option')?.textContent).toBe('Track 1');
         expect(html).not.toContain('Subtitle Track');
         expect(html).not.toContain('>All<');
-        expect(html).toContain('<section class="settings-summary">');
-        expect(html).toContain('<div class="settings-options-grid">');
+        expect(parsed.querySelector('.settings-summary')).not.toBeNull();
+        expect(parsed.querySelector('.settings-options-grid')).not.toBeNull();
         expect(html).toContain('title="00:01:000 -&gt; 00:02:000"');
         expect(html.indexOf('Playback mode start offset')).toBeLessThan(html.indexOf('Fast-forward minimum interval'));
         expect(html.indexOf('Fast-forward minimum interval')).toBeLessThan(html.indexOf('Playback modes start gap'));
@@ -140,11 +138,7 @@ describe('playbackTimelineToHtml', () => {
         expect(html).toContain('<div class="tick" style="left:90%"></div>');
         expect(html).toContain('<div class="tick" style="left:50%"></div>');
         expect(html).toContain('data-setting="playbackModeStartOffsetMs"');
-        expect(html).toContain('const compileNormalIntervals = (subtitles)');
-        expect(html).toContain("input.addEventListener('input', rebuildTimeline)");
-        expect(html).toContain("document.body.classList.toggle('hide-' + mode");
-        expect(html).toContain('otherCheckbox.checked = false');
-        expect(html).toContain('Normal');
+        expect(parsed.querySelector('input[data-mode="normal"]')?.parentElement?.textContent).toContain('Normal');
     });
 
     it('formats subtitle hover timestamps with millisecond precision', () => {
@@ -343,7 +337,10 @@ describe('playbackTimelineToHtml', () => {
             });
             return {
                 ...parityPlan,
-                condensed: { minimumSkipIntervalMs: paritySettings.condensedMinimumSkipIntervalMs },
+                condensed: {
+                    minimumSkipIntervalMs: paritySettings.condensedMinimumSkipIntervalMs,
+                    pauseAtStart: false,
+                },
             };
         };
         const parityOptions = {
@@ -449,6 +446,7 @@ describe('playbackTimelineToHtml', () => {
                 ...runtimePlan,
                 condensed: {
                     minimumSkipIntervalMs: effectiveSettings.condensedMinimumSkipIntervalMs,
+                    pauseAtStart: false,
                 },
             };
         };

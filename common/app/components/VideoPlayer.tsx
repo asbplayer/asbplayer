@@ -47,7 +47,7 @@ import {
     ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
 } from '@project/common/annotations';
 import Clock from '@project/common/playback/clock';
-import { hasEnabledPlaybackModes, playbackModeNotification } from '@project/common/playback/playback-mode-controller';
+import { hasEnabledPlaybackModes, playbackModeNotifications } from '@project/common/playback/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/video-frame-timing-driver';
 import Controls, { Point } from './Controls';
@@ -492,32 +492,45 @@ export default function VideoPlayer({
     const onErrorRef = useRef(onError);
     onErrorRef.current = onError;
 
+    const notifyPlaybackRate = useCallback((options: { notify: boolean; playbackRate: number }) => {
+        if (!options.notify) return;
+        setAlertSeverity('info');
+        const text = i18n.t('info.playbackRate', { rate: options.playbackRate.toFixed(1) });
+        setAlertMessage(text);
+        setAlertOpen(true);
+    }, []);
+
     const updatePlaybackRate = useCallback(
         (playbackRate: number, forwardToPlayer: boolean) => {
             if (forwardToPlayer) playerChannel.playbackRate(playbackRate);
+            const playbackEngine = playbackEngineRef.current;
+            if (!playbackEngine) return;
 
-            playbackEngineRef.current?.setPlaybackRate(playbackRate);
+            notifyPlaybackRate(playbackEngine.playbackRateChanged(playbackRate));
         },
-        [playerChannel]
+        [notifyPlaybackRate, playerChannel]
     );
     const synchronizePlaybackModesRef = useRef(synchronizePlaybackModes);
     synchronizePlaybackModesRef.current = synchronizePlaybackModes;
 
-    const handlePlaybackRateChanged = useCallback((playbackRate: number) => {
-        const playbackEngine = playbackEngineRef.current;
-        if (!playbackEngine) return;
+    const handlePlaybackRateChanged = useCallback(
+        (playbackRate: number) => {
+            playerChannel.playbackRate(playbackRate, false);
+            const playbackEngine = playbackEngineRef.current;
+            if (!playbackEngine) return;
 
-        const { notify } = playbackEngine.playbackRateChanged(playbackRate);
-        if (notify) {
-            setAlertSeverity('info');
-            const text = i18n.t('info.playbackRate', { rate: playbackRate.toFixed(1) });
-            setAlertMessage(text);
-            setAlertOpen(true);
-        }
-    }, []);
-    const handleDurationChanged = useCallback((durationMs: number) => {
-        playbackEngineRef.current?.durationChanged(durationMs);
-    }, []);
+            notifyPlaybackRate(playbackEngine.playbackRateChanged(playbackRate));
+        },
+        [notifyPlaybackRate, playerChannel]
+    );
+    const handleDurationChanged = useCallback(
+        (durationMs: number) => {
+            setLengthMs(durationMs);
+            playerChannel.duration(durationMs / 1000);
+            playbackEngineRef.current?.durationChanged(durationMs);
+        },
+        [playerChannel]
+    );
 
     const videoRefCallback = useCallback(
         (element: HTMLVideoElement | null) => {
@@ -580,8 +593,14 @@ export default function VideoPlayer({
                     removeEventListener: (type, listener) => video.removeEventListener(type, listener),
                 },
                 {
-                    onPlay: updatePlayerState,
-                    onPause: updatePlayerState,
+                    onPlay: () => {
+                        clock.start();
+                        updatePlayerState();
+                    },
+                    onPause: () => {
+                        clock.stop();
+                        updatePlayerState();
+                    },
                     onSeeked: (timestampMs) => {
                         clock.setTime(timestampMs); // rVFC may not run during pause
                         updatePlayerState();
@@ -614,9 +633,10 @@ export default function VideoPlayer({
                     synchronizePlaybackModesRef.current(transition.modes);
                     if (!transition.added.size && !transition.removed.size) return;
 
-                    for (const locKey of playbackModeNotification(transition)) {
+                    const { notifications, join } = playbackModeNotifications(transition);
+                    if (notifications.length) {
                         setAlertSeverity('info');
-                        setAlertMessage(t(locKey));
+                        setAlertMessage(notifications.map((n) => t(n)).join(join));
                         setAlertOpen(true);
                     }
                     if (!playModeSelectorOpen.current) setPlayModeSelectorRequest((request) => (request ?? 0) + 1);
@@ -1104,22 +1124,19 @@ export default function VideoPlayer({
     useEffect(() => {
         return keyBinder.bindAdjustPlaybackRate(
             (event, increase) => {
+                const playbackEngine = playbackEngineRef.current;
+                if (!playbackEngine) return;
                 event.preventDefault();
-                const video = videoRef.current;
 
-                if (!video) {
-                    return;
-                }
-
-                if (increase) {
-                    updatePlaybackRate(Math.min(5, video.playbackRate + miscSettings.speedChangeStep), true);
-                } else {
-                    updatePlaybackRate(Math.max(0.1, video.playbackRate - miscSettings.speedChangeStep), true);
-                }
+                notifyPlaybackRate(
+                    playbackEngine.adjustPlaybackRate(
+                        increase ? miscSettings.speedChangeStep : -miscSettings.speedChangeStep
+                    )
+                );
             },
             () => false
         );
-    }, [updatePlaybackRate, keyBinder, miscSettings]);
+    }, [updatePlaybackRate, keyBinder, miscSettings, notifyPlaybackRate]);
 
     useEffect(() => {
         return keyBinder.bindToggleSubtitles(

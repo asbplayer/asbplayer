@@ -20,11 +20,6 @@ export const playbackModesFromSettings = ({
 export const hasEnabledPlaybackModes = (modes: ReadonlySet<PlayMode>): boolean =>
     [...modes].some((mode) => mode !== PlayMode.normal);
 
-export const shouldShowPlaybackRateNotification = (
-    playbackRateNotificationEnabled: boolean,
-    modes: ReadonlySet<PlayMode>
-): boolean => playbackRateNotificationEnabled && !modes.has(PlayMode.fastForward);
-
 export const normalizePlaybackModes = (modes: ReadonlySet<PlayMode>): Set<PlayMode> => {
     const normalized = new Set(modes);
     if (normalized.size === 0) {
@@ -43,8 +38,10 @@ const modeChanges = (
     removed: new Set([...oldModes].filter((mode) => !newModes.has(mode))),
 });
 
-export const playbackModeNotification = (transition: PlayModeTransition): string[] => {
-    const getLocKey = (mode: PlayMode, enabled: boolean): string | undefined => {
+export const playbackModeNotifications = (
+    transition: PlayModeTransition
+): { notifications: string[]; join: string } => {
+    const getLocKey = (mode: PlayMode, enabled: boolean): string => {
         switch (mode) {
             case PlayMode.autoPause:
                 return enabled ? 'info.enabledAutoPause' : 'info.disabledAutoPause';
@@ -54,24 +51,21 @@ export const playbackModeNotification = (transition: PlayModeTransition): string
                 return enabled ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback';
             case PlayMode.repeat:
                 return enabled ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback';
-            case PlayMode.normal:
-                return enabled ? 'info.disabledAllPlayModes' : undefined;
+            default:
+                return 'info.disabledAllPlayModes';
         }
     };
 
     const notifications: string[] = [];
     for (const mode of transition.removed) {
-        const locKey = getLocKey(mode, false);
-        if (locKey !== undefined) notifications.push(locKey);
+        if (mode === PlayMode.normal) continue;
+        notifications.push(getLocKey(mode, false));
     }
-    for (const mode of transition.added) {
-        const locKey = getLocKey(mode, true);
-        if (locKey !== undefined) notifications.push(locKey);
-    }
-    return notifications;
+    for (const mode of transition.added) notifications.push(getLocKey(mode, true));
+    return { notifications, join: ' | ' };
 };
 
-/** Coordinates playback-mode selection; media behavior is owned by PlaybackPlanExecutor. */
+/** Coordinates playback-mode selection. */
 export default class PlaybackModeController {
     private modes: Set<PlayMode>;
 

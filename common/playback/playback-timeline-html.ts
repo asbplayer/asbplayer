@@ -21,7 +21,7 @@ export const buildPlaybackTimelineExportPlan = <T extends SubtitleModel>({
         subtitles,
         displaySubtitles: subtitles,
         durationMs,
-        playModes: new Set([PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat]),
+        playModes: new Set([PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat, PlayMode.condensed]),
         autoPausePreference: AutoPausePreference.atStartAndEnd,
         playbackModeStartOffset: settings.playbackModeStartOffset,
         playbackModeEndOffset: settings.playbackModeEndOffset,
@@ -34,13 +34,7 @@ export const buildPlaybackTimelineExportPlan = <T extends SubtitleModel>({
         fastForwardPlaybackMinimumSkipIntervalMs: settings.fastForwardPlaybackMinimumSkipIntervalMs,
     });
 
-    return {
-        ...plan,
-        // The export displays the condensed layer independently alongside the runtime playback actions.
-        condensed: {
-            minimumSkipIntervalMs: settings.streamingCondensedPlaybackMinimumSkipIntervalMs,
-        },
-    };
+    return plan;
 };
 
 export interface PlaybackTimelineOptionLabels {

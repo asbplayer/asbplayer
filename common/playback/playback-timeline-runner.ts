@@ -1,5 +1,6 @@
 import type { SubtitleModel } from '@project/common';
 import PlaybackTimeline, {
+    type PlaybackTimelineBlock,
     type PlaybackTimelineEvent,
     type PlaybackTimelineSegment,
     type PlaybackTimelineState,
@@ -13,31 +14,41 @@ export interface PlaybackTimelineActionResult {
     readonly seeked: boolean;
 }
 
-export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
-    onStart(event: PlaybackTimelineEvent): boolean | Promise<boolean>;
-    onEnd(event: PlaybackTimelineEvent): PlaybackTimelineActionResult | Promise<PlaybackTimelineActionResult>;
+export interface PlaybackTimelineRunnerCallbacks<
+    T extends SubtitleModel,
+    Block extends PlaybackTimelineBlock = PlaybackTimelineBlock,
+> {
+    onStart(event: PlaybackTimelineEvent<Block>): boolean | Promise<boolean>;
+    onEnd(event: PlaybackTimelineEvent<Block>): PlaybackTimelineActionResult | Promise<PlaybackTimelineActionResult>;
     correctAutoPause(timestampMs: number): Promise<void>;
     /** Reconciles persistent state only: subtitles, playback rate, and other state that must survive seeks. */
-    onState(state: PlaybackTimelineState, segment: PlaybackTimelineSegment<T>): Promise<void>;
+    onState(state: PlaybackTimelineState<Block>, segment: PlaybackTimelineSegment<T>): Promise<void>;
     /** Applies non-edge continuous behavior such as condensed playback after persistent state is current. */
     onAfterState(timestampMs: number): boolean | Promise<boolean>;
 }
 
 /** Applies precomputed crossed boundaries in time order and stops at the first position-changing action. */
-export default class PlaybackTimelineRunner<T extends SubtitleModel> {
-    private timeline: PlaybackTimeline<T>;
-    private readonly cursor: PlaybackTimelineCursor<T>;
-    private readonly callbacks: PlaybackTimelineRunnerCallbacks<T>;
+export default class PlaybackTimelineRunner<
+    T extends SubtitleModel,
+    Block extends PlaybackTimelineBlock = PlaybackTimelineBlock,
+> {
+    private timeline: PlaybackTimeline<T, Block>;
+    private readonly cursor: PlaybackTimelineCursor<T, Block>;
+    private readonly callbacks: PlaybackTimelineRunnerCallbacks<T, Block>;
     private applyInitialContinuousState = true;
 
-    constructor(timeline: PlaybackTimeline<T>, timestampMs: number, callbacks: PlaybackTimelineRunnerCallbacks<T>) {
+    constructor(
+        timeline: PlaybackTimeline<T, Block>,
+        timestampMs: number,
+        callbacks: PlaybackTimelineRunnerCallbacks<T, Block>
+    ) {
         this.timeline = timeline;
         this.cursor = new PlaybackTimelineCursor(timeline, timestampMs);
         this.callbacks = callbacks;
     }
 
     replaceTimeline(
-        timeline: PlaybackTimeline<T>,
+        timeline: PlaybackTimeline<T, Block>,
         timestampMs: number,
         options: { applyContinuousState: boolean }
     ): void {
@@ -48,12 +59,6 @@ export default class PlaybackTimelineRunner<T extends SubtitleModel> {
 
     reset(timestampMs: number, includeAtTimestamp = true): void {
         this.cursor.reset(timestampMs, includeAtTimestamp);
-        this.applyInitialContinuousState = false;
-    }
-
-    shiftTimeline(deltaMs: number, timestampMs: number): void {
-        this.timeline.shift(deltaMs);
-        this.cursor.reset(timestampMs, false);
         this.applyInitialContinuousState = false;
     }
 
@@ -95,6 +100,7 @@ export default class PlaybackTimelineRunner<T extends SubtitleModel> {
     }
 
     private async applyState(timestampMs: number): Promise<void> {
-        await this.callbacks.onState(this.timeline.stateAt(timestampMs), this.timeline.segmentAt(timestampMs));
+        const lookup = this.timeline.lookupAt(timestampMs);
+        await this.callbacks.onState(lookup.state, lookup.segment);
     }
 }

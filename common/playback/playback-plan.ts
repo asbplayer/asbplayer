@@ -29,6 +29,7 @@ export interface PlaybackPlanFastForward {
 
 export interface PlaybackPlanCondensed {
     readonly minimumSkipIntervalMs: number;
+    readonly pauseAtStart: boolean;
 }
 
 /** Playback policy compiled and applied beside its owning media element. */
@@ -65,6 +66,7 @@ const autoPausePreferenceIncludes = (
 ) => preference === edge || preference === AutoPausePreference.atStartAndEnd;
 
 const normalizedRepeatCount = (repeatCount: number): number => Math.max(0, Math.floor(repeatCount));
+const finiteOrZero = (value: number): number => (Number.isFinite(value) ? value : 0);
 export const timestampComparisonToleranceMs = 1e-6;
 
 export const buildPlaybackPlan = <T extends SubtitleModel>({
@@ -87,6 +89,8 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     const autoPauseAtStart = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
     const autoPauseAtEnd = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atEnd);
     const repeat = playModes.has(PlayMode.repeat);
+    const startOffset = finiteOrZero(playbackModeStartOffset);
+    const startGapOffset = Math.min(0, finiteOrZero(playbackModesStartGap));
     const timeline = compilePlaybackTimeline({
         subtitles,
         displaySubtitles,
@@ -123,7 +127,13 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
         },
         playbackRate,
         ...(playModes.has(PlayMode.condensed)
-            ? { condensed: { minimumSkipIntervalMs: condensedPlaybackMinimumSkipIntervalMs } }
+            ? {
+                  condensed: {
+                      minimumSkipIntervalMs: condensedPlaybackMinimumSkipIntervalMs,
+                      pauseAtStart:
+                          autoPauseAtStart && startOffset <= 0 && Math.abs(startGapOffset) <= Math.abs(startOffset),
+                  },
+              }
             : {}),
         ...(playModes.has(PlayMode.fastForward)
             ? {
@@ -142,16 +152,15 @@ export const playbackPlanIsActive = (plan: PlaybackPlan): boolean =>
     plan.fastForward !== undefined ||
     plan.timeline.blocks.some((block) => block.startAction !== undefined || block.endAction !== undefined);
 
-export const playbackRateForPlanState = <T extends SubtitleModel>(
+export const fastForwardingForPlanState = <T extends SubtitleModel>(
     plan: PlaybackPlan<T>,
     state: PlaybackTimelineState
-): number | undefined => {
-    if (plan.fastForward === undefined) return;
-    if (state.current !== undefined) return plan.playbackRate;
+): boolean => {
+    if (plan.fastForward === undefined || state.current !== undefined) return false;
 
     const previousGapEdge = state.previous?.playbackModesEndGapMs;
     const nextGapEdge = state.next?.playbackModesStartGapMs;
-    if (previousGapEdge === undefined && nextGapEdge === undefined) return plan.fastForward.playbackRate;
+    if (previousGapEdge === undefined && nextGapEdge === undefined) return true;
 
     let gapDurationMs: number;
     if (previousGapEdge === undefined) {
@@ -161,9 +170,7 @@ export const playbackRateForPlanState = <T extends SubtitleModel>(
     } else {
         gapDurationMs = nextGapEdge - previousGapEdge + 1;
     }
-    return gapDurationMs + timestampComparisonToleranceMs >= plan.fastForward.minimumSkipIntervalMs
-        ? plan.fastForward.playbackRate
-        : plan.playbackRate;
+    return gapDurationMs + timestampComparisonToleranceMs >= plan.fastForward.minimumSkipIntervalMs;
 };
 
 type ObjectComparators<T extends object> = {
@@ -227,6 +234,7 @@ function arePlaybackPlanBlocksEqual(left: PlaybackPlanBlock, right: PlaybackPlan
 
 const playbackPlanCondensedComparators: ObjectComparators<PlaybackPlanCondensed> = {
     minimumSkipIntervalMs: (left, right) => left.minimumSkipIntervalMs === right.minimumSkipIntervalMs,
+    pauseAtStart: (left, right) => left.pauseAtStart === right.pauseAtStart,
 };
 
 function arePlaybackPlanCondensedEqual(

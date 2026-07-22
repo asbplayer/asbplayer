@@ -3,9 +3,9 @@ import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/comm
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-engine-test-utils';
 import {
     buildPlaybackPlan,
+    fastForwardingForPlanState,
     playbackPlanIsActive,
     playbackPlansEqual,
-    playbackRateForPlanState,
 } from '@project/common/playback/playback-plan';
 import PlaybackTimeline from '@project/common/playback/playback-timeline';
 
@@ -154,7 +154,7 @@ describe('buildPlaybackPlan', () => {
             repeatCountPreference: 2.9,
         });
 
-        expect(plan.condensed).toEqual({ minimumSkipIntervalMs: 500 });
+        expect(plan.condensed).toEqual({ minimumSkipIntervalMs: 500, pauseAtStart: true });
         expect(plan.timeline.blocks[0].endAction).toEqual({
             pause: true,
             repeat: {
@@ -179,13 +179,17 @@ describe('buildPlaybackPlan', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 1000,
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const rateAt = (timestampMs: number) =>
+            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+                ? plan.fastForward!.playbackRate
+                : plan.playbackRate;
 
-        expect(playbackRateForPlanState(plan, timeline.stateAt(2000))).toBe(2.5);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(3500))).toBe(2.5);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(3998))).toBe(2.5);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(3999))).toBe(1.25);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(4500))).toBe(1.25);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(5000))).toBe(2.5);
+        expect(rateAt(2000)).toBe(2.5);
+        expect(rateAt(3500)).toBe(2.5);
+        expect(rateAt(3998)).toBe(2.5);
+        expect(rateAt(3999)).toBe(1.25);
+        expect(rateAt(4500)).toBe(1.25);
+        expect(rateAt(5000)).toBe(2.5);
     });
 
     it('keeps an entire subminimum subtitle gap at the normal rate', () => {
@@ -197,10 +201,14 @@ describe('buildPlaybackPlan', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 1000,
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const rateAt = (timestampMs: number) =>
+            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+                ? plan.fastForward!.playbackRate
+                : plan.playbackRate;
 
-        expect(playbackRateForPlanState(plan, timeline.stateAt(2000))).toBe(1.25);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(2400))).toBe(1.25);
-        expect(playbackRateForPlanState(plan, timeline.stateAt(2748))).toBe(1.25);
+        expect(rateAt(2000)).toBe(1.25);
+        expect(rateAt(2400)).toBe(1.25);
+        expect(rateAt(2748)).toBe(1.25);
     });
 
     it('switches fast-forward at visible subtitle boundaries instead of playback action offsets', () => {
@@ -210,7 +218,10 @@ describe('buildPlaybackPlan', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
-        const rateAt = (timestampMs: number) => playbackRateForPlanState(plan, timeline.stateAt(timestampMs));
+        const rateAt = (timestampMs: number) =>
+            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+                ? plan.fastForward!.playbackRate
+                : plan.playbackRate;
 
         expect(rateAt(998)).toBe(2.5);
         expect(rateAt(999)).toBe(1.25);
@@ -226,7 +237,10 @@ describe('buildPlaybackPlan', () => {
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
-        const rateAt = (timestampMs: number) => playbackRateForPlanState(plan, timeline.stateAt(timestampMs));
+        const rateAt = (timestampMs: number) =>
+            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+                ? plan.fastForward!.playbackRate
+                : plan.playbackRate;
 
         expect(rateAt(798)).toBe(2.5);
         expect(rateAt(799)).toBe(1.25);

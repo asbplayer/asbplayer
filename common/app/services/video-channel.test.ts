@@ -104,6 +104,35 @@ describe('VideoChannel playback intents', () => {
         expect(received).toEqual([new Set([PlayMode.fastForward, PlayMode.repeat])]);
     });
 
+    it('replays the latest paused state to late ready subscribers', () => {
+        const protocol = new TestVideoProtocol();
+        const channel = new VideoChannel(protocol);
+        protocol.receive({
+            command: 'ready',
+            duration: 100,
+            currentTime: 0,
+            paused: true,
+            playbackRate: 1,
+        });
+        const received: boolean[] = [];
+
+        channel.onReady((paused) => received.push(paused));
+
+        expect(received).toEqual([true]);
+    });
+
+    it('updates duration and notifies duration subscribers', () => {
+        const protocol = new TestVideoProtocol();
+        const channel = new VideoChannel(protocol);
+        const received: number[] = [];
+        channel.onDuration((duration) => received.push(duration));
+
+        protocol.receive({ command: 'duration', value: 200 });
+
+        expect(channel.duration).toBe(200);
+        expect(received).toEqual([200]);
+    });
+
     it('reports whether current-time changes should echo', () => {
         const protocol = new TestVideoProtocol();
         const channel = new VideoChannel(protocol);

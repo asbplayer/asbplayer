@@ -361,6 +361,11 @@ export interface ReadyFromVideoMessage extends Message {
     readonly playbackRate: number;
 }
 
+export interface DurationFromVideoMessage extends Message {
+    readonly command: 'duration';
+    readonly value: number;
+}
+
 export interface ReadyToVideoMessage extends Message {
     readonly command: 'ready';
     readonly duration: number;

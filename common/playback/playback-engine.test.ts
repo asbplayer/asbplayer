@@ -19,6 +19,8 @@ class FakeTimingDriver implements TimingDriver {
     durationMsValue = 6000;
     durationMsReads = 0;
     isPaused = false;
+    expectedInternalSeekCalls = 0;
+    cancelExpectedInternalSeekCalls = 0;
 
     bind(): void {
         if (this.bound) return;
@@ -34,6 +36,18 @@ class FakeTimingDriver implements TimingDriver {
 
     setCallbacks(callbacks: TimingDriverCallbacks): void {
         this.callbacks = callbacks;
+    }
+
+    expectInternalSeek(): void {
+        this.expectedInternalSeekCalls++;
+    }
+
+    waitForSeeked(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    cancelExpectedInternalSeek(): void {
+        this.cancelExpectedInternalSeekCalls++;
     }
 
     currentTimeMs(): number {
@@ -263,7 +277,7 @@ describe('PlaybackEngine', () => {
         });
     });
 
-    it('does not reconcile the executor for settings that produce an equal plan', () => {
+    it('keeps visible subtitles stable when an unrelated setting changes', () => {
         const harness = makePlaybackEngine([PlayMode.normal], 1500);
         const showingCount = harness.showing.length;
 
@@ -314,7 +328,7 @@ describe('PlaybackEngine', () => {
         expect(harness.plays).toEqual([2000]);
     });
 
-    it('shifts playback boundaries when the media owner reports an absolute subtitle offset', async () => {
+    it('rebuilds playback boundaries when the media owner reports an absolute subtitle offset', async () => {
         const harness = makePlaybackEngine([PlayMode.autoPause], 500, [subtitle], {
             settings: { autoPausePreference: AutoPausePreference.atStart },
         });
@@ -334,6 +348,19 @@ describe('PlaybackEngine', () => {
 
         expect(harness.pauses).toEqual([2100]);
         expect(harness.seeks).toEqual([1999]);
+    });
+
+    it('clears the internal marker when a seek fails', async () => {
+        const harness = makePlaybackEngine([PlayMode.repeat], 1500, [subtitle], {
+            seek: async () => {
+                throw new Error('seek failed');
+            },
+        });
+
+        await expect(harness.driver.time(2100)).rejects.toThrow('seek failed');
+
+        expect(harness.driver.expectedInternalSeekCalls).toBe(1);
+        expect(harness.driver.cancelExpectedInternalSeekCalls).toBe(1);
     });
 
     it('does not produce non-finite seeks when duration is unavailable', async () => {
@@ -401,7 +428,8 @@ describe('PlaybackEngine', () => {
             },
         });
 
-        expect(setPlaybackRate).not.toHaveBeenCalled();
+        expect(setPlaybackRate).toHaveBeenCalledWith(harness.settings.playbackRate);
+        setPlaybackRate.mockClear();
         rebound.bind();
         expect(setPlaybackRate).toHaveBeenCalledWith(harness.settings.playbackRate);
     });
@@ -412,11 +440,18 @@ describe('PlaybackEngine', () => {
         });
         harness.playbackEngine.bind();
 
-        harness.playbackEngine.setPlaybackRate(1.4);
+        expect(harness.playbackEngine.adjustPlaybackRate(0.4).playbackRate).toBe(1.4);
 
         expect(harness.playbackRates.at(-1)).toBe(1.4);
         expect(harness.savedSettings).toContainEqual({ playbackRate: 1.4 });
         expect(harness.savedSettings).not.toContainEqual({ fastForwardModePlaybackRate: 1.4 });
+    });
+
+    it('only requests a notification when a playback rate setting changes', () => {
+        const harness = makePlaybackEngine([PlayMode.normal]);
+
+        expect(harness.playbackEngine.adjustPlaybackRate(0.4).notify).toBe(true);
+        expect(harness.playbackEngine.adjustPlaybackRate(0).notify).toBe(false);
     });
 
     it('updates and remembers the active fast-forward rate when remembering is enabled', () => {
@@ -425,11 +460,40 @@ describe('PlaybackEngine', () => {
         });
         harness.playbackEngine.bind();
 
-        harness.playbackEngine.setPlaybackRate(3);
+        expect(harness.playbackEngine.adjustPlaybackRate(1).playbackRate).toBe(3);
 
         expect(harness.playbackRates.at(-1)).toBe(3);
         expect(harness.savedSettings).toContainEqual({ fastForwardModePlaybackRate: 3 });
         expect(harness.savedSettings).not.toContainEqual({ playbackRate: 3 });
+    });
+
+    it('updates the active fast-forward rate when the applied media rate is stale', () => {
+        const harness = makePlaybackEngine([PlayMode.fastForward], 0, [subtitle], {
+            settings: { rememberPlaybackRate: true },
+        });
+        harness.playbackEngine.bind();
+        harness.driver.timestampMs = 2500;
+
+        expect(harness.playbackEngine.adjustPlaybackRate(1).playbackRate).toBe(3);
+
+        expect(harness.playbackRates.at(-1)).toBe(3);
+        expect(harness.savedSettings).toContainEqual({ fastForwardModePlaybackRate: 3 });
+        expect(harness.savedSettings).not.toContainEqual({ playbackRate: 3 });
+    });
+
+    it('keeps assigning custom native rate changes to fast-forward', () => {
+        const harness = makePlaybackEngine([PlayMode.fastForward], 2500, [subtitle], {
+            settings: { rememberPlaybackRate: true },
+        });
+        harness.playbackEngine.bind();
+
+        harness.playbackEngine.playbackRateChanged(3.1);
+        harness.playbackEngine.playbackRateChanged(3.2);
+
+        expect(harness.savedSettings).toEqual([
+            { fastForwardModePlaybackRate: 3.1 },
+            { fastForwardModePlaybackRate: 3.2 },
+        ]);
     });
 
     it('does not remember the active fast-forward rate when remembering is disabled', () => {
@@ -438,7 +502,7 @@ describe('PlaybackEngine', () => {
         });
         harness.playbackEngine.bind();
 
-        harness.playbackEngine.setPlaybackRate(3);
+        expect(harness.playbackEngine.adjustPlaybackRate(1).playbackRate).toBe(3);
 
         expect(harness.savedSettings).not.toContainEqual({ fastForwardModePlaybackRate: 3 });
     });

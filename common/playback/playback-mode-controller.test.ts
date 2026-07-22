@@ -2,8 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import PlaybackModeController, {
     hasEnabledPlaybackModes,
+    playbackModeNotifications,
     playbackModesFromSettings,
-    shouldShowPlaybackRateNotification,
 } from '@project/common/playback/playback-mode-controller';
 
 const sortedModes = (modes: Set<PlayMode>) => [...modes].sort((left, right) => left - right);
@@ -69,15 +69,6 @@ describe('playback mode selection', () => {
         { name: 'two enabled modes', modes: [PlayMode.autoPause, PlayMode.repeat], expected: true },
     ])('reports whether $name should be shown on first load', ({ modes, expected }) => {
         expect(hasEnabledPlaybackModes(new Set(modes))).toBe(expected);
-    });
-
-    it.each([
-        { name: 'enabled with no modes', enabled: true, modes: [], expected: true },
-        { name: 'disabled in normal mode', enabled: false, modes: [PlayMode.normal], expected: false },
-        { name: 'enabled in normal mode', enabled: true, modes: [PlayMode.normal], expected: true },
-        { name: 'enabled in fast-forward mode', enabled: true, modes: [PlayMode.fastForward], expected: false },
-    ])('decides whether to show playback-rate notifications when $name', ({ enabled, modes, expected }) => {
-        expect(shouldShowPlaybackRateNotification(enabled, new Set(modes))).toBe(expected);
     });
 
     it.each([
@@ -157,6 +148,14 @@ describe('playback mode selection', () => {
 
         expect(sortedModes(controller.transition(PlayMode.autoPause).modes)).toEqual([PlayMode.autoPause]);
         expect(sortedModes(controller.transition(PlayMode.autoPause).modes)).toEqual([PlayMode.normal]);
+    });
+
+    it('does not report normal mode being disabled when enabling fast-forward', () => {
+        const controller = controllerWithModes(PlayMode.normal);
+
+        expect(playbackModeNotifications(controller.transition(PlayMode.fastForward)).notifications).toEqual([
+            'info.enabledFastForwardPlayback',
+        ]);
     });
 
     it('preserves non-conflicting modes over multiple toggles', () => {

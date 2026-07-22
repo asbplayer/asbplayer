@@ -9,6 +9,7 @@ import {
     CopyMessage,
     CopyToVideoMessage,
     CurrentTimeToVideoMessage,
+    DurationFromVideoMessage,
     FullscreenToggleMessageToVideoMessage,
     HideSubtitlePlayerToggleToVideoMessage,
     MiscSettingsToVideoMessage,
@@ -402,6 +403,11 @@ export default class PlayerChannel {
             playbackRate: playbackRate,
         };
 
+        this.channel?.postMessage(message);
+    }
+
+    duration(duration: number) {
+        const message: DurationFromVideoMessage = { command: 'duration', value: duration };
         this.channel?.postMessage(message);
     }
 

@@ -31,10 +31,15 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private callbacks: TimingDriverCallbacks;
     private _bound = false;
     private seeking = false;
+    private expectedInternalSeek = false;
     private frameHandle?: number;
     private previousFrame?: {
         readonly expectedDisplayTimeMs: number;
         readonly callbackTimeMs: number;
+    };
+    private pendingSeekCompletion?: {
+        readonly promise: Promise<void>;
+        readonly resolve: () => void;
     };
     private readonly updates: TimingUpdateQueue;
     private readonly eventCallbacks: TimingDriverEventCallbacks;
@@ -58,7 +63,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
                     await this.callbacks.onPlaybackStarted();
                 },
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
-                onCancel: () => this.callbacks.onCancel(),
+                onCancel: (preserveExpectedDiscontinuity) => this.callbacks.onCancel(preserveExpectedDiscontinuity),
                 onError: (error) => this.callbacks.onError(error),
             },
             () => this._bound && !this.seeking && !this.video.paused()
@@ -67,6 +72,25 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     setCallbacks(callbacks: TimingDriverCallbacks): void {
         this.callbacks = callbacks;
+    }
+
+    expectInternalSeek(): void {
+        this.completePendingSeek();
+        this.expectedInternalSeek = true;
+        let resolve!: () => void;
+        const promise = new Promise<void>((completion) => {
+            resolve = completion;
+        });
+        this.pendingSeekCompletion = { promise, resolve };
+    }
+
+    waitForSeeked(): Promise<void> {
+        return this.pendingSeekCompletion?.promise ?? Promise.resolve();
+    }
+
+    cancelExpectedInternalSeek(): void {
+        this.expectedInternalSeek = false;
+        this.completePendingSeek();
     }
 
     currentTimeMs(): number {
@@ -112,6 +136,8 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.cancelScheduledUpdate();
         this.updates.clear();
         this.previousFrame = undefined;
+        this.expectedInternalSeek = false;
+        this.completePendingSeek();
     }
 
     private reset(): void {
@@ -119,28 +145,32 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     }
 
     private readonly onPlay = () => {
-        void this.callbacks.onPlaybackStarted().catch((error) => this.callbacks.onError(error));
-        this.schedule();
+        const playbackStarted = this.callbacks.onPlaybackStarted();
+        if (this.pendingSeekCompletion === undefined) this.schedule();
+        void playbackStarted.then(() => this.schedule()).catch((error) => this.callbacks.onError(error));
         this.eventCallbacks.onPlay();
     };
 
     private readonly onPause = () => {
         this.cancelScheduledUpdate();
-        this.updates.clear();
+        this.updates.clear(this.pendingSeekCompletion !== undefined);
         this.previousFrame = undefined;
         this.eventCallbacks.onPause();
     };
 
     private readonly onSeeking = () => {
         this.seeking = true;
+        const preserveExpectedDiscontinuity = this.expectedInternalSeek;
+        this.expectedInternalSeek = false;
         this.cancelScheduledUpdate();
-        this.updates.clear();
+        this.updates.clear(preserveExpectedDiscontinuity);
         this.previousFrame = undefined;
     };
 
     private readonly onSeeked = () => {
         this.seeking = false;
         this.previousFrame = undefined;
+        this.completePendingSeek();
         const timestampMs = this.currentTimeMs();
         this.updates.enqueueDiscontinuity(timestampMs); // rVFC may not run during pause
         this.schedule();
@@ -148,6 +178,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     };
 
     private readonly onRateChange = () => {
+        if (this.seeking) return;
         this.eventCallbacks.onPlaybackRateChanged(this.video.playbackRate());
     };
 
@@ -203,5 +234,10 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         if (this.frameHandle === undefined) return;
         this.video.cancelVideoFrameCallback(this.frameHandle);
         this.frameHandle = undefined;
+    }
+
+    private completePendingSeek(): void {
+        this.pendingSeekCompletion?.resolve();
+        this.pendingSeekCompletion = undefined;
     }
 }

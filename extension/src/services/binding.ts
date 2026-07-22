@@ -64,7 +64,7 @@ import {
     defaultSettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { playbackModeNotification } from '@project/common/playback/playback-mode-controller';
+import { playbackModeNotifications } from '@project/common/playback/playback-mode-controller';
 import {
     buildSubtitleTracks,
     clampMediaTimestamp,
@@ -89,6 +89,7 @@ import { isMobile } from '@project/common/device-detection/mobile';
 import { OffsetAnchor } from './element-overlay';
 import { ExtensionSettingsStorage } from './extension-settings-storage';
 import { i18nInit } from './i18n';
+import i18n from 'i18next';
 import KeyBindings from './key-bindings';
 import { shouldShowUpdateAlert } from './update-alert';
 import { bufferToBase64 } from '@project/common/base64';
@@ -321,8 +322,18 @@ export default class Binding {
         this.playbackEngine.togglePlaybackMode(targetMode);
     }
 
-    setPlaybackRate(playbackRate: number) {
-        return this.playbackEngine.setPlaybackRate(playbackRate);
+    adjustPlaybackRate(delta: number): void {
+        this.notifyPlaybackRate(this.playbackEngine.adjustPlaybackRate(delta));
+    }
+
+    private notifyPlaybackRate(options: { notify: boolean; playbackRate: number }) {
+        if (!options.notify) return;
+        this.subtitleController.notification({
+            locKey: 'info.playbackRate',
+            replacements: {
+                rate: options.playbackRate.toFixed(1),
+            },
+        });
     }
 
     subtitleFileName(track: number = 0) {
@@ -411,15 +422,7 @@ export default class Binding {
                         };
                         void browser.runtime.sendMessage(command);
 
-                        const { notify } = this.playbackEngine.playbackRateChanged(playbackRate);
-                        if (this._synced && notify) {
-                            this.subtitleController.notification({
-                                locKey: 'info.playbackRate',
-                                replacements: {
-                                    rate: playbackRate.toFixed(1),
-                                },
-                            });
-                        }
+                        this.notifyPlaybackRate(this.playbackEngine.playbackRateChanged(playbackRate));
                         void this.mobileVideoOverlayController.updateModel();
                     },
                     onDurationChanged: (durationMs) => this.playbackEngine.durationChanged(durationMs),
@@ -455,8 +458,9 @@ export default class Binding {
                 playbackModesChanged: (transition) => {
                     if (!transition.added.size && !transition.removed.size) return;
 
-                    for (const locKey of playbackModeNotification(transition)) {
-                        this.subtitleController.notification({ locKey });
+                    const { notifications, join } = playbackModeNotifications(transition);
+                    if (notifications.length) {
+                        this.subtitleController.notification({ text: notifications.map((n) => i18n.t(n)).join(join) });
                     }
                     this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
                     this.mobileVideoOverlayController.showPlaybackModes();
@@ -765,7 +769,7 @@ export default class Binding {
                     }
                     case 'playbackRate': {
                         const playbackRateMessage = request.message as PlaybackRateToVideoMessage;
-                        this.playbackEngine.setPlaybackRate(playbackRateMessage.value);
+                        this.playbackEngine.playbackRateChanged(playbackRateMessage.value);
                         break;
                     }
                     case 'subtitleSettings':

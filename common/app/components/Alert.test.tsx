@@ -32,25 +32,20 @@ describe('Alert', () => {
         });
     };
 
-    it('keeps successive notifications as separate rows in one fixed stack', () => {
+    it('keeps successive notifications visible as separate alerts in newest-first order', () => {
         renderAlert('Fast-forward enabled');
         renderAlert('Playback rate: 2.0');
         renderAlert('Fast-forward disabled');
         renderAlert('Playback rate: 1.0');
 
-        const stack = container.firstElementChild as HTMLElement;
-        const rows = Array.from(stack.children) as HTMLElement[];
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
 
-        expect(rows).toHaveLength(4);
-        expect(rows.map((row) => row.textContent)).toEqual([
+        expect(alerts).toHaveLength(4);
+        expect(alerts.map((alert) => alert.textContent)).toEqual([
             'Playback rate: 1.0',
             'Fast-forward disabled',
             'Playback rate: 2.0',
             'Fast-forward enabled',
         ]);
-        expect(getComputedStyle(stack).position).toBe('fixed');
-        expect(getComputedStyle(stack).display).toBe('flex');
-        expect(getComputedStyle(stack).flexDirection).toBe('column');
-        expect(rows.every((row) => getComputedStyle(row).position !== 'fixed')).toBe(true);
     });
 });

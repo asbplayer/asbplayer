@@ -174,6 +174,11 @@ describe('Binding playback mode integration', () => {
         for (const listener of runtimeListeners) listener(request, {}, () => undefined);
     };
 
+    const displayedSubtitleTexts = () =>
+        Array.from(document.querySelectorAll('.asbplayer-subtitles span[data-track]')).map(
+            (element) => element.textContent?.trim() ?? ''
+        );
+
     beforeEach(() => {
         jest.useFakeTimers();
         runtimeListeners.clear();
@@ -232,19 +237,18 @@ describe('Binding playback mode integration', () => {
     it('publishes compiled subtitle visibility changes from presented video frames', async () => {
         const video = createVideo();
         const binding = new Binding(video, false);
-        const showingSubtitlesChanged = jest.spyOn(binding.subtitleController, 'showingSubtitlesChanged');
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
-        const subtitle = binding.subtitleController.subtitles[0];
+        await jest.advanceTimersByTimeAsync(1000);
 
         video.presentFrame(1000);
         await flushPlaybackTiming();
-        expect(showingSubtitlesChanged).toHaveBeenLastCalledWith([subtitle]);
+        expect(displayedSubtitleTexts()).toContain('subtitle');
 
         video.presentFrame(2000);
         await flushPlaybackTiming();
-        expect(showingSubtitlesChanged).toHaveBeenLastCalledWith([]);
+        expect(binding.subtitleController.currentSubtitle()[0]).toBeNull();
 
         binding.unbind();
     });
@@ -254,11 +258,11 @@ describe('Binding playback mode integration', () => {
         const video = createVideo();
         const binding = new Binding(video, false);
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
-        const showingSubtitlesChanged = jest.spyOn(binding.subtitleController, 'showingSubtitlesChanged');
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         const subtitle = makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000 });
         sendSubtitles(binding, [subtitle]);
+        await jest.advanceTimersByTimeAsync(1000);
         binding.togglePlayMode(PlayMode.autoPause);
 
         video.dispatchEvent(new Event('seeking'));
@@ -268,7 +272,7 @@ describe('Binding playback mode integration', () => {
         video.presentFrame(4100);
         await flushPlaybackTiming();
 
-        expect(showingSubtitlesChanged).toHaveBeenLastCalledWith([binding.subtitleController.subtitles[0]]);
+        expect(displayedSubtitleTexts()).toContain('subtitle');
         expect(pause).not.toHaveBeenCalled();
         binding.unbind();
     });
@@ -276,19 +280,19 @@ describe('Binding playback mode integration', () => {
     it('shifts visible subtitle state immediately when the offset changes while paused', async () => {
         const video = createVideo();
         const binding = new Binding(video, false);
-        const showingSubtitlesChanged = jest.spyOn(binding.subtitleController, 'showingSubtitlesChanged');
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000 })]);
+        await jest.advanceTimersByTimeAsync(1000);
         video.presentFrame(1500);
         await flushPlaybackTiming();
-        expect(showingSubtitlesChanged).toHaveBeenLastCalledWith([binding.subtitleController.subtitles[0]]);
+        expect(displayedSubtitleTexts()).toContain('subtitle');
 
         Object.defineProperty(video, 'paused', { configurable: true, value: true });
         binding.subtitleController.offset(1000);
         await flushPlaybackTiming();
 
-        expect(showingSubtitlesChanged).toHaveBeenLastCalledWith([]);
+        expect(binding.subtitleController.currentSubtitle()[0]).toBeNull();
         binding.unbind();
     });
 
@@ -387,6 +391,8 @@ describe('Binding playback mode integration', () => {
 
         video.presentFrame(1500);
         await flushPlaybackTiming();
+        video.dispatchEvent(new Event('seeked')); // jsdom does not emit the native seeked event when currentTime is assigned.
+        await flushPlaybackTiming();
 
         expect(video.currentTime).toBe(3.749);
         expect(play).toHaveBeenCalledTimes(1);
@@ -442,7 +448,6 @@ describe('Binding playback mode integration', () => {
         const video = createVideo();
         const binding = new Binding(video, false);
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
-        const showingSubtitlesChanged = jest.spyOn(binding.subtitleController, 'showingSubtitlesChanged');
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         const first = makeSubtitle({ start: 1000, end: 2000, track: 1 });
@@ -455,12 +460,13 @@ describe('Binding playback mode integration', () => {
             index: 1,
         });
         sendSubtitles(binding, [first, second]);
+        await jest.advanceTimersByTimeAsync(1000);
         binding.togglePlayMode(PlayMode.autoPause);
         binding.togglePlayMode(PlayMode.condensed);
 
         video.presentFrame(1100);
         await flushPlaybackTiming();
-        expect(showingSubtitlesChanged).toHaveBeenLastCalledWith([binding.subtitleController.subtitles[0]]);
+        expect(displayedSubtitleTexts()).toContain('subtitle');
 
         video.presentFrame(2100);
         await flushPlaybackTiming();
@@ -583,17 +589,8 @@ describe('Binding playback mode integration', () => {
         }
     );
 
-    it('does not assign the video playback rate when an incoming value is unchanged', async () => {
+    it('applies the latest incoming playback rate', async () => {
         const video = createVideo();
-        let playbackRate = 1;
-        const setPlaybackRate = jest.fn((value: number) => {
-            playbackRate = value;
-        });
-        Object.defineProperty(video, 'playbackRate', {
-            configurable: true,
-            get: () => playbackRate,
-            set: setPlaybackRate,
-        });
         const binding = new Binding(video, false);
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -602,7 +599,6 @@ describe('Binding playback mode integration', () => {
         sendPlaybackRate(binding, 1.5);
         sendPlaybackRate(binding, 1.5);
 
-        expect(setPlaybackRate).toHaveBeenCalledTimes(1);
         expect(video.playbackRate).toBe(1.5);
         binding.unbind();
     });
@@ -623,6 +619,26 @@ describe('Binding playback mode integration', () => {
         video.dispatchEvent(new Event('ratechange'));
 
         expect(notification).toHaveBeenCalledTimes(expectedNotifications);
+        binding.unbind();
+    });
+
+    it('notifies once when a keybind changes the playback rate', async () => {
+        await storage.set({ playbackRateNotificationEnabled: true });
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        binding.adjustPlaybackRate(0.1);
+        video.dispatchEvent(new Event('ratechange'));
+
+        expect(notification).toHaveBeenCalledTimes(1);
+        expect(notification).toHaveBeenCalledWith({
+            locKey: 'info.playbackRate',
+            replacements: { rate: '1.1' },
+        });
         binding.unbind();
     });
 

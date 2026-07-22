@@ -11,18 +11,19 @@ export interface PlaybackTimelineSnapshot<
     readonly displaySubtitles: readonly T[];
 }
 
-export interface PlaybackTimelineEvent {
+export interface PlaybackTimelineEvent<Block extends PlaybackTimelineBlock = PlaybackTimelineBlock> {
     readonly timestampMs: number;
     readonly edge: PlaybackTimelineEdge;
-    readonly block: PlaybackTimelineBlock;
+    readonly block: Block;
 }
 
-export interface PlaybackTimelineBoundary {
+export interface PlaybackTimelineBoundary<Block extends PlaybackTimelineBlock = PlaybackTimelineBlock> {
     readonly timestampMs: number;
-    readonly events: readonly PlaybackTimelineEvent[];
+    readonly events: readonly PlaybackTimelineEvent<Block>[];
 }
 
-export interface PlaybackTimelineEventGroup extends PlaybackTimelineBoundary {
+export interface PlaybackTimelineEventGroup<Block extends PlaybackTimelineBlock = PlaybackTimelineBlock>
+    extends PlaybackTimelineBoundary<Block> {
     readonly direction?: 'forward' | 'backward';
 }
 
@@ -45,10 +46,10 @@ export interface PlaybackTimelineSegment<T extends SubtitleModel> {
     readonly showingSubtitles: readonly T[];
 }
 
-export interface PlaybackTimelineState {
-    readonly current?: PlaybackTimelineBlock;
-    readonly previous?: PlaybackTimelineBlock;
-    readonly next?: PlaybackTimelineBlock;
+export interface PlaybackTimelineState<Block extends PlaybackTimelineBlock = PlaybackTimelineBlock> {
+    readonly current?: Block;
+    readonly previous?: Block;
+    readonly next?: Block;
 }
 
 type DisplayEdge<T extends SubtitleModel> = {
@@ -93,23 +94,32 @@ const firstTimestampAfter = (timestamps: readonly number[], timestampMs: number)
  * An immutable, precomputed view of every timestamp at which visible subtitle state or playback policy can change.
  * Runtime traversal uses an array cursor; overlapping raw subtitles are resolved only while this object is built.
  */
-export default class PlaybackTimeline<T extends SubtitleModel> {
+export default class PlaybackTimeline<
+    T extends SubtitleModel,
+    Block extends PlaybackTimelineBlock = PlaybackTimelineBlock,
+> {
     readonly durationMs: number;
-    readonly blocks: readonly PlaybackTimelineBlock[];
-    readonly boundaries: readonly PlaybackTimelineBoundary[];
+    readonly blocks: readonly Block[];
+    readonly blocksById: ReadonlyMap<string, Block>;
+    readonly boundaries: readonly PlaybackTimelineBoundary<Block>[];
     readonly segments: readonly PlaybackTimelineSegment<T>[];
     readonly actionTimestamps: readonly number[];
+    readonly stateChangeTimestamps: readonly number[];
     readonly condensedGapStarts: readonly number[];
     readonly condensedGapTargets: readonly number[];
-    private offsetMs = 0;
+    private readonly states: readonly PlaybackTimelineState<Block>[];
 
-    private constructor(snapshot: PlaybackTimelineSnapshot<T>) {
+    private constructor(snapshot: PlaybackTimelineSnapshot<T, Block>) {
         this.durationMs = snapshot.durationMs;
         this.blocks = snapshot.blocks;
+        const blocksById = new Map<string, Block>();
+        for (const block of this.blocks) blocksById.set(block.id, block);
+        this.blocksById = blocksById;
         const events = this.eventsFromBlocks(this.blocks);
         const compiled = this.compileSegments(snapshot.displaySubtitles, events);
         this.boundaries = compiled.boundaries;
         this.segments = compiled.segments;
+        this.states = compiled.states;
         this.actionTimestamps = [
             ...new Set(
                 (this.blocks as readonly ActionTimelineBlock[]).flatMap((block) => [
@@ -117,6 +127,9 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
                     ...(block.endAction !== undefined ? [block.playbackModeEndMs] : []),
                 ])
             ),
+        ].sort((left, right) => left - right);
+        this.stateChangeTimestamps = [
+            ...new Set(this.blocks.flatMap((block) => [block.playbackModesStartGapMs, block.playbackModesEndGapMs])),
         ].sort((left, right) => left - right);
 
         const condensedGapStarts: number[] = [];
@@ -132,12 +145,14 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
         this.condensedGapTargets = condensedGapTargets;
     }
 
-    static fromSnapshot<T extends SubtitleModel>(snapshot: PlaybackTimelineSnapshot<T>): PlaybackTimeline<T> {
+    static fromSnapshot<T extends SubtitleModel, Block extends PlaybackTimelineBlock = PlaybackTimelineBlock>(
+        snapshot: PlaybackTimelineSnapshot<T, Block>
+    ): PlaybackTimeline<T, Block> {
         return new PlaybackTimeline(snapshot);
     }
 
-    private eventsFromBlocks(blocks: readonly PlaybackTimelineBlock[]): readonly PlaybackTimelineEvent[] {
-        const events = blocks.flatMap<PlaybackTimelineEvent>((block) => [
+    private eventsFromBlocks(blocks: readonly Block[]): readonly PlaybackTimelineEvent<Block>[] {
+        const events = blocks.flatMap<PlaybackTimelineEvent<Block>>((block) => [
             {
                 timestampMs: block.playbackModeStartMs,
                 edge: 'start',
@@ -155,10 +170,11 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
 
     private compileSegments(
         displaySubtitles: readonly T[],
-        events: readonly PlaybackTimelineEvent[]
+        events: readonly PlaybackTimelineEvent<Block>[]
     ): {
-        boundaries: readonly PlaybackTimelineBoundary[];
+        boundaries: readonly PlaybackTimelineBoundary<Block>[];
         segments: readonly PlaybackTimelineSegment<T>[];
+        states: readonly PlaybackTimelineState<Block>[];
     } {
         const displayEdges: DisplayEdge<T>[] = [];
         const subtitleOrder = new Map<T, number>();
@@ -189,7 +205,7 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
         }
         const sortedTimestamps = [...timestamps].sort((left, right) => left - right);
 
-        const eventsByTimestamp = new Map<number, PlaybackTimelineEvent[]>();
+        const eventsByTimestamp = new Map<number, PlaybackTimelineEvent<Block>[]>();
         for (const event of events) {
             const values = eventsByTimestamp.get(event.timestampMs) ?? [];
             values.push(event);
@@ -218,25 +234,42 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
             };
         });
 
-        const boundaries = sortedTimestamps.map<PlaybackTimelineBoundary>((timestampMs) => ({
+        let blockIndex = 0;
+        const states = sortedTimestamps.map<PlaybackTimelineState<Block>>((timestampMs) => {
+            while (blockIndex < this.blocks.length && this.blocks[blockIndex].playbackModesEndGapMs <= timestampMs) {
+                blockIndex++;
+            }
+            const candidate = this.blocks[blockIndex];
+            if (candidate !== undefined && candidate.playbackModesStartGapMs <= timestampMs) {
+                return {
+                    current: candidate,
+                    previous: this.blocks[blockIndex - 1],
+                    next: this.blocks[blockIndex + 1],
+                };
+            }
+            return {
+                previous: this.blocks[blockIndex - 1],
+                next: candidate,
+            };
+        });
+
+        const boundaries = sortedTimestamps.map<PlaybackTimelineBoundary<Block>>((timestampMs) => ({
             timestampMs,
             events: eventsByTimestamp.get(timestampMs) ?? [],
         }));
-        return { boundaries, segments };
+        return { boundaries, segments, states };
     }
 
-    stateAt(timestampMs: number): PlaybackTimelineState {
-        const localTimestampMs = this.toLocalTimestamp(timestampMs);
-        const index = firstBlockEndingAfter(this.blocks, localTimestampMs);
+    stateAt(timestampMs: number): PlaybackTimelineState<Block> {
+        const index = firstBlockEndingAfter(this.blocks, timestampMs);
         const candidate = this.blocks[index];
-        if (candidate !== undefined && candidate.playbackModesStartGapMs <= localTimestampMs) {
+        if (candidate !== undefined && candidate.playbackModesStartGapMs <= timestampMs) {
             return {
                 current: candidate,
                 previous: this.blocks[index - 1],
                 next: this.blocks[index + 1],
             };
         }
-
         return {
             previous: this.blocks[index - 1],
             next: candidate,
@@ -244,46 +277,49 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
     }
 
     segmentAt(timestampMs: number): PlaybackTimelineSegment<T> {
-        const localTimestampMs = this.toLocalTimestamp(timestampMs);
+        return this.segments[this.indexAt(timestampMs)];
+    }
+
+    lookupAt(timestampMs: number): {
+        readonly state: PlaybackTimelineState<Block>;
+        readonly segment: PlaybackTimelineSegment<T>;
+    } {
+        const index = this.indexAt(timestampMs);
+        const segment = this.segments[index];
+        return {
+            state: this.states[index],
+            segment,
+        };
+    }
+
+    private indexAt(timestampMs: number): number {
         let low = 0;
         let high = this.segments.length;
         while (low < high) {
             const middle = low + Math.floor((high - low) / 2);
-            if (this.segments[middle].startMs <= localTimestampMs) low = middle + 1;
+            if (this.segments[middle].startMs <= timestampMs) low = middle + 1;
             else high = middle;
         }
-        const segment = this.segments[Math.max(0, Math.min(this.segments.length - 1, low - 1))];
-        if (this.offsetMs === 0) return segment;
-        return {
-            ...segment,
-            startMs: this.toMediaTimestamp(segment.startMs),
-        };
+        return Math.max(0, Math.min(this.segments.length - 1, low - 1));
     }
 
     nextCondensedTarget(timestampMs: number): number | undefined {
-        const localTimestampMs = this.toLocalTimestamp(timestampMs);
-        const gapIndex = firstTimestampAfter(this.condensedGapStarts, localTimestampMs) - 1;
-        if (gapIndex < 0 || localTimestampMs >= this.condensedGapTargets[gapIndex]) return;
-        return this.toMediaTimestamp(this.condensedGapTargets[gapIndex]);
+        const gapIndex = firstTimestampAfter(this.condensedGapStarts, timestampMs) - 1;
+        if (gapIndex < 0 || timestampMs >= this.condensedGapTargets[gapIndex]) return;
+        return this.condensedGapTargets[gapIndex];
     }
 
     nextActionTimestamp(timestampMs: number, lookaheadTimestampMs: number): number | undefined {
-        const localTimestampMs = this.toLocalTimestamp(timestampMs);
-        const index = firstTimestampAfter(this.actionTimestamps, localTimestampMs);
+        const index = firstTimestampAfter(this.actionTimestamps, timestampMs);
         const timestamp = this.actionTimestamps[index];
-        if (timestamp === undefined || timestamp > this.toLocalTimestamp(lookaheadTimestampMs)) return;
-        return this.toMediaTimestamp(timestamp);
+        if (timestamp === undefined || timestamp > lookaheadTimestampMs) return;
+        return timestamp;
     }
 
-    shift(deltaMs: number): void {
-        if (Number.isFinite(deltaMs)) this.offsetMs += deltaMs;
-    }
-
-    toLocalTimestamp(timestampMs: number): number {
-        return timestampMs - this.offsetMs;
-    }
-
-    toMediaTimestamp(timestampMs: number): number {
-        return timestampMs + this.offsetMs;
+    nextStateChangeTimestamp(timestampMs: number, lookaheadTimestampMs: number): number | undefined {
+        const index = firstTimestampAfter(this.stateChangeTimestamps, timestampMs);
+        const timestamp = this.stateChangeTimestamps[index];
+        if (timestamp === undefined || timestamp > lookaheadTimestampMs) return;
+        return timestamp;
     }
 }

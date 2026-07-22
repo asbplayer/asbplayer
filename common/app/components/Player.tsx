@@ -36,7 +36,7 @@ import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
 import Clock from '@project/common/playback/clock';
 import Controls, { Point } from './Controls';
 import Grid from '@mui/material/Grid';
-import MediaAdapter, { MediaElement } from '../services/media-adapter';
+import MediaAdapter from '../services/media-adapter';
 import SubtitlePlayer, { minSubtitlePlayerWidth } from './SubtitlePlayer';
 import VideoChannel from '../services/video-channel';
 import ChromeExtension from '../services/chrome-extension';
@@ -85,7 +85,7 @@ const useStyles = makeStyles<Theme, StylesProps>(() => ({
     },
 }));
 
-function trackLengthMs(video: MediaElement | undefined, subtitles: SubtitleModel[] | undefined): number {
+function trackLengthMs(videoDuration: number | undefined, subtitles: SubtitleModel[] | undefined): number {
     let subtitlesLength;
     if (subtitles && subtitles.length > 0) {
         subtitlesLength = subtitles[subtitles.length - 1].originalEnd;
@@ -93,7 +93,7 @@ function trackLengthMs(video: MediaElement | undefined, subtitles: SubtitleModel
         subtitlesLength = 0;
     }
 
-    const videoLength = video && video.duration ? 1000 * video.duration : 0;
+    const videoLength = videoDuration ? 1000 * videoDuration : 0;
     return Math.max(videoLength, subtitlesLength);
 }
 
@@ -247,6 +247,7 @@ const Player = React.memo(function Player({
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [channelId, setChannelId] = useState<string>();
     const [channel, setChannel] = useState<VideoChannel>();
+    const videoDurationRef = useRef<number>(0);
     const channelRef = useRef<VideoChannel>(undefined);
     channelRef.current = channel;
     const playbackPreferencesRef = useRef<PlaybackPreferences>(undefined);
@@ -271,7 +272,8 @@ const Player = React.memo(function Player({
     const handledDownloadSubtitleTimelineRequestRef = useRef(0);
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
-    const calculateLengthMs = () => trackLengthMs(channelRef.current, subtitlesRef.current);
+    const calculateLengthMs = (videoDurationRef: MutableRefObject<number>, playerSubtitles = subtitlesRef.current) =>
+        trackLengthMs(videoDurationRef.current, playerSubtitles);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         const displaySubtitles = subtitlesRef.current ?? [];
@@ -288,7 +290,7 @@ const Player = React.memo(function Player({
         const currentPlayModes = playModesRef.current;
         const playbackPlan = buildPlaybackTimelineExportPlan({
             subtitles: playbackSubtitles,
-            durationMs: trackLengthMs(channelRef.current, displaySubtitles),
+            durationMs: calculateLengthMs(videoDurationRef, displaySubtitles),
             settings,
             playbackRate,
         });
@@ -600,7 +602,7 @@ const Player = React.memo(function Player({
                     return allSubtitles;
                 });
             },
-            () => clockRef.current.time(calculateLengthMs())
+            () => clockRef.current.time(calculateLengthMs(videoDurationRef))
         );
         if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current);
         subtitleAnnotations.bind();
@@ -774,7 +776,8 @@ const Player = React.memo(function Player({
     useEffect(
         () =>
             channel?.onReady(() => {
-                return channel?.ready(trackLengthMs(channel, subtitles), videoFile?.file?.name);
+                videoDurationRef.current = channel.duration;
+                return channel?.ready(calculateLengthMs(videoDurationRef, subtitles), videoFile?.file?.name);
             }),
         [channel, subtitles, videoFile]
     );
@@ -837,6 +840,13 @@ const Player = React.memo(function Player({
             }),
         [channel, clock]
     );
+    useEffect(
+        () =>
+            channel?.onDuration(() => {
+                videoDurationRef.current = channel.duration;
+            }),
+        [channel]
+    );
     const play = useCallback((clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) => {
         clock.start();
 
@@ -854,7 +864,9 @@ const Player = React.memo(function Player({
         [channel, mediaAdapter, clock]
     );
     useEffect(() => {
-        return channel?.onOffset((offset) => applyOffset(Math.max(-calculateLengthMs() || 0, offset), false));
+        return channel?.onOffset((offset) =>
+            applyOffset(Math.max(-calculateLengthMs(videoDurationRef) || 0, offset), false)
+        );
     }, [channel, applyOffset]);
     useEffect(() => channel?.onPlaybackRate(updatePlaybackRate), [channel, updatePlaybackRate]);
     useEffect(
@@ -1008,7 +1020,7 @@ const Player = React.memo(function Player({
                 clock.stop();
             }
 
-            await seek(progress * calculateLengthMs(), clock, true);
+            await seek(progress * calculateLengthMs(videoDurationRef), clock, true);
 
             if (playing) {
                 clock.start();
@@ -1054,7 +1066,7 @@ const Player = React.memo(function Player({
                         subtitle,
                         surroundingSubtitles,
                         subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
-                        mediaTimestamp: clock.time(calculateLengthMs()),
+                        mediaTimestamp: clock.time(calculateLengthMs(videoDurationRef)),
                         file:
                             videoFile === undefined
                                 ? undefined
@@ -1095,7 +1107,7 @@ const Player = React.memo(function Player({
 
     const handleOffsetChange = useCallback(
         (offset: number) => {
-            const length = calculateLengthMs();
+            const length = calculateLengthMs(videoDurationRef);
             applyOffset(Math.max(-length || 0, offset), true);
         },
         [applyOffset]
@@ -1104,7 +1116,7 @@ const Player = React.memo(function Player({
     const handlePlaybackRateChange = useCallback(
         (playbackRate: number) => {
             if (syntheticPlaybackEngineRef.current) {
-                syntheticPlaybackEngineRef.current.setPlaybackRate(playbackRate);
+                syntheticPlaybackEngineRef.current.playbackRateChanged(playbackRate);
                 return;
             }
             updatePlaybackRate(playbackRate, true);
@@ -1156,7 +1168,7 @@ const Player = React.memo(function Player({
 
         const interval = setInterval(() => {
             void (async () => {
-                const progress = clock.progress(calculateLengthMs());
+                const progress = clock.progress(calculateLengthMs(videoDurationRef));
 
                 if (progress >= 1) {
                     pause(clock, mediaAdapter, true);
@@ -1349,8 +1361,8 @@ const Player = React.memo(function Player({
                         <Controls
                             mousePositionRef={mousePositionRef}
                             clock={clock}
-                            length={calculateLengthMs()}
-                            displayLength={trackLengthMs(channel, subtitles)}
+                            length={calculateLengthMs(videoDurationRef)}
+                            displayLength={calculateLengthMs(videoDurationRef, subtitles)}
                             audioTracks={audioTracks}
                             selectedAudioTrack={selectedAudioTrack}
                             tabs={(!videoFileUrl && availableTabs) || undefined}
@@ -1382,7 +1394,7 @@ const Player = React.memo(function Player({
                         timelineShowingSubtitles={syntheticPlayback ? syntheticShowingSubtitles : undefined}
                         clock={clock}
                         extension={extension}
-                        length={calculateLengthMs()}
+                        length={calculateLengthMs(videoDurationRef)}
                         jumpToSubtitle={jumpToSubtitle}
                         onJumpToSubtitleHandled={onJumpToSubtitleHandled}
                         drawerOpen={drawerOpen}

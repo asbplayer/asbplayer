@@ -2,7 +2,7 @@ export interface TimingDriverCallbacks {
     onTime(timestampMs: number, lookaheadTimestampMs?: number): Promise<void>;
     onPlaybackStarted(): Promise<void>;
     onDiscontinuity(timestampMs: number): void;
-    onCancel(): void;
+    onCancel(preserveExpectedDiscontinuity?: boolean): void;
     onError(error: unknown): void;
 }
 
@@ -21,6 +21,9 @@ export interface TimingDriver {
     readonly bound: boolean;
     unbind(): void;
     setCallbacks(callbacks: TimingDriverCallbacks): void;
+    expectInternalSeek(): void;
+    waitForSeeked(): Promise<void>;
+    cancelExpectedInternalSeek(): void;
     currentTimeMs(): number;
     durationMs(): number;
     paused(): boolean;
@@ -45,11 +48,11 @@ export default class TimingUpdateQueue {
         this.active = active;
     }
 
-    clear(): void {
+    clear(preserveExpectedDiscontinuity = false): void {
         this.generation++;
         this.queuedUpdate = undefined;
         this.queuedDiscontinuity = undefined;
-        this.callbacks.onCancel();
+        this.callbacks.onCancel(preserveExpectedDiscontinuity);
     }
 
     enqueueDiscontinuity(timestampMs: number): void {
