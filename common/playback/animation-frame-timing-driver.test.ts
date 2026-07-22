@@ -43,7 +43,7 @@ const timingDriver = (
     const source: AnimationFrameTimingSource = {
         paused: () => !clock.running,
         durationMs: () => 6000,
-        currentTimeMs: () => clock.time(),
+        currentTimeMs: () => clock.time(Number.POSITIVE_INFINITY),
         requestAnimationFrameCallback: (callback) => animationFrames.requestAnimationFrameCallback(callback),
         cancelAnimationFrameCallback: (handle) => animationFrames.cancelAnimationFrameCallback(handle),
         addEventListener: (type, listener) => {
@@ -169,7 +169,7 @@ describe('AnimationFrameTimingDriver', () => {
                 playbackModesEndGap: 0,
             }
         );
-        const cursor = new PlaybackTimelineCursor(timeline, clock.time());
+        const cursor = new PlaybackTimelineCursor(timeline, clock.time(Number.POSITIVE_INFINITY));
         const crossed: number[] = [];
         const driver = timingDriver(
             clock,
@@ -177,7 +177,7 @@ describe('AnimationFrameTimingDriver', () => {
                 onTime: async (timestampMs) => {
                     crossed.push(...cursor.advance(timestampMs).map((group) => group.timestampMs));
                 },
-                onDiscontinuity: (timestampMs) => cursor.reset(timestampMs),
+                onDiscontinuity: (timestampMs) => cursor.reset(timestampMs, { includeAtTimestamp: true }),
             },
             animationFrames
         );
@@ -264,7 +264,7 @@ describe('AnimationFrameTimingDriver', () => {
         };
         const showingSubtitles: string[][] = [];
         const playbackActions: string[] = [];
-        const executor = new PlaybackPlanExecutor(plan, clock.time(), {
+        const executor = new PlaybackPlanExecutor(plan, clock.time(Number.POSITIVE_INFINITY), {
             play: async () => {},
             paused: () => !clock.running,
             pause: () => playbackActions.push('pause'),
@@ -282,9 +282,9 @@ describe('AnimationFrameTimingDriver', () => {
         const driver = timingDriver(
             clock,
             {
-                onTime: (timestampMs) => executor.update(timestampMs),
+                onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
                 onDiscontinuity: (timestampMs) => {
-                    executor.reset(timestampMs, false, 'user-seek');
+                    executor.reset(timestampMs, { includeAtTimestamp: false, cause: 'user-seek' });
                 },
             },
             animationFrames

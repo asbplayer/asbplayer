@@ -264,7 +264,7 @@ const Player = React.memo(function Player({
 
         return new MediaAdapter({ current: undefined });
     }, [channel, videoFileUrl, tab]);
-    const clock = useMemo<Clock>(() => new Clock(), []);
+    const clock = useMemo<Clock>(() => new Clock(() => performance.now()), []);
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
@@ -385,7 +385,7 @@ const Player = React.memo(function Player({
             timingDriver: new AnimationFrameTimingDriver({
                 paused: () => !clock.running,
                 durationMs: () => trackLengthMs(undefined, subtitlesRef.current),
-                currentTimeMs: () => clock.time(),
+                currentTimeMs: () => clock.time(Number.POSITIVE_INFINITY),
                 requestAnimationFrameCallback: (callback) => requestAnimationFrame(callback),
                 cancelAnimationFrameCallback: (handle) => cancelAnimationFrame(handle),
                 addEventListener: (type, listener) => {

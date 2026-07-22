@@ -61,9 +61,9 @@ describe('PlaybackTimelineCursor', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0)]);
         const cursor = new PlaybackTimelineCursor(result, 500);
 
-        cursor.reset(1000);
+        cursor.reset(1000, { includeAtTimestamp: true });
         expect(cursor.advance(1000).map((group) => group.timestampMs)).toEqual([1000]);
-        cursor.reset(1000, false);
+        cursor.reset(1000, { includeAtTimestamp: false });
         expect(cursor.advance(1000)).toEqual([]);
     });
 });

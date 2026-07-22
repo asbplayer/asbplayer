@@ -30,9 +30,9 @@ describe('TimingUpdateQueue', () => {
             () => active
         );
 
-        queue.enqueue(1);
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
         active = true;
-        queue.enqueue(2);
+        queue.enqueue(2, { lookaheadTimestampMs: undefined });
         await flush();
 
         expect(updates).toEqual([2]);
@@ -57,9 +57,9 @@ describe('TimingUpdateQueue', () => {
             () => true
         );
 
-        queue.enqueue(1);
-        queue.enqueue(2);
-        queue.enqueue(3);
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+        queue.enqueue(2, { lookaheadTimestampMs: undefined });
+        queue.enqueue(3, { lookaheadTimestampMs: undefined });
         expect(updates).toEqual([1]);
 
         firstUpdate.resolve();
@@ -83,9 +83,9 @@ describe('TimingUpdateQueue', () => {
             () => true
         );
 
-        queue.enqueue(1);
-        queue.enqueue(2);
-        queue.clear();
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+        queue.enqueue(2, { lookaheadTimestampMs: undefined });
+        queue.clear({ preserveExpectedDiscontinuity: false });
         firstUpdate.resolve();
         await flush();
 
@@ -110,10 +110,10 @@ describe('TimingUpdateQueue', () => {
             () => true
         );
 
-        queue.enqueue(1);
-        queue.enqueue(2);
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+        queue.enqueue(2, { lookaheadTimestampMs: undefined });
         queue.enqueueDiscontinuity(500);
-        queue.enqueue(3);
+        queue.enqueue(3, { lookaheadTimestampMs: undefined });
 
         expect(events).toEqual(['start:1']);
         firstUpdate.resolve();
@@ -139,8 +139,8 @@ describe('TimingUpdateQueue', () => {
             () => true
         );
 
-        queue.enqueue(1);
-        queue.enqueue(2);
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+        queue.enqueue(2, { lookaheadTimestampMs: undefined });
         firstUpdate.reject(error);
         await flush();
 

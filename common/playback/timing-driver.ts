@@ -1,8 +1,8 @@
 export interface TimingDriverCallbacks {
-    onTime(timestampMs: number, lookaheadTimestampMs?: number): Promise<void>;
+    onTime(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void>;
     onPlaybackStarted(): Promise<void>;
     onDiscontinuity(timestampMs: number): void;
-    onCancel(preserveExpectedDiscontinuity?: boolean): void;
+    onCancel(options: { preserveExpectedDiscontinuity: boolean }): void;
     onError(error: unknown): void;
 }
 
@@ -31,7 +31,7 @@ export interface TimingDriver {
 
 type TimingUpdate = {
     readonly timestampMs: number;
-    readonly lookaheadTimestampMs?: number;
+    readonly options: { lookaheadTimestampMs?: number };
 };
 
 /** Serializes timing updates while coalescing queued samples to the latest media timestamp. */
@@ -48,11 +48,11 @@ export default class TimingUpdateQueue {
         this.active = active;
     }
 
-    clear(preserveExpectedDiscontinuity = false): void {
+    clear(options: { preserveExpectedDiscontinuity: boolean }): void {
         this.generation++;
         this.queuedUpdate = undefined;
         this.queuedDiscontinuity = undefined;
-        this.callbacks.onCancel(preserveExpectedDiscontinuity);
+        this.callbacks.onCancel(options);
     }
 
     enqueueDiscontinuity(timestampMs: number): void {
@@ -61,9 +61,9 @@ export default class TimingUpdateQueue {
         this.process();
     }
 
-    enqueue(timestampMs: number, lookaheadTimestampMs?: number): void {
+    enqueue(timestampMs: number, options: { lookaheadTimestampMs?: number }): void {
         if (!this.active()) return;
-        this.queuedUpdate = { timestampMs, lookaheadTimestampMs };
+        this.queuedUpdate = { timestampMs, options };
         if (this.processing) return;
         this.process();
     }
@@ -85,7 +85,7 @@ export default class TimingUpdateQueue {
                     const update = this.queuedUpdate;
                     this.queuedUpdate = undefined;
                     const generation = this.generation;
-                    await this.callbacks.onTime(update!.timestampMs, update!.lookaheadTimestampMs);
+                    await this.callbacks.onTime(update!.timestampMs, update!.options);
                     if (generation !== this.generation) continue;
                 }
             } catch (error) {

@@ -31,6 +31,7 @@ const timelineOptions = [
 ];
 
 const htmlOptions = {
+    title: 'Subtitle playback timeline',
     timelineOptionsTitle: 'Playback modes',
     timelineOptions,
     timelineSettings: {
@@ -94,7 +95,6 @@ describe('playbackTimelineToHtml', () => {
         const html = playbackTimelineToHtml({
             plan: plan([makeTextSubtitle(1000, 2000, '<unsafe>', 0)]),
             themeColor: '#123456',
-            title: 'Example & timeline',
             modeLabels: {
                 normal: 'Normal label',
                 fastForward: 'Fast forward label',
@@ -104,6 +104,7 @@ describe('playbackTimelineToHtml', () => {
                 repeat: 'Repeat label',
             },
             ...htmlOptions,
+            title: 'Example & timeline',
         });
 
         const parsed = new DOMParser().parseFromString(html, 'text/html');

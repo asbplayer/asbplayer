@@ -30,7 +30,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel = IndexedS
     readonly subtitles: readonly T[];
     readonly ready: { settings: boolean };
     readonly subtitleOffsetMs: number;
-    readonly playbackModesSuppressed?: boolean;
+    readonly playbackModesSuppressed: boolean;
     readonly callbacks: PlaybackEngineCallbacks<T>;
     readonly timingDriver: TimingDriver;
 }
@@ -75,7 +75,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         subtitles,
         ready,
         subtitleOffsetMs,
-        playbackModesSuppressed = false,
+        playbackModesSuppressed,
         callbacks,
         timingDriver,
     }: PlaybackEngineOptions<T>) {
@@ -107,11 +107,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         };
         this.executor = new PlaybackPlanExecutor(this.plan, this.timingDriver.currentTimeMs(), executorCallbacks);
         this.timingDriver.setCallbacks({
-            onTime: (currentTimestampMs, lookaheadTimestampMs) =>
-                this.executor.update(currentTimestampMs, lookaheadTimestampMs),
+            onTime: (currentTimestampMs, { lookaheadTimestampMs }) =>
+                this.executor.update(currentTimestampMs, {
+                    lookaheadTimestampMs,
+                }),
             onDiscontinuity: (currentTimestampMs) => this.onDiscontinuity(currentTimestampMs),
-            onCancel: (preserveExpectedDiscontinuity) =>
-                this.executor.cancelPendingOperations(preserveExpectedDiscontinuity),
+            onCancel: (options) => this.executor.cancelPendingOperations(options),
             onPlaybackStarted: () => this.executor.playbackStarted(),
             onError: callbacks.onError,
         });
@@ -206,18 +207,18 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     /** Reports a discontinuity from a non-standard media adapter, such as Disney+'s page-script seek event. */
-    seeked(timestampMs = this.timingDriver.currentTimeMs()): void {
+    seeked(timestampMs: number): void {
         this.onDiscontinuity(timestampMs);
     }
 
     /** Reports that a seek operation has started from a non-standard media adapter, such as Disney+'s page-script seek event. */
     seekStarted(): void {
-        this.executor.cancelPendingOperations();
+        this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
     }
 
     /** Reports that a seek operation has been canceled from a non-standard media adapter, such as Disney+'s page-script seek event. */
     seekCanceled(): void {
-        this.executor.cancelPendingOperations();
+        this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
     }
 
     private buildPlan(): PlaybackPlan<T> {

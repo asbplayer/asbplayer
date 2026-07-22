@@ -118,7 +118,7 @@ describe('VideoFrameTimingDriver', () => {
         const video = new FakeVideo();
         const cancellations: boolean[] = [];
         const driver = timingDriver(videoSource(video), {
-            onCancel: (preserveExpectedDiscontinuity) => cancellations.push(Boolean(preserveExpectedDiscontinuity)),
+            onCancel: ({ preserveExpectedDiscontinuity }) => cancellations.push(preserveExpectedDiscontinuity),
         });
         driver.bind();
 
@@ -163,7 +163,7 @@ describe('VideoFrameTimingDriver', () => {
         expect(events).toEqual(['play', 'rate:1.5', 'duration', 'seeked:3000', 'pause', 'error']);
     });
 
-    it('does not report transient playback-rate changes while seeking', () => {
+    it('ignores playback-rate changes to 0 while seeking', () => {
         const video = new FakeVideo();
         const playbackRates: number[] = [];
         const driver = new VideoFrameTimingDriver(videoSource(video), {
@@ -180,13 +180,16 @@ describe('VideoFrameTimingDriver', () => {
         video.dispatchEvent(new Event('seeking'));
         video.playbackRate = 0;
         video.dispatchEvent(new Event('ratechange'));
-        expect(playbackRates).toEqual([]);
 
         video.playbackRate = 1;
+        video.dispatchEvent(new Event('ratechange'));
+        expect(playbackRates).toEqual([1]);
+
         video.dispatchEvent(new Event('seeked'));
+        video.playbackRate = 2;
         video.dispatchEvent(new Event('ratechange'));
 
-        expect(playbackRates).toEqual([1]);
+        expect(playbackRates).toEqual([1, 2]);
         driver.unbind();
     });
 
@@ -326,8 +329,8 @@ describe('VideoFrameTimingDriver', () => {
         video.playbackRate = 1.5;
         const updates: [number, number | undefined][] = [];
         const driver = timingDriver(videoSource(video), {
-            onTime: async (timestampMs, lookaheadTimestampSeconds) => {
-                updates.push([timestampMs, lookaheadTimestampSeconds]);
+            onTime: async (timestampMs, { lookaheadTimestampMs }) => {
+                updates.push([timestampMs, lookaheadTimestampMs]);
             },
             onDiscontinuity: () => {},
         });
@@ -365,7 +368,7 @@ describe('VideoFrameTimingDriver', () => {
             onTime: async (timestampMs) => {
                 crossed.push(...cursor.advance(timestampMs).map((group) => group.timestampMs));
             },
-            onDiscontinuity: (timestampMs) => cursor.reset(timestampMs),
+            onDiscontinuity: (timestampMs) => cursor.reset(timestampMs, { includeAtTimestamp: true }),
         });
         video.currentTime = 0.5;
         driver.bind();
@@ -462,13 +465,15 @@ describe('VideoFrameTimingDriver', () => {
             showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
-            onTime: (timestampMs) => executor.update(timestampMs),
+            onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
             onDiscontinuity: (timestampMs) => {
                 const discontinuity = executor.consumeDiscontinuity(timestampMs);
-                executor.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
+                executor.reset(timestampMs, {
+                    includeAtTimestamp: discontinuity.includeAtTimestamp,
+                    cause: discontinuity.cause,
+                });
             },
-            onCancel: (preserveExpectedDiscontinuity) =>
-                executor.cancelPendingOperations(preserveExpectedDiscontinuity),
+            onCancel: (options) => executor.cancelPendingOperations(options),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
         driverRef.current = driver;
@@ -536,14 +541,16 @@ describe('VideoFrameTimingDriver', () => {
             showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
-            onTime: (timestampMs) => executor.update(timestampMs),
+            onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
             onDiscontinuity: (timestampMs) => {
                 discontinuities.push(timestampMs);
                 const discontinuity = executor.consumeDiscontinuity(timestampMs);
-                executor.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
+                executor.reset(timestampMs, {
+                    includeAtTimestamp: discontinuity.includeAtTimestamp,
+                    cause: discontinuity.cause,
+                });
             },
-            onCancel: (preserveExpectedDiscontinuity) =>
-                executor.cancelPendingOperations(preserveExpectedDiscontinuity),
+            onCancel: (options) => executor.cancelPendingOperations(options),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
         driverRef.current = driver;
@@ -625,13 +632,15 @@ describe('VideoFrameTimingDriver', () => {
             showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
-            onTime: (timestampMs) => executor.update(timestampMs),
+            onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
             onDiscontinuity: (timestampMs) => {
                 const discontinuity = executor.consumeDiscontinuity(timestampMs);
-                executor.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
+                executor.reset(timestampMs, {
+                    includeAtTimestamp: discontinuity.includeAtTimestamp,
+                    cause: discontinuity.cause,
+                });
             },
-            onCancel: (preserveExpectedDiscontinuity) =>
-                executor.cancelPendingOperations(preserveExpectedDiscontinuity),
+            onCancel: (options) => executor.cancelPendingOperations(options),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
         driverRef.current = driver;

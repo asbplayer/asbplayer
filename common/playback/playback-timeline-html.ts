@@ -234,13 +234,12 @@ const gapIntervals = (
     durationSeconds: number,
     color: string,
     className: string,
-    minimumDurationSeconds?: number
+    minimumDurationSeconds: number
 ): TimelineInterval[] => {
     const intervals: TimelineInterval[] = [];
     let gapStartSeconds = 0;
     const addGap = (gapEndSeconds: number) => {
-        const minimum = minimumDurationSeconds ?? 0;
-        if (gapEndSeconds - gapStartSeconds + 0.001 < minimum) return;
+        if (gapEndSeconds - gapStartSeconds + 0.001 < minimumDurationSeconds) return;
         const value = interval(gapStartSeconds, gapEndSeconds, color, className);
         if (value !== undefined) intervals.push(value);
     };
@@ -351,7 +350,7 @@ export interface PlaybackTimelineOption {
 export interface PlaybackTimelineHtmlOptions<T extends SubtitleModel = SubtitleModel> {
     readonly plan: PlaybackPlan<T>;
     readonly themeColor: string;
-    readonly title?: string;
+    readonly title: string;
     readonly modeLabels: PlaybackTimelineModeLabels;
     readonly timelineOptionsTitle: string;
     readonly timelineOptions: readonly PlaybackTimelineOption[];
@@ -373,7 +372,7 @@ export interface PlaybackTimelineModeLabels {
 export const playbackTimelineToHtml = <T extends SubtitleModel>({
     plan,
     themeColor,
-    title = 'Subtitle playback timeline',
+    title,
     modeLabels,
     timelineOptionsTitle,
     timelineOptions,

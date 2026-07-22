@@ -117,7 +117,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     }
 
     replacePlan(plan: PlaybackPlan<T>, timestampMs: number): void {
-        this.cancelPendingOperations();
+        this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
         const playbackRateChanged =
             this.plan.playbackRate !== plan.playbackRate ||
             this.plan.fastForward?.playbackRate !== plan.fastForward?.playbackRate;
@@ -151,33 +151,34 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.reconcileAt(timestampMs, { forcePlaybackRate: playbackRateChanged && !resetPlaybackRate });
     }
 
-    async update(timestampMs: number, lookaheadTimestampMs = timestampMs): Promise<void> {
+    async update(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void> {
         this.updateOperationGeneration = this.operationGeneration;
         this.updateInProgress = true;
         try {
-            await this.runner.update(this.nextPlaybackActionTimestamp(timestampMs, lookaheadTimestampMs));
+            await this.runner.update(this.nextPlaybackActionTimestamp(timestampMs, options.lookaheadTimestampMs));
         } finally {
             this.updateInProgress = false;
             const deferredDiscontinuity = this.deferredDiscontinuity;
             this.deferredDiscontinuity = undefined;
             if (deferredDiscontinuity !== undefined) {
-                this.reset(
-                    deferredDiscontinuity.timestampMs,
-                    deferredDiscontinuity.includeAtTimestamp,
-                    deferredDiscontinuity.cause
-                );
+                this.reset(deferredDiscontinuity.timestampMs, {
+                    includeAtTimestamp: deferredDiscontinuity.includeAtTimestamp,
+                    cause: deferredDiscontinuity.cause,
+                });
             }
         }
     }
 
-    reset(timestampMs: number, includeAtTimestamp = true, cause: PlaybackTimelineTransitionCause = 'user-seek'): void {
-        if (cause === 'user-seek') {
-            this.cancelPendingOperations();
+    reset(timestampMs: number, options: { includeAtTimestamp: boolean; cause: PlaybackTimelineTransitionCause }): void {
+        if (options.cause === 'user-seek') {
+            this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
             this.pendingTarget = undefined;
             this.repeatedBlock = undefined;
             this.startPauseSuppression = undefined;
         }
-        this.runner.reset(timestampMs, cause === 'user-seek' ? false : includeAtTimestamp);
+        this.runner.reset(timestampMs, {
+            includeAtTimestamp: options.cause === 'user-seek' ? false : options.includeAtTimestamp,
+        });
         this.reconcileAt(timestampMs, { forcePlaybackRate: false });
     }
 
@@ -185,8 +186,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.reconcilePlaybackRate(this.timeline.stateAt(timestampMs), { forcePlaybackRate: true });
     }
 
-    cancelPendingOperations(preserveExpectedDiscontinuity = false): void {
-        if (preserveExpectedDiscontinuity && this.expectedDiscontinuity !== undefined) return;
+    cancelPendingOperations(options: { preserveExpectedDiscontinuity: boolean }): void {
+        if (options.preserveExpectedDiscontinuity && this.expectedDiscontinuity !== undefined) return;
         this.operationGeneration++;
         this.condensedOperation = undefined;
         this.expectedDiscontinuity = undefined;
@@ -194,12 +195,17 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     handleDiscontinuity(timestampMs: number): void {
         const discontinuity = this.consumeDiscontinuity(timestampMs);
-        if (discontinuity.cause === 'user-seek') this.cancelPendingOperations();
+        if (discontinuity.cause === 'user-seek') {
+            this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
+        }
         if (this.updateInProgress) {
             this.deferredDiscontinuity = { timestampMs, ...discontinuity };
             return;
         }
-        this.reset(timestampMs, discontinuity.includeAtTimestamp, discontinuity.cause);
+        this.reset(timestampMs, {
+            includeAtTimestamp: discontinuity.includeAtTimestamp,
+            cause: discontinuity.cause,
+        });
     }
 
     consumeDiscontinuity(timestampMs: number): {
@@ -388,8 +394,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return target;
     }
 
-    private nextPlaybackActionTimestamp(timestampMs: number, lookaheadTimestampMs: number): number {
+    private nextPlaybackActionTimestamp(timestampMs: number, lookaheadTimestampMs?: number): number {
         if (
+            lookaheadTimestampMs === undefined ||
             !Number.isFinite(lookaheadTimestampMs) ||
             lookaheadTimestampMs <= timestampMs + timestampComparisonToleranceMs
         ) {

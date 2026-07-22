@@ -7,7 +7,7 @@ import PlaybackTimeline, {
 const boundaryBound = <T extends { timestampMs: number }>(
     values: readonly T[],
     timestampMs: number,
-    includeAtTimestamp: boolean
+    options: { includeAtTimestamp: boolean }
 ): number => {
     let low = 0;
     let high = values.length;
@@ -15,7 +15,7 @@ const boundaryBound = <T extends { timestampMs: number }>(
         const middle = low + Math.floor((high - low) / 2);
         if (
             values[middle].timestampMs < timestampMs ||
-            (!includeAtTimestamp && values[middle].timestampMs === timestampMs)
+            (!options.includeAtTimestamp && values[middle].timestampMs === timestampMs)
         ) {
             low = middle + 1;
         } else {
@@ -34,19 +34,23 @@ export default class PlaybackTimelineCursor<
     private nextBoundaryIndex = 0;
     private timestampMs = 0;
 
-    constructor(timeline: PlaybackTimeline<T, Block>, timestampMs = 0) {
+    constructor(timeline: PlaybackTimeline<T, Block>, timestampMs: number) {
         this.timeline = timeline;
-        this.reset(timestampMs);
+        this.reset(timestampMs, { includeAtTimestamp: true });
     }
 
-    replaceTimeline(timeline: PlaybackTimeline<T, Block>, timestampMs: number, includeAtTimestamp = true): void {
+    replaceTimeline(
+        timeline: PlaybackTimeline<T, Block>,
+        timestampMs: number,
+        options: { includeAtTimestamp: boolean }
+    ): void {
         this.timeline = timeline;
-        this.reset(timestampMs, includeAtTimestamp);
+        this.reset(timestampMs, options);
     }
 
-    reset(timestampMs: number, includeAtTimestamp = true): void {
+    reset(timestampMs: number, options: { includeAtTimestamp: boolean }): void {
         this.timestampMs = timestampMs;
-        this.nextBoundaryIndex = boundaryBound(this.timeline.boundaries, timestampMs, includeAtTimestamp);
+        this.nextBoundaryIndex = boundaryBound(this.timeline.boundaries, timestampMs, options);
     }
 
     advance(timestampMs: number): PlaybackTimelineEventGroup<Block>[] {
@@ -56,7 +60,7 @@ export default class PlaybackTimelineCursor<
             this.timestampMs = timestampMs;
             if (!crossedLowerThreshold) return [];
 
-            this.reset(timestampMs, false);
+            this.reset(timestampMs, { includeAtTimestamp: false });
             return [{ timestampMs, events: [], direction: 'backward' }];
         }
 

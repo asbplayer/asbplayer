@@ -69,7 +69,7 @@ export const playbackModeNotifications = (
 export default class PlaybackModeController {
     private modes: Set<PlayMode>;
 
-    constructor(initialModes: ReadonlySet<PlayMode> = new Set([PlayMode.normal])) {
+    constructor(initialModes: ReadonlySet<PlayMode>) {
         this.modes = normalizePlaybackModes(initialModes);
     }
 

@@ -53,12 +53,12 @@ export default class PlaybackTimelineRunner<
         options: { applyContinuousState: boolean }
     ): void {
         this.timeline = timeline;
-        this.cursor.replaceTimeline(timeline, timestampMs, false);
+        this.cursor.replaceTimeline(timeline, timestampMs, { includeAtTimestamp: false });
         this.applyInitialContinuousState = options.applyContinuousState;
     }
 
-    reset(timestampMs: number, includeAtTimestamp = true): void {
-        this.cursor.reset(timestampMs, includeAtTimestamp);
+    reset(timestampMs: number, options: { includeAtTimestamp: boolean }): void {
+        this.cursor.reset(timestampMs, options);
         this.applyInitialContinuousState = false;
     }
 
@@ -81,12 +81,12 @@ export default class PlaybackTimelineRunner<
                 await this.applyState(group.timestampMs);
                 // advance() may have observed later boundaries in the same frame jump. Restore them so resuming from
                 // the corrected position can still process them.
-                this.cursor.reset(group.timestampMs, false);
+                this.cursor.reset(group.timestampMs, { includeAtTimestamp: false });
                 await this.callbacks.correctAutoPause(group.timestampMs);
                 return;
             }
             if (seeked) {
-                this.cursor.reset(group.timestampMs, false);
+                this.cursor.reset(group.timestampMs, { includeAtTimestamp: false });
                 return;
             }
         }
@@ -96,7 +96,7 @@ export default class PlaybackTimelineRunner<
         await this.applyState(timestampMs);
         if (groups.some((group) => group.direction === 'backward')) return;
         const stateChangedPosition = await this.callbacks.onAfterState(timestampMs);
-        if (stateChangedPosition) this.cursor.reset(timestampMs);
+        if (stateChangedPosition) this.cursor.reset(timestampMs, { includeAtTimestamp: true });
     }
 
     private async applyState(timestampMs: number): Promise<void> {

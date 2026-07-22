@@ -16,7 +16,7 @@ export default class Clock {
         rate: [],
     };
 
-    constructor(now: ClockNow = () => performance.now()) {
+    constructor(now: ClockNow) {
         this.now = now;
     }
 
@@ -38,7 +38,7 @@ export default class Clock {
         this.fireEvent('rate');
     }
 
-    time(maxMs = Number.POSITIVE_INFINITY): number {
+    time(maxMs: number): number {
         const currentTimeMs = this.started ? this.accumulatedMs + this.elapsedMs() : this.accumulatedMs;
         return Math.min(maxMs, currentTimeMs);
     }

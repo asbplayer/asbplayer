@@ -65,7 +65,7 @@ class FakeTimingDriver implements TimingDriver {
 
     async time(timestampMs: number, lookaheadTimestampMs?: number): Promise<void> {
         this.timestampMs = timestampMs;
-        await this.callbacks.onTime(timestampMs, lookaheadTimestampMs);
+        await this.callbacks.onTime(timestampMs, { lookaheadTimestampMs });
     }
 
     discontinuity(timestampMs: number): void {
@@ -152,6 +152,7 @@ function makePlaybackEngine(
         subtitles,
         ready: { settings: overrides.settingsReady ?? true },
         subtitleOffsetMs: 0,
+        playbackModesSuppressed: false,
         timingDriver: driver,
         callbacks: {
             pause: overrides.pause ?? (() => pauses.push(driver.timestampMs)),
@@ -214,6 +215,7 @@ describe('PlaybackEngine', () => {
             subtitles: [],
             ready: { settings: true },
             subtitleOffsetMs: 0,
+            playbackModesSuppressed: false,
             timingDriver: driver,
             callbacks: {
                 pause: () => {},
@@ -415,6 +417,7 @@ describe('PlaybackEngine', () => {
             subtitles: [subtitle],
             ready: { settings: true },
             subtitleOffsetMs: 0,
+            playbackModesSuppressed: false,
             timingDriver: harness.driver,
             callbacks: {
                 pause: () => {},

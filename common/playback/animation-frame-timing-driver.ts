@@ -34,14 +34,14 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         };
         this.updates = new TimingUpdateQueue(
             {
-                onTime: async (timestampMs, lookaheadTimestampMs) => {
-                    await this.callbacks.onTime(timestampMs, lookaheadTimestampMs);
+                onTime: async (timestampMs, options) => {
+                    await this.callbacks.onTime(timestampMs, options);
                 },
                 onPlaybackStarted: async () => {
                     await this.callbacks.onPlaybackStarted();
                 },
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
-                onCancel: (preserveExpectedDiscontinuity) => this.callbacks.onCancel(preserveExpectedDiscontinuity),
+                onCancel: (options) => this.callbacks.onCancel(options),
                 onError: (error) => this.callbacks.onError(error),
             },
             () => this._bound && !this.clock.paused()
@@ -97,7 +97,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.clock.removeEventListener('pause', this.onStop);
         this.clock.removeEventListener('seeked', this.onSetTime);
         this.cancelScheduledUpdate();
-        this.updates.clear();
+        this.updates.clear({ preserveExpectedDiscontinuity: false });
         this.discontinuityPending = false;
         this.expectedInternalSeek = false;
     }
@@ -114,14 +114,14 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     };
 
     private readonly onStop = () => {
-        this.updates.clear();
+        this.updates.clear({ preserveExpectedDiscontinuity: false });
         if (!this.discontinuityPending) this.cancelScheduledUpdate();
     };
 
     private readonly onSetTime = () => {
         const preserveExpectedDiscontinuity = this.expectedInternalSeek;
         this.expectedInternalSeek = false;
-        this.updates.clear(preserveExpectedDiscontinuity);
+        this.updates.clear({ preserveExpectedDiscontinuity });
         this.discontinuityPending = true;
         this.schedule();
     };
@@ -136,7 +136,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
             if (this.discontinuityPending) {
                 this.reset();
             } else if (!this.clock.paused()) {
-                this.updates.enqueue(this.clock.currentTimeMs());
+                this.updates.enqueue(this.clock.currentTimeMs(), { lookaheadTimestampMs: undefined });
             }
             this.schedule();
         });

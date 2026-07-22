@@ -420,7 +420,7 @@ export default function VideoPlayer({
     const showingSubtitlesChangedRef = useRef<(subtitles: readonly IndexedSubtitleModel[]) => void>(() => {});
     const subtitleCollectionRef = useRef(subtitleCollection);
     subtitleCollectionRef.current = subtitleCollection;
-    const clock = useMemo<Clock>(() => new Clock(), []);
+    const clock = useMemo<Clock>(() => new Clock(() => performance.now()), []);
     const mousePositionRef = useRef<Point | undefined>(undefined);
     const [showCursor, setShowCursor] = useState<boolean>(isMobile);
     const lastMouseMovementTimestamp = useRef<number>(0);
@@ -580,6 +580,7 @@ export default function VideoPlayer({
             subtitles: subtitlesRef.current,
             ready: { settings: true },
             subtitleOffsetMs: offsetRef.current,
+            playbackModesSuppressed: false,
             timingDriver: new VideoFrameTimingDriver(
                 {
                     paused: () => video.paused,
