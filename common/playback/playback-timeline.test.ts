@@ -12,7 +12,7 @@ describe('PlaybackTimeline', () => {
     it('describes active and gap regions without querying a subtitle collection', () => {
         const first = makeSubtitle(1000, 2000, 0);
         const second = makeSubtitle(3000, 4000, 1);
-        const result = timeline([first, second], { playbackModeStartOffset: -250 });
+        const result = timeline([first, second], { subtitleTriggerStartOffset: -250 });
         const [firstBlock, secondBlock] = result.blocks;
 
         expect(result.stateAt(1500).current).toBe(firstBlock);
@@ -23,7 +23,7 @@ describe('PlaybackTimeline', () => {
 
     it('exposes a condensed target throughout the invisible gap despite a positive end offset', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], {
-            playbackModeEndOffset: 500,
+            subtitleTriggerEndOffset: 500,
         });
 
         expect(result.nextCondensedTarget(2100)).toBe(2999);
@@ -31,8 +31,8 @@ describe('PlaybackTimeline', () => {
 
     it('uses visible boundaries rather than playback action offsets for active and gap regions', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)], {
-            playbackModeStartOffset: 250,
-            playbackModeEndOffset: -250,
+            subtitleTriggerStartOffset: 250,
+            subtitleTriggerEndOffset: -250,
         });
 
         expect(result.stateAt(1100).current).toBe(result.blocks[0]);
@@ -44,10 +44,10 @@ describe('PlaybackTimeline', () => {
 
     it('uses configurable start and end gaps for condensed playback', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)], {
-            playbackModeStartOffset: -100,
-            playbackModeEndOffset: 200,
-            playbackModesStartGap: -250,
-            playbackModesEndGap: 400,
+            subtitleTriggerStartOffset: -100,
+            subtitleTriggerEndOffset: 200,
+            subtitleTriggerGapEndOffset: -250,
+            subtitleTriggerGapStartOffset: 400,
         });
 
         expect(result.nextCondensedTarget(2399)).toBeUndefined();

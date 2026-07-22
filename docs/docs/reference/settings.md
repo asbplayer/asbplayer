@@ -687,9 +687,9 @@ When auto-pause is enabled, whether to auto-pause at the start, end, or both edg
 
 Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
 
-### Playback mode start and end offsets
+### Subtitle trigger start and end offsets
 
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These playback-mode offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
 
 ### Fast-forward minimum skip interval
 
@@ -703,9 +703,9 @@ How fast to fast-forward when fast-forward mode is enabled.
 
 When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
 
-### Playback modes start and end gaps
+### Subtitle gap trigger start and end offsets
 
-Offsets the gap triggers used by fast-forward and condensed playback. The start gap is non-positive and extends normal playback before a subtitle; `0ms` is the final millisecond before the subtitle is visible. The end gap is non-negative and extends normal playback after a subtitle; `0ms` is the first millisecond after the subtitle is no longer visible. Each gap is limited by the media and neighboring subtitle-event boundaries.
+Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
 
 ### Enable WebSocket client
 

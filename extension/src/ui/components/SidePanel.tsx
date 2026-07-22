@@ -25,7 +25,7 @@ import { ChromeExtension, useCopyHistory } from '@project/common/app';
 import { useI18n } from '../hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Player from '@project/common/app/components/Player';
+import Player, { PlayerRef } from '@project/common/app/components/Player';
 import { DisplaySubtitleModel } from '@project/common';
 import { PlaybackPreferences } from '@project/common/app';
 import { AlertColor } from '@mui/material/Alert';
@@ -122,7 +122,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>();
     const [initializing, setInitializing] = useState<boolean>(true);
     const [syncedVideoTab, setSyncedVideoElement] = useState<VideoTabModel>();
-    const [downloadSubtitleTimelineRequest, setDownloadSubtitleTimelineRequest] = useState(0);
+    const playerRef = useRef<PlayerRef>(null);
     const [recordingAudio, setRecordingAudio] = useState<boolean>(false);
     const [viewingAsbplayer, setViewingAsbplayer] = useState<AsbplayerInstance>();
 
@@ -335,7 +335,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     }, [subtitles, subtitleFileNames, subtitleReader]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
-        setDownloadSubtitleTimelineRequest((request) => request + 1);
+        playerRef.current?.downloadSubtitleTimeline();
     }, []);
 
     const handleBulkExportSubtitles = useCallback(async () => {
@@ -684,6 +684,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                         <>
                             <SidePanelRecordingOverlay show={recordingAudio} />
                             <Player
+                                ref={playerRef}
                                 origin={browser.runtime.getURL('/sidepanel.html')}
                                 subtitles={subtitles}
                                 hideControls={true}
@@ -705,7 +706,6 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onHideSubtitlePlayer={noOp}
                                 onVideoPopOut={noOp}
                                 onSubtitles={setSubtitles}
-                                downloadSubtitleTimelineRequest={downloadSubtitleTimelineRequest}
                                 playbackTimelineFileName={subtitleFileNames?.[0]}
                                 playbackTimelineModeLabels={{
                                     normal: t('controls.normalMode'),
@@ -718,10 +718,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 playbackTimelineOptionLabels={{
                                     title: t('settings.playbackModes'),
                                     subtitleTrack: (trackNumber) => t('settings.subtitleTrackChoice', { trackNumber }),
-                                    playbackModeStartOffset: t('settings.playbackModeStartOffset'),
-                                    playbackModeEndOffset: t('settings.playbackModeEndOffset'),
-                                    playbackModesStartGap: t('settings.playbackModesStartGap'),
-                                    playbackModesEndGap: t('settings.playbackModesEndGap'),
+                                    subtitleTriggerStartOffset: t('settings.subtitleTriggerStartOffset'),
+                                    subtitleTriggerEndOffset: t('settings.subtitleTriggerEndOffset'),
+                                    subtitleTriggerGapEndOffset: t('settings.subtitleTriggerGapEndOffset'),
+                                    subtitleTriggerGapStartOffset: t('settings.subtitleTriggerGapStartOffset'),
                                     condensedPlaybackMinimumSkipInterval: t(
                                         'settings.condensedPlaybackMinimumSkipInterval'
                                     ),

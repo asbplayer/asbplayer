@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { makeStyles } from '@mui/styles';
 import MuiAlert, { type AlertColor } from '@mui/material/Alert';
 import Grow from '@mui/material/Grow';
-import { prependNotification, removeNotification, type Notification } from './notification-stack';
+import { prepend, remove, type Stack } from './notification-stack';
 
 const useAlertStyles = makeStyles(() => ({
     root: {
@@ -57,6 +57,18 @@ interface AlertNotification {
     disableAutoHide: boolean;
 }
 
+function toAlertNotification(
+    children: React.ReactNode,
+    severity: AlertColor | undefined,
+    disableAutoHide: boolean | undefined
+): AlertNotification {
+    return {
+        children,
+        severity,
+        disableAutoHide: disableAutoHide ?? false,
+    };
+}
+
 interface AlertItemProps extends AlertNotification {
     id: number;
     open: boolean;
@@ -86,38 +98,20 @@ function AlertItem({ id, open, autoHideDuration, onClose, children, severity, di
 }
 
 export default function Alert(props: Props) {
-    const [notifications, setNotifications] = useState<Notification<AlertNotification>[]>(() =>
-        props.open
-            ? [
-                  {
-                      id: 0,
-                      value: {
-                          children: props.children,
-                          severity: props.severity,
-                          disableAutoHide: props.disableAutoHide ?? false,
-                      },
-                  },
-              ]
-            : []
+    const initialNotification = props.open
+        ? toAlertNotification(props.children, props.severity, props.disableAutoHide)
+        : undefined;
+    const [notifications, setNotifications] = useState<Stack<AlertNotification>[]>(() =>
+        initialNotification === undefined ? [] : [{ id: 0, value: initialNotification }]
     );
-    const nextNotificationIdRef = useRef(props.open ? 1 : 0);
-    const previousPropsRef = useRef<
-        { children: React.ReactNode; severity: AlertColor | undefined; disableAutoHide: boolean } | undefined
-    >(
-        props.open
-            ? {
-                  children: props.children,
-                  severity: props.severity,
-                  disableAutoHide: props.disableAutoHide ?? false,
-              }
-            : undefined
-    );
+    const nextNotificationIdRef = useRef(initialNotification === undefined ? 0 : 1);
+    const previousPropsRef = useRef<AlertNotification | undefined>(initialNotification);
     const hadNotificationsRef = useRef(props.open);
     const onCloseRef = useRef(props.onClose);
     onCloseRef.current = props.onClose;
 
     const closeNotification = useCallback((id: number) => {
-        setNotifications((current) => removeNotification(current, id));
+        setNotifications((current) => remove(current, id));
     }, []);
 
     useEffect(() => {
@@ -134,11 +128,7 @@ export default function Alert(props: Props) {
             return;
         }
 
-        const currentProps = {
-            children: props.children,
-            severity: props.severity,
-            disableAutoHide: props.disableAutoHide ?? false,
-        };
+        const currentProps = toAlertNotification(props.children, props.severity, props.disableAutoHide);
         const previousProps = previousPropsRef.current;
         const changed =
             previousProps === undefined ||
@@ -152,7 +142,7 @@ export default function Alert(props: Props) {
                 id: nextNotificationIdRef.current++,
                 value: currentProps,
             };
-            setNotifications((current) => prependNotification(current, notification));
+            setNotifications((current) => prepend(current, notification));
         }
         previousPropsRef.current = currentProps;
     }, [props.open, props.children, props.severity, props.disableAutoHide]);

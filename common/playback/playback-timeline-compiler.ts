@@ -7,10 +7,10 @@ export interface PlaybackTimelineOptions<T extends SubtitleModel> {
     /** All subtitles that may be rendered. Defaults to subtitles. */
     readonly displaySubtitles?: readonly T[];
     readonly durationMs: number;
-    readonly playbackModeStartOffset: number;
-    readonly playbackModeEndOffset: number;
-    readonly playbackModesStartGap: number;
-    readonly playbackModesEndGap: number;
+    readonly subtitleTriggerStartOffset: number;
+    readonly subtitleTriggerEndOffset: number;
+    readonly subtitleTriggerGapStartOffset: number;
+    readonly subtitleTriggerGapEndOffset: number;
 }
 
 type MutableBlock<T extends SubtitleModel> = {
@@ -31,10 +31,10 @@ const blockId = <T extends SubtitleModel>(block: MutableBlock<T>): string =>
 const blocksFromSubtitles = <T extends SubtitleModel>(
     subtitles: readonly T[],
     durationMs: number,
-    playbackModeStartOffsetMs: number,
-    playbackModeEndOffsetMs: number,
-    playbackModesStartGapMs: number,
-    playbackModesEndGapMs: number
+    subtitleTriggerStartOffsetMs: number,
+    subtitleTriggerEndOffsetMs: number,
+    subtitleTriggerGapStartOffsetMs: number,
+    subtitleTriggerGapEndOffsetMs: number
 ): readonly PlaybackTimelineBlock[] => {
     const mutableBlocks: MutableBlock<T>[] = [];
     for (const subtitle of subtitles) {
@@ -58,16 +58,16 @@ const blocksFromSubtitles = <T extends SubtitleModel>(
         });
     }
 
-    const playbackModeStartOffset = finiteOrZero(playbackModeStartOffsetMs);
-    const playbackModeEndOffset = finiteOrZero(playbackModeEndOffsetMs);
-    const playbackModesStartGapOffset = Math.min(0, finiteOrZero(playbackModesStartGapMs));
-    const playbackModesEndGap = Math.max(0, finiteOrZero(playbackModesEndGapMs));
+    const subtitleTriggerStartOffset = finiteOrZero(subtitleTriggerStartOffsetMs);
+    const subtitleTriggerEndOffset = finiteOrZero(subtitleTriggerEndOffsetMs);
+    const subtitleTriggerGapStartOffset = Math.max(0, finiteOrZero(subtitleTriggerGapStartOffsetMs));
+    const subtitleTriggerGapEndOffset = Math.min(0, finiteOrZero(subtitleTriggerGapEndOffsetMs));
     return mutableBlocks.map((block, index) => {
         const previousEndMs = mutableBlocks[index - 1]?.endMs ?? 0;
         const nextStartMs = mutableBlocks[index + 1]?.startMs ?? durationMs;
         const latestLegalTriggerMs = Math.max(previousEndMs, nextStartMs - 1);
-        const shiftedStartMs = clamp(block.startMs + playbackModeStartOffset, previousEndMs, latestLegalTriggerMs);
-        const shiftedEndMs = clamp(block.endMs - 1 + playbackModeEndOffset, previousEndMs, latestLegalTriggerMs);
+        const shiftedStartMs = clamp(block.startMs + subtitleTriggerStartOffset, previousEndMs, latestLegalTriggerMs);
+        const shiftedEndMs = clamp(block.endMs - 1 + subtitleTriggerEndOffset, previousEndMs, latestLegalTriggerMs);
         // Offsets are legal independently, so a sufficiently late start and early end may pass each other.
         // In that case their chronological roles swap: playback-mode effects still start at the earlier
         // boundary and end at the later boundary.
@@ -75,20 +75,25 @@ const blocksFromSubtitles = <T extends SubtitleModel>(
         const playbackModeEndMs = Math.max(shiftedStartMs, shiftedEndMs);
         // Persistent playback state changes on the millisecond after the final included end-action timestamp.
         const playbackModeEndExclusiveMs = Math.min(durationMs, playbackModeEndMs + 1);
-        const playbackModesStartGapBoundaryMs = clamp(
-            block.startMs - 1 + playbackModesStartGapOffset,
+        // The gap starts immediately after the subtitle and ends immediately before the next subtitle.
+        const subtitleTriggerGapStartOffsetBoundaryMs = clamp(
+            block.endMs + subtitleTriggerGapStartOffset,
+            block.endMs,
+            nextStartMs
+        );
+        const subtitleTriggerGapEndOffsetBoundaryMs = clamp(
+            block.startMs - 1 + subtitleTriggerGapEndOffset,
             previousEndMs,
             block.startMs
         );
-        const playbackModesEndGapBoundaryMs = clamp(block.endMs + playbackModesEndGap, block.endMs, nextStartMs);
 
         return {
             id: blockId(block),
             playbackModeStartMs,
             playbackModeEndMs,
             playbackModeEndExclusiveMs,
-            playbackModesStartGapMs: playbackModesStartGapBoundaryMs,
-            playbackModesEndGapMs: playbackModesEndGapBoundaryMs,
+            subtitleTriggerGapStartOffsetMs: subtitleTriggerGapStartOffsetBoundaryMs,
+            subtitleTriggerGapEndOffsetMs: subtitleTriggerGapEndOffsetBoundaryMs,
         };
     });
 };
@@ -116,10 +121,10 @@ export const compilePlaybackTimeline = <T extends SubtitleModel>(
         blocks: blocksFromSubtitles(
             subtitles,
             durationMs,
-            options.playbackModeStartOffset,
-            options.playbackModeEndOffset,
-            options.playbackModesStartGap,
-            options.playbackModesEndGap
+            options.subtitleTriggerStartOffset,
+            options.subtitleTriggerEndOffset,
+            options.subtitleTriggerGapStartOffset,
+            options.subtitleTriggerGapEndOffset
         ),
         displaySubtitles: [...displaySubtitles],
     };

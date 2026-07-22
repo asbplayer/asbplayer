@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef, MutableRefObject } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle, MutableRefObject } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
@@ -160,60 +160,67 @@ interface PlayerProps {
     hideControls?: boolean;
     forceCompressedMode?: boolean;
     webSocketClient?: WebSocketClient;
-    downloadSubtitleTimelineRequest: number;
     playbackTimelineFileName?: string;
     playbackTimelineModeLabels: PlaybackTimelineModeLabels;
     playbackTimelineOptionLabels: PlaybackTimelineOptionLabels;
 }
 
-const Player = React.memo(function Player({
-    sources,
-    subtitles,
-    mediaId,
-    subtitleReader,
-    dictionaryProvider,
-    settingsProvider,
-    settings,
-    playbackPreferences,
-    keyBinder,
-    extension,
-    videoFrameRef,
-    videoChannelRef,
-    drawerOpen,
-    appBarHidden,
-    showCopyButton,
-    videoFullscreen,
-    hideSubtitlePlayer,
-    videoPopOut,
-    tab,
-    availableTabs,
-    miningContext,
-    origin,
-    statisticsOverlay,
-    onError,
-    onUnloadVideo,
-    onCopy,
-    onLoaded,
-    onTabSelected,
-    onAnkiDialogRequest,
-    onAppBarToggle,
-    onHideSubtitlePlayer,
-    onVideoPopOut,
-    onSubtitles,
-    onLoadFiles,
-    onLoadSubtitles,
-    disableKeyEvents,
-    jumpToSubtitle,
-    onJumpToSubtitleHandled,
-    rewindSubtitle,
-    hideControls,
-    forceCompressedMode,
-    webSocketClient,
-    downloadSubtitleTimelineRequest,
-    playbackTimelineFileName,
-    playbackTimelineModeLabels,
-    playbackTimelineOptionLabels,
-}: PlayerProps) {
+export interface PlayerRef {
+    downloadSubtitleTimeline: () => void;
+}
+
+const Player = React.memo(React.forwardRef<PlayerRef, PlayerProps>(PlayerComponent));
+
+function PlayerComponent(
+    {
+        sources,
+        subtitles,
+        mediaId,
+        subtitleReader,
+        dictionaryProvider,
+        settingsProvider,
+        settings,
+        playbackPreferences,
+        keyBinder,
+        extension,
+        videoFrameRef,
+        videoChannelRef,
+        drawerOpen,
+        appBarHidden,
+        showCopyButton,
+        videoFullscreen,
+        hideSubtitlePlayer,
+        videoPopOut,
+        tab,
+        availableTabs,
+        miningContext,
+        origin,
+        statisticsOverlay,
+        onError,
+        onUnloadVideo,
+        onCopy,
+        onLoaded,
+        onTabSelected,
+        onAnkiDialogRequest,
+        onAppBarToggle,
+        onHideSubtitlePlayer,
+        onVideoPopOut,
+        onSubtitles,
+        onLoadFiles,
+        onLoadSubtitles,
+        disableKeyEvents,
+        jumpToSubtitle,
+        onJumpToSubtitleHandled,
+        rewindSubtitle,
+        hideControls,
+        forceCompressedMode,
+        webSocketClient,
+        playbackTimelineFileName,
+        playbackTimelineModeLabels,
+        playbackTimelineOptionLabels,
+    }: PlayerProps,
+    ref: React.ForwardedRef<PlayerRef>
+) {
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(() => new Set([PlayMode.normal]));
     const playModesRef = useRef<Set<PlayMode>>(playModes);
     playModesRef.current = playModes;
@@ -269,7 +276,6 @@ const Player = React.memo(function Player({
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
     const [syntheticShowingSubtitles, setSyntheticShowingSubtitles] = useState<readonly DisplaySubtitleModel[]>([]);
-    const handledDownloadSubtitleTimelineRequestRef = useRef(0);
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const calculateLengthMs = (videoDurationRef: MutableRefObject<number>, playerSubtitles = subtitlesRef.current) =>
@@ -328,12 +334,9 @@ const Player = React.memo(function Player({
         );
     }, [playbackRate, playbackTimelineFileName, playbackTimelineModeLabels, playbackTimelineOptionLabels, settings]);
 
-    useEffect(() => {
-        if (downloadSubtitleTimelineRequest > handledDownloadSubtitleTimelineRequestRef.current) {
-            handledDownloadSubtitleTimelineRequestRef.current = downloadSubtitleTimelineRequest;
-            handleDownloadSubtitleTimeline();
-        }
-    }, [downloadSubtitleTimelineRequest, handleDownloadSubtitleTimeline]);
+    useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
+        handleDownloadSubtitleTimeline,
+    ]);
 
     const seek = useCallback(
         async (time: number, clock: Clock, forwardToMedia: boolean) => {
@@ -1429,6 +1432,6 @@ const Player = React.memo(function Player({
             </Grid>
         </div>
     );
-});
+}
 
 export default Player;

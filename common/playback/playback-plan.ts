@@ -48,11 +48,10 @@ export interface PlaybackPlanInput<T extends SubtitleModel> {
     readonly durationMs: number;
     readonly playModes: ReadonlySet<PlayMode>;
     readonly autoPausePreference: AutoPausePreference;
-    /** Applied to auto-pause and repeat triggers after the global subtitle offset. */
-    readonly playbackModeStartOffset: number;
-    readonly playbackModeEndOffset: number;
-    readonly playbackModesStartGap: number;
-    readonly playbackModesEndGap: number;
+    readonly subtitleTriggerStartOffset: number;
+    readonly subtitleTriggerEndOffset: number;
+    readonly subtitleTriggerGapStartOffset: number;
+    readonly subtitleTriggerGapEndOffset: number;
     readonly repeatCountPreference: number;
     readonly condensedPlaybackMinimumSkipIntervalMs: number;
     readonly playbackRate: number;
@@ -75,10 +74,10 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     durationMs,
     playModes,
     autoPausePreference,
-    playbackModeStartOffset,
-    playbackModeEndOffset,
-    playbackModesStartGap,
-    playbackModesEndGap,
+    subtitleTriggerStartOffset,
+    subtitleTriggerEndOffset,
+    subtitleTriggerGapStartOffset,
+    subtitleTriggerGapEndOffset,
     repeatCountPreference,
     condensedPlaybackMinimumSkipIntervalMs,
     playbackRate,
@@ -89,16 +88,16 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     const autoPauseAtStart = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
     const autoPauseAtEnd = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atEnd);
     const repeat = playModes.has(PlayMode.repeat);
-    const startOffset = finiteOrZero(playbackModeStartOffset);
-    const startGapOffset = Math.min(0, finiteOrZero(playbackModesStartGap));
+    const startOffset = finiteOrZero(subtitleTriggerStartOffset);
+    const gapEndOffset = Math.min(0, finiteOrZero(subtitleTriggerGapEndOffset));
     const timeline = compilePlaybackTimeline({
         subtitles,
         displaySubtitles,
         durationMs,
-        playbackModeStartOffset,
-        playbackModeEndOffset,
-        playbackModesStartGap,
-        playbackModesEndGap,
+        subtitleTriggerStartOffset,
+        subtitleTriggerEndOffset,
+        subtitleTriggerGapStartOffset,
+        subtitleTriggerGapEndOffset,
     });
 
     const blocks = timeline.blocks.map<PlaybackPlanBlock>((block) => ({
@@ -131,7 +130,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
                   condensed: {
                       minimumSkipIntervalMs: condensedPlaybackMinimumSkipIntervalMs,
                       pauseAtStart:
-                          autoPauseAtStart && startOffset <= 0 && Math.abs(startGapOffset) <= Math.abs(startOffset),
+                          autoPauseAtStart && startOffset <= 0 && Math.abs(gapEndOffset) <= Math.abs(startOffset),
                   },
               }
             : {}),
@@ -158,8 +157,8 @@ export const fastForwardingForPlanState = <T extends SubtitleModel>(
 ): boolean => {
     if (plan.fastForward === undefined || state.current !== undefined) return false;
 
-    const previousGapEdge = state.previous?.playbackModesEndGapMs;
-    const nextGapEdge = state.next?.playbackModesStartGapMs;
+    const previousGapEdge = state.previous?.subtitleTriggerGapStartOffsetMs;
+    const nextGapEdge = state.next?.subtitleTriggerGapEndOffsetMs;
     if (previousGapEdge === undefined && nextGapEdge === undefined) return true;
 
     let gapDurationMs: number;
@@ -217,8 +216,10 @@ const playbackPlanBlockComparators: ObjectComparators<PlaybackPlanBlock> = {
     playbackModeStartMs: (left, right) => left.playbackModeStartMs === right.playbackModeStartMs,
     playbackModeEndMs: (left, right) => left.playbackModeEndMs === right.playbackModeEndMs,
     playbackModeEndExclusiveMs: (left, right) => left.playbackModeEndExclusiveMs === right.playbackModeEndExclusiveMs,
-    playbackModesStartGapMs: (left, right) => left.playbackModesStartGapMs === right.playbackModesStartGapMs,
-    playbackModesEndGapMs: (left, right) => left.playbackModesEndGapMs === right.playbackModesEndGapMs,
+    subtitleTriggerGapEndOffsetMs: (left, right) =>
+        left.subtitleTriggerGapEndOffsetMs === right.subtitleTriggerGapEndOffsetMs,
+    subtitleTriggerGapStartOffsetMs: (left, right) =>
+        left.subtitleTriggerGapStartOffsetMs === right.subtitleTriggerGapStartOffsetMs,
     startAction: (left, right) => left.startAction === right.startAction,
     endAction: (left, right) => arePlaybackPlanEndActionsEqual(left.endAction, right.endAction),
 };

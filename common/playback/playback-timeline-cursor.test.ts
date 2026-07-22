@@ -5,8 +5,8 @@ import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-c
 describe('PlaybackTimelineCursor', () => {
     it('coalesces equal targets into one timestamp while retaining both roles', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0)], {
-            playbackModeStartOffset: 500,
-            playbackModeEndOffset: -499,
+            subtitleTriggerStartOffset: 500,
+            subtitleTriggerEndOffset: -499,
         });
         const cursor = new PlaybackTimelineCursor(result, 1400);
 

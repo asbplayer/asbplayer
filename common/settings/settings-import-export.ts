@@ -445,16 +445,16 @@ const settingsSchema = {
         autoPausePreference: {
             type: 'number',
         },
-        playbackModeStartOffset: {
+        subtitleTriggerStartOffset: {
             type: 'number',
         },
-        playbackModeEndOffset: {
+        subtitleTriggerEndOffset: {
             type: 'number',
         },
-        playbackModesStartGap: {
+        subtitleTriggerGapEndOffset: {
             type: 'number',
         },
-        playbackModesEndGap: {
+        subtitleTriggerGapStartOffset: {
             type: 'number',
         },
         seekableTracks: {

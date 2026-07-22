@@ -35,9 +35,9 @@ export interface PlaybackTimelineBlock {
     /** First timestamp after the offset playback-action interval. */
     readonly playbackModeEndExclusiveMs: number;
     /** First protected timestamp before the subtitle, after which gap behavior stops. */
-    readonly playbackModesStartGapMs: number;
-    /** First gap-behavior timestamp after the subtitle and its configured end gap. */
-    readonly playbackModesEndGapMs: number;
+    readonly subtitleTriggerGapEndOffsetMs: number;
+    /** First gap-behavior timestamp after the subtitle and its configured start offset. */
+    readonly subtitleTriggerGapStartOffsetMs: number;
 }
 
 /** A half-open, non-overlapping interval of fully compiled persistent media state. */
@@ -70,7 +70,7 @@ const firstBlockEndingAfter = (blocks: readonly PlaybackTimelineBlock[], timesta
     let high = blocks.length;
     while (low < high) {
         const middle = low + Math.floor((high - low) / 2);
-        if (blocks[middle].playbackModesEndGapMs <= timestampMs) {
+        if (blocks[middle].subtitleTriggerGapStartOffsetMs <= timestampMs) {
             low = middle + 1;
         } else {
             high = middle;
@@ -129,16 +129,21 @@ export default class PlaybackTimeline<
             ),
         ].sort((left, right) => left - right);
         this.stateChangeTimestamps = [
-            ...new Set(this.blocks.flatMap((block) => [block.playbackModesStartGapMs, block.playbackModesEndGapMs])),
+            ...new Set(
+                this.blocks.flatMap((block) => [
+                    block.subtitleTriggerGapEndOffsetMs,
+                    block.subtitleTriggerGapStartOffsetMs,
+                ])
+            ),
         ].sort((left, right) => left - right);
 
         const condensedGapStarts: number[] = [];
         const condensedGapTargets: number[] = [];
         for (const [index, block] of this.blocks.entries()) {
-            const gapStartMs = this.blocks[index - 1]?.playbackModesEndGapMs ?? 0;
-            if (gapStartMs < block.playbackModesStartGapMs) {
+            const gapStartMs = this.blocks[index - 1]?.subtitleTriggerGapStartOffsetMs ?? 0;
+            if (gapStartMs < block.subtitleTriggerGapEndOffsetMs) {
                 condensedGapStarts.push(gapStartMs);
-                condensedGapTargets.push(block.playbackModesStartGapMs);
+                condensedGapTargets.push(block.subtitleTriggerGapEndOffsetMs);
             }
         }
         this.condensedGapStarts = condensedGapStarts;
@@ -199,8 +204,8 @@ export default class PlaybackTimeline<
         for (const edge of displayEdges) timestamps.add(edge.timestampMs);
         for (const event of events) timestamps.add(event.timestampMs);
         for (const block of this.blocks) {
-            timestamps.add(block.playbackModesStartGapMs);
-            timestamps.add(block.playbackModesEndGapMs);
+            timestamps.add(block.subtitleTriggerGapEndOffsetMs);
+            timestamps.add(block.subtitleTriggerGapStartOffsetMs);
             timestamps.add(block.playbackModeEndExclusiveMs);
         }
         const sortedTimestamps = [...timestamps].sort((left, right) => left - right);
@@ -236,11 +241,14 @@ export default class PlaybackTimeline<
 
         let blockIndex = 0;
         const states = sortedTimestamps.map<PlaybackTimelineState<Block>>((timestampMs) => {
-            while (blockIndex < this.blocks.length && this.blocks[blockIndex].playbackModesEndGapMs <= timestampMs) {
+            while (
+                blockIndex < this.blocks.length &&
+                this.blocks[blockIndex].subtitleTriggerGapStartOffsetMs <= timestampMs
+            ) {
                 blockIndex++;
             }
             const candidate = this.blocks[blockIndex];
-            if (candidate !== undefined && candidate.playbackModesStartGapMs <= timestampMs) {
+            if (candidate !== undefined && candidate.subtitleTriggerGapEndOffsetMs <= timestampMs) {
                 return {
                     current: candidate,
                     previous: this.blocks[blockIndex - 1],
@@ -263,7 +271,7 @@ export default class PlaybackTimeline<
     stateAt(timestampMs: number): PlaybackTimelineState<Block> {
         const index = firstBlockEndingAfter(this.blocks, timestampMs);
         const candidate = this.blocks[index];
-        if (candidate !== undefined && candidate.playbackModesStartGapMs <= timestampMs) {
+        if (candidate !== undefined && candidate.subtitleTriggerGapEndOffsetMs <= timestampMs) {
             return {
                 current: candidate,
                 previous: this.blocks[index - 1],

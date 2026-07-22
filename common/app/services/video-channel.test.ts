@@ -47,10 +47,10 @@ describe('VideoChannel playback intents', () => {
 
         channel.miscSettings({
             ...defaultSettings,
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
-            playbackModesStartGap: -150,
-            playbackModesEndGap: 300,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
+            subtitleTriggerGapEndOffset: -150,
+            subtitleTriggerGapStartOffset: 300,
             streamingCondensedPlaybackMinimumSkipIntervalMs: 750,
         });
 
@@ -58,10 +58,10 @@ describe('VideoChannel playback intents', () => {
             expect.objectContaining({
                 command: 'miscSettings',
                 value: expect.objectContaining({
-                    playbackModeStartOffset: -250,
-                    playbackModeEndOffset: 400,
-                    playbackModesStartGap: -150,
-                    playbackModesEndGap: 300,
+                    subtitleTriggerStartOffset: -250,
+                    subtitleTriggerEndOffset: 400,
+                    subtitleTriggerGapEndOffset: -150,
+                    subtitleTriggerGapStartOffset: 300,
                     streamingCondensedPlaybackMinimumSkipIntervalMs: 750,
                 }),
             }),

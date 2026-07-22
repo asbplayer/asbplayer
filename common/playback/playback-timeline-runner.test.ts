@@ -39,8 +39,8 @@ describe('PlaybackTimelineRunner', () => {
     it('processes both roles at a shared timestamp but performs one correction', async () => {
         const timeline = compileTimeline([makeSubtitle(1000, 2000, 0)], {
             durationMs: 3000,
-            playbackModeStartOffset: 500,
-            playbackModeEndOffset: -499,
+            subtitleTriggerStartOffset: 500,
+            subtitleTriggerEndOffset: -499,
         });
         const start = jest.fn(() => true);
         const end = jest.fn(() => ({ autoPaused: true, seeked: false }));

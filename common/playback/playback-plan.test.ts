@@ -68,8 +68,8 @@ describe('buildPlaybackPlan', () => {
     it('swaps crossed playback mode offset roles for auto-pause and repeat', () => {
         const plan = makePlan([PlayMode.autoPause, PlayMode.repeat], {
             autoPausePreference: AutoPausePreference.atStartAndEnd,
-            playbackModeStartOffset: 800,
-            playbackModeEndOffset: -800,
+            subtitleTriggerStartOffset: 800,
+            subtitleTriggerEndOffset: -800,
             repeatCountPreference: 2,
         });
 
@@ -128,8 +128,8 @@ describe('buildPlaybackPlan', () => {
 
     it('uses playback mode offsets for repeat triggers without auto-pause', () => {
         const plan = makePlan([PlayMode.repeat], {
-            playbackModeStartOffset: -200,
-            playbackModeEndOffset: 300,
+            subtitleTriggerStartOffset: -200,
+            subtitleTriggerEndOffset: 300,
             repeatCountPreference: 1,
         });
 
@@ -213,8 +213,8 @@ describe('buildPlaybackPlan', () => {
 
     it('switches fast-forward at visible subtitle boundaries instead of playback action offsets', () => {
         const plan = makePlan([PlayMode.fastForward], {
-            playbackModeStartOffset: 200,
-            playbackModeEndOffset: -200,
+            subtitleTriggerStartOffset: 200,
+            subtitleTriggerEndOffset: -200,
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
@@ -232,8 +232,8 @@ describe('buildPlaybackPlan', () => {
 
     it('uses configurable start and end gaps for fast-forward boundaries', () => {
         const plan = makePlan([PlayMode.fastForward], {
-            playbackModesStartGap: -200,
-            playbackModesEndGap: 300,
+            subtitleTriggerGapEndOffset: -200,
+            subtitleTriggerGapStartOffset: 300,
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
@@ -261,7 +261,7 @@ describe('playbackPlansEqual', () => {
         const plan = makePlan([PlayMode.normal]);
 
         expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { durationMs: 6000 }))).toBe(false);
-        expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { playbackModeStartOffset: 100 }))).toBe(false);
+        expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { subtitleTriggerStartOffset: 100 }))).toBe(false);
         expect(playbackPlansEqual(plan, makePlan([PlayMode.autoPause]))).toBe(false);
         expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { playbackRate: 1.5 }))).toBe(false);
         expect(

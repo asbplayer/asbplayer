@@ -21,22 +21,22 @@ describe('compilePlaybackTimeline', () => {
             expect.objectContaining({
                 playbackModeStartMs: 1000,
                 playbackModeEndMs: 1999,
-                playbackModesStartGapMs: 999,
-                playbackModesEndGapMs: 2000,
+                subtitleTriggerGapEndOffsetMs: 999,
+                subtitleTriggerGapStartOffsetMs: 2000,
             })
         );
     });
 
     it('only accepts gap offsets that extend normal playback', () => {
         const result = compile([makeSubtitle(1000, 2000, 0)], {
-            playbackModesStartGap: 500,
-            playbackModesEndGap: -500,
+            subtitleTriggerGapEndOffset: 500,
+            subtitleTriggerGapStartOffset: -500,
         });
 
         expect(result.blocks[0]).toEqual(
             expect.objectContaining({
-                playbackModesStartGapMs: 999,
-                playbackModesEndGapMs: 2000,
+                subtitleTriggerGapEndOffsetMs: 999,
+                subtitleTriggerGapStartOffsetMs: 2000,
             })
         );
     });
@@ -44,10 +44,10 @@ describe('compilePlaybackTimeline', () => {
     it('clamps shifted targets to media and neighboring subtitle boundaries', () => {
         const result = compile([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], {
             durationMs: 3500,
-            playbackModeStartOffset: -5000,
-            playbackModeEndOffset: 5000,
-            playbackModesStartGap: -5000,
-            playbackModesEndGap: 5000,
+            subtitleTriggerStartOffset: -5000,
+            subtitleTriggerEndOffset: 5000,
+            subtitleTriggerGapEndOffset: -5000,
+            subtitleTriggerGapStartOffset: 5000,
         });
 
         expect(
@@ -55,8 +55,8 @@ describe('compilePlaybackTimeline', () => {
                 block.playbackModeStartMs,
                 block.playbackModeEndMs,
                 block.playbackModeEndExclusiveMs,
-                block.playbackModesStartGapMs,
-                block.playbackModesEndGapMs,
+                block.subtitleTriggerGapEndOffsetMs,
+                block.subtitleTriggerGapStartOffsetMs,
             ])
         ).toEqual([
             [0, 2999, 3000, 0, 3000],
@@ -66,8 +66,8 @@ describe('compilePlaybackTimeline', () => {
 
     it('swaps crossed offset roles so playback effects remain chronological', () => {
         const result = compile([makeSubtitle(1000, 2000, 0)], {
-            playbackModeStartOffset: 900,
-            playbackModeEndOffset: -900,
+            subtitleTriggerStartOffset: 900,
+            subtitleTriggerEndOffset: -900,
         });
 
         expect(result.blocks[0]).toEqual(
@@ -81,8 +81,8 @@ describe('compilePlaybackTimeline', () => {
 
     it('allows crossed triggers into surrounding gaps without entering neighboring events', () => {
         const result = compile([makeSubtitle(1000, 2000, 0), makeSubtitle(5000, 6000, 1)], {
-            playbackModeStartOffset: 3000,
-            playbackModeEndOffset: -3000,
+            subtitleTriggerStartOffset: 3000,
+            subtitleTriggerEndOffset: -3000,
         });
 
         expect(
@@ -99,18 +99,18 @@ describe('compilePlaybackTimeline', () => {
 
     it('compiles action offsets independently from configurable start and end gaps', () => {
         const result = compile([makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)], {
-            playbackModeStartOffset: -100,
-            playbackModeEndOffset: 200,
-            playbackModesStartGap: -250,
-            playbackModesEndGap: 400,
+            subtitleTriggerStartOffset: -100,
+            subtitleTriggerEndOffset: 200,
+            subtitleTriggerGapEndOffset: -250,
+            subtitleTriggerGapStartOffset: 400,
         });
 
         expect(result.blocks[0]).toEqual(
             expect.objectContaining({
                 playbackModeStartMs: 900,
                 playbackModeEndExclusiveMs: 2200,
-                playbackModesStartGapMs: 749,
-                playbackModesEndGapMs: 2400,
+                subtitleTriggerGapEndOffsetMs: 749,
+                subtitleTriggerGapStartOffsetMs: 2400,
             })
         );
     });
@@ -128,8 +128,8 @@ describe('compilePlaybackTimeline', () => {
         const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)];
         const first = compile(subtitles);
         const replacement = compile(subtitles, {
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
         });
 
         expect(first.blocks.map(({ id }) => id)).toEqual(replacement.blocks.map(({ id }) => id));

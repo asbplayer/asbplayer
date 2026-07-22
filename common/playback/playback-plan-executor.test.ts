@@ -278,7 +278,7 @@ describe('PlaybackPlanExecutor', () => {
             subtitles: [subtitle],
             displaySubtitles: [subtitle],
             autoPausePreference: AutoPausePreference.atEnd,
-            playbackModeEndOffset: 0,
+            subtitleTriggerEndOffset: 0,
         });
 
         await harness.executor.update(2000, { lookaheadTimestampMs: undefined });
@@ -417,7 +417,7 @@ describe('PlaybackPlanExecutor', () => {
             displaySubtitles: [subtitle],
             autoPausePreference: AutoPausePreference.atEnd,
             repeatCountPreference: 1,
-            playbackModeEndOffset: 0,
+            subtitleTriggerEndOffset: 0,
         });
 
         await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
@@ -439,7 +439,7 @@ describe('PlaybackPlanExecutor', () => {
             subtitles: [subtitle],
             displaySubtitles: [subtitle],
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
-            playbackModeEndOffset: 400,
+            subtitleTriggerEndOffset: 400,
         });
 
         await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
@@ -458,8 +458,8 @@ describe('PlaybackPlanExecutor', () => {
             subtitles: [first, second],
             displaySubtitles: [first, second],
             condensedPlaybackMinimumSkipIntervalMs: 1000,
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
         });
 
         await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
@@ -474,8 +474,8 @@ describe('PlaybackPlanExecutor', () => {
     it('executes a bounded repeat immediately when the end action does not pause', async () => {
         const harness = executorHarness([PlayMode.repeat], 0, {
             repeatCountPreference: 1,
-            playbackModeStartOffset: -200,
-            playbackModeEndOffset: 300,
+            subtitleTriggerStartOffset: -200,
+            subtitleTriggerEndOffset: 300,
         });
 
         await harness.executor.update(2298, { lookaheadTimestampMs: undefined });
@@ -815,8 +815,8 @@ describe('PlaybackPlanExecutor', () => {
                     makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
                 ],
                 autoPausePreference: AutoPausePreference.atStart,
-                playbackModeStartOffset: -250,
-                playbackModesStartGap: 0,
+                subtitleTriggerStartOffset: -250,
+                subtitleTriggerGapEndOffset: 0,
             },
             {
                 paused: () => paused,
@@ -879,8 +879,8 @@ describe('PlaybackPlanExecutor', () => {
                     makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
                 ],
                 autoPausePreference: AutoPausePreference.atStart,
-                playbackModeStartOffset: -250,
-                playbackModesStartGap: -500,
+                subtitleTriggerStartOffset: -250,
+                subtitleTriggerGapEndOffset: -500,
             },
             {
                 paused: () => paused,
@@ -1078,10 +1078,10 @@ describe('PlaybackPlanExecutor', () => {
         ];
         const harness = executorHarness([PlayMode.condensed], 2100, {
             subtitles,
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
-            playbackModesStartGap: -250,
-            playbackModesEndGap: 400,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
+            subtitleTriggerGapEndOffset: -250,
+            subtitleTriggerGapStartOffset: 400,
         });
 
         await harness.executor.update(2399, { lookaheadTimestampMs: undefined });

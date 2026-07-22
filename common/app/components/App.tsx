@@ -44,7 +44,7 @@ import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension'
 import CopyHistory from './CopyHistory';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from './LandingPage';
-import Player, { MediaSources } from './Player';
+import Player, { MediaSources, PlayerRef } from './Player';
 import SettingsDialog from './SettingsDialog';
 import VideoPlayer, { SeekRequest } from './VideoPlayer';
 import { type AlertColor } from '@mui/material/Alert';
@@ -433,7 +433,7 @@ function App({
     } = useFileSession();
 
     const [lastError, setLastError] = useState<any>();
-    const [downloadSubtitleTimelineRequest, setDownloadSubtitleTimelineRequest] = useState(0);
+    const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bufferedFileInputRef = useRef<HTMLInputElement>(null);
     const { subtitleFiles } = sources;
@@ -1549,7 +1549,7 @@ function App({
     }, [fileName, sources.subtitleFiles, subtitleReader]);
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
-        setDownloadSubtitleTimelineRequest((request) => request + 1);
+        playerRef.current?.downloadSubtitleTimeline();
     }, []);
 
     const handleDragOver = useCallback(
@@ -2007,6 +2007,7 @@ function App({
                                     />
                                 </Paper>
                                 <Player
+                                    ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
                                     subtitles={subtitles}
@@ -2063,7 +2064,6 @@ function App({
                                     miningContext={miningContext}
                                     keyBinder={keyBinder}
                                     webSocketClient={webSocketClient}
-                                    downloadSubtitleTimelineRequest={downloadSubtitleTimelineRequest}
                                     playbackTimelineFileName={fileName}
                                     playbackTimelineModeLabels={{
                                         normal: t('controls.normalMode'),
@@ -2077,10 +2077,10 @@ function App({
                                         title: t('settings.playbackModes'),
                                         subtitleTrack: (trackNumber) =>
                                             t('settings.subtitleTrackChoice', { trackNumber }),
-                                        playbackModeStartOffset: t('settings.playbackModeStartOffset'),
-                                        playbackModeEndOffset: t('settings.playbackModeEndOffset'),
-                                        playbackModesStartGap: t('settings.playbackModesStartGap'),
-                                        playbackModesEndGap: t('settings.playbackModesEndGap'),
+                                        subtitleTriggerStartOffset: t('settings.subtitleTriggerStartOffset'),
+                                        subtitleTriggerEndOffset: t('settings.subtitleTriggerEndOffset'),
+                                        subtitleTriggerGapEndOffset: t('settings.subtitleTriggerGapEndOffset'),
+                                        subtitleTriggerGapStartOffset: t('settings.subtitleTriggerGapStartOffset'),
                                         condensedPlaybackMinimumSkipInterval: t(
                                             'settings.condensedPlaybackMinimumSkipInterval'
                                         ),

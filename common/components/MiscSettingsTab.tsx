@@ -100,10 +100,10 @@ const MiscSettingTab: React.FC<Props> = ({
         subtitleAboveThumbnail,
         thumbnailPreview,
         autoPausePreference,
-        playbackModeStartOffset,
-        playbackModeEndOffset,
-        playbackModesStartGap,
-        playbackModesEndGap,
+        subtitleTriggerStartOffset,
+        subtitleTriggerEndOffset,
+        subtitleTriggerGapEndOffset,
+        subtitleTriggerGapStartOffset,
         playbackRate,
         playbackRateNotificationEnabled,
         rememberPlaybackRate,
@@ -612,10 +612,10 @@ const MiscSettingTab: React.FC<Props> = ({
                                 type="number"
                                 color="primary"
                                 fullWidth
-                                label={t('settings.playbackModeStartOffset')}
-                                value={playbackModeStartOffset}
+                                label={t('settings.subtitleTriggerStartOffset')}
+                                value={subtitleTriggerStartOffset}
                                 onChange={(event) =>
-                                    onSettingChanged('playbackModeStartOffset', Number(event.target.value))
+                                    onSettingChanged('subtitleTriggerStartOffset', Number(event.target.value))
                                 }
                                 slotProps={{
                                     htmlInput: {
@@ -630,10 +630,10 @@ const MiscSettingTab: React.FC<Props> = ({
                                 type="number"
                                 color="primary"
                                 fullWidth
-                                label={t('settings.playbackModeEndOffset')}
-                                value={playbackModeEndOffset}
+                                label={t('settings.subtitleTriggerEndOffset')}
+                                value={subtitleTriggerEndOffset}
                                 onChange={(event) =>
-                                    onSettingChanged('playbackModeEndOffset', Number(event.target.value))
+                                    onSettingChanged('subtitleTriggerEndOffset', Number(event.target.value))
                                 }
                                 slotProps={{
                                     htmlInput: {
@@ -646,11 +646,11 @@ const MiscSettingTab: React.FC<Props> = ({
                             />
                         </Stack>
                         <Typography variant="caption" color="textSecondary">
-                            {t('settings.playbackModeOffsetHelperText')}
+                            {t('settings.subtitleTriggerOffsetHelperText')}
                         </Typography>
                     </>
                 )}
-                <SettingsSubSection>{t('settings.gapTriggers')}</SettingsSubSection>
+                <SettingsSubSection>{t('settings.subtitleGapTriggers')}</SettingsSubSection>
                 <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
                     {supportsPlaybackEngine && (
                         <SettingsTextField
@@ -717,29 +717,10 @@ const MiscSettingTab: React.FC<Props> = ({
                                 type="number"
                                 color="primary"
                                 fullWidth
-                                label={t('settings.playbackModesStartGap')}
-                                value={playbackModesStartGap}
+                                label={t('settings.subtitleTriggerGapStartOffset')}
+                                value={subtitleTriggerGapStartOffset}
                                 onChange={(event) =>
-                                    onSettingChanged('playbackModesStartGap', Number(event.target.value))
-                                }
-                                slotProps={{
-                                    htmlInput: {
-                                        max: 0,
-                                        step: 1,
-                                    },
-                                    input: {
-                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
-                                    },
-                                }}
-                            />
-                            <SettingsTextField
-                                type="number"
-                                color="primary"
-                                fullWidth
-                                label={t('settings.playbackModesEndGap')}
-                                value={playbackModesEndGap}
-                                onChange={(event) =>
-                                    onSettingChanged('playbackModesEndGap', Number(event.target.value))
+                                    onSettingChanged('subtitleTriggerGapStartOffset', Number(event.target.value))
                                 }
                                 slotProps={{
                                     htmlInput: {
@@ -751,9 +732,28 @@ const MiscSettingTab: React.FC<Props> = ({
                                     },
                                 }}
                             />
+                            <SettingsTextField
+                                type="number"
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitleTriggerGapEndOffset')}
+                                value={subtitleTriggerGapEndOffset}
+                                onChange={(event) =>
+                                    onSettingChanged('subtitleTriggerGapEndOffset', Number(event.target.value))
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        max: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
                         </Stack>
                         <Typography variant="caption" color="textSecondary">
-                            {t('settings.playbackModesGapHelperText')}
+                            {t('settings.subtitleTriggerGapOffsetHelperText')}
                         </Typography>
                     </>
                 )}

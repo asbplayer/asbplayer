@@ -18,16 +18,20 @@ const modeLabels = {
 };
 
 const timelineOptions = [
-    { label: 'Playback mode start offset', value: '0 ms', settingKey: 'playbackModeStartOffsetMs' as const },
+    { label: 'Subtitle trigger start offset', value: '0 ms', settingKey: 'subtitleTriggerStartOffsetMs' as const },
     {
         label: 'Fast-forward minimum interval',
         value: '500 ms',
         settingKey: 'fastForwardMinimumSkipIntervalMs' as const,
     },
-    { label: 'Playback modes start gap', value: '0 ms', settingKey: 'playbackModesStartGapMs' as const },
-    { label: 'Playback mode end offset', value: '0 ms', settingKey: 'playbackModeEndOffsetMs' as const },
+    {
+        label: 'Subtitle gap trigger start offset',
+        value: '0 ms',
+        settingKey: 'subtitleTriggerGapStartOffsetMs' as const,
+    },
+    { label: 'Subtitle trigger end offset', value: '0 ms', settingKey: 'subtitleTriggerEndOffsetMs' as const },
     { label: 'Condensed minimum interval', value: '500 ms', settingKey: 'condensedMinimumSkipIntervalMs' as const },
-    { label: 'Playback modes end gap', value: '0 ms', settingKey: 'playbackModesEndGapMs' as const },
+    { label: 'Subtitle gap trigger end offset', value: '0 ms', settingKey: 'subtitleTriggerGapEndOffsetMs' as const },
 ];
 
 const htmlOptions = {
@@ -35,10 +39,10 @@ const htmlOptions = {
     timelineOptionsTitle: 'Playback modes',
     timelineOptions,
     timelineSettings: {
-        playbackModeStartOffsetMs: 0,
-        playbackModeEndOffsetMs: 0,
-        playbackModesStartGapMs: 0,
-        playbackModesEndGapMs: 0,
+        subtitleTriggerStartOffsetMs: 0,
+        subtitleTriggerEndOffsetMs: 0,
+        subtitleTriggerGapEndOffsetMs: 0,
+        subtitleTriggerGapStartOffsetMs: 0,
         fastForwardMinimumSkipIntervalMs: 500,
         condensedMinimumSkipIntervalMs: 500,
     },
@@ -60,10 +64,10 @@ const plan = (subtitles: SubtitleModel[], playModes: PlayMode[] = [PlayMode.norm
         durationMs,
         playModes: new Set(playModes),
         autoPausePreference: AutoPausePreference.atStartAndEnd,
-        playbackModeStartOffset: 0,
-        playbackModeEndOffset: 0,
-        playbackModesStartGap: 0,
-        playbackModesEndGap: 0,
+        subtitleTriggerStartOffset: 0,
+        subtitleTriggerEndOffset: 0,
+        subtitleTriggerGapEndOffset: 0,
+        subtitleTriggerGapStartOffset: 0,
         repeatCountPreference: 1,
         condensedPlaybackMinimumSkipIntervalMs: 500,
         playbackRate: 1,
@@ -130,15 +134,23 @@ describe('playbackTimelineToHtml', () => {
         expect(parsed.querySelector('.settings-summary')).not.toBeNull();
         expect(parsed.querySelector('.settings-options-grid')).not.toBeNull();
         expect(html).toContain('title="00:01:000 -&gt; 00:02:000"');
-        expect(html.indexOf('Playback mode start offset')).toBeLessThan(html.indexOf('Fast-forward minimum interval'));
-        expect(html.indexOf('Fast-forward minimum interval')).toBeLessThan(html.indexOf('Playback modes start gap'));
-        expect(html.indexOf('Playback modes start gap')).toBeLessThan(html.indexOf('Playback mode end offset'));
-        expect(html.indexOf('Playback mode end offset')).toBeLessThan(html.indexOf('Condensed minimum interval'));
-        expect(html.indexOf('Condensed minimum interval')).toBeLessThan(html.indexOf('Playback modes end gap'));
+        expect(html.indexOf('Subtitle trigger start offset')).toBeLessThan(
+            html.indexOf('Fast-forward minimum interval')
+        );
+        expect(html.indexOf('Fast-forward minimum interval')).toBeLessThan(
+            html.indexOf('Subtitle gap trigger start offset')
+        );
+        expect(html.indexOf('Subtitle gap trigger start offset')).toBeLessThan(
+            html.indexOf('Subtitle trigger end offset')
+        );
+        expect(html.indexOf('Subtitle trigger end offset')).toBeLessThan(html.indexOf('Condensed minimum interval'));
+        expect(html.indexOf('Condensed minimum interval')).toBeLessThan(
+            html.indexOf('Subtitle gap trigger end offset')
+        );
         expect(html).toContain('<div class="tick" style="left:10%"></div>');
         expect(html).toContain('<div class="tick" style="left:90%"></div>');
         expect(html).toContain('<div class="tick" style="left:50%"></div>');
-        expect(html).toContain('data-setting="playbackModeStartOffsetMs"');
+        expect(html).toContain('data-setting="subtitleTriggerStartOffsetMs"');
         expect(parsed.querySelector('input[data-mode="normal"]')?.parentElement?.textContent).toContain('Normal');
     });
 
@@ -237,7 +249,7 @@ describe('playbackTimelineToHtml', () => {
         expect(scriptText).toBeTruthy();
 
         window.eval(scriptText ?? '');
-        const input = document.querySelector<HTMLInputElement>('input[data-setting="playbackModeStartOffsetMs"]');
+        const input = document.querySelector<HTMLInputElement>('input[data-setting="subtitleTriggerStartOffsetMs"]');
         expect(input).not.toBeNull();
         input!.value = '500';
         input!.dispatchEvent(new Event('input', { bubbles: true }));
@@ -310,10 +322,10 @@ describe('playbackTimelineToHtml', () => {
 
     it('matches the server-rendered timeline after the embedded compiler redraws it', () => {
         const paritySettings = {
-            playbackModeStartOffsetMs: 250,
-            playbackModeEndOffsetMs: -150,
-            playbackModesStartGapMs: -100,
-            playbackModesEndGapMs: 200,
+            subtitleTriggerStartOffsetMs: 250,
+            subtitleTriggerEndOffsetMs: -150,
+            subtitleTriggerGapEndOffsetMs: -100,
+            subtitleTriggerGapStartOffsetMs: 200,
             fastForwardMinimumSkipIntervalMs: 800,
             condensedMinimumSkipIntervalMs: 700,
         };
@@ -326,10 +338,10 @@ describe('playbackTimelineToHtml', () => {
                 durationMs: 20_000,
                 playModes: new Set([PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat]),
                 autoPausePreference: AutoPausePreference.atStartAndEnd,
-                playbackModeStartOffset: paritySettings.playbackModeStartOffsetMs,
-                playbackModeEndOffset: paritySettings.playbackModeEndOffsetMs,
-                playbackModesStartGap: paritySettings.playbackModesStartGapMs,
-                playbackModesEndGap: paritySettings.playbackModesEndGapMs,
+                subtitleTriggerStartOffset: paritySettings.subtitleTriggerStartOffsetMs,
+                subtitleTriggerEndOffset: paritySettings.subtitleTriggerEndOffsetMs,
+                subtitleTriggerGapEndOffset: paritySettings.subtitleTriggerGapEndOffsetMs,
+                subtitleTriggerGapStartOffset: paritySettings.subtitleTriggerGapStartOffsetMs,
                 repeatCountPreference: 1,
                 condensedPlaybackMinimumSkipIntervalMs: paritySettings.condensedMinimumSkipIntervalMs,
                 playbackRate: 1,
@@ -347,20 +359,28 @@ describe('playbackTimelineToHtml', () => {
         const parityOptions = {
             ...htmlOptions,
             timelineOptions: [
-                { label: 'Playback mode start offset', value: '250 ms', settingKey: 'playbackModeStartOffsetMs' },
+                { label: 'Subtitle trigger start offset', value: '250 ms', settingKey: 'subtitleTriggerStartOffsetMs' },
                 {
                     label: 'Fast-forward minimum skip interval',
                     value: '800 ms',
                     settingKey: 'fastForwardMinimumSkipIntervalMs',
                 },
-                { label: 'Playback modes start gap', value: '-100 ms', settingKey: 'playbackModesStartGapMs' },
-                { label: 'Playback mode end offset', value: '-150 ms', settingKey: 'playbackModeEndOffsetMs' },
+                {
+                    label: 'Subtitle gap trigger start offset',
+                    value: '200 ms',
+                    settingKey: 'subtitleTriggerGapStartOffsetMs',
+                },
+                { label: 'Subtitle trigger end offset', value: '-150 ms', settingKey: 'subtitleTriggerEndOffsetMs' },
                 {
                     label: 'Condensed minimum skip interval',
                     value: '700 ms',
                     settingKey: 'condensedMinimumSkipIntervalMs',
                 },
-                { label: 'Playback modes end gap', value: '200 ms', settingKey: 'playbackModesEndGapMs' },
+                {
+                    label: 'Subtitle gap trigger end offset',
+                    value: '-100 ms',
+                    settingKey: 'subtitleTriggerGapEndOffsetMs',
+                },
             ] as const,
             timelineSettings: paritySettings,
             timelineSubtitles: [...paritySubtitles, secondTrack],
@@ -405,10 +425,10 @@ describe('playbackTimelineToHtml', () => {
 
     it('keeps the embedded compiler in parity with the runtime plan across serialized modes, settings, and tracks', () => {
         const paritySettings = {
-            playbackModeStartOffsetMs: 250,
-            playbackModeEndOffsetMs: -350,
-            playbackModesStartGapMs: -100,
-            playbackModesEndGapMs: 200,
+            subtitleTriggerStartOffsetMs: 250,
+            subtitleTriggerEndOffsetMs: -350,
+            subtitleTriggerGapEndOffsetMs: -100,
+            subtitleTriggerGapStartOffsetMs: 200,
             fastForwardMinimumSkipIntervalMs: 800,
             condensedMinimumSkipIntervalMs: 700,
         };
@@ -431,10 +451,10 @@ describe('playbackTimelineToHtml', () => {
                 durationMs: 12_000,
                 playModes: new Set([PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat]),
                 autoPausePreference: AutoPausePreference.atStartAndEnd,
-                playbackModeStartOffset: effectiveSettings.playbackModeStartOffsetMs,
-                playbackModeEndOffset: effectiveSettings.playbackModeEndOffsetMs,
-                playbackModesStartGap: effectiveSettings.playbackModesStartGapMs,
-                playbackModesEndGap: effectiveSettings.playbackModesEndGapMs,
+                subtitleTriggerStartOffset: effectiveSettings.subtitleTriggerStartOffsetMs,
+                subtitleTriggerEndOffset: effectiveSettings.subtitleTriggerEndOffsetMs,
+                subtitleTriggerGapEndOffset: effectiveSettings.subtitleTriggerGapEndOffsetMs,
+                subtitleTriggerGapStartOffset: effectiveSettings.subtitleTriggerGapStartOffsetMs,
                 repeatCountPreference: 2,
                 condensedPlaybackMinimumSkipIntervalMs: effectiveSettings.condensedMinimumSkipIntervalMs,
                 playbackRate: 1.25,
@@ -455,16 +475,24 @@ describe('playbackTimelineToHtml', () => {
             ...htmlOptions,
             timelineSettings: paritySettings,
             timelineOptions: [
-                { label: 'Playback mode start offset', value: '250 ms', settingKey: 'playbackModeStartOffsetMs' },
+                { label: 'Subtitle trigger start offset', value: '250 ms', settingKey: 'subtitleTriggerStartOffsetMs' },
                 {
                     label: 'Fast-forward minimum interval',
                     value: '800 ms',
                     settingKey: 'fastForwardMinimumSkipIntervalMs',
                 },
-                { label: 'Playback modes start gap', value: '-100 ms', settingKey: 'playbackModesStartGapMs' },
-                { label: 'Playback mode end offset', value: '-350 ms', settingKey: 'playbackModeEndOffsetMs' },
+                {
+                    label: 'Subtitle gap trigger start offset',
+                    value: '200 ms',
+                    settingKey: 'subtitleTriggerGapStartOffsetMs',
+                },
+                { label: 'Subtitle trigger end offset', value: '-350 ms', settingKey: 'subtitleTriggerEndOffsetMs' },
                 { label: 'Condensed minimum interval', value: '700 ms', settingKey: 'condensedMinimumSkipIntervalMs' },
-                { label: 'Playback modes end gap', value: '200 ms', settingKey: 'playbackModesEndGapMs' },
+                {
+                    label: 'Subtitle gap trigger end offset',
+                    value: '-100 ms',
+                    settingKey: 'subtitleTriggerGapEndOffsetMs',
+                },
             ] as const,
             timelineTracks: [
                 { track: 0, label: 'Track 1' },
@@ -490,10 +518,10 @@ describe('playbackTimelineToHtml', () => {
 
         const effectiveSettings = { ...paritySettings };
         const settingChanges: Array<[keyof typeof paritySettings, number]> = [
-            ['playbackModeStartOffsetMs', 900],
-            ['playbackModeEndOffsetMs', -900],
-            ['playbackModesStartGapMs', -600],
-            ['playbackModesEndGapMs', 600],
+            ['subtitleTriggerStartOffsetMs', 900],
+            ['subtitleTriggerEndOffsetMs', -900],
+            ['subtitleTriggerGapEndOffsetMs', -600],
+            ['subtitleTriggerGapStartOffsetMs', 600],
             ['fastForwardMinimumSkipIntervalMs', 1_100],
             ['condensedMinimumSkipIntervalMs', 1_200],
         ];

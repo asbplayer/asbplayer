@@ -23,10 +23,10 @@ export const buildPlaybackTimelineExportPlan = <T extends SubtitleModel>({
         durationMs,
         playModes: new Set([PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat, PlayMode.condensed]),
         autoPausePreference: AutoPausePreference.atStartAndEnd,
-        playbackModeStartOffset: settings.playbackModeStartOffset,
-        playbackModeEndOffset: settings.playbackModeEndOffset,
-        playbackModesStartGap: settings.playbackModesStartGap,
-        playbackModesEndGap: settings.playbackModesEndGap,
+        subtitleTriggerStartOffset: settings.subtitleTriggerStartOffset,
+        subtitleTriggerEndOffset: settings.subtitleTriggerEndOffset,
+        subtitleTriggerGapEndOffset: settings.subtitleTriggerGapEndOffset,
+        subtitleTriggerGapStartOffset: settings.subtitleTriggerGapStartOffset,
         repeatCountPreference: settings.repeatCountPreference,
         condensedPlaybackMinimumSkipIntervalMs: settings.streamingCondensedPlaybackMinimumSkipIntervalMs,
         playbackRate,
@@ -40,10 +40,10 @@ export const buildPlaybackTimelineExportPlan = <T extends SubtitleModel>({
 export interface PlaybackTimelineOptionLabels {
     readonly title: string;
     readonly subtitleTrack: (trackNumber: number) => string;
-    readonly playbackModeStartOffset: string;
-    readonly playbackModeEndOffset: string;
-    readonly playbackModesStartGap: string;
-    readonly playbackModesEndGap: string;
+    readonly subtitleTriggerStartOffset: string;
+    readonly subtitleTriggerEndOffset: string;
+    readonly subtitleTriggerGapEndOffset: string;
+    readonly subtitleTriggerGapStartOffset: string;
     readonly condensedPlaybackMinimumSkipInterval: string;
     readonly fastForwardPlaybackMinimumSkipInterval: string;
 }
@@ -61,18 +61,18 @@ export const playbackTimelineSettingsSummary = (
     return {
         title: labels.title,
         settings: {
-            playbackModeStartOffsetMs: settings.playbackModeStartOffset,
-            playbackModeEndOffsetMs: settings.playbackModeEndOffset,
-            playbackModesStartGapMs: settings.playbackModesStartGap,
-            playbackModesEndGapMs: settings.playbackModesEndGap,
+            subtitleTriggerStartOffsetMs: settings.subtitleTriggerStartOffset,
+            subtitleTriggerEndOffsetMs: settings.subtitleTriggerEndOffset,
+            subtitleTriggerGapStartOffsetMs: settings.subtitleTriggerGapStartOffset,
+            subtitleTriggerGapEndOffsetMs: settings.subtitleTriggerGapEndOffset,
             fastForwardMinimumSkipIntervalMs: settings.fastForwardPlaybackMinimumSkipIntervalMs,
             condensedMinimumSkipIntervalMs: settings.streamingCondensedPlaybackMinimumSkipIntervalMs,
         },
         options: [
             {
-                label: labels.playbackModeStartOffset,
-                value: `${settings.playbackModeStartOffset} ms`,
-                settingKey: 'playbackModeStartOffsetMs',
+                label: labels.subtitleTriggerStartOffset,
+                value: `${settings.subtitleTriggerStartOffset} ms`,
+                settingKey: 'subtitleTriggerStartOffsetMs',
             },
             {
                 label: labels.fastForwardPlaybackMinimumSkipInterval,
@@ -80,14 +80,14 @@ export const playbackTimelineSettingsSummary = (
                 settingKey: 'fastForwardMinimumSkipIntervalMs',
             },
             {
-                label: labels.playbackModesStartGap,
-                value: `${settings.playbackModesStartGap} ms`,
-                settingKey: 'playbackModesStartGapMs',
+                label: labels.subtitleTriggerGapStartOffset,
+                value: `${settings.subtitleTriggerGapStartOffset} ms`,
+                settingKey: 'subtitleTriggerGapStartOffsetMs',
             },
             {
-                label: labels.playbackModeEndOffset,
-                value: `${settings.playbackModeEndOffset} ms`,
-                settingKey: 'playbackModeEndOffsetMs',
+                label: labels.subtitleTriggerEndOffset,
+                value: `${settings.subtitleTriggerEndOffset} ms`,
+                settingKey: 'subtitleTriggerEndOffsetMs',
             },
             {
                 label: labels.condensedPlaybackMinimumSkipInterval,
@@ -95,9 +95,9 @@ export const playbackTimelineSettingsSummary = (
                 settingKey: 'condensedMinimumSkipIntervalMs',
             },
             {
-                label: labels.playbackModesEndGap,
-                value: `${settings.playbackModesEndGap} ms`,
-                settingKey: 'playbackModesEndGapMs',
+                label: labels.subtitleTriggerGapEndOffset,
+                value: `${settings.subtitleTriggerGapEndOffset} ms`,
+                settingKey: 'subtitleTriggerGapEndOffsetMs',
             },
         ],
     };
@@ -112,18 +112,18 @@ const playbackTimelineColors = {
 } as const;
 
 export type PlaybackTimelineSettingKey =
-    | 'playbackModeStartOffsetMs'
-    | 'playbackModeEndOffsetMs'
-    | 'playbackModesStartGapMs'
-    | 'playbackModesEndGapMs'
+    | 'subtitleTriggerStartOffsetMs'
+    | 'subtitleTriggerEndOffsetMs'
+    | 'subtitleTriggerGapEndOffsetMs'
+    | 'subtitleTriggerGapStartOffsetMs'
     | 'fastForwardMinimumSkipIntervalMs'
     | 'condensedMinimumSkipIntervalMs';
 
 export interface PlaybackTimelineSettings {
-    readonly playbackModeStartOffsetMs: number;
-    readonly playbackModeEndOffsetMs: number;
-    readonly playbackModesStartGapMs: number;
-    readonly playbackModesEndGapMs: number;
+    readonly subtitleTriggerStartOffsetMs: number;
+    readonly subtitleTriggerEndOffsetMs: number;
+    readonly subtitleTriggerGapEndOffsetMs: number;
+    readonly subtitleTriggerGapStartOffsetMs: number;
     readonly fastForwardMinimumSkipIntervalMs: number;
     readonly condensedMinimumSkipIntervalMs: number;
 }
@@ -245,8 +245,8 @@ const gapIntervals = (
     };
 
     for (const block of blocks) {
-        addGap(block.playbackModesStartGapMs / 1000);
-        gapStartSeconds = block.playbackModesEndGapMs / 1000;
+        addGap(block.subtitleTriggerGapEndOffsetMs / 1000);
+        gapStartSeconds = block.subtitleTriggerGapStartOffsetMs / 1000;
     }
     addGap(durationSeconds);
     return intervals;
@@ -262,7 +262,7 @@ const condensedIntervals = (
         const nextBlock = blocks[index + 1];
         if (nextBlock === undefined) continue;
         const startSeconds = block.playbackModeEndExclusiveMs / 1000;
-        const endSeconds = nextBlock.playbackModesStartGapMs / 1000;
+        const endSeconds = nextBlock.subtitleTriggerGapEndOffsetMs / 1000;
         if (endSeconds - startSeconds + 0.001 < minimumDurationSeconds) continue;
         const value = interval(
             Math.max(0, startSeconds),
@@ -274,10 +274,10 @@ const condensedIntervals = (
     }
 
     const firstBlock = blocks[0];
-    if (firstBlock !== undefined && firstBlock.playbackModesStartGapMs / 1000 + 0.001 >= minimumDurationSeconds) {
+    if (firstBlock !== undefined && firstBlock.subtitleTriggerGapEndOffsetMs / 1000 + 0.001 >= minimumDurationSeconds) {
         const value = interval(
             0,
-            firstBlock.playbackModesStartGapMs / 1000,
+            firstBlock.subtitleTriggerGapEndOffsetMs / 1000,
             playbackTimelineColors.condensed,
             'condensed'
         );
@@ -531,10 +531,10 @@ const compileBlocks = (settings, subtitles) => {
         }
         mutableBlocks.push({ startSeconds, endSeconds });
     }
-    const startOffset = finiteOrZero(settings.playbackModeStartOffsetMs);
-    const endOffset = finiteOrZero(settings.playbackModeEndOffsetMs);
-    const startGapOffset = Math.min(0, finiteOrZero(settings.playbackModesStartGapMs));
-    const endGap = Math.max(0, finiteOrZero(settings.playbackModesEndGapMs));
+    const startOffset = finiteOrZero(settings.subtitleTriggerStartOffsetMs);
+    const endOffset = finiteOrZero(settings.subtitleTriggerEndOffsetMs);
+    const gapStartOffset = Math.max(0, finiteOrZero(settings.subtitleTriggerGapStartOffsetMs));
+    const gapEndOffset = Math.min(0, finiteOrZero(settings.subtitleTriggerGapEndOffsetMs));
     return mutableBlocks.map((block, index) => {
         const previousEndSeconds = mutableBlocks[index - 1]?.endSeconds ?? 0;
         const nextStartSeconds = mutableBlocks[index + 1]?.startSeconds ?? durationSeconds;
@@ -548,8 +548,8 @@ const compileBlocks = (settings, subtitles) => {
             playbackModeStartSeconds,
             playbackModeEndSeconds,
             playbackModeEndExclusiveSeconds: Math.min(durationSeconds, (playbackModeEndSeconds * 1000 + 1) / 1000),
-            playbackModesStartGapSeconds: clamp((block.startSeconds * 1000 - 1 + startGapOffset) / 1000, previousEndSeconds, block.startSeconds),
-            playbackModesEndGapSeconds: clamp((block.endSeconds * 1000 + endGap) / 1000, block.endSeconds, nextStartSeconds)
+            subtitleTriggerGapStartOffsetSeconds: clamp((block.endSeconds * 1000 + gapStartOffset) / 1000, block.endSeconds, nextStartSeconds),
+            subtitleTriggerGapEndOffsetSeconds: clamp((block.startSeconds * 1000 - 1 + gapEndOffset) / 1000, previousEndSeconds, block.startSeconds)
         };
     });
 };
@@ -592,8 +592,8 @@ const gapIntervals = (blocks, durationSeconds, color, className, minimumDuration
         if (value !== undefined) intervals.push(value);
     };
     for (const block of blocks) {
-        addGap(block.playbackModesStartGapSeconds);
-        gapStartSeconds = block.playbackModesEndGapSeconds;
+        addGap(block.subtitleTriggerGapEndOffsetSeconds);
+        gapStartSeconds = block.subtitleTriggerGapStartOffsetSeconds;
     }
     addGap(durationSeconds);
     return intervals;
@@ -605,14 +605,14 @@ const condensedIntervals = (blocks, durationSeconds, minimumDurationSeconds) => 
         const nextBlock = blocks[index + 1];
         if (nextBlock === undefined) continue;
         const startSeconds = block.playbackModeEndExclusiveSeconds;
-        const endSeconds = nextBlock.playbackModesStartGapSeconds;
+        const endSeconds = nextBlock.subtitleTriggerGapEndOffsetSeconds;
         if (endSeconds - startSeconds + 0.001 < minimumDurationSeconds) continue;
         const value = interval(Math.max(0, startSeconds), Math.min(durationSeconds, endSeconds), timelineColors.condensed, 'condensed');
         if (value !== undefined) intervals.push(value);
     }
     const firstBlock = blocks[0];
-    if (firstBlock !== undefined && firstBlock.playbackModesStartGapSeconds + 0.001 >= minimumDurationSeconds) {
-        const value = interval(0, firstBlock.playbackModesStartGapSeconds, timelineColors.condensed, 'condensed');
+    if (firstBlock !== undefined && firstBlock.subtitleTriggerGapEndOffsetSeconds + 0.001 >= minimumDurationSeconds) {
+        const value = interval(0, firstBlock.subtitleTriggerGapEndOffsetSeconds, timelineColors.condensed, 'condensed');
         if (value !== undefined) intervals.unshift(value);
     }
     return intervals;

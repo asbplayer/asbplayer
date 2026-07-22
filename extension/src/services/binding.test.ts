@@ -299,8 +299,8 @@ describe('Binding playback mode integration', () => {
     it('applies separate signed playback mode offsets to auto-pause through real video timing', async () => {
         await storage.set({
             autoPausePreference: AutoPausePreference.atStartAndEnd,
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
         });
         const video = createVideo();
         const binding = new Binding(video, false);
@@ -323,8 +323,8 @@ describe('Binding playback mode integration', () => {
 
     it('uses playback mode offsets for repeat without auto-pause', async () => {
         await storage.set({
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
             repeatCountPreference: 1,
         });
         const video = createVideo();
@@ -373,10 +373,10 @@ describe('Binding playback mode integration', () => {
 
     it('uses configurable condensed gaps without applying playback mode offsets', async () => {
         await storage.set({
-            playbackModeStartOffset: -250,
-            playbackModeEndOffset: 400,
-            playbackModesStartGap: -250,
-            playbackModesEndGap: 400,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 400,
+            subtitleTriggerGapEndOffset: -250,
+            subtitleTriggerGapStartOffset: 400,
         });
         const video = createVideo();
         const binding = new Binding(video, false);
@@ -546,10 +546,10 @@ describe('Binding playback mode integration', () => {
         async ({ rememberPlaybackModes }) => {
             await storage.set({
                 playbackRate: 1.4,
-                playbackModeStartOffset: 200,
-                playbackModeEndOffset: -200,
-                playbackModesStartGap: -200,
-                playbackModesEndGap: 200,
+                subtitleTriggerStartOffset: 200,
+                subtitleTriggerEndOffset: -200,
+                subtitleTriggerGapEndOffset: -200,
+                subtitleTriggerGapStartOffset: 200,
                 fastForwardPlaybackMinimumSkipIntervalMs: 0,
                 rememberPlaybackModes,
                 lastPlaybackModes: [PlayMode.fastForward],

@@ -30,10 +30,10 @@ export interface MiscSettings {
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
-    readonly playbackModeStartOffset: number;
-    readonly playbackModeEndOffset: number;
-    readonly playbackModesStartGap: number;
-    readonly playbackModesEndGap: number;
+    readonly subtitleTriggerStartOffset: number;
+    readonly subtitleTriggerEndOffset: number;
+    readonly subtitleTriggerGapEndOffset: number;
+    readonly subtitleTriggerGapStartOffset: number;
     readonly seekableTracks: SeekableTracks;
     readonly autoCopyableTracks: AutoCopyableTracks;
     readonly seekDuration: number;

@@ -163,10 +163,10 @@ describe('AnimationFrameTimingDriver', () => {
             ],
             {
                 durationMs: 5000,
-                playbackModeStartOffset: 0,
-                playbackModeEndOffset: 0,
-                playbackModesStartGap: 0,
-                playbackModesEndGap: 0,
+                subtitleTriggerStartOffset: 0,
+                subtitleTriggerEndOffset: 0,
+                subtitleTriggerGapEndOffset: 0,
+                subtitleTriggerGapStartOffset: 0,
             }
         );
         const cursor = new PlaybackTimelineCursor(timeline, clock.time(Number.POSITIVE_INFINITY));
