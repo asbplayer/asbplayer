@@ -842,6 +842,7 @@ export interface YoutubePage extends Page {
 
 export interface PageSettings {
     netflix: Page;
+    crunchyroll: Page;
     youtube: YoutubePage;
     tver: Page;
     bandaiChannel: Page;

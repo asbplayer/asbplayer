@@ -241,6 +241,7 @@ export const defaultSettings: AsbplayerSettings = {
     streamingEnableOverlay: true,
     streamingPages: {
         netflix: {},
+        crunchyroll: {},
         youtube: {},
         tver: {},
         bandaiChannel: {},
