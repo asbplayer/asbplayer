@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { type IndexedSubtitleModel } from '@project/common';
 import AnimationFrameTimingDriver, {
     type AnimationFrameTimingSource,
@@ -13,6 +13,7 @@ import type { TimingDriverCallbacks } from '@project/common/playback/timing-driv
 class FakeAnimationFrames {
     private nextHandle = 1;
     private callbacks = new Map<number, FrameRequestCallback>();
+    private timeUpdateListeners = new Set<() => void>();
 
     requestAnimationFrameCallback(callback: FrameRequestCallback): number {
         const handle = this.nextHandle++;
@@ -24,12 +25,31 @@ class FakeAnimationFrames {
         this.callbacks.delete(handle);
     }
 
+    addTimeUpdateListener(listener: () => void): void {
+        this.timeUpdateListeners.add(listener);
+    }
+
+    removeTimeUpdateListener(listener: () => void): void {
+        this.timeUpdateListeners.delete(listener);
+    }
+
+    timeUpdate(): void {
+        for (const listener of this.timeUpdateListeners) listener();
+    }
+
     present(): void {
         const callbacks = [...this.callbacks.values()];
         this.callbacks.clear();
         for (const callback of callbacks) callback(0);
     }
 }
+
+const setDocumentHidden = (hidden: boolean) => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: hidden });
+};
+
+beforeEach(() => setDocumentHidden(false));
+afterEach(() => setDocumentHidden(false));
 
 const flush = async () => {
     for (let i = 0; i < 10; ++i) await Promise.resolve();
@@ -50,11 +70,13 @@ const timingDriver = (
             if (type === 'play') clock.onEvent('start', listener);
             if (type === 'pause') clock.onEvent('stop', listener);
             if (type === 'seeked') clock.onEvent('settime', listener);
+            if (type === 'timeupdate') animationFrames.addTimeUpdateListener(listener);
         },
         removeEventListener: (type, listener) => {
             if (type === 'play') clock.removeEvent('start', listener);
             if (type === 'pause') clock.removeEvent('stop', listener);
             if (type === 'seeked') clock.removeEvent('settime', listener);
+            if (type === 'timeupdate') animationFrames.removeTimeUpdateListener(listener);
         },
     };
     const driver = new AnimationFrameTimingDriver(source);
@@ -63,6 +85,43 @@ const timingDriver = (
 };
 
 describe('AnimationFrameTimingDriver', () => {
+    it('uses timeupdate while hidden and resumes animation frames when visible', async () => {
+        let nowMs = 0;
+        const clock = new Clock(() => nowMs);
+        const animationFrames = new FakeAnimationFrames();
+        const updates: number[] = [];
+        const driver = timingDriver(
+            clock,
+            {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            },
+            animationFrames
+        );
+        setDocumentHidden(true);
+        driver.bind();
+        clock.start();
+
+        nowMs = 250;
+        animationFrames.timeUpdate();
+        await flush();
+        expect(updates).toEqual([250]);
+
+        setDocumentHidden(false);
+        document.dispatchEvent(new Event('visibilitychange'));
+        nowMs = 500;
+        animationFrames.timeUpdate();
+        await flush();
+        expect(updates).toEqual([250]);
+
+        animationFrames.present();
+        await flush();
+        expect(updates).toEqual([250, 500]);
+        driver.unbind();
+    });
+
     it('samples the millisecond clock while running and stops after the clock stops', async () => {
         let nowMs = 0;
         const clock = new Clock(() => nowMs);

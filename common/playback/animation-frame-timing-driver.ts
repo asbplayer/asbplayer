@@ -9,8 +9,8 @@ export interface AnimationFrameTimingSource {
     readonly currentTimeMs: () => number;
     requestAnimationFrameCallback(callback: FrameRequestCallback): number;
     cancelAnimationFrameCallback(handle: number): void;
-    addEventListener(type: 'play' | 'pause' | 'seeked', listener: () => void): void;
-    removeEventListener(type: 'play' | 'pause' | 'seeked', listener: () => void): void;
+    addEventListener(type: 'play' | 'pause' | 'seeked' | 'timeupdate', listener: () => void): void;
+    removeEventListener(type: 'play' | 'pause' | 'seeked' | 'timeupdate', listener: () => void): void;
 }
 
 /** Feeds synthetic media timestamps to a playback timeline on animation frames. */
@@ -21,6 +21,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     private frameHandle?: number;
     private discontinuityPending = false;
     private expectedInternalSeek = false;
+    private timeUpdatesBound = false;
     private readonly updates: TimingUpdateQueue;
 
     constructor(clock: AnimationFrameTimingSource) {
@@ -83,8 +84,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.clock.addEventListener('play', this.onStart);
         this.clock.addEventListener('pause', this.onStop);
         this.clock.addEventListener('seeked', this.onSetTime);
+        document.addEventListener('visibilitychange', this.onVisibilityChange);
         this.reset();
-        this.schedule();
+        this.onVisibilityChange();
     }
 
     get bound(): boolean {
@@ -97,6 +99,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.clock.removeEventListener('play', this.onStart);
         this.clock.removeEventListener('pause', this.onStop);
         this.clock.removeEventListener('seeked', this.onSetTime);
+        if (this.timeUpdatesBound) this.clock.removeEventListener('timeupdate', this.onTimeUpdate);
+        this.timeUpdatesBound = false;
+        document.removeEventListener('visibilitychange', this.onVisibilityChange);
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: false });
         this.discontinuityPending = false;
@@ -127,8 +132,38 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.schedule();
     };
 
+    private readonly onTimeUpdate = () => {
+        if (!this._bound) return;
+        if (this.discontinuityPending) {
+            this.reset();
+            return;
+        }
+        if (this.clock.paused()) return;
+        this.updates.enqueue(this.clock.currentTimeMs(), { lookaheadTimestampMs: undefined });
+    };
+
+    /**
+     * Browsers will no longer fire rAF events when the document is hidden but continue playing audio.
+     * To work around this, we listen for 'timeupdate' events while the document is hidden to keep the timing driver updated.
+     */
+    private readonly onVisibilityChange = () => {
+        if (document.hidden) {
+            this.cancelScheduledUpdate();
+            if (this.timeUpdatesBound) return;
+            this.clock.addEventListener('timeupdate', this.onTimeUpdate);
+            this.timeUpdatesBound = true;
+            return;
+        }
+        if (this.timeUpdatesBound) {
+            this.clock.removeEventListener('timeupdate', this.onTimeUpdate);
+            this.timeUpdatesBound = false;
+        }
+        this.schedule();
+    };
+
     private schedule(): void {
         if (!this._bound) return;
+        if (document.hidden) return; // Browser will not fire rAF events when hidden, see onVisibilityChange
         if (this.clock.paused() && !this.discontinuityPending) return;
         if (this.frameHandle !== undefined) return;
 

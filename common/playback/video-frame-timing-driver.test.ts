@@ -5,7 +5,7 @@ import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-c
 import VideoFrameTimingDriver, {
     type VideoFrameTimingSource,
 } from '@project/common/playback/video-frame-timing-driver';
-import { describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
 import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/timing-driver';
 
@@ -68,6 +68,13 @@ const flush = async () => {
 const flushAll = async () => {
     for (let i = 0; i < 10; ++i) await Promise.resolve();
 };
+
+const setDocumentHidden = (hidden: boolean) => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: hidden });
+};
+
+beforeEach(() => setDocumentHidden(false));
+afterEach(() => setDocumentHidden(false));
 
 const videoSource = (video: FakeVideo, currentTimeMs = () => video.currentTime * 1000): VideoFrameTimingSource => ({
     paused: () => video.paused,
@@ -681,7 +688,7 @@ describe('VideoFrameTimingDriver', () => {
         driver.unbind();
     });
 
-    it('does not use timeupdate as a timing source', async () => {
+    it('uses timeupdate while hidden and resumes video frame callbacks when visible', async () => {
         const video = new FakeVideo();
         const updates: number[] = [];
         const driver = timingDriver(videoSource(video), {
@@ -690,17 +697,26 @@ describe('VideoFrameTimingDriver', () => {
             },
             onDiscontinuity: () => {},
         });
+        setDocumentHidden(true);
         driver.bind();
         video.play();
         video.currentTime = 0.25;
         video.dispatchEvent(new Event('timeupdate'));
         await flush();
 
-        expect(updates).toEqual([]);
-        video.present(250);
+        expect(updates).toEqual([250]);
+
+        setDocumentHidden(false);
+        document.dispatchEvent(new Event('visibilitychange'));
+        video.currentTime = 0.5;
+        video.dispatchEvent(new Event('timeupdate'));
         await flush();
 
         expect(updates).toEqual([250]);
+        video.present(250);
+        await flush();
+
+        expect(updates).toEqual([250, 250]);
         driver.unbind();
     });
 

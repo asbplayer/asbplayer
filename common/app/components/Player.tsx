@@ -377,6 +377,8 @@ function PlayerComponent(
             return;
         }
 
+        let timeUpdateHandle: ReturnType<typeof setInterval> | undefined;
+
         const playbackEngine = new PlaybackEngine({
             settings: settingsRef.current,
             subtitles: subtitlesRef.current ?? [],
@@ -399,6 +401,9 @@ function PlayerComponent(
                         case 'seeked':
                             clock.onEvent('settime', listener);
                             break;
+                        case 'timeupdate':
+                            timeUpdateHandle = setInterval(listener, 250);
+                            break;
                     }
                 },
                 removeEventListener: (type, listener) => {
@@ -411,6 +416,12 @@ function PlayerComponent(
                             break;
                         case 'seeked':
                             clock.removeEvent('settime', listener);
+                            break;
+                        case 'timeupdate':
+                            if (timeUpdateHandle !== undefined) {
+                                clearInterval(timeUpdateHandle);
+                                timeUpdateHandle = undefined;
+                            }
                             break;
                     }
                 },

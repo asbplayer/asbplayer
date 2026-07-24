@@ -17,11 +17,11 @@ export interface VideoFrameTimingSource {
     requestVideoFrameCallback(callback: VideoFrameRequestCallback): number;
     cancelVideoFrameCallback(handle: number): void;
     addEventListener(
-        type: 'play' | 'pause' | 'seeking' | 'seeked' | 'ratechange' | 'durationchange' | 'error',
+        type: 'play' | 'pause' | 'seeking' | 'seeked' | 'timeupdate' | 'ratechange' | 'durationchange' | 'error',
         listener: EventListener
     ): void;
     removeEventListener(
-        type: 'play' | 'pause' | 'seeking' | 'seeked' | 'ratechange' | 'durationchange' | 'error',
+        type: 'play' | 'pause' | 'seeking' | 'seeked' | 'timeupdate' | 'ratechange' | 'durationchange' | 'error',
         listener: EventListener
     ): void;
 }
@@ -149,8 +149,9 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.video.addEventListener('ratechange', this.onRateChange);
         this.video.addEventListener('durationchange', this.onDurationChange);
         this.video.addEventListener('error', this.onError);
+        document.addEventListener('visibilitychange', this.onVisibilityChange);
         this.reset();
-        this.schedule();
+        this.onVisibilityChange();
     }
 
     get bound(): boolean {
@@ -169,6 +170,8 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.video.removeEventListener('ratechange', this.onRateChange);
         this.video.removeEventListener('durationchange', this.onDurationChange);
         this.video.removeEventListener('error', this.onError);
+        this.video.removeEventListener('timeupdate', this.onTimeUpdate);
+        document.removeEventListener('visibilitychange', this.onVisibilityChange);
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: false });
         this.previousFrame = undefined;
@@ -207,6 +210,26 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.handleSeeked(this.currentTimeMs());
     };
 
+    private readonly onTimeUpdate = () => {
+        if (!this.shouldProcess()) return;
+        this.updates.enqueue(this.currentTimeMs(), { lookaheadTimestampMs: undefined });
+    };
+
+    /**
+     * Browsers will no longer fire rVFC events when the document is hidden but continue playing audio.
+     * To work around this, we listen for 'timeupdate' events while the document is hidden to keep the timing driver updated.
+     */
+    private readonly onVisibilityChange = () => {
+        if (document.hidden) {
+            this.cancelScheduledUpdate();
+            this.previousFrame = undefined;
+            this.video.addEventListener('timeupdate', this.onTimeUpdate);
+            return;
+        }
+        this.video.removeEventListener('timeupdate', this.onTimeUpdate);
+        this.schedule();
+    };
+
     private readonly handleSeeked = (timestampMs: number) => {
         this.seeking = false;
         this.previousFrame = undefined;
@@ -231,9 +254,15 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.eventCallbacks.onError();
     };
 
+    private shouldProcess(): boolean {
+        if (!this._bound) return false;
+        if (this.seeking || this.video.paused()) return false;
+        return true;
+    }
+
     private schedule(): void {
-        if (!this._bound) return;
-        if (this.seeking || this.video.paused()) return;
+        if (!this.shouldProcess()) return;
+        if (document.hidden) return; // Browser will not fire rVFC events when hidden, see onVisibilityChange
         if (this.frameHandle !== undefined) return;
 
         this.frameHandle = this.video.requestVideoFrameCallback((now, metadata) => {
