@@ -377,9 +377,9 @@ export default class AnkiUiController {
                             context.ankiUiSavedState = resumeMessage.uiState;
 
                             if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
-                                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp / 1000;
+                                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp;
 
-                                if (context.currentTimeMs / 1000 !== seekTo) {
+                                if (context.currentTimeMs !== seekTo) {
                                     void context.seek(seekTo);
                                 }
                             }
@@ -403,7 +403,7 @@ export default class AnkiUiController {
                             const rewindMessage = message as AnkiUiBridgeRewindMessage;
                             context.ankiUiSavedState = rewindMessage.uiState;
                             context.pause();
-                            void context.seek(rewindMessage.uiState.subtitle.start / 1000);
+                            void context.seek(rewindMessage.uiState.subtitle.start);
                             break;
                         }
                         case 'rerecord': {

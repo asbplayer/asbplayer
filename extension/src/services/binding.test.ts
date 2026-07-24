@@ -174,6 +174,15 @@ describe('Binding playback mode integration', () => {
         for (const listener of runtimeListeners) listener(request, {}, () => undefined);
     };
 
+    const sendPlayMode = (binding: Binding, playMode: PlayMode) => {
+        const request = {
+            sender: 'asbplayer-extension-to-video',
+            src: binding.registeredVideoSrc,
+            message: { command: 'playMode', playMode },
+        };
+        for (const listener of runtimeListeners) listener(request, {}, () => undefined);
+    };
+
     const displayedSubtitleTexts = () =>
         Array.from(document.querySelectorAll('.asbplayer-subtitles span[data-track]')).map(
             (element) => element.textContent?.trim() ?? ''
@@ -231,6 +240,28 @@ describe('Binding playback mode integration', () => {
         await jest.advanceTimersByTimeAsync(100);
         expect(video.playbackRate).toBe(1.5);
 
+        binding.unbind();
+    });
+
+    it('receives play-mode intents and publishes authoritative mode state', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        const sendMessage = (globalThis as any).browser.runtime.sendMessage as jest.Mock;
+        sendMessage.mockClear();
+
+        sendPlayMode(binding, PlayMode.repeat);
+
+        expect(sendMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: { command: 'playModes', playModes: [PlayMode.repeat] },
+                sender: 'asbplayer-video',
+                src: binding.registeredVideoSrc,
+            })
+        );
         binding.unbind();
     });
 
@@ -321,6 +352,35 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('applies an initially loaded subtitle offset to playback timing', async () => {
+        await storage.set({ autoPausePreference: AutoPausePreference.atStart });
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+
+        sendSubtitles(binding, [
+            makeSubtitle({
+                start: 2000,
+                end: 3000,
+                originalStart: 1000,
+                originalEnd: 2000,
+            }),
+        ]);
+        binding.togglePlayMode(PlayMode.autoPause);
+
+        video.presentFrame(1500);
+        await flushPlaybackTiming();
+        expect(pause).not.toHaveBeenCalled();
+
+        video.presentFrame(2000);
+        await flushPlaybackTiming();
+        expect(pause).toHaveBeenCalledTimes(1);
+
+        binding.unbind();
+    });
+
     it('uses playback mode offsets for repeat without auto-pause', async () => {
         await storage.set({
             subtitleTriggerStartOffset: -250,
@@ -348,7 +408,13 @@ describe('Binding playback mode integration', () => {
     it('routes playback-engine seeks through the Netflix page adapter', async () => {
         document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: true }));
         const netflixSeeks: number[] = [];
-        const onNetflixSeek = (event: Event) => netflixSeeks.push((event as CustomEvent<number>).detail);
+        const onNetflixSeek = (event: Event) => {
+            const timestampMs = (event as CustomEvent<number>).detail;
+            netflixSeeks.push(timestampMs);
+            video.currentTime = timestampMs / 1000;
+            video.dispatchEvent(new Event('seeking'));
+            video.dispatchEvent(new Event('seeked'));
+        };
         document.addEventListener('asbplayer-netflix-seek', onNetflixSeek);
         const video = createVideo();
         const binding = new Binding(video, false);
@@ -363,7 +429,54 @@ describe('Binding playback mode integration', () => {
             await flushPlaybackTiming();
 
             expect(netflixSeeks).toEqual([1000]);
-            expect(video.currentTime).toBe(1.999);
+            expect(video.currentTime).toBe(1);
+
+            video.presentFrame(1500);
+            await flushPlaybackTiming();
+            expect(netflixSeeks).toEqual([1000]);
+        } finally {
+            binding.unbind();
+            document.removeEventListener('asbplayer-netflix-seek', onNetflixSeek);
+            document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: false }));
+        }
+    });
+
+    it('resolves a Netflix play request when the owner is already playing', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        const onPlay = () => {
+            Object.defineProperty(video, 'paused', { configurable: true, value: false, writable: true });
+        };
+        document.addEventListener('asbplayer-netflix-play', onPlay);
+        document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: true }));
+
+        try {
+            await expect(binding.play()).resolves.toBeUndefined();
+        } finally {
+            document.removeEventListener('asbplayer-netflix-play', onPlay);
+            document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: false }));
+        }
+    });
+
+    it('cancels a Netflix seek reported as unavailable and continues timing', async () => {
+        document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: true }));
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        const onNetflixSeek = () => {
+            document.dispatchEvent(new CustomEvent('asbplayer-netflix-seek-cancelled'));
+        };
+        document.addEventListener('asbplayer-netflix-seek', onNetflixSeek);
+
+        try {
+            binding.bind();
+            await jest.advanceTimersByTimeAsync(0);
+            sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+            binding.togglePlayMode(PlayMode.repeat);
+
+            video.presentFrame(1999);
+            await flushPlaybackTiming();
+            video.presentFrame(1500);
+            await flushPlaybackTiming();
         } finally {
             binding.unbind();
             document.removeEventListener('asbplayer-netflix-seek', onNetflixSeek);
@@ -480,9 +593,9 @@ describe('Binding playback mode integration', () => {
         const video = createVideo();
         const binding = new Binding(video, false);
         binding.bind();
-        binding.togglePlayMode(PlayMode.fastForward);
 
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+        binding.togglePlayMode(PlayMode.fastForward);
         video.presentFrame(0);
         await flushPlaybackTiming();
         expect(video.playbackRate).toBe(2.7);
@@ -512,13 +625,13 @@ describe('Binding playback mode integration', () => {
         expect(mockPlaybackModeOverlayShows).toBe(2);
 
         sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(2);
+        expect(mockPlaybackModeOverlayShows).toBe(3);
 
         sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(2);
+        expect(mockPlaybackModeOverlayShows).toBe(3);
 
         sendSubtitles(binding, []);
-        expect(mockPlaybackModeOverlayShows).toBe(2);
+        expect(mockPlaybackModeOverlayShows).toBe(4);
 
         binding.unbind();
     });

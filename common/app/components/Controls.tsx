@@ -763,12 +763,14 @@ export default function Controls({
 
     const [playing, setPlaying] = useState<boolean>(clock.running);
     useEffect(() => {
-        clock.onEvent('start', () => setPlaying(true));
+        const remove = clock.onEvent('start', () => setPlaying(true));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
     useEffect(() => {
-        clock.onEvent('stop', () => setPlaying(false));
+        const remove = clock.onEvent('stop', () => setPlaying(false));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
 
     useEffect(() => {
@@ -831,7 +833,8 @@ export default function Controls({
     );
 
     useEffect(() => {
-        clock.onEvent('settime', () => forceUpdate());
+        const remove = clock.onEvent('settime', () => forceUpdate());
+        return remove;
     }, [clock, forceUpdate]);
 
     useEffect(() => {

@@ -862,6 +862,16 @@ export default function SubtitlePlayer({
         });
     }, []);
 
+    const scrollToSubtitle = useCallback((subtitle: SubtitleModel) => {
+        if (hiddenRef.current || subtitle.index === undefined) return;
+        lastScrollTimestampRef.current = Date.now();
+        virtuosoRef.current?.scrollToIndex({
+            index: subtitle.index,
+            align: 'center',
+            behavior: 'smooth',
+        });
+    }, []);
+
     useEffect(() => {
         if (hidden) {
             return;
@@ -937,13 +947,14 @@ export default function SubtitlePlayer({
                 event.preventDefault();
                 event.stopPropagation();
                 onSeek(subtitle.start, clock.running ?? false);
+                scrollToSubtitle(subtitle);
             },
             () => disableKeyEvents,
             () => clock.time(length),
             () => subtitles,
             () => settingsRef.current.seekableTracks
         );
-    }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length]);
+    }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length, scrollToSubtitle]);
 
     useEffect(() => {
         return keyBinder.bindSeekToBeginningOfCurrentSubtitle(

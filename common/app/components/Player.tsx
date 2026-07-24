@@ -247,8 +247,6 @@ function PlayerComponent(
     const [loadingSubtitles, setLoadingSubtitles] = useState<boolean>(false);
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
-    const offsetRef = useRef(offset);
-    offsetRef.current = offset;
     const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
@@ -383,7 +381,6 @@ function PlayerComponent(
             settings: settingsRef.current,
             subtitles: subtitlesRef.current ?? [],
             ready: { settings: true },
-            subtitleOffsetMs: offsetRef.current,
             playbackModesSuppressed: true,
             timingDriver: new AnimationFrameTimingDriver({
                 paused: () => !clock.running,
@@ -428,7 +425,9 @@ function PlayerComponent(
                 },
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
                 showingSubtitlesChanged: setSyntheticShowingSubtitles,
-                saveSettings: () => {},
+                saveSettings: (settings) => {
+                    void settingsProvider.set(settings).catch(onError);
+                },
                 playbackModesChanged: (transition) => {
                     const modes = new Set(transition.modes);
                     playModesRef.current = modes;
@@ -446,7 +445,7 @@ function PlayerComponent(
                 syntheticPlaybackEngineRef.current = undefined;
             }
         };
-    }, [clock, onError, syntheticPlayback, updatePlaybackRate]);
+    }, [clock, onError, settingsProvider, syntheticPlayback, updatePlaybackRate]);
 
     useEffect(() => {
         if (!syntheticPlayback) return;
@@ -461,7 +460,6 @@ function PlayerComponent(
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
             setOffset(offset);
-            syntheticPlaybackEngineRef.current?.subtitleOffsetChanged(offset);
 
             if (!subtitles) {
                 return;
@@ -1204,9 +1202,9 @@ function PlayerComponent(
             (event, increase) => {
                 event.preventDefault();
                 if (increase) {
-                    handlePlaybackRateChange(Math.min(5, playbackRate + settings.speedChangeStep));
+                    handlePlaybackRateChange(playbackRate + settings.speedChangeStep);
                 } else {
-                    handlePlaybackRateChange(Math.max(0.1, playbackRate - settings.speedChangeStep));
+                    handlePlaybackRateChange(playbackRate - settings.speedChangeStep);
                 }
             },
             () => disableKeyEvents

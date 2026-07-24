@@ -75,6 +75,7 @@ const videoSource = (video: FakeVideo, currentTimeMs = () => video.currentTime *
     durationMs: () => 120_000,
     currentTimeMs,
     frameTimestampMs: () => undefined,
+    externalSeekEvents: false,
     requestVideoFrameCallback: (callback) => video.requestVideoFrameCallback(callback),
     cancelVideoFrameCallback: (handle) => video.cancelVideoFrameCallback(handle),
     addEventListener: (type, listener) => video.addEventListener(type, listener),
@@ -91,7 +92,6 @@ const timingDriver = (
         onSeeked: () => {},
         onPlaybackRateChanged: () => {},
         onDurationChanged: () => {},
-        onTimeUpdate: () => {},
         onError: () => {},
     };
     const driver = new VideoFrameTimingDriver(source, eventCallbacks);
@@ -105,8 +105,7 @@ describe('VideoFrameTimingDriver', () => {
         const driver = timingDriver(videoSource(video), {});
         driver.bind();
 
-        driver.expectInternalSeek();
-        const seeked = driver.waitForSeeked();
+        const seeked = driver.beginInternalSeek();
         video.seek(3);
         await seeked;
 
@@ -114,7 +113,50 @@ describe('VideoFrameTimingDriver', () => {
         driver.unbind();
     });
 
-    it('does not preserve an internal marker for an unassociated seek', () => {
+    it('rejects a pending seek when the media owner reports an error', async () => {
+        const video = new FakeVideo();
+        const driver = timingDriver(videoSource(video), {});
+        driver.bind();
+
+        const seeked = driver.beginInternalSeek();
+        video.dispatchEvent(new Event('error'));
+
+        await expect(seeked).rejects.toThrow('Media seek failed');
+        driver.unbind();
+    });
+
+    it('settles a pending seek when unbound before the owner finishes loading', async () => {
+        const video = new FakeVideo();
+        const driver = timingDriver(videoSource(video), {});
+        driver.bind();
+
+        const seeked = driver.beginInternalSeek();
+        driver.unbind();
+
+        await expect(seeked).resolves.toBeUndefined();
+    });
+
+    it('uses owner-supplied seek events without also listening to native seek events', async () => {
+        const video = new FakeVideo();
+        const timestamps: number[] = [];
+        const driver = timingDriver(
+            { ...videoSource(video), externalSeekEvents: true },
+            { onDiscontinuity: (timestampMs) => timestamps.push(timestampMs) }
+        );
+        driver.bind();
+
+        const seeked = driver.beginInternalSeek();
+        video.dispatchEvent(new Event('seeking'));
+        driver.externalSeekStarted();
+        driver.externalSeeked(3000);
+        await seeked;
+        await flush();
+
+        expect(timestamps).toContain(3000);
+        driver.unbind();
+    });
+
+    it('preserves an internal marker across duplicate seeking events', () => {
         const video = new FakeVideo();
         const cancellations: boolean[] = [];
         const driver = timingDriver(videoSource(video), {
@@ -122,11 +164,11 @@ describe('VideoFrameTimingDriver', () => {
         });
         driver.bind();
 
-        driver.expectInternalSeek();
+        void driver.beginInternalSeek();
         video.dispatchEvent(new Event('seeking'));
         video.dispatchEvent(new Event('seeking'));
 
-        expect(cancellations).toEqual([true, false]);
+        expect(cancellations).toEqual([true, true]);
         driver.unbind();
     });
 
@@ -139,7 +181,6 @@ describe('VideoFrameTimingDriver', () => {
             onSeeked: (timestampMs) => events.push(`seeked:${timestampMs}`),
             onPlaybackRateChanged: (rate) => events.push(`rate:${rate}`),
             onDurationChanged: () => events.push('duration'),
-            onTimeUpdate: (timestampMs) => events.push(`time:${timestampMs}`),
             onError: () => events.push('error'),
         });
         driver.bind();
@@ -172,7 +213,6 @@ describe('VideoFrameTimingDriver', () => {
             onSeeked: () => {},
             onPlaybackRateChanged: (playbackRate) => playbackRates.push(playbackRate),
             onDurationChanged: () => {},
-            onTimeUpdate: () => {},
             onError: () => {},
         });
         driver.bind();
@@ -453,12 +493,12 @@ describe('VideoFrameTimingDriver', () => {
             pause: () => video.pause(),
             seek: async (timestampMs) => {
                 repeatSeeks.push(timestampMs);
-                driverRef.current!.expectInternalSeek();
+                void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
             correctTimestamp: async (timestampMs) => {
-                driverRef.current!.expectInternalSeek();
+                void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
                 return true;
             },
@@ -466,13 +506,7 @@ describe('VideoFrameTimingDriver', () => {
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
-            onDiscontinuity: (timestampMs) => {
-                const discontinuity = executor.consumeDiscontinuity(timestampMs);
-                executor.reset(timestampMs, {
-                    includeAtTimestamp: discontinuity.includeAtTimestamp,
-                    cause: discontinuity.cause,
-                });
-            },
+            onDiscontinuity: (timestampMs) => executor.handleDiscontinuity(timestampMs),
             onCancel: (options) => executor.cancelPendingOperations(options),
             onPlaybackStarted: () => executor.playbackStarted(),
         });
@@ -529,12 +563,12 @@ describe('VideoFrameTimingDriver', () => {
             pause: () => video.pause(),
             seek: async (timestampMs) => {
                 repeatSeeks.push(timestampMs);
-                driverRef.current!.expectInternalSeek();
+                void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
             correctTimestamp: async (timestampMs) => {
-                driverRef.current!.expectInternalSeek();
+                void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
                 return true;
             },
@@ -544,11 +578,7 @@ describe('VideoFrameTimingDriver', () => {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
             onDiscontinuity: (timestampMs) => {
                 discontinuities.push(timestampMs);
-                const discontinuity = executor.consumeDiscontinuity(timestampMs);
-                executor.reset(timestampMs, {
-                    includeAtTimestamp: discontinuity.includeAtTimestamp,
-                    cause: discontinuity.cause,
-                });
+                executor.handleDiscontinuity(timestampMs);
             },
             onCancel: (options) => executor.cancelPendingOperations(options),
             onPlaybackStarted: () => executor.playbackStarted(),
@@ -620,12 +650,12 @@ describe('VideoFrameTimingDriver', () => {
             pause: () => video.pause(),
             seek: async (timestampMs) => {
                 seeks.push(timestampMs);
-                driverRef.current!.expectInternalSeek();
+                void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
             correctTimestamp: async (timestampMs) => {
-                driverRef.current!.expectInternalSeek();
+                void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
                 return true;
             },
@@ -633,13 +663,7 @@ describe('VideoFrameTimingDriver', () => {
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
-            onDiscontinuity: (timestampMs) => {
-                const discontinuity = executor.consumeDiscontinuity(timestampMs);
-                executor.reset(timestampMs, {
-                    includeAtTimestamp: discontinuity.includeAtTimestamp,
-                    cause: discontinuity.cause,
-                });
-            },
+            onDiscontinuity: (timestampMs) => executor.handleDiscontinuity(timestampMs),
             onCancel: (options) => executor.cancelPendingOperations(options),
             onPlaybackStarted: () => executor.playbackStarted(),
         });

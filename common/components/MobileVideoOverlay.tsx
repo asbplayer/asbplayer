@@ -16,6 +16,7 @@ import HoldableIconButton from './HoldableIconButton';
 import PlaybackModeSelector from './PlaybackModeSelector';
 import ScrollableNumberControls from './ScrollableNumberControls';
 import Tooltip from './Tooltip';
+import { minimumPlaybackRate } from '../playback/playback-mode-controller';
 
 type Anchor = 'top' | 'bottom';
 
@@ -163,7 +164,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             return;
         }
 
-        onPlaybackRate(Math.max(0.1, model.playbackRate - 0.1));
+        onPlaybackRate(Math.max(minimumPlaybackRate, model.playbackRate - 0.1));
     }, [onPlaybackRate, model]);
 
     const handleIncrementPlaybackRate = useCallback(() => {
@@ -171,7 +172,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             return;
         }
 
-        onPlaybackRate(Math.min(5, model.playbackRate + 0.1));
+        onPlaybackRate(model.playbackRate + 0.1);
     }, [onPlaybackRate, model]);
 
     const handleSeekToPreviousSubtitle = useCallback(() => {
@@ -334,8 +335,8 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             leftNumberControlDisabled = model.previousSubtitleTimestamp === undefined || model.recording;
             break;
         case ControlType.playbackRate:
-            rightNumberControlDisabled = model.playbackRate >= 5 || model.recording;
-            leftNumberControlDisabled = model.playbackRate <= 0.1 || model.recording;
+            rightNumberControlDisabled = model.recording;
+            leftNumberControlDisabled = model.playbackRate <= minimumPlaybackRate || model.recording;
             break;
     }
 
@@ -457,8 +458,6 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             selectorProps={{
                                 listStyle: {
                                     display: 'flex',
-                                    flexDirection: 'row',
-                                    flexWrap: 'wrap',
                                     justifyContent: 'center',
                                     padding: 0,
                                     overflowX: 'hidden',

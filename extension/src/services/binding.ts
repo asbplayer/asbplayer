@@ -20,6 +20,8 @@ import {
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
     PlayMode,
+    PlayModeMessage,
+    PlayModesMessage,
     PostMineAction,
     PostMinePlayback,
     ReadyFromVideoMessage,
@@ -218,6 +220,7 @@ export default class Binding {
     private disneyPlusSeekStartedListener?: EventListener;
     private disneyPlusSeekedListener?: EventListener;
     private disneyPlusSeekCancelledListener?: EventListener;
+    private netflixSeekCancelledListener?: EventListener;
     private readonly disneyPlusClock = new InterpolatedContentClock();
     private readonly disneyPlusPendingSeeks = new Map<string, DisneyPendingSeek>();
 
@@ -247,8 +250,8 @@ export default class Binding {
         this.ankiUiController = new AnkiUiController();
         this.notificationController = new NotificationController(this);
         this.mobileVideoOverlayController = new MobileVideoOverlayController(this, OffsetAnchor.top);
-        this.subtitleController.onOffsetChange = (offset) => {
-            this.playbackEngine.subtitleOffsetChanged(offset);
+        this.subtitleController.onOffsetChange = () => {
+            this.playbackEngine.subtitlesChanged(this.subtitleController.subtitles);
             return this.mobileVideoOverlayController.updateModel();
         };
         this.mobileGestureController = new MobileGestureController(this);
@@ -367,7 +370,6 @@ export default class Binding {
             settings: defaultSettings,
             subtitles,
             ready: { settings: false },
-            subtitleOffsetMs: subtitles.length ? subtitles[0].start - subtitles[0].originalStart : 0,
             playbackModesSuppressed: this.recordingMedia,
             timingDriver: new VideoFrameTimingDriver(
                 {
@@ -376,6 +378,7 @@ export default class Binding {
                     durationMs: () => this.video.duration * 1000,
                     currentTimeMs: () => this.currentTimeMs,
                     frameTimestampMs: disneyPlus ? (now) => this._disneyPlusTimeAt(now) : () => undefined,
+                    externalSeekEvents: disneyPlus,
                     requestVideoFrameCallback: (callback) => video.requestVideoFrameCallback(callback),
                     cancelVideoFrameCallback: (handle) => video.cancelVideoFrameCallback(handle),
                     addEventListener: (type, listener) => this.video.addEventListener(type, listener),
@@ -426,7 +429,6 @@ export default class Binding {
                         void this.mobileVideoOverlayController.updateModel();
                     },
                     onDurationChanged: (durationMs) => this.playbackEngine.durationChanged(durationMs),
-                    onTimeUpdate: () => {},
                     onError: () => console.error(errorMessageFromVideo(this.video)),
                 }
             ),
@@ -456,6 +458,7 @@ export default class Binding {
                         .catch(console.error);
                 },
                 playbackModesChanged: (transition) => {
+                    this._notifyPlaybackModes(transition.modes);
                     if (!transition.added.size && !transition.removed.size) return;
 
                     const { notifications, join } = playbackModeNotifications(transition);
@@ -468,6 +471,18 @@ export default class Binding {
                 onError: (error) => console.error('Playback plan update failed', error),
             },
         });
+    }
+
+    private _notifyPlaybackModes(modes: ReadonlySet<PlayMode>): void {
+        const command: VideoToExtensionCommand<PlayModesMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'playModes',
+                playModes: [...modes],
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
     }
 
     bind() {
@@ -583,9 +598,7 @@ export default class Binding {
                 const detail = (e as CustomEvent<DisneyPlaybackEventDetail>).detail;
                 if (detail === undefined || !Number.isFinite(detail.timestampMs)) return;
                 this.disneyPlusTimeListener?.(new CustomEvent('asbplayer-disney-plus-time', { detail }));
-                if (detail.requestId === undefined || !this.disneyPlusPendingSeeks.has(detail.requestId)) {
-                    this.playbackEngine.seekStarted();
-                }
+                this.playbackEngine.seekStarted();
             };
             document.addEventListener('asbplayer-disney-plus-seek-started', this.disneyPlusSeekStartedListener);
 
@@ -608,12 +621,17 @@ export default class Binding {
             this.disneyPlusSeekCancelledListener = (e: Event) => {
                 const requestId = (e as CustomEvent<string>).detail;
                 const pending = this.disneyPlusPendingSeeks.get(requestId);
+                this.playbackEngine.seekCanceled();
                 if (pending === undefined) return;
                 this.disneyPlusPendingSeeks.delete(requestId);
-                this.playbackEngine.seekCanceled();
                 pending.resolve();
             };
             document.addEventListener('asbplayer-disney-plus-seek-cancelled', this.disneyPlusSeekCancelledListener);
+        }
+
+        if (netflix) {
+            this.netflixSeekCancelledListener = () => this.playbackEngine.seekCanceled();
+            document.addEventListener('asbplayer-netflix-seek-cancelled', this.netflixSeekCancelledListener);
         }
 
         this.subtitleController.onMouseOver = (mouseEvent: MouseEvent) => {
@@ -770,6 +788,11 @@ export default class Binding {
                     case 'playbackRate': {
                         const playbackRateMessage = request.message as PlaybackRateToVideoMessage;
                         this.playbackEngine.playbackRateChanged(playbackRateMessage.value);
+                        break;
+                    }
+                    case 'playMode': {
+                        const playModeMessage = request.message as PlayModeMessage;
+                        this.playbackEngine.togglePlaybackMode(playModeMessage.playMode);
                         break;
                     }
                     case 'subtitleSettings':
@@ -1195,6 +1218,10 @@ export default class Binding {
             document.removeEventListener('asbplayer-disney-plus-seek-cancelled', this.disneyPlusSeekCancelledListener);
             this.disneyPlusSeekCancelledListener = undefined;
         }
+        if (this.netflixSeekCancelledListener) {
+            document.removeEventListener('asbplayer-netflix-seek-cancelled', this.netflixSeekCancelledListener);
+            this.netflixSeekCancelledListener = undefined;
+        }
         this._cancelDisneyPlusSeeks();
 
         if (this.videoChangeListener) {
@@ -1567,6 +1594,7 @@ export default class Binding {
             this.video.addEventListener('play', listener);
             this.video.addEventListener('playing', listener);
             document.dispatchEvent(new CustomEvent('asbplayer-netflix-play'));
+            if (!this.video.paused) listener();
         });
     }
 

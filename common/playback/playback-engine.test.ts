@@ -38,11 +38,8 @@ class FakeTimingDriver implements TimingDriver {
         this.callbacks = callbacks;
     }
 
-    expectInternalSeek(): void {
+    beginInternalSeek(): Promise<void> {
         this.expectedInternalSeekCalls++;
-    }
-
-    waitForSeeked(): Promise<void> {
         return Promise.resolve();
     }
 
@@ -151,7 +148,6 @@ function makePlaybackEngine(
         settings,
         subtitles,
         ready: { settings: overrides.settingsReady ?? true },
-        subtitleOffsetMs: 0,
         playbackModesSuppressed: false,
         timingDriver: driver,
         callbacks: {
@@ -214,7 +210,6 @@ describe('PlaybackEngine', () => {
             settings: playbackSettings(),
             subtitles: [],
             ready: { settings: true },
-            subtitleOffsetMs: 0,
             playbackModesSuppressed: false,
             timingDriver: driver,
             callbacks: {
@@ -288,6 +283,20 @@ describe('PlaybackEngine', () => {
         expect(harness.showing).toHaveLength(showingCount);
     });
 
+    it('retains a live playback rate across every post-ready settings change', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 1500, [subtitle], {
+            settings: { rememberPlaybackRate: true },
+        });
+        harness.playbackEngine.bind();
+        harness.playbackEngine.playbackRateChanged(1.7);
+        const rateChangeCount = harness.playbackRates.length;
+
+        harness.playbackEngine.settingsChanged({ ...harness.settings, playbackRate: 1, language: 'ja' });
+
+        expect(harness.playbackRates).toHaveLength(rateChangeCount);
+        expect(harness.playbackRates.at(-1)).toBe(1.7);
+    });
+
     it('does not rebuild the plan when the duration is unchanged', () => {
         const harness = makePlaybackEngine([PlayMode.normal]);
         harness.driver.durationMsReads = 0;
@@ -330,12 +339,12 @@ describe('PlaybackEngine', () => {
         expect(harness.plays).toEqual([2000]);
     });
 
-    it('rebuilds playback boundaries when the media owner reports an absolute subtitle offset', async () => {
+    it('rebuilds playback boundaries from the subtitles provided by the media owner', async () => {
         const harness = makePlaybackEngine([PlayMode.autoPause], 500, [subtitle], {
             settings: { autoPausePreference: AutoPausePreference.atStart },
         });
 
-        harness.playbackEngine.subtitleOffsetChanged(1000);
+        harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 2000, end: 3000 }]);
         await harness.driver.time(1500);
         expect(harness.pauses).toEqual([]);
 
@@ -393,12 +402,18 @@ describe('PlaybackEngine', () => {
         expect(harness.savedSettings).toEqual([]);
     });
 
-    it('does not persist automatic mode resets or temporary suppression', () => {
+    it('does not persist automatic mode resets while remembering is disabled', () => {
         const resetHarness = makePlaybackEngine([PlayMode.repeat]);
         resetHarness.playbackEngine.settingsChanged({ ...resetHarness.settings, rememberPlaybackModes: false });
         resetHarness.playbackEngine.subtitlesChanged([]);
 
         expect(resetHarness.savedSettings).toEqual([]);
+
+        const unloadingHarness = makePlaybackEngine([PlayMode.normal]);
+        unloadingHarness.playbackEngine.togglePlaybackMode(PlayMode.repeat);
+        unloadingHarness.playbackEngine.subtitlesChanged([]);
+
+        expect(unloadingHarness.savedSettings).toEqual([{ lastPlaybackModes: [PlayMode.repeat] }]);
 
         const suppressedHarness = makePlaybackEngine([PlayMode.repeat]);
         suppressedHarness.playbackEngine.playbackModesSuppressedChanged(true);
@@ -409,6 +424,16 @@ describe('PlaybackEngine', () => {
         expect(suppressedHarness.modeChanges.at(-1)?.modes).toEqual(new Set([PlayMode.normal]));
     });
 
+    it('restores remembered playback modes when subtitles are loaded again', () => {
+        const harness = makePlaybackEngine([PlayMode.repeat]);
+
+        harness.playbackEngine.subtitlesChanged([]);
+        harness.playbackEngine.subtitlesChanged([subtitle]);
+
+        expect(harness.modeChanges.at(-1)?.modes).toEqual(new Set([PlayMode.repeat]));
+        expect(harness.driver.bound).toBe(true);
+    });
+
     it('initializes the media rate as part of binding', () => {
         const harness = makePlaybackEngine([PlayMode.normal]);
         const setPlaybackRate = jest.fn();
@@ -416,7 +441,6 @@ describe('PlaybackEngine', () => {
             settings: harness.settings,
             subtitles: [subtitle],
             ready: { settings: true },
-            subtitleOffsetMs: 0,
             playbackModesSuppressed: false,
             timingDriver: harness.driver,
             callbacks: {
@@ -431,7 +455,7 @@ describe('PlaybackEngine', () => {
             },
         });
 
-        expect(setPlaybackRate).toHaveBeenCalledWith(harness.settings.playbackRate);
+        expect(setPlaybackRate).not.toHaveBeenCalled();
         setPlaybackRate.mockClear();
         rebound.bind();
         expect(setPlaybackRate).toHaveBeenCalledWith(harness.settings.playbackRate);
@@ -455,6 +479,23 @@ describe('PlaybackEngine', () => {
 
         expect(harness.playbackEngine.adjustPlaybackRate(0.4).notify).toBe(true);
         expect(harness.playbackEngine.adjustPlaybackRate(0).notify).toBe(false);
+    });
+
+    it('rounds playback rates to thousandths and clamps them below the minimum', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            settings: { rememberPlaybackRate: true },
+        });
+        harness.playbackEngine.bind();
+
+        expect(harness.playbackEngine.playbackRateChanged(1.23456).playbackRate).toBe(1.235);
+        expect(harness.playbackEngine.adjustPlaybackRate(-2).playbackRate).toBe(0.001);
+        expect(harness.playbackEngine.playbackRateChanged(6.789).playbackRate).toBe(6.789);
+        expect(harness.playbackRates.slice(-3)).toEqual([1.235, 0.001, 6.789]);
+        expect(harness.savedSettings.slice(-3)).toEqual([
+            { playbackRate: 1.235 },
+            { playbackRate: 0.001 },
+            { playbackRate: 6.789 },
+        ]);
     });
 
     it('updates and remembers the active fast-forward rate when remembering is enabled', () => {

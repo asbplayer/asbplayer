@@ -1,5 +1,14 @@
 import { PlayMode } from '@project/common';
 
+export const minimumPlaybackRate = 0.001;
+
+export const roundPlaybackRate = (playbackRate: number): number => Math.round(playbackRate * 1000) / 1000;
+
+export const normalizePlaybackRate = (playbackRate: number): number | undefined => {
+    if (!Number.isFinite(playbackRate)) return;
+    return Math.max(minimumPlaybackRate, roundPlaybackRate(playbackRate));
+};
+
 export interface PlayModeTransition {
     readonly modes: Set<PlayMode>;
     readonly added: Set<PlayMode>;
@@ -61,7 +70,14 @@ export const playbackModeNotifications = (
         if (mode === PlayMode.normal) continue;
         notifications.push(getLocKey(mode, false));
     }
-    for (const mode of transition.added) notifications.push(getLocKey(mode, true));
+    for (const mode of transition.added) {
+        if (mode === PlayMode.normal) {
+            notifications.length = 0;
+            notifications.push(getLocKey(PlayMode.normal, true));
+            break;
+        }
+        notifications.push(getLocKey(mode, true));
+    }
     return { notifications, join: ' | ' };
 };
 

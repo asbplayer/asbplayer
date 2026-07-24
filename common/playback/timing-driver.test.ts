@@ -122,6 +122,34 @@ describe('TimingUpdateQueue', () => {
         expect(events).toEqual(['start:1', 'finish:1', 'discontinuity:500', 'start:3']);
     });
 
+    it('serializes playback starts after the active update', async () => {
+        const firstUpdate = deferred();
+        const events: string[] = [];
+        const queue = new TimingUpdateQueue(
+            {
+                ...emptyTimingDriverCallbacks,
+                onTime: async () => {
+                    events.push('update:start');
+                    await firstUpdate.promise;
+                    events.push('update:finish');
+                },
+                onPlaybackStarted: async () => {
+                    events.push('playback-started');
+                },
+            },
+            () => true
+        );
+
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+        queue.enqueuePlaybackStarted();
+
+        expect(events).toEqual(['update:start']);
+        firstUpdate.resolve();
+        await flush();
+
+        expect(events).toEqual(['update:start', 'update:finish', 'playback-started']);
+    });
+
     it('reports an update error and continues with the latest queued update', async () => {
         const firstUpdate = deferred();
         const error = new Error('update failed');
@@ -146,5 +174,28 @@ describe('TimingUpdateQueue', () => {
 
         expect(errors).toEqual([error]);
         expect(updates).toEqual([1, 2]);
+    });
+
+    it('rejects non-finite samples without advancing the queue', async () => {
+        const updates: number[] = [];
+        const errors: unknown[] = [];
+        const queue = new TimingUpdateQueue(
+            {
+                ...emptyTimingDriverCallbacks,
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onError: (error) => errors.push(error),
+            },
+            () => true
+        );
+
+        queue.enqueue(Number.NaN, { lookaheadTimestampMs: undefined });
+        queue.enqueue(Number.POSITIVE_INFINITY, { lookaheadTimestampMs: undefined });
+        queue.enqueue(10, { lookaheadTimestampMs: undefined });
+        await flush();
+
+        expect(updates).toEqual([10]);
+        expect(errors).toHaveLength(1);
     });
 });

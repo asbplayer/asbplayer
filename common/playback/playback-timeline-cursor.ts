@@ -1,8 +1,5 @@
 import type { SubtitleModel } from '@project/common';
-import PlaybackTimeline, {
-    type PlaybackTimelineBlock,
-    type PlaybackTimelineEventGroup,
-} from '@project/common/playback/playback-timeline';
+import PlaybackTimeline, { type PlaybackTimelineEventGroup } from '@project/common/playback/playback-timeline';
 
 const boundaryBound = <T extends { timestampMs: number }>(
     values: readonly T[],
@@ -26,21 +23,18 @@ const boundaryBound = <T extends { timestampMs: number }>(
 };
 
 /** Tracks a monotonic playback position and returns every compiled boundary crossed by each update. */
-export default class PlaybackTimelineCursor<
-    T extends SubtitleModel,
-    Block extends PlaybackTimelineBlock = PlaybackTimelineBlock,
-> {
-    private timeline: PlaybackTimeline<T, Block>;
+export default class PlaybackTimelineCursor<T extends SubtitleModel> {
+    private timeline: PlaybackTimeline<T>;
     private nextBoundaryIndex = 0;
     private timestampMs = 0;
 
-    constructor(timeline: PlaybackTimeline<T, Block>, timestampMs: number) {
+    constructor(timeline: PlaybackTimeline<T>, timestampMs: number) {
         this.timeline = timeline;
         this.reset(timestampMs, { includeAtTimestamp: true });
     }
 
     replaceTimeline(
-        timeline: PlaybackTimeline<T, Block>,
+        timeline: PlaybackTimeline<T>,
         timestampMs: number,
         options: { includeAtTimestamp: boolean }
     ): void {
@@ -53,7 +47,7 @@ export default class PlaybackTimelineCursor<
         this.nextBoundaryIndex = boundaryBound(this.timeline.boundaries, timestampMs, options);
     }
 
-    advance(timestampMs: number): PlaybackTimelineEventGroup<Block>[] {
+    advance(timestampMs: number): PlaybackTimelineEventGroup[] {
         if (timestampMs < this.timestampMs) {
             const lowerBoundary = this.timeline.boundaries[this.nextBoundaryIndex - 1];
             const crossedLowerThreshold = lowerBoundary !== undefined && timestampMs < lowerBoundary.timestampMs;
@@ -64,7 +58,7 @@ export default class PlaybackTimelineCursor<
             return [{ timestampMs, events: [], direction: 'backward' }];
         }
 
-        const groups: PlaybackTimelineEventGroup<Block>[] = [];
+        const groups: PlaybackTimelineEventGroup[] = [];
         while (this.nextBoundaryIndex < this.timeline.boundaries.length) {
             const boundary = this.timeline.boundaries[this.nextBoundaryIndex];
             if (boundary.timestampMs > timestampMs) break;

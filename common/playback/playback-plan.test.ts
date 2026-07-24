@@ -1,12 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/common';
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-engine-test-utils';
-import {
-    buildPlaybackPlan,
-    fastForwardingForPlanState,
-    playbackPlanIsActive,
-    playbackPlansEqual,
-} from '@project/common/playback/playback-plan';
+import { buildPlaybackPlan, fastForwardingForPlanState } from '@project/common/playback/playback-plan';
 import PlaybackTimeline from '@project/common/playback/playback-timeline';
 
 const makePlan = (modes: PlayMode[], overrides: Partial<Parameters<typeof buildPlaybackPlan<SubtitleModel>>[0]> = {}) =>
@@ -23,7 +18,7 @@ describe('buildPlaybackPlan', () => {
         const plan = makePlan([PlayMode.normal], { subtitles: [] });
 
         expect(plan.timeline.blocks).toEqual([]);
-        expect(playbackPlanIsActive(plan)).toBe(false);
+        expect(plan.timeline.displaySubtitles).toEqual([]);
     });
 
     it('keeps normal playback inert when eligible subtitles are present', () => {
@@ -41,28 +36,27 @@ describe('buildPlaybackPlan', () => {
 
         expect(plan.timeline.blocks).toEqual([]);
         expect(plan.timeline.displaySubtitles).toEqual([displaySubtitle]);
-        expect(playbackPlanIsActive(plan)).toBe(true);
     });
 
     it.each([
         { name: 'start action', preference: AutoPausePreference.atStart },
         { name: 'end action', preference: AutoPausePreference.atEnd },
-    ])('keeps a displayless plan active for an auto-pause $name', ({ preference }) => {
+    ])('encodes an auto-pause $name action even without displayed subtitles', ({ preference }) => {
         const plan = makePlan([PlayMode.autoPause], {
             displaySubtitles: [],
             autoPausePreference: preference,
         });
 
-        expect(playbackPlanIsActive(plan)).toBe(true);
+        expect(plan.timeline.blocks[0].startAction ?? plan.timeline.blocks[0].endAction).toBeDefined();
     });
 
     it.each([
         { name: 'condensed', mode: PlayMode.condensed },
         { name: 'fast-forward', mode: PlayMode.fastForward },
-    ])('keeps a subtitle-free $name plan active', ({ mode }) => {
+    ])('encodes subtitle-free $name playback', ({ mode }) => {
         const plan = makePlan([mode], { subtitles: [] });
 
-        expect(playbackPlanIsActive(plan)).toBe(true);
+        expect(mode === PlayMode.condensed ? plan.condensed : plan.fastForward).toBeDefined();
     });
 
     it('swaps crossed playback mode offset roles for auto-pause and repeat', () => {
@@ -180,7 +174,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -202,7 +196,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -219,7 +213,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -238,7 +232,7 @@ describe('buildPlaybackPlan', () => {
         });
         const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
         const rateAt = (timestampMs: number) =>
-            fastForwardingForPlanState(plan, timeline.stateAt(timestampMs))
+            fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
                 : plan.playbackRate;
 
@@ -246,116 +240,5 @@ describe('buildPlaybackPlan', () => {
         expect(rateAt(799)).toBe(1.25);
         expect(rateAt(2299)).toBe(1.25);
         expect(rateAt(2300)).toBe(2.5);
-    });
-});
-
-describe('playbackPlansEqual', () => {
-    it('compares independently compiled plans by their values', () => {
-        const first = makePlan([PlayMode.autoPause, PlayMode.fastForward]);
-        const second = makePlan([PlayMode.autoPause, PlayMode.fastForward]);
-
-        expect(playbackPlansEqual(first, second)).toBe(true);
-    });
-
-    it('detects changes to compiled timing, actions, mode settings, and displayed subtitles', () => {
-        const plan = makePlan([PlayMode.normal]);
-
-        expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { durationMs: 6000 }))).toBe(false);
-        expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { subtitleTriggerStartOffset: 100 }))).toBe(false);
-        expect(playbackPlansEqual(plan, makePlan([PlayMode.autoPause]))).toBe(false);
-        expect(playbackPlansEqual(plan, makePlan([PlayMode.normal], { playbackRate: 1.5 }))).toBe(false);
-        expect(
-            playbackPlansEqual(
-                makePlan([PlayMode.condensed]),
-                makePlan([PlayMode.condensed], { condensedPlaybackMinimumSkipIntervalMs: 750 })
-            )
-        ).toBe(false);
-        expect(
-            playbackPlansEqual(
-                makePlan([PlayMode.fastForward]),
-                makePlan([PlayMode.fastForward], { fastForwardModePlaybackRate: 3 })
-            )
-        ).toBe(false);
-        expect(
-            playbackPlansEqual(
-                plan,
-                makePlan([PlayMode.normal], { displaySubtitles: [makeSubtitle({ text: 'other' })] })
-            )
-        ).toBe(false);
-    });
-
-    it('deeply compares nested displayed subtitle values', () => {
-        const firstSubtitle = makeSubtitle({
-            textImage: {
-                dataUrl: 'data:image/png;base64,image',
-                screen: { width: 100, height: 50 },
-                image: { width: 200, height: 100 },
-            },
-            tokenization: {
-                tokens: [
-                    {
-                        pos: [0, 4],
-                        states: [],
-                        readings: [],
-                        frequency: 1,
-                    },
-                ],
-            },
-        });
-        const secondSubtitle = makeSubtitle({
-            textImage: {
-                dataUrl: 'data:image/png;base64,image',
-                screen: { width: 100, height: 50 },
-                image: { width: 200, height: 100 },
-            },
-            tokenization: {
-                tokens: [
-                    {
-                        pos: [0, 4],
-                        states: [],
-                        readings: [],
-                        frequency: 1,
-                    },
-                ],
-            },
-        });
-
-        expect(
-            playbackPlansEqual(
-                makePlan([PlayMode.normal], { displaySubtitles: [firstSubtitle] }),
-                makePlan([PlayMode.normal], { displaySubtitles: [secondSubtitle] })
-            )
-        ).toBe(true);
-        expect(
-            playbackPlansEqual(
-                makePlan([PlayMode.normal], { displaySubtitles: [firstSubtitle] }),
-                makePlan([PlayMode.normal], {
-                    displaySubtitles: [
-                        makeSubtitle({
-                            ...secondSubtitle,
-                            textImage: {
-                                ...secondSubtitle.textImage!,
-                                image: { ...secondSubtitle.textImage!.image, width: 201 },
-                            },
-                        }),
-                    ],
-                })
-            )
-        ).toBe(false);
-        expect(
-            playbackPlansEqual(
-                makePlan([PlayMode.normal], { displaySubtitles: [firstSubtitle] }),
-                makePlan([PlayMode.normal], {
-                    displaySubtitles: [
-                        makeSubtitle({
-                            ...secondSubtitle,
-                            tokenization: {
-                                tokens: [{ ...secondSubtitle.tokenization!.tokens[0], frequency: 2 }],
-                            },
-                        }),
-                    ],
-                })
-            )
-        ).toBe(false);
     });
 });

@@ -203,6 +203,7 @@ describe('playback mode selection', () => {
             added: new Set([PlayMode.normal]),
             removed: new Set([PlayMode.fastForward, PlayMode.repeat]),
         });
+        expect(playbackModeNotifications(transition).notifications).toEqual(['info.disabledAllPlayModes']);
     });
 
     it('replaces a single non-normal mode when normal is selected', () => {

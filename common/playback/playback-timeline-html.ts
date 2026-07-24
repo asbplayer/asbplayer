@@ -1,4 +1,4 @@
-import { buildPlaybackPlan, type PlaybackPlan, type PlaybackPlanBlock } from '@project/common/playback/playback-plan';
+import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
 import type { PlaybackTimelineBlock } from '@project/common/playback/playback-timeline';
 import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
@@ -287,7 +287,7 @@ const condensedIntervals = (
 };
 
 const markerIntervals = (
-    blocks: readonly PlaybackPlanBlock[],
+    blocks: readonly PlaybackTimelineBlock[],
     kind: 'autoPause-start' | 'autoPause-end' | 'repeat'
 ): TimelineInterval[] =>
     blocks.flatMap((block) => {
@@ -413,13 +413,18 @@ export const playbackTimelineToHtml = <T extends SubtitleModel>({
         }
     }
     const intervals = [...normal, ...fastForward, ...condensed, ...autoPause, ...repeat];
+    const intervalsByRow = Array.from({ length: rows }, () => [] as TimelineInterval[]);
+    for (const value of intervals) {
+        if (value.startSeconds >= durationSeconds || value.endSeconds <= 0) continue;
+        const firstRow = Math.max(0, Math.floor(value.startSeconds / 10));
+        const lastRow = Math.min(rows - 1, Math.ceil(value.endSeconds / 10) - 1);
+        for (let row = firstRow; row <= lastRow; row++) intervalsByRow[row].push(value);
+    }
 
     const renderedRows = Array.from({ length: rows }, (_, index) => {
         const rowStartSeconds = index * 10;
         const rowEndSeconds = Math.min(durationSeconds, rowStartSeconds + 10);
-        const rowIntervals = intervals.filter(
-            (value) => value.startSeconds < rowEndSeconds && value.endSeconds > rowStartSeconds
-        );
+        const rowIntervals = intervalsByRow[index];
         const renderedIntervals = rowIntervals
             .map((value) => ({
                 ...value,
@@ -658,11 +663,17 @@ const renderTimeline = (settings, selectedTracks) => {
     }
     const intervals = [...normal, ...fastForward, ...condensed, ...autoPause, ...repeat];
     const rows = Math.max(1, Math.ceil(durationSeconds / 10));
+    const intervalsByRow = Array.from({ length: rows }, () => []);
+    intervals.forEach((value) => {
+        if (value.startSeconds >= durationSeconds || value.endSeconds <= 0) return;
+        const firstRow = Math.max(0, Math.floor(value.startSeconds / 10));
+        const lastRow = Math.min(rows - 1, Math.ceil(value.endSeconds / 10) - 1);
+        for (let row = firstRow; row <= lastRow; row++) intervalsByRow[row].push(value);
+    });
     return Array.from({ length: rows }, (_, index) => {
         const rowStartSeconds = index * 10;
         const rowEndSeconds = Math.min(durationSeconds, rowStartSeconds + 10);
-        const renderedIntervals = intervals
-            .filter((value) => value.startSeconds < rowEndSeconds && value.endSeconds > rowStartSeconds)
+        const renderedIntervals = intervalsByRow[index]
             .map((value) => ({ ...value, startSeconds: Math.max(value.startSeconds, rowStartSeconds), endSeconds: Math.min(value.endSeconds, rowEndSeconds) }))
             .map((value) => renderInterval(value, rowStartSeconds))
             .join('');

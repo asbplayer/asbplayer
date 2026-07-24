@@ -38,7 +38,11 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
                     await this.callbacks.onTime(timestampMs, options);
                 },
                 onPlaybackStarted: async () => {
-                    await this.callbacks.onPlaybackStarted();
+                    try {
+                        await this.callbacks.onPlaybackStarted();
+                    } finally {
+                        this.schedule();
+                    }
                 },
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
                 onCancel: (options) => this.callbacks.onCancel(options),
@@ -52,11 +56,8 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.callbacks = callbacks;
     }
 
-    expectInternalSeek(): void {
+    beginInternalSeek(): Promise<void> {
         this.expectedInternalSeek = true;
-    }
-
-    waitForSeeked(): Promise<void> {
         return Promise.resolve();
     }
 
@@ -108,7 +109,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     }
 
     private readonly onStart = () => {
-        void this.callbacks.onPlaybackStarted().catch((error) => this.callbacks.onError(error));
+        this.updates.enqueuePlaybackStarted();
         this.reset();
         this.schedule();
     };

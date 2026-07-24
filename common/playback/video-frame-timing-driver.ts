@@ -11,6 +11,8 @@ export interface VideoFrameTimingSource {
     readonly currentTimeMs: () => number;
     /** Overrides requestVideoFrameCallback metadata when the media element does not expose content time. */
     readonly frameTimestampMs: (now: number, metadata: VideoFrameCallbackMetadata) => number | undefined;
+    /** Uses owner-supplied seek lifecycle events instead of native seeking/seeked events. */
+    readonly externalSeekEvents: boolean;
     /** ~0.05ms for the hot path (no state changes/actions) and <1ms otherwise per frame */
     requestVideoFrameCallback(callback: VideoFrameRequestCallback): number;
     cancelVideoFrameCallback(handle: number): void;
@@ -41,6 +43,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private pendingSeekCompletion?: {
         readonly promise: Promise<void>;
         readonly resolve: () => void;
+        readonly reject: (error: unknown) => void;
     };
     private readonly updates: TimingUpdateQueue;
     private readonly eventCallbacks: TimingDriverEventCallbacks;
@@ -61,7 +64,11 @@ export default class VideoFrameTimingDriver implements TimingDriver {
                     await this.callbacks.onTime(timestampMs, options);
                 },
                 onPlaybackStarted: async () => {
-                    await this.callbacks.onPlaybackStarted();
+                    try {
+                        await this.callbacks.onPlaybackStarted();
+                    } finally {
+                        this.schedule();
+                    }
                 },
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
                 onCancel: (options) => this.callbacks.onCancel(options),
@@ -75,23 +82,47 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.callbacks = callbacks;
     }
 
-    expectInternalSeek(): void {
+    beginInternalSeek(): Promise<void> {
         this.completePendingSeek();
         this.expectedInternalSeek = true;
         let resolve!: () => void;
-        const promise = new Promise<void>((completion) => {
+        let reject!: (error: unknown) => void;
+        const promise = new Promise<void>((completion, failure) => {
             resolve = completion;
+            reject = failure;
         });
-        this.pendingSeekCompletion = { promise, resolve };
-    }
-
-    waitForSeeked(): Promise<void> {
-        return this.pendingSeekCompletion?.promise ?? Promise.resolve();
+        this.pendingSeekCompletion = { promise, resolve, reject };
+        return promise;
     }
 
     cancelExpectedInternalSeek(): void {
         this.expectedInternalSeek = false;
         this.completePendingSeek();
+    }
+
+    get externalSeekEvents(): boolean {
+        return this.video.externalSeekEvents;
+    }
+
+    externalSeekStarted(): void {
+        if (!this._bound || !this.externalSeekEvents) return;
+        this.onSeeking();
+    }
+
+    externalSeeked(timestampMs: number): void {
+        if (!this._bound || !this.externalSeekEvents) return;
+        this.handleSeeked(timestampMs);
+    }
+
+    externalSeekCanceled(): void {
+        if (!this._bound || !this.externalSeekEvents) return;
+        this.seeking = false;
+        this.expectedInternalSeek = false;
+        this.cancelScheduledUpdate();
+        this.updates.clear({ preserveExpectedDiscontinuity: false });
+        this.previousFrame = undefined;
+        this.completePendingSeek();
+        this.schedule();
     }
 
     currentTimeMs(): number {
@@ -111,8 +142,10 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this._bound = true;
         this.video.addEventListener('play', this.onPlay);
         this.video.addEventListener('pause', this.onPause);
-        this.video.addEventListener('seeking', this.onSeeking);
-        this.video.addEventListener('seeked', this.onSeeked);
+        if (!this.externalSeekEvents) {
+            this.video.addEventListener('seeking', this.onSeeking);
+            this.video.addEventListener('seeked', this.onSeeked);
+        }
         this.video.addEventListener('ratechange', this.onRateChange);
         this.video.addEventListener('durationchange', this.onDurationChange);
         this.video.addEventListener('error', this.onError);
@@ -129,14 +162,17 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this._bound = false;
         this.video.removeEventListener('play', this.onPlay);
         this.video.removeEventListener('pause', this.onPause);
-        this.video.removeEventListener('seeking', this.onSeeking);
-        this.video.removeEventListener('seeked', this.onSeeked);
+        if (!this.externalSeekEvents) {
+            this.video.removeEventListener('seeking', this.onSeeking);
+            this.video.removeEventListener('seeked', this.onSeeked);
+        }
         this.video.removeEventListener('ratechange', this.onRateChange);
         this.video.removeEventListener('durationchange', this.onDurationChange);
         this.video.removeEventListener('error', this.onError);
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: false });
         this.previousFrame = undefined;
+        this.seeking = false;
         this.expectedInternalSeek = false;
         this.completePendingSeek();
     }
@@ -146,9 +182,8 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     }
 
     private readonly onPlay = () => {
-        const playbackStarted = this.callbacks.onPlaybackStarted();
+        this.updates.enqueuePlaybackStarted();
         if (this.pendingSeekCompletion === undefined) this.schedule();
-        void playbackStarted.then(() => this.schedule()).catch((error) => this.callbacks.onError(error));
         this.eventCallbacks.onPlay();
     };
 
@@ -161,7 +196,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     private readonly onSeeking = () => {
         this.seeking = true;
-        const preserveExpectedDiscontinuity = this.expectedInternalSeek;
+        const preserveExpectedDiscontinuity = this.expectedInternalSeek || this.pendingSeekCompletion !== undefined;
         this.expectedInternalSeek = false;
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity });
@@ -169,10 +204,13 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     };
 
     private readonly onSeeked = () => {
+        this.handleSeeked(this.currentTimeMs());
+    };
+
+    private readonly handleSeeked = (timestampMs: number) => {
         this.seeking = false;
         this.previousFrame = undefined;
         this.completePendingSeek();
-        const timestampMs = this.currentTimeMs();
         this.updates.enqueueDiscontinuity(timestampMs); // rVFC may not run during pause
         this.schedule();
         this.eventCallbacks.onSeeked(timestampMs);
@@ -188,11 +226,8 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.eventCallbacks.onDurationChanged(this.video.durationMs());
     };
 
-    private readonly onTimeUpdate = (timestampMs: number) => {
-        this.eventCallbacks.onTimeUpdate(timestampMs);
-    };
-
     private readonly onError = () => {
+        this.failPendingSeek(new Error('Media seek failed'));
         this.eventCallbacks.onError();
     };
 
@@ -211,7 +246,6 @@ export default class VideoFrameTimingDriver implements TimingDriver {
             };
             this.updates.enqueue(timestampMs, { lookaheadTimestampMs });
             this.schedule();
-            this.onTimeUpdate(timestampMs);
         });
     }
 
@@ -241,5 +275,16 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private completePendingSeek(): void {
         this.pendingSeekCompletion?.resolve();
         this.pendingSeekCompletion = undefined;
+    }
+
+    private failPendingSeek(error: unknown): void {
+        this.pendingSeekCompletion?.reject(error);
+        this.pendingSeekCompletion = undefined;
+        this.expectedInternalSeek = false;
+        this.seeking = false;
+        this.cancelScheduledUpdate();
+        this.updates.clear({ preserveExpectedDiscontinuity: false });
+        this.previousFrame = undefined;
+        this.schedule();
     }
 }

@@ -1,22 +1,19 @@
-export type ClockEvent = 'stop' | 'start' | 'settime' | 'rate';
-
-export type ClockNow = () => number;
+export type ClockEvent = 'stop' | 'start' | 'settime';
 
 /** A monotonic millisecond-based media clock for playback without a media element. */
 export default class Clock {
     private accumulatedMs = 0;
     private started = false;
-    private startedAtMs?: number;
+    private startedAtMs = 0;
     private playbackRate = 1;
-    private readonly now: ClockNow;
+    private readonly now: () => number;
     private readonly callbacks: { [event in ClockEvent]: (() => void)[] } = {
         stop: [],
         start: [],
         settime: [],
-        rate: [],
     };
 
-    constructor(now: ClockNow) {
+    constructor(now: () => number) {
         this.now = now;
     }
 
@@ -35,7 +32,6 @@ export default class Clock {
             this.startedAtMs = this.now();
         }
         this.playbackRate = rate;
-        this.fireEvent('rate');
     }
 
     time(maxMs: number): number {
@@ -47,7 +43,6 @@ export default class Clock {
         if (!this.started) return;
         this.accumulatedMs += this.elapsedMs();
         this.started = false;
-        this.startedAtMs = undefined;
         this.fireEvent('stop');
     }
 
@@ -65,7 +60,7 @@ export default class Clock {
     }
 
     progress(durationMs: number): number {
-        return durationMs === 0 ? 0 : Math.min(1, this.time(durationMs) / durationMs);
+        return durationMs ? Math.min(1, this.time(durationMs) / durationMs) : 0;
     }
 
     onEvent(eventName: ClockEvent, callback: () => void): () => void {
@@ -78,7 +73,7 @@ export default class Clock {
     }
 
     private elapsedMs(): number {
-        return (this.now() - this.startedAtMs!) * this.playbackRate;
+        return (this.now() - this.startedAtMs) * this.playbackRate;
     }
 
     private fireEvent(eventName: ClockEvent): void {

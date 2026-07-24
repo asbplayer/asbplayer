@@ -5,7 +5,7 @@ describe('PlaybackTimeline', () => {
     it('has no state or condensed target for zero subtitles', () => {
         const result = timeline([]);
 
-        expect(result.stateAt(1000)).toEqual({ previous: undefined, next: undefined });
+        expect(result.lookupAt(1000).state).toEqual({ previous: undefined, next: undefined });
         expect(result.nextCondensedTarget(1000)).toBeUndefined();
     });
 
@@ -15,9 +15,9 @@ describe('PlaybackTimeline', () => {
         const result = timeline([first, second], { subtitleTriggerStartOffset: -250 });
         const [firstBlock, secondBlock] = result.blocks;
 
-        expect(result.stateAt(1500).current).toBe(firstBlock);
-        expect(result.stateAt(2500).previous).toBe(firstBlock);
-        expect(result.stateAt(2500).next).toBe(secondBlock);
+        expect(result.lookupAt(1500).state.current).toBe(firstBlock);
+        expect(result.lookupAt(2500).state.previous).toBe(firstBlock);
+        expect(result.lookupAt(2500).state.next).toBe(secondBlock);
         expect(result.nextCondensedTarget(2100)).toBe(2999);
     });
 
@@ -35,10 +35,10 @@ describe('PlaybackTimeline', () => {
             subtitleTriggerEndOffset: -250,
         });
 
-        expect(result.stateAt(1100).current).toBe(result.blocks[0]);
+        expect(result.lookupAt(1100).state.current).toBe(result.blocks[0]);
         expect(result.nextCondensedTarget(1100)).toBeUndefined();
-        expect(result.stateAt(1500).current).toBe(result.blocks[0]);
-        expect(result.stateAt(1800).current).toBe(result.blocks[0]);
+        expect(result.lookupAt(1500).state.current).toBe(result.blocks[0]);
+        expect(result.lookupAt(1800).state.current).toBe(result.blocks[0]);
         expect(result.nextCondensedTarget(2000)).toBe(3999);
     });
 
@@ -59,18 +59,18 @@ describe('PlaybackTimeline', () => {
         const second = makeSubtitle(2000, 4000, 1);
         const result = timeline([], { displaySubtitles: [first, second] });
 
-        expect(result.segmentAt(1500).showingSubtitles).toEqual([first]);
-        expect(result.segmentAt(2500).showingSubtitles).toEqual([first, second]);
-        expect(result.segmentAt(3000).showingSubtitles).toEqual([second]);
-        expect(result.segmentAt(4000).showingSubtitles).toEqual([]);
+        expect(result.lookupAt(1500).segment.showingSubtitles).toEqual([first]);
+        expect(result.lookupAt(2500).segment.showingSubtitles).toEqual([first, second]);
+        expect(result.lookupAt(3000).segment.showingSubtitles).toEqual([second]);
+        expect(result.lookupAt(4000).segment.showingSubtitles).toEqual([]);
     });
 
     it('uses the state after the terminal boundary at the exact media duration', () => {
         const visible = makeSubtitle(9000, 10000, 0);
         const result = timeline([visible]);
 
-        expect(result.segmentAt(9999).showingSubtitles).toEqual([visible]);
-        expect(result.segmentAt(10000).showingSubtitles).toEqual([]);
+        expect(result.lookupAt(9999).segment.showingSubtitles).toEqual([visible]);
+        expect(result.lookupAt(10000).segment.showingSubtitles).toEqual([]);
     });
 
     it('includes display-only subtitles in persistent-state segments', () => {
@@ -78,6 +78,6 @@ describe('PlaybackTimeline', () => {
         const displayOnlySubtitle = makeSubtitle(1500, 2500, 1, { track: 1 });
         const result = timeline([playbackSubtitle], { displaySubtitles: [playbackSubtitle, displayOnlySubtitle] });
 
-        expect(result.segmentAt(1750).showingSubtitles).toEqual([playbackSubtitle, displayOnlySubtitle]);
+        expect(result.lookupAt(1750).segment.showingSubtitles).toEqual([playbackSubtitle, displayOnlySubtitle]);
     });
 });

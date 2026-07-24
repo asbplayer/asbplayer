@@ -34,6 +34,7 @@ import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import { VideoSubtitleSplitBehavior } from '../settings';
+import { minimumPlaybackRate, normalizePlaybackRate } from '../playback/playback-mode-controller';
 
 function regexIsValid(regex: string) {
     try {
@@ -475,12 +476,14 @@ const MiscSettingTab: React.FC<Props> = ({
                             label={t('settings.playbackRate')}
                             value={playbackRate}
                             color="primary"
-                            onChange={(event) => onSettingChanged('playbackRate', Number(event.target.value))}
+                            onChange={(event) => {
+                                const playbackRate = normalizePlaybackRate(Number(event.target.value));
+                                if (playbackRate !== undefined) void onSettingChanged('playbackRate', playbackRate);
+                            }}
                             slotProps={{
                                 htmlInput: {
-                                    min: 0.1,
-                                    max: 5,
-                                    step: 0.1,
+                                    min: minimumPlaybackRate,
+                                    step: 0.05,
                                 },
                             }}
                         />
@@ -679,14 +682,16 @@ const MiscSettingTab: React.FC<Props> = ({
                         label={t('settings.fastForwardModePlaybackRate')}
                         value={fastForwardModePlaybackRate}
                         color="primary"
-                        onChange={(event) =>
-                            onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
-                        }
+                        onChange={(event) => {
+                            const playbackRate = normalizePlaybackRate(Number(event.target.value));
+                            if (playbackRate !== undefined) {
+                                void onSettingChanged('fastForwardModePlaybackRate', playbackRate);
+                            }
+                        }}
                         slotProps={{
                             htmlInput: {
-                                min: 0.1,
-                                max: 5,
-                                step: 0.1,
+                                min: minimumPlaybackRate,
+                                step: 0.05,
                             },
                         }}
                     />

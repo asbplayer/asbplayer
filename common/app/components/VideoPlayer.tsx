@@ -506,22 +506,18 @@ export default function VideoPlayer({
             const playbackEngine = playbackEngineRef.current;
             if (!playbackEngine) return;
 
-            notifyPlaybackRate(playbackEngine.playbackRateChanged(playbackRate));
+            const result = playbackEngine.playbackRateChanged(playbackRate);
+            clock.rate = result.playbackRate;
+            notifyPlaybackRate(result);
         },
-        [notifyPlaybackRate, playerChannel]
+        [clock, notifyPlaybackRate, playerChannel]
     );
     const synchronizePlaybackModesRef = useRef(synchronizePlaybackModes);
     synchronizePlaybackModesRef.current = synchronizePlaybackModes;
 
     const handlePlaybackRateChanged = useCallback(
-        (playbackRate: number) => {
-            playerChannel.playbackRate(playbackRate, false);
-            const playbackEngine = playbackEngineRef.current;
-            if (!playbackEngine) return;
-
-            notifyPlaybackRate(playbackEngine.playbackRateChanged(playbackRate));
-        },
-        [notifyPlaybackRate, playerChannel]
+        (playbackRate: number) => updatePlaybackRate(playbackRate, false),
+        [updatePlaybackRate]
     );
     const handleDurationChanged = useCallback(
         (durationMs: number) => {
@@ -544,6 +540,7 @@ export default function VideoPlayer({
             const videoElement = element as ExperimentalHTMLVideoElement;
             videoRef.current = videoElement;
             setVideo(videoElement);
+            clock.setTime(videoElement.currentTime * 1000);
 
             if (videoElement.readyState === 4) {
                 notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
@@ -561,6 +558,7 @@ export default function VideoPlayer({
 
             videoElement.oncanplay = () => {
                 playerChannel.readyState(4);
+                clock.setTime(videoElement.currentTime * 1000);
 
                 if (playing()) {
                     clock.start();
@@ -579,7 +577,6 @@ export default function VideoPlayer({
             settings: { ...settingsRef.current, ...miscSettingsRef.current },
             subtitles: subtitlesRef.current,
             ready: { settings: true },
-            subtitleOffsetMs: offsetRef.current,
             playbackModesSuppressed: false,
             timingDriver: new VideoFrameTimingDriver(
                 {
@@ -588,6 +585,7 @@ export default function VideoPlayer({
                     durationMs: () => video.duration * 1000,
                     currentTimeMs: () => video.currentTime * 1000,
                     frameTimestampMs: () => undefined,
+                    externalSeekEvents: false,
                     requestVideoFrameCallback: (callback) => video.requestVideoFrameCallback(callback),
                     cancelVideoFrameCallback: (handle) => video.cancelVideoFrameCallback(handle),
                     addEventListener: (type, listener) => video.addEventListener(type, listener),
@@ -608,7 +606,6 @@ export default function VideoPlayer({
                     },
                     onPlaybackRateChanged: handlePlaybackRateChanged,
                     onDurationChanged: handleDurationChanged,
-                    onTimeUpdate: (timestampMs) => clock.setTime(timestampMs),
                     onError: () => onErrorRef.current?.(errorMessageFromVideo(video)),
                 }
             ),
@@ -698,7 +695,6 @@ export default function VideoPlayer({
         subtitlesRef.current = shiftedSubtitles;
         setSubtitles(shiftedSubtitles);
 
-        playbackEngineRef.current?.subtitleOffsetChanged(offset);
         showingSubtitlesChangedRef.current(timelineShowingSubtitlesRef.current);
     }, []);
 
@@ -711,12 +707,6 @@ export default function VideoPlayer({
         if (!playerChannelSubscribed || !playbackEngine) return;
         playbackEngine.settingsChanged({ ...settings, ...miscSettings });
     }, [miscSettings, playerChannelSubscribed, settings, video]);
-
-    useEffect(() => {
-        const playbackEngine = playbackEngineRef.current;
-        if (!playerChannelSubscribed || !playbackEngine) return;
-        playbackEngine.subtitleOffsetChanged(offset);
-    }, [offset, playerChannelSubscribed, video]);
 
     useEffect(() => {
         const playbackEngine = playbackEngineRef.current;
