@@ -9,23 +9,10 @@ export const useSubtitleDomCache = (
 
     useEffect(() => {
         const domCache = new OffscreenDomCache();
+        for (const subtitle of subtitles) domCache.add(String(subtitle.index), render(subtitle));
         setDomCache(domCache);
         return () => domCache.clear();
     }, [subtitles, render]);
-
-    const refreshSubtitleDomCacheForSubtitles = useCallback(
-        (windowSubtitles: IndexedSubtitleModel[]) => {
-            const keep = new Set(windowSubtitles.map((s) => String(s.index)));
-            for (const key of domCache.keys()) {
-                if (!keep.has(key)) domCache.delete(key);
-            }
-            for (const subtitle of windowSubtitles) {
-                const key = String(subtitle.index);
-                if (!domCache.has(key)) domCache.add(key, render(subtitle));
-            }
-        },
-        [domCache, render]
-    );
 
     const updateSubtitleDomCache = useCallback(
         (updatedSubtitles: IndexedSubtitleModel[]) => {
@@ -39,7 +26,6 @@ export const useSubtitleDomCache = (
 
     return {
         getSubtitleDomCache: () => domCache,
-        refreshSubtitleDomCacheForSubtitles,
         updateSubtitleDomCache,
     };
 };

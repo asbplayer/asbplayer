@@ -38,14 +38,7 @@ import {
     subtitleTimestampWithDelay,
     errorMessageFromVideo,
 } from '@project/common/util';
-import { SubtitleCollection } from '@project/common/subtitle-collection';
-import {
-    HoveredToken,
-    renderRichTextOntoSubtitles,
-    getAnnotationsHtml,
-    ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
-    ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
-} from '@project/common/annotations';
+import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
 import Clock from '@project/common/playback/clock';
 import { hasEnabledPlaybackModes, playbackModeNotifications } from '@project/common/playback/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
@@ -366,15 +359,6 @@ export default function VideoPlayer({
     const [subtitles, setSubtitles] = useState<IndexedSubtitleModel[]>([]);
     const subtitlesRef = useRef(subtitles);
     subtitlesRef.current = subtitles;
-    const subtitleCollection = useMemo<SubtitleCollection<IndexedSubtitleModel>>(() => {
-        const newCol = new SubtitleCollection<IndexedSubtitleModel>({
-            showingCheckRadiusMs: 150,
-            returnLastShown: true,
-            returnNextToShow: true,
-        });
-        newCol.setSubtitles(subtitles);
-        return newCol;
-    }, [subtitles]);
     const [showSubtitles, setShowSubtitles] = useState<IndexedSubtitleModel[]>([]);
     const [miscSettings, setMiscSettings] = useState<MiscSettings>(settings);
     const miscSettingsRef = useRef(miscSettings);
@@ -418,8 +402,6 @@ export default function VideoPlayer({
     showSubtitlesRef.current = showSubtitles;
     const timelineShowingSubtitlesRef = useRef<readonly IndexedSubtitleModel[]>([]);
     const showingSubtitlesChangedRef = useRef<(subtitles: readonly IndexedSubtitleModel[]) => void>(() => {});
-    const subtitleCollectionRef = useRef(subtitleCollection);
-    subtitleCollectionRef.current = subtitleCollection;
     const clock = useMemo<Clock>(() => new Clock(() => performance.now()), []);
     const mousePositionRef = useRef<Point | undefined>(undefined);
     const [showCursor, setShowCursor] = useState<boolean>(isMobile);
@@ -438,12 +420,7 @@ export default function VideoPlayer({
     const mobileOverlayRef = useRef<HTMLDivElement>(null);
     const bottomSubtitleContainerRef = useRef<HTMLDivElement>(null);
     const domCacheRef = useRef<OffscreenDomCache | undefined>(undefined);
-    const refreshSubtitleDomCacheForSubtitlesRef = useRef<
-        ((windowSubtitles: IndexedSubtitleModel[]) => void) | undefined
-    >(undefined);
-    const updateSubtitleDomCacheRef = useRef<((windowSubtitles: IndexedSubtitleModel[]) => void) | undefined>(
-        undefined
-    );
+    const updateSubtitleDomCacheRef = useRef<((subtitles: IndexedSubtitleModel[]) => void) | undefined>(undefined);
     const thumbnailsRef = useRef<Map<number, string>>(new Map()); // cache thumbnails, in intervals of 5s
     const isGeneratingRef = useRef(false); // avoid subsequent calls to generate thumbnail while generating one
 
@@ -997,20 +974,6 @@ export default function VideoPlayer({
                 // ignore
             });
         }
-
-        const nowMs =
-            videoRef.current?.currentTime === undefined ? clock.time(lengthMs) : videoRef.current.currentTime * 1000;
-        const collection = subtitleCollectionRef.current;
-        const windowSubtitles = collection.subtitlesIn(
-            nowMs - ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
-            nowMs + ANNOTATIONS_VIDEO_RENDER_AHEAD_MS
-        );
-        if (!windowSubtitles.length) {
-            const { lastShown, nextToShow } = collection.subtitlesAt(nowMs);
-            for (const subtitle of lastShown ?? []) windowSubtitles.push(subtitle);
-            for (const subtitle of nextToShow ?? []) windowSubtitles.push(subtitle);
-        }
-        refreshSubtitleDomCacheForSubtitlesRef.current?.(windowSubtitles);
     };
 
     useEffect(() => {
@@ -1773,13 +1736,9 @@ export default function VideoPlayer({
         [trackStyles, settings.dictionaryTracks, subtitleSettings.imageBasedSubtitleScaleFactor]
     );
 
-    const { getSubtitleDomCache, refreshSubtitleDomCacheForSubtitles, updateSubtitleDomCache } = useSubtitleDomCache(
-        subtitles,
-        getSubtitleHtml
-    );
+    const { getSubtitleDomCache, updateSubtitleDomCache } = useSubtitleDomCache(subtitles, getSubtitleHtml);
 
     domCacheRef.current = getSubtitleDomCache();
-    refreshSubtitleDomCacheForSubtitlesRef.current = refreshSubtitleDomCacheForSubtitles;
     updateSubtitleDomCacheRef.current = updateSubtitleDomCache;
 
     const handleSwipe = useCallback(
