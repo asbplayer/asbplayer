@@ -320,6 +320,8 @@
         },
         "playbackRate": "재생 속도: {{rate}}",
         "savedTimestamp": "저장 완료: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "카드 업데이트 완료: {{result}}",
         "enabledRepeatPlayback": "반복 재생: 켜짐",
         "disabledRepeatPlayback": "반복 재생: 꺼짐",

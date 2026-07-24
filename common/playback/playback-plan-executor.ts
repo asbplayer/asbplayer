@@ -118,6 +118,10 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return this._isFastForwarding;
     }
 
+    showingSubtitlesAt(timestampMs: number): readonly T[] {
+        return this.timeline.lookupAt(timestampMs).segment.showingSubtitles;
+    }
+
     replacePlan(plan: PlaybackPlan<T>, timestampMs: number): void {
         this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
         const playbackRateChanged =

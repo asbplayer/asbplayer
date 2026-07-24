@@ -37,6 +37,7 @@ import {
     ensureStoragePersisted,
     subtitleTimestampWithDelay,
     errorMessageFromVideo,
+    timeDurationDisplay,
 } from '@project/common/util';
 import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
 import Clock from '@project/common/playback/clock';
@@ -48,6 +49,7 @@ import PlayerChannel from '../services/player-channel';
 import ChromeExtension from '../services/chrome-extension';
 import { type AlertColor } from '@mui/material/Alert';
 import Alert from './Alert';
+import Button from '@mui/material/Button';
 import { useSubtitleDomCache } from '../hooks/use-subtitle-dom-cache';
 import { useAppKeyBinder } from '../hooks/use-app-key-binder';
 import { Direction, useSwipe } from '../hooks/use-swipe';
@@ -57,6 +59,7 @@ import { useTranslation } from 'react-i18next';
 import { adjacentSubtitle } from '../../key-binder';
 import { usePlaybackPreferences } from '../hooks/use-playback-preferences';
 import { MiningContext } from '../services/mining-context';
+import useSnackbar from '../../hooks/use-snackbar';
 import { useSubtitleStyles } from '../hooks/use-subtitle-styles';
 import { useFullscreen } from '../hooks/use-fullscreen';
 import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
@@ -348,6 +351,8 @@ export default function VideoPlayer({
     const lengthMsRef = useRef(lengthMs);
     lengthMsRef.current = lengthMs;
     const [videoFileName, setVideoFileName] = useState<string>();
+    const videoFileNameRef = useRef(videoFileName);
+    videoFileNameRef.current = videoFileName;
     const [videoWidth, setVideoWidth] = useState<number>(); // width and height are original width and height from metadata
     const [videoHeight, setVideoHeight] = useState<number>();
     const [offset, setOffset] = useState<number>(0);
@@ -411,6 +416,11 @@ export default function VideoPlayer({
     const [alertMessage, setAlertMessage] = useState<string>('');
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info');
     const [alertDisableAutoHide, setAlertDisableAutoHide] = useState<boolean>(false);
+    const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
+    const resumePlaybackSnackbar = useSnackbar({
+        open: pendingPlaybackPosition !== undefined,
+        onClose: () => playbackEngineRef.current?.dismissPlaybackPosition(),
+    });
     const [lastMinedRecord, setLastMinedRecord] = useState<MinedRecord>();
     const [trackCount, setTrackCount] = useState<number>(0);
     const [, forceRender] = useState<any>();
@@ -555,6 +565,7 @@ export default function VideoPlayer({
             subtitles: subtitlesRef.current,
             ready: { settings: true },
             playbackModesSuppressed: false,
+            playbackPositionKeys: videoFileNameRef.current ? [videoFileNameRef.current] : [],
             timingDriver: new VideoFrameTimingDriver(
                 {
                     paused: () => video.paused,
@@ -603,6 +614,7 @@ export default function VideoPlayer({
                     if (video.playbackRate !== playbackRate) video.playbackRate = playbackRate;
                 },
                 showingSubtitlesChanged: (showingSubtitles) => showingSubtitlesChangedRef.current(showingSubtitles),
+                playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => onSettingsChangedRef.current(settings),
                 playbackModesChanged: (transition) => {
                     synchronizePlaybackModesRef.current(transition.modes);
@@ -695,6 +707,8 @@ export default function VideoPlayer({
         playerChannel.onReady((duration, videoFileName) => {
             setLengthMs(duration);
             setVideoFileName(videoFileName);
+            videoFileNameRef.current = videoFileName;
+            playbackEngineRef.current?.playbackPositionKeysChanged(videoFileName ? [videoFileName] : []);
             if (miscSettingsRef.current.rememberPlaybackModes && hasEnabledPlaybackModes(playModesRef.current)) {
                 requestRememberedPlaybackModesOverlay();
             }
@@ -1904,6 +1918,24 @@ export default function VideoPlayer({
     };
     const baseBottomSubtitleOffset = !playing() && isMobile ? overlayContainerHeight : 0;
     const alertAnchor = subtitleAlignments[0] === 'top' ? 'bottom' : 'top';
+    const resumePlaybackPrompt = useMemo(
+        () => (
+            <>
+                {t('info.resumePlaybackPrompt', {
+                    time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
+                })}
+                <Button
+                    size="small"
+                    color="inherit"
+                    style={{ pointerEvents: 'auto', marginLeft: 12 }}
+                    onClick={() => void playbackEngineRef.current?.resumePlaybackPosition()}
+                >
+                    {t('info.resumePlaybackButton')}
+                </Button>
+            </>
+        ),
+        [pendingPlaybackPosition, t]
+    );
 
     if (!playerChannelSubscribed || lastControlType === undefined) {
         return null;
@@ -1917,6 +1949,18 @@ export default function VideoPlayer({
             className={`${classes.root} asbplayer-token-container`}
             tabIndex={-1}
         >
+            <Alert
+                open={resumePlaybackSnackbar.open}
+                onClose={resumePlaybackSnackbar.close}
+                onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
+                onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
+                autoHideDuration={0}
+                disableAutoHide={true}
+                severity="info"
+                anchor="bottom"
+            >
+                {resumePlaybackPrompt}
+            </Alert>
             <Alert
                 open={alertOpen}
                 disableAutoHide={alertDisableAutoHide}

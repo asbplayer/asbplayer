@@ -320,6 +320,8 @@
         },
         "playbackRate": "Скорость воспроизведения: {{rate}}",
         "savedTimestamp": "Сохранено: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Карточка обновлена: {{result}}",
         "enabledRepeatPlayback": "Повтор воспроизведения: Вкл",
         "disabledRepeatPlayback": "Повтор воспроизведения: Выкл",

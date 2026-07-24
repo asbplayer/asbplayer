@@ -152,7 +152,7 @@ describe('Binding playback mode integration', () => {
         await jest.advanceTimersByTimeAsync(0);
     };
 
-    const sendSubtitles = (binding: Binding, subtitles: IndexedSubtitleModel[]) => {
+    const sendSubtitles = (binding: Binding, subtitles: IndexedSubtitleModel[], names = ['subtitles.srt']) => {
         const request = {
             sender: 'asbplayer-extension-to-video',
             src: binding.registeredVideoSrc,
@@ -160,6 +160,7 @@ describe('Binding playback mode integration', () => {
                 command: 'subtitles',
                 value: subtitles,
                 name: 'subtitles.srt',
+                names,
             },
         };
         for (const listener of runtimeListeners) listener(request, {}, () => undefined);
@@ -240,6 +241,22 @@ describe('Binding playback mode integration', () => {
         await jest.advanceTimersByTimeAsync(100);
         expect(video.playbackRate).toBe(1.5);
 
+        binding.unbind();
+    });
+
+    it('does not persist empty subtitle track filenames as playback-position keys', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()], ['subtitle.srt', 'Empty.srt']);
+
+        video.currentTime = 62;
+        await jest.advanceTimersByTimeAsync(10_000);
+
+        expect((await storage.get('lastPlaybackPositions')).lastPlaybackPositions).toEqual([
+            { fileName: 'subtitle.srt', position: 62_000 },
+        ]);
         binding.unbind();
     });
 

@@ -21,6 +21,7 @@ it('starts at default settings', async () => {
     expect(initialSettings.repeatCountPreference).toBe(0);
     expect(initialSettings.rememberPlaybackModes).toBe(false);
     expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
+    expect(initialSettings.lastPlaybackPositions).toEqual([]);
 });
 
 it('can change the value of object-typed settings', async () => {

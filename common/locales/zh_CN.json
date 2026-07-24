@@ -320,6 +320,8 @@
         },
         "playbackRate": "播放速度：{{Rate}}",
         "savedTimestamp": "已保存进度：{{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "已更新卡片：{{result}}",
         "enabledRepeatPlayback": "循环模式：已启用",
         "disabledRepeatPlayback": "循环模式：已禁用",

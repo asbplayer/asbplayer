@@ -320,6 +320,8 @@
         },
         "playbackRate": "Playback Rate: {{rate}}",
         "savedTimestamp": "Saved: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Updated card: {{result}}",
         "enabledRepeatPlayback": "Repeat playback: On",
         "disabledRepeatPlayback": "Repeat playback: Off",

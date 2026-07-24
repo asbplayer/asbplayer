@@ -320,6 +320,8 @@
         },
         "playbackRate": "Prędkość odtwarzania: {{rate}}",
         "savedTimestamp": "Zapisano: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Zaktualizowana karta: {{result}}",
         "enabledRepeatPlayback": "Tryb zapętlenia: Włączony",
         "disabledRepeatPlayback": "Tryb zapętlenia: Wyłączony",

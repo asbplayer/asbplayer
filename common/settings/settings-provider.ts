@@ -167,6 +167,7 @@ export const defaultSettings: AsbplayerSettings = {
     repeatCountPreference: 0,
     rememberPlaybackModes: false,
     lastPlaybackModes: [PlayMode.normal],
+    lastPlaybackPositions: [],
     keyBindSet: {
         togglePlay: { keys: 'space' },
         toggleAutoPause: { keys: isMacOs ? '⇧+P' : 'shift+P' },

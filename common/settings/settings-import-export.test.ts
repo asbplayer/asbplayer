@@ -149,6 +149,7 @@ it('validates exported settings', () => {
         themeType: 'dark',
         videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.rememberSplitPosition,
         copyToClipboardOnMine: false,
+        lastPlaybackPositions: [{ fileName: 'example.mp4', position: 1200 }],
         rememberSubtitleOffset: true,
         lastSubtitleOffset: 0,
         autoCopyCurrentSubtitle: false,

@@ -25,6 +25,11 @@ export type SeekableTracks = number;
 // Bitset - same as above
 export type AutoCopyableTracks = number;
 
+export interface PlaybackPosition {
+    readonly fileName: string;
+    readonly position: number;
+}
+
 export interface MiscSettings {
     readonly themeType: 'dark' | 'light';
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
@@ -47,6 +52,7 @@ export interface MiscSettings {
     readonly repeatCountPreference: number;
     readonly rememberPlaybackModes: boolean;
     readonly lastPlaybackModes: PlayMode[];
+    readonly lastPlaybackPositions: PlaybackPosition[];
     readonly keyBindSet: KeyBindSet;
     readonly rememberSubtitleOffset: boolean;
     readonly autoCopyCurrentSubtitle: boolean;

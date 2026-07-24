@@ -320,6 +320,8 @@
         },
         "playbackRate": "再生速度：{{rate}}",
         "savedTimestamp": "保存しました：{{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "カードの更新：{{result}}",
         "enabledRepeatPlayback": "リピートプレイバック：オン",
         "disabledRepeatPlayback": "リピートプレイバック：オフ",

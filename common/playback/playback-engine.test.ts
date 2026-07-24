@@ -122,6 +122,7 @@ function makePlaybackEngine(
         durationMs?: number;
         settings: Partial<AsbplayerSettings>;
         settingsReady: boolean;
+        playbackPositionKeys?: readonly string[];
     }> = {}
 ) {
     const driver = new FakeTimingDriver();
@@ -134,6 +135,7 @@ function makePlaybackEngine(
     const plays: number[] = [];
     const savedSettings: Partial<AsbplayerSettings>[] = [];
     const playbackRates: number[] = [];
+    const playbackPositionChanges: (number | undefined)[] = [];
     const modeChanges: {
         readonly modes: Set<PlayMode>;
         readonly added: Set<PlayMode>;
@@ -149,6 +151,7 @@ function makePlaybackEngine(
         subtitles,
         ready: { settings: overrides.settingsReady ?? true },
         playbackModesSuppressed: false,
+        playbackPositionKeys: overrides.playbackPositionKeys ?? [],
         timingDriver: driver,
         callbacks: {
             pause: overrides.pause ?? (() => pauses.push(driver.timestampMs)),
@@ -166,6 +169,7 @@ function makePlaybackEngine(
                 }),
             setPlaybackRate: (playbackRate) => playbackRates.push(playbackRate),
             showingSubtitlesChanged: (values) => showing.push(values),
+            playbackPositionChanged: (position) => playbackPositionChanges.push(position),
             saveSettings: (settings) => savedSettings.push(settings),
             playbackModesChanged: (transition) => modeChanges.push(transition),
             onError: () => {},
@@ -181,6 +185,7 @@ function makePlaybackEngine(
         modeChanges,
         savedSettings,
         playbackRates,
+        playbackPositionChanges,
         settings,
         setDuration: (value: number) => {
             driver.durationMsValue = value;
@@ -211,6 +216,7 @@ describe('PlaybackEngine', () => {
             subtitles: [],
             ready: { settings: true },
             playbackModesSuppressed: false,
+            playbackPositionKeys: [],
             timingDriver: driver,
             callbacks: {
                 pause: () => {},
@@ -218,6 +224,7 @@ describe('PlaybackEngine', () => {
                 seek: async () => {},
                 setPlaybackRate: () => {},
                 showingSubtitlesChanged: () => {},
+                playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
                 onError: () => {},
@@ -442,6 +449,7 @@ describe('PlaybackEngine', () => {
             subtitles: [subtitle],
             ready: { settings: true },
             playbackModesSuppressed: false,
+            playbackPositionKeys: [],
             timingDriver: harness.driver,
             callbacks: {
                 pause: () => {},
@@ -449,6 +457,7 @@ describe('PlaybackEngine', () => {
                 seek: async () => {},
                 setPlaybackRate,
                 showingSubtitlesChanged: () => {},
+                playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
                 onError: () => {},
@@ -549,5 +558,176 @@ describe('PlaybackEngine', () => {
         expect(harness.playbackEngine.adjustPlaybackRate(1).playbackRate).toBe(3);
 
         expect(harness.savedSettings).not.toContainEqual({ fastForwardModePlaybackRate: 3 });
+    });
+
+    it('always saves the current position, even when remembering is disabled', async () => {
+        jest.useFakeTimers();
+        const harness = makePlaybackEngine([PlayMode.normal], 1_000, [subtitle], {
+            playbackPositionKeys: ['first.srt', 'second.srt'],
+        });
+
+        harness.playbackEngine.bind();
+        await harness.driver.time(61_000);
+        jest.advanceTimersByTime(10_000);
+
+        expect(harness.savedSettings).toContainEqual({
+            lastPlaybackPositions: [
+                { fileName: 'first.srt', position: 61_000 },
+                { fileName: 'second.srt', position: 61_000 },
+            ],
+        });
+        jest.useRealTimers();
+    });
+
+    it('saves on the ten-second interval when the current time changed', async () => {
+        jest.useFakeTimers();
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            playbackPositionKeys: ['video.mp4'],
+        });
+
+        harness.playbackEngine.bind();
+        await harness.driver.time(61_000);
+        jest.advanceTimersByTime(9_999);
+        expect(harness.savedSettings).toHaveLength(0);
+
+        await harness.driver.time(71_000);
+        jest.advanceTimersByTime(1);
+        expect(harness.savedSettings.at(-1)).toEqual({
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 71_000 }],
+        });
+        jest.useRealTimers();
+    });
+
+    it('offers a remembered position for explicit resumption', async () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 1_000, [subtitle], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        await Promise.resolve();
+        expect(harness.seeks).toEqual([]);
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
+
+        await harness.playbackEngine.resumePlaybackPosition();
+        expect(harness.seeks).toEqual([63_000]);
+        expect(harness.plays).toHaveLength(1);
+        expect(harness.playbackPositionChanges).toEqual([63_000, undefined]);
+
+        harness.playbackEngine.settingsChanged(harness.settings);
+        expect(harness.playbackPositionChanges).toEqual([63_000, undefined]);
+    });
+
+    it('offers the lowest position across all restore keys only once per key set', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 1_000, [subtitle], {
+            durationMs: 70_000,
+            settings: {
+                lastPlaybackPositions: [
+                    { fileName: 'second.srt', position: 68_000 },
+                    { fileName: 'first.srt', position: 63_000 },
+                ],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        harness.playbackEngine.playbackPositionKeysChanged(['first.srt', 'second.srt']);
+        harness.playbackEngine.settingsChanged(harness.settings);
+
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
+    });
+
+    it('starts at zero when the remembered position is at or beyond the duration', async () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            durationMs: 6_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 6_000 }],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        await Promise.resolve();
+
+        expect(harness.seeks).toEqual([]);
+        expect(harness.driver.timestampMs).toBe(0);
+    });
+
+    it('saves on pause and seek discontinuities', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 62_000, [subtitle], {
+            playbackPositionKeys: ['video.mp4'],
+        });
+
+        harness.playbackEngine.bind();
+        harness.driver.discontinuity(62_000);
+        harness.driver.callbacks.onPlaybackPaused?.();
+        expect(harness.savedSettings.at(-1)).toEqual({
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 62_000 }],
+        });
+
+        harness.driver.discontinuity(64_000);
+        expect(harness.savedSettings.at(-1)).toEqual({
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 64_000 }],
+        });
+    });
+
+    it('removes remembered positions when the current position is below one minute', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [
+                    { fileName: 'video.mp4', position: 90_000 },
+                    { fileName: 'other-video.mp4', position: 120_000 },
+                ],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        harness.driver.callbacks.onPlaybackPaused?.();
+
+        expect(harness.savedSettings.at(-1)).toEqual({
+            lastPlaybackPositions: [{ fileName: 'other-video.mp4', position: 120_000 }],
+        });
+    });
+
+    it('removes an existing sub-minute position instead of offering it for resumption', async () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 30_000 }],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        await Promise.resolve();
+
+        expect(harness.savedSettings).toEqual([{ lastPlaybackPositions: [] }]);
+        expect(harness.playbackPositionChanges).toEqual([]);
+    });
+
+    it('resumes from the start of a subtitle when the remembered position is inside it', async () => {
+        const subtitleAtOneMinute = {
+            ...subtitle,
+            start: 61_000,
+            end: 62_000,
+            originalStart: 61_000,
+            originalEnd: 62_000,
+        };
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitleAtOneMinute], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_500 }],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        await Promise.resolve();
+        await harness.playbackEngine.resumePlaybackPosition();
+
+        expect(harness.seeks).toEqual([61_000]);
+        expect(harness.plays).toHaveLength(1);
     });
 });

@@ -76,6 +76,7 @@ import {
     sourceString,
     subtitleTimestampWithDelay,
     surroundingSubtitlesAroundInterval,
+    timeDurationDisplay,
 } from '@project/common/util';
 import AnkiUiController from '../controllers/anki-ui-controller';
 import ControlsController from '../controllers/controls-controller';
@@ -371,6 +372,10 @@ export default class Binding {
             subtitles,
             ready: { settings: false },
             playbackModesSuppressed: this.recordingMedia,
+            playbackPositionKeys: this._playbackPositionKeys(
+                this._nonEmptyTrackIndexes(subtitles),
+                this.subtitleController.subtitleFileNames ?? []
+            ),
             timingDriver: new VideoFrameTimingDriver(
                 {
                     paused: () => this.video.paused,
@@ -444,6 +449,22 @@ export default class Binding {
                     if (this.video.playbackRate !== playbackRate) this.video.playbackRate = playbackRate;
                 },
                 showingSubtitlesChanged: (subtitles) => this.subtitleController.showingSubtitlesChanged(subtitles),
+                playbackPositionChanged: (position) => {
+                    if (position === undefined) {
+                        this.notificationController.hide();
+                        this.notificationController.onAction = undefined;
+                        return;
+                    }
+                    this.notificationController.onAction = () => {
+                        void this.playbackEngine.resumePlaybackPosition();
+                    };
+                    void this.notificationController.showSnackbar('info.resumePlaybackPrompt', {
+                        actionLocKey: 'info.resumePlaybackButton',
+                        replacements: {
+                            time: timeDurationDisplay(position, position, false),
+                        },
+                    });
+                },
                 saveSettings: (settings) => {
                     void this.settings
                         .set(settings)
@@ -1743,15 +1764,13 @@ export default class Binding {
         this.subtitleController.subtitleFileNames = subtitleFileNames;
         this.subtitleController.cacheHtml();
 
+        const nonEmptyTrackIndexes = this._nonEmptyTrackIndexes(subtitles);
+        this.playbackEngine.playbackPositionKeysChanged(
+            this._playbackPositionKeys(nonEmptyTrackIndexes, subtitleFileNames)
+        );
         this.playbackEngine.subtitlesChanged(this.subtitleController.subtitles);
 
-        const nonEmptyTrackIndex: number[] = [];
-        for (let i = 0; i < subtitles.length; i++) {
-            if (!nonEmptyTrackIndex.includes(subtitles[i].track)) {
-                nonEmptyTrackIndex.push(subtitles[i].track);
-            }
-        }
-        this.subtitleController.showLoadedMessage(nonEmptyTrackIndex);
+        this.subtitleController.showLoadedMessage(nonEmptyTrackIndexes);
         this.ankiUiSavedState = undefined;
         this._synced = true;
         this._syncedTimestamp = Date.now();
@@ -1785,8 +1804,21 @@ export default class Binding {
         });
     }
 
+    private _playbackPositionKeys(nonEmptyTrackIndexes: number[], subtitleFileNames: string[]): string[] {
+        return nonEmptyTrackIndexes.map((track) => subtitleFileNames[track]).filter((fileName) => fileName);
+    }
+
+    private _nonEmptyTrackIndexes(subtitles: IndexedSubtitleModel[]): number[] {
+        const nonEmptyTrackIndex: number[] = [];
+        for (const subtitle of subtitles) {
+            if (!nonEmptyTrackIndex.includes(subtitle.track)) nonEmptyTrackIndex.push(subtitle.track);
+        }
+        return nonEmptyTrackIndex;
+    }
+
     private _resetSubtitles() {
         this.subtitleController.reset();
+        this.playbackEngine.playbackPositionKeysChanged([]);
         this.ankiUiSavedState = undefined;
         this._synced = false;
         this._syncedTimestamp = undefined;

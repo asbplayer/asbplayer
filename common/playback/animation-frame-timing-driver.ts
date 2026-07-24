@@ -122,6 +122,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     private readonly onStop = () => {
         this.updates.clear({ preserveExpectedDiscontinuity: false });
         if (!this.discontinuityPending) this.cancelScheduledUpdate();
+        this.callbacks.onPlaybackPaused?.();
     };
 
     private readonly onSetTime = () => {

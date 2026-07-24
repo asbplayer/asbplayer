@@ -45,6 +45,8 @@ interface Props {
     open: boolean;
     autoHideDuration: number;
     onClose: () => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
     severity: AlertColor | undefined;
     disableAutoHide?: boolean;
     anchor?: 'top' | 'bottom';
@@ -74,9 +76,21 @@ interface AlertItemProps extends AlertNotification {
     open: boolean;
     autoHideDuration: number;
     onClose: (id: number) => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
-function AlertItem({ id, open, autoHideDuration, onClose, children, severity, disableAutoHide }: AlertItemProps) {
+function AlertItem({
+    id,
+    open,
+    autoHideDuration,
+    onClose,
+    onMouseEnter,
+    onMouseLeave,
+    children,
+    severity,
+    disableAutoHide,
+}: AlertItemProps) {
     const classes = useAlertStyles();
 
     useEffect(() => {
@@ -91,7 +105,14 @@ function AlertItem({ id, open, autoHideDuration, onClose, children, severity, di
     return (
         <div className={classes.root}>
             <Grow in={open}>
-                <MuiAlert severity={severity}>{children}</MuiAlert>
+                <MuiAlert
+                    severity={severity}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                    style={{ pointerEvents: 'auto' }}
+                >
+                    {children}
+                </MuiAlert>
             </Grow>
         </div>
     );
@@ -156,6 +177,8 @@ export default function Alert(props: Props) {
                     open={props.open}
                     autoHideDuration={props.autoHideDuration}
                     onClose={closeNotification}
+                    onMouseEnter={props.onMouseEnter}
+                    onMouseLeave={props.onMouseLeave}
                     {...notification.value}
                 />
             ))}

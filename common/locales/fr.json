@@ -320,6 +320,8 @@
         },
         "playbackRate": "Vitesse de lecture : {{rate}}",
         "savedTimestamp": "Enregistré : {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Carte mise à jour : {{result}}",
         "enabledRepeatPlayback": "Répéter la lecture : Activé",
         "disabledRepeatPlayback": "Répéter la lecture : Désactivé",

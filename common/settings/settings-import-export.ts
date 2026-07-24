@@ -499,6 +499,17 @@ const settingsSchema = {
                 type: 'number',
             },
         },
+        lastPlaybackPositions: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    fileName: { type: 'string' },
+                    position: { type: 'number' },
+                },
+                required: ['fileName', 'position'],
+            },
+        },
         keyBindSet: {
             type: 'object',
             properties: {

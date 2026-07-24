@@ -320,6 +320,8 @@
         },
         "playbackRate": "Velocidad de Reproducción: {{rate}}",
         "savedTimestamp": "Guardado: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Tarjeta actualizada: {{result}}",
         "enabledRepeatPlayback": "Modo de repetición: Activado",
         "disabledRepeatPlayback": "Modo de repetición: Desactivado",

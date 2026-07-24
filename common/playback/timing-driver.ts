@@ -1,6 +1,7 @@
 export interface TimingDriverCallbacks {
     onTime(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void>;
     onPlaybackStarted(): Promise<void>;
+    onPlaybackPaused?(): void;
     onDiscontinuity(timestampMs: number): void;
     onCancel(options: { preserveExpectedDiscontinuity: boolean }): void;
     onError(error: unknown): void;

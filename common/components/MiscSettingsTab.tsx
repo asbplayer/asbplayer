@@ -34,7 +34,7 @@ import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import { VideoSubtitleSplitBehavior } from '../settings';
-import { minimumPlaybackRate, normalizePlaybackRate } from '../playback/playback-mode-controller';
+import { normalizePlaybackRate } from '../playback/playback-mode-controller';
 
 function regexIsValid(regex: string) {
     try {
@@ -482,7 +482,7 @@ const MiscSettingTab: React.FC<Props> = ({
                             }}
                             slotProps={{
                                 htmlInput: {
-                                    min: minimumPlaybackRate,
+                                    min: 0,
                                     step: 0.05,
                                 },
                             }}
@@ -690,7 +690,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         }}
                         slotProps={{
                             htmlInput: {
-                                min: minimumPlaybackRate,
+                                min: 0,
                                 step: 0.05,
                             },
                         }}

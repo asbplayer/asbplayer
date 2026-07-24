@@ -320,6 +320,8 @@
         },
         "playbackRate": "Toiston nopeus: {{rate}}",
         "savedTimestamp": "Tallennettu: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Päivitetty kortti: {{result}}",
         "enabledRepeatPlayback": "Toista soitto: Päällä",
         "disabledRepeatPlayback": "Toista soitto: Pois",

@@ -194,6 +194,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: this.pendingSeekCompletion !== undefined });
         this.previousFrame = undefined;
+        this.callbacks.onPlaybackPaused?.();
         this.eventCallbacks.onPause();
     };
 

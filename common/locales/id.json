@@ -320,6 +320,8 @@
         },
         "playbackRate": "Kecepatan Pemutaran: {{rate}}",
         "savedTimestamp": "Disimpan: {{timestamp}}",
+        "resumePlaybackPrompt": "Resume at {{time}}?",
+        "resumePlaybackButton": "Resume",
         "updatedCard": "Kartu diperbarui: {{result}}",
         "enabledRepeatPlayback": "Pemutaran ulang: Aktif",
         "disabledRepeatPlayback": "Pemutaran ulang: Nonaktif",

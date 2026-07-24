@@ -5,6 +5,7 @@ import { fetchLocalization } from '../services/localization-fetcher';
 
 export default class NotificationController {
     public onClose?: () => void;
+    public onAction?: () => void;
 
     private readonly _context: Binding;
     private readonly _frame: UiFrame;
@@ -59,6 +60,28 @@ export default class NotificationController {
         this._context.pause();
     }
 
+    async showSnackbar(
+        messageLocKey: string,
+        options?: {
+            readonly actionLocKey?: string;
+            readonly replacements?: Record<string, string>;
+        }
+    ) {
+        await this._prepareAndShowFrame('asbplayer-alert');
+
+        this._client!.updateState({
+            themeType: await this._context.settings.getSingle('themeType'),
+            titleLocKey: '',
+            messageLocKey: '',
+            snackbar: {
+                messageLocKey,
+                actionLocKey: options?.actionLocKey,
+                replacements: options?.replacements,
+            },
+        });
+        this._context.pause();
+    }
+
     async updateAlert(newVersion: string) {
         await this._prepareAndShowFrame('asbplayer-alert');
         this._client!.updateState({
@@ -77,11 +100,16 @@ export default class NotificationController {
 
         if (isNewClient) {
             this._client.onMessage((message) => {
+                if (message.command === 'action') {
+                    this.hide();
+                    this.onAction?.();
+                    return;
+                }
                 if (message.command === 'close') {
                     this._context.subtitleController.forceHideSubtitles = false;
                     this._context.mobileVideoOverlayController.forceHide = false;
                     this._context.controlsController.show();
-                    this._frame.hide();
+                    this.hide();
                     this.onClose?.();
                 }
             });

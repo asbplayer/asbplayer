@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle, MutableRefObject } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
+import Button from '@mui/material/Button';
+import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import {
     AudioTrackModel,
@@ -59,6 +61,8 @@ import {
     playbackTimelineToHtml,
 } from '@project/common/playback/playback-timeline-html';
 import { createTheme } from '../../theme/theme';
+import Alert from './Alert';
+import useSnackbar from '../../hooks/use-snackbar';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -221,6 +225,7 @@ function PlayerComponent(
     }: PlayerProps,
     ref: React.ForwardedRef<PlayerRef>
 ) {
+    const { t } = useTranslation();
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(() => new Set([PlayMode.normal]));
     const playModesRef = useRef<Set<PlayMode>>(playModes);
     playModesRef.current = playModes;
@@ -241,6 +246,7 @@ function PlayerComponent(
     const flattenSubtitleFiles = sources?.flattenSubtitleFiles;
     const videoFile = sources?.videoFile;
     const videoFileUrl = sources?.videoFileUrl;
+    const playbackPositionKey = videoFile?.file.name;
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
@@ -273,6 +279,11 @@ function PlayerComponent(
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
+    const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
+    const resumePlaybackSnackbar = useSnackbar({
+        open: pendingPlaybackPosition !== undefined,
+        onClose: () => syntheticPlaybackEngineRef.current?.dismissPlaybackPosition(),
+    });
     const [syntheticShowingSubtitles, setSyntheticShowingSubtitles] = useState<readonly DisplaySubtitleModel[]>([]);
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
@@ -384,6 +395,7 @@ function PlayerComponent(
             subtitles: subtitlesRef.current ?? [],
             ready: { settings: true },
             playbackModesSuppressed: true,
+            playbackPositionKeys: playbackPositionKey ? [playbackPositionKey] : [],
             timingDriver: new AnimationFrameTimingDriver({
                 paused: () => !clock.running,
                 durationMs: () => trackLengthMs(undefined, subtitlesRef.current),
@@ -436,6 +448,7 @@ function PlayerComponent(
                 },
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
                 showingSubtitlesChanged: setSyntheticShowingSubtitles,
+                playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => {
                     void settingsProvider.set(settings).catch(onError);
                 },
@@ -456,7 +469,7 @@ function PlayerComponent(
                 syntheticPlaybackEngineRef.current = undefined;
             }
         };
-    }, [clock, onError, settingsProvider, syntheticPlayback, updatePlaybackRate]);
+    }, [clock, onError, playbackPositionKey, settingsProvider, syntheticPlayback, updatePlaybackRate]);
 
     useEffect(() => {
         if (!syntheticPlayback) return;
@@ -1337,6 +1350,28 @@ function PlayerComponent(
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
+            <Alert
+                open={resumePlaybackSnackbar.open}
+                onClose={resumePlaybackSnackbar.close}
+                onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
+                onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
+                autoHideDuration={0}
+                disableAutoHide={true}
+                severity="info"
+                anchor="top"
+            >
+                {t('info.resumePlaybackPrompt', {
+                    time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
+                })}
+                <Button
+                    size="small"
+                    color="inherit"
+                    style={{ pointerEvents: 'auto', marginLeft: 12 }}
+                    onClick={() => void syntheticPlaybackEngineRef.current?.resumePlaybackPosition()}
+                >
+                    {t('info.resumePlaybackButton')}
+                </Button>
+            </Alert>
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>
                 {videoInWindow && (
