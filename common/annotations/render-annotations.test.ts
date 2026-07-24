@@ -273,6 +273,62 @@ describe('rich text rendering', () => {
         ).toBe(`<span class="asb-token asb-token-highlight">${pitchAccentHtml(['か', 'な'], '#33445566')}</span>`);
     });
 
+    it('keeps coloring on hover when pitch accent data has no renderable kana text', () => {
+        const dt = makeAnnotationTrack({ color: true, pitchAccent: true });
+        setUnknownTokenColor(dt, '#334455', '66');
+        dt.dictionaryTokenAnnotationConfig.video.color.onHoverEnabled = true;
+        dt.dictionaryTokenAnnotationConfig.video.pitchAccent.onHoverEnabled = true;
+
+        const rendered = renderRichTextOntoSubtitles(
+            [
+                makeSubtitle({
+                    text: '語学',
+                    tokenization: {
+                        tokens: [makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 })],
+                    },
+                }),
+            ],
+            'video',
+            makeDictionaryTracks(dt)
+        ).get(0);
+
+        expect(rendered?.richText).toBeUndefined();
+        expect(rendered?.richTextOnHover).toBe(
+            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">語学</span>'
+        );
+    });
+
+    it('keeps coloring on hover for ASCII text without a rendered reading', () => {
+        const dt = makeAnnotationTrack({ color: true, reading: true, pitchAccent: true });
+        setUnknownTokenColor(dt, '#334455', '66');
+        dt.dictionaryTokenAnnotationConfig.video.color.onHoverEnabled = true;
+        dt.dictionaryTokenAnnotationConfig.video.pitchAccent.onHoverEnabled = true;
+
+        const rendered = renderRichTextOntoSubtitles(
+            [
+                makeSubtitle({
+                    text: 'RAIN',
+                    tokenization: {
+                        tokens: [
+                            makeInternalToken({
+                                pos: [0, 4],
+                                status: TokenStatus.UNKNOWN,
+                                readings: [{ pos: [0, 4], reading: 'れいん' }],
+                                pitchAccent: 1,
+                            }),
+                        ],
+                    },
+                }),
+            ],
+            'video',
+            makeDictionaryTracks(dt)
+        ).get(0);
+
+        expect(rendered?.richTextOnHover).toBe(
+            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">RAIN</span>'
+        );
+    });
+
     it('carries pitch accent context onto an attached particle', () => {
         const rendered = computeRichText(
             '日本は',

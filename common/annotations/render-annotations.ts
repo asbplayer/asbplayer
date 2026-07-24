@@ -255,10 +255,9 @@ const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentC
     if (
         token.pitchAccent != null &&
         ss.enabledAnnotations.pitchAccent &&
-        (!token.readings.length ||
-            (ss.enabledAnnotations.reading && shouldUseAnnotation('reading', token.status!, token.states, ss.dt)))
+        tokenText.includes(`class="${ASB_PITCH_ACCENT_CLASS}"`)
     ) {
-        return `${s}>${tokenText}</span>`; // Colorize the pitch accent annotation only when being shown
+        return `${s}>${tokenText}</span>`; // Only colorize the pitch accent when pitch accent is being shown
     }
 
     const c = `${config.color}${config.alpha}`;
