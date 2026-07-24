@@ -9,11 +9,11 @@ import {
     OpenStatisticsOverlayMessage,
     RequestLocalSubtitlesMessage,
     SubtitleModel,
+    DisplaySubtitleModel,
     VideoTabModel,
     LegacyPlayerSyncMessage,
     PlayerSyncMessage,
     PostMineAction,
-    PlayMode,
     CopyHistoryItem,
     Fetcher,
     CardModel,
@@ -44,7 +44,7 @@ import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension'
 import CopyHistory from './CopyHistory';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from './LandingPage';
-import Player, { MediaSources } from './Player';
+import Player, { MediaSources, PlayerRef } from './Player';
 import SettingsDialog from './SettingsDialog';
 import VideoPlayer, { SeekRequest } from './VideoPlayer';
 import { type AlertColor } from '@mui/material/Alert';
@@ -52,7 +52,6 @@ import VideoChannel from '../services/video-channel';
 import { addBlobUrl, createBlobUrl, revokeBlobUrl } from '../../blob-url';
 import { useTranslation } from 'react-i18next';
 import { LocalizedError } from './localized-error';
-import { DisplaySubtitleModel } from './SubtitlePlayer';
 import { useCopyHistory } from '../hooks/use-copy-history';
 import { useFileSession } from '../hooks/use-file-session';
 import { useI18n } from '../hooks/use-i18n';
@@ -225,7 +224,6 @@ interface RenderVideoProps {
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
-    onPlayModeChangedViaBind: (playModes: Set<PlayMode>, targetMode: PlayMode) => void;
 }
 
 function RenderVideo({ searchParams, ...props }: RenderVideoProps) {
@@ -435,6 +433,7 @@ function App({
     } = useFileSession();
 
     const [lastError, setLastError] = useState<any>();
+    const playerRef = useRef<PlayerRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bufferedFileInputRef = useRef<HTMLInputElement>(null);
     const { subtitleFiles } = sources;
@@ -1371,38 +1370,6 @@ function App({
         });
     }, [extension, inVideoPlayer, handleDownloadAudio]);
 
-    const handlePlayModeChangedViaBind = useCallback(
-        (playModes: Set<PlayMode>, targetMode: PlayMode) => {
-            if (targetMode === PlayMode.normal) {
-                if (playModes.size === 1 && playModes.has(PlayMode.normal)) {
-                    return;
-                }
-
-                setAlert(t('info.disabledAllPlayModes'));
-            } else {
-                const enabling = !playModes.has(targetMode);
-                switch (targetMode) {
-                    case PlayMode.autoPause:
-                        setAlert(t(enabling ? 'info.enabledAutoPause' : 'info.disabledAutoPause'));
-                        break;
-                    case PlayMode.condensed:
-                        setAlert(t(enabling ? 'info.enabledCondensedPlayback' : 'info.disabledCondensedPlayback'));
-                        break;
-                    case PlayMode.fastForward:
-                        setAlert(t(enabling ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback'));
-                        break;
-                    case PlayMode.repeat:
-                        setAlert(t(enabling ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback'));
-                        break;
-                }
-
-                setAlertSeverity('info');
-                setAlertOpen(true);
-            }
-        },
-        [t]
-    );
-
     const handleDrop = useCallback(
         (e: React.DragEvent) => {
             if (ankiDialogOpen) {
@@ -1580,6 +1547,10 @@ function App({
             `${fileName}.srt`
         );
     }, [fileName, sources.subtitleFiles, subtitleReader]);
+
+    const handleDownloadSubtitleTimeline = useCallback(() => {
+        playerRef.current?.downloadSubtitleTimeline();
+    }, []);
 
     const handleDragOver = useCallback(
         (e: React.DragEvent<HTMLDivElement>) => {
@@ -1838,7 +1809,7 @@ function App({
                     onDragEnter={handleDragEnter}
                     onDragLeave={handleDragLeave}
                 >
-                    {!sources.videoFile && (
+                    {!sources.videoFile && !inVideoPlayer && (
                         <Alert
                             open={alertOpen}
                             onClose={handleAlertClosed}
@@ -1861,7 +1832,6 @@ function App({
                                 onAnkiDialogRequest={handleAnkiDialogRequestFromVideoPlayer}
                                 onAnkiDialogRewind={handleAnkiDialogRewindFromVideoPlayer}
                                 onError={handleError}
-                                onPlayModeChangedViaBind={handlePlayModeChangedViaBind}
                             />
                             {ankiDialogCard && (
                                 <AnkiDialog
@@ -1990,6 +1960,7 @@ function App({
                                 onOpenCopyHistory={handleOpenCopyHistory}
                                 onOpenStatistics={supportsDictionaryStatistics ? handleOpenStatistics : undefined}
                                 onDownloadSubtitleFilesAsSrt={handleDownloadSubtitleFilesAsSrt}
+                                onDownloadSubtitleTimeline={handleDownloadSubtitleTimeline}
                                 onOpenSettings={handleOpenSettings}
                                 lastError={lastError}
                                 onCopyLastError={handleCopyLastError}
@@ -2036,6 +2007,7 @@ function App({
                                     />
                                 </Paper>
                                 <Player
+                                    ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
                                     subtitles={subtitles}
@@ -2054,7 +2026,6 @@ function App({
                                     onAppBarToggle={handleAppBarToggle}
                                     onHideSubtitlePlayer={handleHideSubtitlePlayer}
                                     onVideoPopOut={handleVideoPopOut}
-                                    onPlayModeChangedViaBind={handlePlayModeChangedViaBind}
                                     onSubtitles={
                                         setSubtitles as React.Dispatch<
                                             React.SetStateAction<DisplaySubtitleModel[] | undefined>
@@ -2093,6 +2064,30 @@ function App({
                                     miningContext={miningContext}
                                     keyBinder={keyBinder}
                                     webSocketClient={webSocketClient}
+                                    playbackTimelineFileName={fileName}
+                                    playbackTimelineModeLabels={{
+                                        normal: t('controls.normalMode'),
+                                        fastForward: t('controls.fastForwardMode'),
+                                        condensed: t('controls.condensedMode'),
+                                        autoPauseAtStart: t('settings.autoPauseAtSubtitleStart'),
+                                        autoPauseAtEnd: t('settings.autoPauseAtSubtitleEnd'),
+                                        repeat: t('controls.repeatMode'),
+                                    }}
+                                    playbackTimelineOptionLabels={{
+                                        title: t('settings.playbackModes'),
+                                        subtitleTrack: (trackNumber) =>
+                                            t('settings.subtitleTrackChoice', { trackNumber }),
+                                        subtitleTriggerStartOffset: t('settings.subtitleTriggerStartOffset'),
+                                        subtitleTriggerEndOffset: t('settings.subtitleTriggerEndOffset'),
+                                        subtitleTriggerGapEndOffset: t('settings.subtitleTriggerGapEndOffset'),
+                                        subtitleTriggerGapStartOffset: t('settings.subtitleTriggerGapStartOffset'),
+                                        condensedPlaybackMinimumSkipInterval: t(
+                                            'settings.condensedPlaybackMinimumSkipInterval'
+                                        ),
+                                        fastForwardPlaybackMinimumSkipInterval: t(
+                                            'settings.fastForwardPlaybackMinimumSkipInterval'
+                                        ),
+                                    }}
                                 />
                             </Content>
                         </Paper>

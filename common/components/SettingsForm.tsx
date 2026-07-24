@@ -175,6 +175,7 @@ interface Props {
     extensionSupportsTrackSpecificSettings: boolean;
     extensionSupportsSubtitlesWidthSetting: boolean;
     extensionSupportsPauseOnHover: boolean;
+    extensionSupportsPlaybackEngine: boolean;
     extensionSupportsExportCardBind: boolean;
     extensionSupportsPageSettings: boolean;
     extensionSupportsDictionary: boolean;
@@ -227,6 +228,7 @@ export default function SettingsForm({
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
     extensionSupportsPauseOnHover,
+    extensionSupportsPlaybackEngine,
     extensionSupportsExportCardBind,
     extensionSupportsPageSettings,
     extensionSupportsDictionary,
@@ -262,6 +264,7 @@ export default function SettingsForm({
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
+    const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
     const theme = useTheme();
     const settingsTheme = useMemo(
         () =>
@@ -568,6 +571,17 @@ export default function SettingsForm({
                         extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
                         extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
+                        supportsPlaybackEngine={supportsPlaybackEngine}
+                        onViewPlaybackModeKeyboardShortcuts={() => {
+                            setTabIndex(tabIndicesById['keyboard-shortcuts']);
+                            setTimeout(
+                                () =>
+                                    keyboardShortcutsPanelRef.current
+                                        ?.querySelector('#playback-mode-key-bindings')
+                                        ?.scrollIntoView({ behavior: 'smooth' }),
+                                0
+                            );
+                        }}
                     />
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>

@@ -7,6 +7,8 @@ import {
     LoadSubtitlesMessage,
     MobileOverlayToVideoCommand,
     OffsetToVideoMessage,
+    PlaybackModeSelectorClosedMessage,
+    PlaybackModeSelectorOpenedMessage,
     PlaybackRateToVideoMessage,
     PlayMode,
     PlayModeMessage,
@@ -129,7 +131,33 @@ const MobileVideoOverlayUi = () => {
         [location]
     );
 
-    const model = useMobileVideoOverlayModel({ location });
+    const { model, isActive } = useMobileVideoOverlayModel({ location });
+
+    const handlePlayModeSelectorOpened = useCallback(() => {
+        if (!location || !isActive) return;
+
+        const command: MobileOverlayToVideoCommand<PlaybackModeSelectorOpenedMessage> = {
+            sender: 'asbplayer-mobile-overlay-to-video',
+            message: {
+                command: 'playback-mode-selector-opened',
+            },
+            src: location.src,
+        };
+        void browser.runtime.sendMessage(command);
+    }, [isActive, location]);
+
+    const handlePlayModeSelectorClosed = useCallback(() => {
+        if (!location || !isActive) return;
+
+        const command: MobileOverlayToVideoCommand<PlaybackModeSelectorClosedMessage> = {
+            sender: 'asbplayer-mobile-overlay-to-video',
+            message: {
+                command: 'playback-mode-selector-closed',
+            },
+            src: location.src,
+        };
+        void browser.runtime.sendMessage(command);
+    }, [isActive, location]);
 
     const handlePlayModeSelected = useCallback(
         (playMode: PlayMode) => {
@@ -237,6 +265,9 @@ const MobileVideoOverlayUi = () => {
                     onPlaybackRate={handlePlaybackRate}
                     onPlayModeSelected={handlePlayModeSelected}
                     onToggleSubtitles={handleToggleSubtitles}
+                    playModeSelectorRequest={model?.playModeSelectorRequest}
+                    onPlayModeSelectorOpened={handlePlayModeSelectorOpened}
+                    onPlayModeSelectorClosed={handlePlayModeSelectorClosed}
                 />
             </ThemeProvider>
         </StyledEngineProvider>

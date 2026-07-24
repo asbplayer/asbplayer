@@ -80,18 +80,17 @@ export const makeSettings = (dictionaryTracks = makeDictionaryTracks()): Asbplay
     dictionaryTracks,
 });
 
-export const makeSubtitle = (overrides: Record<string, unknown> = {}): IndexedSubtitleModel =>
-    ({
-        text: 'word',
-        originalText: 'word',
-        start: 0,
-        originalStart: 0,
-        end: 1000,
-        originalEnd: 1000,
-        track: 0,
-        index: 0,
-        ...overrides,
-    }) as IndexedSubtitleModel;
+export const makeSubtitle = (overrides: Record<string, unknown> = {}): IndexedSubtitleModel => ({
+    text: 'word',
+    originalText: 'word',
+    start: 0,
+    originalStart: 0,
+    end: 1000,
+    originalEnd: 1000,
+    track: 0,
+    index: 0,
+    ...overrides,
+});
 
 export const makeToken = (overrides: Partial<Token> = {}): Token => ({
     pos: [0, 4],

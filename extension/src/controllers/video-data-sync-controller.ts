@@ -521,7 +521,12 @@ export default class VideoDataSyncController {
         }
 
         if (!this._wasPaused) {
-            void this._context.play();
+            // This can trigger a loop of pause/play when loading subtitles from subtitle picker
+            // while the video is playing due to _playBlocker(). To avoid this, we disable mouseover pause
+            // temporarily until the play() promise resolves. This became an issue with the addition of
+            // PlaybackEngine which moved away from setIntervals() for playback semantics which exposed the core issue.
+            const enablePauseOnHover = this._context.disablePauseOnHover();
+            void this._context.play().finally(enablePauseOnHover);
         }
 
         this._wasPaused = undefined;

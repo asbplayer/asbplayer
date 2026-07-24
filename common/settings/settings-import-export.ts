@@ -445,6 +445,18 @@ const settingsSchema = {
         autoPausePreference: {
             type: 'number',
         },
+        subtitleTriggerStartOffset: {
+            type: 'number',
+        },
+        subtitleTriggerEndOffset: {
+            type: 'number',
+        },
+        subtitleTriggerGapEndOffset: {
+            type: 'number',
+        },
+        subtitleTriggerGapStartOffset: {
+            type: 'number',
+        },
         seekableTracks: {
             type: 'number',
         },
@@ -460,8 +472,32 @@ const settingsSchema = {
         speedChangeStep: {
             type: 'number',
         },
+        playbackRate: {
+            type: 'number',
+        },
+        playbackRateNotificationEnabled: {
+            type: 'boolean',
+        },
+        rememberPlaybackRate: {
+            type: 'boolean',
+        },
         fastForwardModePlaybackRate: {
             type: 'number',
+        },
+        fastForwardPlaybackMinimumSkipIntervalMs: {
+            type: 'number',
+        },
+        repeatCountPreference: {
+            type: 'number',
+        },
+        rememberPlaybackModes: {
+            type: 'boolean',
+        },
+        lastPlaybackModes: {
+            type: 'array',
+            items: {
+                type: 'number',
+            },
         },
         keyBindSet: {
             type: 'object',

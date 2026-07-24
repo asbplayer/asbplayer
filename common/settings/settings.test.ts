@@ -1,5 +1,60 @@
-import { calculateSeekableTracksValue, isTrackSeekable, updateSeekableTracksValue } from '.';
-import { expect, it } from '@jest/globals';
+import {
+    type AutoPausePreferenceEdge,
+    autoPausePreferenceForCheckboxChange,
+    calculateSeekableTracksValue,
+    isTrackSeekable,
+    updateSeekableTracksValue,
+} from '.';
+import { describe, expect, it } from '@jest/globals';
+import { AutoPausePreference } from '../src/model';
+
+describe('autoPausePreferenceForCheckboxChange', () => {
+    it.each<{
+        preference: AutoPausePreference;
+        edge: AutoPausePreferenceEdge;
+        checked: boolean;
+        expected: AutoPausePreference;
+    }>([
+        {
+            preference: AutoPausePreference.atStart,
+            edge: AutoPausePreference.atStart,
+            checked: false,
+            expected: AutoPausePreference.atEnd,
+        },
+        {
+            preference: AutoPausePreference.atEnd,
+            edge: AutoPausePreference.atEnd,
+            checked: false,
+            expected: AutoPausePreference.atStart,
+        },
+        {
+            preference: AutoPausePreference.atStartAndEnd,
+            edge: AutoPausePreference.atStart,
+            checked: false,
+            expected: AutoPausePreference.atEnd,
+        },
+        {
+            preference: AutoPausePreference.atStartAndEnd,
+            edge: AutoPausePreference.atEnd,
+            checked: false,
+            expected: AutoPausePreference.atStart,
+        },
+        {
+            preference: AutoPausePreference.atStart,
+            edge: AutoPausePreference.atEnd,
+            checked: true,
+            expected: AutoPausePreference.atStartAndEnd,
+        },
+        {
+            preference: AutoPausePreference.atEnd,
+            edge: AutoPausePreference.atStart,
+            checked: true,
+            expected: AutoPausePreference.atStartAndEnd,
+        },
+    ])('maps $preference when edge $edge becomes $checked to $expected', ({ preference, edge, checked, expected }) => {
+        expect(autoPausePreferenceForCheckboxChange(preference, edge, checked)).toBe(expected);
+    });
+});
 
 it('can determine seekable tracks correctly', () => {
     expect(isTrackSeekable(0, 0)).toBe(false);

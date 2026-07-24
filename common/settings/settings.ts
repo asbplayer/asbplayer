@@ -1,4 +1,11 @@
-import { AnkiExportMode, AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '../src/model';
+import {
+    AnkiExportMode,
+    AutoPausePreference,
+    PlayMode,
+    PostMineAction,
+    PostMinePlayback,
+    SubtitleHtml,
+} from '../src/model';
 import { arrayEquals } from '../util';
 
 export enum PauseOnHoverMode {
@@ -23,11 +30,23 @@ export interface MiscSettings {
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
+    readonly subtitleTriggerStartOffset: number;
+    readonly subtitleTriggerEndOffset: number;
+    readonly subtitleTriggerGapEndOffset: number;
+    readonly subtitleTriggerGapStartOffset: number;
     readonly seekableTracks: SeekableTracks;
     readonly autoCopyableTracks: AutoCopyableTracks;
     readonly seekDuration: number;
     readonly speedChangeStep: number;
+    readonly playbackRate: number;
+    readonly playbackRateNotificationEnabled: boolean;
+    readonly rememberPlaybackRate: boolean;
     readonly fastForwardModePlaybackRate: number;
+    readonly fastForwardPlaybackMinimumSkipIntervalMs: number;
+    readonly streamingCondensedPlaybackMinimumSkipIntervalMs: number;
+    readonly repeatCountPreference: number;
+    readonly rememberPlaybackModes: boolean;
+    readonly lastPlaybackModes: PlayMode[];
     readonly keyBindSet: KeyBindSet;
     readonly rememberSubtitleOffset: boolean;
     readonly autoCopyCurrentSubtitle: boolean;
@@ -47,6 +66,33 @@ export interface MiscSettings {
     readonly subtitleAboveThumbnail: boolean;
     readonly thumbnailPreview: boolean;
 }
+
+export type AutoPausePreferenceEdge = AutoPausePreference.atStart | AutoPausePreference.atEnd;
+
+export const autoPausePreferenceForCheckboxChange = (
+    preference: AutoPausePreference,
+    edge: AutoPausePreferenceEdge,
+    checked: boolean
+): AutoPausePreference => {
+    let pauseAtStart = preference !== AutoPausePreference.atEnd;
+    let pauseAtEnd = preference !== AutoPausePreference.atStart;
+
+    if (edge === AutoPausePreference.atStart) {
+        pauseAtStart = checked;
+    } else {
+        pauseAtEnd = checked;
+    }
+
+    if (!pauseAtStart && !pauseAtEnd) {
+        return edge === AutoPausePreference.atStart ? AutoPausePreference.atEnd : AutoPausePreference.atStart;
+    }
+
+    return pauseAtStart
+        ? pauseAtEnd
+            ? AutoPausePreference.atStartAndEnd
+            : AutoPausePreference.atStart
+        : AutoPausePreference.atEnd;
+};
 
 const isIncludedInBitset = (bitset: number, value: number) => ((bitset >> value) & 1) > 0;
 const newBitset = (values: number[]) => {
@@ -881,7 +927,6 @@ export interface StreamingVideoSettings {
     // Last language selected in subtitle track selector, keyed by domain
     // Used to auto-selecting a language in subtitle track selector, if it's available
     readonly streamingLastLanguagesSynced: { [key: string]: string[] };
-    readonly streamingCondensedPlaybackMinimumSkipIntervalMs: number;
     readonly streamingScreenshotDelay: number;
     readonly streamingSubtitleListPreference: SubtitleListPreference;
     readonly streamingEnableOverlay: boolean;

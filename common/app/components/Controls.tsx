@@ -34,7 +34,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
 import { SubtitleAlignment } from '@project/common/settings';
-import Clock from '../services/clock';
+import Clock from '@project/common/playback/clock';
 import PlaybackPreferences from '../services/playback-preferences';
 import Tooltip from '../../components/Tooltip';
 import Menu from '@mui/material/Menu';
@@ -614,6 +614,8 @@ interface ControlsProps {
     previewEnabled: boolean;
     playModeEnabled?: boolean;
     onPlayMode?: (playMode: PlayMode) => void;
+    onPlayModeSelectorOpened?: () => void;
+    onPlayModeSelectorClosed?: () => void;
     subtitlesEnabled?: boolean;
     subtitlesToggle?: boolean;
     onSubtitlesToggle?: () => void;
@@ -674,6 +676,8 @@ export default function Controls({
     playModes,
     playModeEnabled,
     onPlayMode,
+    onPlayModeSelectorOpened,
+    onPlayModeSelectorClosed,
     subtitlesEnabled,
     subtitlesToggle,
     onSubtitlesToggle,
@@ -759,12 +763,14 @@ export default function Controls({
 
     const [playing, setPlaying] = useState<boolean>(clock.running);
     useEffect(() => {
-        clock.onEvent('start', () => setPlaying(true));
+        const remove = clock.onEvent('start', () => setPlaying(true));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
     useEffect(() => {
-        clock.onEvent('stop', () => setPlaying(false));
+        const remove = clock.onEvent('stop', () => setPlaying(false));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
 
     useEffect(() => {
@@ -827,7 +833,8 @@ export default function Controls({
     );
 
     useEffect(() => {
-        clock.onEvent('settime', () => forceUpdate());
+        const remove = clock.onEvent('settime', () => forceUpdate());
+        return remove;
     }, [clock, forceUpdate]);
 
     useEffect(() => {
@@ -880,12 +887,17 @@ export default function Controls({
     const handlePlayModeSelectorClosed = useCallback(() => {
         setPlayModeSelectorAnchorEl(undefined);
         setPlayModeSelectorOpen(false);
-    }, []);
+        onPlayModeSelectorClosed?.();
+    }, [onPlayModeSelectorClosed]);
 
-    const handlePlayModeSelectorOpened = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-        setPlayModeSelectorAnchorEl(e.currentTarget);
-        setPlayModeSelectorOpen(true);
-    }, []);
+    const handlePlayModeSelectorClicked = useCallback(
+        (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+            setPlayModeSelectorAnchorEl(e.currentTarget);
+            setPlayModeSelectorOpen(true);
+            onPlayModeSelectorOpened?.();
+        },
+        [onPlayModeSelectorOpened]
+    );
 
     const handlePlayModeSelected = useCallback(
         (playMode: PlayMode) => {
@@ -1183,7 +1195,7 @@ export default function Controls({
                                     )}
                                     {playModeEnabled && (
                                         <Tooltip title={t('controls.playbackMode')}>
-                                            <IconButton color="inherit" onClick={handlePlayModeSelectorOpened}>
+                                            <IconButton color="inherit" onClick={handlePlayModeSelectorClicked}>
                                                 <TuneIcon
                                                     className={
                                                         playModeEnabled ? classes.button : classes.inactiveButton

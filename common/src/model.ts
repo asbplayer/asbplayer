@@ -47,11 +47,13 @@ export interface Tokenization {
 
 export interface SubtitleModel {
     readonly text: string;
+    readonly originalText?: string;
     readonly textImage?: SubtitleTextImage;
     readonly start: number;
     readonly end: number;
     readonly originalStart: number;
     readonly originalEnd: number;
+    readonly displayTime?: string;
     readonly track: number;
     readonly index?: number;
     readonly tokenization?: Tokenization;
@@ -59,6 +61,10 @@ export interface SubtitleModel {
 
 export interface IndexedSubtitleModel extends SubtitleModel {
     readonly index: number;
+}
+
+export interface DisplaySubtitleModel extends IndexedSubtitleModel {
+    readonly displayTime: string;
 }
 
 export interface TokenizedSubtitleModel extends IndexedSubtitleModel {
@@ -288,6 +294,7 @@ export enum PostMinePlayback {
 export enum AutoPausePreference {
     atStart = 1,
     atEnd = 2,
+    atStartAndEnd = 3,
 }
 
 export enum SubtitleHtml {
@@ -318,6 +325,8 @@ export interface MobileOverlayModel {
     subtitlesAreVisible: boolean;
     themeType: 'dark' | 'light';
     playModes: PlayMode[];
+    playModeSelectorRequest?: number;
+    overlayInstanceId?: string;
 }
 
 export enum ControlType {

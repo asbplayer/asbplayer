@@ -9,6 +9,7 @@ import TutorialIcon from '@project/common/components/TutorialIcon';
 import IconButton from '@mui/material/IconButton';
 import HistoryIcon from '@mui/icons-material/History';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Toolbar from '@mui/material/Toolbar';
 import type { TooltipProps } from '@mui/material/Tooltip';
@@ -36,6 +37,7 @@ interface BarProps {
     lastError?: any;
     onFileSelector?: () => void;
     onDownloadSubtitleFilesAsSrt: () => void;
+    onDownloadSubtitleTimeline: () => void;
     onOpenSettings: () => void;
     onOpenCopyHistory: () => void;
     onCopyLastError: (error: string) => void;
@@ -132,6 +134,7 @@ export default function Bar({
     onOpenSettings,
     onOpenCopyHistory,
     onDownloadSubtitleFilesAsSrt,
+    onDownloadSubtitleTimeline,
     onCopyLastError,
     onOpenStatistics,
 }: BarProps) {
@@ -140,9 +143,23 @@ export default function Bar({
         subtitleFiles !== undefined && subtitleFiles.find((f) => !f.file.name.endsWith('.sup')) !== undefined;
     const { t } = useTranslation();
 
-    const handleDownloadSubtitleFilesAsSrt = useCallback(() => {
+    const [downloadMenuAnchorEl, setDownloadMenuAnchorEl] = useState<HTMLElement>();
+    const [downloadMenuOpen, setDownloadMenuOpen] = useState<boolean>(false);
+    const handleDownloadMenuOpen = useCallback((e: React.UIEvent) => {
+        setDownloadMenuAnchorEl(e.currentTarget as HTMLElement);
+        setDownloadMenuOpen(true);
+    }, []);
+    const handleDownloadMenuClose = useCallback(() => {
+        setDownloadMenuOpen(false);
+    }, []);
+    const handleDownloadSrt = useCallback(() => {
+        handleDownloadMenuClose();
         onDownloadSubtitleFilesAsSrt();
-    }, [onDownloadSubtitleFilesAsSrt]);
+    }, [handleDownloadMenuClose, onDownloadSubtitleFilesAsSrt]);
+    const handleDownloadTimeline = useCallback(() => {
+        handleDownloadMenuClose();
+        onDownloadSubtitleTimeline();
+    }, [handleDownloadMenuClose, onDownloadSubtitleTimeline]);
 
     const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement>();
     const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -186,7 +203,7 @@ export default function Bar({
                                 edge="start"
                                 color="inherit"
                                 className={classes.leftButton}
-                                onClick={handleDownloadSubtitleFilesAsSrt}
+                                onClick={handleDownloadMenuOpen}
                             >
                                 <SaveAltIcon />
                             </IconButton>
@@ -233,6 +250,32 @@ export default function Bar({
                     </Box>
                 </Toolbar>
             </AppBar>
+            <Popover
+                open={downloadMenuOpen}
+                anchorEl={downloadMenuAnchorEl}
+                onClose={handleDownloadMenuClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            >
+                <List dense onMouseLeave={handleDownloadMenuClose}>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={handleDownloadSrt}>
+                            <ListItemIcon>
+                                <SaveAltIcon />
+                            </ListItemIcon>
+                            <ListItemText primary={t('action.downloadSubtitlesAsSrt')} />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={handleDownloadTimeline}>
+                            <ListItemIcon>
+                                <TimelineIcon />
+                            </ListItemIcon>
+                            <ListItemText primary={t('action.downloadSubtitleTimelineAsHtml')} />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
+            </Popover>
             <Popover
                 disableEnforceFocus={true}
                 open={menuOpen}

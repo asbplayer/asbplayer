@@ -78,7 +78,6 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-
                 context.togglePlayMode(PlayMode.autoPause);
             },
             () => context.subtitleController.subtitles.length === 0,
@@ -89,7 +88,6 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-
                 context.togglePlayMode(PlayMode.condensed);
             },
             () => context.subtitleController.subtitles.length === 0,
@@ -100,11 +98,7 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                const [currentSubtitle] = context.subtitleController.currentSubtitle();
-
-                if (currentSubtitle) {
-                    context.togglePlayMode(PlayMode.repeat);
-                }
+                context.togglePlayMode(PlayMode.repeat);
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -114,7 +108,6 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-
                 context.togglePlayMode(PlayMode.fastForward);
             },
             () => context.subtitleController.subtitles.length === 0,
@@ -125,10 +118,10 @@ export default class KeyBindings {
             (event, subtitle) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                context.seek(subtitle.start / 1000);
+                void context.seek(subtitle.start);
             },
             () => context.subtitleController.subtitles.length === 0,
-            () => context.contentTimeMs,
+            () => context.currentTimeMs,
             () => context.subtitleController.subtitles,
             () => context.seekableTracks,
             true
@@ -140,9 +133,9 @@ export default class KeyBindings {
                 event.stopImmediatePropagation();
 
                 if (forward) {
-                    context.seek(context.contentTimeMs / 1000 + context.seekDuration);
+                    void context.seek(context.currentTimeMs + context.seekDurationMs);
                 } else {
-                    context.seek(Math.max(0, context.contentTimeMs / 1000 - context.seekDuration));
+                    void context.seek(Math.max(0, context.currentTimeMs - context.seekDurationMs));
                 }
             },
             () => !context.synced,
@@ -153,11 +146,11 @@ export default class KeyBindings {
             (event, subtitle) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                context.seek(subtitle.start / 1000);
+                void context.seek(subtitle.start);
                 if (context.alwaysPlayOnSubtitleRepeat) void context.play();
             },
             () => context.subtitleController.subtitles.length === 0,
-            () => context.contentTimeMs,
+            () => context.currentTimeMs,
             () => context.subtitleController.subtitles,
             () => context.seekableTracks,
             true
@@ -188,6 +181,7 @@ export default class KeyBindings {
                 event.stopImmediatePropagation();
                 context.subtitleController.disabledSubtitleTracks[track] =
                     !context.subtitleController.disabledSubtitleTracks[track];
+                context.subtitleController.refreshShowingSubtitles();
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -285,7 +279,7 @@ export default class KeyBindings {
                 context.subtitleController.offset(offset);
             },
             () => context.subtitleController.subtitles.length === 0,
-            () => context.contentTimeMs,
+            () => context.currentTimeMs,
             () => context.subtitleController.subtitles,
             () => context.seekableTracks,
             true
@@ -317,15 +311,7 @@ export default class KeyBindings {
                 event.preventDefault();
                 event.stopImmediatePropagation();
 
-                const currentSpeed = context.video.playbackRate;
-                const speedOffset = context.speedChangeStep * 10;
-
-                context.togglePlayMode(PlayMode.normal);
-                if (increase) {
-                    context.video.playbackRate = Math.min(5, Math.round(currentSpeed * 10 + speedOffset) / 10);
-                } else {
-                    context.video.playbackRate = Math.max(0.1, Math.round(currentSpeed * 10 - speedOffset) / 10);
-                }
+                context.adjustPlaybackRate(increase ? context.speedChangeStep : -context.speedChangeStep);
             },
             () => !context.synced,
             true

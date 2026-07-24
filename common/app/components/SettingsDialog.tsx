@@ -109,6 +109,7 @@ export default function SettingsDialog({
                     extensionSupportsTrackSpecificSettings={extension.supportsTrackSpecificSettings}
                     extensionSupportsSubtitlesWidthSetting={extension.supportsSubtitlesWidthSetting}
                     extensionSupportsPauseOnHover={extension.supportsPauseOnHover}
+                    extensionSupportsPlaybackEngine={extension.supportsPlaybackEngine}
                     extensionSupportsExportCardBind={extension.supportsExportCardBind}
                     extensionSupportsPageSettings={extension.supportsPageSettings}
                     extensionSupportsDictionary={extension.supportsDictionary}

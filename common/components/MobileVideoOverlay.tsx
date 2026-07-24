@@ -13,9 +13,10 @@ import LogoIcon from './LogoIcon';
 import SubtitlesIcon from '@mui/icons-material/Subtitles';
 import SubtitlesOffIcon from './SubtitlesOffIcon';
 import HoldableIconButton from './HoldableIconButton';
-import PlayModeSelector from './PlayModeSelector';
+import PlaybackModeSelector from './PlaybackModeSelector';
 import ScrollableNumberControls from './ScrollableNumberControls';
 import Tooltip from './Tooltip';
+import { minimumPlaybackRate } from '../playback/playback-mode-controller';
 
 type Anchor = 'top' | 'bottom';
 
@@ -38,6 +39,8 @@ const useStyles = makeStyles(({ anchor }: { anchor: Anchor }) => ({
     playModePopOver: {
         '& .MuiPopover-paper': {
             maxHeight: 'none',
+            maxWidth: 'calc(100% - 16px)',
+            overflowX: 'hidden',
         },
     },
     tooltip: {
@@ -85,6 +88,9 @@ interface Props {
     onPlayModeSelected: (playMode: PlayMode) => void;
     onSeek: (timestamp: number) => void;
     onToggleSubtitles: () => void;
+    playModeSelectorRequest?: number;
+    onPlayModeSelectorOpened?: () => void;
+    onPlayModeSelectorClosed?: () => void;
 }
 
 const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function MobileVideoOverlay(
@@ -102,14 +108,15 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
         onPlayModeSelected,
         onSeek,
         onToggleSubtitles,
+        playModeSelectorRequest,
+        onPlayModeSelectorOpened,
+        onPlayModeSelectorClosed,
     }: Props,
     ref
 ) {
     const classes = useStyles({ anchor });
     const offsetInputRef = useRef<HTMLInputElement>(undefined);
     const playbackInputRef = useRef<HTMLInputElement>(undefined);
-    const [playModeSelectorOpen, setPlayModeSelectorOpen] = useState<boolean>(false);
-    const [playModeSelectorAnchorEl, setPlayModeSelectorAnchorEl] = useState<HTMLElement>();
     const [numberControlType, setNumberControlType] = useState<ControlType>(ControlType.timeDisplay);
 
     const handleScrollToControlType = useCallback(
@@ -118,23 +125,6 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             onScrollToControlType(controlType);
         },
         [onScrollToControlType]
-    );
-
-    const handleClosePlayModeSelector = useCallback(() => {
-        setPlayModeSelectorOpen(false);
-        setPlayModeSelectorAnchorEl(undefined);
-    }, []);
-
-    const handleOpenPlayModeSelector = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-        setPlayModeSelectorAnchorEl(e.currentTarget);
-        setPlayModeSelectorOpen(true);
-    }, []);
-
-    const handlePlayModeSelected = useCallback(
-        (playMode: PlayMode) => {
-            onPlayModeSelected(playMode);
-        },
-        [onPlayModeSelected]
     );
 
     const handleOffsetToPrevious = useCallback(() => {
@@ -174,7 +164,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             return;
         }
 
-        onPlaybackRate(Math.max(0.1, model.playbackRate - 0.1));
+        onPlaybackRate(Math.max(minimumPlaybackRate, model.playbackRate - 0.1));
     }, [onPlaybackRate, model]);
 
     const handleIncrementPlaybackRate = useCallback(() => {
@@ -182,7 +172,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             return;
         }
 
-        onPlaybackRate(Math.min(5, model.playbackRate + 0.1));
+        onPlaybackRate(model.playbackRate + 0.1);
     }, [onPlaybackRate, model]);
 
     const handleSeekToPreviousSubtitle = useCallback(() => {
@@ -345,8 +335,8 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
             leftNumberControlDisabled = model.previousSubtitleTimestamp === undefined || model.recording;
             break;
         case ControlType.playbackRate:
-            rightNumberControlDisabled = model.playbackRate >= 5 || model.recording;
-            leftNumberControlDisabled = model.playbackRate <= 0.1 || model.recording;
+            rightNumberControlDisabled = model.recording;
+            leftNumberControlDisabled = model.playbackRate <= minimumPlaybackRate || model.recording;
             break;
     }
 
@@ -440,15 +430,49 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                         </Tooltip>
                     </Grid>
                 )}
-                {!model.emptySubtitleTrack && (
+                {(!model.emptySubtitleTrack || playModeSelectorRequest !== undefined) && (
                     <Grid item>
-                        <Tooltip {...defaultTooltipProps} title={t('controls.playbackMode')}>
-                            <span>
-                                <IconButton disabled={model.recording} onClick={handleOpenPlayModeSelector}>
-                                    <TuneIcon className={model.recording ? classes.inactiveButton : classes.button} />
-                                </IconButton>
-                            </span>
-                        </Tooltip>
+                        <PlaybackModeSelector
+                            selectedPlayModes={new Set(model.playModes)}
+                            onPlayMode={onPlayModeSelected}
+                            temporaryOpenRequest={playModeSelectorRequest}
+                            onSelectorOpened={onPlayModeSelectorOpened}
+                            onSelectorClosed={onPlayModeSelectorClosed}
+                            renderButton={({ anchorRef, onClick, onMouseEnter, onMouseLeave }) => (
+                                <Tooltip {...defaultTooltipProps} title={t('controls.playbackMode')}>
+                                    <span>
+                                        <IconButton
+                                            ref={anchorRef}
+                                            disabled={model.recording}
+                                            onClick={onClick}
+                                            onMouseEnter={onMouseEnter}
+                                            onMouseLeave={onMouseLeave}
+                                        >
+                                            <TuneIcon
+                                                className={model.recording ? classes.inactiveButton : classes.button}
+                                            />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                            )}
+                            selectorProps={{
+                                listStyle: {
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    padding: 0,
+                                    overflowX: 'hidden',
+                                },
+                                className: classes.playModePopOver,
+                                anchorOrigin: {
+                                    vertical: 'top',
+                                    horizontal: 'center',
+                                },
+                                transformOrigin: {
+                                    vertical: 'bottom',
+                                    horizontal: 'center',
+                                },
+                            }}
+                        />
                     </Grid>
                 )}
                 {!model.recording && (
@@ -505,30 +529,6 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                     </>
                 )}
             </GridContainer>
-            {playModeSelectorOpen && (
-                <PlayModeSelector
-                    open={playModeSelectorOpen}
-                    anchorEl={playModeSelectorAnchorEl}
-                    onClose={handleClosePlayModeSelector}
-                    selectedPlayModes={new Set(model.playModes)}
-                    onPlayMode={handlePlayModeSelected}
-                    listStyle={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        padding: 0,
-                        overflowX: 'auto',
-                    }}
-                    className={classes.playModePopOver}
-                    anchorOrigin={{
-                        vertical: 'center',
-                        horizontal: 'center',
-                    }}
-                    transformOrigin={{
-                        vertical: 'center',
-                        horizontal: 'center',
-                    }}
-                />
-            )}
         </>
     );
 });

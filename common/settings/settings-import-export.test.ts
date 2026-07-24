@@ -10,6 +10,7 @@ import {
 import { validateSettings } from './settings-import-export';
 import { defaultSettings } from './settings-provider';
 import { expect, it } from '@jest/globals';
+import { PlayMode } from '@project/common';
 
 it('validates the default settings', () => {
     validateSettings(defaultSettings);
@@ -86,7 +87,18 @@ it('validates exported settings', () => {
         autoCopyableTracks: 1,
         seekDuration: 4,
         speedChangeStep: 0.2,
+        playbackRate: 1.2,
+        playbackRateNotificationEnabled: false,
+        rememberPlaybackRate: true,
+        subtitleTriggerStartOffset: 50,
+        subtitleTriggerEndOffset: 100,
+        subtitleTriggerGapEndOffset: -150,
+        subtitleTriggerGapStartOffset: 200,
         fastForwardModePlaybackRate: 3,
+        fastForwardPlaybackMinimumSkipIntervalMs: 800,
+        repeatCountPreference: 2,
+        rememberPlaybackModes: true,
+        lastPlaybackModes: [PlayMode.autoPause, PlayMode.repeat],
         keyBindSet: {
             adjustOffsetToNextSubtitle: { keys: '⇧+right' },
             adjustOffsetToPreviousSubtitle: { keys: '⇧+left' },

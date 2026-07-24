@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import { type SubtitleModel } from '@project/common/src/model';
+import { type SubtitleModel } from '@project/common';
 
 const makeSubtitle = (overrides: Partial<SubtitleModel> = {}): SubtitleModel => ({
     text: 'subtitle',

@@ -1,8 +1,8 @@
-import { CachingElementOverlay, OffsetAnchor } from '@/services/element-overlay';
-import { frameColorSchemeClass } from '@/services/frame-color-scheme';
-import UiFrame, { uiFrameForSrc } from '@/services/ui-frame';
-import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '@/ui/components/StatisticsOverlayUi';
-import { type UiState } from '@/ui/components/StatisticsOverlayOneUncollectedUi';
+import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
+import { frameColorScheme, frameColorSchemeClass } from '../services/frame-color-scheme';
+import UiFrame, { uiFrameForSrc } from '../services/ui-frame';
+import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '../ui/components/StatisticsOverlayUi';
+import { type UiState } from '../ui/components/StatisticsOverlayOneUncollectedUi';
 import {
     CloseStatisticsOverlayMessage,
     Command,
@@ -16,6 +16,8 @@ import {
 type State = 'open' | 'fullscreen' | 'closed';
 
 export class StatisticsOverlayController {
+    private static readonly _mobileOverlaySelector = '.asbplayer-mobile-video-overlay-container-top';
+    private static readonly _overlayGap = 8;
     private _messageListener?: (
         message: any,
         sender: Browser.runtime.MessageSender,
@@ -32,6 +34,12 @@ export class StatisticsOverlayController {
     private _lastClosedMediaId?: string;
     private _xOffset = 0;
     private _yOffset = 0;
+    private _mobileOverlayOffset = 0;
+    private _mobileOverlayManuallyMoved = false;
+    private _mobileOverlayObserver?: MutationObserver;
+    private _mobileOverlayResizeObserver?: ResizeObserver;
+    private _observedMobileOverlays = new Set<HTMLElement>();
+    private _mobileOverlayLayoutListener = () => this._updateMobileOverlayOffset();
 
     unbind() {
         if (this._messageListener !== undefined) {
@@ -44,6 +52,13 @@ export class StatisticsOverlayController {
         }
         this._overlay?.dispose();
         this._overlay = undefined;
+        this._mobileOverlayObserver?.disconnect();
+        this._mobileOverlayObserver = undefined;
+        this._mobileOverlayResizeObserver?.disconnect();
+        this._mobileOverlayResizeObserver = undefined;
+        this._observedMobileOverlays.clear();
+        window.removeEventListener('resize', this._mobileOverlayLayoutListener);
+        window.removeEventListener('scroll', this._mobileOverlayLayoutListener);
         this._oneUncollectedDialogFrame?.unbind();
         this._oneUncollectedDialogFrame = undefined;
     }
@@ -58,6 +73,14 @@ export class StatisticsOverlayController {
             }
         };
         this._ensureOverlay();
+        this._mobileOverlayObserver = new MutationObserver(() => this._updateMobileOverlayOffset());
+        this._mobileOverlayObserver.observe(document.body, { childList: true, subtree: true });
+        if (typeof ResizeObserver !== 'undefined') {
+            this._mobileOverlayResizeObserver = new ResizeObserver(() => this._updateMobileOverlayOffset());
+        }
+        window.addEventListener('resize', this._mobileOverlayLayoutListener);
+        window.addEventListener('scroll', this._mobileOverlayLayoutListener);
+        this._updateMobileOverlayOffset();
         browser.runtime.onMessage.addListener(this._messageListener);
         this._windowMessageListener = (event: MessageEvent) => {
             if (event.source === window) {
@@ -104,6 +127,14 @@ export class StatisticsOverlayController {
                 }
 
                 const moveMessage = command.message as MoveStatisticsOverlayMessage;
+                if (this._mobileOverlayOffset !== 0) {
+                    // Preserve the position the user is dragging from when the automatic offset is removed.
+                    this._yOffset += this._mobileOverlayOffset;
+                    this._mobileOverlayOffset = 0;
+                }
+                if (this._visibleMobileOverlayBounds().length > 0) {
+                    this._mobileOverlayManuallyMoved = true;
+                }
                 this._xOffset += moveMessage.deltaX;
                 this._yOffset = Math.max(0, this._yOffset + moveMessage.deltaY);
                 this._applyCurrentContainerStyles();
@@ -153,6 +184,7 @@ export class StatisticsOverlayController {
         this._resetPosition();
         this._setWidth(this._width ?? '100%');
         this._setHeight('68px');
+        this._updateMobileOverlayOffset();
     }
 
     private _close(mediaId: string) {
@@ -164,12 +196,77 @@ export class StatisticsOverlayController {
         this._mediaId = undefined;
         this._setWidth(this._restoreWidth ?? '100%');
         this._setHeight('0px');
+        this._mobileOverlayOffset = 0;
+        this._mobileOverlayManuallyMoved = false;
         this._lastClosedMediaId = mediaId;
     }
 
     private _resetPosition() {
         this._xOffset = 0;
         this._yOffset = 0;
+        this._mobileOverlayOffset = 0;
+        this._mobileOverlayManuallyMoved = false;
+        this._applyCurrentContainerStyles();
+    }
+
+    private _visibleMobileOverlayBounds() {
+        return Array.from(document.querySelectorAll<HTMLElement>(StatisticsOverlayController._mobileOverlaySelector))
+            .map((container) => ({ container, bounds: container.getBoundingClientRect() }))
+            .filter(({ bounds }) => bounds.width > 0 && bounds.height > 0);
+    }
+
+    private _updateMobileOverlayOffset() {
+        if (this._state !== 'open') {
+            return;
+        }
+
+        const mobileOverlays = this._visibleMobileOverlayBounds();
+
+        for (const container of this._observedMobileOverlays) {
+            if (!mobileOverlays.some(({ container: current }) => current === container)) {
+                this._mobileOverlayResizeObserver?.unobserve(container);
+            }
+        }
+        for (const { container } of mobileOverlays) {
+            if (!this._observedMobileOverlays.has(container)) {
+                this._mobileOverlayResizeObserver?.observe(container);
+            }
+        }
+        this._observedMobileOverlays = new Set(mobileOverlays.map(({ container }) => container));
+
+        if (mobileOverlays.length === 0) {
+            this._mobileOverlayManuallyMoved = false;
+            this._setMobileOverlayOffset(0);
+            return;
+        }
+
+        if (this._mobileOverlayManuallyMoved) {
+            return;
+        }
+
+        const baseTop = 8 + this._yOffset;
+        const overlayHeight = this._overlay?.containerElement?.getBoundingClientRect().height ?? 0;
+        const height = overlayHeight || Number.parseFloat(this._height ?? '0');
+        let requiredOffset = 0;
+
+        for (const { bounds } of mobileOverlays) {
+            if (bounds.top < baseTop + height && bounds.bottom > baseTop) {
+                requiredOffset = Math.max(
+                    requiredOffset,
+                    (bounds.bottom + StatisticsOverlayController._overlayGap - baseTop) / 1.5
+                );
+            }
+        }
+
+        this._setMobileOverlayOffset(requiredOffset);
+    }
+
+    private _setMobileOverlayOffset(offset: number) {
+        if (this._mobileOverlayOffset === offset) {
+            return;
+        }
+
+        this._mobileOverlayOffset = offset;
         this._applyCurrentContainerStyles();
     }
 
@@ -188,7 +285,7 @@ export class StatisticsOverlayController {
             container.style.setProperty('bottom', 'auto', 'important');
             container.style.setProperty('transform', 'none', 'important');
         } else {
-            container.style.setProperty('top', `${8 + this._yOffset}px`, 'important');
+            container.style.setProperty('top', `${8 + this._yOffset + this._mobileOverlayOffset}px`, 'important');
             container.style.setProperty('left', `calc(50% + ${this._xOffset}px)`, 'important');
             container.style.setProperty('bottom', 'auto', 'important');
             container.style.setProperty('transform', 'translateX(-50%)', 'important');
@@ -226,15 +323,15 @@ export class StatisticsOverlayController {
                 this._applyOverlayContainerStyles(container);
             },
         });
+        const colorScheme = frameColorScheme();
         const colorSchemeClass = frameColorSchemeClass();
         this._overlay.setHtml([
             {
                 key: 'ui',
                 html: () => {
-                    console.log('rendering iframe');
-                    return `<iframe class="${colorSchemeClass} asbplayer-statistics-overlay-frame " src="${browser.runtime.getURL(
+                    return `<iframe class="${colorSchemeClass} asbplayer-statistics-overlay-frame " allowtransparency="true" style="color-scheme: ${colorScheme}" src="${browser.runtime.getURL(
                         '/statistics-overlay-ui.html'
-                    )}"/>`;
+                    )}?colorScheme=${encodeURIComponent(colorScheme)}"/>`;
                 },
             },
         ]);

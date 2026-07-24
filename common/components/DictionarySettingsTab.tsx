@@ -54,7 +54,7 @@ import { WaniKani, WaniKaniUser } from '../wanikani';
 import { Yomitan } from '../yomitan';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import SettingsTextField from './SettingsTextField';
-import SettingsSection from './SettingsSection';
+import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import {
     DictionaryBuildAnkiCacheProgress,
     DictionaryBuildAnkiCacheState,
@@ -632,7 +632,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
             case TokenStyling.OVERLINE:
                 return 'settings.dictionaryTokenStylingOverline';
             default:
-                return undefined;
+                return;
         }
     }, [selectedDictionary.dictionaryTokenStyling]);
     const dictionaryTokenPitchAccentAnnotationEnabled = useMemo(
@@ -1059,9 +1059,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Button>
                     )}
                     <div>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
-                            {t('settings.dictionaryLocalWordDatabase')}
-                        </Typography>
+                        <SettingsSubSection>{t('settings.dictionaryLocalWordDatabase')}</SettingsSubSection>
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Button
                                 variant="contained"
@@ -1091,9 +1089,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Typography>
                     </div>
                     <Stack spacing={1}>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
-                            {t('settings.dictionaryAnkiWordDatabase')}
-                        </Typography>
+                        <SettingsSubSection>{t('settings.dictionaryAnkiWordDatabase')}</SettingsSubSection>
                         <Button
                             variant="contained"
                             color="primary"
@@ -1128,9 +1124,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     </Stack>
                     {supportsDictionaryWaniKani && (
                         <Stack spacing={1}>
-                            <Typography variant="h6" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
-                                {t('settings.dictionaryWaniKaniWordDatabase')}
-                            </Typography>
+                            <SettingsSubSection>{t('settings.dictionaryWaniKaniWordDatabase')}</SettingsSubSection>
                             <Button
                                 variant="contained"
                                 color="primary"

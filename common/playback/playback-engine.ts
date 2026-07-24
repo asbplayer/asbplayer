@@ -1,0 +1,318 @@
+import type { AsbplayerSettings } from '@project/common/settings';
+import { isTrackSeekable } from '@project/common/settings';
+import type { IndexedSubtitleModel } from '@project/common';
+import { PlayMode } from '@project/common';
+import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
+import PlaybackPlanExecutor, {
+    playbackPlanCorrectionToleranceMs,
+    type PlaybackPlanExecutorCallbacks,
+} from '@project/common/playback/playback-plan-executor';
+import PlaybackModeController, {
+    normalizePlaybackRate,
+    playbackModesFromSettings,
+    type PlayModeTransition,
+} from '@project/common/playback/playback-mode-controller';
+import type { TimingDriver } from '@project/common/playback/timing-driver';
+
+export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+    readonly pause: () => void;
+    readonly play: () => Promise<void>;
+    readonly seek: (timestampMs: number) => Promise<void>;
+    readonly setPlaybackRate: (playbackRate: number) => void;
+    readonly showingSubtitlesChanged: (subtitles: readonly T[]) => void;
+    readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
+    readonly playbackModesChanged: (transition: PlayModeTransition) => void;
+    readonly onError: (error: unknown) => void;
+}
+
+export interface PlaybackEngineOptions<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+    readonly settings: AsbplayerSettings;
+    readonly subtitles: readonly T[];
+    readonly ready: { settings: boolean };
+    readonly playbackModesSuppressed: boolean;
+    readonly callbacks: PlaybackEngineCallbacks<T>;
+    readonly timingDriver: TimingDriver;
+}
+
+/**
+ * Owns playback settings, plan lifecycle, timing, and discontinuity policy for a media adapter.
+ * The caller owns the media controls and supplies them through callbacks. The media owners can
+ * also notify of certain events through methods as well. Generally, PlaybackEngine should own
+ * controlling the media and attaching to their related events. However things such as 'canplay' or
+ * workarounds for certain sites should live outside this class to not complicate its responsibilities.
+ *
+ * Binding/VideoPlayer/Player
+ * ├── Clock (VideoPlayer/Player)
+ * └── PlaybackEngine
+ *     ├── VideoFrameTimingDriver (Player: AnimationFrameTimingDriver)
+ *     ├── PlaybackModeController
+ *     ├── PlaybackPlan
+ *     │   └── PlaybackTimelineCompiler
+ *     └── PlaybackPlanExecutor
+ *         ├── PlaybackTimeline
+ *         └── PlaybackTimelineRunner
+ *             ├── PlaybackTimeline
+ *             └── PlaybackTimelineCursor
+ */
+export default class PlaybackEngine<T extends IndexedSubtitleModel> {
+    private settings: AsbplayerSettings;
+    private subtitles: readonly T[];
+    private ready: { settings: boolean; subtitles: boolean };
+    private playbackModesSuppressed: boolean;
+    private plan: PlaybackPlan<T>;
+    private readonly playbackModeController: PlaybackModeController;
+    private readonly executor: PlaybackPlanExecutor<T>;
+    private readonly callbacks: PlaybackEngineCallbacks<T>;
+    private readonly timingDriver: TimingDriver;
+
+    constructor({
+        settings,
+        subtitles,
+        ready,
+        playbackModesSuppressed,
+        callbacks,
+        timingDriver,
+    }: PlaybackEngineOptions<T>) {
+        this.settings = settings;
+        this.subtitles = subtitles;
+        this.ready = { settings: ready.settings, subtitles: subtitles.length > 0 };
+        this.playbackModesSuppressed = playbackModesSuppressed;
+        this.playbackModeController = new PlaybackModeController(playbackModesFromSettings(this.settings));
+        this.callbacks = callbacks;
+        this.timingDriver = timingDriver;
+        this.plan = this.buildPlan();
+
+        const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
+            play: callbacks.play,
+            paused: () => this.timingDriver.paused(),
+            pause: callbacks.pause,
+            seek: (targetTimestampMs) => this.seek(targetTimestampMs),
+            setPlaybackRate: (playbackRate) => {
+                this.callbacks.setPlaybackRate(playbackRate);
+            },
+            correctTimestamp: async (targetTimestampMs) => {
+                return this.correctTimestamp(targetTimestampMs);
+            },
+            showingSubtitlesChanged: callbacks.showingSubtitlesChanged,
+        };
+        this.executor = new PlaybackPlanExecutor(this.plan, this.timingDriver.currentTimeMs(), executorCallbacks);
+        this.timingDriver.setCallbacks({
+            onTime: (currentTimestampMs, { lookaheadTimestampMs }) =>
+                this.executor.update(currentTimestampMs, {
+                    lookaheadTimestampMs,
+                }),
+            onDiscontinuity: (currentTimestampMs) => this.executor.handleDiscontinuity(currentTimestampMs),
+            onCancel: (options) => this.executor.cancelPendingOperations(options),
+            onPlaybackStarted: () => this.executor.playbackStarted(),
+            onError: callbacks.onError,
+        });
+    }
+
+    bind(): void {
+        if (this.timingDriver.bound) return;
+        if (!this.ready.settings || !this.ready.subtitles) return;
+
+        const transition = this.playbackModeController.setModes(this.playbackModeController.playModes);
+        this.callbacks.playbackModesChanged(transition);
+        this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
+        this.timingDriver.bind();
+    }
+
+    unbind(): void {
+        if (!this.timingDriver.bound) return;
+        this.timingDriver.unbind();
+    }
+
+    settingsChanged(settings: AsbplayerSettings): void {
+        const rememberPlaybackModesNow = !this.settings.rememberPlaybackModes && settings.rememberPlaybackModes;
+        const activeRateSetting = this.executor.isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
+        this.settings = this.ready.settings
+            ? { ...settings, [activeRateSetting]: this.settings[activeRateSetting] }
+            : settings;
+        this.ready.settings = true;
+        this.bind();
+        if (rememberPlaybackModesNow) {
+            this.applyPlaybackModeTransition(
+                this.playbackModeController.setModes(playbackModesFromSettings(settings)),
+                { savePlaybackModes: false, rebuildWhenUnchanged: true }
+            );
+        } else {
+            this.rebuildPlan();
+        }
+    }
+
+    subtitlesChanged(subtitles: readonly T[]): void {
+        const hadSubtitles = this.ready.subtitles;
+        this.subtitles = subtitles;
+        if (subtitles.length) {
+            this.ready.subtitles = true;
+            if (!hadSubtitles) {
+                this.applyPlaybackModeTransition(
+                    this.playbackModeController.setModes(playbackModesFromSettings(this.settings)),
+                    { savePlaybackModes: false, rebuildWhenUnchanged: true }
+                );
+                this.bind();
+            } else {
+                this.bind();
+                this.rebuildPlan();
+            }
+        } else {
+            this.ready.subtitles = false;
+            this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
+                savePlaybackModes: false,
+                rebuildWhenUnchanged: true,
+            });
+            this.unbind();
+        }
+    }
+
+    playbackRateChanged(playbackRate: number): { readonly notify: boolean; readonly playbackRate: number } {
+        const setting = this.executor.isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
+        const normalizedPlaybackRate = normalizePlaybackRate(playbackRate);
+        if (normalizedPlaybackRate === undefined || this.settings[setting] === normalizedPlaybackRate) {
+            return { notify: false, playbackRate: this.settings[setting] };
+        }
+        this.settings = { ...this.settings, [setting]: normalizedPlaybackRate };
+        this.rebuildPlan();
+        if (this.settings.rememberPlaybackRate) this.callbacks.saveSettings({ [setting]: normalizedPlaybackRate });
+        return { notify: this.settings.playbackRateNotificationEnabled, playbackRate: normalizedPlaybackRate };
+    }
+
+    adjustPlaybackRate(delta: number): { readonly notify: boolean; readonly playbackRate: number } {
+        const playbackRate = this.executor.isFastForwarding
+            ? this.plan.fastForward!.playbackRate
+            : this.plan.playbackRate;
+        if (!delta || !Number.isFinite(delta)) return { notify: false, playbackRate };
+        return this.playbackRateChanged(playbackRate + delta);
+    }
+
+    durationChanged(durationMs: number): void {
+        if (!Number.isFinite(durationMs) || durationMs === this.plan.timeline.durationMs) return;
+        this.rebuildPlan();
+    }
+
+    playbackModesSuppressedChanged(suppressed: boolean): void {
+        if (this.playbackModesSuppressed === suppressed) return;
+        this.playbackModesSuppressed = suppressed;
+        this.rebuildPlan();
+    }
+
+    togglePlaybackMode(targetMode: PlayMode): void {
+        const transition = this.playbackModeController.transition(targetMode);
+        this.applyPlaybackModeTransition(transition, { savePlaybackModes: true, rebuildWhenUnchanged: false });
+    }
+
+    /** Reports a discontinuity from a non-standard media adapter, such as Disney+'s page-script seek event. */
+    seeked(timestampMs: number): void {
+        if (this.timingDriver.externalSeekEvents) {
+            this.timingDriver.externalSeeked!(timestampMs);
+            return;
+        }
+        this.executor.handleDiscontinuity(timestampMs);
+    }
+
+    /** Reports that a seek operation has started from a non-standard media adapter, such as Disney+'s page-script seek event. */
+    seekStarted(): void {
+        if (this.timingDriver.externalSeekEvents) {
+            this.timingDriver.externalSeekStarted!();
+            return;
+        }
+        this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
+    }
+
+    /** Reports that a seek operation has been canceled from a non-standard media adapter, such as Disney+'s page-script seek event. */
+    seekCanceled(): void {
+        if (this.timingDriver.externalSeekEvents) {
+            this.timingDriver.externalSeekCanceled!();
+            return;
+        }
+        this.timingDriver.cancelExpectedInternalSeek();
+        this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
+    }
+
+    private buildPlan(): PlaybackPlan<T> {
+        const displaySubtitles = this.subtitles;
+        const effectiveModes = this.playbackModesSuppressed
+            ? new Set([PlayMode.normal])
+            : this.playbackModeController.playModes;
+
+        return buildPlaybackPlan({
+            subtitles: displaySubtitles.filter((subtitle) =>
+                isTrackSeekable(this.settings.seekableTracks, subtitle.track)
+            ),
+            displaySubtitles,
+            durationMs: this.timingDriver.durationMs(),
+            playModes: effectiveModes,
+            autoPausePreference: this.settings.autoPausePreference,
+            subtitleTriggerStartOffset: this.settings.subtitleTriggerStartOffset,
+            subtitleTriggerEndOffset: this.settings.subtitleTriggerEndOffset,
+            subtitleTriggerGapEndOffset: this.settings.subtitleTriggerGapEndOffset,
+            subtitleTriggerGapStartOffset: this.settings.subtitleTriggerGapStartOffset,
+            repeatCountPreference: this.settings.repeatCountPreference,
+            condensedPlaybackMinimumSkipIntervalMs: this.settings.streamingCondensedPlaybackMinimumSkipIntervalMs,
+            playbackRate: this.settings.playbackRate,
+            fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
+            fastForwardPlaybackMinimumSkipIntervalMs: this.settings.fastForwardPlaybackMinimumSkipIntervalMs,
+        });
+    }
+
+    /**
+     * We prefer simply rebuilding the plan unconditionally rather than trying to optimize for specific cases.
+     * It takes <1ms to build thus completely negligible. Any runtime check that can be encoded as a part of
+     * the plan or timeline should as rebuilding to update them is always preferred. It also serves to simplify
+     * the overall logic by reducing runtime checks.
+     */
+    private rebuildPlan(): void {
+        this.plan = this.buildPlan();
+        this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs());
+    }
+
+    private applyPlaybackModeTransition(
+        transition: PlayModeTransition,
+        options: { readonly savePlaybackModes: boolean; readonly rebuildWhenUnchanged: boolean }
+    ): void {
+        if (!transition.added.size && !transition.removed.size) {
+            if (options.rebuildWhenUnchanged) this.rebuildPlan();
+            return;
+        }
+        this.rebuildPlan();
+        if (options.savePlaybackModes) {
+            const lastPlaybackModes = [...transition.modes];
+            this.settings = { ...this.settings, lastPlaybackModes };
+            this.callbacks.saveSettings({ lastPlaybackModes });
+        }
+        this.callbacks.playbackModesChanged(transition);
+    }
+
+    private async seek(timestampMs: number): Promise<void> {
+        const targetTimestampMs = this.clampTimestamp(timestampMs);
+        await this.performSeek(targetTimestampMs);
+    }
+
+    private async correctTimestamp(timestampMs: number): Promise<boolean> {
+        const targetTimestampMs = this.clampTimestamp(timestampMs);
+        if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
+            return false;
+        }
+        await this.performSeek(targetTimestampMs);
+        return true;
+    }
+
+    private async performSeek(targetTimestampMs: number): Promise<void> {
+        const seeked = this.timingDriver.beginInternalSeek();
+        try {
+            await this.callbacks.seek(targetTimestampMs);
+            await seeked;
+        } catch (error) {
+            this.timingDriver.cancelExpectedInternalSeek();
+            throw error;
+        }
+    }
+
+    private clampTimestamp(timestampMs: number): number {
+        if (!Number.isFinite(timestampMs)) return 0;
+        const durationMs = this.timingDriver.durationMs();
+        if (!Number.isFinite(durationMs)) return Math.max(0, timestampMs);
+        return Math.max(0, Math.min(durationMs, timestampMs));
+    }
+}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Checkbox from '@mui/material/Checkbox';
 import List from '@mui/material/List';
@@ -21,7 +21,7 @@ interface Props extends PopoverProps {
 
 const ListItem = ({ children, ...props }: ListItemProps) => {
     return (
-        <MuiListItem disablePadding dense {...props}>
+        <MuiListItem disablePadding dense sx={{ width: 'auto' }} {...props}>
             {children}
         </MuiListItem>
     );
@@ -61,6 +61,53 @@ export default function PlayModeSelector({
     ...restOfPopoverProps
 }: Props) {
     const { t } = useTranslation();
+    const listRef = useRef<HTMLUListElement>(null);
+    const [listElement, setListElement] = useState<HTMLUListElement | null>(null);
+    const [useColumnLayout, setUseColumnLayout] = useState(false);
+    const handleListRef = useCallback((element: HTMLUListElement | null) => {
+        listRef.current = element;
+        setListElement(element);
+    }, []);
+
+    const updateListLayout = useCallback(() => {
+        const list = listRef.current;
+        if (!list) return;
+
+        const previousDirection = list.style.flexDirection;
+        const previousWidth = list.style.width;
+        const previousMaxWidth = list.style.maxWidth;
+        list.style.flexDirection = 'row';
+        list.style.width = 'max-content';
+        list.style.maxWidth = 'none';
+        const rowWidth = [...list.children].reduce((width, item) => width + item.getBoundingClientRect().width, 0);
+        const viewportWidth = window.innerWidth - 16;
+        const paperWidth = list.parentElement?.getBoundingClientRect().width;
+        const availableWidth = Math.min(paperWidth || viewportWidth, viewportWidth);
+        list.style.flexDirection = previousDirection;
+        list.style.width = previousWidth;
+        list.style.maxWidth = previousMaxWidth;
+
+        setUseColumnLayout(rowWidth > availableWidth);
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!open) return;
+
+        if (!listElement) return;
+
+        const resizeObserver = new ResizeObserver(updateListLayout);
+        resizeObserver.observe(listElement);
+        if (listElement.parentElement) resizeObserver.observe(listElement.parentElement);
+        window.addEventListener('resize', updateListLayout);
+        const animationFrame = requestAnimationFrame(updateListLayout);
+
+        return () => {
+            resizeObserver.disconnect();
+            window.removeEventListener('resize', updateListLayout);
+            cancelAnimationFrame(animationFrame);
+        };
+    }, [listElement, open, updateListLayout]);
+
     return (
         <Popover
             disableEnforceFocus={true}
@@ -77,7 +124,18 @@ export default function PlayModeSelector({
             }}
             {...restOfPopoverProps}
         >
-            <List disablePadding dense sx={listStyle}>
+            <List
+                ref={handleListRef}
+                disablePadding
+                dense
+                sx={{
+                    ...listStyle,
+                    flexDirection: useColumnLayout ? 'column' : 'row',
+                    flexWrap: 'nowrap',
+                    width: 'max-content',
+                    maxWidth: '100%',
+                }}
+            >
                 <ListItem onClick={() => onPlayMode(PlayMode.normal)}>
                     <ListItemButton>
                         <ListItemIcon>

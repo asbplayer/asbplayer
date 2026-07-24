@@ -3578,6 +3578,7 @@ __metadata:
     "@plausible-analytics/tracker": ^0.4.5
     "@qgustavor/srt-parser": ^2.0.0
     "@types/jest": ^29.5.14
+    "@types/node": ^22.13.14
     "@types/semver": ^7.3.9
     "@types/videojs-vtt.js": ^0.15.3
     ass-compiler: 0.1.1
