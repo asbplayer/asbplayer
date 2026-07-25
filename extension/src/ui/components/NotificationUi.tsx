@@ -120,6 +120,7 @@ const NotificationUi = ({ bridge }: Props) => {
                     <Alert
                         severity="info"
                         onClose={resumeSnackbar.close}
+                        icon={<LogoIcon fontSize="small" />}
                         action={
                             snackbar.actionLocKey && (
                                 <Button color="inherit" size="small" onClick={handleSnackbarAction}>

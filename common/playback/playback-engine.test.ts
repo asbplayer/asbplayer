@@ -497,12 +497,12 @@ describe('PlaybackEngine', () => {
         harness.playbackEngine.bind();
 
         expect(harness.playbackEngine.playbackRateChanged(1.23456).playbackRate).toBe(1.235);
-        expect(harness.playbackEngine.adjustPlaybackRate(-2).playbackRate).toBe(0.001);
+        expect(harness.playbackEngine.adjustPlaybackRate(-2).playbackRate).toBe(0.01);
         expect(harness.playbackEngine.playbackRateChanged(6.789).playbackRate).toBe(6.789);
-        expect(harness.playbackRates.slice(-3)).toEqual([1.235, 0.001, 6.789]);
+        expect(harness.playbackRates.slice(-3)).toEqual([1.235, 0.01, 6.789]);
         expect(harness.savedSettings.slice(-3)).toEqual([
             { playbackRate: 1.235 },
-            { playbackRate: 0.001 },
+            { playbackRate: 0.01 },
             { playbackRate: 6.789 },
         ]);
     });

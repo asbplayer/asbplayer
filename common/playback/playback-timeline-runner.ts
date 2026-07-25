@@ -12,13 +12,17 @@ export interface PlaybackTimelineActionResult {
 }
 
 export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
-    onStart(event: PlaybackTimelineEvent): boolean | Promise<boolean>;
+    /** Resolves to true when the start boundary auto-paused playback. */
+    onStart(event: PlaybackTimelineEvent): Promise<boolean>;
     onEnd(event: PlaybackTimelineEvent): PlaybackTimelineActionResult | Promise<PlaybackTimelineActionResult>;
     correctAutoPause(timestampMs: number): Promise<void>;
-    /** Reconciles persistent state only: subtitles, playback rate, and other state that must survive seeks. */
+    /** Reconciles state that must survive seeks, including showing subtitles and playback rate. */
     onState(state: PlaybackTimelineState, segment: PlaybackTimelineSegment<T>): Promise<void>;
-    /** Applies non-edge continuous behavior such as condensed playback after persistent state is current. */
-    onAfterState(timestampMs: number): boolean | Promise<boolean>;
+    /**
+     * Applies non-edge continuous behavior such as condensed playback after state is current.
+     * Resolves to the seek target when it seeks, otherwise undefined.
+     */
+    onAfterState(timestampMs: number): Promise<number | undefined>;
 }
 
 /** Applies precomputed crossed boundaries in time order and stops at the first position-changing action. */
@@ -79,8 +83,10 @@ export default class PlaybackTimelineRunner<T extends SubtitleModel> {
         if (groups.length === 0 && !initialUpdate) return;
         if (groups.length > 0) await this.applyState(timestampMs);
         if (groups.some((group) => group.direction === 'backward')) return;
-        const stateChangedPosition = await this.callbacks.onAfterState(timestampMs);
-        if (stateChangedPosition) this.cursor.reset(timestampMs, { includeAtTimestamp: true });
+        const stateChangedTimestampMs = await this.callbacks.onAfterState(timestampMs);
+        if (stateChangedTimestampMs !== undefined) {
+            this.cursor.reset(stateChangedTimestampMs, { includeAtTimestamp: true });
+        }
     }
 
     private async applyState(timestampMs: number): Promise<void> {

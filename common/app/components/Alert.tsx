@@ -3,6 +3,7 @@ import { makeStyles } from '@mui/styles';
 import MuiAlert, { type AlertColor } from '@mui/material/Alert';
 import Grow from '@mui/material/Grow';
 import { prepend, remove, type Stack } from './notification-stack';
+import LogoIcon from '../../components/LogoIcon';
 
 const useAlertStyles = makeStyles(() => ({
     root: {
@@ -107,6 +108,7 @@ function AlertItem({
             <Grow in={open}>
                 <MuiAlert
                     severity={severity}
+                    icon={<LogoIcon fontSize="small" />}
                     onMouseEnter={onMouseEnter}
                     onMouseLeave={onMouseLeave}
                     style={{ pointerEvents: 'auto' }}

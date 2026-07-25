@@ -91,7 +91,6 @@ export default class VideoChannel {
     private loadFilesCallbacks: (() => void)[];
     private loadSubtitlesCallbacks: (() => void)[];
     private playModesCallbacks: ((modes: Set<PlayMode>) => void)[];
-    private pendingPlayModes?: Set<PlayMode>;
     private cardUpdatedDialogCallbacks: (() => void)[];
     private cardExportedDialogCallbacks: (() => void)[];
 
@@ -99,6 +98,7 @@ export default class VideoChannel {
     oncanplay: ((ev: Event) => void) | null = null;
     audioTracks?: AudioTrackModel[];
     selectedAudioTrack?: string;
+    playModes: Set<PlayMode>;
     duration: number;
     _playbackRate: number;
 
@@ -110,6 +110,7 @@ export default class VideoChannel {
         this.isReady = false;
         this.readyState = 0;
         this._playbackRate = 1;
+        this.playModes = new Set([PlayMode.normal]);
         this.selectedAudioTrack = undefined;
         this.readyCallbacks = [];
         this.playCallbacks = [];
@@ -306,7 +307,7 @@ export default class VideoChannel {
                 case 'playModes': {
                     const playModesMessage = event.data as PlayModesMessage;
                     const modes = new Set<PlayMode>(playModesMessage.playModes);
-                    if (this.playModesCallbacks.length === 0) this.pendingPlayModes = modes;
+                    this.playModes = modes;
                     for (const callback of this.playModesCallbacks) {
                         callback(new Set(modes));
                     }
@@ -470,13 +471,6 @@ export default class VideoChannel {
 
     onPlayModes(callback: (modes: Set<PlayMode>) => void) {
         this.playModesCallbacks.push(callback);
-
-        if (this.pendingPlayModes !== undefined) {
-            const playModes = this.pendingPlayModes;
-            this.pendingPlayModes = undefined;
-            callback(new Set(playModes));
-        }
-
         return () => this._remove(callback, this.playModesCallbacks);
     }
 
@@ -831,7 +825,6 @@ export default class VideoChannel {
         this.subtitlesUpdatedCallbacks = [];
         this.loadFilesCallbacks = [];
         this.playModesCallbacks = [];
-        this.pendingPlayModes = undefined;
         this.cardUpdatedDialogCallbacks = [];
         this.cardExportedDialogCallbacks = [];
     }

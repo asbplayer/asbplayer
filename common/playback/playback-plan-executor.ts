@@ -246,7 +246,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         }
     }
 
-    private onStart(event: PlaybackTimelineEvent): boolean {
+    /** Returns whether this start boundary auto-paused playback. */
+    private async onStart(event: PlaybackTimelineEvent): Promise<boolean> {
         const block: PlaybackTimelineBlock = event.block;
         const action = block.startAction;
         if (action === undefined) return false;
@@ -341,8 +342,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         if (modeChanged || options.forcePlaybackRate) this.callbacks.setPlaybackRate(playbackRate);
     }
 
-    private async onAfterState(timestampMs: number): Promise<boolean> {
-        if (this.updateOperationGeneration !== this.operationGeneration) return false;
+    /** Resolves to the condensed seek target when a seek completed, otherwise undefined. */
+    private async onAfterState(timestampMs: number): Promise<number | undefined> {
+        if (this.updateOperationGeneration !== this.operationGeneration) return;
         const target = this.nextCondensedTarget(timestampMs);
         if (
             target === undefined ||
@@ -350,7 +352,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation !== undefined ||
             this.callbacks.paused()
         ) {
-            return false;
+            return;
         }
 
         try {
@@ -360,12 +362,12 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             if (shouldPause) this.callbacks.pause();
             await seek;
-            if (!this.isCurrentOperation(operation)) return false;
+            if (!this.isCurrentOperation(operation)) return;
             if (shouldPause && !this.callbacks.paused()) this.callbacks.pause(); // Just in case the pause wasn't delivered asynchronously
-            if (this.callbacks.paused()) return false;
+            if (this.callbacks.paused()) return;
             await this.callbacks.play();
-            if (!this.isCurrentOperation(operation)) return false;
-            return true;
+            if (!this.isCurrentOperation(operation)) return;
+            return target;
         } finally {
             if (this.condensedOperation === this.operationGeneration) this.condensedOperation = undefined;
         }

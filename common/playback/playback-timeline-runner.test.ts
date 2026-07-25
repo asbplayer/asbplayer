@@ -13,7 +13,7 @@ describe('PlaybackTimelineRunner', () => {
         const corrections: number[] = [];
         const timeline = makeTimeline();
         const runner = new PlaybackTimelineRunner(timeline, 500, {
-            onStart: (event) => {
+            onStart: async (event) => {
                 starts.push(event.timestampMs);
                 return true;
             },
@@ -25,7 +25,7 @@ describe('PlaybackTimelineRunner', () => {
                 corrections.push(timestampMs);
             },
             onState: async () => {},
-            onAfterState: () => false,
+            onAfterState: async () => undefined,
         });
 
         await runner.update(4500);
@@ -42,7 +42,7 @@ describe('PlaybackTimelineRunner', () => {
             subtitleTriggerStartOffset: 500,
             subtitleTriggerEndOffset: -499,
         });
-        const start = jest.fn(() => true);
+        const start = jest.fn(async () => true);
         const end = jest.fn(() => ({ autoPaused: true, seeked: false }));
         const correct = jest.fn((timestampMs: number) => void timestampMs);
         const runner = new PlaybackTimelineRunner(timeline, 1000, {
@@ -52,7 +52,7 @@ describe('PlaybackTimelineRunner', () => {
                 correct(timestampMs);
             },
             onState: async () => {},
-            onAfterState: () => false,
+            onAfterState: async () => undefined,
         });
 
         await runner.update(2000);
@@ -67,14 +67,14 @@ describe('PlaybackTimelineRunner', () => {
         const timeline = makeTimeline();
         const starts: number[] = [];
         const runner = new PlaybackTimelineRunner(timeline, 500, {
-            onStart: (event) => {
+            onStart: async (event) => {
                 starts.push(event.timestampMs);
                 return false;
             },
             onEnd: () => ({ autoPaused: false, seeked: true }),
             correctAutoPause: async () => {},
             onState: async () => {},
-            onAfterState: () => false,
+            onAfterState: async () => undefined,
         });
 
         await runner.update(4500);
@@ -85,7 +85,7 @@ describe('PlaybackTimelineRunner', () => {
     it('reconciles persistent state but does not run edge actions when crossing backward', async () => {
         const timeline = makeTimeline();
         const states: (readonly SubtitleModel[])[] = [];
-        const starts = jest.fn(() => false);
+        const starts = jest.fn(async () => false);
         const ends = jest.fn(() => ({ autoPaused: false, seeked: false }));
         const runner = new PlaybackTimelineRunner(timeline, 1500, {
             onStart: starts,
@@ -94,7 +94,7 @@ describe('PlaybackTimelineRunner', () => {
             onState: async (_state, segment) => {
                 states.push(segment.showingSubtitles);
             },
-            onAfterState: () => false,
+            onAfterState: async () => undefined,
         });
 
         await runner.update(1600);
@@ -104,5 +104,29 @@ describe('PlaybackTimelineRunner', () => {
         expect(states).toEqual([[]]);
         expect(starts).not.toHaveBeenCalled();
         expect(ends).not.toHaveBeenCalled();
+    });
+
+    it('resets the cursor to the position returned after state changes playback position', async () => {
+        const starts: number[] = [];
+        let firstUpdate = true;
+        const runner = new PlaybackTimelineRunner(makeTimeline(), 500, {
+            onStart: async (event) => {
+                starts.push(event.timestampMs);
+                return false;
+            },
+            onEnd: async () => ({ autoPaused: false, seeked: false }),
+            correctAutoPause: async () => {},
+            onState: async () => {},
+            onAfterState: async () => {
+                if (!firstUpdate) return;
+                firstUpdate = false;
+                return 2500;
+            },
+        });
+
+        await runner.update(500);
+        await runner.update(3500);
+
+        expect(starts).toEqual([3000]);
     });
 });

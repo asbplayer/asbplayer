@@ -21,6 +21,7 @@ interface Props {
     selectedPlayModes: Set<PlayMode>;
     onPlayMode: (playMode: PlayMode) => void;
     renderButton: (props: PlaybackModeSelectorButtonProps) => React.ReactNode;
+    keepManualSelectorOpen?: boolean;
     temporaryOpenRequest?: number;
     onSelectorOpened?: () => void;
     onSelectorClosed?: () => void;
@@ -31,6 +32,7 @@ export default function PlaybackModeSelector({
     selectedPlayModes,
     onPlayMode,
     renderButton,
+    keepManualSelectorOpen = false,
     temporaryOpenRequest,
     onSelectorOpened,
     onSelectorClosed,
@@ -87,8 +89,10 @@ export default function PlaybackModeSelector({
         if (!hoveredRef.current) return;
 
         hoveredRef.current = false;
+        if (keepManualSelectorOpen && openTypeRef.current === 'manual') return;
+
         startAutoHide(playbackModeOverlayAutoHideDurationMouseLeave);
-    }, [startAutoHide]);
+    }, [keepManualSelectorOpen, startAutoHide]);
 
     useLayoutEffect(() => {
         if (!open || openTypeRef.current !== 'temporary') return;

@@ -33,6 +33,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection, { SettingsSubSection } from './SettingsSection';
+import ResponsiveSettingsStack from './ResponsiveSettingsStack';
 import { VideoSubtitleSplitBehavior } from '../settings';
 import { normalizePlaybackRate } from '../playback/playback-mode-controller';
 
@@ -44,14 +45,6 @@ function regexIsValid(regex: string) {
         return false;
     }
 }
-
-const responsiveSettingsStackSx = {
-    flexWrap: 'wrap',
-    '& > *': {
-        flex: '1 1 280px',
-        minWidth: 'min(100%, 280px)',
-    },
-} as const;
 
 interface Props {
     settings: AsbplayerSettings;
@@ -610,7 +603,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                 },
                             }}
                         />
-                        <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
+                        <ResponsiveSettingsStack>
                             <SettingsTextField
                                 type="number"
                                 color="primary"
@@ -647,14 +640,14 @@ const MiscSettingTab: React.FC<Props> = ({
                                     },
                                 }}
                             />
-                        </Stack>
+                        </ResponsiveSettingsStack>
                         <Typography variant="caption" color="textSecondary">
                             {t('settings.subtitleTriggerOffsetHelperText')}
                         </Typography>
                     </>
                 )}
                 <SettingsSubSection>{t('settings.subtitleGapTriggers')}</SettingsSubSection>
-                <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
+                <ResponsiveSettingsStack>
                     {supportsPlaybackEngine && (
                         <SettingsTextField
                             type="number"
@@ -695,7 +688,7 @@ const MiscSettingTab: React.FC<Props> = ({
                             },
                         }}
                     />
-                </Stack>
+                </ResponsiveSettingsStack>
                 <SettingsTextField
                     type="number"
                     color="primary"
@@ -717,7 +710,7 @@ const MiscSettingTab: React.FC<Props> = ({
                 />
                 {supportsPlaybackEngine && (
                     <>
-                        <Stack direction="row" spacing={1} useFlexGap sx={responsiveSettingsStackSx}>
+                        <ResponsiveSettingsStack>
                             <SettingsTextField
                                 type="number"
                                 color="primary"
@@ -756,7 +749,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                     },
                                 }}
                             />
-                        </Stack>
+                        </ResponsiveSettingsStack>
                         <Typography variant="caption" color="textSecondary">
                             {t('settings.subtitleTriggerGapOffsetHelperText')}
                         </Typography>

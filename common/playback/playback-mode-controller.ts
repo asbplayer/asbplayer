@@ -1,6 +1,6 @@
 import { PlayMode } from '@project/common';
 
-export const minimumPlaybackRate = 0.001;
+export const minimumPlaybackRate = 0.01;
 
 export const roundPlaybackRate = (playbackRate: number): number => Math.round(playbackRate * 1000) / 1000;
 

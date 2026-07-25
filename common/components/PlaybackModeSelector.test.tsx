@@ -54,11 +54,13 @@ describe('PlaybackModeSelector hover behavior', () => {
     });
 
     const renderSelector = ({
+        keepManualSelectorOpen,
         temporaryOpenRequest,
         selectedPlayModes = new Set([PlayMode.normal]),
         onSelectorClosed = jest.fn(),
         onSelectorOpened = jest.fn(),
     }: {
+        keepManualSelectorOpen?: boolean;
         temporaryOpenRequest?: number;
         selectedPlayModes?: Set<PlayMode>;
         onSelectorClosed?: jest.Mock;
@@ -69,6 +71,7 @@ describe('PlaybackModeSelector hover behavior', () => {
                 <PlaybackModeSelector
                     selectedPlayModes={selectedPlayModes}
                     onPlayMode={() => {}}
+                    keepManualSelectorOpen={keepManualSelectorOpen}
                     temporaryOpenRequest={temporaryOpenRequest}
                     onSelectorOpened={onSelectorOpened}
                     onSelectorClosed={onSelectorClosed}
@@ -125,6 +128,31 @@ describe('PlaybackModeSelector hover behavior', () => {
         expect(selector()).not.toBeNull();
 
         act(() => jest.advanceTimersByTime(1));
+        expect(selector()).toBeNull();
+    });
+
+    it('keeps a manually opened selector open when manual auto-hide is disabled', () => {
+        renderSelector({ keepManualSelectorOpen: true });
+
+        act(() => {
+            document.querySelector('button')?.click();
+        });
+        dispatchMouseEvent('mouseover');
+        dispatchMouseEvent('mouseout');
+
+        act(() => jest.advanceTimersByTime(3001));
+        expect(selector()).not.toBeNull();
+    });
+
+    it('still auto closes temporary selectors when manual auto-hide is disabled', () => {
+        renderSelector({ keepManualSelectorOpen: true, temporaryOpenRequest: 1 });
+
+        dispatchMouseEvent('mouseover');
+        act(() => jest.advanceTimersByTime(3000));
+        expect(selector()).not.toBeNull();
+
+        dispatchMouseEvent('mouseout');
+        act(() => jest.advanceTimersByTime(1000));
         expect(selector()).toBeNull();
     });
 

@@ -933,14 +933,18 @@ function PlayerComponent(
             ),
         [channel, onCopy, videoFile, subtitleFiles]
     );
-    useEffect(
-        () =>
-            channel?.onPlayModes((playModes) => {
-                playModesRef.current = playModes;
-                setPlayModes(playModes);
-            }),
-        [channel]
-    );
+    useEffect(() => {
+        if (channel === undefined) return;
+
+        const unsubscribe = channel.onPlayModes((playModes) => {
+            playModesRef.current = playModes;
+            setPlayModes(playModes);
+        });
+        const playModes = channel.playModes;
+        playModesRef.current = playModes;
+        setPlayModes(playModes);
+        return unsubscribe;
+    }, [channel]);
     useEffect(
         () =>
             channel?.onCurrentTime((currentTime, forwardToMedia) => {

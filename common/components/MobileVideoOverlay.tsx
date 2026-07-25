@@ -435,6 +435,7 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                         <PlaybackModeSelector
                             selectedPlayModes={new Set(model.playModes)}
                             onPlayMode={onPlayModeSelected}
+                            keepManualSelectorOpen
                             temporaryOpenRequest={playModeSelectorRequest}
                             onSelectorOpened={onPlayModeSelectorOpened}
                             onSelectorClosed={onPlayModeSelectorClosed}
@@ -458,9 +459,9 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                             selectorProps={{
                                 listStyle: {
                                     display: 'flex',
-                                    justifyContent: 'center',
+                                    justifyContent: 'flex-start',
                                     padding: 0,
-                                    overflowX: 'hidden',
+                                    overflowX: 'auto',
                                 },
                                 className: classes.playModePopOver,
                                 anchorOrigin: {

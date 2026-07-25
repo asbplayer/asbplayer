@@ -10,10 +10,10 @@ interface Props extends InputProps {
     disableKeyEvents?: boolean;
 }
 
-const valueToPrettyString = (v: number) => '×' + String(v.toFixed(3));
+const valueToPrettyString = (v: number) => '×' + String(v.toFixed(2));
 const stringToValue = (s: string) => Number(s);
 const rejectValue = (v: number) => v < minimumPlaybackRate;
-const placeholder = '×' + Number(1).toFixed(3);
+const placeholder = '×' + Number(1).toFixed(2);
 
 export default React.forwardRef(function PlaybackRateInput(
     { inputRef, playbackRate, onPlaybackRate, ...rest }: Props,

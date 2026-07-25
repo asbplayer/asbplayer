@@ -101,7 +101,8 @@ describe('VideoChannel playback intents', () => {
 
         channel.onPlayModes((modes) => received.push(modes));
 
-        expect(received).toEqual([new Set([PlayMode.fastForward, PlayMode.repeat])]);
+        expect(received).toEqual([]);
+        expect(channel.playModes).toEqual(new Set([PlayMode.fastForward, PlayMode.repeat]));
     });
 
     it('replays the latest paused state to late ready subscribers', () => {

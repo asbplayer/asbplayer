@@ -2,7 +2,7 @@ import type { AsbplayerSettings } from '@project/common/settings';
 import { isTrackSeekable } from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import { PlayMode } from '@project/common';
-import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
+import { buildPlaybackPlan, playbackPlansEqual, type PlaybackPlan } from '@project/common/playback/playback-plan';
 import PlaybackPlanExecutor, {
     playbackPlanCorrectionToleranceMs,
     type PlaybackPlanExecutorCallbacks,
@@ -163,10 +163,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.playbackModeController.setModes(playbackModesFromSettings(settings)),
                 { savePlaybackModes: false, rebuildWhenUnchanged: true }
             );
+            this.playbackPositionController.settingsChanged(this.settings);
         } else {
-            this.rebuildPlan();
+            if (!this.rebuildPlan()) return;
+            this.playbackPositionController.settingsChanged(this.settings);
         }
-        this.playbackPositionController.settingsChanged(this.settings);
     }
 
     playbackPositionKeysChanged(playbackPositionKeys: readonly string[]): void {
@@ -205,7 +206,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             return { notify: false, playbackRate: this.settings[setting] };
         }
         this.settings = { ...this.settings, [setting]: normalizedPlaybackRate };
-        this.rebuildPlan();
+        if (!this.rebuildPlan()) return { notify: false, playbackRate: this.settings[setting] };
         if (this.settings.rememberPlaybackRate) this.callbacks.saveSettings({ [setting]: normalizedPlaybackRate });
         return { notify: this.settings.playbackRateNotificationEnabled, playbackRate: normalizedPlaybackRate };
     }
@@ -294,9 +295,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
      * the plan or timeline should as rebuilding to update them is always preferred. It also serves to simplify
      * the overall logic by reducing runtime checks.
      */
-    private rebuildPlan(): void {
-        this.plan = this.buildPlan();
+    private rebuildPlan(): boolean {
+        const plan = this.buildPlan();
+        if (playbackPlansEqual(this.plan, plan)) return false;
+        this.plan = plan;
         this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs());
+        return true;
     }
 
     private applyPlaybackModeTransition(
