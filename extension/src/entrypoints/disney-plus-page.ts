@@ -150,13 +150,16 @@ export default defineUnlistedScript(() => {
     document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());
     document.addEventListener(pauseEventName, () => disneyPlusPlayer()?.pause());
 
-    setTimeout(() => {
+    // Install the JSON.parse/Response.json hooks synchronously (not deferred behind a
+    // setTimeout) since Disney+'s own bundle can fire and parse its playback manifest
+    // request within the same tick the page script finishes loading. A deferred install
+    // here was losing that race intermittently, leaving lastM3U8Url/lastBasename unset and
+    // subtitle auto-detection silently failing.
+    {
         let lastM3U8Url: string | undefined = undefined;
         let lastBasename: string | undefined = undefined;
-        const originalParse = JSON.parse;
-        JSON.parse = function (...args: unknown[]) {
-            // @ts-expect-error: forwarding original parse arguments
-            const value = originalParse.apply(this, args);
+
+        const processParsedValue = (value: any) => {
             if (value?.stream?.sources instanceof Array && value.stream.sources.length > 0) {
                 const url = value.stream.sources[0].complete?.url;
 
@@ -171,8 +174,27 @@ export default defineUnlistedScript(() => {
                     lastBasename += ` ${value?.data?.playerExperience?.subtitle}`;
                 }
             }
+        };
+
+        const originalParse = JSON.parse;
+        JSON.parse = function (...args: unknown[]) {
+            // @ts-expect-error: forwarding original parse arguments
+            const value = originalParse.apply(this, args);
+            processParsedValue(value);
             return value;
         };
+
+        // Response.prototype.json() is served by an internal parser that never calls the
+        // patched JSON.parse above, so hook it directly too in case Disney+ fetches the
+        // manifest that way in some region/experiment variant.
+        const originalResponseJson = Response.prototype.json;
+        Response.prototype.json = function (this: Response) {
+            return originalResponseJson.call(this).then((value: any) => {
+                processParsedValue(value);
+                return value;
+            });
+        };
+
         inferTracks(
             {
                 onRequest: async (addTrack, setBasename) => {
@@ -192,5 +214,5 @@ export default defineUnlistedScript(() => {
             },
             60_000
         );
-    }, 0);
+    }
 });
