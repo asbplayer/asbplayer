@@ -333,7 +333,7 @@ describe('AnimationFrameTimingDriver', () => {
             setPlaybackRate: () => playbackActions.push('playback-rate'),
             correctTimestamp: async () => {
                 playbackActions.push('correct-timestamp');
-                return true;
+                return { seekIssued: true };
             },
             showingSubtitlesChanged: (showing) => showingSubtitles.push(showing.map(({ text }) => text)),
         });

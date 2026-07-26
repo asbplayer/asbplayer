@@ -12,20 +12,16 @@ export interface PlaybackTimelineActionResult {
 }
 
 export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
-    /** Resolves to true when the start boundary auto-paused playback. */
-    onStart(event: PlaybackTimelineEvent): Promise<boolean>;
+    onStart(event: PlaybackTimelineEvent): Promise<{ readonly autoPaused: boolean }>;
     onEnd(
         event: PlaybackTimelineEvent,
         options: { readonly alreadyAutoPaused: boolean }
-    ): PlaybackTimelineActionResult | Promise<PlaybackTimelineActionResult>;
+    ): Promise<PlaybackTimelineActionResult>;
     correctAutoPause(timestampMs: number): Promise<void>;
     /** Reconciles state that must survive seeks, including showing subtitles and playback rate. */
     onState(state: PlaybackTimelineState, segment: PlaybackTimelineSegment<T>): Promise<void>;
-    /**
-     * Applies non-edge continuous behavior such as condensed playback after state is current.
-     * Resolves to the seek target when it seeks, otherwise undefined.
-     */
-    onAfterState(timestampMs: number): Promise<number | undefined>;
+    /** Applies non-edge continuous behavior such as condensed playback after state is current. */
+    onAfterState(timestampMs: number): Promise<{ readonly stateChangedTimestampMs?: number }>;
 }
 
 /** Applies precomputed crossed actions in time order and stops at the first position-changing action. */
@@ -59,7 +55,7 @@ export default class PlaybackTimelineRunner<T extends SubtitleModel> {
             let seeked = false;
             for (const event of group.events) {
                 if (event.edge === 'start') {
-                    autoPaused = (await this.callbacks.onStart(event)) || autoPaused;
+                    autoPaused = (await this.callbacks.onStart(event)).autoPaused || autoPaused;
                 } else {
                     const result = await this.callbacks.onEnd(event, { alreadyAutoPaused: autoPaused });
                     autoPaused = result.autoPaused || autoPaused;
@@ -86,7 +82,7 @@ export default class PlaybackTimelineRunner<T extends SubtitleModel> {
         if (groups.length === 0 && !initialUpdate) return;
         if (groups.length > 0) await this.applyState(timestampMs);
         if (groups.some((group) => group.direction === 'backward')) return;
-        const stateChangedTimestampMs = await this.callbacks.onAfterState(timestampMs);
+        const { stateChangedTimestampMs } = await this.callbacks.onAfterState(timestampMs);
         if (stateChangedTimestampMs !== undefined) {
             this.cursor.reset(stateChangedTimestampMs, { includeAtTimestamp: true });
         }

@@ -331,13 +331,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         await this.performSeek(targetTimestampMs);
     }
 
-    private async correctTimestamp(timestampMs: number): Promise<boolean> {
+    private async correctTimestamp(timestampMs: number): Promise<{ seekIssued: boolean }> {
         const targetTimestampMs = this.clampTimestamp(timestampMs);
         if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
-            return false;
+            return { seekIssued: false };
         }
         await this.performSeek(targetTimestampMs);
-        return true;
+        return { seekIssued: true };
     }
 
     private async performSeek(targetTimestampMs: number): Promise<void> {

@@ -507,7 +507,7 @@ describe('VideoFrameTimingDriver', () => {
             correctTimestamp: async (timestampMs) => {
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
-                return true;
+                return { seekIssued: true };
             },
             showingSubtitlesChanged: () => {},
         });
@@ -586,7 +586,7 @@ describe('VideoFrameTimingDriver', () => {
                 seeks.push(timestampMs);
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
-                return true;
+                return { seekIssued: true };
             },
             showingSubtitlesChanged: () => {},
         });
@@ -675,7 +675,7 @@ describe('VideoFrameTimingDriver', () => {
                 video.dispatchEvent(new Event('pause'));
             },
             setPlaybackRate: () => {},
-            correctTimestamp: async () => false,
+            correctTimestamp: async () => ({ seekIssued: false }),
             showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
@@ -750,7 +750,7 @@ describe('VideoFrameTimingDriver', () => {
             correctTimestamp: async (timestampMs) => {
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
-                return true;
+                return { seekIssued: true };
             },
             showingSubtitlesChanged: () => {},
         });
@@ -837,7 +837,7 @@ describe('VideoFrameTimingDriver', () => {
             correctTimestamp: async (timestampMs) => {
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
-                return true;
+                return { seekIssued: true };
             },
             showingSubtitlesChanged: () => {},
         });

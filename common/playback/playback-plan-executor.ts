@@ -24,7 +24,7 @@ export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel = 
     readonly pause: () => void;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
-    readonly correctTimestamp: (timestampMs: number) => Promise<boolean>;
+    readonly correctTimestamp: (timestampMs: number) => Promise<{ readonly seekIssued: boolean }>;
     readonly showingSubtitlesChanged: (subtitles: readonly T[]) => void;
 }
 
@@ -261,21 +261,20 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         }
     }
 
-    /** Returns whether this start boundary auto-paused playback. */
-    private async onStart(event: PlaybackTimelineEvent): Promise<boolean> {
+    private async onStart(event: PlaybackTimelineEvent): Promise<{ autoPaused: boolean }> {
         const block: PlaybackTimelineBlock = event.block;
         const action = block.startAction;
-        if (action === undefined) return false;
+        if (action === undefined) return { autoPaused: false };
 
         const blockId = block.id;
         const suppression = this.startPauseSuppression;
         if (suppression?.blockId === blockId) {
             this.startPauseSuppression = undefined;
-            if (block.endAction?.pause === true) return false;
+            if (block.endAction?.pause === true) return { autoPaused: false };
         }
 
         this.callbacks.pause();
-        return true;
+        return { autoPaused: true };
     }
 
     private async onEnd(
@@ -347,9 +346,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         if (modeChanged || options.forcePlaybackRate) this.callbacks.setPlaybackRate(playbackRate);
     }
 
-    /** Resolves to the condensed seek target when a seek completed, otherwise undefined. */
-    private async onAfterState(timestampMs: number): Promise<number | undefined> {
-        if (this.updateOperationGeneration !== this.operationGeneration) return;
+    private async onAfterState(timestampMs: number): Promise<{ stateChangedTimestampMs?: number }> {
+        if (this.updateOperationGeneration !== this.operationGeneration) return { stateChangedTimestampMs: undefined };
         const target = this.nextCondensedTarget(timestampMs);
         if (
             target === undefined ||
@@ -357,7 +355,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation !== undefined ||
             this.callbacks.paused()
         ) {
-            return;
+            return { stateChangedTimestampMs: undefined };
         }
 
         try {
@@ -367,12 +365,12 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
             if (shouldPause) this.callbacks.pause();
             await seek;
-            if (!this.isCurrentOperation(operation)) return;
+            if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
             if (shouldPause && !this.callbacks.paused()) this.callbacks.pause(); // Just in case the pause wasn't delivered asynchronously
-            if (this.callbacks.paused()) return;
+            if (this.callbacks.paused()) return { stateChangedTimestampMs: undefined };
             await this.callbacks.play();
-            if (!this.isCurrentOperation(operation)) return;
-            return target;
+            if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
+            return { stateChangedTimestampMs: target };
         } finally {
             if (this.condensedOperation === this.operationGeneration) this.condensedOperation = undefined;
         }
@@ -461,7 +459,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         const expectedDiscontinuity = { timestampMs, includeAtTimestamp: false };
         this.expectedDiscontinuity = expectedDiscontinuity;
         try {
-            const seekIssued = await this.callbacks.correctTimestamp(timestampMs);
+            const { seekIssued } = await this.callbacks.correctTimestamp(timestampMs);
             if (!seekIssued && this.expectedDiscontinuity === expectedDiscontinuity) {
                 this.expectedDiscontinuity = undefined;
             }

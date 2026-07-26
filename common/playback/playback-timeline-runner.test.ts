@@ -28,9 +28,9 @@ describe('PlaybackTimelineRunner', () => {
         const runner = new PlaybackTimelineRunner(timeline, 500, {
             onStart: async (event) => {
                 starts.push(event.timestampMs);
-                return true;
+                return { autoPaused: true };
             },
-            onEnd: (event) => {
+            onEnd: async (event) => {
                 ends.push(event.timestampMs);
                 return { autoPaused: true, seeked: false };
             },
@@ -38,7 +38,7 @@ describe('PlaybackTimelineRunner', () => {
                 corrections.push(timestampMs);
             },
             onState: async () => {},
-            onAfterState: async () => undefined,
+            onAfterState: async () => ({ stateChangedTimestampMs: undefined }),
         });
 
         await runner.update(4500);
@@ -64,8 +64,8 @@ describe('PlaybackTimelineRunner', () => {
                 endAction: { pause: true },
             })),
         });
-        const start = jest.fn(async () => true);
-        const end = jest.fn(() => ({ autoPaused: true, seeked: false }));
+        const start = jest.fn(async () => ({ autoPaused: true }));
+        const end = jest.fn(async () => ({ autoPaused: true, seeked: false }));
         const correct = jest.fn((timestampMs: number) => void timestampMs);
         const runner = new PlaybackTimelineRunner(actionTimeline, 1000, {
             onStart: start,
@@ -74,7 +74,7 @@ describe('PlaybackTimelineRunner', () => {
                 correct(timestampMs);
             },
             onState: async () => {},
-            onAfterState: async () => undefined,
+            onAfterState: async () => ({ stateChangedTimestampMs: undefined }),
         });
 
         await runner.update(2000);
@@ -91,12 +91,12 @@ describe('PlaybackTimelineRunner', () => {
         const runner = new PlaybackTimelineRunner(timeline, 500, {
             onStart: async (event) => {
                 starts.push(event.timestampMs);
-                return false;
+                return { autoPaused: false };
             },
-            onEnd: () => ({ autoPaused: false, seeked: true }),
+            onEnd: async () => ({ autoPaused: false, seeked: true }),
             correctAutoPause: async () => {},
             onState: async () => {},
-            onAfterState: async () => undefined,
+            onAfterState: async () => ({ stateChangedTimestampMs: undefined }),
         });
 
         await runner.update(4500);
@@ -107,8 +107,8 @@ describe('PlaybackTimelineRunner', () => {
     it('reconciles persistent state but does not run edge actions when crossing backward', async () => {
         const timeline = makeTimeline();
         const states: (readonly SubtitleModel[])[] = [];
-        const starts = jest.fn(async () => false);
-        const ends = jest.fn(() => ({ autoPaused: false, seeked: false }));
+        const starts = jest.fn(async () => ({ autoPaused: false }));
+        const ends = jest.fn(async () => ({ autoPaused: false, seeked: false }));
         const runner = new PlaybackTimelineRunner(timeline, 1500, {
             onStart: starts,
             onEnd: ends,
@@ -116,7 +116,7 @@ describe('PlaybackTimelineRunner', () => {
             onState: async (_state, segment) => {
                 states.push(segment.showingSubtitles);
             },
-            onAfterState: async () => undefined,
+            onAfterState: async () => ({ stateChangedTimestampMs: undefined }),
         });
 
         await runner.update(1600);
@@ -134,15 +134,15 @@ describe('PlaybackTimelineRunner', () => {
         const runner = new PlaybackTimelineRunner(makeTimeline(), 500, {
             onStart: async (event) => {
                 starts.push(event.timestampMs);
-                return false;
+                return { autoPaused: false };
             },
             onEnd: async () => ({ autoPaused: false, seeked: false }),
             correctAutoPause: async () => {},
             onState: async () => {},
             onAfterState: async () => {
-                if (!firstUpdate) return;
+                if (!firstUpdate) return { stateChangedTimestampMs: undefined };
                 firstUpdate = false;
-                return 2500;
+                return { stateChangedTimestampMs: 2500 };
             },
         });
 

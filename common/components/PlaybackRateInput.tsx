@@ -1,5 +1,5 @@
 import type { InputProps } from '@mui/material/Input';
-import React, { MutableRefObject } from 'react';
+import React, { MutableRefObject, useCallback } from 'react';
 import VideoControlInput from './VideoControlInput';
 import { minimumPlaybackRate, normalizePlaybackRate } from '../playback/playback-mode-controller';
 
@@ -19,6 +19,14 @@ export default React.forwardRef(function PlaybackRateInput(
     { inputRef, playbackRate, onPlaybackRate, ...rest }: Props,
     ref
 ) {
+    const handleNumberValue = useCallback(
+        (value: number) => {
+            const normalized = normalizePlaybackRate(value);
+            if (normalized !== undefined) onPlaybackRate(normalized);
+        },
+        [onPlaybackRate]
+    );
+
     return (
         <VideoControlInput
             ref={ref}
@@ -27,10 +35,7 @@ export default React.forwardRef(function PlaybackRateInput(
             valueToPrettyString={valueToPrettyString}
             stringToValue={stringToValue}
             numberValue={playbackRate}
-            onNumberValue={(value) => {
-                const normalized = normalizePlaybackRate(value);
-                if (normalized !== undefined) onPlaybackRate(normalized);
-            }}
+            onNumberValue={handleNumberValue}
             rejectValue={rejectValue}
             placeholder={placeholder}
             {...rest}

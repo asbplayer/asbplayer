@@ -49,7 +49,7 @@ function executorHarness(
         setPlaybackRate: (playbackRate) => rates.push(playbackRate),
         correctTimestamp: async (targetTimestampMs) => {
             corrections.push(targetTimestampMs);
-            return true;
+            return { seekIssued: true };
         },
         showingSubtitlesChanged: (subtitles) => showing.push(subtitles),
         ...callbackOverrides,
@@ -602,7 +602,7 @@ describe('PlaybackPlanExecutor', () => {
             [PlayMode.autoPause, PlayMode.repeat],
             1500,
             { autoPausePreference: AutoPausePreference.atEnd, repeatCountPreference: 1 },
-            { correctTimestamp: async () => false }
+            { correctTimestamp: async () => ({ seekIssued: false }) }
         );
 
         await harness.executor.update(2100, { lookaheadTimestampMs: undefined });

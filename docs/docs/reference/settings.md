@@ -681,7 +681,7 @@ Restores the last enabled playback modes when loading playback again. When disab
 
 ### Auto-pause preference
 
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pause at the end before restarting. The repeated start pause is skipped only when the same subtitles are showing at both edges.
+When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
 
 ### Repeat count preference
 
