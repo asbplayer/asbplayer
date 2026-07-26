@@ -394,7 +394,7 @@ describe('VideoFrameTimingDriver', () => {
         driver.unbind();
     });
 
-    it('detects timeline boundaries even when high-rate playback skips several frames', async () => {
+    it('refreshes persistent state when high-rate playback skips several frames', async () => {
         const video = new FakeVideo();
         const timeline = makeTimeline(
             [
@@ -424,7 +424,7 @@ describe('VideoFrameTimingDriver', () => {
         video.present(4500);
         await flush();
 
-        expect(crossed).toEqual([999, 1000, 1999, 2000, 2999, 3000, 3999, 4000]);
+        expect(crossed).toEqual([4500]);
         driver.unbind();
     });
 
@@ -532,6 +532,179 @@ describe('VideoFrameTimingDriver', () => {
 
         expect(repeatSeeks).toEqual([1000]);
 
+        driver.unbind();
+    });
+
+    it('does not re-enter a negative-offset start after correcting it with auto-pause', async () => {
+        const video = new FakeVideo();
+        video.currentTime = 3.5;
+        video.paused = false;
+        video.pause = () => {
+            video.paused = true;
+        };
+        const subtitle: IndexedSubtitleModel = {
+            text: 'one',
+            start: 4000,
+            end: 5000,
+            originalStart: 4000,
+            originalEnd: 5000,
+            track: 0,
+            index: 0,
+        };
+        const plan = buildPlaybackPlan({
+            subtitles: [subtitle],
+            durationMs: 6000,
+            playModes: new Set([PlayMode.autoPause]),
+            autoPausePreference: AutoPausePreference.atStart,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 0,
+            subtitleTriggerGapEndOffset: 0,
+            subtitleTriggerGapStartOffset: 0,
+            repeatCountPreference: 0,
+            condensedPlaybackMinimumSkipIntervalMs: 500,
+            playbackRate: 1,
+            fastForwardModePlaybackRate: 2.5,
+            fastForwardPlaybackMinimumSkipIntervalMs: 500,
+        });
+        const seeks: number[] = [];
+        const pauses: number[] = [];
+        const driverRef: { current?: VideoFrameTimingDriver } = {};
+        const executor = new PlaybackPlanExecutor(plan, 3500, {
+            play: async () => video.play(),
+            paused: () => video.paused,
+            pause: () => {
+                pauses.push(video.currentTime * 1000);
+                video.pause();
+            },
+            seek: async (timestampMs) => {
+                seeks.push(timestampMs);
+                void driverRef.current!.beginInternalSeek();
+                video.seek(timestampMs / 1000);
+            },
+            setPlaybackRate: () => {},
+            correctTimestamp: async (timestampMs) => {
+                seeks.push(timestampMs);
+                void driverRef.current!.beginInternalSeek();
+                video.seek(timestampMs / 1000);
+                return true;
+            },
+            showingSubtitlesChanged: () => {},
+        });
+        const driver = timingDriver(videoSource(video), {
+            onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
+            onDiscontinuity: (timestampMs) => executor.handleDiscontinuity(timestampMs),
+            onCancel: (options) => executor.cancelPendingOperations(options),
+            onPlaybackStarted: () => executor.playbackStarted(),
+        });
+        driverRef.current = driver;
+        driver.bind();
+
+        video.play();
+        video.present(4000);
+        await flushAll();
+
+        expect(pauses).toEqual([4000]);
+        expect(seeks).toEqual([3750]);
+
+        video.play();
+        video.present(3800);
+        await flushAll();
+
+        expect(pauses).toEqual([4000]);
+        expect(seeks).toEqual([3750]);
+        driver.unbind();
+    });
+
+    it('does not repeat a condensed seek after a late pause at a negative-offset start', async () => {
+        const video = new FakeVideo();
+        video.currentTime = 1.5;
+        video.paused = false;
+        video.pause = () => {
+            video.paused = true;
+        };
+        const subtitles: IndexedSubtitleModel[] = [
+            {
+                text: 'one',
+                start: 1000,
+                end: 2000,
+                originalStart: 1000,
+                originalEnd: 2000,
+                track: 0,
+                index: 0,
+            },
+            {
+                text: 'two',
+                start: 4000,
+                end: 5000,
+                originalStart: 4000,
+                originalEnd: 5000,
+                track: 0,
+                index: 1,
+            },
+        ];
+        const plan = buildPlaybackPlan({
+            subtitles,
+            durationMs: 6000,
+            playModes: new Set([PlayMode.autoPause, PlayMode.condensed]),
+            autoPausePreference: AutoPausePreference.atStart,
+            subtitleTriggerStartOffset: -250,
+            subtitleTriggerEndOffset: 0,
+            subtitleTriggerGapEndOffset: 0,
+            subtitleTriggerGapStartOffset: 0,
+            repeatCountPreference: 0,
+            condensedPlaybackMinimumSkipIntervalMs: 500,
+            playbackRate: 1,
+            fastForwardModePlaybackRate: 2.5,
+            fastForwardPlaybackMinimumSkipIntervalMs: 500,
+        });
+        const seeks: number[] = [];
+        const pauses: number[] = [];
+        const discontinuities: number[] = [];
+        const driverRef: { current?: VideoFrameTimingDriver } = {};
+        const executor = new PlaybackPlanExecutor(plan, 1500, {
+            play: async () => video.play(),
+            paused: () => video.paused,
+            pause: () => {
+                pauses.push(video.currentTime * 1000);
+                video.pause();
+            },
+            seek: async (timestampMs) => {
+                seeks.push(timestampMs);
+                void driverRef.current!.beginInternalSeek();
+                video.seek(timestampMs / 1000);
+                video.dispatchEvent(new Event('pause'));
+            },
+            setPlaybackRate: () => {},
+            correctTimestamp: async () => false,
+            showingSubtitlesChanged: () => {},
+        });
+        const driver = timingDriver(videoSource(video), {
+            onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
+            onDiscontinuity: (timestampMs) => {
+                discontinuities.push(timestampMs);
+                executor.handleDiscontinuity(timestampMs);
+            },
+            onCancel: (options) => executor.cancelPendingOperations(options),
+            onPlaybackStarted: () => executor.playbackStarted(),
+        });
+        driverRef.current = driver;
+        driver.bind();
+
+        video.play();
+        await flushAll();
+        await executor.update(2100, { lookaheadTimestampMs: undefined });
+        await flushAll();
+
+        expect(pauses).toEqual([3750]);
+        expect(seeks).toEqual([3750]);
+        expect(discontinuities).toEqual([1500, 3750]);
+
+        video.play();
+        video.present(3800);
+        await flushAll();
+
+        expect(pauses).toEqual([3750]);
+        expect(seeks).toEqual([3750]);
         driver.unbind();
     });
 

@@ -1,4 +1,6 @@
-export type ClockEvent = 'stop' | 'start' | 'settime';
+export type ClockEvent = 'stop' | 'start' | 'settime' | 'timeupdate';
+
+const TIMEUPDATE_INTERVAL_MS = 100;
 
 /** A monotonic millisecond-based media clock for playback without a media element. */
 export default class Clock {
@@ -7,10 +9,12 @@ export default class Clock {
     private startedAtMs = 0;
     private playbackRate = 1;
     private readonly now: () => number;
+    private timeUpdateHandle: ReturnType<typeof setInterval> | undefined;
     private readonly callbacks: { [event in ClockEvent]: (() => void)[] } = {
         stop: [],
         start: [],
         settime: [],
+        timeupdate: [],
     };
 
     constructor(now: () => number) {
@@ -65,11 +69,19 @@ export default class Clock {
 
     onEvent(eventName: ClockEvent, callback: () => void): () => void {
         this.callbacks[eventName].push(callback);
-        return () => this.remove(callback, this.callbacks[eventName]);
+        if (eventName === 'timeupdate' && this.timeUpdateHandle === undefined) {
+            this.timeUpdateHandle = setInterval(() => this.fireEvent('timeupdate'), TIMEUPDATE_INTERVAL_MS);
+        }
+        return () => this.removeEvent(eventName, callback);
     }
 
     removeEvent(eventName: ClockEvent, callback: () => void): void {
-        this.remove(callback, this.callbacks[eventName]);
+        const callbacks = this.callbacks[eventName];
+        this.remove(callback, callbacks);
+        if (eventName === 'timeupdate' && callbacks.length === 0 && this.timeUpdateHandle !== undefined) {
+            clearInterval(this.timeUpdateHandle);
+            this.timeUpdateHandle = undefined;
+        }
     }
 
     private elapsedMs(): number {

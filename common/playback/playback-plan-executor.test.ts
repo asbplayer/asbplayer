@@ -273,6 +273,59 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.corrections).toEqual([1000, 1999]);
     });
 
+    it('treats overlapping subtitles as one auto-pause and repeat block', async () => {
+        const first = makeSubtitle({ end: 3000, originalEnd: 3000 });
+        const second = makeSubtitle({ start: 2000, end: 4000, originalStart: 2000, originalEnd: 4000, index: 1 });
+        const harness = executorHarness([PlayMode.autoPause, PlayMode.repeat], 1500, {
+            subtitles: [first, second],
+            autoPausePreference: AutoPausePreference.atStartAndEnd,
+            repeatCountPreference: 1,
+        });
+
+        await harness.executor.update(4000, { lookaheadTimestampMs: undefined });
+        harness.resume();
+        await harness.executor.playbackStarted();
+        harness.executor.reset(1000, { includeAtTimestamp: true, cause: 'internal-seek' });
+        await harness.executor.update(3999, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(2);
+        expect(harness.corrections).toEqual([3999, 3999]);
+        expect(harness.seeks).toEqual([1000]);
+    });
+
+    it('clamps playback offsets to the gap between neighboring subtitles', () => {
+        const first = makeSubtitle();
+        const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
+        const plan = makePlan([PlayMode.autoPause], {
+            subtitles: [first, second],
+            durationMs: 6000,
+            autoPausePreference: AutoPausePreference.atStartAndEnd,
+            subtitleTriggerStartOffset: 5000,
+            subtitleTriggerEndOffset: 5000,
+        });
+
+        expect(plan.timeline.blocks).toEqual([
+            expect.objectContaining({ playbackModeStartMs: 2999, playbackModeEndMs: 2999 }),
+            expect.objectContaining({ playbackModeStartMs: 5999, playbackModeEndMs: 5999 }),
+        ]);
+    });
+
+    it('pauses only once when neighboring auto-pause offsets meet', async () => {
+        const first = makeSubtitle();
+        const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
+        const harness = executorHarness([PlayMode.autoPause], 1500, {
+            subtitles: [first, second],
+            autoPausePreference: AutoPausePreference.atStartAndEnd,
+            subtitleTriggerStartOffset: -501,
+            subtitleTriggerEndOffset: 500,
+        });
+
+        await harness.executor.update(2500, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(1);
+        expect(harness.corrections).toEqual([2499]);
+    });
+
     it('keeps the ending subtitle visible when auto-pausing with a zero end offset', async () => {
         const subtitle = makeSubtitle();
         const harness = executorHarness([PlayMode.autoPause], 1500, {
@@ -391,6 +444,28 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.pauses).toHaveLength(3);
         expect(harness.seeks).toEqual([1000, 1000]);
         expect(harness.corrections).toEqual([1000, 1999, 1999]);
+    });
+
+    it('finishes repeats before processing the next subtitle boundary', async () => {
+        const first = makeSubtitle();
+        const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
+        const harness = executorHarness([PlayMode.autoPause, PlayMode.repeat], 1500, {
+            subtitles: [first, second],
+            autoPausePreference: AutoPausePreference.atStartAndEnd,
+            repeatCountPreference: 1,
+        });
+
+        await harness.executor.update(3500, { lookaheadTimestampMs: undefined });
+        harness.resume();
+        await harness.executor.playbackStarted();
+        harness.executor.reset(1000, { includeAtTimestamp: true, cause: 'internal-seek' });
+        await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
+        harness.resume();
+        await harness.executor.update(3500, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(3);
+        expect(harness.corrections).toEqual([1999, 1999, 3000]);
+        expect(harness.seeks).toEqual([1000]);
     });
 
     it('stops showing overlapping subtitles independently at their different end timestamps', async () => {
@@ -623,7 +698,7 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.pauses).toHaveLength(1);
     });
 
-    it('does not suppress the repeated start pause when the showing subtitles change', async () => {
+    it('suppresses the repeated start pause even when the showing subtitles change', async () => {
         const earlier = makeSubtitle({ end: 3000, originalEnd: 3000 });
         const later = makeSubtitle({ start: 2000, end: 4000, originalStart: 2000, originalEnd: 4000, index: 1 });
         const harness = executorHarness([PlayMode.autoPause, PlayMode.repeat], 2500, {
@@ -640,8 +715,8 @@ describe('PlaybackPlanExecutor', () => {
         await harness.executor.update(1000, { lookaheadTimestampMs: undefined });
 
         expect(harness.showing).toEqual([[earlier, later], [later], [earlier]]);
-        expect(harness.pauses).toHaveLength(2);
-        expect(harness.corrections).toEqual([3999, 1000]);
+        expect(harness.pauses).toHaveLength(1);
+        expect(harness.corrections).toEqual([3999]);
     });
 
     it('preserves pending repeat start-pause suppression across an equivalent replacement plan', async () => {
@@ -796,7 +871,7 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.rates).toEqual([2.5, 1.25]);
     });
 
-    it('pauses during a condensed seek when its target crosses an auto-pause start', async () => {
+    it('seeks to an auto-pause start when it is earlier than the next subtitle target', async () => {
         const events: string[] = [];
         let paused = false;
         const harness = executorHarness(
@@ -810,6 +885,7 @@ describe('PlaybackPlanExecutor', () => {
                 autoPausePreference: AutoPausePreference.atStart,
                 subtitleTriggerStartOffset: -250,
                 subtitleTriggerGapEndOffset: 0,
+                condensedPlaybackMinimumSkipIntervalMs: 500,
             },
             {
                 paused: () => paused,
@@ -817,8 +893,8 @@ describe('PlaybackPlanExecutor', () => {
                     paused = true;
                     events.push('pause');
                 },
-                seek: async () => {
-                    events.push('seek');
+                seek: async (timestampMs) => {
+                    events.push(`seek:${timestampMs}`);
                 },
                 play: async () => {
                     paused = false;
@@ -828,8 +904,46 @@ describe('PlaybackPlanExecutor', () => {
         );
 
         await harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+        expect(events).toEqual(['seek:3750', 'pause']);
 
-        expect(events).toEqual(['seek', 'pause']);
+        harness.executor.reset(3750, { includeAtTimestamp: false, cause: 'internal-seek' });
+        harness.resume();
+        await harness.executor.update(3751, { lookaheadTimestampMs: undefined });
+
+        expect(events).toEqual(['seek:3750', 'pause']);
+    });
+
+    it('pauses at a negative-offset auto-pause start when a frame jumps past it', async () => {
+        const harness = executorHarness([PlayMode.autoPause], 3500, {
+            subtitles: [
+                makeSubtitle(),
+                makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
+            ],
+            autoPausePreference: AutoPausePreference.atStart,
+            subtitleTriggerStartOffset: -250,
+        });
+
+        await harness.executor.update(4000, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(1);
+        expect(harness.corrections).toEqual([3750]);
+    });
+
+    it('predicts a negative-offset auto-pause start before the next frame', async () => {
+        const harness = executorHarness([PlayMode.fastForward, PlayMode.autoPause], 3500, {
+            subtitles: [
+                makeSubtitle(),
+                makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
+            ],
+            autoPausePreference: AutoPausePreference.atStart,
+            subtitleTriggerStartOffset: -250,
+        });
+
+        const update = harness.executor.update(3700, { lookaheadTimestampMs: 4000 });
+
+        expect(harness.pauses).toHaveLength(1);
+        await update;
+        expect(harness.corrections).toEqual([3750]);
     });
 
     it('lets auto-pause start handle a condensed target immediately before the trigger', async () => {
@@ -1084,6 +1198,77 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.seeks).toEqual([3749]);
     });
 
+    it('waits for an auto-pause end with a positive offset before condensing the gap', async () => {
+        const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
+        const harness = executorHarness([PlayMode.autoPause, PlayMode.condensed], 1500, {
+            subtitles: [makeSubtitle(), second],
+            autoPausePreference: AutoPausePreference.atEnd,
+            subtitleTriggerEndOffset: 500,
+            condensedPlaybackMinimumSkipIntervalMs: 400,
+        });
+
+        await harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+        expect(harness.seeks).toEqual([]);
+        expect(harness.pauses).toEqual([]);
+
+        await harness.executor.update(2500, { lookaheadTimestampMs: undefined });
+        expect(harness.corrections).toEqual([2499]);
+        harness.resume();
+        await harness.executor.playbackStarted();
+
+        expect(harness.seeks).toEqual([2999]);
+    });
+
+    it('waits for repeats to resolve before condensing after an auto-pause end', async () => {
+        const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
+        const harness = executorHarness([PlayMode.autoPause, PlayMode.condensed, PlayMode.repeat], 1500, {
+            subtitles: [makeSubtitle(), second],
+            autoPausePreference: AutoPausePreference.atEnd,
+            subtitleTriggerEndOffset: 500,
+            condensedPlaybackMinimumSkipIntervalMs: 400,
+            repeatCountPreference: 1,
+        });
+
+        await harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+        expect(harness.seeks).toEqual([]);
+
+        await harness.executor.update(2500, { lookaheadTimestampMs: undefined });
+        harness.resume();
+        await harness.executor.playbackStarted();
+        harness.executor.reset(1000, { includeAtTimestamp: true, cause: 'internal-seek' });
+        await harness.executor.update(1000, { lookaheadTimestampMs: undefined });
+        harness.resume();
+        await harness.executor.update(2500, { lookaheadTimestampMs: undefined });
+
+        expect(harness.seeks).toEqual([1000]);
+        expect(harness.corrections).toEqual([2499, 2499]);
+        harness.resume();
+        await harness.executor.playbackStarted();
+
+        expect(harness.seeks).toEqual([1000, 2999]);
+    });
+
+    it('waits for a repeat end before condensing the gap', async () => {
+        const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
+        const harness = executorHarness([PlayMode.condensed, PlayMode.repeat], 1500, {
+            subtitles: [makeSubtitle(), second],
+            subtitleTriggerEndOffset: 500,
+            condensedPlaybackMinimumSkipIntervalMs: 400,
+            repeatCountPreference: 1,
+        });
+
+        await harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+        expect(harness.seeks).toEqual([]);
+
+        await harness.executor.update(2500, { lookaheadTimestampMs: undefined });
+        expect(harness.seeks).toEqual([1000]);
+
+        harness.executor.reset(1000, { includeAtTimestamp: true, cause: 'internal-seek' });
+        await harness.executor.update(2500, { lookaheadTimestampMs: undefined });
+
+        expect(harness.seeks).toEqual([1000, 2999]);
+    });
+
     it('reconciles visible subtitles on a user seek without firing crossed playback actions', async () => {
         const first = makeSubtitle();
         const second = makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 });
@@ -1146,6 +1331,15 @@ describe('PlaybackPlanExecutor', () => {
 
     it('reports true while the fast-forward playback state is active', () => {
         const harness = executorHarness([PlayMode.fastForward], 3000);
+
+        expect(harness.executor.isFastForwarding).toBe(true);
+    });
+
+    it('updates fast-forward state when a paused seek changes the current timestamp', () => {
+        const harness = executorHarness([PlayMode.fastForward], 1500);
+        harness.pauseMedia();
+
+        harness.executor.reset(3000, { includeAtTimestamp: true, cause: 'user-seek' });
 
         expect(harness.executor.isFastForwarding).toBe(true);
     });
@@ -1215,6 +1409,70 @@ describe('PlaybackPlanExecutor', () => {
         await update;
 
         expect(harness.plays).toEqual([]);
+    });
+
+    it('cancels an in-flight condensed seek when the plan changes', async () => {
+        let resolveSeek!: () => void;
+        let resolveSeekStarted!: () => void;
+        const seekFinished = new Promise<void>((resolve) => {
+            resolveSeek = resolve;
+        });
+        const seekStarted = new Promise<void>((resolve) => {
+            resolveSeekStarted = resolve;
+        });
+        const seekCalls: number[] = [];
+        const subtitles = [
+            makeSubtitle(),
+            makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
+        ];
+        const harness = executorHarness(
+            [PlayMode.condensed],
+            1500,
+            { subtitles },
+            {
+                seek: async (timestampMs) => {
+                    seekCalls.push(timestampMs);
+                    resolveSeekStarted();
+                    await seekFinished;
+                },
+            }
+        );
+
+        const update = harness.executor.update(2000, { lookaheadTimestampMs: undefined });
+        await seekStarted;
+        harness.executor.replacePlan(makePlan([PlayMode.normal], { subtitles }), 2000);
+        resolveSeek();
+        await update;
+
+        expect(seekCalls).toEqual([3999]);
+        expect(harness.plays).toEqual([]);
+    });
+
+    it('cancels an in-flight repeat seek when the plan changes', async () => {
+        let resolveSeek!: () => void;
+        const seekFinished = new Promise<void>((resolve) => {
+            resolveSeek = resolve;
+        });
+        const seekCalls: number[] = [];
+        const harness = executorHarness(
+            [PlayMode.repeat],
+            1500,
+            { repeatCountPreference: 1 },
+            {
+                seek: async (timestampMs) => {
+                    seekCalls.push(timestampMs);
+                    await seekFinished;
+                },
+            }
+        );
+
+        const update = harness.executor.update(1999, { lookaheadTimestampMs: undefined });
+        await Promise.resolve();
+        harness.executor.replacePlan(makePlan([PlayMode.normal]), 1999);
+        resolveSeek();
+        await update;
+
+        expect(seekCalls).toEqual([1000]);
     });
 
     it('does not condense the gap selected by a user seek after playback resumes', async () => {

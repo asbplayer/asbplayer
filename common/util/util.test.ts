@@ -4,6 +4,7 @@ import {
     arrayEquals,
     AsyncSemaphore,
     buildSubtitleTracks,
+    clamp,
     compareSubtitlesForDisplay,
     computeStyles,
     computeStyleString,
@@ -29,7 +30,10 @@ import {
     localizedDate,
     mapAsync,
     mockSurroundingSubtitles,
+    normalizeFinite,
     normalizeForSearch,
+    normalizeNonNegative,
+    normalizeNonPositive,
     normalizedLookupTerms,
     percentToHex2,
     seekWithNudge,
@@ -67,6 +71,33 @@ function textSubtitleSettings(overrides: Partial<TextSubtitleSettings> = {}): Te
         ...overrides,
     };
 }
+
+describe('numeric normalization', () => {
+    it('normalizes non-finite values to zero', () => {
+        expect(normalizeFinite(Number.NaN)).toBe(0);
+        expect(normalizeFinite(Number.POSITIVE_INFINITY)).toBe(0);
+        expect(normalizeFinite(Number.NaN, -5)).toBe(-5);
+        expect(normalizeFinite(-5)).toBe(-5);
+    });
+
+    it('normalizes values to the non-negative range', () => {
+        expect(normalizeNonNegative(-5)).toBe(0);
+        expect(normalizeNonNegative(Number.NaN)).toBe(0);
+        expect(normalizeNonNegative(5)).toBe(5);
+    });
+
+    it('normalizes values to the non-positive range', () => {
+        expect(normalizeNonPositive(5)).toBe(0);
+        expect(normalizeNonPositive(Number.NaN)).toBe(0);
+        expect(normalizeNonPositive(-5)).toBe(-5);
+    });
+
+    it('clamps values to a bounded range', () => {
+        expect(clamp(-1, 0, 10)).toBe(0);
+        expect(clamp(5, 0, 10)).toBe(5);
+        expect(clamp(11, 0, 10)).toBe(10);
+    });
+});
 
 describe('arrayEquals', () => {
     it('returns true for 0 items', () => {

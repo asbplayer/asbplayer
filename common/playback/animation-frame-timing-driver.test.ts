@@ -210,7 +210,7 @@ describe('AnimationFrameTimingDriver', () => {
         driver.unbind();
     });
 
-    it('processes every crossed boundary after dropped animation frames', async () => {
+    it('refreshes persistent state after dropped animation frames', async () => {
         let nowMs = 500;
         const clock = new Clock(() => nowMs);
         clock.setTime(nowMs);
@@ -247,7 +247,7 @@ describe('AnimationFrameTimingDriver', () => {
         animationFrames.present();
         await flush();
 
-        expect(crossed).toEqual([999, 1000, 1999, 2000, 2999, 3000, 3999, 4000]);
+        expect(crossed).toEqual([4500]);
         driver.unbind();
     });
 

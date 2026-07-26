@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import Clock from '@project/common/playback/clock';
 
 describe('Clock', () => {
@@ -54,5 +54,23 @@ describe('Clock', () => {
         clock.start();
 
         expect(events).toEqual(['first', 'second']);
+    });
+
+    it('notifies timeupdate listeners periodically and stops after the last listener is removed', () => {
+        jest.useFakeTimers();
+        try {
+            const clock = new Clock(() => 0);
+            const listener = jest.fn();
+            const unsubscribe = clock.onEvent('timeupdate', listener);
+
+            jest.advanceTimersByTime(700);
+            expect(listener).toHaveBeenCalledTimes(7);
+
+            unsubscribe();
+            jest.advanceTimersByTime(700);
+            expect(listener).toHaveBeenCalledTimes(7);
+        } finally {
+            jest.useRealTimers();
+        }
     });
 });

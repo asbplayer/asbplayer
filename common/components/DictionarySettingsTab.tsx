@@ -54,6 +54,7 @@ import { WaniKani, WaniKaniUser } from '../wanikani';
 import { Yomitan } from '../yomitan';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import SettingsTextField from './SettingsTextField';
+import NumericSettingInput from './NumericSettingInput';
 import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import {
     DictionaryBuildAnkiCacheProgress,
@@ -1615,8 +1616,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 )}
                 {(selectedDictionary.dictionaryYomitanParser === 'scanning-parser' ||
                     !supportsDictionaryYomitanMecab) && (
-                    <SettingsTextField
-                        type="number"
+                    <NumericSettingInput
                         label={t('settings.dictionaryYomitanScanLength')}
                         value={selectedDictionary.dictionaryYomitanScanLength}
                         helperText={getHelperTextForCacheSettingsDependencies(
@@ -1624,11 +1624,11 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             'dictionaryYomitanScanLength'
                         )}
                         color="primary"
-                        onChange={(e) => {
+                        onValueChange={(value) => {
                             const newTracks = [...dictionaryTracks];
                             newTracks[selectedDictionaryTrack] = {
                                 ...newTracks[selectedDictionaryTrack],
-                                dictionaryYomitanScanLength: Number(e.target.value),
+                                dictionaryYomitanScanLength: value,
                             };
                             void onSettingChanged('dictionaryTracks', newTracks);
                         }}
@@ -1749,8 +1749,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         />
                     )}
                 />
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.dictionaryAnkiMatureCutoff')}
                     value={selectedDictionary.dictionaryAnkiMatureCutoff}
                     helperText={getHelperTextForCacheSettingsDependencies(
@@ -1758,11 +1757,11 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         'dictionaryAnkiMatureCutoff'
                     )}
                     color="primary"
-                    onChange={(e) => {
+                    onValueChange={(value) => {
                         const newTracks = [...dictionaryTracks];
                         newTracks[selectedDictionaryTrack] = {
                             ...newTracks[selectedDictionaryTrack],
-                            dictionaryAnkiMatureCutoff: Number(e.target.value),
+                            dictionaryAnkiMatureCutoff: value,
                         };
                         void onSettingChanged('dictionaryTracks', newTracks);
                     }}
@@ -1982,17 +1981,16 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     )}
                 </FormControl>
                 {selectedDictionaryShowThickness && (
-                    <SettingsTextField
-                        type="number"
+                    <NumericSettingInput
                         label={t('settings.dictionaryTokenStylingThickness')}
                         fullWidth
                         value={selectedDictionary.dictionaryTokenStylingThickness}
                         color="primary"
-                        onChange={(e) => {
+                        onValueChange={(value) => {
                             const newTracks = [...dictionaryTracks];
                             newTracks[selectedDictionaryTrack] = {
                                 ...newTracks[selectedDictionaryTrack],
-                                dictionaryTokenStylingThickness: Number(e.target.value),
+                                dictionaryTokenStylingThickness: value,
                             };
                             void onSettingChanged('dictionaryTracks', newTracks);
                         }}
@@ -2067,20 +2065,15 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             <Typography sx={{ minWidth: 'min(50%,110px)' }}>{t(labelKey)}</Typography>
                             <div style={{ flexGrow: 1 }} />
                             <div style={{ width: 'min(50%,110px)', flexShrink: 0 }}>
-                                <SettingsTextField
-                                    type="number"
+                                <NumericSettingInput
                                     size="small"
                                     value={
                                         selectedDictionary.dictionaryTokenAnnotationConfig[tokenAnnotationTarget][
                                             annotation
                                         ].size
                                     }
-                                    onChange={(e) =>
-                                        updateDictionaryTokenAnnotationSize(
-                                            tokenAnnotationTarget,
-                                            annotation,
-                                            Number(e.target.value)
-                                        )
+                                    onValueChange={(value) =>
+                                        updateDictionaryTokenAnnotationSize(tokenAnnotationTarget, annotation, value)
                                     }
                                     slotProps={{
                                         htmlInput: {
@@ -2253,18 +2246,16 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                     })
                                                 }
                                             />
-                                            <TextField
-                                                type="number"
+                                            <NumericSettingInput
                                                 label={t('settings.dictionaryTokenStatusAlpha')}
                                                 sx={{ flexGrow: 1 }}
                                                 value={Math.round(hex2ToPercent(alpha) * 100)}
                                                 disabled={!display}
-                                                onChange={(e) => {
-                                                    const parsed = Number(e.target.value);
-                                                    if (Number.isNaN(parsed)) return;
+                                                normalizeValue={(value) => Math.max(0, Math.min(100, value))}
+                                                onValueChange={(value) => {
                                                     updateTokenStatusConfig({
                                                         ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
-                                                        alpha: percentToHex2(Math.max(0, Math.min(100, parsed)) / 100),
+                                                        alpha: percentToHex2(value / 100),
                                                     });
                                                 }}
                                                 slotProps={{

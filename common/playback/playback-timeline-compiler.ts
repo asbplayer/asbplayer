@@ -1,5 +1,6 @@
 import type { SubtitleModel } from '@project/common';
 import type { PlaybackTimelineBlock, PlaybackTimelineSnapshot } from '@project/common/playback/playback-timeline';
+import { clamp, normalizeFinite, normalizeNonNegative, normalizeNonPositive } from '@project/common/util';
 
 export interface PlaybackTimelineOptions<T extends SubtitleModel> {
     /** Subtitles that are eligible to influence playback modes. */
@@ -19,8 +20,6 @@ type MutableBlock<T extends SubtitleModel> = {
     subtitles: T[];
 };
 
-const finiteOrZero = (value: number) => (Number.isFinite(value) ? value : 0);
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const blockId = <T extends SubtitleModel>(block: MutableBlock<T>): string =>
     JSON.stringify(
         block.subtitles
@@ -58,10 +57,10 @@ const blocksFromSubtitles = <T extends SubtitleModel>(
         });
     }
 
-    const subtitleTriggerStartOffset = finiteOrZero(subtitleTriggerStartOffsetMs);
-    const subtitleTriggerEndOffset = finiteOrZero(subtitleTriggerEndOffsetMs);
-    const subtitleTriggerGapStartOffset = Math.max(0, finiteOrZero(subtitleTriggerGapStartOffsetMs));
-    const subtitleTriggerGapEndOffset = Math.min(0, finiteOrZero(subtitleTriggerGapEndOffsetMs));
+    const subtitleTriggerStartOffset = normalizeFinite(subtitleTriggerStartOffsetMs);
+    const subtitleTriggerEndOffset = normalizeFinite(subtitleTriggerEndOffsetMs);
+    const subtitleTriggerGapStartOffset = normalizeNonNegative(subtitleTriggerGapStartOffsetMs);
+    const subtitleTriggerGapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffsetMs);
     return mutableBlocks.map((block, index) => {
         const previousEndMs = mutableBlocks[index - 1]?.endMs ?? 0;
         const nextStartMs = mutableBlocks[index + 1]?.startMs ?? durationMs;

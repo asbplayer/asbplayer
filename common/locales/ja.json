@@ -319,6 +319,7 @@
             "progressCompleted": "{{current}} / {{total}} をエクスポートしました"
         },
         "playbackRate": "再生速度：{{rate}}",
+        "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "保存しました：{{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",

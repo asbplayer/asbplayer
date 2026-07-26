@@ -84,7 +84,6 @@ export default class TimingUpdateQueue {
         if (!this.active()) return;
         if (!this.acceptTimestamp(timestampMs)) return;
         this.queuedUpdate = { timestampMs, options };
-        if (this.processing) return;
         this.process();
     }
 

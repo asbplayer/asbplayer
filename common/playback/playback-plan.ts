@@ -7,7 +7,13 @@ import type {
     PlaybackTimelineState,
 } from '@project/common/playback/playback-timeline';
 import { compilePlaybackTimeline } from '@project/common/playback/playback-timeline-compiler';
-import { areSubtitleModelsEqual, arrayEquals } from '@project/common/util';
+import {
+    areSubtitleModelsEqual,
+    arrayEquals,
+    normalizeFinite,
+    normalizeNonNegative,
+    normalizeNonPositive,
+} from '@project/common/util';
 
 export interface PlaybackPlanFastForward {
     readonly playbackRate: number;
@@ -51,8 +57,6 @@ const autoPausePreferenceIncludes = (
     edge: AutoPausePreference.atStart | AutoPausePreference.atEnd
 ) => preference === edge || preference === AutoPausePreference.atStartAndEnd;
 
-const normalizedRepeatCount = (repeatCount: number): number => Math.max(0, Math.floor(repeatCount));
-const finiteOrZero = (value: number): number => (Number.isFinite(value) ? value : 0);
 export const timestampComparisonToleranceMs = 1e-6;
 
 export const buildPlaybackPlan = <T extends SubtitleModel>({
@@ -75,8 +79,10 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     const autoPauseAtStart = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
     const autoPauseAtEnd = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atEnd);
     const repeat = playModes.has(PlayMode.repeat);
-    const startOffset = finiteOrZero(subtitleTriggerStartOffset);
-    const gapEndOffset = Math.min(0, finiteOrZero(subtitleTriggerGapEndOffset));
+    const startOffset = normalizeFinite(subtitleTriggerStartOffset);
+    const gapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffset);
+    const condensedMinimumSkipIntervalMs = normalizeNonNegative(condensedPlaybackMinimumSkipIntervalMs);
+    const fastForwardMinimumSkipIntervalMs = normalizeNonNegative(fastForwardPlaybackMinimumSkipIntervalMs);
     const timeline = compilePlaybackTimeline({
         subtitles,
         displaySubtitles,
@@ -97,7 +103,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
                       ...(repeat
                           ? {
                                 repeat: {
-                                    count: normalizedRepeatCount(repeatCountPreference),
+                                    count: normalizeNonNegative(Math.floor(repeatCountPreference)),
                                 },
                             }
                           : {}),
@@ -115,7 +121,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
         ...(playModes.has(PlayMode.condensed)
             ? {
                   condensed: {
-                      minimumSkipIntervalMs: condensedPlaybackMinimumSkipIntervalMs,
+                      minimumSkipIntervalMs: condensedMinimumSkipIntervalMs,
                       pauseAtStart:
                           autoPauseAtStart && startOffset <= 0 && Math.abs(gapEndOffset) <= Math.abs(startOffset),
                   },
@@ -125,7 +131,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
             ? {
                   fastForward: {
                       playbackRate: fastForwardModePlaybackRate,
-                      minimumSkipIntervalMs: fastForwardPlaybackMinimumSkipIntervalMs,
+                      minimumSkipIntervalMs: fastForwardMinimumSkipIntervalMs,
                   },
               }
             : {}),

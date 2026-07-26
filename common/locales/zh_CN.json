@@ -319,6 +319,7 @@
             "progressCompleted": "已导出 {{current}} / {{total}}"
         },
         "playbackRate": "播放速度：{{Rate}}",
+        "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "已保存进度：{{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",

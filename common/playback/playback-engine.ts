@@ -199,23 +199,29 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
     }
 
-    playbackRateChanged(playbackRate: number): { readonly notify: boolean; readonly playbackRate: number } {
-        const setting = this.executor.isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
+    playbackRateChanged(playbackRate: number): {
+        readonly notify: boolean;
+        readonly playbackRate: number;
+        readonly locKey: string;
+    } {
+        const isFastForwarding = this.executor.isFastForwarding;
+        const setting = isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
+        const locKey = isFastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate';
         const normalizedPlaybackRate = normalizePlaybackRate(playbackRate);
         if (normalizedPlaybackRate === undefined || this.settings[setting] === normalizedPlaybackRate) {
-            return { notify: false, playbackRate: this.settings[setting] };
+            return { notify: false, playbackRate: this.settings[setting], locKey };
         }
         this.settings = { ...this.settings, [setting]: normalizedPlaybackRate };
-        if (!this.rebuildPlan()) return { notify: false, playbackRate: this.settings[setting] };
+        if (!this.rebuildPlan()) return { notify: false, playbackRate: this.settings[setting], locKey };
         if (this.settings.rememberPlaybackRate) this.callbacks.saveSettings({ [setting]: normalizedPlaybackRate });
-        return { notify: this.settings.playbackRateNotificationEnabled, playbackRate: normalizedPlaybackRate };
+        return { notify: this.settings.playbackRateNotificationEnabled, playbackRate: normalizedPlaybackRate, locKey };
     }
 
-    adjustPlaybackRate(delta: number): { readonly notify: boolean; readonly playbackRate: number } {
-        const playbackRate = this.executor.isFastForwarding
-            ? this.plan.fastForward!.playbackRate
-            : this.plan.playbackRate;
-        if (!delta || !Number.isFinite(delta)) return { notify: false, playbackRate };
+    adjustPlaybackRate(delta: number): ReturnType<typeof this.playbackRateChanged> {
+        const isFastForwarding = this.executor.isFastForwarding;
+        const playbackRate = isFastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate;
+        const locKey = isFastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate';
+        if (!delta || !Number.isFinite(delta)) return { notify: false, playbackRate, locKey };
         return this.playbackRateChanged(playbackRate + delta);
     }
 

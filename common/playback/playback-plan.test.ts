@@ -163,6 +163,18 @@ describe('buildPlaybackPlan', () => {
         expect(plan.timeline.blocks[0].endAction?.repeat?.count).toBe(0);
     });
 
+    it('normalizes invalid minimum intervals and repeat counts', () => {
+        const plan = makePlan([PlayMode.autoPause, PlayMode.repeat, PlayMode.condensed, PlayMode.fastForward], {
+            repeatCountPreference: Number.NaN,
+            condensedPlaybackMinimumSkipIntervalMs: -100,
+            fastForwardPlaybackMinimumSkipIntervalMs: Number.POSITIVE_INFINITY,
+        });
+
+        expect(plan.condensed?.minimumSkipIntervalMs).toBe(0);
+        expect(plan.fastForward?.minimumSkipIntervalMs).toBe(0);
+        expect(plan.timeline.blocks[0].endAction?.repeat?.count).toBe(0);
+    });
+
     it('uses the configured playback rate inside subtitles and throughout qualifying gaps', () => {
         const plan = makePlan([PlayMode.fastForward], {
             subtitles: [

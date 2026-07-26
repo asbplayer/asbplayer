@@ -319,6 +319,7 @@
             "progressCompleted": "Exported {{current}} of {{total}}"
         },
         "playbackRate": "Toiston nopeus: {{rate}}",
+        "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "Tallennettu: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",

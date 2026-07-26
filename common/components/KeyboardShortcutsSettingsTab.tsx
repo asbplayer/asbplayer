@@ -13,6 +13,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsTextField from './SettingsTextField';
+import NumericSettingInput from './NumericSettingInput';
 import { isFirefox } from '../browser-detection';
 import React, { useMemo, useEffect, useCallback, useState, useRef } from 'react';
 import KeyBindRelatedSetting from './KeyBindRelatedSetting';
@@ -303,13 +304,12 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     <KeyBindRelatedSetting
                         label={t('settings.seekDuration')}
                         control={
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 size="small"
                                 fullWidth
                                 value={seekDuration}
                                 color="primary"
-                                onChange={(event) => onSettingChanged('seekDuration', Number(event.target.value))}
+                                onValueChange={(value) => void onSettingChanged('seekDuration', value)}
                                 slotProps={{
                                     htmlInput: {
                                         min: 1,
@@ -360,12 +360,11 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     <KeyBindRelatedSetting
                         label={t('settings.speedChangeStep')}
                         control={
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 fullWidth
                                 value={speedChangeStep}
                                 color="primary"
-                                onChange={(event) => onSettingChanged('speedChangeStep', Number(event.target.value))}
+                                onValueChange={(value) => void onSettingChanged('speedChangeStep', value)}
                                 slotProps={{
                                     htmlInput: {
                                         min: 0.1,

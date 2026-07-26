@@ -1,4 +1,5 @@
 import type { SubtitleModel } from '@project/common';
+import { clamp } from '@project/common/util';
 
 export type PlaybackTimelineEdge = 'start' | 'end';
 
@@ -50,6 +51,8 @@ export interface PlaybackTimelineBlock {
 export interface PlaybackTimelineSegment<T extends SubtitleModel> {
     readonly startMs: number;
     readonly showingSubtitles: readonly T[];
+    readonly condensedTarget?: number;
+    readonly nextStartActionTimestamp?: number;
 }
 
 export interface PlaybackTimelineState {
@@ -65,7 +68,6 @@ type DisplayEdge<T extends SubtitleModel> = {
     readonly order: number;
 };
 
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const firstTimestampAfter = (timestamps: readonly number[], timestampMs: number): number => {
     let low = 0;
     let high = timestamps.length;
@@ -86,11 +88,15 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
     readonly blocks: readonly PlaybackTimelineBlock[];
     readonly blocksById: ReadonlyMap<string, PlaybackTimelineBlock>;
     readonly boundaries: readonly PlaybackTimelineEventGroup[];
+    readonly actionBoundaries: readonly PlaybackTimelineEventGroup[];
     readonly segments: readonly PlaybackTimelineSegment<T>[];
+    readonly stateBoundaryTimestamps: readonly number[];
     readonly actionTimestamps: readonly number[];
+    readonly startActionTimestamps: readonly number[];
     readonly stateChangeTimestamps: readonly number[];
     readonly condensedGapStarts: readonly number[];
     readonly condensedGapTargets: readonly number[];
+    private readonly startActionBlocksByTimestamp: ReadonlyMap<number, PlaybackTimelineBlock>;
     private readonly states: readonly PlaybackTimelineState[];
 
     private constructor(snapshot: PlaybackTimelineSnapshot<T>) {
@@ -102,7 +108,18 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
         const events = this.eventsFromBlocks(this.blocks);
         const compiled = this.compileSegments(snapshot.displaySubtitles, events);
         this.boundaries = compiled.boundaries;
+        this.actionBoundaries = compiled.boundaries
+            .map((group) => ({
+                ...group,
+                events: group.events.filter(
+                    (event) =>
+                        (event.edge === 'start' && event.block.startAction !== undefined) ||
+                        (event.edge === 'end' && event.block.endAction !== undefined)
+                ),
+            }))
+            .filter((group) => group.events.length > 0);
         this.segments = compiled.segments;
+        this.stateBoundaryTimestamps = this.segments.slice(1).map(({ startMs }) => startMs);
         this.states = compiled.states;
         this.actionTimestamps = [
             ...new Set(
@@ -112,6 +129,15 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
                 ])
             ),
         ].sort((left, right) => left - right);
+        this.startActionTimestamps = this.blocks
+            .filter((block) => block.startAction !== undefined)
+            .map((block) => block.playbackModeStartMs)
+            .sort((left, right) => left - right);
+        const startActionBlocksByTimestamp = new Map<number, PlaybackTimelineBlock>();
+        for (const block of this.blocks) {
+            if (block.startAction !== undefined) startActionBlocksByTimestamp.set(block.playbackModeStartMs, block);
+        }
+        this.startActionBlocksByTimestamp = startActionBlocksByTimestamp;
         this.stateChangeTimestamps = [
             ...new Set(
                 this.blocks.flatMap((block) => [
@@ -132,6 +158,28 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
         }
         this.condensedGapStarts = condensedGapStarts;
         this.condensedGapTargets = condensedGapTargets;
+
+        let nextStartActionIndex = 0;
+        this.segments = this.segments.map((segment) => {
+            while (
+                nextStartActionIndex < this.startActionTimestamps.length &&
+                this.startActionTimestamps[nextStartActionIndex] <= segment.startMs
+            ) {
+                nextStartActionIndex++;
+            }
+
+            const gapIndex = firstTimestampAfter(this.condensedGapStarts, segment.startMs) - 1;
+            const condensedTarget =
+                gapIndex >= 0 && segment.startMs < this.condensedGapTargets[gapIndex]
+                    ? this.condensedGapTargets[gapIndex]
+                    : undefined;
+            const nextStartActionTimestamp = this.startActionTimestamps[nextStartActionIndex];
+            return {
+                ...segment,
+                ...(condensedTarget === undefined ? {} : { condensedTarget }),
+                ...(nextStartActionTimestamp === undefined ? {} : { nextStartActionTimestamp }),
+            };
+        });
     }
 
     static fromSnapshot<T extends SubtitleModel>(snapshot: PlaybackTimelineSnapshot<T>): PlaybackTimeline<T> {
@@ -274,9 +322,7 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
     }
 
     nextCondensedTarget(timestampMs: number): number | undefined {
-        const gapIndex = firstTimestampAfter(this.condensedGapStarts, timestampMs) - 1;
-        if (gapIndex < 0 || timestampMs >= this.condensedGapTargets[gapIndex]) return;
-        return this.condensedGapTargets[gapIndex];
+        return this.lookupAt(timestampMs).segment.condensedTarget;
     }
 
     nextActionTimestamp(timestampMs: number, lookaheadTimestampMs: number): number | undefined {
@@ -284,6 +330,14 @@ export default class PlaybackTimeline<T extends SubtitleModel> {
         const timestamp = this.actionTimestamps[index];
         if (timestamp === undefined || timestamp > lookaheadTimestampMs) return;
         return timestamp;
+    }
+
+    nextStartActionTimestamp(timestampMs: number): number | undefined {
+        return this.lookupAt(timestampMs).segment.nextStartActionTimestamp;
+    }
+
+    startActionAt(timestampMs: number): PlaybackTimelineBlock | undefined {
+        return this.startActionBlocksByTimestamp.get(timestampMs);
     }
 
     nextStateChangeTimestamp(timestampMs: number, lookaheadTimestampMs: number): number | undefined {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-engine-test-utils';
+import PlaybackTimeline from '@project/common/playback/playback-timeline';
 
 describe('PlaybackTimeline', () => {
     it('has no state or condensed target for zero subtitles', () => {
@@ -40,6 +41,24 @@ describe('PlaybackTimeline', () => {
         expect(result.lookupAt(1500).state.current).toBe(result.blocks[0]);
         expect(result.lookupAt(1800).state.current).toBe(result.blocks[0]);
         expect(result.nextCondensedTarget(2000)).toBe(3999);
+    });
+
+    it('finds the next start action from the encoded action timestamps', () => {
+        const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)];
+        const base = timeline(subtitles, {
+            subtitleTriggerStartOffset: -250,
+        });
+        const result = PlaybackTimeline.fromSnapshot({
+            durationMs: base.durationMs,
+            blocks: base.blocks.map((block) => ({ ...block, startAction: true as const })),
+            displaySubtitles: subtitles,
+        });
+
+        expect(result.nextStartActionTimestamp(1500)).toBe(3750);
+        expect(result.nextStartActionTimestamp(2100)).toBe(3750);
+        expect(result.nextStartActionTimestamp(3750)).toBeUndefined();
+        expect(result.startActionAt(3750)).toBe(result.blocks[1]);
+        expect(result.startActionAt(3751)).toBeUndefined();
     });
 
     it('uses configurable start and end gaps for condensed playback', () => {

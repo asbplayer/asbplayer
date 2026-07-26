@@ -36,6 +36,7 @@ import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import ResponsiveSettingsStack from './ResponsiveSettingsStack';
 import { VideoSubtitleSplitBehavior } from '../settings';
 import { normalizePlaybackRate } from '../playback/playback-mode-controller';
+import NumericSettingInput from './NumericSettingInput';
 
 function regexIsValid(regex: string) {
     try {
@@ -463,16 +464,13 @@ const MiscSettingTab: React.FC<Props> = ({
                 </Typography>
                 {supportsPlaybackEngine && (
                     <>
-                        <SettingsTextField
-                            type="number"
+                        <NumericSettingInput
                             fullWidth
                             label={t('settings.playbackRate')}
                             value={playbackRate}
                             color="primary"
-                            onChange={(event) => {
-                                const playbackRate = normalizePlaybackRate(Number(event.target.value));
-                                if (playbackRate !== undefined) void onSettingChanged('playbackRate', playbackRate);
-                            }}
+                            normalizeValue={normalizePlaybackRate}
+                            onValueChange={(value) => void onSettingChanged('playbackRate', value)}
                             slotProps={{
                                 htmlInput: {
                                     min: 0,
@@ -588,14 +586,13 @@ const MiscSettingTab: React.FC<Props> = ({
                 </FormControl>
                 {supportsPlaybackEngine && (
                     <>
-                        <SettingsTextField
-                            type="number"
+                        <NumericSettingInput
                             color="primary"
                             fullWidth
                             label={t('settings.repeatCountPreference')}
                             helperText={t('settings.repeatCountPreferenceHelperText')}
                             value={repeatCountPreference}
-                            onChange={(event) => onSettingChanged('repeatCountPreference', Number(event.target.value))}
+                            onValueChange={(value) => void onSettingChanged('repeatCountPreference', value)}
                             slotProps={{
                                 htmlInput: {
                                     min: 0,
@@ -604,15 +601,12 @@ const MiscSettingTab: React.FC<Props> = ({
                             }}
                         />
                         <ResponsiveSettingsStack>
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerStartOffset')}
                                 value={subtitleTriggerStartOffset}
-                                onChange={(event) =>
-                                    onSettingChanged('subtitleTriggerStartOffset', Number(event.target.value))
-                                }
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerStartOffset', value)}
                                 slotProps={{
                                     htmlInput: {
                                         step: 1,
@@ -622,15 +616,12 @@ const MiscSettingTab: React.FC<Props> = ({
                                     },
                                 }}
                             />
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerEndOffset')}
                                 value={subtitleTriggerEndOffset}
-                                onChange={(event) =>
-                                    onSettingChanged('subtitleTriggerEndOffset', Number(event.target.value))
-                                }
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerEndOffset', value)}
                                 slotProps={{
                                     htmlInput: {
                                         step: 1,
@@ -649,14 +640,13 @@ const MiscSettingTab: React.FC<Props> = ({
                 <SettingsSubSection>{t('settings.subtitleGapTriggers')}</SettingsSubSection>
                 <ResponsiveSettingsStack>
                     {supportsPlaybackEngine && (
-                        <SettingsTextField
-                            type="number"
+                        <NumericSettingInput
                             color="primary"
                             fullWidth
                             label={t('settings.fastForwardPlaybackMinimumSkipInterval')}
                             value={fastForwardPlaybackMinimumSkipIntervalMs}
-                            onChange={(event) =>
-                                onSettingChanged('fastForwardPlaybackMinimumSkipIntervalMs', Number(event.target.value))
+                            onValueChange={(value) =>
+                                void onSettingChanged('fastForwardPlaybackMinimumSkipIntervalMs', value)
                             }
                             slotProps={{
                                 htmlInput: {
@@ -669,18 +659,13 @@ const MiscSettingTab: React.FC<Props> = ({
                             }}
                         />
                     )}
-                    <SettingsTextField
-                        type="number"
+                    <NumericSettingInput
                         fullWidth
                         label={t('settings.fastForwardModePlaybackRate')}
                         value={fastForwardModePlaybackRate}
                         color="primary"
-                        onChange={(event) => {
-                            const playbackRate = normalizePlaybackRate(Number(event.target.value));
-                            if (playbackRate !== undefined) {
-                                void onSettingChanged('fastForwardModePlaybackRate', playbackRate);
-                            }
-                        }}
+                        normalizeValue={normalizePlaybackRate}
+                        onValueChange={(value) => void onSettingChanged('fastForwardModePlaybackRate', value)}
                         slotProps={{
                             htmlInput: {
                                 min: 0,
@@ -689,14 +674,13 @@ const MiscSettingTab: React.FC<Props> = ({
                         }}
                     />
                 </ResponsiveSettingsStack>
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     color="primary"
                     fullWidth
                     label={t('settings.condensedPlaybackMinimumSkipInterval')}
                     value={streamingCondensedPlaybackMinimumSkipIntervalMs}
-                    onChange={(event) =>
-                        onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', Number(event.target.value))
+                    onValueChange={(value) =>
+                        void onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', value)
                     }
                     slotProps={{
                         htmlInput: {
@@ -711,15 +695,12 @@ const MiscSettingTab: React.FC<Props> = ({
                 {supportsPlaybackEngine && (
                     <>
                         <ResponsiveSettingsStack>
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerGapStartOffset')}
                                 value={subtitleTriggerGapStartOffset}
-                                onChange={(event) =>
-                                    onSettingChanged('subtitleTriggerGapStartOffset', Number(event.target.value))
-                                }
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerGapStartOffset', value)}
                                 slotProps={{
                                     htmlInput: {
                                         min: 0,
@@ -730,15 +711,12 @@ const MiscSettingTab: React.FC<Props> = ({
                                     },
                                 }}
                             />
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerGapEndOffset')}
                                 value={subtitleTriggerGapEndOffset}
-                                onChange={(event) =>
-                                    onSettingChanged('subtitleTriggerGapEndOffset', Number(event.target.value))
-                                }
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerGapEndOffset', value)}
                                 slotProps={{
                                     htmlInput: {
                                         max: 0,
@@ -788,13 +766,12 @@ const MiscSettingTab: React.FC<Props> = ({
                     }}
                 />
                 <SettingsSection>{t('settings.mining')}</SettingsSection>
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.miningHistoryStorageLimit')}
                     fullWidth
                     value={miningHistoryStorageLimit}
                     color="primary"
-                    onChange={(event) => onSettingChanged('miningHistoryStorageLimit', Number(event.target.value))}
+                    onValueChange={(value) => void onSettingChanged('miningHistoryStorageLimit', value)}
                     slotProps={{
                         htmlInput: {
                             min: 0,

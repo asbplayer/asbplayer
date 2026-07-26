@@ -479,13 +479,16 @@ export default function VideoPlayer({
     const onErrorRef = useRef(onError);
     onErrorRef.current = onError;
 
-    const notifyPlaybackRate = useCallback((options: { notify: boolean; playbackRate: number }) => {
-        if (!options.notify) return;
-        setAlertSeverity('info');
-        const text = i18n.t('info.playbackRate', { rate: options.playbackRate.toFixed(1) });
-        setAlertMessage(text);
-        setAlertOpen(true);
-    }, []);
+    const notifyPlaybackRate = useCallback(
+        (options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) => {
+            if (!options.notify) return;
+            setAlertSeverity('info');
+            const text = i18n.t(options.locKey, { rate: options.playbackRate.toFixed(1) });
+            setAlertMessage(text);
+            setAlertOpen(true);
+        },
+        []
+    );
 
     const updatePlaybackRate = useCallback(
         (playbackRate: number, forwardToPlayer: boolean) => {

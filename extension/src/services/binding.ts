@@ -330,10 +330,10 @@ export default class Binding {
         this.notifyPlaybackRate(this.playbackEngine.adjustPlaybackRate(delta));
     }
 
-    private notifyPlaybackRate(options: { notify: boolean; playbackRate: number }) {
+    private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
         if (!options.notify) return;
         this.subtitleController.notification({
-            locKey: 'info.playbackRate',
+            locKey: options.locKey,
             replacements: {
                 rate: options.playbackRate.toFixed(1),
             },

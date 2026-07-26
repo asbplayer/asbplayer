@@ -319,6 +319,7 @@
             "progressCompleted": "Exported {{current}} of {{total}}"
         },
         "playbackRate": "재생 속도: {{rate}}",
+        "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "저장 완료: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",

@@ -319,6 +319,7 @@
             "progressCompleted": "Exportado {{current}} de {{total}}"
         },
         "playbackRate": "Velocidad de Reproducción: {{rate}}",
+        "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "Guardado: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",

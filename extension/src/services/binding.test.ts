@@ -772,6 +772,30 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('uses the fast-forward playback-rate localization key when a keybind changes the active rate', async () => {
+        await storage.set({ playbackRateNotificationEnabled: true });
+        const video = createVideo();
+        const binding = new Binding(video, false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [
+            makeSubtitle({ start: 0, end: 200 }),
+            makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 }),
+        ]);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        binding.togglePlayMode(PlayMode.fastForward);
+        video.presentFrame(1500);
+        await flushPlaybackTiming();
+        binding.adjustPlaybackRate(0.1);
+
+        expect(notification).toHaveBeenCalledWith({
+            locKey: 'info.fastForwardPlaybackRate',
+            replacements: { rate: '2.8' },
+        });
+        binding.unbind();
+    });
+
     it('applies the configured playback rate after settings load', async () => {
         await storage.set({ playbackRate: 1.4 });
         const video = createVideo();

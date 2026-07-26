@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-engine-test-utils';
+import PlaybackTimeline from '@project/common/playback/playback-timeline';
 import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-cursor';
 
 describe('PlaybackTimelineCursor', () => {
@@ -8,7 +9,16 @@ describe('PlaybackTimelineCursor', () => {
             subtitleTriggerStartOffset: 500,
             subtitleTriggerEndOffset: -499,
         });
-        const cursor = new PlaybackTimelineCursor(result, 1400);
+        const actionTimeline = PlaybackTimeline.fromSnapshot({
+            durationMs: result.durationMs,
+            blocks: result.blocks.map((block) => ({
+                ...block,
+                startAction: true as const,
+                endAction: { pause: true },
+            })),
+            displaySubtitles: [makeSubtitle(1000, 2000, 0)],
+        });
+        const cursor = new PlaybackTimelineCursor(actionTimeline, 1400);
 
         expect(cursor.advance(1600).filter((group) => group.events.length > 0)).toEqual([
             expect.objectContaining({
@@ -21,22 +31,20 @@ describe('PlaybackTimelineCursor', () => {
         ]);
     });
 
-    it('detects every boundary crossed by a large playback jump', () => {
+    it('skips non-action boundaries during a large playback jump', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)]);
         const cursor = new PlaybackTimelineCursor(result, 500);
 
-        expect(cursor.advance(4500).map((group) => group.timestampMs)).toEqual([
-            999, 1000, 1999, 2000, 2999, 3000, 3999, 4000,
-        ]);
+        expect(cursor.advance(4500)).toEqual([{ timestampMs: 4500, events: [] }]);
     });
 
-    it('emits a crossed boundary once during sequential updates', () => {
+    it('emits a state refresh once during sequential updates', () => {
         const result = timeline([makeSubtitle(1000, 2000, 0)]);
         const cursor = new PlaybackTimelineCursor(result, 900);
 
-        expect(cursor.advance(1100)).toHaveLength(2);
+        expect(cursor.advance(1100)).toEqual([{ timestampMs: 1100, events: [] }]);
         expect(cursor.advance(1500)).toEqual([]);
-        expect(cursor.advance(2100).map((group) => group.timestampMs)).toEqual([1999, 2000]);
+        expect(cursor.advance(2100)).toEqual([{ timestampMs: 2100, events: [] }]);
         expect(cursor.advance(2200)).toEqual([]);
     });
 
@@ -47,7 +55,7 @@ describe('PlaybackTimelineCursor', () => {
 
         expect(cursor.advance(500)).toEqual([{ timestampMs: 500, events: [], direction: 'backward' }]);
         expect(cursor.advance(900)).toEqual([]);
-        expect(cursor.advance(1100).map((group) => group.timestampMs)).toEqual([999, 1000]);
+        expect(cursor.advance(1100)).toEqual([{ timestampMs: 1100, events: [] }]);
     });
 
     it('does no work for backward timestamp movement inside the current segment', () => {

@@ -1,10 +1,23 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import type { SubtitleModel } from '@project/common';
 import { makeSubtitle, makeTimeline as compileTimeline } from '@project/common/playback/playback-engine-test-utils';
+import PlaybackTimeline from '@project/common/playback/playback-timeline';
 import PlaybackTimelineRunner from '@project/common/playback/playback-timeline-runner';
 
-const makeTimeline = () =>
-    compileTimeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], { durationMs: 5000 });
+const makeTimeline = () => {
+    const timeline = compileTimeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], {
+        durationMs: 5000,
+    });
+    return PlaybackTimeline.fromSnapshot({
+        durationMs: timeline.durationMs,
+        displaySubtitles: [makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)],
+        blocks: timeline.blocks.map((block) => ({
+            ...block,
+            startAction: true as const,
+            endAction: { pause: true },
+        })),
+    });
+};
 
 describe('PlaybackTimelineRunner', () => {
     it('corrects to the earliest auto-pause boundary crossed by a large jump and preserves later events', async () => {
@@ -42,10 +55,19 @@ describe('PlaybackTimelineRunner', () => {
             subtitleTriggerStartOffset: 500,
             subtitleTriggerEndOffset: -499,
         });
+        const actionTimeline = PlaybackTimeline.fromSnapshot({
+            durationMs: timeline.durationMs,
+            displaySubtitles: [makeSubtitle(1000, 2000, 0)],
+            blocks: timeline.blocks.map((block) => ({
+                ...block,
+                startAction: true as const,
+                endAction: { pause: true },
+            })),
+        });
         const start = jest.fn(async () => true);
         const end = jest.fn(() => ({ autoPaused: true, seeked: false }));
         const correct = jest.fn((timestampMs: number) => void timestampMs);
-        const runner = new PlaybackTimelineRunner(timeline, 1000, {
+        const runner = new PlaybackTimelineRunner(actionTimeline, 1000, {
             onStart: start,
             onEnd: end,
             correctAutoPause: async (timestampMs) => {

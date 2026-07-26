@@ -133,6 +133,19 @@ export function clampMediaTimestamp(timestamp: number, mediaLength?: number): nu
     return Math.min(clampedTimestamp, mediaLength);
 }
 
+export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+export function normalizeFinite(value: number): number;
+export function normalizeFinite(value: number, fallback: number): number;
+export function normalizeFinite(value: number, fallback: undefined): number | undefined;
+export function normalizeFinite(value: number, fallback?: number): number | undefined {
+    return Number.isFinite(value) ? value : arguments.length > 1 ? fallback : 0;
+}
+
+export const normalizeNonNegative = (value: number): number => Math.max(0, normalizeFinite(value));
+
+export const normalizeNonPositive = (value: number): number => Math.min(0, normalizeFinite(value));
+
 export function getCurrentTimeString(): string {
     const now = new Date();
     return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;

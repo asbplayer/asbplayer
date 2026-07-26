@@ -14,7 +14,10 @@ export interface PlaybackTimelineActionResult {
 export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
     /** Resolves to true when the start boundary auto-paused playback. */
     onStart(event: PlaybackTimelineEvent): Promise<boolean>;
-    onEnd(event: PlaybackTimelineEvent): PlaybackTimelineActionResult | Promise<PlaybackTimelineActionResult>;
+    onEnd(
+        event: PlaybackTimelineEvent,
+        options: { readonly alreadyAutoPaused: boolean }
+    ): PlaybackTimelineActionResult | Promise<PlaybackTimelineActionResult>;
     correctAutoPause(timestampMs: number): Promise<void>;
     /** Reconciles state that must survive seeks, including showing subtitles and playback rate. */
     onState(state: PlaybackTimelineState, segment: PlaybackTimelineSegment<T>): Promise<void>;
@@ -25,7 +28,7 @@ export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
     onAfterState(timestampMs: number): Promise<number | undefined>;
 }
 
-/** Applies precomputed crossed boundaries in time order and stops at the first position-changing action. */
+/** Applies precomputed crossed actions in time order and stops at the first position-changing action. */
 export default class PlaybackTimelineRunner<T extends SubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private readonly cursor: PlaybackTimelineCursor<T>;
@@ -58,7 +61,7 @@ export default class PlaybackTimelineRunner<T extends SubtitleModel> {
                 if (event.edge === 'start') {
                     autoPaused = (await this.callbacks.onStart(event)) || autoPaused;
                 } else {
-                    const result = await this.callbacks.onEnd(event);
+                    const result = await this.callbacks.onEnd(event, { alreadyAutoPaused: autoPaused });
                     autoPaused = result.autoPaused || autoPaused;
                     seeked = result.seeked || seeked;
                 }
