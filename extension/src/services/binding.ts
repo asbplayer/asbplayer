@@ -696,7 +696,7 @@ export default class Binding {
 
         this.subtitleController.onMouseOver = (mouseEvent: MouseEvent) => {
             if (this.pauseOnHoverMode !== PauseOnHoverMode.disabled && !this.video.paused) {
-                this.video.pause();
+                this.pause();
                 this.pausedDueToHover = true;
 
                 if (this.mouseMoveListener) {
@@ -974,7 +974,7 @@ export default class Binding {
                         switch (this.postMinePlayback) {
                             case PostMinePlayback.remember:
                                 if (!this.wasPlayingBeforeRecordingMedia) {
-                                    this.video.pause();
+                                    this.pause();
                                 } else if (!this.video.paused) {
                                     this.mobileVideoOverlayController.hide();
                                 }
@@ -984,7 +984,7 @@ export default class Binding {
                                 this.mobileVideoOverlayController.hide();
                                 break;
                             case PostMinePlayback.pause:
-                                this.video.pause();
+                                this.pause();
                                 break;
                         }
                         break;
