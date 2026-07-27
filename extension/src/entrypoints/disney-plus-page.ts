@@ -1,6 +1,12 @@
 import { inferTracks } from '@/pages/util';
 import { subtitleTrackSegmentsFromM3U8 } from '@/pages/m3u8-util';
 
+type DisneySeekRequest = {
+    requestId: string;
+    timestampMs: number;
+    cancelled: boolean;
+};
+
 export default defineUnlistedScript(() => {
     // --- Disney+ player API access (reverse-engineered) ---
     // The Disney+ web player attaches a media player object to the React fiber tree
@@ -118,7 +124,35 @@ export default defineUnlistedScript(() => {
     let cachedPlayer: any;
     let advancing = false;
     let advancingBeforeSeek = false;
-    let pendingSeekRequest: { requestId: string; timestampMs: number } | undefined;
+    let activeSeekRequest: DisneySeekRequest | undefined;
+    let queuedSeekRequest: DisneySeekRequest | undefined;
+
+    const startSeek = (request: DisneySeekRequest): void => {
+        const player = disneyPlusPlayer();
+        if (!player) {
+            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
+            return;
+        }
+
+        activeSeekRequest = request;
+        try {
+            void Promise.resolve(player.seek(request.timestampMs)).catch(() => {
+                if (activeSeekRequest?.requestId !== request.requestId) return;
+                document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
+                startQueuedSeek();
+            });
+        } catch {
+            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
+            startQueuedSeek();
+        }
+    };
+
+    const startQueuedSeek = (): void => {
+        activeSeekRequest = undefined;
+        const nextSeekRequest = queuedSeekRequest;
+        queuedSeekRequest = undefined;
+        if (nextSeekRequest !== undefined) startSeek(nextSeekRequest);
+    };
 
     const dispatchTimeEvent = (player: any, eventAdvancing?: boolean) => {
         const timestampMs = contentTime(player);
@@ -137,13 +171,19 @@ export default defineUnlistedScript(() => {
         cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_SEEK_COMPLETE', () => {
             const timestampMs = contentTime(cachedPlayer);
             if (timestampMs === undefined) return;
-            dispatchTimeEvent(cachedPlayer, advancingBeforeSeek);
-            document.dispatchEvent(
-                new CustomEvent(seekedEventName, {
-                    detail: { timestampMs, requestId: pendingSeekRequest?.requestId },
-                })
-            );
-            pendingSeekRequest = undefined;
+            const completedSeekRequest = activeSeekRequest;
+            activeSeekRequest = undefined;
+
+            if (completedSeekRequest === undefined || !completedSeekRequest.cancelled) {
+                dispatchTimeEvent(cachedPlayer, advancingBeforeSeek);
+                document.dispatchEvent(
+                    new CustomEvent(seekedEventName, {
+                        detail: { timestampMs, requestId: completedSeekRequest?.requestId },
+                    })
+                );
+            }
+
+            startQueuedSeek();
         });
         cachedPlayer?.on('@EVENT/PLAYER/TIMECODE', () => {
             dispatchTimeEvent(cachedPlayer, advancing);
@@ -157,7 +197,7 @@ export default defineUnlistedScript(() => {
             dispatchTimeEvent(cachedPlayer, false);
             document.dispatchEvent(
                 new CustomEvent(seekStartedEventName, {
-                    detail: { timestampMs: contentTime(cachedPlayer) ?? 0, requestId: pendingSeekRequest?.requestId },
+                    detail: { timestampMs: contentTime(cachedPlayer) ?? 0, requestId: activeSeekRequest?.requestId },
                 })
             );
         });
@@ -176,30 +216,33 @@ export default defineUnlistedScript(() => {
     document.addEventListener(seekEventName, (e) => {
         // detail is absolute content time in milliseconds
         const detail = (e as CustomEvent<{ requestId: string; timestampMs: number }>).detail;
-        const player = disneyPlusPlayer();
-        if (!player || !Number.isFinite(detail?.timestampMs)) {
+        if (detail?.requestId === undefined) return;
+        if (!Number.isFinite(detail?.timestampMs)) {
             if (detail?.requestId !== undefined) {
                 document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: detail.requestId }));
             }
             return;
         }
-        if (pendingSeekRequest !== undefined) {
-            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: pendingSeekRequest.requestId }));
+
+        const request: DisneySeekRequest = { ...detail, cancelled: false };
+        if (activeSeekRequest !== undefined) {
+            if (queuedSeekRequest !== undefined) {
+                document.dispatchEvent(
+                    new CustomEvent(seekCancelledEventName, { detail: queuedSeekRequest.requestId })
+                );
+            }
+            queuedSeekRequest = request;
+            activeSeekRequest.cancelled = true;
+            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: activeSeekRequest.requestId }));
+            return;
         }
-        pendingSeekRequest = { requestId: detail.requestId, timestampMs: detail.timestampMs };
-        try {
-            void Promise.resolve(player.seek(detail.timestampMs)).catch(() => {
-                document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: detail.requestId }));
-                if (pendingSeekRequest?.requestId === detail.requestId) pendingSeekRequest = undefined;
-            });
-        } catch {
-            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: detail.requestId }));
-            pendingSeekRequest = undefined;
-        }
+
+        startSeek(request);
     });
     document.addEventListener(seekCancelledEventName, (e) => {
         const requestId = (e as CustomEvent<string>).detail;
-        if (pendingSeekRequest?.requestId === requestId) pendingSeekRequest = undefined;
+        if (activeSeekRequest?.requestId === requestId) activeSeekRequest.cancelled = true;
+        if (queuedSeekRequest?.requestId === requestId) queuedSeekRequest = undefined;
     });
     document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());
     document.addEventListener(pauseEventName, () => disneyPlusPlayer()?.pause());
