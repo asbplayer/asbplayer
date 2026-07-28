@@ -1,5 +1,5 @@
 import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
-import { inferTracks, trackId } from './util';
+import { inferTracks, type InferHooks, trackId } from './util';
 import { parse } from 'mpd-parser';
 
 export interface Segment {
@@ -12,12 +12,16 @@ export interface Playlist {
     segments: Segment[];
 }
 
-const tryExtractSubtitleTracks = async (
+interface InferTracksFromMpdOptions {
+    onJson?: InferHooks['onJson'];
+    basename?: () => string;
+}
+
+const extractSubtitleTracks = (
+    manifest: string,
     mpdUrl: string,
-    originalFetch: typeof window.fetch,
     trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
-): Promise<VideoDataSubtitleTrack[]> => {
-    const manifest = await (await originalFetch(mpdUrl)).text();
+): VideoDataSubtitleTrack[] => {
     const parsedManifest = parse(manifest, { manifestUri: mpdUrl });
     const subGroups = parsedManifest.mediaGroups?.SUBTITLES?.subs ?? {};
     const tracks: VideoDataSubtitleTrack[] = [];
@@ -54,18 +58,62 @@ const tryExtractSubtitleTracks = async (
     return tracks;
 };
 
+const tryExtractSubtitleTracks = async (
+    mpdUrl: string,
+    originalFetch: typeof window.fetch,
+    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
+): Promise<VideoDataSubtitleTrack[]> => {
+    const manifest = await (await originalFetch(mpdUrl)).text();
+    return extractSubtitleTracks(manifest, mpdUrl, trackExtractor);
+};
+
 export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
     mpdUrlRegex: RegExp,
-    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
+    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined,
+    options: InferTracksFromMpdOptions = {}
 ) => {
     let lastManifestUrl: string | undefined;
+    let lastManifestText: string | undefined;
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
+
     window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
         const url = args[1];
 
         if (typeof url === 'string' && mpdUrlRegex.test(url)) {
-            lastManifestUrl = url;
+            const requestedManifestUrl = url;
+
+            lastManifestUrl = requestedManifestUrl;
+            lastManifestText = undefined;
+
+            this.addEventListener(
+                'load',
+                () => {
+                    let manifestText: string | undefined;
+
+                    try {
+                        if (typeof this.responseText === 'string') {
+                            manifestText = this.responseText;
+                        }
+                    } catch {
+                        // responseText is unavailable for some response types.
+                    }
+
+                    if (manifestText === undefined && typeof this.response === 'string') {
+                        manifestText = this.response;
+                    }
+
+                    if (manifestText === undefined && this.responseXML !== null) {
+                        manifestText = new XMLSerializer().serializeToString(this.responseXML);
+                    }
+
+                    if (manifestText !== undefined && manifestText !== '') {
+                        lastManifestUrl = this.responseURL || requestedManifestUrl;
+                        lastManifestText = manifestText;
+                    }
+                },
+                { once: true }
+            );
         }
 
         // @ts-expect-error: forwarding original XHR arguments
@@ -73,14 +121,24 @@ export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
     };
 
     inferTracks({
+        onJson: options.onJson,
         onRequest: async (addTrack, setBasename) => {
-            setBasename(document.title);
+            setBasename(options.basename?.() ?? document.title);
 
-            if (lastManifestUrl !== undefined) {
-                const tracks = await tryExtractSubtitleTracks(lastManifestUrl, window.fetch, trackExtractor);
-                for (const track of tracks) {
-                    addTrack(track);
-                }
+            if (lastManifestUrl === undefined) {
+                return;
+            }
+
+            let tracks: VideoDataSubtitleTrack[];
+
+            if (lastManifestText !== undefined) {
+                tracks = extractSubtitleTracks(lastManifestText, lastManifestUrl, trackExtractor);
+            } else {
+                tracks = await tryExtractSubtitleTracks(lastManifestUrl, window.fetch, trackExtractor);
+            }
+
+            for (const track of tracks) {
+                addTrack(track);
             }
         },
         waitForBasename: false,
@@ -89,7 +147,8 @@ export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
 
 export const inferTracksFromInterceptedMpd = (
     mpdUrlRegex: RegExp,
-    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
+    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined,
+    options: InferTracksFromMpdOptions = {}
 ) => {
     const originalFetch = window.fetch;
 
@@ -106,11 +165,13 @@ export const inferTracksFromInterceptedMpd = (
     };
 
     inferTracks({
+        onJson: options.onJson,
         onRequest: async (addTrack, setBasename) => {
-            setBasename(document.title);
+            setBasename(options.basename?.() ?? document.title);
 
             if (lastManifestUrl !== undefined) {
                 const tracks = await tryExtractSubtitleTracks(lastManifestUrl, window.fetch, trackExtractor);
+
                 for (const track of tracks) {
                     addTrack(track);
                 }
