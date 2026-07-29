@@ -13,6 +13,7 @@ class FakeTimingDriver implements TimingDriver {
         onError: () => {},
     };
     bound = false;
+    emitInitialDiscontinuity = false;
     bindCalls = 0;
     unbindCalls = 0;
     timestampMs = 0;
@@ -26,6 +27,7 @@ class FakeTimingDriver implements TimingDriver {
         if (this.bound) return;
         this.bindCalls += 1;
         this.bound = true;
+        if (this.emitInitialDiscontinuity) this.callbacks.onDiscontinuity(this.timestampMs);
     }
 
     unbind(): void {
@@ -257,6 +259,22 @@ describe('PlaybackEngine', () => {
 
         expect(harness.driver.bound).toBe(true);
         expect(harness.driver.bindCalls).toBe(1);
+    });
+
+    it('restores remembered positions when settings load without changing the playback plan', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            durationMs: 70_000,
+            settingsReady: false,
+            playbackPositionKeys: ['video.mp4'],
+            settings: { lastPlaybackPositions: [] },
+        });
+
+        harness.playbackEngine.settingsChanged({
+            ...harness.settings,
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+        });
+
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
     });
 
     it('unbinds timing only once', () => {
@@ -670,6 +688,20 @@ describe('PlaybackEngine', () => {
         harness.driver.discontinuity(64_000);
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 64_000 }],
+        });
+    });
+
+    it('saves the first user discontinuity after binding', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            playbackPositionKeys: ['video.mp4'],
+        });
+
+        harness.driver.emitInitialDiscontinuity = true;
+        harness.playbackEngine.bind();
+        harness.driver.discontinuity(62_000);
+
+        expect(harness.savedSettings).toContainEqual({
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 62_000 }],
         });
     });
 

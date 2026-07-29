@@ -15,6 +15,8 @@ import {
     normalizeNonPositive,
 } from '@project/common/util';
 
+export const playbackPlanCorrectionToleranceMs = 0.5;
+
 export interface PlaybackPlanFastForward {
     readonly playbackRate: number;
     readonly minimumSkipIntervalMs: number;

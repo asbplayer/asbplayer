@@ -642,8 +642,8 @@ export default class Binding {
             this.disneyPlusSeekCancelledListener = (e: Event) => {
                 const requestId = (e as CustomEvent<string>).detail;
                 const pending = this.disneyPlusPendingSeeks.get(requestId);
-                this.playbackEngine.seekCanceled();
                 if (pending === undefined) return;
+                this.playbackEngine.seekCanceled();
                 this.disneyPlusPendingSeeks.delete(requestId);
                 pending.resolve();
             };

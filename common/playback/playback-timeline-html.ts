@@ -261,7 +261,7 @@ const condensedIntervals = (
     for (const [index, block] of blocks.entries()) {
         const nextBlock = blocks[index + 1];
         if (nextBlock === undefined) continue;
-        const startSeconds = block.playbackModeEndExclusiveMs / 1000;
+        const startSeconds = block.subtitleTriggerGapStartOffsetMs / 1000;
         const endSeconds = nextBlock.subtitleTriggerGapEndOffsetMs / 1000;
         if (endSeconds - startSeconds + 0.001 < minimumDurationSeconds) continue;
         const value = interval(
@@ -609,7 +609,7 @@ const condensedIntervals = (blocks, durationSeconds, minimumDurationSeconds) => 
         const block = blocks[index];
         const nextBlock = blocks[index + 1];
         if (nextBlock === undefined) continue;
-        const startSeconds = block.playbackModeEndExclusiveSeconds;
+        const startSeconds = block.subtitleTriggerGapStartOffsetSeconds;
         const endSeconds = nextBlock.subtitleTriggerGapEndOffsetSeconds;
         if (endSeconds - startSeconds + 0.001 < minimumDurationSeconds) continue;
         const value = interval(Math.max(0, startSeconds), Math.min(durationSeconds, endSeconds), timelineColors.condensed, 'condensed');

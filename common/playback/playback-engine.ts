@@ -2,9 +2,13 @@ import type { AsbplayerSettings } from '@project/common/settings';
 import { isTrackSeekable } from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import { PlayMode } from '@project/common';
-import { buildPlaybackPlan, playbackPlansEqual, type PlaybackPlan } from '@project/common/playback/playback-plan';
-import PlaybackPlanExecutor, {
+import {
+    buildPlaybackPlan,
+    playbackPlansEqual,
+    type PlaybackPlan,
     playbackPlanCorrectionToleranceMs,
+} from '@project/common/playback/playback-plan';
+import PlaybackPlanExecutor, {
     type PlaybackPlanExecutorCallbacks,
 } from '@project/common/playback/playback-plan-executor';
 import PlaybackModeController, {
@@ -157,16 +161,15 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             ? { ...settings, [activeRateSetting]: this.settings[activeRateSetting] }
             : settings;
         this.ready.settings = true;
+        this.playbackPositionController.settingsChanged(this.settings);
         this.bind();
         if (rememberPlaybackModesNow) {
             this.applyPlaybackModeTransition(
                 this.playbackModeController.setModes(playbackModesFromSettings(settings)),
                 { savePlaybackModes: false, rebuildWhenUnchanged: true }
             );
-            this.playbackPositionController.settingsChanged(this.settings);
         } else {
-            if (!this.rebuildPlan()) return;
-            this.playbackPositionController.settingsChanged(this.settings);
+            this.rebuildPlan();
         }
     }
 

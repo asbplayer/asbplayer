@@ -3,6 +3,7 @@ import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/comm
 import { defaultSettings } from '@project/common/settings';
 import { makeTextSubtitle } from '@project/common/playback/playback-engine-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/playback-plan';
+import PlaybackTimeline from '@project/common/playback/playback-timeline';
 import {
     buildPlaybackTimelineExportPlan,
     playbackTimelineToHtml,
@@ -232,6 +233,48 @@ describe('playbackTimelineToHtml', () => {
         expect(condensedHtml).toContain('class="event condensed"');
         expect(condensedHtml).toContain('background:#ef4444');
         expect(emptyHtml).toContain('class="row"');
+    });
+
+    it('starts exported condensed gaps at the runtime gap boundary', () => {
+        const subtitles = [makeTextSubtitle(1000, 2000, 'one', 0), makeTextSubtitle(5000, 6000, 'two', 1)];
+        const settings = {
+            ...defaultSettings,
+            subtitleTriggerEndOffset: -350,
+            subtitleTriggerGapEndOffset: -100,
+            subtitleTriggerGapStartOffset: 200,
+            streamingCondensedPlaybackMinimumSkipIntervalMs: 700,
+        };
+        const exportPlan = buildPlaybackTimelineExportPlan({
+            subtitles,
+            durationMs: 10_000,
+            settings,
+            playbackRate: 1,
+        });
+        const runtimeTimeline = PlaybackTimeline.fromSnapshot(exportPlan.timeline);
+        const html = playbackTimelineToHtml({
+            plan: exportPlan,
+            themeColor: '#123456',
+            modeLabels,
+            ...htmlOptions,
+            timelineSettings: {
+                ...htmlOptions.timelineSettings,
+                subtitleTriggerEndOffsetMs: -350,
+                subtitleTriggerGapEndOffsetMs: -100,
+                subtitleTriggerGapStartOffsetMs: 200,
+                condensedMinimumSkipIntervalMs: 700,
+            },
+            timelineSubtitles: subtitles,
+        });
+
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const condensedStarts = [...parsed.querySelectorAll<HTMLElement>('.event.condensed')].map((event) =>
+            Number(event.style.left.replace('%', ''))
+        );
+
+        expect(runtimeTimeline.condensedGapStarts).toEqual([0, 2200]);
+        expect(runtimeTimeline.condensedGapTargets).toEqual([899, 4899]);
+        expect(condensedStarts[0]).toBe(0);
+        expect(condensedStarts[1]).toBeCloseTo(22, 10);
     });
 
     it('rebuilds mode boundaries when an editable setting changes', () => {

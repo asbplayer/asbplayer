@@ -23,6 +23,7 @@ type AllKeyNames = KeyBindName | 'selectSubtitleTrack';
 interface KeyBindProperties {
     label: string;
     boundViaBrowser: boolean;
+    id?: string;
     hide?: boolean;
     additionalControl?: React.ReactNode;
 }
@@ -264,7 +265,11 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 hide: !extensionInstalled || !extensionSupportsSidePanel,
             },
             togglePlay: { label: t('binds.togglePlay'), boundViaBrowser: false },
-            toggleAutoPause: { label: t('binds.toggleAutoPause'), boundViaBrowser: false },
+            toggleAutoPause: {
+                label: t('binds.toggleAutoPause'),
+                boundViaBrowser: false,
+                id: 'playback-mode-key-bindings',
+            },
             toggleCondensedPlayback: { label: t('binds.toggleCondensedPlayback'), boundViaBrowser: false },
             toggleFastForwardPlayback: { label: t('binds.toggleFastForwardPlayback'), boundViaBrowser: false },
             toggleRepeat: { label: t('binds.toggleRepeat'), boundViaBrowser: false },
@@ -455,7 +460,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
         }
 
         return (
-            <div key={key} id={keyBindName === 'toggleAutoPause' ? 'playback-mode-key-bindings' : undefined}>
+            <div key={key} id={properties.id}>
                 <KeyBindField
                     key={key}
                     label={properties.label}

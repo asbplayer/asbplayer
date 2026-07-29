@@ -139,11 +139,9 @@ export default defineUnlistedScript(() => {
             void Promise.resolve(player.seek(request.timestampMs)).catch(() => {
                 if (activeSeekRequest?.requestId !== request.requestId) return;
                 document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
-                startQueuedSeek();
             });
         } catch {
             document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
-            startQueuedSeek();
         }
     };
 
@@ -241,7 +239,11 @@ export default defineUnlistedScript(() => {
     });
     document.addEventListener(seekCancelledEventName, (e) => {
         const requestId = (e as CustomEvent<string>).detail;
-        if (activeSeekRequest?.requestId === requestId) activeSeekRequest.cancelled = true;
+        if (activeSeekRequest?.requestId === requestId) {
+            activeSeekRequest.cancelled = true;
+            startQueuedSeek();
+            return;
+        }
         if (queuedSeekRequest?.requestId === requestId) queuedSeekRequest = undefined;
     });
     document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());

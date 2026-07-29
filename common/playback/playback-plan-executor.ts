@@ -14,8 +14,6 @@ import PlaybackTimelineRunner from '@project/common/playback/playback-timeline-r
 import PlaybackTimelineLookaheadCursor from '@project/common/playback/playback-timeline-lookahead-cursor';
 import { areSubtitleModelsEqual, arrayEquals } from '@project/common/util';
 
-export const playbackPlanCorrectionToleranceMs = 0.5;
-
 type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
 
 export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel = IndexedSubtitleModel> {

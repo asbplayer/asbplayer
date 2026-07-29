@@ -75,7 +75,6 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel =
 
     bind(): void {
         if (this.playbackPositionSaveTimer !== undefined) return;
-        this.skipInitialDiscontinuity = true;
         this.playbackPositionSaveTimer = setInterval(
             () => this.savePlaybackPosition(this.timingDriver.currentTimeMs()),
             playbackPositionSaveIntervalMs
@@ -87,6 +86,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel =
         if (this.playbackPositionSaveTimer === undefined) return;
         clearInterval(this.playbackPositionSaveTimer);
         this.playbackPositionSaveTimer = undefined;
+        this.skipInitialDiscontinuity = true;
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
