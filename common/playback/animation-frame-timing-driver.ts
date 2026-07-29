@@ -3,6 +3,8 @@ import TimingUpdateQueue, {
     type TimingDriverCallbacks,
 } from '@project/common/playback/timing-driver';
 
+const defaultFrameTimeMs = 1000 / 60;
+
 export interface AnimationFrameTimingSource {
     readonly paused: () => boolean;
     readonly durationMs: () => number;
@@ -68,6 +70,10 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
 
     currentTimeMs(): number {
         return this.clock.currentTimeMs();
+    }
+
+    frameTimeMs(): number {
+        return defaultFrameTimeMs;
     }
 
     durationMs(): number {

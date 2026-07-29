@@ -22,7 +22,7 @@ export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel = 
     readonly pause: () => void;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
-    readonly correctTimestamp: (timestampMs: number) => Promise<{ readonly seekIssued: boolean }>;
+    readonly correctAutoPause: (timestampMs: number) => Promise<{ readonly seekIssued: boolean }>;
     readonly showingSubtitlesChanged: (subtitles: readonly T[]) => void;
 }
 
@@ -97,7 +97,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             onStart: (event) => this.onStart(event),
             onEnd: (event, options) => this.onEnd(event, options),
             correctAutoPause: async (targetTimestampMs) => {
-                await this.correctTimestamp(targetTimestampMs);
+                await this.correctAutoPause(targetTimestampMs);
             },
             onState: async (state, segment) => {
                 this.reconcilePersistentState(state, segment, { forcePlaybackRate: false });
@@ -453,11 +453,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return operation === this.operationGeneration;
     }
 
-    private async correctTimestamp(timestampMs: number): Promise<void> {
+    private async correctAutoPause(timestampMs: number): Promise<void> {
         const expectedDiscontinuity = { timestampMs, includeAtTimestamp: false };
         this.expectedDiscontinuity = expectedDiscontinuity;
         try {
-            const { seekIssued } = await this.callbacks.correctTimestamp(timestampMs);
+            const { seekIssued } = await this.callbacks.correctAutoPause(timestampMs);
             if (!seekIssued && this.expectedDiscontinuity === expectedDiscontinuity) {
                 this.expectedDiscontinuity = undefined;
             }

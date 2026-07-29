@@ -12,6 +12,7 @@ import PlaybackPlanExecutor, {
     type PlaybackPlanExecutorCallbacks,
 } from '@project/common/playback/playback-plan-executor';
 import PlaybackModeController, {
+    minimumPlaybackRate,
     normalizePlaybackRate,
     playbackModesFromSettings,
     type PlayModeTransition,
@@ -101,9 +102,20 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
             setPlaybackRate: (playbackRate) => {
                 this.callbacks.setPlaybackRate(playbackRate);
+                const actualPlaybackRate = this.timingDriver.playbackRate?.();
+                if (
+                    actualPlaybackRate !== undefined &&
+                    (!Number.isFinite(actualPlaybackRate) ||
+                        Math.abs(actualPlaybackRate - playbackRate) > minimumPlaybackRate)
+                ) {
+                    console.warn('[asbplayer/playback] Playback rate command was not respected', {
+                        requestedPlaybackRate: playbackRate,
+                        actualPlaybackRate,
+                    });
+                }
             },
-            correctTimestamp: async (targetTimestampMs) => {
-                return this.correctTimestamp(targetTimestampMs);
+            correctAutoPause: async (targetTimestampMs) => {
+                return this.correctTimestamp(targetTimestampMs, 'pause-correction');
             },
             showingSubtitlesChanged: (subtitles) => {
                 callbacks.showingSubtitlesChanged(subtitles);
@@ -117,7 +129,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             callbacks: {
                 saveSettings: callbacks.saveSettings,
                 playbackPositionChanged: callbacks.playbackPositionChanged,
-                seek: (timestampMs) => this.performSeek(timestampMs),
+                seek: (timestampMs) => this.seek(timestampMs),
                 play: callbacks.play,
                 showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
             },
@@ -331,28 +343,43 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private async seek(timestampMs: number): Promise<void> {
         const targetTimestampMs = this.clampTimestamp(timestampMs);
-        await this.performSeek(targetTimestampMs);
+        await this.performSeek(targetTimestampMs, 'seek');
     }
 
-    private async correctTimestamp(timestampMs: number): Promise<{ seekIssued: boolean }> {
+    private async correctTimestamp(
+        timestampMs: number,
+        warningCommand: 'pause-correction'
+    ): Promise<{ seekIssued: boolean }> {
         const targetTimestampMs = this.clampTimestamp(timestampMs);
         if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
             return { seekIssued: false };
         }
-        await this.performSeek(targetTimestampMs);
+        await this.performSeek(targetTimestampMs, warningCommand);
         return { seekIssued: true };
     }
 
-    private async performSeek(targetTimestampMs: number): Promise<void> {
+    private async performSeek(targetTimestampMs: number, warningCommand: 'seek' | 'pause-correction'): Promise<void> {
         const seeked = this.timingDriver.beginInternalSeek();
         try {
             await this.callbacks.seek(targetTimestampMs);
             await seeked;
+            if (warningCommand !== undefined) this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);
             this.playbackPositionController.savePlaybackPosition(targetTimestampMs);
         } catch (error) {
             this.timingDriver.cancelExpectedInternalSeek();
             throw error;
         }
+    }
+
+    private warnIfTimestampMismatch(command: 'seek' | 'pause-correction', targetTimestampMs: number): void {
+        const actualTimestampMs = this.timingDriver.currentTimeMs();
+        const frameTimeMs = this.timingDriver.frameTimeMs();
+        if (frameTimeMs <= 0 || Math.abs(actualTimestampMs - targetTimestampMs) <= frameTimeMs / 2) return;
+        console.warn(`[asbplayer/playback] ${command} command has a timestamp mismatch`, {
+            targetTimestampMs,
+            actualTimestampMs,
+            frameTimeMs,
+        });
     }
 
     private clampTimestamp(timestampMs: number): number {

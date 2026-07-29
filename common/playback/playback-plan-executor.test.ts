@@ -47,7 +47,7 @@ function executorHarness(
             seeks.push(targetTimestampMs);
         },
         setPlaybackRate: (playbackRate) => rates.push(playbackRate),
-        correctTimestamp: async (targetTimestampMs) => {
+        correctAutoPause: async (targetTimestampMs) => {
             corrections.push(targetTimestampMs);
             return { seekIssued: true };
         },
@@ -602,7 +602,7 @@ describe('PlaybackPlanExecutor', () => {
             [PlayMode.autoPause, PlayMode.repeat],
             1500,
             { autoPausePreference: AutoPausePreference.atEnd, repeatCountPreference: 1 },
-            { correctTimestamp: async () => ({ seekIssued: false }) }
+            { correctAutoPause: async () => ({ seekIssued: false }) }
         );
 
         await harness.executor.update(2100, { lookaheadTimestampMs: undefined });

@@ -53,6 +53,10 @@ class FakeTimingDriver implements TimingDriver {
         return this.timestampMs;
     }
 
+    frameTimeMs(): number {
+        return 1000 / 60;
+    }
+
     durationMs(): number {
         this.durationMsReads += 1;
         return this.durationMsValue;
@@ -167,6 +171,7 @@ function makePlaybackEngine(
                 overrides.seek ??
                 ((targetTimestampMs) => {
                     seeks.push(targetTimestampMs);
+                    driver.timestampMs = targetTimestampMs;
                     return Promise.resolve();
                 }),
             setPlaybackRate: (playbackRate) => playbackRates.push(playbackRate),
@@ -361,7 +366,7 @@ describe('PlaybackEngine', () => {
         await harness.driver.time(2000);
 
         expect(harness.seeks).toEqual([3999]);
-        expect(harness.plays).toEqual([2000]);
+        expect(harness.plays).toEqual([3999]);
     });
 
     it('rebuilds playback boundaries from the subtitles provided by the media owner', async () => {

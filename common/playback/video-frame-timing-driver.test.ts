@@ -15,6 +15,7 @@ class FakeVideo extends EventTarget {
     paused = true;
     private nextHandle = 1;
     private callbacks = new Map<number, VideoFrameRequestCallback>();
+    private presentedFrameCount = 0;
 
     requestVideoFrameCallback(callback: VideoFrameRequestCallback): number {
         const handle = this.nextHandle++;
@@ -42,8 +43,14 @@ class FakeVideo extends EventTarget {
         this.dispatchEvent(new Event('seeked'));
     }
 
-    present(timestampMs: number, mediaTimeSeconds = timestampMs / 1000, expectedDisplayTimeMs = timestampMs): void {
+    present(
+        timestampMs: number,
+        mediaTimeSeconds = timestampMs / 1000,
+        expectedDisplayTimeMs = timestampMs,
+        presentedFrames = this.presentedFrameCount + 1
+    ): void {
         this.currentTime = timestampMs / 1000;
+        this.presentedFrameCount = presentedFrames;
         const callbacks = [...this.callbacks.values()];
         this.callbacks.clear();
         for (const callback of callbacks) {
@@ -53,7 +60,7 @@ class FakeVideo extends EventTarget {
                 width: 0,
                 height: 0,
                 mediaTime: mediaTimeSeconds,
-                presentedFrames: 1,
+                presentedFrames,
                 processingDuration: 0,
             });
         }
@@ -371,6 +378,16 @@ describe('VideoFrameTimingDriver', () => {
         driver.unbind();
     });
 
+    it('uses a media-time default frame duration before sampling display cadence', () => {
+        const video = new FakeVideo();
+        video.playbackRate = 1.5;
+        const driver = timingDriver(videoSource(video), {});
+        driver.bind();
+
+        expect(driver.frameTimeMs()).toBeCloseTo(1000 / 60);
+        driver.unbind();
+    });
+
     it('estimates the next frame media time from display cadence and playback rate', async () => {
         const video = new FakeVideo();
         video.playbackRate = 1.5;
@@ -391,6 +408,21 @@ describe('VideoFrameTimingDriver', () => {
         expect(updates[0]).toEqual([1000, undefined]);
         expect(updates[1][0]).toBeCloseTo(1016.667);
         expect(updates[1][1]).toBeCloseTo(1041.667);
+        expect(driver.frameTimeMs()).toBeCloseTo((1000 / 60) * 1.5);
+        driver.unbind();
+    });
+
+    it('accounts for submitted frames missed between callbacks', () => {
+        const video = new FakeVideo();
+        video.playbackRate = 2;
+        const driver = timingDriver(videoSource(video), {});
+        driver.bind();
+        video.play();
+
+        video.present(1000, 1, 1000, 1);
+        video.present(1016.667, 1.016667, 1016.667, 3);
+
+        expect(driver.frameTimeMs()).toBeCloseTo(1000 / 60);
         driver.unbind();
     });
 
@@ -504,7 +536,7 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
-            correctTimestamp: async (timestampMs) => {
+            correctAutoPause: async (timestampMs) => {
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };
@@ -582,7 +614,7 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
-            correctTimestamp: async (timestampMs) => {
+            correctAutoPause: async (timestampMs) => {
                 seeks.push(timestampMs);
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
@@ -675,7 +707,7 @@ describe('VideoFrameTimingDriver', () => {
                 video.dispatchEvent(new Event('pause'));
             },
             setPlaybackRate: () => {},
-            correctTimestamp: async () => ({ seekIssued: false }),
+            correctAutoPause: async () => ({ seekIssued: false }),
             showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
@@ -747,7 +779,7 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
-            correctTimestamp: async (timestampMs) => {
+            correctAutoPause: async (timestampMs) => {
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };
@@ -834,7 +866,7 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
             },
             setPlaybackRate: () => {},
-            correctTimestamp: async (timestampMs) => {
+            correctAutoPause: async (timestampMs) => {
                 void driverRef.current!.beginInternalSeek();
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };

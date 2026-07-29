@@ -4,6 +4,8 @@ import TimingUpdateQueue, {
     type TimingDriverEventCallbacks,
 } from '@project/common/playback/timing-driver';
 
+const defaultFrameTimeMs = 1000 / 60;
+
 export interface VideoFrameTimingSource {
     readonly paused: () => boolean;
     readonly playbackRate: () => number;
@@ -39,7 +41,9 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private previousFrame?: {
         readonly expectedDisplayTimeMs: number;
         readonly callbackTimeMs: number;
+        readonly presentedFrames: number;
     };
+    private lastFrameTimeMs?: number;
     private pendingSeekCompletion?: {
         readonly promise: Promise<void>;
         readonly resolve: () => void;
@@ -127,6 +131,14 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     currentTimeMs(): number {
         return this.video.currentTimeMs();
+    }
+
+    playbackRate(): number {
+        return this.video.playbackRate();
+    }
+
+    frameTimeMs(): number {
+        return this.lastFrameTimeMs ?? defaultFrameTimeMs;
     }
 
     durationMs(): number {
@@ -269,10 +281,16 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.frameHandle = this.video.requestVideoFrameCallback((now, metadata) => {
             this.frameHandle = undefined;
             const timestampMs = this.video.frameTimestampMs(now, metadata) ?? metadata.mediaTime * 1000;
-            const lookaheadTimestampMs = this.nextFrameTimestampMs(timestampMs, metadata.expectedDisplayTime, now);
+            const lookaheadTimestampMs = this.nextFrameTimestampMs(
+                timestampMs,
+                metadata.expectedDisplayTime,
+                now,
+                metadata.presentedFrames
+            );
             this.previousFrame = {
                 expectedDisplayTimeMs: metadata.expectedDisplayTime,
                 callbackTimeMs: now,
+                presentedFrames: metadata.presentedFrames,
             };
             this.updates.enqueue(timestampMs, { lookaheadTimestampMs });
             this.schedule();
@@ -282,7 +300,8 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private nextFrameTimestampMs(
         mediaTimeMs: number,
         expectedDisplayTimeMs: number,
-        callbackTimeMs: number
+        callbackTimeMs: number,
+        presentedFrames: number
     ): number | undefined {
         const previousFrame = this.previousFrame;
         if (previousFrame === undefined) return;
@@ -291,8 +310,11 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         const callbackIntervalMs = callbackTimeMs - previousFrame.callbackTimeMs;
         const frameIntervalMs = expectedDisplayIntervalMs > 0 ? expectedDisplayIntervalMs : callbackIntervalMs;
         const playbackRate = this.video.playbackRate();
-        if (!Number.isFinite(frameIntervalMs) || frameIntervalMs <= 0 || !Number.isFinite(playbackRate)) return;
+        if (frameIntervalMs <= 0 || !Number.isFinite(playbackRate)) return;
 
+        const presentedFrameInterval = presentedFrames - previousFrame.presentedFrames;
+        const frameCount = presentedFrameInterval > 0 ? presentedFrameInterval : 1;
+        this.lastFrameTimeMs = (frameIntervalMs * playbackRate) / frameCount;
         return mediaTimeMs + frameIntervalMs * playbackRate;
     }
 

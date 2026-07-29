@@ -29,6 +29,8 @@ export interface TimingDriver {
     externalSeeked?(timestampMs: number): void;
     externalSeekCanceled?(): void;
     currentTimeMs(): number;
+    frameTimeMs: () => number;
+    playbackRate?: () => number;
     durationMs(): number;
     paused(): boolean;
 }
