@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import type { IndexedSubtitleModel } from '@project/common';
-import { makeSubtitle, makeTimeline as compileTimeline } from '@project/common/playback/playback-engine-test-utils';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
-import PlaybackTimelineRunner from '@project/common/playback/playback-timeline-runner';
+import { makeSubtitle, makeTimeline as compileTimeline } from '@project/common/playback/playback-test-utils';
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
 
 const makeTimeline = () => {
     const timeline = compileTimeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], {

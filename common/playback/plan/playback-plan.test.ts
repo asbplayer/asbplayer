@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
-import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-engine-test-utils';
-import { buildPlaybackPlan, fastForwardingForPlanState } from '@project/common/playback/playback-plan';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
+import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-test-utils';
+import { buildPlaybackPlan, fastForwardingForPlanState } from '@project/common/playback/plan/playback-plan';
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 
 const makePlan = (
     modes: PlayMode[],

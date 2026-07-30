@@ -35,7 +35,7 @@ import { KeyBinder } from '@project/common/key-binder';
 import { clampMediaTimestamp, download, surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
 import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
-import Clock from '@project/common/playback/clock';
+import Clock from '@project/common/playback/timing/clock';
 import Controls, { Point } from './Controls';
 import Grid from '@mui/material/Grid';
 import MediaAdapter from '../services/media-adapter';
@@ -51,7 +51,7 @@ import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
 import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
 import { FileWithId } from '../../file-selector';
-import AnimationFrameTimingDriver from '@project/common/playback/animation-frame-timing-driver';
+import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import {
     buildPlaybackTimelineExportPlan,
@@ -59,7 +59,7 @@ import {
     type PlaybackTimelineOptionLabels,
     playbackTimelineSettingsSummary,
     playbackTimelineToHtml,
-} from '@project/common/playback/playback-timeline-html';
+} from '@project/common/playback/timeline/playback-timeline-html';
 import { createTheme } from '../../theme/theme';
 import Alert from './Alert';
 import useSnackbar from '../../hooks/use-snackbar';

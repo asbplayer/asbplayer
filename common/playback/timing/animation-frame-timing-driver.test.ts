@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { type IndexedSubtitleModel } from '@project/common';
 import AnimationFrameTimingDriver, {
     type AnimationFrameTimingSource,
-} from '@project/common/playback/animation-frame-timing-driver';
-import Clock from '@project/common/playback/clock';
-import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-engine-test-utils';
-import PlaybackPlanExecutor from '@project/common/playback/playback-plan-executor';
-import { type PlaybackPlan } from '@project/common/playback/playback-plan';
-import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-cursor';
-import type { TimingDriverCallbacks } from '@project/common/playback/timing-driver';
+} from '@project/common/playback/timing/animation-frame-timing-driver';
+import Clock from '@project/common/playback/timing/clock';
+import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-test-utils';
+import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
+import { type PlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
+import type { TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
 
 class FakeAnimationFrames {
     private nextHandle = 1;

@@ -1,13 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
-import { makeTextSubtitle } from '@project/common/playback/playback-engine-test-utils';
-import { buildPlaybackPlan } from '@project/common/playback/playback-plan';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
+import { makeTextSubtitle } from '@project/common/playback/playback-test-utils';
+import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import {
     buildPlaybackTimelineExportPlan,
     playbackTimelineToHtml,
-} from '@project/common/playback/playback-timeline-html';
+} from '@project/common/playback/timeline/playback-timeline-html';
 
 const modeLabels = {
     normal: 'Normal',

@@ -16,7 +16,7 @@ import HoldableIconButton from './HoldableIconButton';
 import PlaybackModeSelector from './PlaybackModeSelector';
 import ScrollableNumberControls from './ScrollableNumberControls';
 import Tooltip from './Tooltip';
-import { minimumPlaybackRate } from '../playback/playback-mode-controller';
+import { minimumPlaybackRate } from '../playback/controllers/playback-mode-controller';
 
 type Anchor = 'top' | 'bottom';
 

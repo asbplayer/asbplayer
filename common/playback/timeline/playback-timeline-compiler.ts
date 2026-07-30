@@ -1,5 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import { advanceTimestampIndex, firstTimestampIndex } from '@project/common/playback/playback-timeline';
+import { advanceTimestampIndex, firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
 import type {
     PlaybackTimelineBlock,
     PlaybackTimelineEdge,
@@ -7,7 +7,7 @@ import type {
     PlaybackTimelineEventGroup,
     PlaybackTimelineSegment,
     PlaybackTimelineState,
-} from '@project/common/playback/playback-timeline';
+} from '@project/common/playback/timeline/playback-timeline';
 import { clamp, normalizeFinite, normalizeNonNegative, normalizeNonPositive } from '@project/common/util';
 
 export interface PlaybackTimelineSubtitles<T extends IndexedSubtitleModel> {

@@ -3,8 +3,8 @@ import PlaybackTimeline, {
     type PlaybackTimelineEvent,
     type PlaybackTimelineSegment,
     type PlaybackTimelineState,
-} from '@project/common/playback/playback-timeline';
-import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-cursor';
+} from '@project/common/playback/timeline/playback-timeline';
+import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
 
 export interface PlaybackTimelineActionResult {
     readonly autoPaused: boolean;

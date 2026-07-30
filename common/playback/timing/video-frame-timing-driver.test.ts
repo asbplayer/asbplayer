@@ -1,13 +1,13 @@
-import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-engine-test-utils';
-import { buildPlaybackPlan } from '@project/common/playback/playback-plan';
-import PlaybackPlanExecutor from '@project/common/playback/playback-plan-executor';
-import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-cursor';
+import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-test-utils';
+import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
+import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
 import VideoFrameTimingDriver, {
     type VideoFrameTimingSource,
-} from '@project/common/playback/video-frame-timing-driver';
+} from '@project/common/playback/timing/video-frame-timing-driver';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
-import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/timing-driver';
+import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/timing/timing-driver';
 
 class FakeVideo extends EventTarget {
     currentTime = 0;
@@ -430,8 +430,8 @@ describe('VideoFrameTimingDriver', () => {
         const video = new FakeVideo();
         const timeline = makeTimeline(
             [
-                { text: 'one', start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000, track: 0 },
-                { text: 'two', start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, track: 0 },
+                { text: 'one', start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000, track: 0, index: 0 },
+                { text: 'two', start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, track: 0, index: 1 },
             ],
             {
                 durationMs: 5000,

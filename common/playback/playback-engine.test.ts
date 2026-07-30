@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
 import { defaultSettings, type AsbplayerSettings } from '@project/common/settings';
 import PlaybackEngine from '@project/common/playback/playback-engine';
-import type { TimingDriver, TimingDriverCallbacks } from '@project/common/playback/timing-driver';
+import type { TimingDriver, TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
 
 class FakeTimingDriver implements TimingDriver {
     callbacks: TimingDriverCallbacks = {

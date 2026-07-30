@@ -1,5 +1,5 @@
-import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
-import type { PlaybackTimelineBlock } from '@project/common/playback/playback-timeline';
+import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import type { PlaybackTimelineBlock } from '@project/common/playback/timeline/playback-timeline';
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
 

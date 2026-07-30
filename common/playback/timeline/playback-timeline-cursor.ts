@@ -3,7 +3,7 @@ import PlaybackTimeline, {
     advanceTimestampIndex,
     firstTimestampIndex,
     type PlaybackTimelineEventGroup,
-} from '@project/common/playback/playback-timeline';
+} from '@project/common/playback/timeline/playback-timeline';
 
 /** Tracks a monotonic playback position and returns every compiled boundary crossed by each update. */
 export default class PlaybackTimelineCursor<T extends IndexedSubtitleModel> {

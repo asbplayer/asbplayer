@@ -66,7 +66,7 @@ import {
     defaultSettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { playbackModeNotifications } from '@project/common/playback/playback-mode-controller';
+import { playbackModeNotifications } from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildSubtitleTracks,
     clampMediaTimestamp,
@@ -103,7 +103,7 @@ import { HoveredToken } from '@project/common/annotations';
 import { v4 as uuidv4 } from 'uuid';
 import { debounced } from './debounced';
 import PlaybackEngine from '@project/common/playback/playback-engine';
-import VideoFrameTimingDriver from '@project/common/playback/video-frame-timing-driver';
+import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import InterpolatedContentClock from './interpolated-content-clock';
 
 let netflix = false;

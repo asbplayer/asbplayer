@@ -5,7 +5,7 @@ import {
     type PlaybackTimelineActionIndex,
     type PlaybackTimelineCompilation,
     type PlaybackTimelineSubtitles,
-} from '@project/common/playback/playback-timeline-compiler';
+} from '@project/common/playback/timeline/playback-timeline-compiler';
 
 export type PlaybackTimelineEdge = 'start' | 'end';
 

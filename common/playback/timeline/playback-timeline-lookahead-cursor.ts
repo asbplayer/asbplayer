@@ -2,7 +2,7 @@ import type { IndexedSubtitleModel } from '@project/common';
 import PlaybackTimeline, {
     advanceTimestampIndex,
     firstTimestampIndex,
-} from '@project/common/playback/playback-timeline';
+} from '@project/common/playback/timeline/playback-timeline';
 
 export interface PlaybackTimelineLookaheadResult {
     readonly actionTimestamp?: number;

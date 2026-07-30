@@ -1,11 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
 import type { IndexedSubtitleModel } from '@project/common';
-import { makeSubtitle, makeTimelineOptions } from '@project/common/playback/playback-engine-test-utils';
+import { makeSubtitle, makeTimelineOptions } from '@project/common/playback/playback-test-utils';
 import {
     compilePlaybackTimeline,
     compilePlaybackTimelineSubtitles,
     type PlaybackTimelineOptions,
-} from '@project/common/playback/playback-timeline-compiler';
+} from '@project/common/playback/timeline/playback-timeline-compiler';
 
 const compile = (
     subtitles: IndexedSubtitleModel[],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
-import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-engine-test-utils';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
-import PlaybackTimelineCursor from '@project/common/playback/playback-timeline-cursor';
+import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-test-utils';
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
 
 describe('PlaybackTimelineCursor', () => {
     it('coalesces equal targets into one timestamp while retaining both roles', () => {

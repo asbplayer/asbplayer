@@ -34,7 +34,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
 import { SubtitleAlignment } from '@project/common/settings';
-import Clock from '@project/common/playback/clock';
+import Clock from '@project/common/playback/timing/clock';
 import PlaybackPreferences from '../services/playback-preferences';
 import Tooltip from '../../components/Tooltip';
 import Menu from '@mui/material/Menu';

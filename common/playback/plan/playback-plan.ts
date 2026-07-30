@@ -4,11 +4,11 @@ import type {
     PlaybackTimelineEndAction,
     PlaybackTimelineRepeatAction,
     PlaybackTimelineState,
-} from '@project/common/playback/playback-timeline';
+} from '@project/common/playback/timeline/playback-timeline';
 import {
     compilePlaybackTimelineSubtitles,
     type PlaybackTimelineSubtitles,
-} from '@project/common/playback/playback-timeline-compiler';
+} from '@project/common/playback/timeline/playback-timeline-compiler';
 import {
     areSubtitleModelsEqual,
     arrayEquals,

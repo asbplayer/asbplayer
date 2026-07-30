@@ -40,10 +40,13 @@ import {
     timeDurationDisplay,
 } from '@project/common/util';
 import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
-import Clock from '@project/common/playback/clock';
-import { hasEnabledPlaybackModes, playbackModeNotifications } from '@project/common/playback/playback-mode-controller';
+import Clock from '@project/common/playback/timing/clock';
+import {
+    hasEnabledPlaybackModes,
+    playbackModeNotifications,
+} from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
-import VideoFrameTimingDriver from '@project/common/playback/video-frame-timing-driver';
+import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import Controls, { Point } from './Controls';
 import PlayerChannel from '../services/player-channel';
 import ChromeExtension from '../services/chrome-extension';

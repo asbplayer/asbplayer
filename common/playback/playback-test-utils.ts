@@ -1,11 +1,11 @@
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
-import type { PlaybackPlanInput } from '@project/common/playback/playback-plan';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
+import type { PlaybackPlanInput } from '@project/common/playback/plan/playback-plan';
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import {
     compilePlaybackTimelineSubtitles,
     type PlaybackTimelineOptions,
-} from '@project/common/playback/playback-timeline-compiler';
-import type { TimingDriverCallbacks } from '@project/common/playback/timing-driver';
+} from '@project/common/playback/timeline/playback-timeline-compiler';
+import type { TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
 
 export const emptyTimingDriverCallbacks: TimingDriverCallbacks = {
     onTime: async () => {},

@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import Clock from '@project/common/playback/clock';
+import Clock from '@project/common/playback/timing/clock';
 
 describe('Clock', () => {
     it('tracks monotonic playback time in milliseconds across rate changes and pauses', () => {

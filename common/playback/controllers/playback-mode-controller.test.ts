@@ -4,7 +4,7 @@ import PlaybackModeController, {
     hasEnabledPlaybackModes,
     playbackModeNotifications,
     playbackModesFromSettings,
-} from '@project/common/playback/playback-mode-controller';
+} from '@project/common/playback/controllers/playback-mode-controller';
 
 const sortedModes = (modes: Set<PlayMode>) => [...modes].sort((left, right) => left - right);
 

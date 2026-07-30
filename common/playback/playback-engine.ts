@@ -7,18 +7,18 @@ import {
     playbackPlansEqual,
     type PlaybackPlan,
     playbackPlanCorrectionToleranceMs,
-} from '@project/common/playback/playback-plan';
+} from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor, {
     type PlaybackPlanExecutorCallbacks,
-} from '@project/common/playback/playback-plan-executor';
+} from '@project/common/playback/plan/playback-plan-executor';
 import PlaybackModeController, {
     minimumPlaybackRate,
     normalizePlaybackRate,
     playbackModesFromSettings,
     type PlayModeTransition,
-} from '@project/common/playback/playback-mode-controller';
-import PlaybackPositionController from '@project/common/playback/playback-position-controller';
-import type { TimingDriver } from '@project/common/playback/timing-driver';
+} from '@project/common/playback/controllers/playback-mode-controller';
+import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
+import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 
 export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
     readonly pause: () => void;

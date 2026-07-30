@@ -35,7 +35,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection, { SettingsSubSection } from './SettingsSection';
 import ResponsiveSettingsStack from './ResponsiveSettingsStack';
 import { VideoSubtitleSplitBehavior } from '../settings';
-import { normalizePlaybackRate } from '../playback/playback-mode-controller';
+import { normalizePlaybackRate } from '../playback/controllers/playback-mode-controller';
 import NumericSettingInput from './NumericSettingInput';
 
 function regexIsValid(regex: string) {

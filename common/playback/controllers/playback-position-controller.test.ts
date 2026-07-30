@@ -7,7 +7,7 @@ import PlaybackPositionController, {
     playbackPositionFromSettings,
     playbackPositionSaveIntervalMs,
     upsertPlaybackPositions,
-} from '@project/common/playback/playback-position-controller';
+} from '@project/common/playback/controllers/playback-position-controller';
 
 const subtitle: IndexedSubtitleModel = {
     text: 'subtitle',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-engine-test-utils';
-import PlaybackTimeline, { firstTimestampIndex } from '@project/common/playback/playback-timeline';
+import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-test-utils';
+import PlaybackTimeline, { firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
 
 describe('PlaybackTimeline', () => {
     it('has no state or condensed target for zero subtitles', () => {

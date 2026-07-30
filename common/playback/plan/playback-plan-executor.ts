@@ -4,14 +4,14 @@ import PlaybackTimeline, {
     type PlaybackTimelineEvent,
     type PlaybackTimelineSegment,
     type PlaybackTimelineState,
-} from '@project/common/playback/playback-timeline';
+} from '@project/common/playback/timeline/playback-timeline';
 import {
     type PlaybackPlan,
     fastForwardingForPlanState,
     timestampComparisonToleranceMs,
-} from '@project/common/playback/playback-plan';
-import PlaybackTimelineRunner from '@project/common/playback/playback-timeline-runner';
-import PlaybackTimelineLookaheadCursor from '@project/common/playback/playback-timeline-lookahead-cursor';
+} from '@project/common/playback/plan/playback-plan';
+import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
+import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/playback-timeline-lookahead-cursor';
 import { areSubtitleModelsEqual, arrayEquals } from '@project/common/util';
 
 type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';

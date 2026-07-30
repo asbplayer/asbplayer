@@ -1,9 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode } from '@project/common';
-import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-engine-test-utils';
-import { buildPlaybackPlan } from '@project/common/playback/playback-plan';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
-import PlaybackTimelineLookaheadCursor from '@project/common/playback/playback-timeline-lookahead-cursor';
+import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-test-utils';
+import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/playback-timeline-lookahead-cursor';
 
 describe('PlaybackTimelineLookaheadCursor', () => {
     it('advances compiled action and state indexes without replaying earlier timestamps', () => {

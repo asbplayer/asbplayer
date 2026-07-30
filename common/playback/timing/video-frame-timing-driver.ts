@@ -2,7 +2,7 @@ import TimingUpdateQueue, {
     type TimingDriver,
     type TimingDriverCallbacks,
     type TimingDriverEventCallbacks,
-} from '@project/common/playback/timing-driver';
+} from '@project/common/playback/timing/timing-driver';
 
 const defaultFrameTimeMs = 1000 / 60;
 
