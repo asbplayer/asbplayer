@@ -1,9 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
-import {
-    makeIndexedSubtitle as makeSubtitle,
-    makePlaybackPlanInput,
-} from '@project/common/playback/playback-engine-test-utils';
+import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-engine-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/playback-plan';
 import PlaybackPlanExecutor, {
     type PlaybackPlanExecutorCallbacks,
@@ -304,7 +301,7 @@ describe('PlaybackPlanExecutor', () => {
             subtitleTriggerEndOffset: 5000,
         });
 
-        expect(plan.timeline.blocks).toEqual([
+        expect(plan.timelineSubtitles.blocks).toEqual([
             expect.objectContaining({ playbackModeStartMs: 2999, playbackModeEndMs: 2999 }),
             expect.objectContaining({ playbackModeStartMs: 5999, playbackModeEndMs: 5999 }),
         ]);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback/playback-engine-test-utils';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
+import PlaybackTimeline, { firstTimestampIndex } from '@project/common/playback/playback-timeline';
 
 describe('PlaybackTimeline', () => {
     it('has no state or condensed target for zero subtitles', () => {
@@ -48,7 +48,7 @@ describe('PlaybackTimeline', () => {
         const base = timeline(subtitles, {
             subtitleTriggerStartOffset: -250,
         });
-        const result = PlaybackTimeline.fromSnapshot({
+        const result = PlaybackTimeline.fromSubtitles({
             durationMs: base.durationMs,
             blocks: base.blocks.map((block) => ({ ...block, startAction: true as const })),
             displaySubtitles: subtitles,
@@ -57,8 +57,26 @@ describe('PlaybackTimeline', () => {
         expect(result.nextStartActionTimestamp(1500)).toBe(3750);
         expect(result.nextStartActionTimestamp(2100)).toBe(3750);
         expect(result.nextStartActionTimestamp(3750)).toBeUndefined();
-        expect(result.startActionAt(3750)).toBe(result.blocks[1]);
-        expect(result.startActionAt(3751)).toBeUndefined();
+        expect(result.startActionsAt(3750)).toEqual([result.blocks[1]]);
+        expect(result.startActionsAt(3751)).toEqual([]);
+    });
+
+    it('retains all start actions that share a timestamp', () => {
+        const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)];
+        const base = timeline(subtitles);
+        const result = PlaybackTimeline.fromSubtitles({
+            durationMs: base.durationMs,
+            blocks: base.blocks.map((block) => ({ ...block, playbackModeStartMs: 1000, startAction: true as const })),
+            displaySubtitles: subtitles,
+        });
+
+        expect(result.actionIndex.startActionTimestamps).toEqual([1000]);
+        expect(
+            result
+                .startActionsAt(1000)
+                .map(({ id }) => id)
+                .sort()
+        ).toEqual(result.blocks.map(({ id }) => id).sort());
     });
 
     it('uses configurable start and end gaps for condensed playback', () => {
@@ -98,5 +116,30 @@ describe('PlaybackTimeline', () => {
         const result = timeline([playbackSubtitle], { displaySubtitles: [playbackSubtitle, displayOnlySubtitle] });
 
         expect(result.lookupAt(1750).segment.showingSubtitles).toEqual([playbackSubtitle, displayOnlySubtitle]);
+    });
+});
+
+describe('firstTimestampIndex', () => {
+    const timestamp = (value: number) => value;
+
+    it.each([
+        { values: [], target: 1000, bound: 'after' as const, expected: 0 },
+        { values: [1000], target: 500, bound: 'after' as const, expected: 0 },
+        { values: [1000], target: 1000, bound: 'after' as const, expected: 1 },
+        { values: [1000], target: 1000, bound: 'at-or-after' as const, expected: 0 },
+        { values: [1000], target: 1500, bound: 'at-or-after' as const, expected: 1 },
+        { values: [1000, 2000, 3000], target: 2000, bound: 'after' as const, expected: 2 },
+        { values: [1000, 2000, 3000], target: 2000, bound: 'at-or-after' as const, expected: 1 },
+        { values: [1000, 1000, 2000], target: 1000, bound: 'after' as const, expected: 2 },
+        { values: [1000, 1000, 2000], target: 1000, bound: 'at-or-after' as const, expected: 0 },
+        { values: [1000, 2000, 3000], target: 4000, bound: 'after' as const, expected: 3 },
+    ])('returns the first $bound timestamp index for $target', ({ values, target, bound, expected }) => {
+        expect(firstTimestampIndex(values, target, timestamp, bound)).toBe(expected);
+    });
+
+    it('uses the timestamp accessor for timestamped objects', () => {
+        const values = [{ timestampMs: 1000 }, { timestampMs: 2000 }, { timestampMs: 3000 }];
+
+        expect(firstTimestampIndex(values, 1500, (value) => value.timestampMs, 'after')).toBe(1);
     });
 });

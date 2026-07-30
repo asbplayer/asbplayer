@@ -1,11 +1,10 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
 import type { PlaybackPosition } from '@project/common/settings';
-import type { TimingDriver } from '@project/common/playback/timing-driver';
 
-const playbackPositionSaveIntervalMs = 10_000;
-const minimumPlaybackPositionMs = 60_000;
-const maxPlaybackPositions = 50;
+export const minimumPlaybackPositionMs = 60_000;
+export const playbackPositionSaveIntervalMs = 10_000;
+export const maxPlaybackPositions = 50;
 
 export interface PlaybackPositionRememberSettings {
     readonly lastPlaybackPositions: PlaybackPosition[];
@@ -39,7 +38,7 @@ export const upsertPlaybackPositions = (
     return updatedPlaybackPositions;
 };
 
-export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleModel> {
     readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
     readonly playbackPositionChanged: (position: number | undefined) => void;
     readonly seek: (timestampMs: number) => Promise<void>;
@@ -47,17 +46,19 @@ export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleMo
     readonly showingSubtitlesAt: (timestampMs: number) => readonly T[];
 }
 
-export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleModel> {
     readonly settings: AsbplayerSettings;
     readonly playbackPositionKeys: readonly string[];
-    readonly timingDriver: TimingDriver;
+    readonly currentTimeMs: () => number;
+    readonly durationMs: () => number;
     readonly callbacks: PlaybackPositionControllerCallbacks<T>;
 }
 
 /** Controller for managing playback positions for resume on next session. */
-export default class PlaybackPositionController<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+export default class PlaybackPositionController<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
-    private readonly timingDriver: TimingDriver;
+    private readonly currentTimeMs: () => number;
+    private readonly durationMs: () => number;
     private readonly callbacks: PlaybackPositionControllerCallbacks<T>;
     private restoreKeys: readonly string[];
     private lastSavedTimestampMs?: number;
@@ -66,17 +67,24 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel =
     private skipInitialDiscontinuity = true;
     private playbackPositionSaveTimer?: ReturnType<typeof setInterval>;
 
-    constructor({ settings, playbackPositionKeys, timingDriver, callbacks }: PlaybackPositionControllerOptions<T>) {
+    constructor({
+        settings,
+        playbackPositionKeys,
+        currentTimeMs,
+        durationMs,
+        callbacks,
+    }: PlaybackPositionControllerOptions<T>) {
         this.settings = settings;
         this.restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
-        this.timingDriver = timingDriver;
+        this.currentTimeMs = currentTimeMs;
+        this.durationMs = durationMs;
         this.callbacks = callbacks;
     }
 
     bind(): void {
         if (this.playbackPositionSaveTimer !== undefined) return;
         this.playbackPositionSaveTimer = setInterval(
-            () => this.savePlaybackPosition(this.timingDriver.currentTimeMs()),
+            () => this.savePlaybackPosition(this.currentTimeMs()),
             playbackPositionSaveIntervalMs
         );
         this.restorePlaybackPosition();
@@ -106,7 +114,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel =
     }
 
     playbackPaused(): void {
-        this.savePlaybackPosition(this.timingDriver.currentTimeMs());
+        this.savePlaybackPosition(this.currentTimeMs());
     }
 
     discontinuity(timestampMs: number): void {
@@ -173,7 +181,13 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel =
     }
 
     private restorePlaybackPosition(): void {
-        if (!this.restoreKeys.length || !this.timingDriver.bound || this.hasOfferedRestorePosition) return;
+        if (
+            !this.restoreKeys.length ||
+            this.playbackPositionSaveTimer === undefined ||
+            this.hasOfferedRestorePosition
+        ) {
+            return;
+        }
 
         const position = playbackPositionFromSettings(this.settings, this.restoreKeys);
         this.hasOfferedRestorePosition = true;
@@ -182,7 +196,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel =
             this.removeRememberedPlaybackPositions();
             return;
         }
-        if (position >= this.timingDriver.durationMs()) return;
+        if (position >= this.durationMs()) return;
 
         this.pendingTimestampMs = position;
         this.callbacks.playbackPositionChanged(position);

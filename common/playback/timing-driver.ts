@@ -1,7 +1,7 @@
 export interface TimingDriverCallbacks {
     onTime(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void>;
     onPlaybackStarted(): Promise<void>;
-    onPlaybackPaused?(): void;
+    onPlaybackPaused(): void;
     onDiscontinuity(timestampMs: number): void;
     onCancel(options: { preserveExpectedDiscontinuity: boolean }): void;
     onError(error: unknown): void;
@@ -30,7 +30,7 @@ export interface TimingDriver {
     externalSeekCanceled?(): void;
     currentTimeMs(): number;
     frameTimeMs: () => number;
-    playbackRate?: () => number;
+    playbackRate: () => number;
     durationMs(): number;
     paused(): boolean;
 }
@@ -45,6 +45,10 @@ type TimingUpdateCallbacks = Pick<
     'onTime' | 'onPlaybackStarted' | 'onDiscontinuity' | 'onCancel' | 'onError'
 >;
 
+interface TimingUpdateQueueOptions {
+    active: () => boolean;
+}
+
 /** Serializes timing updates while coalescing queued samples to the latest media timestamp. */
 export default class TimingUpdateQueue {
     private readonly callbacks: TimingUpdateCallbacks;
@@ -55,9 +59,9 @@ export default class TimingUpdateQueue {
     private queuedPlaybackStarted = false;
     private invalidTimestampReported = false;
 
-    constructor(callbacks: TimingUpdateCallbacks, active: () => boolean) {
-        this.callbacks = callbacks;
+    constructor({ active }: TimingUpdateQueueOptions, callbacks: TimingUpdateCallbacks) {
         this.active = active;
+        this.callbacks = callbacks;
     }
 
     clear(options: { preserveExpectedDiscontinuity: boolean }): void {
@@ -67,6 +71,9 @@ export default class TimingUpdateQueue {
         this.callbacks.onCancel(options);
     }
 
+    /**
+     * Need to enqueue as starting playback can trigger async updates such as auto-pause/repeat actions.
+     */
     enqueuePlaybackStarted(): void {
         if (this.processing) {
             this.queuedPlaybackStarted = true;
@@ -75,6 +82,9 @@ export default class TimingUpdateQueue {
         void this.callbacks.onPlaybackStarted().catch((error) => this.callbacks.onError(error));
     }
 
+    /**
+     * Need to enqueue as discontinuities can occur asynchronously and must be processed in order.
+     */
     enqueueDiscontinuity(timestampMs: number): void {
         if (!this.acceptTimestamp(timestampMs)) return;
         this.queuedUpdate = undefined;
@@ -82,6 +92,9 @@ export default class TimingUpdateQueue {
         this.process();
     }
 
+    /**
+     * Need to enqueue timing updates as they can occur asynchronously and must be processed in order.
+     */
     enqueue(timestampMs: number, options: { lookaheadTimestampMs?: number }): void {
         if (!this.active()) return;
         if (!this.acceptTimestamp(timestampMs)) return;

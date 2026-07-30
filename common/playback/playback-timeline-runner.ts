@@ -1,4 +1,4 @@
-import type { SubtitleModel } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import PlaybackTimeline, {
     type PlaybackTimelineEvent,
     type PlaybackTimelineSegment,
@@ -11,7 +11,7 @@ export interface PlaybackTimelineActionResult {
     readonly seeked: boolean;
 }
 
-export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
+export interface PlaybackTimelineRunnerCallbacks<T extends IndexedSubtitleModel> {
     onStart(event: PlaybackTimelineEvent): Promise<{ readonly autoPaused: boolean }>;
     onEnd(
         event: PlaybackTimelineEvent,
@@ -25,7 +25,7 @@ export interface PlaybackTimelineRunnerCallbacks<T extends SubtitleModel> {
 }
 
 /** Applies precomputed crossed actions in time order and stops at the first position-changing action. */
-export default class PlaybackTimelineRunner<T extends SubtitleModel> {
+export default class PlaybackTimelineRunner<T extends IndexedSubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private readonly cursor: PlaybackTimelineCursor<T>;
     private readonly callbacks: PlaybackTimelineRunnerCallbacks<T>;

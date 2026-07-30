@@ -397,7 +397,8 @@ function PlayerComponent(
             timingDriver: new AnimationFrameTimingDriver({
                 paused: () => !clock.running,
                 durationMs: () => trackLengthMs(undefined, subtitlesRef.current),
-                currentTimeMs: () => clock.time(Number.POSITIVE_INFINITY),
+                currentTimeMs: () => clock.time({ maxMs: Number.POSITIVE_INFINITY }),
+                playbackRate: () => clock.rate,
                 requestAnimationFrameCallback: (callback) => requestAnimationFrame(callback),
                 cancelAnimationFrameCallback: (handle) => cancelAnimationFrame(handle),
                 addEventListener: (type, listener) => {
@@ -622,7 +623,7 @@ function PlayerComponent(
                     return allSubtitles;
                 });
             },
-            () => clockRef.current.time(calculateLengthMs(videoDurationRef))
+            () => clockRef.current.time({ maxMs: calculateLengthMs(videoDurationRef) })
         );
         if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current);
         subtitleAnnotations.bind();
@@ -1090,7 +1091,7 @@ function PlayerComponent(
                         subtitle,
                         surroundingSubtitles,
                         subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
-                        mediaTimestamp: clock.time(calculateLengthMs(videoDurationRef)),
+                        mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
                         file:
                             videoFile === undefined
                                 ? undefined
@@ -1192,7 +1193,7 @@ function PlayerComponent(
 
         const interval = setInterval(() => {
             void (async () => {
-                const progress = clock.progress(calculateLengthMs(videoDurationRef));
+                const progress = clock.progress({ durationMs: calculateLengthMs(videoDurationRef) });
 
                 if (progress >= 1) {
                     pause(clock, mediaAdapter, true);

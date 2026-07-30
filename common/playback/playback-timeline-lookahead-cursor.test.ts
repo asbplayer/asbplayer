@@ -13,7 +13,7 @@ describe('PlaybackTimelineLookaheadCursor', () => {
                 autoPausePreference: AutoPausePreference.atStartAndEnd,
             })
         );
-        const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const cursor = new PlaybackTimelineLookaheadCursor(timeline, 500);
 
         expect(cursor.advance(500, 1500)).toEqual({ actionTimestamp: 1000, stateChangeTimestamp: 999 });
@@ -28,7 +28,7 @@ describe('PlaybackTimelineLookaheadCursor', () => {
                 autoPausePreference: AutoPausePreference.atStartAndEnd,
             })
         );
-        const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const cursor = new PlaybackTimelineLookaheadCursor(timeline, 1500);
 
         expect(cursor.advance(1500, 2500)).toEqual({ actionTimestamp: 1999, stateChangeTimestamp: 2000 });

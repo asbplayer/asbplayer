@@ -8,15 +8,15 @@ describe('Clock', () => {
 
         clock.start();
         nowMs = 11_500;
-        expect(clock.time(Number.POSITIVE_INFINITY)).toBe(1_500);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(1_500);
 
         clock.rate = 2;
         nowMs = 12_500;
-        expect(clock.time(Number.POSITIVE_INFINITY)).toBe(3_500);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(3_500);
 
         clock.stop();
         nowMs = 20_000;
-        expect(clock.time(Number.POSITIVE_INFINITY)).toBe(3_500);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(3_500);
     });
 
     it('does not lose elapsed time when start is called while already running', () => {
@@ -28,7 +28,7 @@ describe('Clock', () => {
         clock.start();
         nowMs = 2_000;
 
-        expect(clock.time(Number.POSITIVE_INFINITY)).toBe(2_000);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(2_000);
     });
 
     it('seeks in milliseconds and reports progress against a millisecond duration', () => {
@@ -36,10 +36,10 @@ describe('Clock', () => {
 
         clock.setTime(2_500);
 
-        expect(clock.time(Number.POSITIVE_INFINITY)).toBe(2_500);
-        expect(clock.time(2_000)).toBe(2_000);
-        expect(clock.progress(10_000)).toBe(0.25);
-        expect(clock.progress(0)).toBe(0);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(2_500);
+        expect(clock.time({ maxMs: 2_000 })).toBe(2_000);
+        expect(clock.progress({ durationMs: 10_000 })).toBe(0.25);
+        expect(clock.progress({ durationMs: 0 })).toBe(0);
     });
 
     it('notifies every listener when one listener unsubscribes during dispatch', () => {

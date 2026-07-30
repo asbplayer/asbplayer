@@ -1019,7 +1019,7 @@ export default function VideoPlayer({
                 playerChannel.currentTime(subtitle.start / 1000);
             },
             () => !videoRef.current,
-            () => clock.time(lengthMs),
+            () => clock.time({ maxMs: lengthMs }),
             () => subtitles,
             () => settings.seekableTracks
         );
@@ -1036,7 +1036,7 @@ export default function VideoPlayer({
                 }
             },
             () => !videoRef.current,
-            () => clock.time(lengthMs),
+            () => clock.time({ maxMs: lengthMs }),
             () => subtitles,
             () => settings.seekableTracks
         );
@@ -1046,7 +1046,7 @@ export default function VideoPlayer({
         return keyBinder.bindSeekBackwardOrForward(
             (event, forward) => {
                 event.preventDefault();
-                const timestamp = clock.time(lengthMs);
+                const timestamp = clock.time({ maxMs: lengthMs });
                 const seekDuration = miscSettings.seekDuration * 1000;
 
                 if (forward) {
@@ -1213,7 +1213,7 @@ export default function VideoPlayer({
                 handleOffsetChange(offset);
             },
             () => false,
-            () => clock.time(lengthMs),
+            () => clock.time({ maxMs: lengthMs }),
             () => subtitles,
             () => miscSettings.seekableTracks
         );
@@ -1221,7 +1221,7 @@ export default function VideoPlayer({
 
     const extractSubtitles = useCallback(() => {
         if (!subtitles || subtitles.length === 0) {
-            const timestamp = clock.time(lengthMs);
+            const timestamp = clock.time({ maxMs: lengthMs });
             const end = Math.min(timestamp + 5000, lengthMs);
             const currentSubtitle = {
                 text: '',
@@ -1318,7 +1318,7 @@ export default function VideoPlayer({
                 return;
             }
 
-            const currentTimestamp = clock.time(lengthMs);
+            const currentTimestamp = clock.time({ maxMs: lengthMs });
             let mediaTimestamp: number;
 
             if (subtitle === undefined || surroundingSubtitles === undefined) {
@@ -1364,7 +1364,7 @@ export default function VideoPlayer({
     const toggleSelectMiningInterval = useCallback(
         (postMineAction: PostMineAction, cardTextFieldValues?: CardTextFieldValues) => {
             if (mineIntervalStartTimestamp === undefined) {
-                setMineIntervalStartTimestamp(clock.time(lengthMs));
+                setMineIntervalStartTimestamp(clock.time({ maxMs: lengthMs }));
 
                 if (!playing()) {
                     playerChannel.play();
@@ -1385,7 +1385,7 @@ export default function VideoPlayer({
                     return;
                 }
 
-                const endTimestamp = clock.time(lengthMs);
+                const endTimestamp = clock.time({ maxMs: lengthMs });
 
                 if (endTimestamp > mineIntervalStartTimestamp) {
                     let currentSubtitle: SubtitleModel = {
@@ -1534,7 +1534,7 @@ export default function VideoPlayer({
                 if (ankiDialogOpen) {
                     onAnkiDialogRewind();
                 } else if (lastMinedRecord) {
-                    const currentTimestamp = clock.time(lengthMs);
+                    const currentTimestamp = clock.time({ maxMs: lengthMs });
                     mineSubtitle(
                         PostMineAction.showAnkiDialog,
                         lastMinedRecord.videoFileUrl,
@@ -1762,7 +1762,7 @@ export default function VideoPlayer({
         (direction: Direction) => {
             const subtitle = adjacentSubtitle(
                 direction === 'right',
-                clock.time(lengthMs),
+                clock.time({ maxMs: lengthMs }),
                 subtitles,
                 miscSettings.seekableTracks
             );
@@ -1898,7 +1898,7 @@ export default function VideoPlayer({
             return undefined;
         }
 
-        const timestamp = clock.time(lengthMs);
+        const timestamp = clock.time({ maxMs: lengthMs });
 
         return {
             offset,

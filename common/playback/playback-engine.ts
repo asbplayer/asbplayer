@@ -20,7 +20,7 @@ import PlaybackModeController, {
 import PlaybackPositionController from '@project/common/playback/playback-position-controller';
 import type { TimingDriver } from '@project/common/playback/timing-driver';
 
-export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
     readonly pause: () => void;
     readonly play: () => Promise<void>;
     readonly seek: (timestampMs: number) => Promise<void>;
@@ -32,7 +32,7 @@ export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel = Indexe
     readonly onError: (error: unknown) => void;
 }
 
-export interface PlaybackEngineOptions<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly settings: AsbplayerSettings;
     readonly subtitles: readonly T[];
     readonly ready: { settings: boolean };
@@ -54,6 +54,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel = IndexedS
  * └── PlaybackEngine
  *     ├── VideoFrameTimingDriver (Player: AnimationFrameTimingDriver)
  *     ├── PlaybackModeController
+ *     ├── PlaybackPositionController
  *     ├── PlaybackPlan
  *     │   └── PlaybackTimelineCompiler
  *     └── PlaybackPlanExecutor
@@ -61,6 +62,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel = IndexedS
  *         └── PlaybackTimelineRunner
  *             ├── PlaybackTimeline
  *             └── PlaybackTimelineCursor
+ *             └── PlaybackTimelineLookaheadCursor
  */
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
@@ -102,7 +104,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
             setPlaybackRate: (playbackRate) => {
                 this.callbacks.setPlaybackRate(playbackRate);
-                const actualPlaybackRate = this.timingDriver.playbackRate?.();
+                const actualPlaybackRate = this.timingDriver.playbackRate();
                 if (
                     actualPlaybackRate !== undefined &&
                     (!Number.isFinite(actualPlaybackRate) ||
@@ -125,7 +127,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackPositionController = new PlaybackPositionController({
             settings: this.settings,
             playbackPositionKeys,
-            timingDriver: this.timingDriver,
+            currentTimeMs: () => this.timingDriver.currentTimeMs(),
+            durationMs: () => this.timingDriver.durationMs(),
             callbacks: {
                 saveSettings: callbacks.saveSettings,
                 playbackPositionChanged: callbacks.playbackPositionChanged,
@@ -241,7 +244,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     durationChanged(durationMs: number): void {
-        if (!Number.isFinite(durationMs) || durationMs === this.plan.timeline.durationMs) return;
+        if (!Number.isFinite(durationMs) || durationMs === this.plan.timelineSubtitles.durationMs) return;
         this.rebuildPlan();
     }
 

@@ -8,6 +8,7 @@ class FakeTimingDriver implements TimingDriver {
     callbacks: TimingDriverCallbacks = {
         onTime: async () => {},
         onPlaybackStarted: async () => {},
+        onPlaybackPaused: () => {},
         onDiscontinuity: () => {},
         onCancel: () => {},
         onError: () => {},
@@ -19,6 +20,7 @@ class FakeTimingDriver implements TimingDriver {
     timestampMs = 0;
     durationMsValue = 6000;
     durationMsReads = 0;
+    playbackRateValue = 1;
     isPaused = false;
     expectedInternalSeekCalls = 0;
     cancelExpectedInternalSeekCalls = 0;
@@ -55,6 +57,10 @@ class FakeTimingDriver implements TimingDriver {
 
     frameTimeMs(): number {
         return 1000 / 60;
+    }
+
+    playbackRate(): number {
+        return this.playbackRateValue;
     }
 
     durationMs(): number {
@@ -174,7 +180,10 @@ function makePlaybackEngine(
                     driver.timestampMs = targetTimestampMs;
                     return Promise.resolve();
                 }),
-            setPlaybackRate: (playbackRate) => playbackRates.push(playbackRate),
+            setPlaybackRate: (playbackRate) => {
+                playbackRates.push(playbackRate);
+                driver.playbackRateValue = playbackRate;
+            },
             showingSubtitlesChanged: (values) => showing.push(values),
             playbackPositionChanged: (position) => playbackPositionChanges.push(position),
             saveSettings: (settings) => savedSettings.push(settings),
@@ -685,7 +694,7 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.bind();
         harness.driver.discontinuity(62_000);
-        harness.driver.callbacks.onPlaybackPaused?.();
+        harness.driver.callbacks.onPlaybackPaused();
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 62_000 }],
         });
@@ -722,7 +731,7 @@ describe('PlaybackEngine', () => {
         });
 
         harness.playbackEngine.bind();
-        harness.driver.callbacks.onPlaybackPaused?.();
+        harness.driver.callbacks.onPlaybackPaused();
 
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'other-video.mp4', position: 120_000 }],

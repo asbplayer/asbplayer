@@ -63,7 +63,8 @@ const timingDriver = (
     const source: AnimationFrameTimingSource = {
         paused: () => !clock.running,
         durationMs: () => 6000,
-        currentTimeMs: () => clock.time(Number.POSITIVE_INFINITY),
+        currentTimeMs: () => clock.time({ maxMs: Number.POSITIVE_INFINITY }),
+        playbackRate: () => clock.rate,
         requestAnimationFrameCallback: (callback) => animationFrames.requestAnimationFrameCallback(callback),
         cancelAnimationFrameCallback: (handle) => animationFrames.cancelAnimationFrameCallback(handle),
         addEventListener: (type, listener) => {
@@ -217,8 +218,8 @@ describe('AnimationFrameTimingDriver', () => {
         const animationFrames = new FakeAnimationFrames();
         const timeline = makeTimeline(
             [
-                { text: 'one', start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000, track: 0 },
-                { text: 'two', start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, track: 0 },
+                { text: 'one', start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000, track: 0, index: 0 },
+                { text: 'two', start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, track: 0, index: 1 },
             ],
             {
                 durationMs: 5000,
@@ -228,7 +229,7 @@ describe('AnimationFrameTimingDriver', () => {
                 subtitleTriggerGapStartOffset: 0,
             }
         );
-        const cursor = new PlaybackTimelineCursor(timeline, clock.time(Number.POSITIVE_INFINITY));
+        const cursor = new PlaybackTimelineCursor(timeline, clock.time({ maxMs: Number.POSITIVE_INFINITY }));
         const crossed: number[] = [];
         const driver = timingDriver(
             clock,
@@ -314,7 +315,7 @@ describe('AnimationFrameTimingDriver', () => {
             index: 0,
         };
         const plan: PlaybackPlan<IndexedSubtitleModel> = {
-            timeline: {
+            timelineSubtitles: {
                 durationMs: 3000,
                 blocks: [],
                 displaySubtitles: [subtitle],
@@ -323,7 +324,7 @@ describe('AnimationFrameTimingDriver', () => {
         };
         const showingSubtitles: string[][] = [];
         const playbackActions: string[] = [];
-        const executor = new PlaybackPlanExecutor(plan, clock.time(Number.POSITIVE_INFINITY), {
+        const executor = new PlaybackPlanExecutor(plan, clock.time({ maxMs: Number.POSITIVE_INFINITY }), {
             play: async () => {},
             paused: () => !clock.running,
             pause: () => playbackActions.push('pause'),

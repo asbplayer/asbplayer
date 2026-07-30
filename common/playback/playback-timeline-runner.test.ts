@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import type { SubtitleModel } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import { makeSubtitle, makeTimeline as compileTimeline } from '@project/common/playback/playback-engine-test-utils';
 import PlaybackTimeline from '@project/common/playback/playback-timeline';
 import PlaybackTimelineRunner from '@project/common/playback/playback-timeline-runner';
@@ -8,7 +8,7 @@ const makeTimeline = () => {
     const timeline = compileTimeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], {
         durationMs: 5000,
     });
-    return PlaybackTimeline.fromSnapshot({
+    return PlaybackTimeline.fromSubtitles({
         durationMs: timeline.durationMs,
         displaySubtitles: [makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)],
         blocks: timeline.blocks.map((block) => ({
@@ -55,7 +55,7 @@ describe('PlaybackTimelineRunner', () => {
             subtitleTriggerStartOffset: 500,
             subtitleTriggerEndOffset: -499,
         });
-        const actionTimeline = PlaybackTimeline.fromSnapshot({
+        const actionTimeline = PlaybackTimeline.fromSubtitles({
             durationMs: timeline.durationMs,
             displaySubtitles: [makeSubtitle(1000, 2000, 0)],
             blocks: timeline.blocks.map((block) => ({
@@ -106,7 +106,7 @@ describe('PlaybackTimelineRunner', () => {
 
     it('reconciles persistent state but does not run edge actions when crossing backward', async () => {
         const timeline = makeTimeline();
-        const states: (readonly SubtitleModel[])[] = [];
+        const states: (readonly IndexedSubtitleModel[])[] = [];
         const starts = jest.fn(async () => ({ autoPaused: false }));
         const ends = jest.fn(async () => ({ autoPaused: false, seeked: false }));
         const runner = new PlaybackTimelineRunner(timeline, 1500, {

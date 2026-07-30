@@ -16,7 +16,7 @@ import { areSubtitleModelsEqual, arrayEquals } from '@project/common/util';
 
 type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
 
-export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel = IndexedSubtitleModel> {
+export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
     readonly play: () => Promise<void>;
     readonly paused: () => boolean;
     readonly pause: () => void;
@@ -91,7 +91,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     constructor(plan: PlaybackPlan<T>, timestampMs: number, callbacks: PlaybackPlanExecutorCallbacks<T>) {
         this.plan = plan;
         this._isFastForwarding = false;
-        this.timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         this.callbacks = callbacks;
         this.runner = new PlaybackTimelineRunner(this.timeline, timestampMs, {
             onStart: (event) => this.onStart(event),
@@ -129,7 +129,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             (this.plan.fastForward !== undefined && plan.fastForward === undefined) ||
             (this.plan.playbackRate !== plan.playbackRate && plan.fastForward === undefined);
         this.plan = plan;
-        this.timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         this.runner.replaceTimeline(this.timeline, timestampMs);
         this.lookaheadCursor.replaceTimeline(this.timeline, timestampMs);
         this.pendingTarget = undefined;
@@ -376,7 +376,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     private shouldPauseForCondensedSeek(timestampMs: number): boolean {
         if (!this.plan.condensed?.pauseAtStart) return false;
-        return this.timeline.startActionAt(timestampMs) !== undefined;
+        return this.timeline.startActionsAt(timestampMs).length > 0;
     }
 
     private nextCondensedTarget(timestampMs: number): number | undefined {

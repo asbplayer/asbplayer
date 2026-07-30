@@ -1,12 +1,14 @@
-import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
 import type {
     PlaybackTimelineBlock,
     PlaybackTimelineEndAction,
     PlaybackTimelineRepeatAction,
-    PlaybackTimelineSnapshot,
     PlaybackTimelineState,
 } from '@project/common/playback/playback-timeline';
-import { compilePlaybackTimeline } from '@project/common/playback/playback-timeline-compiler';
+import {
+    compilePlaybackTimelineSubtitles,
+    type PlaybackTimelineSubtitles,
+} from '@project/common/playback/playback-timeline-compiler';
 import {
     areSubtitleModelsEqual,
     arrayEquals,
@@ -28,14 +30,14 @@ export interface PlaybackPlanCondensed {
 }
 
 /** Playback policy compiled and applied beside its owning media element. */
-export interface PlaybackPlan<T extends SubtitleModel = SubtitleModel> {
-    readonly timeline: PlaybackTimelineSnapshot<T>;
+export interface PlaybackPlan<T extends IndexedSubtitleModel> {
+    readonly timelineSubtitles: PlaybackTimelineSubtitles<T>;
     readonly playbackRate: number;
     readonly condensed?: PlaybackPlanCondensed;
     readonly fastForward?: PlaybackPlanFastForward;
 }
 
-export interface PlaybackPlanInput<T extends SubtitleModel> {
+export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
     /** Subtitles eligible to influence playback modes. */
     readonly subtitles: readonly T[];
     /** All subtitles eligible for display. Defaults to subtitles. */
@@ -61,7 +63,7 @@ const autoPausePreferenceIncludes = (
 
 export const timestampComparisonToleranceMs = 1e-6;
 
-export const buildPlaybackPlan = <T extends SubtitleModel>({
+export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
     subtitles,
     displaySubtitles,
     durationMs,
@@ -85,7 +87,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     const gapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffset);
     const condensedMinimumSkipIntervalMs = normalizeNonNegative(condensedPlaybackMinimumSkipIntervalMs);
     const fastForwardMinimumSkipIntervalMs = normalizeNonNegative(fastForwardPlaybackMinimumSkipIntervalMs);
-    const timeline = compilePlaybackTimeline({
+    const timeline = compilePlaybackTimelineSubtitles({
         subtitles,
         displaySubtitles,
         durationMs,
@@ -115,7 +117,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     }));
 
     return {
-        timeline: {
+        timelineSubtitles: {
             ...timeline,
             blocks,
         },
@@ -140,7 +142,7 @@ export const buildPlaybackPlan = <T extends SubtitleModel>({
     };
 };
 
-export const fastForwardingForPlanState = <T extends SubtitleModel>(
+export const fastForwardingForPlanState = <T extends IndexedSubtitleModel>(
     plan: PlaybackPlan<T>,
     state: PlaybackTimelineState
 ): boolean => {
@@ -154,7 +156,7 @@ export const fastForwardingForPlanState = <T extends SubtitleModel>(
     if (previousGapEdge === undefined) {
         gapDurationMs = nextGapEdge! + 1;
     } else if (nextGapEdge === undefined) {
-        gapDurationMs = plan.timeline.durationMs - previousGapEdge;
+        gapDurationMs = plan.timelineSubtitles.durationMs - previousGapEdge;
     } else {
         gapDurationMs = nextGapEdge - previousGapEdge + 1;
     }
@@ -259,22 +261,22 @@ function arePlaybackPlanFastForwardsEqual(
     return true;
 }
 
-const playbackTimelineSnapshotComparators: ObjectComparators<PlaybackTimelineSnapshot<SubtitleModel>> = {
+const playbackTimelineSubtitlesComparators: ObjectComparators<PlaybackTimelineSubtitles<IndexedSubtitleModel>> = {
     durationMs: (left, right) => left.durationMs === right.durationMs,
     blocks: (left, right) => arrayEquals(left.blocks, right.blocks, arePlaybackTimelineBlocksEqual),
     displaySubtitles: (left, right) =>
         arrayEquals(left.displaySubtitles, right.displaySubtitles, areSubtitleModelsEqual),
 };
 
-function arePlaybackTimelineSnapshotsEqual(
-    left: PlaybackTimelineSnapshot<SubtitleModel>,
-    right: PlaybackTimelineSnapshot<SubtitleModel>
+function arePlaybackTimelineSubtitlesEqual(
+    left: PlaybackTimelineSubtitles<IndexedSubtitleModel>,
+    right: PlaybackTimelineSubtitles<IndexedSubtitleModel>
 ): boolean {
     if (left === right) return true;
 
-    for (const key in playbackTimelineSnapshotComparators) {
+    for (const key in playbackTimelineSubtitlesComparators) {
         if (
-            !playbackTimelineSnapshotComparators[key as keyof typeof playbackTimelineSnapshotComparators](left, right)
+            !playbackTimelineSubtitlesComparators[key as keyof typeof playbackTimelineSubtitlesComparators](left, right)
         ) {
             return false;
         }
@@ -283,19 +285,25 @@ function arePlaybackTimelineSnapshotsEqual(
 }
 
 type PlaybackPlanComparators = {
-    [K in keyof PlaybackPlan]-?: (left: PlaybackPlan[K], right: PlaybackPlan[K]) => boolean;
+    [K in keyof PlaybackPlan<IndexedSubtitleModel>]-?: (
+        left: PlaybackPlan<IndexedSubtitleModel>[K],
+        right: PlaybackPlan<IndexedSubtitleModel>[K]
+    ) => boolean;
 };
 
 const playbackPlanComparators: PlaybackPlanComparators = {
-    timeline: (left, right) => arePlaybackTimelineSnapshotsEqual(left, right),
+    timelineSubtitles: (left, right) => arePlaybackTimelineSubtitlesEqual(left, right),
     playbackRate: (left, right) => left === right,
     condensed: (left, right) => arePlaybackPlanCondensedEqual(left, right),
     fastForward: (left, right) => arePlaybackPlanFastForwardsEqual(left, right),
 };
 
-export const playbackPlansEqual = <T extends SubtitleModel>(left: PlaybackPlan<T>, right: PlaybackPlan<T>): boolean =>
+export const playbackPlansEqual = <T extends IndexedSubtitleModel>(
+    left: PlaybackPlan<T>,
+    right: PlaybackPlan<T>
+): boolean =>
     left === right ||
-    (playbackPlanComparators.timeline(left.timeline, right.timeline) &&
+    (playbackPlanComparators.timelineSubtitles(left.timelineSubtitles, right.timelineSubtitles) &&
         playbackPlanComparators.playbackRate(left.playbackRate, right.playbackRate) &&
         playbackPlanComparators.condensed(left.condensed, right.condensed) &&
         playbackPlanComparators.fastForward(left.fastForward, right.fastForward));

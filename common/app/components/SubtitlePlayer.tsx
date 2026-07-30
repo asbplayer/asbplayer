@@ -837,7 +837,7 @@ export default function SubtitlePlayer({
 
         const update = () => {
             const clock = clockRef.current;
-            const timestamp = clock.time(lengthRef.current);
+            const timestamp = clock.time({ maxMs: lengthRef.current });
             const slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
             updateShowingSubtitles(slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing);
             requestAnimationRef.current = requestAnimationFrame(update);
@@ -935,7 +935,7 @@ export default function SubtitlePlayer({
                 onOffsetChange(offset);
             },
             () => disableKeyEvents,
-            () => clock.time(length),
+            () => clock.time({ maxMs: length }),
             () => subtitles,
             () => settings.seekableTracks
         );
@@ -950,7 +950,7 @@ export default function SubtitlePlayer({
                 scrollToSubtitle(subtitle);
             },
             () => disableKeyEvents,
-            () => clock.time(length),
+            () => clock.time({ maxMs: length }),
             () => subtitles,
             () => settingsRef.current.seekableTracks
         );
@@ -964,7 +964,7 @@ export default function SubtitlePlayer({
                 onSeek(subtitle.start, settings.alwaysPlayOnSubtitleRepeat || clock.running);
             },
             () => disableKeyEvents,
-            () => clock.time(length),
+            () => clock.time({ maxMs: length }),
             () => subtitles,
             () => settingsRef.current.seekableTracks
         );
@@ -976,9 +976,12 @@ export default function SubtitlePlayer({
                 event.stopPropagation();
                 event.preventDefault();
                 if (forward) {
-                    onSeek(Math.min(length, clock.time(length) + settings.seekDuration * 1000), clock.running);
+                    onSeek(
+                        Math.min(length, clock.time({ maxMs: length }) + settings.seekDuration * 1000),
+                        clock.running
+                    );
                 } else {
-                    onSeek(Math.max(0, clock.time(length) - settings.seekDuration * 1000), clock.running);
+                    onSeek(Math.max(0, clock.time({ maxMs: length }) - settings.seekDuration * 1000), clock.running);
                 }
             },
             () => disableKeyEvents
@@ -1017,7 +1020,7 @@ export default function SubtitlePlayer({
     }, [jumpToSubtitle, subtitles, onSeek, onJumpToSubtitleHandled, clock]);
 
     const currentMockSubtitle = useCallback(() => {
-        const timestamp = clock.time(length);
+        const timestamp = clock.time({ maxMs: length });
         const end = Math.min(timestamp + 5000, length);
         return {
             text: '',
@@ -1062,7 +1065,7 @@ export default function SubtitlePlayer({
 
     const calculateCurrentSubtitle = useCallback(() => {
         if (!subtitles || subtitles.length === 0) {
-            const timestamp = clock.time(length);
+            const timestamp = clock.time({ maxMs: length });
             const end = Math.min(timestamp + 5000, length);
             return {
                 text: '',

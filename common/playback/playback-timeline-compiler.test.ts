@@ -1,15 +1,18 @@
 import { describe, expect, it } from '@jest/globals';
-import type { SubtitleModel } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import { makeSubtitle, makeTimelineOptions } from '@project/common/playback/playback-engine-test-utils';
 import {
     compilePlaybackTimeline,
+    compilePlaybackTimelineSubtitles,
     type PlaybackTimelineOptions,
 } from '@project/common/playback/playback-timeline-compiler';
 
-const compile = (subtitles: SubtitleModel[], options: Partial<PlaybackTimelineOptions<SubtitleModel>> = {}) =>
-    compilePlaybackTimeline(makeTimelineOptions(subtitles, options));
+const compile = (
+    subtitles: IndexedSubtitleModel[],
+    options: Partial<PlaybackTimelineOptions<IndexedSubtitleModel>> = {}
+) => compilePlaybackTimelineSubtitles(makeTimelineOptions(subtitles, options));
 
-describe('compilePlaybackTimeline', () => {
+describe('compilePlaybackTimelineSubtitles', () => {
     it('has no blocks for zero subtitles', () => {
         expect(compile([]).blocks).toEqual([]);
     });
@@ -143,6 +146,12 @@ describe('compilePlaybackTimeline', () => {
         expect(compile([first, second]).blocks[0].id).toBe(compile([second, first]).blocks[0].id);
     });
 
+    it('keys block IDs by the sorted indexes of all overlapping subtitles', () => {
+        const result = compile([makeSubtitle(1000, 3000, 12), makeSubtitle(2000, 4000, 3)]);
+
+        expect(result.blocks[0].id).toBe('[3,12]');
+    });
+
     it('keeps display-only subtitles out of playback blocks', () => {
         const playbackSubtitle = makeSubtitle(1000, 2000, 0, { track: 0 });
         const displayOnlySubtitle = makeSubtitle(1500, 2500, 1, { track: 1 });
@@ -153,5 +162,28 @@ describe('compilePlaybackTimeline', () => {
         expect(result.blocks).toHaveLength(1);
         expect(result.blocks[0].id).toBe(compile([playbackSubtitle]).blocks[0].id);
         expect(result.displaySubtitles).toEqual([playbackSubtitle, displayOnlySubtitle]);
+    });
+});
+
+describe('compilePlaybackTimeline', () => {
+    it('compiles runtime indexes and segment annotations from timeline subtitles', () => {
+        const subtitles = [makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)];
+        const compiledSubtitles = compile(subtitles);
+        const result = compilePlaybackTimeline({
+            ...compiledSubtitles,
+            blocks: compiledSubtitles.blocks.map((block) => ({
+                ...block,
+                startAction: true as const,
+                endAction: { pause: true },
+            })),
+        });
+
+        expect(result.actionIndex.actionTimestamps).toEqual([1000, 1999, 4000, 4999]);
+        expect(result.actionIndex.startActionTimestamps).toEqual([1000, 4000]);
+        expect(result.condensedGaps).toEqual([
+            { startMs: 0, targetMs: 999 },
+            { startMs: 2000, targetMs: 3999 },
+        ]);
+        expect(result.segments).toContainEqual(expect.objectContaining({ startMs: 2000, condensedTarget: 3999 }));
     });
 });

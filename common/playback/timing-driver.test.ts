@@ -21,13 +21,13 @@ describe('TimingUpdateQueue', () => {
         let active = false;
         const updates: number[] = [];
         const queue = new TimingUpdateQueue(
+            { active: () => active },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async (timestampMs) => {
                     updates.push(timestampMs);
                 },
-            },
-            () => active
+            }
         );
 
         queue.enqueue(1, { lookaheadTimestampMs: undefined });
@@ -44,6 +44,7 @@ describe('TimingUpdateQueue', () => {
         let activeUpdates = 0;
         let maximumActiveUpdates = 0;
         const queue = new TimingUpdateQueue(
+            { active: () => true },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async (timestampMs) => {
@@ -53,8 +54,7 @@ describe('TimingUpdateQueue', () => {
                     if (updates.length === 1) await firstUpdate.promise;
                     activeUpdates--;
                 },
-            },
-            () => true
+            }
         );
 
         queue.enqueue(1, { lookaheadTimestampMs: undefined });
@@ -73,14 +73,14 @@ describe('TimingUpdateQueue', () => {
         const firstUpdate = deferred();
         const updates: number[] = [];
         const queue = new TimingUpdateQueue(
+            { active: () => true },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async (timestampMs) => {
                     updates.push(timestampMs);
                     if (updates.length === 1) await firstUpdate.promise;
                 },
-            },
-            () => true
+            }
         );
 
         queue.enqueue(1, { lookaheadTimestampMs: undefined });
@@ -96,6 +96,7 @@ describe('TimingUpdateQueue', () => {
         const firstUpdate = deferred();
         const events: string[] = [];
         const queue = new TimingUpdateQueue(
+            { active: () => true },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async (timestampMs) => {
@@ -106,8 +107,7 @@ describe('TimingUpdateQueue', () => {
                     }
                 },
                 onDiscontinuity: (timestampMs) => events.push(`discontinuity:${timestampMs}`),
-            },
-            () => true
+            }
         );
 
         queue.enqueue(1, { lookaheadTimestampMs: undefined });
@@ -126,6 +126,7 @@ describe('TimingUpdateQueue', () => {
         const firstUpdate = deferred();
         const events: string[] = [];
         const queue = new TimingUpdateQueue(
+            { active: () => true },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async () => {
@@ -136,8 +137,7 @@ describe('TimingUpdateQueue', () => {
                 onPlaybackStarted: async () => {
                     events.push('playback-started');
                 },
-            },
-            () => true
+            }
         );
 
         queue.enqueue(1, { lookaheadTimestampMs: undefined });
@@ -156,6 +156,7 @@ describe('TimingUpdateQueue', () => {
         const errors: unknown[] = [];
         const updates: number[] = [];
         const queue = new TimingUpdateQueue(
+            { active: () => true },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async (timestampMs) => {
@@ -163,8 +164,7 @@ describe('TimingUpdateQueue', () => {
                     if (updates.length === 1) await firstUpdate.promise;
                 },
                 onError: (caught) => errors.push(caught),
-            },
-            () => true
+            }
         );
 
         queue.enqueue(1, { lookaheadTimestampMs: undefined });
@@ -180,14 +180,14 @@ describe('TimingUpdateQueue', () => {
         const updates: number[] = [];
         const errors: unknown[] = [];
         const queue = new TimingUpdateQueue(
+            { active: () => true },
             {
                 ...emptyTimingDriverCallbacks,
                 onTime: async (timestampMs) => {
                     updates.push(timestampMs);
                 },
                 onError: (error) => errors.push(error),
-            },
-            () => true
+            }
         );
 
         queue.enqueue(Number.NaN, { lookaheadTimestampMs: undefined });

@@ -953,7 +953,7 @@ export default function Controls({
         onSubtitleAlignment(newAlignment);
     }, [subtitleAlignment, subtitleAlignmentEnabled, onSubtitleAlignment]);
 
-    const progress = clock.progress(length);
+    const progress = clock.progress({ durationMs: length });
 
     return (
         <React.Fragment>

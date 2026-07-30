@@ -9,6 +9,7 @@ export interface AnimationFrameTimingSource {
     readonly paused: () => boolean;
     readonly durationMs: () => number;
     readonly currentTimeMs: () => number;
+    readonly playbackRate: () => number;
     requestAnimationFrameCallback(callback: FrameRequestCallback): number;
     cancelAnimationFrameCallback(handle: number): void;
     addEventListener(type: 'play' | 'pause' | 'seeked' | 'timeupdate', listener: () => void): void;
@@ -31,11 +32,13 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.callbacks = {
             onTime: async () => {},
             onPlaybackStarted: async () => {},
+            onPlaybackPaused: () => {},
             onDiscontinuity: () => {},
             onCancel: () => {},
             onError: () => {},
         };
         this.updates = new TimingUpdateQueue(
+            { active: () => this._bound && !this.clock.paused() },
             {
                 onTime: async (timestampMs, options) => {
                     await this.callbacks.onTime(timestampMs, options);
@@ -50,8 +53,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
                 onCancel: (options) => this.callbacks.onCancel(options),
                 onError: (error) => this.callbacks.onError(error),
-            },
-            () => this._bound && !this.clock.paused()
+            }
         );
     }
 
@@ -74,6 +76,10 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
 
     frameTimeMs(): number {
         return defaultFrameTimeMs;
+    }
+
+    playbackRate(): number {
+        return this.clock.playbackRate();
     }
 
     durationMs(): number {
@@ -128,7 +134,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
     private readonly onStop = () => {
         this.updates.clear({ preserveExpectedDiscontinuity: false });
         if (!this.discontinuityPending) this.cancelScheduledUpdate();
-        this.callbacks.onPlaybackPaused?.();
+        this.callbacks.onPlaybackPaused();
     };
 
     private readonly onSetTime = () => {

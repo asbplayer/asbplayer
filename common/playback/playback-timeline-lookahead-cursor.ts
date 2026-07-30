@@ -1,5 +1,8 @@
-import type { SubtitleModel } from '@project/common';
-import PlaybackTimeline from '@project/common/playback/playback-timeline';
+import type { IndexedSubtitleModel } from '@project/common';
+import PlaybackTimeline, {
+    advanceTimestampIndex,
+    firstTimestampIndex,
+} from '@project/common/playback/playback-timeline';
 
 export interface PlaybackTimelineLookaheadResult {
     readonly actionTimestamp?: number;
@@ -7,7 +10,7 @@ export interface PlaybackTimelineLookaheadResult {
 }
 
 /** Advances compiled lookahead indexes for monotonic playback updates. */
-export default class PlaybackTimelineLookaheadCursor<T extends SubtitleModel> {
+export default class PlaybackTimelineLookaheadCursor<T extends IndexedSubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private nextActionIndex = 0;
     private nextStateChangeIndex = 0;
@@ -25,8 +28,18 @@ export default class PlaybackTimelineLookaheadCursor<T extends SubtitleModel> {
 
     reset(timestampMs: number): void {
         this.timestampMs = timestampMs;
-        this.nextActionIndex = this.firstTimestampAfter(this.timeline.actionTimestamps, timestampMs);
-        this.nextStateChangeIndex = this.firstTimestampAfter(this.timeline.stateChangeTimestamps, timestampMs);
+        this.nextActionIndex = firstTimestampIndex(
+            this.timeline.actionIndex.actionTimestamps,
+            timestampMs,
+            (timestamp) => timestamp,
+            'after'
+        );
+        this.nextStateChangeIndex = firstTimestampIndex(
+            this.timeline.stateChangeTimestamps,
+            timestampMs,
+            (timestamp) => timestamp,
+            'after'
+        );
     }
 
     advance(
@@ -36,24 +49,24 @@ export default class PlaybackTimelineLookaheadCursor<T extends SubtitleModel> {
     ): PlaybackTimelineLookaheadResult {
         if (timestampMs < this.timestampMs) this.reset(timestampMs);
 
-        while (
-            this.nextActionIndex < this.timeline.actionTimestamps.length &&
-            this.timeline.actionTimestamps[this.nextActionIndex] <= timestampMs
-        ) {
-            this.nextActionIndex++;
-        }
+        this.nextActionIndex = advanceTimestampIndex(
+            this.timeline.actionIndex.actionTimestamps,
+            this.nextActionIndex,
+            timestampMs,
+            (timestamp) => timestamp
+        );
         if (includeStateChanges) {
-            while (
-                this.nextStateChangeIndex < this.timeline.stateChangeTimestamps.length &&
-                this.timeline.stateChangeTimestamps[this.nextStateChangeIndex] <= timestampMs
-            ) {
-                this.nextStateChangeIndex++;
-            }
+            this.nextStateChangeIndex = advanceTimestampIndex(
+                this.timeline.stateChangeTimestamps,
+                this.nextStateChangeIndex,
+                timestampMs,
+                (timestamp) => timestamp
+            );
         }
         this.timestampMs = timestampMs;
 
         if (lookaheadTimestampMs === undefined) return {};
-        const actionTimestamp = this.timeline.actionTimestamps[this.nextActionIndex];
+        const actionTimestamp = this.timeline.actionIndex.actionTimestamps[this.nextActionIndex];
         const stateChangeTimestamp = includeStateChanges
             ? this.timeline.stateChangeTimestamps[this.nextStateChangeIndex]
             : undefined;
@@ -63,16 +76,5 @@ export default class PlaybackTimelineLookaheadCursor<T extends SubtitleModel> {
                 ? {}
                 : { stateChangeTimestamp }),
         };
-    }
-
-    private firstTimestampAfter(timestamps: readonly number[], timestampMs: number): number {
-        let low = 0;
-        let high = timestamps.length;
-        while (low < high) {
-            const middle = low + Math.floor((high - low) / 2);
-            if (timestamps[middle] <= timestampMs) low = middle + 1;
-            else high = middle;
-        }
-        return low;
     }
 }

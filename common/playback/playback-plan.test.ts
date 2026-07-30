@@ -1,10 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
-import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-engine-test-utils';
 import { buildPlaybackPlan, fastForwardingForPlanState } from '@project/common/playback/playback-plan';
 import PlaybackTimeline from '@project/common/playback/playback-timeline';
 
-const makePlan = (modes: PlayMode[], overrides: Partial<Parameters<typeof buildPlaybackPlan<SubtitleModel>>[0]> = {}) =>
+const makePlan = (
+    modes: PlayMode[],
+    overrides: Partial<Parameters<typeof buildPlaybackPlan<IndexedSubtitleModel>>[0]> = {}
+) =>
     buildPlaybackPlan(
         makePlaybackPlanInput([makeSubtitle(1000, 2000, 0)], {
             durationMs: 5000,
@@ -17,15 +20,15 @@ describe('buildPlaybackPlan', () => {
     it('produces an inactive plan for zero eligible subtitles and normal playback', () => {
         const plan = makePlan([PlayMode.normal], { subtitles: [] });
 
-        expect(plan.timeline.blocks).toEqual([]);
-        expect(plan.timeline.displaySubtitles).toEqual([]);
+        expect(plan.timelineSubtitles.blocks).toEqual([]);
+        expect(plan.timelineSubtitles.displaySubtitles).toEqual([]);
     });
 
     it('keeps normal playback inert when eligible subtitles are present', () => {
         const plan = makePlan([PlayMode.normal]);
 
-        expect(plan.timeline.blocks[0].startAction).toBeUndefined();
-        expect(plan.timeline.blocks[0].endAction).toBeUndefined();
+        expect(plan.timelineSubtitles.blocks[0].startAction).toBeUndefined();
+        expect(plan.timelineSubtitles.blocks[0].endAction).toBeUndefined();
         expect(plan.condensed).toBeUndefined();
         expect(plan.fastForward).toBeUndefined();
     });
@@ -34,8 +37,8 @@ describe('buildPlaybackPlan', () => {
         const displaySubtitle = makeSubtitle({ track: 1 });
         const plan = makePlan([PlayMode.normal], { subtitles: [], displaySubtitles: [displaySubtitle] });
 
-        expect(plan.timeline.blocks).toEqual([]);
-        expect(plan.timeline.displaySubtitles).toEqual([displaySubtitle]);
+        expect(plan.timelineSubtitles.blocks).toEqual([]);
+        expect(plan.timelineSubtitles.displaySubtitles).toEqual([displaySubtitle]);
     });
 
     it.each([
@@ -47,7 +50,9 @@ describe('buildPlaybackPlan', () => {
             autoPausePreference: preference,
         });
 
-        expect(plan.timeline.blocks[0].startAction ?? plan.timeline.blocks[0].endAction).toBeDefined();
+        expect(
+            plan.timelineSubtitles.blocks[0].startAction ?? plan.timelineSubtitles.blocks[0].endAction
+        ).toBeDefined();
     });
 
     it.each([
@@ -67,7 +72,7 @@ describe('buildPlaybackPlan', () => {
             repeatCountPreference: 2,
         });
 
-        expect(plan.timeline.blocks[0]).toEqual(
+        expect(plan.timelineSubtitles.blocks[0]).toEqual(
             expect.objectContaining({
                 playbackModeStartMs: 1199,
                 playbackModeEndMs: 1800,
@@ -110,8 +115,8 @@ describe('buildPlaybackPlan', () => {
                 repeatCountPreference: 1,
             });
 
-            expect(plan.timeline.blocks[0].startAction).toEqual(expectedStartAction);
-            expect(plan.timeline.blocks[0].endAction).toEqual({
+            expect(plan.timelineSubtitles.blocks[0].startAction).toEqual(expectedStartAction);
+            expect(plan.timelineSubtitles.blocks[0].endAction).toEqual({
                 pause: expectedPauseAtEnd,
                 repeat: {
                     count: 1,
@@ -127,7 +132,7 @@ describe('buildPlaybackPlan', () => {
             repeatCountPreference: 1,
         });
 
-        expect(plan.timeline.blocks[0]).toEqual(
+        expect(plan.timelineSubtitles.blocks[0]).toEqual(
             expect.objectContaining({
                 playbackModeStartMs: 800,
                 playbackModeEndMs: 2299,
@@ -149,7 +154,7 @@ describe('buildPlaybackPlan', () => {
         });
 
         expect(plan.condensed).toEqual({ minimumSkipIntervalMs: 500, pauseAtStart: true });
-        expect(plan.timeline.blocks[0].endAction).toEqual({
+        expect(plan.timelineSubtitles.blocks[0].endAction).toEqual({
             pause: true,
             repeat: {
                 count: 2,
@@ -160,7 +165,7 @@ describe('buildPlaybackPlan', () => {
     it('normalizes a negative repeat count to unlimited playback', () => {
         const plan = makePlan([PlayMode.repeat], { repeatCountPreference: -1 });
 
-        expect(plan.timeline.blocks[0].endAction?.repeat?.count).toBe(0);
+        expect(plan.timelineSubtitles.blocks[0].endAction?.repeat?.count).toBe(0);
     });
 
     it('normalizes invalid minimum intervals and repeat counts', () => {
@@ -172,7 +177,7 @@ describe('buildPlaybackPlan', () => {
 
         expect(plan.condensed?.minimumSkipIntervalMs).toBe(0);
         expect(plan.fastForward?.minimumSkipIntervalMs).toBe(0);
-        expect(plan.timeline.blocks[0].endAction?.repeat?.count).toBe(0);
+        expect(plan.timelineSubtitles.blocks[0].endAction?.repeat?.count).toBe(0);
     });
 
     it('uses the configured playback rate inside subtitles and throughout qualifying gaps', () => {
@@ -184,7 +189,7 @@ describe('buildPlaybackPlan', () => {
             durationMs: 6000,
             fastForwardPlaybackMinimumSkipIntervalMs: 1000,
         });
-        const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
             fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
@@ -206,7 +211,7 @@ describe('buildPlaybackPlan', () => {
             ],
             fastForwardPlaybackMinimumSkipIntervalMs: 1000,
         });
-        const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
             fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
@@ -223,7 +228,7 @@ describe('buildPlaybackPlan', () => {
             subtitleTriggerEndOffset: -200,
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
         });
-        const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
             fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate
@@ -242,7 +247,7 @@ describe('buildPlaybackPlan', () => {
             subtitleTriggerGapStartOffset: 300,
             fastForwardPlaybackMinimumSkipIntervalMs: 0,
         });
-        const timeline = PlaybackTimeline.fromSnapshot(plan.timeline);
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const rateAt = (timestampMs: number) =>
             fastForwardingForPlanState(plan, timeline.lookupAt(timestampMs).state)
                 ? plan.fastForward!.playbackRate

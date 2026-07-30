@@ -112,7 +112,7 @@ export default class PlaybackModeController {
             this.modes.delete(targetMode);
             if (this.modes.size === 0) this.modes.add(PlayMode.normal);
         } else {
-            if (this.modes.size === 1 && this.modes.has(PlayMode.normal)) this.modes.delete(PlayMode.normal);
+            this.modes.delete(PlayMode.normal);
             this.modes.add(targetMode);
             this.resolveConflicts(targetMode);
         }

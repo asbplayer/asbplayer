@@ -58,11 +58,13 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.callbacks = {
             onTime: async () => {},
             onPlaybackStarted: async () => {},
+            onPlaybackPaused: () => {},
             onDiscontinuity: () => {},
             onCancel: () => {},
             onError: () => {},
         };
         this.updates = new TimingUpdateQueue(
+            { active: () => this._bound && !this.seeking && !this.video.paused() },
             {
                 onTime: async (timestampMs, options) => {
                     await this.callbacks.onTime(timestampMs, options);
@@ -77,8 +79,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
                 onDiscontinuity: (timestampMs) => this.callbacks.onDiscontinuity(timestampMs),
                 onCancel: (options) => this.callbacks.onCancel(options),
                 onError: (error) => this.callbacks.onError(error),
-            },
-            () => this._bound && !this.seeking && !this.video.paused()
+            }
         );
     }
 
@@ -206,7 +207,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: this.pendingSeekCompletion !== undefined });
         this.previousFrame = undefined;
-        this.callbacks.onPlaybackPaused?.();
+        this.callbacks.onPlaybackPaused();
         this.eventCallbacks.onPause();
     };
 

@@ -9,7 +9,7 @@ describe('PlaybackTimelineCursor', () => {
             subtitleTriggerStartOffset: 500,
             subtitleTriggerEndOffset: -499,
         });
-        const actionTimeline = PlaybackTimeline.fromSnapshot({
+        const actionTimeline = PlaybackTimeline.fromSubtitles({
             durationMs: result.durationMs,
             blocks: result.blocks.map((block) => ({
                 ...block,

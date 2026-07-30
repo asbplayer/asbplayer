@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
 import { makeTextSubtitle } from '@project/common/playback/playback-engine-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/playback-plan';
@@ -59,7 +59,7 @@ const htmlOptions = {
     timelineSubtitles: [makeTextSubtitle(1000, 2000, 'one', 0)],
 };
 
-const plan = (subtitles: SubtitleModel[], playModes: PlayMode[] = [PlayMode.normal], durationMs = 20_000) =>
+const plan = (subtitles: IndexedSubtitleModel[], playModes: PlayMode[] = [PlayMode.normal], durationMs = 20_000) =>
     buildPlaybackPlan({
         subtitles,
         durationMs,
@@ -92,8 +92,8 @@ describe('playbackTimelineToHtml', () => {
         expect(exportPlan.fastForward).toBeDefined();
         expect(exportPlan.condensed).toBeDefined();
         expect(exportPlan.condensed?.pauseAtStart).toBe(true);
-        expect(exportPlan.timeline.blocks[0].startAction).toBe(true);
-        expect(exportPlan.timeline.blocks[0].endAction).toEqual({ pause: true, repeat: { count: 2 } });
+        expect(exportPlan.timelineSubtitles.blocks[0].startAction).toBe(true);
+        expect(exportPlan.timelineSubtitles.blocks[0].endAction).toEqual({ pause: true, repeat: { count: 2 } });
     });
 
     it('renders full-width ten-second rows and escapes subtitle text', () => {
@@ -250,7 +250,7 @@ describe('playbackTimelineToHtml', () => {
             settings,
             playbackRate: 1,
         });
-        const runtimeTimeline = PlaybackTimeline.fromSnapshot(exportPlan.timeline);
+        const runtimeTimeline = PlaybackTimeline.fromSubtitles(exportPlan.timelineSubtitles);
         const html = playbackTimelineToHtml({
             plan: exportPlan,
             themeColor: '#123456',
@@ -271,8 +271,10 @@ describe('playbackTimelineToHtml', () => {
             Number(event.style.left.replace('%', ''))
         );
 
-        expect(runtimeTimeline.condensedGapStarts).toEqual([0, 2200]);
-        expect(runtimeTimeline.condensedGapTargets).toEqual([899, 4899]);
+        expect(runtimeTimeline.condensedGaps).toEqual([
+            { startMs: 0, targetMs: 899 },
+            { startMs: 2200, targetMs: 4899 },
+        ]);
         expect(condensedStarts[0]).toBe(0);
         expect(condensedStarts[1]).toBeCloseTo(22, 10);
     });
@@ -374,7 +376,7 @@ describe('playbackTimelineToHtml', () => {
         };
         const paritySubtitles = [makeTextSubtitle(1000, 2000, 'one', 0)];
         const secondTrack = makeTextSubtitle(5000, 6500, 'two', 1, 1);
-        const buildParityPlan = (subtitles: SubtitleModel[]) => {
+        const buildParityPlan = (subtitles: IndexedSubtitleModel[]) => {
             const parityPlan = buildPlaybackPlan({
                 subtitles,
                 displaySubtitles: subtitles,
@@ -486,7 +488,10 @@ describe('playbackTimelineToHtml', () => {
             makeTextSubtitle(7000, 8500, 'second track two', 1, 1),
         ];
         const allTracks = [...firstTrack, ...secondTrack];
-        const buildParityPlan = (selectedSubtitles: SubtitleModel[], settings: Partial<typeof paritySettings> = {}) => {
+        const buildParityPlan = (
+            selectedSubtitles: IndexedSubtitleModel[],
+            settings: Partial<typeof paritySettings> = {}
+        ) => {
             const effectiveSettings = { ...paritySettings, ...settings };
             const runtimePlan = buildPlaybackPlan({
                 subtitles: selectedSubtitles,

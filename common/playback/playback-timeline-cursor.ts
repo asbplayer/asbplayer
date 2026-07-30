@@ -1,43 +1,12 @@
-import type { SubtitleModel } from '@project/common';
-import PlaybackTimeline, { type PlaybackTimelineEventGroup } from '@project/common/playback/playback-timeline';
-
-const boundaryBound = <T extends { timestampMs: number }>(
-    values: readonly T[],
-    timestampMs: number,
-    options: { includeAtTimestamp: boolean }
-): number => {
-    let low = 0;
-    let high = values.length;
-    while (low < high) {
-        const middle = low + Math.floor((high - low) / 2);
-        if (
-            values[middle].timestampMs < timestampMs ||
-            (!options.includeAtTimestamp && values[middle].timestampMs === timestampMs)
-        ) {
-            low = middle + 1;
-        } else {
-            high = middle;
-        }
-    }
-    return low;
-};
-
-const timestampBound = (values: readonly number[], timestampMs: number, includeAtTimestamp: boolean): number => {
-    let low = 0;
-    let high = values.length;
-    while (low < high) {
-        const middle = low + Math.floor((high - low) / 2);
-        if (values[middle] < timestampMs || (!includeAtTimestamp && values[middle] === timestampMs)) {
-            low = middle + 1;
-        } else {
-            high = middle;
-        }
-    }
-    return low;
-};
+import type { IndexedSubtitleModel } from '@project/common';
+import PlaybackTimeline, {
+    advanceTimestampIndex,
+    firstTimestampIndex,
+    type PlaybackTimelineEventGroup,
+} from '@project/common/playback/playback-timeline';
 
 /** Tracks a monotonic playback position and returns every compiled boundary crossed by each update. */
-export default class PlaybackTimelineCursor<T extends SubtitleModel> {
+export default class PlaybackTimelineCursor<T extends IndexedSubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private nextActionBoundaryIndex = 0;
     private nextStateBoundaryIndex = 0;
@@ -59,11 +28,18 @@ export default class PlaybackTimelineCursor<T extends SubtitleModel> {
 
     reset(timestampMs: number, options: { includeAtTimestamp: boolean }): void {
         this.timestampMs = timestampMs;
-        this.nextActionBoundaryIndex = boundaryBound(this.timeline.actionBoundaries, timestampMs, options);
-        this.nextStateBoundaryIndex = timestampBound(
+        const bound = options.includeAtTimestamp ? 'at-or-after' : 'after';
+        this.nextActionBoundaryIndex = firstTimestampIndex(
+            this.timeline.actionIndex.actionBoundaries,
+            timestampMs,
+            (boundary) => boundary.timestampMs,
+            bound
+        );
+        this.nextStateBoundaryIndex = firstTimestampIndex(
             this.timeline.stateBoundaryTimestamps,
             timestampMs,
-            options.includeAtTimestamp
+            (timestamp) => timestamp,
+            bound
         );
     }
 
@@ -79,14 +55,24 @@ export default class PlaybackTimelineCursor<T extends SubtitleModel> {
         }
 
         const groups: PlaybackTimelineEventGroup[] = [];
-        while (this.nextActionBoundaryIndex < this.timeline.actionBoundaries.length) {
-            const boundary = this.timeline.actionBoundaries[this.nextActionBoundaryIndex];
-            if (boundary.timestampMs > timestampMs) break;
+        const nextActionBoundaryIndex = advanceTimestampIndex(
+            this.timeline.actionIndex.actionBoundaries,
+            this.nextActionBoundaryIndex,
+            timestampMs,
+            (boundary) => boundary.timestampMs
+        );
+        while (this.nextActionBoundaryIndex < nextActionBoundaryIndex) {
+            const boundary = this.timeline.actionIndex.actionBoundaries[this.nextActionBoundaryIndex];
             groups.push(boundary);
             this.nextActionBoundaryIndex++;
         }
 
-        const stateBoundaryIndex = timestampBound(this.timeline.stateBoundaryTimestamps, timestampMs, false);
+        const stateBoundaryIndex = firstTimestampIndex(
+            this.timeline.stateBoundaryTimestamps,
+            timestampMs,
+            (timestamp) => timestamp,
+            'after'
+        );
         const stateChanged = stateBoundaryIndex > this.nextStateBoundaryIndex;
         this.nextStateBoundaryIndex = stateBoundaryIndex;
         if (stateChanged && !groups.length) groups.push({ timestampMs, events: [] });

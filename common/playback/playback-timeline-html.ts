@@ -1,9 +1,9 @@
 import { buildPlaybackPlan, type PlaybackPlan } from '@project/common/playback/playback-plan';
 import type { PlaybackTimelineBlock } from '@project/common/playback/playback-timeline';
-import { AutoPausePreference, PlayMode, type SubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
 
-export interface PlaybackTimelineExportPlanInput<T extends SubtitleModel> {
+export interface PlaybackTimelineExportPlanInput<T extends IndexedSubtitleModel> {
     readonly subtitles: readonly T[];
     readonly durationMs: number;
     readonly settings: AsbplayerSettings;
@@ -11,7 +11,7 @@ export interface PlaybackTimelineExportPlanInput<T extends SubtitleModel> {
 }
 
 /** Builds all independently-toggleable playback layers for the standalone timeline document. */
-export const buildPlaybackTimelineExportPlan = <T extends SubtitleModel>({
+export const buildPlaybackTimelineExportPlan = <T extends IndexedSubtitleModel>({
     subtitles,
     durationMs,
     settings,
@@ -192,15 +192,18 @@ const interval = (
     return { startSeconds, endSeconds, color, className, label, title };
 };
 
-const subtitleLabel = <T extends SubtitleModel>(subtitles: readonly T[]): string | undefined => {
+const subtitleLabel = <T extends IndexedSubtitleModel>(subtitles: readonly T[]): string | undefined => {
     const text = subtitles
         .filter((subtitle) => subtitle.text.trim().length > 0)
-        .map((subtitle) => `${subtitle.index ?? ''} | ${subtitle.text.trim()}`)
+        .map((subtitle) => `${subtitle.index} | ${subtitle.text.trim()}`)
         .join(' / ');
     return text || undefined;
 };
 
-const subtitleTitle = <T extends SubtitleModel>(subtitles: readonly T[], totalMs: number): string | undefined => {
+const subtitleTitle = <T extends IndexedSubtitleModel>(
+    subtitles: readonly T[],
+    totalMs: number
+): string | undefined => {
     const title = subtitles
         .filter((subtitle) => Number.isFinite(subtitle.start) && Number.isFinite(subtitle.end))
         .map(
@@ -211,7 +214,7 @@ const subtitleTitle = <T extends SubtitleModel>(subtitles: readonly T[], totalMs
     return title || undefined;
 };
 
-const normalIntervals = <T extends SubtitleModel>(
+const normalIntervals = <T extends IndexedSubtitleModel>(
     subtitles: readonly T[],
     durationSeconds: number
 ): TimelineInterval[] =>
@@ -347,7 +350,7 @@ export interface PlaybackTimelineOption {
     readonly settingKey?: PlaybackTimelineSettingKey;
 }
 
-export interface PlaybackTimelineHtmlOptions<T extends SubtitleModel = SubtitleModel> {
+export interface PlaybackTimelineHtmlOptions<T extends IndexedSubtitleModel> {
     readonly plan: PlaybackPlan<T>;
     readonly themeColor: string;
     readonly title: string;
@@ -369,7 +372,7 @@ export interface PlaybackTimelineModeLabels {
     readonly repeat: string;
 }
 
-export const playbackTimelineToHtml = <T extends SubtitleModel>({
+export const playbackTimelineToHtml = <T extends IndexedSubtitleModel>({
     plan,
     themeColor,
     title,
@@ -381,14 +384,14 @@ export const playbackTimelineToHtml = <T extends SubtitleModel>({
     initialModeVisibility,
     timelineSubtitles,
 }: PlaybackTimelineHtmlOptions<T>): string => {
-    const durationSeconds = Math.max(0, plan.timeline.durationMs / 1000);
+    const durationSeconds = Math.max(0, plan.timelineSubtitles.durationMs / 1000);
     const rows = Math.max(1, Math.ceil(durationSeconds / 10));
-    const normal = normalIntervals(plan.timeline.displaySubtitles, durationSeconds);
+    const normal = normalIntervals(plan.timelineSubtitles.displaySubtitles, durationSeconds);
     const fastForward =
         plan.fastForward === undefined
             ? []
             : gapIntervals(
-                  plan.timeline.blocks,
+                  plan.timelineSubtitles.blocks,
                   durationSeconds,
                   playbackTimelineColors.fastForward,
                   'fast-forward',
@@ -397,12 +400,16 @@ export const playbackTimelineToHtml = <T extends SubtitleModel>({
     const condensed =
         plan.condensed === undefined
             ? []
-            : condensedIntervals(plan.timeline.blocks, durationSeconds, plan.condensed.minimumSkipIntervalMs / 1000);
+            : condensedIntervals(
+                  plan.timelineSubtitles.blocks,
+                  durationSeconds,
+                  plan.condensed.minimumSkipIntervalMs / 1000
+              );
     const autoPause = [
-        ...markerIntervals(plan.timeline.blocks, 'autoPause-start'),
-        ...markerIntervals(plan.timeline.blocks, 'autoPause-end'),
+        ...markerIntervals(plan.timelineSubtitles.blocks, 'autoPause-start'),
+        ...markerIntervals(plan.timelineSubtitles.blocks, 'autoPause-end'),
     ];
-    const repeat = markerIntervals(plan.timeline.blocks, 'repeat');
+    const repeat = markerIntervals(plan.timelineSubtitles.blocks, 'repeat');
     const repeatTimestamps = new Set(repeat.map((value) => value.startSeconds));
     for (const value of autoPause) {
         if (repeatTimestamps.has(value.startSeconds)) value.className += ' autoPause-overlap';
@@ -561,7 +568,7 @@ const compileBlocks = (settings, subtitles) => {
 const subtitleLabel = (subtitles) => {
     const text = subtitles
         .filter((subtitle) => String(subtitle.text).trim().length > 0)
-        .map((subtitle) => (subtitle.index == null ? '' : subtitle.index) + ' | ' + String(subtitle.text).trim())
+        .map((subtitle) => subtitle.index + ' | ' + String(subtitle.text).trim())
         .join(' / ');
     return text || undefined;
 };

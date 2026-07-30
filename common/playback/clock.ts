@@ -38,7 +38,7 @@ export default class Clock {
         this.playbackRate = rate;
     }
 
-    time(maxMs: number): number {
+    time({ maxMs }: { maxMs: number }): number {
         const currentTimeMs = this.started ? this.accumulatedMs + this.elapsedMs() : this.accumulatedMs;
         return Math.min(maxMs, currentTimeMs);
     }
@@ -63,8 +63,8 @@ export default class Clock {
         this.fireEvent('settime');
     }
 
-    progress(durationMs: number): number {
-        return durationMs ? Math.min(1, this.time(durationMs) / durationMs) : 0;
+    progress({ durationMs }: { durationMs: number }): number {
+        return durationMs ? Math.min(1, this.time({ maxMs: durationMs }) / durationMs) : 0;
     }
 
     onEvent(eventName: ClockEvent, callback: () => void): () => void {
