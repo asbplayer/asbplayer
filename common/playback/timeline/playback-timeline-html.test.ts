@@ -3,7 +3,6 @@ import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@proje
 import { defaultSettings } from '@project/common/settings';
 import { makeTextSubtitle } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
-import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import {
     buildPlaybackTimelineExportPlan,
     playbackTimelineToHtml,
@@ -250,7 +249,6 @@ describe('playbackTimelineToHtml', () => {
             settings,
             playbackRate: 1,
         });
-        const runtimeTimeline = PlaybackTimeline.fromSubtitles(exportPlan.timelineSubtitles);
         const html = playbackTimelineToHtml({
             plan: exportPlan,
             themeColor: '#123456',
@@ -271,10 +269,6 @@ describe('playbackTimelineToHtml', () => {
             Number(event.style.left.replace('%', ''))
         );
 
-        expect(runtimeTimeline.condensedGaps).toEqual([
-            { startMs: 0, targetMs: 899 },
-            { startMs: 2200, targetMs: 4899 },
-        ]);
         expect(condensedStarts[0]).toBe(0);
         expect(condensedStarts[1]).toBeCloseTo(22, 10);
     });

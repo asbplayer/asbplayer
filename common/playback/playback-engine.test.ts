@@ -2,7 +2,11 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
 import { defaultSettings, type AsbplayerSettings } from '@project/common/settings';
 import PlaybackEngine from '@project/common/playback/playback-engine';
-import type { TimingDriver, TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
+import type {
+    InternalSeekCompletion,
+    TimingDriver,
+    TimingDriverCallbacks,
+} from '@project/common/playback/timing/timing-driver';
 
 class FakeTimingDriver implements TimingDriver {
     callbacks: TimingDriverCallbacks = {
@@ -24,6 +28,8 @@ class FakeTimingDriver implements TimingDriver {
     isPaused = false;
     expectedInternalSeekCalls = 0;
     cancelExpectedInternalSeekCalls = 0;
+    internalSeekCompletion: InternalSeekCompletion = 'completed';
+    internalSeekCompletionPromise?: Promise<InternalSeekCompletion>;
 
     bind(): void {
         if (this.bound) return;
@@ -42,9 +48,9 @@ class FakeTimingDriver implements TimingDriver {
         this.callbacks = callbacks;
     }
 
-    beginInternalSeek(): Promise<void> {
+    beginInternalSeek(): Promise<InternalSeekCompletion> {
         this.expectedInternalSeekCalls++;
-        return Promise.resolve();
+        return this.internalSeekCompletionPromise ?? Promise.resolve(this.internalSeekCompletion);
     }
 
     cancelExpectedInternalSeek(): void {
@@ -413,6 +419,52 @@ describe('PlaybackEngine', () => {
         expect(harness.driver.cancelExpectedInternalSeekCalls).toBe(1);
     });
 
+    it('cancels an internal seek that never reports completion', async () => {
+        jest.useFakeTimers();
+        const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        try {
+            const harness = makePlaybackEngine([PlayMode.repeat], 1500);
+            harness.driver.internalSeekCompletionPromise = new Promise(() => {});
+
+            const update = harness.driver.time(2100);
+            await jest.advanceTimersByTimeAsync(10_000);
+            await update;
+
+            expect(harness.driver.cancelExpectedInternalSeekCalls).toBe(1);
+            expect(warning).toHaveBeenCalledWith(
+                '[asbplayer/playback] Internal seek did not complete before the watchdog timeout',
+                expect.objectContaining({ targetTimestampMs: 1000, timeoutMs: 10_000 })
+            );
+        } finally {
+            warning.mockRestore();
+            jest.useRealTimers();
+        }
+    });
+
+    it('does not persist the target of a cancelled internal seek', async () => {
+        const seekTargets: number[] = [];
+        const subtitleAtOneMinute = {
+            ...subtitle,
+            start: 61_000,
+            end: 62_000,
+            originalStart: 61_000,
+            originalEnd: 62_000,
+        };
+        const harness = makePlaybackEngine([PlayMode.repeat], 61_500, [subtitleAtOneMinute], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            seek: async (targetTimestampMs) => {
+                seekTargets.push(targetTimestampMs);
+            },
+        });
+        harness.driver.internalSeekCompletion = 'cancelled';
+
+        await harness.driver.time(61_999);
+
+        expect(seekTargets).toEqual([61_000]);
+        expect(harness.savedSettings).toEqual([]);
+    });
+
     it('does not produce non-finite seeks when duration is unavailable', async () => {
         const harness = makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], { durationMs: Number.NaN });
         harness.playbackEngine.bind();
@@ -651,6 +703,23 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.settingsChanged(harness.settings);
         expect(harness.playbackPositionChanges).toEqual([63_000, undefined]);
+    });
+
+    it('does not resume a remembered position when playback starts normally', async () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 1_000, [subtitle], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+            },
+        });
+
+        harness.playbackEngine.bind();
+        await Promise.resolve();
+        await harness.driver.start();
+
+        expect(harness.seeks).toEqual([]);
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
     });
 
     it('offers the lowest position across all restore keys only once per key set', () => {

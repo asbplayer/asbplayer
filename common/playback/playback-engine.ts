@@ -20,6 +20,8 @@ import PlaybackModeController, {
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 
+const internalSeekWatchdogMs = 10_000;
+
 export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
     readonly pause: () => void;
     readonly play: () => Promise<void>;
@@ -53,16 +55,16 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  * ├── Clock (VideoPlayer/Player)
  * └── PlaybackEngine
  *     ├── VideoFrameTimingDriver (Player: AnimationFrameTimingDriver)
+ *     │   └── TimingUpdateQueue
  *     ├── PlaybackModeController
  *     ├── PlaybackPositionController
  *     ├── PlaybackPlan
- *     │   └── PlaybackTimelineCompiler
  *     └── PlaybackPlanExecutor
  *         ├── PlaybackTimeline
- *         └── PlaybackTimelineRunner
- *             ├── PlaybackTimeline
- *             └── PlaybackTimelineCursor
- *             └── PlaybackTimelineLookaheadCursor
+ *         │   └── PlaybackTimelineCompiler
+ *         ├── PlaybackTimelineRunner
+ *         │   └── PlaybackTimelineCursor
+ *         └── PlaybackTimelineLookaheadCursor
  */
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
@@ -172,6 +174,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     settingsChanged(settings: AsbplayerSettings): void {
         const rememberPlaybackModesNow = !this.settings.rememberPlaybackModes && settings.rememberPlaybackModes;
         const activeRateSetting = this.executor.isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
+        // Preserve the live rate across settings echoes so saveSettings round-trips cannot overwrite it. A settings UI
+        // change to the active rate is therefore ignored until a later session/settings update.
         this.settings = this.ready.settings
             ? { ...settings, [activeRateSetting]: this.settings[activeRateSetting] }
             : settings;
@@ -212,7 +216,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
                 savePlaybackModes: false,
                 rebuildWhenUnchanged: true,
-            });
+            }); // Reset to normal while subtitles are unavailable
             this.unbind();
         }
     }
@@ -362,15 +366,28 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     private async performSeek(targetTimestampMs: number, warningCommand: 'seek' | 'pause-correction'): Promise<void> {
-        const seeked = this.timingDriver.beginInternalSeek();
+        const seekCompletion = this.timingDriver.beginInternalSeek();
+        let watchdogHandle: ReturnType<typeof setTimeout> | undefined;
+        const watchdog = new Promise<'cancelled'>((resolve) => {
+            watchdogHandle = setTimeout(() => {
+                console.warn('[asbplayer/playback] Internal seek did not complete before the watchdog timeout', {
+                    targetTimestampMs,
+                    timeoutMs: internalSeekWatchdogMs,
+                });
+                this.timingDriver.cancelExpectedInternalSeek();
+                resolve('cancelled');
+            }, internalSeekWatchdogMs);
+        });
         try {
             await this.callbacks.seek(targetTimestampMs);
-            await seeked;
-            if (warningCommand !== undefined) this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);
+            if ((await Promise.race([seekCompletion, watchdog])) !== 'completed') return;
+            this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);
             this.playbackPositionController.savePlaybackPosition(targetTimestampMs);
         } catch (error) {
             this.timingDriver.cancelExpectedInternalSeek();
             throw error;
+        } finally {
+            if (watchdogHandle !== undefined) clearTimeout(watchdogHandle);
         }
     }
 

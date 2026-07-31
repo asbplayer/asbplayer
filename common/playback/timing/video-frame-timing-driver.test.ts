@@ -121,7 +121,7 @@ describe('VideoFrameTimingDriver', () => {
 
         const seeked = driver.beginInternalSeek();
         video.seek(3);
-        await seeked;
+        await expect(seeked).resolves.toBe('completed');
 
         expect(video.currentTime).toBe(3);
         driver.unbind();
@@ -147,7 +147,7 @@ describe('VideoFrameTimingDriver', () => {
         const seeked = driver.beginInternalSeek();
         driver.unbind();
 
-        await expect(seeked).resolves.toBeUndefined();
+        await expect(seeked).resolves.toBe('cancelled');
     });
 
     it('uses owner-supplied seek events without also listening to native seek events', async () => {
@@ -163,10 +163,23 @@ describe('VideoFrameTimingDriver', () => {
         video.dispatchEvent(new Event('seeking'));
         driver.externalSeekStarted();
         driver.externalSeeked(3000);
-        await seeked;
+        await expect(seeked).resolves.toBe('completed');
         await flush();
 
         expect(timestamps).toContain(3000);
+        driver.unbind();
+    });
+
+    it('reports a cancelled owner-supplied seek distinctly from a completed seek', async () => {
+        const video = new FakeVideo();
+        const driver = timingDriver({ ...videoSource(video), externalSeekEvents: true }, {});
+        driver.bind();
+
+        const seeked = driver.beginInternalSeek();
+        driver.externalSeekStarted();
+        driver.externalSeekCanceled();
+
+        await expect(seeked).resolves.toBe('cancelled');
         driver.unbind();
     });
 
@@ -286,6 +299,7 @@ describe('VideoFrameTimingDriver', () => {
         });
         driver.bind();
         video.play();
+        await flush();
 
         video.present(100);
         video.present(200);
@@ -316,6 +330,7 @@ describe('VideoFrameTimingDriver', () => {
         });
         driver.bind();
         video.play();
+        await flush();
 
         video.present(100);
         video.seek(0.5);
@@ -400,6 +415,7 @@ describe('VideoFrameTimingDriver', () => {
         });
         driver.bind();
         video.play();
+        await flush();
 
         video.present(1000, 1, 1000);
         video.present(1016.667, 1.016667, 1016.667);
@@ -895,15 +911,34 @@ describe('VideoFrameTimingDriver', () => {
 
     it('uses timeupdate while hidden and resumes video frame callbacks when visible', async () => {
         const video = new FakeVideo();
+        const source = videoSource(video);
+        let timeupdateAdds = 0;
+        let timeupdateRemoves = 0;
         const updates: number[] = [];
-        const driver = timingDriver(videoSource(video), {
-            onTime: async (timestampMs) => {
-                updates.push(timestampMs);
+        const driver = timingDriver(
+            {
+                ...source,
+                addEventListener: (type, listener) => {
+                    if (type === 'timeupdate') timeupdateAdds++;
+                    source.addEventListener(type, listener);
+                },
+                removeEventListener: (type, listener) => {
+                    if (type === 'timeupdate') timeupdateRemoves++;
+                    source.removeEventListener(type, listener);
+                },
             },
-            onDiscontinuity: () => {},
-        });
+            {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            }
+        );
         setDocumentHidden(true);
         driver.bind();
+        document.dispatchEvent(new Event('visibilitychange'));
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect(timeupdateAdds).toBe(1);
         video.play();
         video.currentTime = 0.25;
         video.dispatchEvent(new Event('timeupdate'));
@@ -913,6 +948,7 @@ describe('VideoFrameTimingDriver', () => {
 
         setDocumentHidden(false);
         document.dispatchEvent(new Event('visibilitychange'));
+        expect(timeupdateRemoves).toBe(1);
         video.currentTime = 0.5;
         video.dispatchEvent(new Event('timeupdate'));
         await flush();

@@ -4,6 +4,11 @@ import PlaybackTimeline, {
     firstTimestampIndex,
 } from '@project/common/playback/timeline/playback-timeline';
 
+export interface PlaybackTimelineLookaheadOptions {
+    readonly lookaheadTimestampMs?: number;
+    readonly includeStateChanges: boolean;
+}
+
 export interface PlaybackTimelineLookaheadResult {
     readonly actionTimestamp?: number;
     readonly stateChangeTimestamp?: number;
@@ -44,8 +49,7 @@ export default class PlaybackTimelineLookaheadCursor<T extends IndexedSubtitleMo
 
     advance(
         timestampMs: number,
-        lookaheadTimestampMs: number | undefined,
-        includeStateChanges = true
+        { lookaheadTimestampMs, includeStateChanges }: PlaybackTimelineLookaheadOptions
     ): PlaybackTimelineLookaheadResult {
         if (timestampMs < this.timestampMs) this.reset(timestampMs);
 

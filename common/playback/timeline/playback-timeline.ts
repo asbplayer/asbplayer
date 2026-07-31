@@ -1,6 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import {
-    type CondensedGap,
     compilePlaybackTimeline,
     type PlaybackTimelineActionIndex,
     type PlaybackTimelineCompilation,
@@ -97,13 +96,11 @@ export const advanceTimestampIndex = <T>(
 export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
     readonly durationMs: number;
     readonly blocks: readonly PlaybackTimelineBlock[];
-    readonly blocksById: ReadonlyMap<string, PlaybackTimelineBlock>;
-    readonly boundaries: readonly PlaybackTimelineEventGroup[];
+    private readonly blocksById: ReadonlyMap<string, PlaybackTimelineBlock>;
     readonly actionIndex: PlaybackTimelineActionIndex;
     readonly segments: readonly PlaybackTimelineSegment<T>[];
     readonly stateBoundaryTimestamps: readonly number[];
     readonly stateChangeTimestamps: readonly number[];
-    readonly condensedGaps: readonly CondensedGap[];
     private readonly states: readonly PlaybackTimelineState[];
 
     private constructor(compiled: PlaybackTimelineCompilation<T>) {
@@ -112,13 +109,11 @@ export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
         const blocksById = new Map<string, PlaybackTimelineBlock>();
         for (const block of this.blocks) blocksById.set(block.id, block);
         this.blocksById = blocksById;
-        this.boundaries = compiled.boundaries;
         this.actionIndex = compiled.actionIndex;
         this.segments = compiled.segments;
         this.stateBoundaryTimestamps = compiled.stateBoundaryTimestamps;
         this.states = compiled.states;
         this.stateChangeTimestamps = compiled.stateChangeTimestamps;
-        this.condensedGaps = compiled.condensedGaps;
     }
 
     static fromSubtitles<T extends IndexedSubtitleModel>(subtitles: PlaybackTimelineSubtitles<T>): PlaybackTimeline<T> {
@@ -137,39 +132,24 @@ export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
         };
     }
 
+    showingSubtitlesAt(timestampMs: number): readonly T[] {
+        return this.lookupAt(timestampMs).segment.showingSubtitles;
+    }
+
+    blockById(blockId: string): PlaybackTimelineBlock | undefined {
+        return this.blocksById.get(blockId);
+    }
+
     private indexAt(timestampMs: number): number {
         const firstAfter = firstTimestampIndex(this.segments, timestampMs, (segment) => segment.startMs, 'after');
         return Math.max(0, Math.min(this.segments.length - 1, firstAfter - 1));
-    }
-
-    nextCondensedTarget(timestampMs: number): number | undefined {
-        return this.lookupAt(timestampMs).segment.condensedTarget;
-    }
-
-    nextActionTimestamp(timestampMs: number, lookaheadTimestampMs: number): number | undefined {
-        const index = firstTimestampIndex(
-            this.actionIndex.actionTimestamps,
-            timestampMs,
-            (timestamp) => timestamp,
-            'after'
-        );
-        const timestamp = this.actionIndex.actionTimestamps[index];
-        if (timestamp === undefined || timestamp > lookaheadTimestampMs) return;
-        return timestamp;
-    }
-
-    nextStartActionTimestamp(timestampMs: number): number | undefined {
-        return this.lookupAt(timestampMs).segment.nextStartActionTimestamp;
     }
 
     startActionsAt(timestampMs: number): readonly PlaybackTimelineBlock[] {
         return this.actionIndex.startActionsByTimestamp.get(timestampMs) ?? [];
     }
 
-    nextStateChangeTimestamp(timestampMs: number, lookaheadTimestampMs: number): number | undefined {
-        const index = firstTimestampIndex(this.stateChangeTimestamps, timestampMs, (timestamp) => timestamp, 'after');
-        const timestamp = this.stateChangeTimestamps[index];
-        if (timestamp === undefined || timestamp > lookaheadTimestampMs) return;
-        return timestamp;
+    hasStartActionAt(timestampMs: number): boolean {
+        return this.startActionsAt(timestampMs).length > 0;
     }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import { emptyTimingDriverCallbacks } from '@project/common/playback/playback-test-utils';
 import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
 
@@ -150,6 +150,33 @@ describe('TimingUpdateQueue', () => {
         expect(events).toEqual(['update:start', 'update:finish', 'playback-started']);
     });
 
+    it('serializes an update after an idle asynchronous playback start', async () => {
+        const playbackStarted = deferred();
+        const events: string[] = [];
+        const queue = new TimingUpdateQueue(
+            { active: () => true },
+            {
+                ...emptyTimingDriverCallbacks,
+                onTime: async () => {
+                    events.push('update');
+                },
+                onPlaybackStarted: async () => {
+                    events.push('playback-started:start');
+                    await playbackStarted.promise;
+                    events.push('playback-started:finish');
+                },
+            }
+        );
+
+        queue.enqueuePlaybackStarted();
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+
+        expect(events).toEqual(['playback-started:start']);
+        playbackStarted.resolve();
+        await flush();
+        expect(events).toEqual(['playback-started:start', 'playback-started:finish', 'update']);
+    });
+
     it('reports an update error and continues with the latest queued update', async () => {
         const firstUpdate = deferred();
         const error = new Error('update failed');
@@ -174,6 +201,35 @@ describe('TimingUpdateQueue', () => {
 
         expect(errors).toEqual([error]);
         expect(updates).toEqual([1, 2]);
+    });
+
+    it('does not leak a rejection when the error callback throws', async () => {
+        const errors: unknown[] = [];
+        const updates: number[] = [];
+        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const queue = new TimingUpdateQueue(
+            { active: () => true },
+            {
+                ...emptyTimingDriverCallbacks,
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                    if (timestampMs === 1) throw new Error('update failed');
+                },
+                onError: (error) => {
+                    errors.push(error);
+                    throw new Error('error handler failed');
+                },
+            }
+        );
+
+        queue.enqueue(1, { lookaheadTimestampMs: undefined });
+        queue.enqueue(2, { lookaheadTimestampMs: undefined });
+        await flush();
+
+        expect(errors).toHaveLength(1);
+        expect(updates).toEqual([1, 2]);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        consoleError.mockRestore();
     });
 
     it('rejects non-finite samples without advancing the queue', async () => {

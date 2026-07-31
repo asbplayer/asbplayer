@@ -1,4 +1,5 @@
 import TimingUpdateQueue, {
+    type InternalSeekCompletion,
     type TimingDriver,
     type TimingDriverCallbacks,
 } from '@project/common/playback/timing/timing-driver';
@@ -61,9 +62,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.callbacks = callbacks;
     }
 
-    beginInternalSeek(): Promise<void> {
+    beginInternalSeek(): Promise<InternalSeekCompletion> {
         this.expectedInternalSeek = true;
-        return Promise.resolve();
+        return Promise.resolve('completed');
     }
 
     cancelExpectedInternalSeek(): void {

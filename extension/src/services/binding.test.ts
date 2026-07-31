@@ -475,11 +475,13 @@ describe('Binding playback mode integration', () => {
         }
     });
 
-    it('cancels a Netflix seek reported as unavailable and continues timing', async () => {
+    it('cancels an unavailable Netflix seek without persisting its target and continues timing', async () => {
         document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: true }));
         const video = createVideo();
         const binding = new Binding(video, false);
-        const onNetflixSeek = () => {
+        const netflixSeeks: number[] = [];
+        const onNetflixSeek = (event: Event) => {
+            netflixSeeks.push((event as CustomEvent<number>).detail);
             document.dispatchEvent(new CustomEvent('asbplayer-netflix-seek-cancelled'));
         };
         document.addEventListener('asbplayer-netflix-seek', onNetflixSeek);
@@ -487,13 +489,17 @@ describe('Binding playback mode integration', () => {
         try {
             binding.bind();
             await jest.advanceTimersByTimeAsync(0);
-            sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+            sendSubtitles(binding, [makeSubtitle({ start: 61_000, end: 62_000 })]);
             binding.togglePlayMode(PlayMode.repeat);
 
-            video.presentFrame(1999);
+            video.presentFrame(61_999);
             await flushPlaybackTiming();
-            video.presentFrame(1500);
+            expect(netflixSeeks).toEqual([61_000]);
+            expect((await storage.get('lastPlaybackPositions')).lastPlaybackPositions).toBeUndefined();
+
+            video.presentFrame(61_500);
             await flushPlaybackTiming();
+            expect(netflixSeeks).toEqual([61_000]);
         } finally {
             binding.unbind();
             document.removeEventListener('asbplayer-netflix-seek', onNetflixSeek);

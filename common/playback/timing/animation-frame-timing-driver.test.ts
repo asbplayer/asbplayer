@@ -178,6 +178,7 @@ describe('AnimationFrameTimingDriver', () => {
         );
         driver.bind();
         clock.start();
+        await flush();
 
         nowMs = 100;
         animationFrames.present();
@@ -270,6 +271,7 @@ describe('AnimationFrameTimingDriver', () => {
         );
         driver.bind();
         clock.start();
+        await flush();
         clock.setTime(5000);
         animationFrames.present();
         await flush();

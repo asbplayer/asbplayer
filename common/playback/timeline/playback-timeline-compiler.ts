@@ -66,9 +66,7 @@ const blocksFromSubtitles = <T extends IndexedSubtitleModel>(
         const previous = mutableBlocks[mutableBlocks.length - 1];
         if (previous !== undefined && startMs < previous.endMs) {
             previous.subtitles.push(subtitle);
-            if (endMs > previous.endMs) {
-                previous.endMs = endMs;
-            }
+            if (endMs > previous.endMs) previous.endMs = endMs;
             continue;
         }
 

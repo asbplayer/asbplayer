@@ -16,9 +16,15 @@ describe('PlaybackTimelineLookaheadCursor', () => {
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const cursor = new PlaybackTimelineLookaheadCursor(timeline, 500);
 
-        expect(cursor.advance(500, 1500)).toEqual({ actionTimestamp: 1000, stateChangeTimestamp: 999 });
-        expect(cursor.advance(1100, 2500)).toEqual({ actionTimestamp: 1999, stateChangeTimestamp: 2000 });
-        expect(cursor.advance(1200, 1300)).toEqual({});
+        expect(cursor.advance(500, { lookaheadTimestampMs: 1500, includeStateChanges: true })).toEqual({
+            actionTimestamp: 1000,
+            stateChangeTimestamp: 999,
+        });
+        expect(cursor.advance(1100, { lookaheadTimestampMs: 2500, includeStateChanges: true })).toEqual({
+            actionTimestamp: 1999,
+            stateChangeTimestamp: 2000,
+        });
+        expect(cursor.advance(1200, { lookaheadTimestampMs: 1300, includeStateChanges: true })).toEqual({});
     });
 
     it('resets its compiled indexes when playback moves backward', () => {
@@ -31,7 +37,13 @@ describe('PlaybackTimelineLookaheadCursor', () => {
         const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         const cursor = new PlaybackTimelineLookaheadCursor(timeline, 1500);
 
-        expect(cursor.advance(1500, 2500)).toEqual({ actionTimestamp: 1999, stateChangeTimestamp: 2000 });
-        expect(cursor.advance(500, 1500)).toEqual({ actionTimestamp: 1000, stateChangeTimestamp: 999 });
+        expect(cursor.advance(1500, { lookaheadTimestampMs: 2500, includeStateChanges: true })).toEqual({
+            actionTimestamp: 1999,
+            stateChangeTimestamp: 2000,
+        });
+        expect(cursor.advance(500, { lookaheadTimestampMs: 1500, includeStateChanges: true })).toEqual({
+            actionTimestamp: 1000,
+            stateChangeTimestamp: 999,
+        });
     });
 });

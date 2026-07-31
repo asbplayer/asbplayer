@@ -635,6 +635,16 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.seeks).toEqual([1000, 1000, 1000]);
     });
 
+    it('keeps a bounded repeat count when an internal seek lands slightly short', async () => {
+        const harness = executorHarness([PlayMode.repeat], 0, { repeatCountPreference: 1 });
+
+        await harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+        harness.executor.handleDiscontinuity(1001);
+        await harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+
+        expect(harness.seeks).toEqual([1000]);
+    });
+
     it('starts a fresh bounded repeat count for each subtitle', async () => {
         const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
         const harness = executorHarness([PlayMode.repeat], 0, {
@@ -1443,6 +1453,52 @@ describe('PlaybackPlanExecutor', () => {
 
         expect(seekCalls).toEqual([3999]);
         expect(harness.plays).toEqual([]);
+    });
+
+    it('does not miss an auto-pause start reached by a condensed seek during a plan change', async () => {
+        let resolveSeek!: () => void;
+        let seekStarted!: () => void;
+        const seekFinished = new Promise<void>((resolve) => {
+            resolveSeek = resolve;
+        });
+        const started = new Promise<void>((resolve) => {
+            seekStarted = resolve;
+        });
+        const subtitles = [
+            makeSubtitle(),
+            makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
+        ];
+        const harness = executorHarness(
+            [PlayMode.condensed],
+            1500,
+            { subtitles },
+            {
+                seek: async () => {
+                    seekStarted();
+                    await seekFinished;
+                },
+            }
+        );
+
+        const update = harness.executor.update(2100, { lookaheadTimestampMs: undefined });
+        await started;
+        harness.executor.replacePlan(
+            makePlan([PlayMode.condensed, PlayMode.autoPause], {
+                subtitles,
+                autoPausePreference: AutoPausePreference.atStart,
+                subtitleTriggerStartOffset: -1,
+            }),
+            2100
+        );
+        resolveSeek();
+        await update;
+
+        harness.executor.handleDiscontinuity(3999);
+        harness.resume();
+        await harness.executor.update(4000, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(1);
+        expect(harness.corrections).toEqual([3999]);
     });
 
     it('cancels an in-flight repeat seek when the plan changes', async () => {

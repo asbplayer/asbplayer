@@ -3,11 +3,10 @@ import { makeSubtitle, makeTimeline as timeline } from '@project/common/playback
 import PlaybackTimeline, { firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
 
 describe('PlaybackTimeline', () => {
-    it('has no state or condensed target for zero subtitles', () => {
+    it('has no state for zero subtitles', () => {
         const result = timeline([]);
 
         expect(result.lookupAt(1000).state).toEqual({ previous: undefined, next: undefined });
-        expect(result.nextCondensedTarget(1000)).toBeUndefined();
     });
 
     it('describes active and gap regions without querying a subtitle collection', () => {
@@ -19,15 +18,6 @@ describe('PlaybackTimeline', () => {
         expect(result.lookupAt(1500).state.current).toBe(firstBlock);
         expect(result.lookupAt(2500).state.previous).toBe(firstBlock);
         expect(result.lookupAt(2500).state.next).toBe(secondBlock);
-        expect(result.nextCondensedTarget(2100)).toBe(2999);
-    });
-
-    it('exposes a condensed target throughout the invisible gap despite a positive end offset', () => {
-        const result = timeline([makeSubtitle(1000, 2000, 0), makeSubtitle(3000, 4000, 1)], {
-            subtitleTriggerEndOffset: 500,
-        });
-
-        expect(result.nextCondensedTarget(2100)).toBe(2999);
     });
 
     it('uses visible boundaries rather than playback action offsets for active and gap regions', () => {
@@ -37,10 +27,8 @@ describe('PlaybackTimeline', () => {
         });
 
         expect(result.lookupAt(1100).state.current).toBe(result.blocks[0]);
-        expect(result.nextCondensedTarget(1100)).toBeUndefined();
         expect(result.lookupAt(1500).state.current).toBe(result.blocks[0]);
         expect(result.lookupAt(1800).state.current).toBe(result.blocks[0]);
-        expect(result.nextCondensedTarget(2000)).toBe(3999);
     });
 
     it('finds the next start action from the encoded action timestamps', () => {
@@ -54,11 +42,19 @@ describe('PlaybackTimeline', () => {
             displaySubtitles: subtitles,
         });
 
-        expect(result.nextStartActionTimestamp(1500)).toBe(3750);
-        expect(result.nextStartActionTimestamp(2100)).toBe(3750);
-        expect(result.nextStartActionTimestamp(3750)).toBeUndefined();
         expect(result.startActionsAt(3750)).toEqual([result.blocks[1]]);
         expect(result.startActionsAt(3751)).toEqual([]);
+    });
+
+    it('provides intent-level lookups for subtitles, blocks, and start actions', () => {
+        const subtitles = [makeSubtitle(1000, 2000, 0)];
+        const result = timeline(subtitles);
+        const block = result.blocks[0];
+
+        expect(result.showingSubtitlesAt(1500)).toEqual(subtitles);
+        expect(result.blockById(block.id)).toBe(block);
+        expect(result.blockById('missing')).toBeUndefined();
+        expect(result.hasStartActionAt(block.playbackModeStartMs)).toBe(false);
     });
 
     it('retains all start actions that share a timestamp', () => {
@@ -77,18 +73,6 @@ describe('PlaybackTimeline', () => {
                 .map(({ id }) => id)
                 .sort()
         ).toEqual(result.blocks.map(({ id }) => id).sort());
-    });
-
-    it('uses configurable start and end gaps for condensed playback', () => {
-        const result = timeline([makeSubtitle(1000, 2000, 0), makeSubtitle(4000, 5000, 1)], {
-            subtitleTriggerStartOffset: -100,
-            subtitleTriggerEndOffset: 200,
-            subtitleTriggerGapEndOffset: -250,
-            subtitleTriggerGapStartOffset: 400,
-        });
-
-        expect(result.nextCondensedTarget(2399)).toBeUndefined();
-        expect(result.nextCondensedTarget(2400)).toBe(3749);
     });
 
     it('compiles overlapping visible subtitles into half-open persistent-state segments', () => {

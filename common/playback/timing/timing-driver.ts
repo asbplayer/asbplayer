@@ -16,6 +16,8 @@ export interface TimingDriverEventCallbacks {
     onError(): void;
 }
 
+export type InternalSeekCompletion = 'completed' | 'cancelled';
+
 export interface TimingDriver {
     bind(): void;
     readonly bound: boolean;
@@ -23,7 +25,7 @@ export interface TimingDriver {
     readonly externalSeekEvents?: boolean;
     unbind(): void;
     setCallbacks(callbacks: TimingDriverCallbacks): void;
-    beginInternalSeek(): Promise<void>;
+    beginInternalSeek(): Promise<InternalSeekCompletion>;
     cancelExpectedInternalSeek(): void;
     externalSeekStarted?(): void;
     externalSeeked?(timestampMs: number): void;
@@ -75,11 +77,8 @@ export default class TimingUpdateQueue {
      * Need to enqueue as starting playback can trigger async updates such as auto-pause/repeat actions.
      */
     enqueuePlaybackStarted(): void {
-        if (this.processing) {
-            this.queuedPlaybackStarted = true;
-            return;
-        }
-        void this.callbacks.onPlaybackStarted().catch((error) => this.callbacks.onError(error));
+        this.queuedPlaybackStarted = true;
+        this.process();
     }
 
     /**
@@ -133,7 +132,7 @@ export default class TimingUpdateQueue {
                     await this.callbacks.onTime(update.timestampMs, update.options);
                 }
             } catch (error) {
-                this.callbacks.onError(error);
+                this.reportError(error);
             } finally {
                 this.processing = false;
                 if (this.shouldProcess()) this.process();
@@ -148,8 +147,16 @@ export default class TimingUpdateQueue {
         }
         if (!this.invalidTimestampReported) {
             this.invalidTimestampReported = true;
-            this.callbacks.onError(new Error(`Invalid playback timestamp: ${String(timestampMs)}`));
+            this.reportError(new Error(`Invalid playback timestamp: ${String(timestampMs)}`));
         }
         return false;
+    }
+
+    private reportError(error: unknown): void {
+        try {
+            this.callbacks.onError(error);
+        } catch (callbackError) {
+            console.error('[asbplayer/playback] Timing update error handler failed', { error, callbackError });
+        }
     }
 }
