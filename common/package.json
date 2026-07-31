@@ -9,7 +9,7 @@
         "@types/semver": "^7.3.9",
         "ass-compiler": "0.1.1",
         "dexie": "^4.0.11",
-        "dompurify": "^3.3.1",
+        "dompurify": "^3.4.12",
         "fast-xml-parser": "^4.0.7",
         "hotkeys-js": "^3.10.0",
         "i18next": "^22.4.14",
