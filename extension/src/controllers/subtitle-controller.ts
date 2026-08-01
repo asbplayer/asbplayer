@@ -22,13 +22,7 @@ import {
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
-import {
-    renderRichTextOntoSubtitles,
-    getAnnotationsHtml,
-    SubtitleAnnotations,
-    ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
-    ANNOTATIONS_VIDEO_RENDER_AHEAD_MS,
-} from '@project/common/annotations';
+import { renderRichTextOntoSubtitles, getAnnotationsHtml, SubtitleAnnotations } from '@project/common/annotations';
 import {
     arrayEquals,
     compareSubtitlesForDisplay,
@@ -180,58 +174,29 @@ export default class SubtitleController {
     }
 
     cacheHtml() {
-        const htmls = this._buildSubtitlesHtml(this._windowSubtitles());
+        const bottomOverlay = this.bottomSubtitlesElementOverlay;
+        const topOverlay = this.topSubtitlesElementOverlay;
 
-        if (this.shouldRenderBottomOverlay && this.bottomSubtitlesElementOverlay instanceof CachingElementOverlay) {
-            this.bottomSubtitlesElementOverlay.uncacheHtml();
-            for (const html of htmls) {
-                this.bottomSubtitlesElementOverlay.cacheHtml(html.key, html.html());
-            }
-        }
-        if (this.shouldRenderTopOverlay && this.topSubtitlesElementOverlay instanceof CachingElementOverlay) {
-            this.topSubtitlesElementOverlay.uncacheHtml();
-            for (const html of htmls) {
-                this.topSubtitlesElementOverlay.cacheHtml(html.key, html.html());
-            }
-        }
-    }
+        if (bottomOverlay instanceof CachingElementOverlay) bottomOverlay.uncacheHtml();
+        if (topOverlay instanceof CachingElementOverlay) topOverlay.uncacheHtml();
 
-    private _windowSubtitles(): IndexedSubtitleModel[] {
-        const now = this.context.currentTimeMs;
-        const windowSubtitles = this.subtitleAnnotations.subtitlesIn(
-            now - ANNOTATIONS_VIDEO_RENDER_BEHIND_MS,
-            now + ANNOTATIONS_VIDEO_RENDER_AHEAD_MS
+        const bottomSubtitles = this.subtitles.filter(
+            (subtitle) => this._getSubtitleTrackAlignment(subtitle.track) === 'bottom'
         );
-        if (!windowSubtitles.length) {
-            const { lastShown, nextToShow } = this.subtitleAnnotations.subtitlesAt(now);
-            for (const subtitle of lastShown ?? []) windowSubtitles.push(subtitle);
-            for (const subtitle of nextToShow ?? []) windowSubtitles.push(subtitle);
-        }
-        return windowSubtitles;
-    }
+        const topSubtitles = this.subtitles.filter(
+            (subtitle) => this._getSubtitleTrackAlignment(subtitle.track) === 'top'
+        );
 
-    private _refreshCachedHtmlWindow() {
-        const bottomWindowSubtitles: IndexedSubtitleModel[] = [];
-        const topWindowSubtitles: IndexedSubtitleModel[] = [];
-        for (const subtitle of this._windowSubtitles()) {
-            if (this._getSubtitleTrackAlignment(subtitle.track) === 'bottom') bottomWindowSubtitles.push(subtitle);
-            else topWindowSubtitles.push(subtitle);
-        }
-
-        const updateOverlay = (subtitles: IndexedSubtitleModel[], overlay: ElementOverlay, shouldRender: boolean) => {
-            if (!(overlay instanceof CachingElementOverlay)) return;
-            const keep = new Set(subtitles.map((s) => String(s.index)));
-            for (const key of overlay.cachedHtmlKeys()) {
-                if (!keep.has(key)) overlay.removeCachedHtml(key);
+        if (this.shouldRenderBottomOverlay && bottomOverlay instanceof CachingElementOverlay) {
+            for (const html of this._buildSubtitlesHtml(bottomSubtitles)) {
+                bottomOverlay.cacheHtml(html.key, html.html());
             }
-            if (!shouldRender) return;
-            const uncachedSubtitles = subtitles.filter((s) => !overlay.hasCachedHtml(String(s.index)));
-            const htmls = this._buildSubtitlesHtml(uncachedSubtitles);
-            for (const html of htmls) overlay.cacheHtml(html.key, html.html());
-        };
-
-        updateOverlay(bottomWindowSubtitles, this.bottomSubtitlesElementOverlay, this.shouldRenderBottomOverlay);
-        updateOverlay(topWindowSubtitles, this.topSubtitlesElementOverlay, this.shouldRenderTopOverlay);
+        }
+        if (this.shouldRenderTopOverlay && topOverlay instanceof CachingElementOverlay) {
+            for (const html of this._buildSubtitlesHtml(topSubtitles)) {
+                topOverlay.cacheHtml(html.key, html.html());
+            }
+        }
     }
 
     get bottomSubtitlePositionOffset(): number {
@@ -282,6 +247,7 @@ export default class SubtitleController {
             this.bottomSubtitlesElementOverlay.hide();
             this.topSubtitlesElementOverlay.hide();
             this.notificationElementOverlay.hide();
+            this.cacheHtml();
         }
 
         this.unblurredSubtitleTracks = {};
@@ -392,28 +358,24 @@ export default class SubtitleController {
     }
 
     private _subtitleAnnotationsUpdated(updatedSubtitles: IndexedSubtitleModel[]): void {
-        const updatedIndexes = new Set(updatedSubtitles.map((s) => s.index));
-        const updatedWindowSubtitles = this._windowSubtitles().filter((s) => updatedIndexes.has(s.index));
-        if (updatedWindowSubtitles.length) {
-            const htmls = this._buildSubtitlesHtml(updatedWindowSubtitles);
-            for (const [index, updatedWindowSubtitle] of updatedWindowSubtitles.entries()) {
+        if (updatedSubtitles.length) {
+            const htmls = this._buildSubtitlesHtml(updatedSubtitles);
+            for (const [index, updatedSubtitle] of updatedSubtitles.entries()) {
                 const html = htmls[index];
-                if (this._getSubtitleTrackAlignment(updatedWindowSubtitle.track) === 'bottom') {
+                if (this._getSubtitleTrackAlignment(updatedSubtitle.track) === 'bottom') {
                     if (
                         this.shouldRenderBottomOverlay &&
                         this.bottomSubtitlesElementOverlay instanceof CachingElementOverlay
                     ) {
                         this.bottomSubtitlesElementOverlay.cacheHtml(html.key, html.html());
                     }
-                } else {
-                    if (
-                        this.shouldRenderTopOverlay &&
-                        this.topSubtitlesElementOverlay instanceof CachingElementOverlay
-                    ) {
-                        this.topSubtitlesElementOverlay.cacheHtml(html.key, html.html());
-                    }
+                } else if (
+                    this.shouldRenderTopOverlay &&
+                    this.topSubtitlesElementOverlay instanceof CachingElementOverlay
+                ) {
+                    this.topSubtitlesElementOverlay.cacheHtml(html.key, html.html());
                 }
-                if (this.showingSubtitles?.some((s) => s.index === updatedWindowSubtitle.index)) {
+                if (this.showingSubtitles?.some((s) => s.index === updatedSubtitle.index)) {
                     this.refreshCurrentSubtitle = true;
                 }
             }
@@ -453,7 +415,6 @@ export default class SubtitleController {
         if (subtitlesAreNew) {
             this.showingSubtitles = showingSubtitles;
             this._autoCopyToClipboard(showingSubtitles);
-            this._refreshCachedHtmlWindow();
         }
 
         const showOffset = this.lastOffsetChangeTimestamp > 0 && Date.now() - this.lastOffsetChangeTimestamp < 1000;

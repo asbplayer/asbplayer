@@ -37,8 +37,8 @@ import {
 
 // Subtitles with rich text are ~5KB per subtitle and so is not worth using a render window.
 // Having one also negatively affects other extensions such as JPDB Reader which relies on a stable DOM.
-export const ANNOTATIONS_VIDEO_RENDER_BEHIND_MS = 15000; // Seeking backwards is usually 5-10s
-export const ANNOTATIONS_VIDEO_RENDER_AHEAD_MS = 60000; // Seeking forward is usually 5-30s
+// export const ANNOTATIONS_VIDEO_RENDER_BEHIND_MS = 15000; // Seeking backwards is usually 5-10s
+// export const ANNOTATIONS_VIDEO_RENDER_AHEAD_MS = 60000; // Seeking forward is usually 5-30s
 
 export interface InternalToken extends Token {
     __internal?: boolean;

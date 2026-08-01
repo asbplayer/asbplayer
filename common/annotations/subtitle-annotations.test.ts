@@ -14,7 +14,7 @@ import {
 } from '@project/common/settings';
 import { Anki } from '@project/common/anki';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
-import { SubtitleAnnotations, TrackState } from './subtitle-annotations';
+import { needsReset, SubtitleAnnotations, TrackState } from './subtitle-annotations';
 import {
     makeDictionaryTrack,
     makeDictionaryTracks,
@@ -94,6 +94,26 @@ describe('TrackState', () => {
 });
 
 describe('SubtitleAnnotations', () => {
+    it('only needs a reset when subtitle source content or original tokenization changes', () => {
+        const previous = [makeSubtitle({ text: 'annotated', originalText: 'word' })];
+
+        expect(needsReset([makeSubtitle({ text: 'updated', originalText: 'word' })], previous)).toBe(false);
+        expect(needsReset([makeSubtitle({ text: 'other', originalText: 'other' })], previous)).toBe(true);
+        expect(
+            needsReset(
+                [
+                    makeSubtitle({
+                        text: 'word',
+                        originalText: 'word',
+                        tokenization: { tokens: [makeToken({ pos: [0, 2] })] },
+                    }),
+                ],
+                previous
+            )
+        ).toBe(true);
+        expect(needsReset([], previous)).toBe(true);
+    });
+
     it('defaults originalText, clones subtitles, preserves cached tokenization, and stores external readings', () => {
         const { subtitleAnnotations } = makeSubtitleAnnotations();
         const buildAnnotations = jest.spyOn(subtitleAnnotations as any, '_buildAnnotations').mockResolvedValue(true);

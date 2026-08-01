@@ -210,6 +210,20 @@ function originalTokenization(tokenization: Tokenization | undefined): Tokenizat
     };
 }
 
+export function needsReset(subtitles: TokenizedSubtitleModel[], previousSubtitles: TokenizedSubtitleModel[]) {
+    return (
+        subtitles.length !== previousSubtitles.length ||
+        subtitles.some((s) => {
+            const prev = previousSubtitles[s.index];
+            if ((s.originalText ?? s.text) !== (prev.originalText ?? prev.text)) return true;
+            return !areTokenizationsEqual(
+                originalTokenization(s.tokenization),
+                originalTokenization(prev.tokenization)
+            );
+        })
+    );
+}
+
 export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel> {
     private _subtitles: InternalSubtitleModel[];
     private totalSubtitlesPerTrack: Map<number, number>;
@@ -333,17 +347,8 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
         }
-        const needsReset =
-            subtitles.length !== this._subtitles.length ||
-            subtitles.some((s) => {
-                const prev = this._subtitles[s.index];
-                if ((s.originalText ?? s.text) !== (prev.originalText ?? prev.text)) return true;
-                return !areTokenizationsEqual(
-                    originalTokenization(s.tokenization),
-                    originalTokenization(prev.tokenization)
-                );
-            });
-        if (!needsReset) {
+        const shouldReset = needsReset(subtitles, this._subtitles);
+        if (!shouldReset) {
             // Preserve the existing tokenization cache here so callers don't need to be aware of it.
             for (const s of subtitles) {
                 (s as InternalSubtitleModel).text = this._subtitles[s.index].text;
@@ -357,7 +362,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.totalSubtitlesPerTrack.set(s.track, (this.totalSubtitlesPerTrack.get(s.track) ?? 0) + 1);
         }
         super.setSubtitles(this._subtitles);
-        if (needsReset) {
+        if (shouldReset) {
             this._resetCache();
             this.refreshCache.clear();
             this.erroredCache.clear();
