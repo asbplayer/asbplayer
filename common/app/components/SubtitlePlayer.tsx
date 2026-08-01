@@ -1045,7 +1045,10 @@ export default function SubtitlePlayer({
                 const surroundingSubtitles =
                     index === -1 ? calculateSurroundingSubtitles() : calculateSurroundingSubtitlesForIndex(index);
                 const cardTextFieldValues = {
-                    text: index === -1 ? text : extractText(subtitle, surroundingSubtitles),
+                    text:
+                        settings.alwaysUseSubtitleForSentence || index !== -1
+                            ? extractText(subtitle, surroundingSubtitles)
+                            : text,
                     word,
                     definition,
                     customFieldValues,
@@ -1062,6 +1065,7 @@ export default function SubtitlePlayer({
             calculateSurroundingSubtitles,
             calculateSurroundingSubtitlesForIndex,
             subtitles,
+            settings.alwaysUseSubtitleForSentence,
         ]
     );
 

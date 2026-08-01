@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "Kecepatan pemutaran mode maju cepat",
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Salin takarir yang ditambang ke papan klip",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "Pastikan {{origin}} ada di webCorsOriginList di pengaturan AnkiConnect Anda seperti pada <0>video</0> ini.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Dek",

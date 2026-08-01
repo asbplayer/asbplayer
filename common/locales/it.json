@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "Velocità di riproduzione in modalità avanzamento rapido",
         "coloringStrategy": "Strategia di colorazione",
         "copyOnMine": "Copia i sottotitoli estratti negli appunti",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "Assicurati che {{origin}} sia nella webCorsOriginList nelle impostazioni di AnkiConnect come in questo <0>video</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Mazzo",

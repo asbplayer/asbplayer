@@ -43,6 +43,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
         recordWithAudioPlayback,
         preferMp3,
         copyToClipboardOnMine,
+        alwaysUseSubtitleForSentence,
     } = settings;
     const [screenshotDelayInput, setScreenshotDelayInput] = useState(String(streamingScreenshotDelay));
 
@@ -178,6 +179,16 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                     />
                 }
                 label={t('settings.copyOnMine')}
+                labelPlacement="start"
+            />
+            <SwitchLabelWithHoverEffect
+                control={
+                    <Switch
+                        checked={alwaysUseSubtitleForSentence}
+                        onChange={(event) => onSettingChanged('alwaysUseSubtitleForSentence', event.target.checked)}
+                    />
+                }
+                label={t('settings.alwaysUseSubtitleForSentence')}
                 labelPlacement="start"
             />
             <SettingsSection>{t('settings.audio')}</SettingsSection>

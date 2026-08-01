@@ -522,6 +522,9 @@ const settingsSchema = {
         preferMp3: {
             type: 'boolean',
         },
+        alwaysUseSubtitleForSentence: {
+            type: 'boolean',
+        },
         tabName: {
             type: 'string',
         },

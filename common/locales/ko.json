@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "빠른 재생 모드 속도",
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "추출한 자막을 클립보드에 복사",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "{{origin}}이 AnkiConnect의 webCorsOriginList 항목에 추가되어 있는지 이 <0>영상</0>을 참고하여 확인해 주세요.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "덱",

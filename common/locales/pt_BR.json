@@ -376,6 +376,7 @@
         "fastForwardModePlaybackRate": "Taxa de reprodução de modo rápido",
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Copiar legenda minerada para a área de transferência",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "corsHelperText": "Certifique-se de que {{origin}} esteja na webCorsOriginList em suas configurações do AnkiConnect, como neste <0>vídeo</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Baralho",
