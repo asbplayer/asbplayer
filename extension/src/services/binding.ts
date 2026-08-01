@@ -103,6 +103,7 @@ import { HoveredToken } from '@project/common/annotations';
 import { v4 as uuidv4 } from 'uuid';
 import { debounced } from './debounced';
 import PlaybackEngine from '@project/common/playback/playback-engine';
+import type { SubtitleOffsetOptions } from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import InterpolatedContentClock from './interpolated-content-clock';
 
@@ -330,6 +331,10 @@ export default class Binding {
         this.notifyPlaybackRate(this.playbackEngine.adjustPlaybackRate(delta));
     }
 
+    subtitleOffsetChanged(offset: number, options: SubtitleOffsetOptions): void {
+        this.playbackEngine.subtitleOffsetChanged(offset, options);
+    }
+
     private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
         if (!options.notify) return;
         this.subtitleController.notification({
@@ -448,6 +453,7 @@ export default class Binding {
                 setPlaybackRate: (playbackRate) => {
                     if (this.video.playbackRate !== playbackRate) this.video.playbackRate = playbackRate;
                 },
+                setSubtitleOffset: (offset, options) => this.subtitleController.offset(offset, !options.notifyPlayer),
                 showingSubtitlesChanged: (subtitles) => this.subtitleController.showingSubtitlesChanged(subtitles),
                 playbackPositionChanged: (position) => {
                     if (position === undefined) {
@@ -803,7 +809,9 @@ export default class Binding {
                         break;
                     case 'offset': {
                         const offsetMessage = request.message as OffsetToVideoMessage;
-                        this.subtitleController.offset(offsetMessage.value, !offsetMessage.echo);
+                        this.playbackEngine.subtitleOffsetChanged(offsetMessage.value, {
+                            notifyPlayer: offsetMessage.echo === true,
+                        });
                         break;
                     }
                     case 'playbackRate': {

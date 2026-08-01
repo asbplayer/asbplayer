@@ -668,12 +668,6 @@ export default class SubtitleController {
         }
 
         void this.onOffsetChange?.(offset, previousOffset);
-
-        void this.settings.getSingle('rememberSubtitleOffset').then((rememberSubtitleOffset) => {
-            if (rememberSubtitleOffset) {
-                void this.settings.set({ lastSubtitleOffset: offset });
-            }
-        });
     }
 
     private _computeOffset(): number {

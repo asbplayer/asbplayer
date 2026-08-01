@@ -276,7 +276,7 @@ export default class KeyBindings {
             (event, offset) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                context.subtitleController.offset(offset);
+                context.subtitleOffsetChanged(offset, { notifyPlayer: true });
             },
             () => context.subtitleController.subtitles.length === 0,
             () => context.currentTimeMs,
@@ -289,7 +289,7 @@ export default class KeyBindings {
             (event, offset) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                context.subtitleController.offset(offset);
+                context.subtitleOffsetChanged(offset, { notifyPlayer: true });
             },
             () => context.subtitleController.subtitles.length === 0,
             () => context.subtitleController.subtitles,
@@ -300,7 +300,7 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                context.subtitleController.offset(0);
+                context.subtitleOffsetChanged(0, { notifyPlayer: true });
             },
             () => context.subtitleController.subtitles.length === 0,
             true

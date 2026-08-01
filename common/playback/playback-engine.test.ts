@@ -152,7 +152,9 @@ function makePlaybackEngine(
     const pauses: number[] = [];
     const plays: number[] = [];
     const savedSettings: Partial<AsbplayerSettings>[] = [];
+    const savedSettingsOnly: boolean[] = [];
     const playbackRates: number[] = [];
+    const subtitleOffsets: number[] = [];
     const playbackPositionChanges: (number | undefined)[] = [];
     const modeChanges: {
         readonly modes: Set<PlayMode>;
@@ -190,9 +192,13 @@ function makePlaybackEngine(
                 playbackRates.push(playbackRate);
                 driver.playbackRateValue = playbackRate;
             },
+            setSubtitleOffset: (offset) => subtitleOffsets.push(offset),
             showingSubtitlesChanged: (values) => showing.push(values),
             playbackPositionChanged: (position) => playbackPositionChanges.push(position),
-            saveSettings: (settings) => savedSettings.push(settings),
+            saveSettings: (settings, options) => {
+                savedSettings.push(settings);
+                savedSettingsOnly.push(options.saveOnly);
+            },
             playbackModesChanged: (transition) => modeChanges.push(transition),
             onError: () => {},
         },
@@ -206,7 +212,9 @@ function makePlaybackEngine(
         plays,
         modeChanges,
         savedSettings,
+        savedSettingsOnly,
         playbackRates,
+        subtitleOffsets,
         playbackPositionChanges,
         settings,
         setDuration: (value: number) => {
@@ -228,6 +236,7 @@ describe('PlaybackEngine', () => {
             removed: new Set([PlayMode.normal]),
         });
         expect(harness.savedSettings.at(-1)).toEqual({ lastPlaybackModes: [PlayMode.repeat] });
+        expect(harness.savedSettingsOnly.at(-1)).toBe(true);
         expect(harness.seeks).toEqual([1000]);
     });
 
@@ -245,6 +254,7 @@ describe('PlaybackEngine', () => {
                 play: async () => {},
                 seek: async () => {},
                 setPlaybackRate: () => {},
+                setSubtitleOffset: () => {},
                 showingSubtitlesChanged: () => {},
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
@@ -340,6 +350,29 @@ describe('PlaybackEngine', () => {
 
         expect(harness.playbackRates).toHaveLength(rateChangeCount);
         expect(harness.playbackRates.at(-1)).toBe(1.7);
+    });
+
+    it('saves keybind playback-rate changes without propagating them as settings changes', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 1500, [subtitle], {
+            settings: { rememberPlaybackRate: true },
+        });
+
+        harness.playbackEngine.playbackRateChanged(1.7);
+
+        expect(harness.savedSettings).toContainEqual({ playbackRate: 1.7 });
+        expect(harness.savedSettingsOnly.at(-1)).toBe(true);
+    });
+
+    it('owns subtitle offset changes and reports them as save-only updates', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 1500, [subtitle], {
+            settings: { rememberSubtitleOffset: true },
+        });
+
+        harness.playbackEngine.subtitleOffsetChanged(-7000, { notifyPlayer: true });
+
+        expect(harness.subtitleOffsets).toEqual([-7000]);
+        expect(harness.savedSettings).toContainEqual({ lastSubtitleOffset: -7000 });
+        expect(harness.savedSettingsOnly.at(-1)).toBe(true);
     });
 
     it('does not rebuild the plan when the duration is unchanged', () => {
@@ -540,6 +573,7 @@ describe('PlaybackEngine', () => {
                 play: async () => {},
                 seek: async () => {},
                 setPlaybackRate,
+                setSubtitleOffset: () => {},
                 showingSubtitlesChanged: () => {},
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},

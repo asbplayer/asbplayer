@@ -337,7 +337,7 @@ describe('Binding playback mode integration', () => {
         expect(displayedSubtitleTexts()).toContain('subtitle');
 
         Object.defineProperty(video, 'paused', { configurable: true, value: true });
-        binding.subtitleController.offset(1000);
+        binding.subtitleOffsetChanged(1000, { notifyPlayer: true });
         await flushPlaybackTiming();
 
         expect(binding.subtitleController.currentSubtitle()[0]).toBeNull();

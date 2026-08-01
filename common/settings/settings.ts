@@ -8,6 +8,10 @@ import {
 } from '../src/model';
 import { arrayEquals } from '../util';
 
+export interface SaveSettingsOptions {
+    readonly saveOnly: boolean;
+}
+
 export enum PauseOnHoverMode {
     disabled = 0,
     inAndOut = 1,
@@ -789,6 +793,79 @@ export interface SubtitleSettings extends TextSubtitleSettings {
 
     // Percentage of containing video width; -1 means 'auto'
     readonly subtitlesWidth: number;
+}
+
+const textSubtitleSettingsComparators: {
+    [K in keyof TextSubtitleSettings]: (a: TextSubtitleSettings[K], b: TextSubtitleSettings[K]) => boolean;
+} = {
+    subtitleColor: (a, b) => a === b,
+    subtitleSize: (a, b) => a === b,
+    subtitleThickness: (a, b) => a === b,
+    subtitleOutlineThickness: (a, b) => a === b,
+    subtitleOutlineColor: (a, b) => a === b,
+    subtitleShadowThickness: (a, b) => a === b,
+    subtitleShadowColor: (a, b) => a === b,
+    subtitleBackgroundOpacity: (a, b) => a === b,
+    subtitleBackgroundColor: (a, b) => a === b,
+    subtitleFontFamily: (a, b) => a === b,
+    subtitleCustomStyles: (a, b) =>
+        arrayEquals(a, b, (left, right) => left.key === right.key && left.value === right.value),
+    subtitleBlur: (a, b) => a === b,
+    subtitleAlignment: (a, b) => a === b,
+};
+
+const subtitleSettingsComparators: {
+    [K in keyof SubtitleSettings]: (a: SubtitleSettings[K], b: SubtitleSettings[K]) => boolean;
+} = {
+    ...textSubtitleSettingsComparators,
+    imageBasedSubtitleScaleFactor: (a, b) => a === b,
+    subtitlePositionOffset: (a, b) => a === b,
+    topSubtitlePositionOffset: (a, b) => a === b,
+    subtitleTracksV2: (a, b) => arrayEquals(a, b, areTextSubtitleSettingsEqual),
+    subtitlesWidth: (a, b) => a === b,
+};
+
+function areTextSubtitleSettingsEqual(
+    left: TextSubtitleSettings | undefined,
+    right: TextSubtitleSettings | undefined
+): boolean {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    for (const key of Object.keys(textSubtitleSettingsComparators) as (keyof TextSubtitleSettings)[]) {
+        if (!compareTextSubtitleSettingsField(key, left, right)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function compareTextSubtitleSettingsField<K extends keyof TextSubtitleSettings>(
+    key: K,
+    left: TextSubtitleSettings,
+    right: TextSubtitleSettings
+): boolean {
+    return textSubtitleSettingsComparators[key](left[key], right[key]);
+}
+
+export function compareSubtitleSettingsField<K extends keyof SubtitleSettings>(
+    key: K,
+    a: SubtitleSettings,
+    b: SubtitleSettings
+): boolean {
+    return subtitleSettingsComparators[key](a[key], b[key]);
+}
+
+export function areSubtitleSettingsEqual(left: SubtitleSettings | undefined, right: SubtitleSettings | undefined) {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    for (const key in subtitleSettingsComparators) {
+        if (!compareSubtitleSettingsField(key as keyof SubtitleSettings, left, right)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 export interface KeyBind {

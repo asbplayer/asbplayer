@@ -279,6 +279,7 @@ function PlayerComponent(
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
+    const applyOffsetRef = useRef<(offset: number, forwardToVideo: boolean) => void>(undefined);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
     const resumePlaybackSnackbar = useSnackbar({
         open: pendingPlaybackPosition !== undefined,
@@ -443,6 +444,7 @@ function PlayerComponent(
                     clock.setTime(timestampMs);
                 },
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
+                setSubtitleOffset: (offset) => applyOffsetRef.current?.(offset, false),
                 showingSubtitlesChanged: setSyntheticShowingSubtitles,
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => {
@@ -516,6 +518,7 @@ function PlayerComponent(
         },
         [subtitleFiles, subtitles, extension, playbackPreferences, tab, channel, onSubtitles]
     );
+    applyOffsetRef.current = applyOffset;
 
     useEffect(() => {
         if (!videoFile && !tab) {
@@ -885,9 +888,7 @@ function PlayerComponent(
         [channel, mediaAdapter, clock]
     );
     useEffect(() => {
-        return channel?.onOffset((offset) =>
-            applyOffset(Math.max(-calculateLengthMs(videoDurationRef) || 0, offset), false)
-        );
+        return channel?.onOffset((offset) => applyOffset(offset, false));
     }, [channel, applyOffset]);
     useEffect(() => channel?.onPlaybackRate(updatePlaybackRate), [channel, updatePlaybackRate]);
     useEffect(
@@ -1132,8 +1133,12 @@ function PlayerComponent(
 
     const handleOffsetChange = useCallback(
         (offset: number) => {
-            const length = calculateLengthMs(videoDurationRef);
-            applyOffset(Math.max(-length || 0, offset), true);
+            if (syntheticPlaybackEngineRef.current) {
+                syntheticPlaybackEngineRef.current.subtitleOffsetChanged(offset, { notifyPlayer: false });
+                return;
+            }
+
+            applyOffset(offset, true);
         },
         [applyOffset]
     );

@@ -1,5 +1,5 @@
 import { Fetcher } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import { AsbplayerSettings, SaveSettingsOptions, SettingsProvider } from '@project/common/settings';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import App from './App';
 import { AppSettingsStorage } from '../services/app-settings-storage';
@@ -38,9 +38,8 @@ const RootApp = ({
     }, [settingsProvider]);
 
     const handleSettingsChanged = useCallback(
-        async (settings: Partial<AsbplayerSettings>) => {
-            setSettings((s) => ({ ...s!, ...settings }));
-
+        async (settings: Partial<AsbplayerSettings>, options?: SaveSettingsOptions) => {
+            if (!options?.saveOnly) setSettings((s) => ({ ...s!, ...settings }));
             await settingsProvider.set(settings);
         },
         [settingsProvider]
