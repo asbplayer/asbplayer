@@ -20,8 +20,28 @@ const createReader = (convertNetflixRuby = false) =>
 
 const nfimscFile = (xml: string) => ({ name: 'test.nfimsc', text: async () => xml }) as unknown as File;
 
-const parse = (xml: string, convertNetflixRuby = false) =>
-    createReader(convertNetflixRuby).subtitles([nfimscFile(xml)]);
+const parse = (xml: string, convertNetflixRuby = false, flatten = false, fileCount = 1) =>
+    createReader(convertNetflixRuby).subtitles(
+        Array.from({ length: fileCount }, () => nfimscFile(xml)),
+        flatten
+    );
+
+const rubyWithPrecedingKanaXml =
+    '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
+    '<head><styling>' +
+    '<style xml:id="container" tts:ruby="container"/>' +
+    '<style xml:id="base" tts:ruby="base"/>' +
+    '<style xml:id="text" tts:ruby="text"/>' +
+    '</styling></head>' +
+    '<body><div>' +
+    '<p begin="10000000t" end="30000000t">ひろ<span style="container"><span style="base">子</span><span style="text">こ</span></span>そんな</p>' +
+    '</div></body>' +
+    '</tt>';
+
+const nfimscDocument = (text: string) =>
+    '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">' +
+    `<body><div><p begin="10000000t" end="30000000t">${text}</p></div></body>` +
+    '</tt>';
 
 describe('SubtitleReader Netflix IMSC parsing', () => {
     it('parses Netflix IMSC cues', async () => {
@@ -80,17 +100,7 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
     it('binds a ruby reading to its own base when preceded by kanji or kana', async () => {
         // The base 子 is preceded by the kana ひろ. The reading must bind to 子 alone,
         // not to the whole ひろ子 run.
-        const xml =
-            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
-            '<head><styling>' +
-            '<style xml:id="container" tts:ruby="container"/>' +
-            '<style xml:id="base" tts:ruby="base"/>' +
-            '<style xml:id="text" tts:ruby="text"/>' +
-            '</styling></head>' +
-            '<body><div>' +
-            '<p begin="10000000t" end="30000000t">ひろ<span style="container"><span style="base">子</span><span style="text">こ</span></span>そんな</p>' +
-            '</div></body>' +
-            '</tt>';
+        const xml = rubyWithPrecedingKanaXml;
 
         const withRuby = await parse(xml, true);
         expect(withRuby).toHaveLength(1);
@@ -105,6 +115,36 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
         expect(withoutRuby[0].text).toBe('ひろ子(こ)そんな');
         expect(withoutRuby[0].text).not.toContain('\u2063');
         expect(withoutRuby[0].tokenization).toBeUndefined();
+    });
+
+    it('keeps ruby conversion while flattening and deduplicates identical files', async () => {
+        const subtitles = await parse(rubyWithPrecedingKanaXml, true, true, 2);
+
+        expect(subtitles).toHaveLength(1);
+        expect(subtitles[0]).toMatchObject({
+            start: 1000,
+            end: 3000,
+            track: 0,
+            text: 'ひろ子そんな',
+            tokenization: {
+                tokens: [{ pos: [2, 3], readings: [{ pos: [0, 1], reading: 'こ' }], states: [] }],
+            },
+        });
+    });
+
+    it('deduplicates cues that become equal after sanitization', async () => {
+        const subtitles = await createReader().subtitles(
+            [nfimscFile(nfimscDocument('safe&lt;img src=x onerror=alert(1)&gt;')), nfimscFile(nfimscDocument('safe'))],
+            true
+        );
+
+        expect(subtitles).toHaveLength(1);
+        expect(subtitles[0]).toMatchObject({
+            start: 1000,
+            end: 3000,
+            track: 0,
+            text: 'safe',
+        });
     });
 
     it('does not fence a reading containing a closing paren', async () => {

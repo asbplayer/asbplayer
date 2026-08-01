@@ -134,26 +134,16 @@ export default class SubtitleReader {
             .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
-        if (this._convertNetflixRuby) {
-            if (flatten) {
-                // Flattened output keeps inline base(reading) without tokenizing, so
-                // the ruby base markers are simply dropped here.
-                for (const node of allNodes) node.text = node.text.replaceAll(netflixRubyBaseMarker, '');
-            }
-        }
-
         // Sanitize after all parser, filter, decoding, and flattening transformations.
         // Ruby tokenization runs afterwards because it relies on positions in this
         // sanitized text and does not introduce any new markup.
         for (const node of allNodes) node.text = sanitizeSubtitleHtml(node.text);
 
-        if (flatten) {
-            return this._deduplicate(allNodes);
-        } else if (this._convertNetflixRuby) {
+        if (this._convertNetflixRuby) {
             for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        return allNodes;
+        return flatten ? this._deduplicate(allNodes) : allNodes;
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
