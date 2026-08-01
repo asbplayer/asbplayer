@@ -14,7 +14,7 @@ asbplayer, as a WebSocket client, responds to the following commands from a WebS
 
 Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
 
-When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated.
+When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added note is updated. `noteId` applies to streaming media only and is ignored for local media.
 
 > `mediaId` and `noteId` require extension v1.20.0 or later.
 
@@ -35,7 +35,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
             },
             // Optional media id from `get-bound-media`
             "mediaId": "a1b2c3d4e5f6",
-            // Optional Anki note id to update when postMineAction is 2
+            // Optional Anki note id to update when postMineAction is 2 (streaming media only)
             "noteId": 1752856898044
         }
     }
@@ -102,7 +102,7 @@ Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`ge
     "body": {
         //The timestamp to seek in seconds
         "timestamp": 30.5,
-        // Optional media ID from get-bound-media
+        // Optional media id from `get-bound-media`
         "mediaId": "a1b2c3d4e5f6"
     }
 }

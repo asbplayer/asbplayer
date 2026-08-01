@@ -10,6 +10,7 @@ import {
 import TabRegistry from './tab-registry';
 import {
     AsbplayerInstance,
+    CardTextFieldValues,
     CopySubtitleMessage,
     CopySubtitleWithAdditionalFieldsMessage,
     ExtensionToAsbPlayerCommand,
@@ -136,7 +137,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
     client = new WebSocketClient();
     void client.bind(url);
 
-    const ankiFieldValues = async (receivedFields: { [key: string]: string }) => {
+    const ankiFieldValues = async (receivedFields: { [key: string]: string }): Promise<CardTextFieldValues> => {
         const ankiSettings = await settings.get(ankiSettingsKeys);
         const fields = receivedFields ?? {};
         const word = fields[ankiSettings.wordField] || undefined;
@@ -168,7 +169,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                 return false;
             }
 
-            const { word, definition, text, customFieldValues } = await ankiFieldValues(receivedFields);
+            const cardTextFieldValues = await ankiFieldValues(receivedFields);
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
 
             if ('videoElement' in target) {
@@ -188,11 +189,8 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                         sender: 'asbplayer-extension-to-video',
                         message: {
                             command: 'copy-subtitle',
-                            word,
-                            definition,
-                            text,
+                            ...cardTextFieldValues,
                             postMineAction,
-                            customFieldValues,
                             noteId,
                         },
                         src: videoElement.src,
@@ -212,11 +210,9 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                         sender: 'asbplayer-extension-to-player',
                         message: {
                             command: 'copy-subtitle-with-additional-fields',
-                            word,
-                            definition,
-                            text,
+                            ...cardTextFieldValues,
                             postMineAction,
-                            customFieldValues,
+                            targetedByMediaId: true,
                         },
                         asbplayerId: asbplayer.id,
                     }),
@@ -229,7 +225,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
         return new Promise((resolve, reject) => {
             browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                 void (async () => {
-                    const { word, definition, text, customFieldValues } = await ankiFieldValues(receivedFields);
+                    const cardTextFieldValues = await ankiFieldValues(receivedFields);
                     const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
                     let published = false;
 
@@ -247,11 +243,8 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                             sender: 'asbplayer-extension-to-video',
                             message: {
                                 command: 'copy-subtitle',
-                                word,
-                                definition,
-                                text,
+                                ...cardTextFieldValues,
                                 postMineAction,
-                                customFieldValues,
                                 noteId,
                             },
                             src: videoElement.src,
@@ -271,11 +264,8 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                                     sender: 'asbplayer-extension-to-player',
                                     message: {
                                         command: 'copy-subtitle-with-additional-fields',
-                                        word,
-                                        definition,
-                                        text,
+                                        ...cardTextFieldValues,
                                         postMineAction,
-                                        customFieldValues,
                                     },
                                     asbplayerId: asbplayer.id,
                                 };

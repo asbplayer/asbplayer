@@ -197,17 +197,16 @@ func (forwarder forwarder) forwardToAnkiConnect(buf *bytes.Buffer, c echo.Contex
 	return ankiConnectResponseBuf.Bytes(), nil
 }
 
-// Extracts the created note's id from an AnkiConnect addNote response
-func addNoteIDFromResponse(response []byte) (int64, bool) {
+func extractNoteIdFromAnkiConnectResponse(response []byte) (int64, bool) {
 	parsed := struct {
-		Result *float64 `json:"result"`
+		Result *int64 `json:"result"`
 	}{}
 
 	if err := json.Unmarshal(response, &parsed); err != nil || parsed.Result == nil {
 		return 0, false
 	}
 
-	return int64(*parsed.Result), true
+	return *parsed.Result, true
 }
 
 func (forwarder forwarder) handleGetRequest(c echo.Context) error {
@@ -251,7 +250,7 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 		ankiConnectResponse, responseErr := forwarder.forwardToAnkiConnect(buf, c, "POST")
 
 		if responseErr == nil {
-			if noteId, ok := addNoteIDFromResponse(ankiConnectResponse); ok {
+			if noteId, ok := extractNoteIdFromAnkiConnectResponse(ankiConnectResponse); ok {
 				command.Body["noteId"] = noteId
 			}
 		}
