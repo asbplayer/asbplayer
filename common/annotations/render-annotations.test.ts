@@ -353,6 +353,51 @@ describe('rich text rendering', () => {
         expect(rendered).toContain('<span class="asb-pitch-accent-mora asb-pitch-accent-mora-high">は</span>');
     });
 
+    it('preserves pitch context when a token reading is hidden', () => {
+        const dt = makeAnnotationTrack({ pitchAccent: true });
+        dt.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.MATURE].pitchAccent = false;
+
+        expect(
+            computeRichText(
+                '学校は',
+                {
+                    tokens: [
+                        makeInternalToken({
+                            pos: [0, 2],
+                            status: TokenStatus.MATURE,
+                            readings: [{ pos: [0, 2], reading: 'がっこう' }],
+                            pitchAccent: 1,
+                        }),
+                        makeInternalToken({ pos: [2, 3], status: TokenStatus.UNKNOWN, pitchAccent: null }),
+                    ],
+                },
+                {
+                    dt,
+                    enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                    allowAsciiReading: false,
+                }
+            )
+        ).toBe(
+            '学校<span class="asb-pitch-accent" style="--asb-pitch-accent-color: currentColor;">' +
+                '<span class="asb-pitch-accent-mora asb-pitch-accent-mora-low">は</span></span>'
+        );
+    });
+
+    it('applies token styling when pitch accent is not enabled for the token status', () => {
+        const dt = makeAnnotationTrack(
+            { color: true, pitchAccent: true },
+            { dictionaryTokenStyling: TokenStyling.UNDERLINE }
+        );
+        dt.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].pitchAccent = false;
+        setUnknownTokenColor(dt, '#334455', '66');
+
+        expect(
+            renderToken('かな', makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 }), dt)
+        ).toBe(
+            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">かな</span>'
+        );
+    });
+
     it.each<HoverCase>([
         [
             'color',

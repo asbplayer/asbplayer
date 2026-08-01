@@ -978,8 +978,7 @@ export class Yomitan {
             this.supportsTokenizeFrequency = false;
             this.supportsTermEntriesBulk = false;
         }
-        // TODO: Use actual released version
-        if (gte(semver, '26.7.1')) {
+        if (gte(semver, '26.7.21')) {
             this.supportsTokenizePronunciations = true;
         } else {
             this.supportsTokenizePronunciations = false;

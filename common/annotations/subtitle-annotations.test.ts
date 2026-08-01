@@ -379,6 +379,14 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.ankiState.recentlyModifiedFirstCheck).toBe(false);
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
         expect(consoleError).toHaveBeenCalledWith('Error checking Anki recently modified cards:', expect.any(Error));
+
+        await runtime._checkAnkiRecentlyModifiedCards('Profile', ['Word'], []);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        expect(runtime.ankiConnectionError).toBe(true);
+
+        runtime.anki = { findRecentlyEditedOrReviewedCards: jest.fn(async () => []) };
+        await runtime._checkAnkiRecentlyModifiedCards('Profile', ['Word'], []);
+        expect(runtime.ankiConnectionError).toBe(false);
     });
 
     it('refreshes Anki once, merges configured fields, and treats an empty deck list as all decks', async () => {
@@ -426,7 +434,11 @@ describe('SubtitleAnnotations', () => {
         const { subtitleAnnotations, storage } = makeSubtitleAnnotations();
         const runtime = privateAnnotations(subtitleAnnotations);
         const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        const permission = jest.spyOn(Anki.prototype, 'requestPermission').mockResolvedValue({ permission: 'denied' });
+        const permission = jest
+            .spyOn(Anki.prototype, 'requestPermission')
+            .mockResolvedValueOnce({ permission: 'denied' })
+            .mockResolvedValueOnce({ permission: 'denied' })
+            .mockResolvedValueOnce({ permission: 'granted' });
         runtime.profile = 'Profile';
         runtime.trackStates = [new TrackState(0, track)];
         const checkRecentlyModified = jest
@@ -442,6 +454,13 @@ describe('SubtitleAnnotations', () => {
         expect(checkRecentlyModified).toHaveBeenCalledWith('Profile', ['Word'], []);
         expect(runtime.ankiState.refreshing).toBe(false);
         expect(consoleWarn).toHaveBeenCalledWith('Anki permission request failed:', expect.any(Error));
+
+        await runtime._refreshAnki();
+        expect(consoleWarn).toHaveBeenCalledTimes(1);
+        expect(runtime.ankiConnectionError).toBe(true);
+
+        await runtime._refreshAnki();
+        expect(runtime.ankiConnectionError).toBe(false);
     });
 
     it('resets Anki refresh state when the cache build rejects', async () => {
@@ -553,6 +572,10 @@ describe('SubtitleAnnotations', () => {
             dueCards: {},
         });
         expect(consoleError).toHaveBeenCalledWith('Error refreshing Anki for statistics:', expect.any(Error));
+
+        await runtime._refreshAnkiStatistics('Profile', ['Word'], []);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        expect(runtime.ankiConnectionError).toBe(true);
     });
 
     it('builds the WaniKani cache once and always releases its refresh lock', async () => {

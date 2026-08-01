@@ -191,6 +191,8 @@ describe('Binding playback mode integration', () => {
 
     beforeEach(() => {
         jest.useFakeTimers();
+        jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
         runtimeListeners.clear();
         mockPlaybackModeOverlayShows = 0;
         storage = new MockStorageArea();
@@ -210,6 +212,7 @@ describe('Binding playback mode integration', () => {
     });
 
     afterEach(() => {
+        jest.restoreAllMocks();
         jest.useRealTimers();
         delete (globalThis as any).browser;
         document.body.replaceChildren();
