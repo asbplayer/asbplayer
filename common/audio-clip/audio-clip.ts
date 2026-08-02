@@ -161,7 +161,7 @@ class Base64AudioData implements AudioData {
         }
 
         this.stopAudio(this.playingAudio);
-        clearTimeout(this.stopAudioTimeout!);
+        clearTimeout(this.stopAudioTimeout);
         this.playingAudio = undefined;
         this.stopAudioTimeout = undefined;
         invokeCallbacks('pause', this._callbacks);
@@ -374,7 +374,7 @@ class FileAudioClipper {
         }
 
         this._stopAudio(this._clippingAudioElement, false);
-        clearTimeout(this._stopClippingTimeout!);
+        clearTimeout(this._stopClippingTimeout);
         this._clippingAudioReject?.(new ClippingCancelledError());
         this._clippingAudioElement = undefined;
         this._stopClippingTimeout = undefined;
@@ -388,7 +388,7 @@ class FileAudioClipper {
         }
 
         this._stopAudio(this._playingAudioElement, true);
-        clearTimeout(this._stopAudioTimeout!);
+        clearTimeout(this._stopAudioTimeout);
         this._playingAudioElement = undefined;
         this._stopAudioTimeout = undefined;
     }

@@ -109,6 +109,7 @@ export default function SettingsDialog({
                     extensionSupportsTrackSpecificSettings={extension.supportsTrackSpecificSettings}
                     extensionSupportsSubtitlesWidthSetting={extension.supportsSubtitlesWidthSetting}
                     extensionSupportsPauseOnHover={extension.supportsPauseOnHover}
+                    extensionSupportsPlaybackEngine={extension.supportsPlaybackEngine}
                     extensionSupportsExportCardBind={extension.supportsExportCardBind}
                     extensionSupportsPageSettings={extension.supportsPageSettings}
                     extensionSupportsDictionary={extension.supportsDictionary}
@@ -121,6 +122,7 @@ export default function SettingsDialog({
                         extension.supportsDictionaryTokenStatusDisplayAlpha
                     }
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
+                    extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersion={import.meta.env.VITE_APP_GIT_COMMIT}

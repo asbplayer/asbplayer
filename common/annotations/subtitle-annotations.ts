@@ -28,7 +28,6 @@ import {
     TokenMatchStrategy,
     TokenState,
     TokenStatus,
-    shouldUseAnnotation,
 } from '@project/common/settings';
 import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
 import {
@@ -210,6 +209,20 @@ function originalTokenization(tokenization: Tokenization | undefined): Tokenizat
     };
 }
 
+export function needsReset(subtitles: TokenizedSubtitleModel[], previousSubtitles: TokenizedSubtitleModel[]) {
+    return (
+        subtitles.length !== previousSubtitles.length ||
+        subtitles.some((s) => {
+            const prev = previousSubtitles[s.index];
+            if ((s.originalText ?? s.text) !== (prev.originalText ?? prev.text)) return true;
+            return !areTokenizationsEqual(
+                originalTokenization(s.tokenization),
+                originalTokenization(prev.tokenization)
+            );
+        })
+    );
+}
+
 export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel> {
     private _subtitles: InternalSubtitleModel[];
     private totalSubtitlesPerTrack: Map<number, number>;
@@ -229,6 +242,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
     private profile: string | undefined | null;
     private anki: Anki | undefined;
+    private ankiConnectionError = false;
     private readonly fetcher?: Fetcher;
     private trackStates: TrackState[];
     private refreshCache: Set<number>; // Re-processes these indexes on next build
@@ -333,17 +347,8 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
         }
-        const needsReset =
-            subtitles.length !== this._subtitles.length ||
-            subtitles.some((s) => {
-                const prev = this._subtitles[s.index];
-                if ((s.originalText ?? s.text) !== (prev.originalText ?? prev.text)) return true;
-                return !areTokenizationsEqual(
-                    originalTokenization(s.tokenization),
-                    originalTokenization(prev.tokenization)
-                );
-            });
-        if (!needsReset) {
+        const shouldReset = needsReset(subtitles, this._subtitles);
+        if (!shouldReset) {
             // Preserve the existing tokenization cache here so callers don't need to be aware of it.
             for (const s of subtitles) {
                 (s as InternalSubtitleModel).text = this._subtitles[s.index].text;
@@ -357,7 +362,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.totalSubtitlesPerTrack.set(s.track, (this.totalSubtitlesPerTrack.get(s.track) ?? 0) + 1);
         }
         super.setSubtitles(this._subtitles);
-        if (needsReset) {
+        if (shouldReset) {
             this._resetCache();
             this.refreshCache.clear();
             this.erroredCache.clear();
@@ -534,6 +539,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         try {
             if (!this.anki) throw new Error('Anki not initialized');
             const cardIds = await this.anki.findRecentlyEditedOrReviewedCards(1, fields, decks); // Can't efficiently poll suspended status
+            this.ankiConnectionError = false;
             if (
                 cardIds.length === this.ankiState.recentlyModifiedCardIds.size &&
                 cardIds.every((cardId) => this.ankiState.recentlyModifiedCardIds.has(cardId))
@@ -550,7 +556,10 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.ankiState.triggerRefresh = true;
             this.ankiState.statisticsRefreshed = false;
         } catch (e) {
-            console.error(`Error checking Anki recently modified cards:`, e);
+            if (!this.ankiConnectionError) {
+                console.error(`Error checking Anki recently modified cards:`, e);
+                this.ankiConnectionError = true;
+            }
             this.anki = undefined;
             this.ankiState.recentlyModifiedCardIds.clear();
             this.ankiState.recentlyModifiedFirstCheck = false;
@@ -570,8 +579,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     this.anki = new Anki(settings, this.fetcher);
                     const permission = (await this.anki.requestPermission()).permission;
                     if (permission !== 'granted') throw new Error(`permission ${permission}`);
+                    this.ankiConnectionError = false;
                 } catch (e) {
-                    console.warn('Anki permission request failed:', e);
+                    if (!this.ankiConnectionError) {
+                        console.warn('Anki permission request failed:', e);
+                        this.ankiConnectionError = true;
+                    }
                     this.anki = undefined;
                 }
             }
@@ -602,7 +615,10 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             await this._checkAnkiRecentlyModifiedCards(profile, fields, decks);
             await this._refreshAnkiStatistics(profile, fields, decks);
         } catch (e) {
-            console.warn('Anki refresh failed:', e);
+            if (!this.ankiConnectionError) {
+                console.warn('Anki refresh failed:', e);
+                this.ankiConnectionError = true;
+            }
             this.ankiState.refreshed = false;
         } finally {
             this.ankiState.refreshing = false;
@@ -653,8 +669,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 dueCards,
             });
             this.ankiState.statisticsRefreshed = true;
+            this.ankiConnectionError = false;
         } catch (e) {
-            console.error('Error refreshing Anki for statistics:', e);
+            if (!this.ankiConnectionError) {
+                console.error('Error refreshing Anki for statistics:', e);
+                this.ankiConnectionError = true;
+            }
             this.anki = undefined;
             this.dictionaryStatistics.replaceAnkiSnapshot({
                 available: false,
@@ -1129,23 +1149,6 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             try {
                 if (!ts.yt) continue;
                 const tokenizeBulkRes = await ts.yt.tokenizeBulk(texts);
-                // TODO: Remove this block once pitch accent from tokenize is released
-                if (
-                    (ts.dt.dictionaryTokenAnnotationConfig.onStatuses.some((l) => l.pitchAccent) ||
-                        ts.dt.dictionaryTokenAnnotationConfig.onStates.some((l) => l.pitchAccent)) &&
-                    !ts.yt.getSupportsBulkPitchAccent() &&
-                    ts.yt.getSupportsTermEntriesBulk() &&
-                    this.initialized &&
-                    !this.generateStatisticsRequested
-                ) {
-                    const tokenTexts = tokenizeBulkRes.map((tokenParts) =>
-                        tokenParts
-                            .map((p) => p.text)
-                            .join('')
-                            .trim()
-                    );
-                    await ts.yt.termEntriesBulk(tokenTexts, true);
-                }
                 if (!dictionaryStatusCollectionEnabled(ts.dt, { includeStates: true })) continue; // Still want to bulk tokenize if all statuses are enabled but no coloring
                 if (this.shouldCancelBuild) return;
 
@@ -1451,8 +1454,6 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
     private async _updatePitchAccent(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
         if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token pitch accent');
-        // TODO: Move this check to applyPitchAccentAnnotation() once pitch accent from tokenize is released
-        if (token.status == null || !shouldUseAnnotation('pitchAccent', token.status, token.states, ts.dt)) return;
         if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkPitchAccent()) {
             token.pitchAccent = await ts.yt.pitchAccent(trimmedToken);
         } else {

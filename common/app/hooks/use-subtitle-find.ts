@@ -1,9 +1,9 @@
 import { MutableRefObject, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ListRange, type TableVirtuosoHandle } from 'react-virtuoso';
+import { type DisplaySubtitleModel } from '@project/common';
 import { type DictionaryTrack, dictionaryTrackEnabled } from '@project/common/settings';
 import { normalizedLookupTerms, normalizeSearchText } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
-import { type DisplaySubtitleModel } from '../components/SubtitlePlayer';
 
 const findDelayMs = 300;
 

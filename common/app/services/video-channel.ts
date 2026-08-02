@@ -11,6 +11,7 @@ import {
     CopyToVideoMessage,
     CurrentTimeFromVideoMessage,
     CurrentTimeToVideoMessage,
+    DurationFromVideoMessage,
     FullscreenToggleMessageToVideoMessage,
     HideSubtitlePlayerToggleToVideoMessage,
     ImageModel,
@@ -22,6 +23,7 @@ import {
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
     PlayMode,
+    PlayModeMessage,
     PlayModesMessage,
     PostMineAction,
     ReadyFromVideoMessage,
@@ -51,12 +53,14 @@ import { VideoProtocol } from './video-protocol';
 export default class VideoChannel {
     private readonly protocol: VideoProtocol;
     private time: number;
+    private paused: boolean;
     private isReady: boolean;
     private readyCallbacks: ((paused: boolean) => void)[];
     private playCallbacks: ((echo: boolean) => void)[];
     private pauseCallbacks: ((echo: boolean) => void)[];
     private audioTrackSelectedCallbacks: ((audioTrack: string) => void)[];
     private currentTimeCallbacks: ((currentTime: number, echo: boolean) => void)[];
+    private durationCallbacks: ((duration: number) => void)[];
     private exitCallbacks: (() => void)[];
     private offsetCallbacks: ((offset: number) => void)[];
     private playbackRateCallbacks: ((playbackRate: number, echo: boolean) => void)[];
@@ -85,6 +89,7 @@ export default class VideoChannel {
         applyStates: ApplyStrategy
     ) => void)[];
     private loadFilesCallbacks: (() => void)[];
+    private loadSubtitlesCallbacks: (() => void)[];
     private playModesCallbacks: ((modes: Set<PlayMode>) => void)[];
     private cardUpdatedDialogCallbacks: (() => void)[];
     private cardExportedDialogCallbacks: (() => void)[];
@@ -93,21 +98,25 @@ export default class VideoChannel {
     oncanplay: ((ev: Event) => void) | null = null;
     audioTracks?: AudioTrackModel[];
     selectedAudioTrack?: string;
+    playModes: Set<PlayMode>;
     duration: number;
     _playbackRate: number;
 
     constructor(protocol: VideoProtocol) {
         this.protocol = protocol;
         this.time = 0;
+        this.paused = true;
         this.duration = 0;
         this.isReady = false;
         this.readyState = 0;
         this._playbackRate = 1;
+        this.playModes = new Set([PlayMode.normal]);
         this.selectedAudioTrack = undefined;
         this.readyCallbacks = [];
         this.playCallbacks = [];
         this.pauseCallbacks = [];
         this.currentTimeCallbacks = [];
+        this.durationCallbacks = [];
         this.audioTrackSelectedCallbacks = [];
         this.exitCallbacks = [];
         this.offsetCallbacks = [];
@@ -121,6 +130,7 @@ export default class VideoChannel {
         this.subtitlesUpdatedCallbacks = [];
         this.saveTokenLocalCallbacks = [];
         this.loadFilesCallbacks = [];
+        this.loadSubtitlesCallbacks = [];
         this.playModesCallbacks = [];
         this.cardUpdatedDialogCallbacks = [];
         this.cardExportedDialogCallbacks = [];
@@ -131,6 +141,7 @@ export default class VideoChannel {
                     const readyMessage = event.data as ReadyFromVideoMessage;
 
                     this.duration = readyMessage.duration;
+                    this.paused = readyMessage.paused;
                     this.isReady = true;
                     this.audioTracks = readyMessage.audioTracks;
                     this.selectedAudioTrack = readyMessage.selectedAudioTrack;
@@ -154,7 +165,7 @@ export default class VideoChannel {
                 }
                 case 'play': {
                     const playMessage = event.data as PlayFromVideoMessage;
-
+                    this.paused = false;
                     for (const callback of this.playCallbacks) {
                         callback(playMessage.echo);
                     }
@@ -162,7 +173,7 @@ export default class VideoChannel {
                 }
                 case 'pause': {
                     const pauseMessage = event.data as PauseFromVideoMessage;
-
+                    this.paused = true;
                     for (const callback of this.pauseCallbacks) {
                         callback(pauseMessage.echo);
                     }
@@ -182,6 +193,14 @@ export default class VideoChannel {
 
                     for (const callback of this.currentTimeCallbacks) {
                         callback(currentTimeMessage.value, currentTimeMessage.echo);
+                    }
+                    break;
+                }
+                case 'duration': {
+                    const durationMessage = event.data as DurationFromVideoMessage;
+                    this.duration = durationMessage.value;
+                    for (const callback of this.durationCallbacks) {
+                        callback(this.duration);
                     }
                     break;
                 }
@@ -273,28 +292,39 @@ export default class VideoChannel {
                     }
                     break;
                 }
-                case 'loadFiles':
+                case 'loadFiles': {
                     for (const callback of this.loadFilesCallbacks) {
                         callback();
                     }
                     break;
-                case 'playModes':
-                    for (const callback of this.playModesCallbacks) {
-                        const playModesMessage = event.data as PlayModesMessage;
-                        const modes = new Set<PlayMode>(playModesMessage.playModes);
-                        callback(modes);
+                }
+                case 'loadSubtitles': {
+                    for (const callback of this.loadSubtitlesCallbacks) {
+                        callback();
                     }
                     break;
-                case 'card-updated-dialog':
+                }
+                case 'playModes': {
+                    const playModesMessage = event.data as PlayModesMessage;
+                    const modes = new Set<PlayMode>(playModesMessage.playModes);
+                    this.playModes = modes;
+                    for (const callback of this.playModesCallbacks) {
+                        callback(new Set(modes));
+                    }
+                    break;
+                }
+                case 'card-updated-dialog': {
                     for (const callback of this.cardUpdatedDialogCallbacks) {
                         callback();
                     }
                     break;
-                case 'card-exported-dialog':
+                }
+                case 'card-exported-dialog': {
                     for (const callback of this.cardExportedDialogCallbacks) {
                         callback();
                     }
                     break;
+                }
                 default:
                     console.error('Unrecognized event ' + event.data.command);
             }
@@ -323,10 +353,15 @@ export default class VideoChannel {
 
     onReady(callback: (paused: boolean) => void) {
         if (this.isReady) {
-            callback(false);
+            callback(this.paused);
         }
         this.readyCallbacks.push(callback);
         return () => this._remove(callback, this.readyCallbacks);
+    }
+
+    onDuration(callback: (duration: number) => void) {
+        this.durationCallbacks.push(callback);
+        return () => this._remove(callback, this.durationCallbacks);
     }
 
     onPlay(callback: (echo: boolean) => void) {
@@ -427,6 +462,11 @@ export default class VideoChannel {
     onLoadFiles(callback: () => void) {
         this.loadFilesCallbacks.push(callback);
         return () => this._remove(callback, this.loadFilesCallbacks);
+    }
+
+    onLoadSubtitles(callback: () => void) {
+        this.loadSubtitlesCallbacks.push(callback);
+        return () => this._remove(callback, this.loadSubtitlesCallbacks);
     }
 
     onPlayModes(callback: (modes: Set<PlayMode>) => void) {
@@ -545,10 +585,10 @@ export default class VideoChannel {
         this.protocol.postMessage(message);
     }
 
-    playModes(playModes: Set<PlayMode>) {
-        const message: PlayModesMessage = {
-            command: 'playModes',
-            playModes: [...playModes],
+    playMode(playMode: PlayMode) {
+        const message: PlayModeMessage = {
+            command: 'playMode',
+            playMode,
         };
         this.protocol.postMessage(message);
     }
@@ -654,11 +694,24 @@ export default class VideoChannel {
             videoSubtitleSplitBehavior,
             copyToClipboardOnMine,
             autoPausePreference,
+            subtitleTriggerStartOffset,
+            subtitleTriggerEndOffset,
+            subtitleTriggerGapEndOffset,
+            subtitleTriggerGapStartOffset,
             seekableTracks,
             autoCopyableTracks,
             seekDuration,
             speedChangeStep,
+            playbackRate,
+            playbackRateNotificationEnabled,
+            rememberPlaybackRate,
             fastForwardModePlaybackRate,
+            fastForwardPlaybackMinimumSkipIntervalMs,
+            streamingCondensedPlaybackMinimumSkipIntervalMs,
+            repeatCountPreference,
+            rememberPlaybackModes,
+            lastPlaybackModes,
+            lastPlaybackPositions,
             keyBindSet,
             rememberSubtitleOffset,
             autoCopyCurrentSubtitle,
@@ -685,11 +738,24 @@ export default class VideoChannel {
                 videoSubtitleSplitBehavior,
                 copyToClipboardOnMine,
                 autoPausePreference,
+                subtitleTriggerStartOffset,
+                subtitleTriggerEndOffset,
+                subtitleTriggerGapEndOffset,
+                subtitleTriggerGapStartOffset,
                 seekableTracks,
                 autoCopyableTracks,
                 seekDuration,
                 speedChangeStep,
+                playbackRate,
+                playbackRateNotificationEnabled,
+                rememberPlaybackRate,
                 fastForwardModePlaybackRate,
+                fastForwardPlaybackMinimumSkipIntervalMs,
+                streamingCondensedPlaybackMinimumSkipIntervalMs,
+                repeatCountPreference,
+                rememberPlaybackModes,
+                lastPlaybackModes,
+                lastPlaybackPositions,
                 keyBindSet,
                 rememberSubtitleOffset,
                 autoCopyCurrentSubtitle,

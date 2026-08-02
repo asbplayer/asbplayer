@@ -361,6 +361,11 @@ export interface ReadyFromVideoMessage extends Message {
     readonly playbackRate: number;
 }
 
+export interface DurationFromVideoMessage extends Message {
+    readonly command: 'duration';
+    readonly value: number;
+}
+
 export interface ReadyToVideoMessage extends Message {
     readonly command: 'ready';
     readonly duration: number;
@@ -672,7 +677,7 @@ export interface RequestActiveTabPermissionMessage extends Message {
     readonly command: 'request-active-tab-permission';
 }
 
-export interface RequestingActiveTabPermsisionMessage extends Message {
+export interface RequestingActiveTabPermissionMessage extends Message {
     readonly command: 'requesting-active-tab-permission';
     readonly requesting: boolean;
 }
@@ -808,6 +813,14 @@ export interface NotificationDialogMessage extends Message {
 
 export interface HiddenMessage extends Message {
     readonly command: 'hidden';
+}
+
+export interface PlaybackModeSelectorOpenedMessage extends Message {
+    readonly command: 'playback-mode-selector-opened';
+}
+
+export interface PlaybackModeSelectorClosedMessage extends Message {
+    readonly command: 'playback-mode-selector-closed';
 }
 
 export interface RequestCopyHistoryMessage extends MessageWithId {

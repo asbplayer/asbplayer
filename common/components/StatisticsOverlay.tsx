@@ -47,6 +47,7 @@ const Statistic: React.FC<StatisticProps> = ({ label, value, onClick, valueSx })
                 pr: 0.75,
                 borderRadius: 1,
                 '&:hover': hoverProps,
+                whiteSpace: 'nowrap',
             }}
             onClick={onClick}
         >

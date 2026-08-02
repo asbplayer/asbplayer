@@ -1,6 +1,7 @@
 import { ExtensionSettingsStorage } from './extension-settings-storage';
 import { defaultSettings } from '@project/common/settings';
 import { MockStorageArea } from './mock-storage-area';
+import { expect, it, beforeEach } from '@jest/globals';
 
 const settingsStorage = new ExtensionSettingsStorage(new MockStorageArea());
 

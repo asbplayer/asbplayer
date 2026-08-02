@@ -12,6 +12,7 @@ export default class AppKeyBinder implements KeyBinder {
     private readonly exportCardHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly takeScreenshotHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly toggleRecordingHandlers: ((event: KeyboardEvent) => void)[] = [];
+    private readonly selectSubtitleTrackHandlers: ((event: KeyboardEvent) => void)[] = [];
     private _unsubscribeExtension?: () => void;
 
     constructor(keyBinder: DefaultKeyBinder, extension: ChromeExtension) {
@@ -44,6 +45,8 @@ export default class AppKeyBinder implements KeyBinder {
                     handlers = this.takeScreenshotHandlers;
                 } else if (message.data.command === 'toggle-recording') {
                     handlers = this.toggleRecordingHandlers;
+                } else if (message.data.command === 'toggle-video-select') {
+                    handlers = this.selectSubtitleTrackHandlers;
                 }
 
                 if (handlers !== undefined) {
@@ -151,6 +154,22 @@ export default class AppKeyBinder implements KeyBinder {
         }
 
         return this.defaultKeyBinder.bindToggleRecording(onToggleRecording, disabledGetter, useCapture);
+    }
+
+    bindSelectSubtitleTrack(
+        onSelectSubtitleTrack: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        if (this.extension.installed) {
+            const handler = this.defaultKeyBinder.selectSubtitleTrackHandler(onSelectSubtitleTrack, disabledGetter);
+            this.selectSubtitleTrackHandlers.push(handler);
+            return () => {
+                this._remove(handler, this.selectSubtitleTrackHandlers);
+            };
+        }
+
+        return this.defaultKeyBinder.bindSelectSubtitleTrack(onSelectSubtitleTrack, disabledGetter, useCapture);
     }
 
     private _remove(callback: (event: KeyboardEvent) => void, list: ((event: KeyboardEvent) => void)[]) {

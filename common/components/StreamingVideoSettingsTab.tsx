@@ -9,7 +9,6 @@ import TableCell from '@mui/material/TableCell';
 import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
 import { useTranslation } from 'react-i18next';
 import { AsbplayerSettings, Page, PageSettings, SubtitleListPreference, YoutubePage } from '../settings';
-import InputAdornment from '@mui/material/InputAdornment';
 import Paper from '@mui/material/Paper';
 import { pageMetadata } from '../pages';
 import Badge from '@mui/material/Badge';
@@ -59,7 +58,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
         streamingSubsDragAndDrop,
         streamingAutoSync,
         streamingAutoSyncPromptOnFailure,
-        streamingCondensedPlaybackMinimumSkipIntervalMs,
         streamingAppUrl,
         streamingPages,
     } = settings;
@@ -202,26 +200,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     }
                     label={t('extension.settings.autoLoadDetectedSubsFailure')}
                     labelPlacement="start"
-                />
-                <SettingsSection>{t('settings.misc')}</SettingsSection>
-                <SettingsTextField
-                    type="number"
-                    color="primary"
-                    fullWidth
-                    label={t('extension.settings.condensedPlaybackMinSkipInterval')}
-                    value={streamingCondensedPlaybackMinimumSkipIntervalMs}
-                    onChange={(e) =>
-                        onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', Number(e.target.value))
-                    }
-                    slotProps={{
-                        htmlInput: {
-                            min: 0,
-                            step: 1,
-                        },
-                        input: {
-                            endAdornment: <InputAdornment position="end">ms</InputAdornment>,
-                        },
-                    }}
                 />
                 {pageConfigs && (
                     <>

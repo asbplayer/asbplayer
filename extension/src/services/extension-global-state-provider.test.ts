@@ -1,5 +1,6 @@
 import { ExtensionGlobalStateProvider } from './extension-global-state-provider';
 import { MockStorageArea } from './mock-storage-area';
+import { expect, it } from '@jest/globals';
 
 it('can retrieve list of keys', async () => {
     const provider = new ExtensionGlobalStateProvider(new MockStorageArea());

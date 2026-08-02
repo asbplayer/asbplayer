@@ -366,6 +366,22 @@ export default defineBackground(() => {
                             void browser.tabs.sendMessage(tab.id, extensionToVideoCommand);
                         }
                     }
+                    void tabRegistry.publishCommandToAsbplayers({
+                        commandFactory: (asbplayer) => {
+                            if (!validAsbplayer(asbplayer)) {
+                                return undefined;
+                            }
+
+                            const extensionToPlayerCommand: ExtensionToAsbPlayerCommand<ToggleVideoSelectMessage> = {
+                                sender: 'asbplayer-extension-to-player',
+                                message: {
+                                    command: 'toggle-video-select',
+                                },
+                                asbplayerId: asbplayer.id,
+                            };
+                            return extensionToPlayerCommand;
+                        },
+                    });
                     break;
                 case 'take-screenshot':
                     void tabRegistry.publishCommandToVideoElements((videoElement) => {

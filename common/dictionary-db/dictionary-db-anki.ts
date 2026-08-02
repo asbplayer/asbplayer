@@ -15,7 +15,6 @@ import {
     DictionaryTokenSource,
     DictionaryTrack,
     isAnkiSource,
-    TokenState,
     TokenStatus,
 } from '@project/common/settings';
 import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
@@ -289,11 +288,11 @@ export async function buildAnkiCachePipeline(
 /**
  * primaryKeys() and keys() are faster than toArray(), we don't need all fields
  */
-async function _getAnkiCardKeys(db: _DictionaryDatabase, profile: string): Promise<DictionaryAnkiCardKey[]> {
+export async function _getAnkiCardKeys(db: _DictionaryDatabase, profile: string): Promise<DictionaryAnkiCardKey[]> {
     return db.ankiCards.where('profile').equals(profile).primaryKeys();
 }
 
-async function _getAnkiCardsByNoteIdBulk(
+export async function _getAnkiCardsByNoteIdBulk(
     db: _DictionaryDatabase,
     profile: string,
     noteIds: number[]
@@ -323,7 +322,7 @@ async function _getAnkiCardsByNoteIdBulk(
  * 4. The card field value no longer produce the same tokens (handled by _saveTokensForDB())
  * 5. Based on track settings such as no Anki fields (handled by tracksToClear)
  */
-async function _deleteCardBulk(
+export async function _deleteCardBulk(
     db: _DictionaryDatabase,
     profile: string,
     orphanedTrackCardIds: Map<number, number[]>,
@@ -365,7 +364,7 @@ async function _deleteCardBulk(
     });
 }
 
-async function _orphanAllCardIds(
+export async function _orphanAllCardIds(
     db: _DictionaryDatabase,
     profile: string,
     tracks: number[]
@@ -394,7 +393,7 @@ async function _orphanAllCardIds(
  * @param statusUpdates The status update callback.
  * @returns The number of modified cards.
  */
-async function _syncTrackStatesWithAnki(
+export async function _syncTrackStatesWithAnki(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: AnkiTrackStatesForDB,
@@ -551,18 +550,18 @@ async function _syncTrackStatesWithAnki(
     return numUpdatedCards;
 }
 
-function _hasDeck(dt: DictionaryTrack, cardDeck: string): boolean {
+export function _hasDeck(dt: DictionaryTrack, cardDeck: string): boolean {
     if (!dt.dictionaryAnkiDecks.length) return true;
     return dt.dictionaryAnkiDecks.some((deck) => deck === cardDeck || cardDeck.startsWith(`${deck}::`));
 }
 
-function _hasField(dt: DictionaryTrack, fields: string[]): boolean {
+export function _hasField(dt: DictionaryTrack, fields: string[]): boolean {
     return fields.some(
         (field) => dt.dictionaryAnkiWordFields.includes(field) || dt.dictionaryAnkiSentenceFields.includes(field)
     );
 }
 
-async function _buildAnkiCardStatuses(
+export async function _buildAnkiCardStatuses(
     track: number,
     ts: TrackStateForDB,
     modifiedCards: CardsForDB,
@@ -633,7 +632,7 @@ async function _buildAnkiCardStatuses(
     }
 }
 
-function _processAnkiCardStatuses(
+export function _processAnkiCardStatuses(
     track: number,
     cardIds: number[],
     modifiedCards: CardsForDB,
@@ -649,7 +648,7 @@ function _processAnkiCardStatuses(
     return numRemaining;
 }
 
-async function _updateBuildAnkiCacheProgress(
+export async function _updateBuildAnkiCacheProgress(
     db: _DictionaryDatabase,
     buildId: string,
     activeTracks: DictionaryMetaKey[],
@@ -686,7 +685,7 @@ async function _updateBuildAnkiCacheProgress(
     });
 }
 
-async function _processTracks(
+export async function _processTracks(
     db: _DictionaryDatabase,
     profile: string,
     buildId: string,
@@ -763,7 +762,7 @@ async function _processTracks(
     }
 }
 
-async function _buildTokensForTracks(
+export async function _buildTokensForTracks(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: Map<number, TrackStateForDB>,
@@ -862,13 +861,9 @@ async function _buildTokensForTracks(
                     );
                     for (const [token, val] of tokenCardsMap.entries()) {
                         const existingRecord = tokenRecordMap.get(token); // Merge with existing record
-                        const states: TokenState[] = [];
                         if (existingRecord) {
                             for (const cardId of existingRecord.cardIds) {
                                 if (!modifiedCardsBatch.has(cardId)) val.cardIds.add(cardId); // If card was updated, it may no longer apply to this token. Should already be in cardIds if it's still valid.
-                            }
-                            for (const state of existingRecord.states) {
-                                if (!states.includes(state)) states.push(state);
                             }
                         }
                         records.push({
@@ -878,7 +873,7 @@ async function _buildTokensForTracks(
                             token,
                             status: ankiTokenStatus,
                             lemmas: val.lemmas,
-                            states,
+                            states: [],
                             cardIds: Array.from(val.cardIds).sort((lhs, rhs) => lhs - rhs),
                         });
                     }
@@ -929,7 +924,7 @@ async function _buildTokensForTracks(
     );
 }
 
-async function _saveTokensForDB(
+export async function _saveTokensForDB(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: Map<number, TrackStateForDB>,
@@ -942,10 +937,21 @@ async function _saveTokensForDB(
     >,
     modifiedTokens: Set<string>
 ): Promise<void> {
-    for (const record of records) {
+    for (let i = records.length - 1; i >= 0; i--) {
+        const record = records[i];
+
         modifiedTokens.add(record.token);
         for (const lemma of record.lemmas) modifiedTokens.add(lemma);
+
+        if (!isAnkiSource(record.source)) continue;
+        if (!record.cardIds.length) {
+            records.splice(i, 1); // Anki tokens must have at least one card
+            continue;
+        }
+        record.status = null; // Anki status is derived from cards
+        record.states = []; // Anki tokens cannot have states (could change in the future)
     }
+
     return db.transaction('rw', db.tokens, db.ankiCards, async () => {
         await Promise.all([_saveRecordBulk(db, records), db.ankiCards.bulkPut(ankiCards)]);
         await db.tokens
@@ -963,6 +969,8 @@ async function _saveTokensForDB(
                 for (const lemma of record.lemmas) modifiedTokens.add(lemma);
                 if (validCardIds.length) {
                     record.cardIds = validCardIds;
+                    record.status = null;
+                    record.states = [];
                 } else {
                     delete (ref as any).value;
                 }

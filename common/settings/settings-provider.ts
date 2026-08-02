@@ -19,7 +19,7 @@ import {
     TokenStatus,
     TokenState,
 } from '.';
-import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
+import { AutoPausePreference, PlayMode, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
 // @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;
@@ -150,12 +150,24 @@ export const defaultSettings: AsbplayerSettings = {
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
+    subtitleTriggerStartOffset: 0,
+    subtitleTriggerEndOffset: 0,
+    subtitleTriggerGapEndOffset: 0,
+    subtitleTriggerGapStartOffset: 0,
     seekableTracks: 1, // Bitset with first bit flipped i.e. first track
     autoCopyableTracks: 1, // Also bitset
     subtitleHtml: SubtitleHtml.remove,
     seekDuration: 3,
     speedChangeStep: 0.1,
+    playbackRate: 1,
+    playbackRateNotificationEnabled: true,
+    rememberPlaybackRate: false,
     fastForwardModePlaybackRate: 2.7,
+    fastForwardPlaybackMinimumSkipIntervalMs: 500,
+    repeatCountPreference: 0,
+    rememberPlaybackModes: false,
+    lastPlaybackModes: [PlayMode.normal],
+    lastPlaybackPositions: [],
     keyBindSet: {
         togglePlay: { keys: 'space' },
         toggleAutoPause: { keys: isMacOs ? '⇧+P' : 'shift+P' },
@@ -187,6 +199,7 @@ export const defaultSettings: AsbplayerSettings = {
         exportCard: { keys: '' },
         takeScreenshot: { keys: isMacOs ? '⇧+⌃+V' : 'ctrl+shift+V' },
         toggleRecording: { keys: isMacOs ? '⇧+⌃+R' : 'ctrl+shift+R' },
+        selectSubtitleTrack: { keys: isMacOs ? '⇧+⌃+F' : 'ctrl+shift+F' },
         decreasePlaybackRate: { keys: isMacOs ? '⇧+⌃+[' : 'ctrl+shift+[' },
         increasePlaybackRate: { keys: isMacOs ? '⇧+⌃+]' : 'ctrl+shift+]' },
         toggleSidePanel: { keys: '`' },

@@ -2,7 +2,7 @@ import pagesConfig from '../pages.json';
 import type { PublicPath } from 'wxt/browser';
 import { isOnTutorialPage } from './tutorial';
 import { ExtensionSettingsStorage } from './extension-settings-storage';
-import { SettingsProvider } from '@project/common/settings/settings-provider';
+import { SettingsProvider } from '@project/common/settings';
 import { SettingsFormPageConfig, PageSettings } from '@project/common/settings';
 
 interface PageConfigFile {

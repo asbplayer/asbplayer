@@ -34,7 +34,7 @@ import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
 import { SubtitleAlignment } from '@project/common/settings';
-import Clock from '../services/clock';
+import Clock from '@project/common/playback/timing/clock';
 import PlaybackPreferences from '../services/playback-preferences';
 import Tooltip from '../../components/Tooltip';
 import Menu from '@mui/material/Menu';
@@ -54,6 +54,7 @@ import {
     progressBarProgress,
     progressBarTrackWidth,
 } from './progress-bar';
+import LoadSubtitlesIcon from '../../components/LoadSubtitlesIcon';
 
 const useControlStyles = makeStyles<Theme>((theme) => ({
     container: {
@@ -613,6 +614,8 @@ interface ControlsProps {
     previewEnabled: boolean;
     playModeEnabled?: boolean;
     onPlayMode?: (playMode: PlayMode) => void;
+    onPlayModeSelectorOpened?: () => void;
+    onPlayModeSelectorClosed?: () => void;
     subtitlesEnabled?: boolean;
     subtitlesToggle?: boolean;
     onSubtitlesToggle?: () => void;
@@ -638,6 +641,7 @@ interface ControlsProps {
     onSubtitleAlignment?: (alignment: SubtitleAlignment) => void;
     hideToolbar?: boolean;
     onLoadFiles?: () => void;
+    onLoadSubtitles?: () => void;
     blurOverlayEnabled?: boolean;
     onBlurOverlayToggle?: () => void;
     videoWidth?: number | undefined;
@@ -672,6 +676,8 @@ export default function Controls({
     playModes,
     playModeEnabled,
     onPlayMode,
+    onPlayModeSelectorOpened,
+    onPlayModeSelectorClosed,
     subtitlesEnabled,
     subtitlesToggle,
     onSubtitlesToggle,
@@ -697,6 +703,7 @@ export default function Controls({
     onSubtitleAlignment,
     hideToolbar,
     onLoadFiles,
+    onLoadSubtitles,
     blurOverlayEnabled,
     onBlurOverlayToggle,
     videoWidth,
@@ -756,12 +763,14 @@ export default function Controls({
 
     const [playing, setPlaying] = useState<boolean>(clock.running);
     useEffect(() => {
-        clock.onEvent('start', () => setPlaying(true));
+        const remove = clock.onEvent('start', () => setPlaying(true));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
     useEffect(() => {
-        clock.onEvent('stop', () => setPlaying(false));
+        const remove = clock.onEvent('stop', () => setPlaying(false));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
 
     useEffect(() => {
@@ -824,7 +833,8 @@ export default function Controls({
     );
 
     useEffect(() => {
-        clock.onEvent('settime', () => forceUpdate());
+        const remove = clock.onEvent('settime', () => forceUpdate());
+        return remove;
     }, [clock, forceUpdate]);
 
     useEffect(() => {
@@ -877,12 +887,17 @@ export default function Controls({
     const handlePlayModeSelectorClosed = useCallback(() => {
         setPlayModeSelectorAnchorEl(undefined);
         setPlayModeSelectorOpen(false);
-    }, []);
+        onPlayModeSelectorClosed?.();
+    }, [onPlayModeSelectorClosed]);
 
-    const handlePlayModeSelectorOpened = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-        setPlayModeSelectorAnchorEl(e.currentTarget);
-        setPlayModeSelectorOpen(true);
-    }, []);
+    const handlePlayModeSelectorClicked = useCallback(
+        (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+            setPlayModeSelectorAnchorEl(e.currentTarget);
+            setPlayModeSelectorOpen(true);
+            onPlayModeSelectorOpened?.();
+        },
+        [onPlayModeSelectorOpened]
+    );
 
     const handlePlayModeSelected = useCallback(
         (playMode: PlayMode) => {
@@ -938,7 +953,7 @@ export default function Controls({
         onSubtitleAlignment(newAlignment);
     }, [subtitleAlignment, subtitleAlignmentEnabled, onSubtitleAlignment]);
 
-    const progress = clock.progress(length);
+    const progress = clock.progress({ durationMs: length });
 
     return (
         <React.Fragment>
@@ -1154,6 +1169,18 @@ export default function Controls({
                                             </IconButton>
                                         </Tooltip>
                                     )}
+                                    {onLoadSubtitles && (
+                                        <Tooltip title={t('action.loadSubtitles')}>
+                                            <IconButton
+                                                color="inherit"
+                                                onClick={onLoadSubtitles}
+                                                onMouseOver={handleMouseOver}
+                                                onMouseOut={handleMouseOut}
+                                            >
+                                                <LoadSubtitlesIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                     {tabs && tabs.length > 0 && (
                                         <Tooltip title={t('controls.selectVideoElement')}>
                                             <IconButton color="inherit" onClick={handleTabSelectorOpened}>
@@ -1167,7 +1194,7 @@ export default function Controls({
                                     )}
                                     {playModeEnabled && (
                                         <Tooltip title={t('controls.playbackMode')}>
-                                            <IconButton color="inherit" onClick={handlePlayModeSelectorOpened}>
+                                            <IconButton color="inherit" onClick={handlePlayModeSelectorClicked}>
                                                 <TuneIcon
                                                     className={
                                                         playModeEnabled ? classes.button : classes.inactiveButton
@@ -1230,6 +1257,7 @@ export default function Controls({
                     selectedPlayModes={playModes || new Set()}
                     onClose={handlePlayModeSelectorClosed}
                     onPlayMode={handlePlayModeSelected}
+                    listStyle={{ flexDirection: 'column' }}
                 />
             </div>
         </React.Fragment>

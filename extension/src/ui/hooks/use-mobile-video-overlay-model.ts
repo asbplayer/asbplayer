@@ -5,7 +5,7 @@ import {
     VideoToMobileOverlayCommand,
     UpdateMobileOverlayModelMessage,
 } from '@project/common';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Params {
     location?: {
@@ -13,8 +13,15 @@ interface Params {
     };
 }
 
+const overlayInstanceId = new URLSearchParams(window.location.search).get('overlayId');
+
+const isCurrentOverlayModel = (model: MobileOverlayModel | undefined) =>
+    overlayInstanceId === null || model?.overlayInstanceId === overlayInstanceId;
+
 export const useMobileVideoOverlayModel = ({ location }: Params) => {
     const [model, setModel] = useState<MobileOverlayModel>();
+    const [isActive, setIsActive] = useState(true);
+    const isActiveRef = useRef(true);
 
     useEffect(() => {
         if (!location) {
@@ -30,6 +37,14 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
                 src: location.src,
             };
             const initialModel = await browser.runtime.sendMessage(command);
+            if (cancelled || !isActiveRef.current) {
+                return;
+            }
+            if (!isCurrentOverlayModel(initialModel)) {
+                isActiveRef.current = false;
+                setIsActive(false);
+                return;
+            }
             setModel(initialModel);
         };
 
@@ -76,10 +91,15 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
             }
 
             const command = message as VideoToMobileOverlayCommand<UpdateMobileOverlayModelMessage>;
+            if (!isCurrentOverlayModel(command.message.model)) {
+                isActiveRef.current = false;
+                setIsActive(false);
+                return;
+            }
             setModel(command.message.model);
         };
         browser.runtime.onMessage.addListener(listener);
         return () => browser.runtime.onMessage.removeListener(listener);
     }, [location]);
-    return model;
+    return { model, isActive };
 };

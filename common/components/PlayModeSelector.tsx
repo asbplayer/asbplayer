@@ -21,7 +21,7 @@ interface Props extends PopoverProps {
 
 const ListItem = ({ children, ...props }: ListItemProps) => {
     return (
-        <MuiListItem disablePadding dense {...props}>
+        <MuiListItem disablePadding dense sx={{ width: 'auto' }} {...props}>
             {children}
         </MuiListItem>
     );
@@ -77,7 +77,18 @@ export default function PlayModeSelector({
             }}
             {...restOfPopoverProps}
         >
-            <List disablePadding dense sx={listStyle}>
+            <List
+                disablePadding
+                dense
+                sx={{
+                    flexDirection: 'row',
+                    ...listStyle,
+                    display: 'flex',
+                    flexWrap: 'nowrap',
+                    width: 'max-content',
+                    maxWidth: '100%',
+                }}
+            >
                 <ListItem onClick={() => onPlayMode(PlayMode.normal)}>
                     <ListItemButton>
                         <ListItemIcon>

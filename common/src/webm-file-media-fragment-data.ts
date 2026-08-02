@@ -9,6 +9,7 @@ import {
     mediaFragmentErrorForFile,
 } from './media-fragment';
 import { FileModel, MediaFragmentErrorCode } from './model';
+import { clamp } from '../util';
 
 const videoSeekEpsilonSeconds = 0.001;
 const defaultCaptureFrameRate = 24;
@@ -18,8 +19,6 @@ const minVp9WebmVideoBitsPerSecond = 2_000_000;
 const webmRenderTimeoutMs = 20_000;
 const videoSeekTimeoutMs = 3_000;
 const frameRenderWatchdogTimeoutMs = 10_000;
-
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const durationFromInterval = (startTimestamp: number, endTimestamp: number) => {
     const duration = Math.abs(endTimestamp - startTimestamp);

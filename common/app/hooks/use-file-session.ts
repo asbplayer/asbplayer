@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '../../file-system-access';
+import {
+    FileSessionRecord,
+    FileSystemFileHandleWithId,
+    IndexedDBFileSessionRepository,
+    supportsFileSystemAccess,
+} from '../../file-system-access';
 
 let _repository: IndexedDBFileSessionRepository | undefined;
 const getRepository = () => {
@@ -23,13 +28,7 @@ export const useFileSession = () => {
     }, [fileSessionRepository]);
 
     const saveSession = useCallback(
-        async ({
-            videoHandle,
-            subtitleHandles,
-        }: {
-            videoHandle?: FileSystemFileHandle;
-            subtitleHandles: FileSystemFileHandle[];
-        }) => {
+        async ({ videoHandle, subtitleHandles }: Omit<FileSessionRecord, 'id' | 'timestamp'>) => {
             if (!fileSessionRepository) return;
 
             if (!videoHandle && subtitleHandles.length === 0) {
@@ -49,10 +48,45 @@ export const useFileSession = () => {
         setCanRestoreLastSession(false);
     }, [fileSessionRepository]);
 
+    const saveBufferedHandlesToSession = useCallback(
+        async (bufferedSubtitleHandles: FileSystemFileHandleWithId[]) => {
+            await fileSessionRepository?.merge({
+                subtitleHandles: [],
+                bufferedSubtitleHandles: bufferedSubtitleHandles,
+            });
+        },
+        [fileSessionRepository]
+    );
+    const promoteBufferedHandlesInSession = useCallback(
+        async (ids: string[]) => {
+            await fileSessionRepository?.promoteBuffered(ids);
+        },
+        [fileSessionRepository]
+    );
+
+    const clearBufferedHandlesInSession = useCallback(async () => {
+        await fileSessionRepository?.clearBuffered();
+    }, [fileSessionRepository]);
+
+    useEffect(() => {
+        void fileSessionRepository?.clearBuffered();
+    }, [fileSessionRepository]);
+
+    const retainHandlesInSession = useCallback(
+        async (ids: string[]) => {
+            await fileSessionRepository?.retain(ids);
+        },
+        [fileSessionRepository]
+    );
+
     return {
         canRestoreLastSession,
         saveSession,
         fetchSession,
         clearSession,
+        saveBufferedHandlesToSession,
+        promoteBufferedHandlesInSession,
+        clearBufferedHandlesInSession,
+        retainHandlesInSession,
     };
 };

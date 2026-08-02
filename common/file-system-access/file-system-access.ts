@@ -4,19 +4,23 @@
  * and utilities to re-acquire permissions and resolve handles back to File objects on revisit.
  */
 
+import { FileWithId } from '../file-selector';
+import { FileSystemFileHandleWithId } from './file-system-access-repository';
+import { v4 as uuidv4 } from 'uuid';
+
 export function supportsFileSystemAccess(): boolean {
     return typeof window !== 'undefined' && 'showOpenFilePicker' in window;
 }
 
 export async function requestPermissions(
-    handles: FileSystemFileHandle[]
-): Promise<{ granted: FileSystemFileHandle[]; denied: FileSystemFileHandle[] }> {
-    const granted: FileSystemFileHandle[] = [];
-    const denied: FileSystemFileHandle[] = [];
+    handles: FileSystemFileHandleWithId[]
+): Promise<{ granted: FileSystemFileHandleWithId[]; denied: FileSystemFileHandleWithId[] }> {
+    const granted: FileSystemFileHandleWithId[] = [];
+    const denied: FileSystemFileHandleWithId[] = [];
 
     for (const handle of handles) {
         try {
-            const state = await (handle as any).queryPermission?.({ mode: 'read' });
+            const state = await (handle.handle as any).queryPermission?.({ mode: 'read' });
             if (state === 'granted') {
                 granted.push(handle);
                 continue;
@@ -26,7 +30,7 @@ export async function requestPermissions(
         }
 
         try {
-            const state = await (handle as any).requestPermission?.({ mode: 'read' });
+            const state = await (handle.handle as any).requestPermission?.({ mode: 'read' });
             if (state === 'granted') {
                 granted.push(handle);
             } else {
@@ -41,14 +45,14 @@ export async function requestPermissions(
 }
 
 export async function resolveFiles(
-    handles: FileSystemFileHandle[]
-): Promise<{ files: File[]; errors: FileSystemFileHandle[] }> {
-    const files: File[] = [];
-    const errors: FileSystemFileHandle[] = [];
+    handles: FileSystemFileHandleWithId[]
+): Promise<{ files: FileWithId[]; errors: FileSystemFileHandleWithId[] }> {
+    const files: FileWithId[] = [];
+    const errors: FileSystemFileHandleWithId[] = [];
 
     for (const handle of handles) {
         try {
-            files.push(await handle.getFile());
+            files.push({ id: handle.id, file: await handle.handle.getFile() });
         } catch {
             errors.push(handle);
         }
@@ -61,7 +65,7 @@ export async function showFilePicker(extensions: {
     videoExtensions: string[];
     audioExtensions: string[];
     subtitleExtensions: string[];
-}): Promise<FileSystemFileHandle[] | undefined> {
+}): Promise<FileSystemFileHandleWithId[] | undefined> {
     if (!supportsFileSystemAccess()) {
         return undefined;
     }
@@ -80,7 +84,7 @@ export async function showFilePicker(extensions: {
                 },
             ],
         });
-        return handles as FileSystemFileHandle[];
+        return (handles as FileSystemFileHandle[]).map((handle) => ({ handle, id: uuidv4() }));
     } catch (e: any) {
         if (e.name === 'AbortError') {
             return undefined;

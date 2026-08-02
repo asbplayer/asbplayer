@@ -10,22 +10,20 @@ import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import Radio from '@mui/material/Radio';
-import RadioGroup from '@mui/material/RadioGroup';
 import Switch from '@mui/material/Switch';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsTextField from './SettingsTextField';
+import NumericSettingInput from './NumericSettingInput';
 import { isFirefox } from '../browser-detection';
 import React, { useMemo, useEffect, useCallback, useState, useRef } from 'react';
 import KeyBindRelatedSetting from './KeyBindRelatedSetting';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
-import { AutoPausePreference } from '..';
 
 type AllKeyNames = KeyBindName | 'selectSubtitleTrack';
 
 interface KeyBindProperties {
     label: string;
     boundViaBrowser: boolean;
+    id?: string;
     hide?: boolean;
     additionalControl?: React.ReactNode;
 }
@@ -219,6 +217,7 @@ interface Props {
     extensionInstalled?: boolean;
     extensionSupportsExportCardBind?: boolean;
     extensionSupportsSidePanel?: boolean;
+    extensionSupportsSubtitleTrackSelectorInWebApp?: boolean;
     onOpenChromeExtensionShortcuts: () => void;
 }
 
@@ -229,17 +228,11 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     extensionInstalled,
     extensionSupportsExportCardBind,
     extensionSupportsSidePanel,
+    extensionSupportsSubtitleTrackSelectorInWebApp,
     onOpenChromeExtensionShortcuts,
 }) => {
     const { t } = useTranslation();
-    const {
-        autoPausePreference,
-        fastForwardModePlaybackRate,
-        seekDuration,
-        alwaysPlayOnSubtitleRepeat,
-        speedChangeStep,
-        keyBindSet,
-    } = settings;
+    const { seekDuration, alwaysPlayOnSubtitleRepeat, speedChangeStep, keyBindSet } = settings;
     const keyBindProperties = useMemo<{ [key in AllKeyNames]: KeyBindProperties }>(
         () => ({
             copySubtitle: { label: t('binds.copySubtitle'), boundViaBrowser: true },
@@ -264,7 +257,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             selectSubtitleTrack: {
                 label: t('binds.extensionSelectSubtitleTrack'),
                 boundViaBrowser: true,
-                hide: !extensionInstalled,
+                hide: extensionInstalled && !extensionSupportsSubtitleTrackSelectorInWebApp,
             },
             toggleSidePanel: {
                 label: t('binds.toggleSidePanel'),
@@ -275,78 +268,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             toggleAutoPause: {
                 label: t('binds.toggleAutoPause'),
                 boundViaBrowser: false,
-                additionalControl: (
-                    <KeyBindRelatedSetting
-                        label={t('settings.autoPausePreference')}
-                        control={
-                            <Grid2>
-                                <RadioGroup row>
-                                    <LabelWithHoverEffect
-                                        control={
-                                            <Radio
-                                                checked={autoPausePreference === AutoPausePreference.atStart}
-                                                value={AutoPausePreference.atStart}
-                                                onChange={(event) =>
-                                                    event.target.checked &&
-                                                    void onSettingChanged(
-                                                        'autoPausePreference',
-                                                        AutoPausePreference.atStart
-                                                    )
-                                                }
-                                            />
-                                        }
-                                        label={t('settings.autoPauseAtSubtitleStart')}
-                                    />
-                                    <LabelWithHoverEffect
-                                        control={
-                                            <Radio
-                                                checked={autoPausePreference === AutoPausePreference.atEnd}
-                                                value={AutoPausePreference.atEnd}
-                                                onChange={(event) =>
-                                                    event.target.checked &&
-                                                    void onSettingChanged(
-                                                        'autoPausePreference',
-                                                        AutoPausePreference.atEnd
-                                                    )
-                                                }
-                                            />
-                                        }
-                                        label={t('settings.autoPauseAtSubtitleEnd')}
-                                    />
-                                </RadioGroup>
-                            </Grid2>
-                        }
-                    />
-                ),
+                id: 'playback-mode-key-bindings',
             },
             toggleCondensedPlayback: { label: t('binds.toggleCondensedPlayback'), boundViaBrowser: false },
-            toggleFastForwardPlayback: {
-                label: t('binds.toggleFastForwardPlayback'),
-                boundViaBrowser: false,
-                additionalControl: (
-                    <KeyBindRelatedSetting
-                        label={t('settings.fastForwardModePlaybackRate')}
-                        control={
-                            <SettingsTextField
-                                type="number"
-                                fullWidth
-                                value={fastForwardModePlaybackRate}
-                                color="primary"
-                                onChange={(event) =>
-                                    onSettingChanged('fastForwardModePlaybackRate', Number(event.target.value))
-                                }
-                                slotProps={{
-                                    htmlInput: {
-                                        min: 0.1,
-                                        max: 5,
-                                        step: 0.1,
-                                    },
-                                }}
-                            />
-                        }
-                    />
-                ),
-            },
+            toggleFastForwardPlayback: { label: t('binds.toggleFastForwardPlayback'), boundViaBrowser: false },
             toggleRepeat: { label: t('binds.toggleRepeat'), boundViaBrowser: false },
             toggleSubtitles: { label: t('binds.toggleSubtitles'), boundViaBrowser: false },
             toggleVideoSubtitleTrack1: { label: t('binds.toggleVideoSubtitleTrack1'), boundViaBrowser: false },
@@ -384,13 +309,12 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     <KeyBindRelatedSetting
                         label={t('settings.seekDuration')}
                         control={
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 size="small"
                                 fullWidth
                                 value={seekDuration}
                                 color="primary"
-                                onChange={(event) => onSettingChanged('seekDuration', Number(event.target.value))}
+                                onValueChange={(value) => void onSettingChanged('seekDuration', value)}
                                 slotProps={{
                                     htmlInput: {
                                         min: 1,
@@ -441,12 +365,11 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     <KeyBindRelatedSetting
                         label={t('settings.speedChangeStep')}
                         control={
-                            <SettingsTextField
-                                type="number"
+                            <NumericSettingInput
                                 fullWidth
                                 value={speedChangeStep}
                                 color="primary"
-                                onChange={(event) => onSettingChanged('speedChangeStep', Number(event.target.value))}
+                                onValueChange={(value) => void onSettingChanged('speedChangeStep', value)}
                                 slotProps={{
                                     htmlInput: {
                                         min: 0.1,
@@ -513,12 +436,11 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             extensionInstalled,
             extensionSupportsSidePanel,
             extensionSupportsExportCardBind,
+            extensionSupportsSubtitleTrackSelectorInWebApp,
             onSettingChanged,
             seekDuration,
             alwaysPlayOnSubtitleRepeat,
-            autoPausePreference,
             speedChangeStep,
-            fastForwardModePlaybackRate,
         ]
     );
 
@@ -538,7 +460,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
         }
 
         return (
-            <div key={key}>
+            <div key={key} id={properties.id}>
                 <KeyBindField
                     key={key}
                     label={properties.label}

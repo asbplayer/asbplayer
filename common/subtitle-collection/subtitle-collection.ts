@@ -15,14 +15,18 @@ export interface SubtitleCollectionOptions {
     showingCheckRadiusMs?: number;
 }
 
+interface SubtitleGap<T> {
+    lastShown?: T;
+}
+
 export class SubtitleCollection<T extends SubtitleModel> {
     static emptySubtitleCollection = new SubtitleCollection({});
 
     private options: SubtitleCollectionOptions;
     // Tree for subtitles
     private tree: IntervalTree<T>;
-    // Tree for gaps between subtitles. The gaps are populated with the last subtitle before the gap.
-    private gapsTree?: IntervalTree<T>;
+    // Tree for gaps between subtitles. A gap has no last shown subtitle when it precedes the first subtitle.
+    private gapsTree?: IntervalTree<SubtitleGap<T>>;
 
     constructor(options: SubtitleCollectionOptions) {
         this.options = options;
@@ -34,10 +38,10 @@ export class SubtitleCollection<T extends SubtitleModel> {
 
         if (this.options.returnLastShown || this.options.returnNextToShow) {
             let last: T | undefined;
-            this.gapsTree = new IntervalTree<T>();
+            this.gapsTree = new IntervalTree<SubtitleGap<T>>();
 
             if (subtitles.length > 0 && subtitles[0].start > 0) {
-                this.gapsTree.insert([0, subtitles[0].start - 1], subtitles[0]);
+                this.gapsTree.insert([0, subtitles[0].start - 1], {});
             }
 
             for (const s of subtitles) {
@@ -46,7 +50,7 @@ export class SubtitleCollection<T extends SubtitleModel> {
                 }
 
                 if (last !== undefined && last.end < s.start) {
-                    this.gapsTree.insert([last.end, s.start - 1], last);
+                    this.gapsTree.insert([last.end, s.start - 1], { lastShown: last });
                 }
 
                 last = s;
@@ -74,12 +78,13 @@ export class SubtitleCollection<T extends SubtitleModel> {
             if (this.gapsTree !== undefined) {
                 // One of returnLastShown or returnNextToShow is true due to constructor
                 const gapIntervals: Interval[] = [];
-                lastShown = this.gapsTree.search(interval, (s, i) => {
+                const gaps = this.gapsTree.search(interval, (gap, i) => {
                     gapIntervals.push(i);
-                    return s;
-                }) as T[];
+                    return gap;
+                }) as SubtitleGap<T>[];
+                lastShown = gaps.flatMap((gap) => (gap.lastShown === undefined ? [] : [gap.lastShown]));
 
-                if (lastShown.length > 0 && this.options.returnNextToShow) {
+                if (gaps.length > 0 && this.options.returnNextToShow) {
                     const nextStart = gapIntervals[0].high + 1;
                     nextToShow = this.tree.search([nextStart, nextStart]) as T[];
                 }

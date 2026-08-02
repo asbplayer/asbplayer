@@ -445,6 +445,18 @@ const settingsSchema = {
         autoPausePreference: {
             type: 'number',
         },
+        subtitleTriggerStartOffset: {
+            type: 'number',
+        },
+        subtitleTriggerEndOffset: {
+            type: 'number',
+        },
+        subtitleTriggerGapEndOffset: {
+            type: 'number',
+        },
+        subtitleTriggerGapStartOffset: {
+            type: 'number',
+        },
         seekableTracks: {
             type: 'number',
         },
@@ -460,8 +472,43 @@ const settingsSchema = {
         speedChangeStep: {
             type: 'number',
         },
+        playbackRate: {
+            type: 'number',
+        },
+        playbackRateNotificationEnabled: {
+            type: 'boolean',
+        },
+        rememberPlaybackRate: {
+            type: 'boolean',
+        },
         fastForwardModePlaybackRate: {
             type: 'number',
+        },
+        fastForwardPlaybackMinimumSkipIntervalMs: {
+            type: 'number',
+        },
+        repeatCountPreference: {
+            type: 'number',
+        },
+        rememberPlaybackModes: {
+            type: 'boolean',
+        },
+        lastPlaybackModes: {
+            type: 'array',
+            items: {
+                type: 'number',
+            },
+        },
+        lastPlaybackPositions: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    fileName: { type: 'string' },
+                    position: { type: 'number' },
+                },
+                required: ['fileName', 'position'],
+            },
         },
         keyBindSet: {
             type: 'object',
@@ -497,6 +544,7 @@ const settingsSchema = {
                 exportCard: { $ref: '/KeyBind' },
                 takeScreenshot: { $ref: '/KeyBind' },
                 toggleRecording: { $ref: '/KeyBind' },
+                selectSubtitleTrack: { $ref: '/KeyBind' },
                 decreasePlaybackRate: { $ref: '/KeyBind' },
                 increasePlaybackRate: { $ref: '/KeyBind' },
                 toggleSidePanel: { $ref: '/KeyBind' },

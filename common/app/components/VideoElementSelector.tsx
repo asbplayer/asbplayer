@@ -1,57 +1,75 @@
-import { useState } from 'react';
-import MenuItem from '@mui/material/MenuItem';
-import TextField from '@mui/material/TextField';
+import { useState, FC, useCallback } from 'react';
+import VideocamIcon from '@mui/icons-material/Videocam';
 import { useTranslation } from 'react-i18next';
 import { VideoTabModel } from '../..';
-import Button from '@mui/material/Button';
+import Button, { type ButtonProps } from '@mui/material/Button';
 import VideoElementFavicon from './VideoElementFavicon';
+import Typography from '@mui/material/Typography';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import Popover from '@mui/material/Popover';
+import ListItemButton from '@mui/material/ListItemButton';
 
 interface Props {
     onVideoElementSelected: (element: VideoTabModel) => void;
     videoElements: VideoTabModel[];
 }
 
+const NoWrapButton: FC<ButtonProps & { label?: string }> = ({ children, label, ...props }) => {
+    return (
+        <Button variant="outlined" {...props}>
+            {children}
+            <Typography variant="button" sx={{ textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                {label}
+            </Typography>
+        </Button>
+    );
+};
+
 const VideoElementSelector = ({ videoElements, onVideoElementSelected }: Props) => {
     const { t } = useTranslation();
-    const [selectedVideoElement, setSelectedVideoElement] = useState<VideoTabModel>();
+    const [listOpen, setListOpen] = useState<boolean>(false);
+    const [anchorEl, setAnchorEl] = useState<HTMLElement>();
+    const handleOpenList = useCallback((e: React.UIEvent) => {
+        setAnchorEl(e.currentTarget as HTMLElement);
+        setListOpen(true);
+    }, []);
+    const handleVideoElementSelectedFromList = (element: VideoTabModel) => {
+        setListOpen(false);
+        onVideoElementSelected(element);
+    };
 
     if (videoElements.length === 1) {
         const videoElement = videoElements[0];
         return (
-            <Button variant="outlined" style={{ width: '100%' }} onClick={() => onVideoElementSelected(videoElement)}>
+            <NoWrapButton label={videoElement.title} onClick={() => onVideoElementSelected(videoElement)}>
                 <VideoElementFavicon videoElement={videoElement} />
-                {videoElement.title}
-            </Button>
+            </NoWrapButton>
         );
     }
 
     return (
-        <TextField
-            select
-            variant="outlined"
-            size="small"
-            color="primary"
-            style={{ width: '100%' }}
-            value={selectedVideoElement?.src ?? ''}
-            onChange={(e) => {
-                const element = videoElements.find((v) => v.src === e.target.value);
-                setSelectedVideoElement(element);
-
-                if (element) {
-                    onVideoElementSelected(element);
-                }
-            }}
-            disabled={videoElements.length === 0}
-            label={t('controls.selectVideoElement')}
-            helperText={videoElements.length === 0 ? t('landing.noVideoElementsDetected') : undefined}
-        >
-            {videoElements.map((v) => (
-                <MenuItem key={v.src} value={v.src}>
-                    <VideoElementFavicon videoElement={v} />
-                    {v.title}
-                </MenuItem>
-            ))}
-        </TextField>
+        <>
+            <NoWrapButton
+                onClick={handleOpenList}
+                label={t('controls.selectVideoElement')}
+                startIcon={<VideocamIcon />}
+            />
+            <Popover anchorEl={anchorEl} open={listOpen} onClose={() => setListOpen(false)}>
+                <List dense disablePadding sx={{ width: '100%' }}>
+                    {videoElements.map((v) => (
+                        <ListItem sx={{ pl: 0, pr: 0 }} key={v.src} value={v.src}>
+                            <ListItemButton onClick={() => handleVideoElementSelectedFromList(v)}>
+                                <VideoElementFavicon videoElement={v} />
+                                <Typography sx={{ textOverflow: 'elipses', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                                    {v.title}
+                                </Typography>
+                            </ListItemButton>
+                        </ListItem>
+                    ))}
+                </List>
+            </Popover>
+        </>
     );
 };
 

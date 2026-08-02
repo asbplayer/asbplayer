@@ -117,7 +117,18 @@ export default defineUnlistedScript(() => {
         }
 
         document.addEventListener('asbplayer-netflix-seek', (e) => {
-            player()?.seek((e as CustomEvent).detail);
+            const netflixPlayer = player();
+            if (!netflixPlayer) {
+                document.dispatchEvent(new CustomEvent('asbplayer-netflix-seek-cancelled'));
+                return;
+            }
+            try {
+                void Promise.resolve(netflixPlayer.seek((e as CustomEvent).detail)).catch(() =>
+                    document.dispatchEvent(new CustomEvent('asbplayer-netflix-seek-cancelled'))
+                );
+            } catch {
+                document.dispatchEvent(new CustomEvent('asbplayer-netflix-seek-cancelled'));
+            }
         });
 
         document.addEventListener('asbplayer-netflix-play', () => {

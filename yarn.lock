@@ -3578,12 +3578,13 @@ __metadata:
     "@plausible-analytics/tracker": ^0.4.5
     "@qgustavor/srt-parser": ^2.0.0
     "@types/jest": ^29.5.14
+    "@types/node": ^22.13.14
     "@types/semver": ^7.3.9
     "@types/videojs-vtt.js": ^0.15.3
     ass-compiler: 0.1.1
     core-js: ^3.44.0
     dexie: ^4.0.11
-    dompurify: ^3.3.1
+    dompurify: ^3.4.12
     fast-xml-parser: ^4.0.7
     hotkeys-js: ^3.10.0
     i18next: ^22.4.14
@@ -6775,15 +6776,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dompurify@npm:^3.3.1":
-  version: 3.3.1
-  resolution: "dompurify@npm:3.3.1"
+"dompurify@npm:^3.4.12":
+  version: 3.4.12
+  resolution: "dompurify@npm:3.4.12"
   dependencies:
     "@types/trusted-types": ^2.0.7
   dependenciesMeta:
     "@types/trusted-types":
       optional: true
-  checksum: 884fe0acc21a9a2e5aa1b8ce4cecc8f9a71217423b389f760fca7b44595d3c9376d234f1c4ba16d79824789762b3d611d10653c4a90a7e23b351b71e5ef7dd33
+  checksum: 477e944e669bac9247c9ebfa55c7ea5c73f3cc6cd6b21ee72e306000e3e53d308e7bdaac89e655a0e2661de2ffbdd877e6a92537d07ba1d70c6c441fcef8c65c
   languageName: node
   linkType: hard
 

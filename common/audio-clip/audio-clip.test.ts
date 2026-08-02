@@ -1,5 +1,6 @@
 import AudioClip from './audio-clip';
 import { AudioErrorCode } from '@project/common';
+import { expect, it, jest } from '@jest/globals';
 
 // Mock the download utility so tests don't touch the DOM
 jest.mock('@project/common/util', () => ({

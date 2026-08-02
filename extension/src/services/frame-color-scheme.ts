@@ -1,28 +1,41 @@
-export const frameColorSchemeClass = () => {
+export const frameColorScheme = () => {
     // Prevent iframe from showing up with solid background by selecting suitable color scheme according to document's color scheme
     // https://fvsch.com/transparent-iframes
 
     const documentColorSchemeMetaTag = document.querySelector('meta[name="color-scheme"]');
-
-    if (documentColorSchemeMetaTag === null) {
-        return 'asbplayer-color-scheme-normal';
-    }
-
-    const documentColorScheme = (documentColorSchemeMetaTag as HTMLMetaElement).content;
+    const documentColorScheme =
+        documentColorSchemeMetaTag === null
+            ? getComputedStyle(document.documentElement).colorScheme
+            : (documentColorSchemeMetaTag as HTMLMetaElement).content;
     const light = documentColorScheme.includes('light');
     const dark = documentColorScheme.includes('dark');
 
     if (light && dark) {
-        return 'asbplayer-color-scheme-light-dark';
+        return 'none';
     }
 
     if (light) {
-        return 'asbplayer-color-scheme-light';
+        return 'light';
     }
 
     if (dark) {
-        return 'asbplayer-color-scheme-dark';
+        return 'dark';
     }
 
-    return 'asbplayer-color-scheme-normal';
+    return 'normal';
+};
+
+export const frameColorSchemeClass = () => {
+    const colorScheme = frameColorScheme();
+
+    switch (colorScheme) {
+        case 'none':
+            return 'asbplayer-color-scheme-light-dark';
+        case 'light':
+            return 'asbplayer-color-scheme-light';
+        case 'dark':
+            return 'asbplayer-color-scheme-dark';
+        default:
+            return 'asbplayer-color-scheme-normal';
+    }
 };

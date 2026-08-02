@@ -37,6 +37,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { base64ToBlob, blobToBase64 } from '@project/common/base64';
 import { isMobile } from '@project/common/device-detection/mobile';
 import { StyledEngineProvider } from '@mui/material/styles';
+import LogoIcon from '@project/common/components/LogoIcon';
 
 interface Props {
     bridge: Bridge;
@@ -361,7 +362,11 @@ export default function AnkiUi({ bridge }: Props) {
                     autoHideDuration={5000}
                     onClose={() => setAlertOpen(false)}
                 >
-                    <Alert onClose={() => setAlertOpen(false)} severity={alertSeverity}>
+                    <Alert
+                        onClose={() => setAlertOpen(false)}
+                        severity={alertSeverity}
+                        icon={<LogoIcon fontSize="small" />}
+                    >
                         {alert}
                     </Alert>
                 </Snackbar>

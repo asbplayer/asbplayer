@@ -1,19 +1,21 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef, MutableRefObject } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle, MutableRefObject } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
+import Button from '@mui/material/Button';
+import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import {
     AudioTrackModel,
-    AutoPauseContext,
-    AutoPausePreference,
     CardModel,
     CardTextFieldValues,
+    AutoPausePreference,
     IndexedSubtitleModel,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
     RequestSubtitlesResponse,
     SubtitleModel,
+    DisplaySubtitleModel,
     TokenizedSubtitleModel,
     VideoTabModel,
 } from '@project/common';
@@ -21,7 +23,6 @@ import {
     ApplyStrategy,
     AsbplayerSettings,
     isTrackAutoCopyable,
-    isTrackSeekable,
     SettingsProvider,
     TokenState,
     VideoSubtitleSplitBehavior,
@@ -31,18 +32,17 @@ import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
-import { clampMediaTimestamp, surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
+import { clampMediaTimestamp, download, surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
 import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
-import Clock from '../services/clock';
+import Clock from '@project/common/playback/timing/clock';
 import Controls, { Point } from './Controls';
 import Grid from '@mui/material/Grid';
-import MediaAdapter, { MediaElement } from '../services/media-adapter';
-import SubtitlePlayer, { DisplaySubtitleModel, minSubtitlePlayerWidth } from './SubtitlePlayer';
+import MediaAdapter from '../services/media-adapter';
+import SubtitlePlayer, { minSubtitlePlayerWidth } from './SubtitlePlayer';
 import VideoChannel from '../services/video-channel';
 import ChromeExtension from '../services/chrome-extension';
 import PlaybackPreferences from '../services/playback-preferences';
-import PlayModeManager from '../services/play-mode-manager';
 import { useWindowSize } from '../hooks/use-window-size';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { createBlobUrl } from '../../blob-url';
@@ -50,10 +50,22 @@ import { MiningContext } from '../services/mining-context';
 import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
 import { ensureStoragePersisted } from '../../util';
 import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
+import { FileWithId } from '../../file-selector';
+import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
+import PlaybackEngine from '@project/common/playback/playback-engine';
+import {
+    buildPlaybackTimelineExportPlan,
+    type PlaybackTimelineModeLabels,
+    type PlaybackTimelineOptionLabels,
+    playbackTimelineSettingsSummary,
+    playbackTimelineToHtml,
+} from '@project/common/playback/timeline/playback-timeline-html';
+import { createTheme } from '../../theme/theme';
+import Alert from './Alert';
+import useSnackbar from '../../hooks/use-snackbar';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
-
 interface StylesProps {
     appBarHidden: boolean;
     appBarHeight: number;
@@ -77,23 +89,15 @@ const useStyles = makeStyles<Theme, StylesProps>(() => ({
     },
 }));
 
-function trackLength(
-    video: MediaElement | undefined,
-    subtitles: SubtitleModel[] | undefined,
-    useOffset?: boolean
-): number {
+function trackLengthMs(videoDuration: number | undefined, subtitles: SubtitleModel[] | undefined): number {
     let subtitlesLength;
     if (subtitles && subtitles.length > 0) {
-        if (useOffset) {
-            subtitlesLength = subtitles[subtitles.length - 1].end;
-        } else {
-            subtitlesLength = subtitles[subtitles.length - 1].originalEnd;
-        }
+        subtitlesLength = subtitles[subtitles.length - 1].originalEnd;
     } else {
         subtitlesLength = 0;
     }
 
-    const videoLength = video && video.duration ? 1000 * video.duration : 0;
+    const videoLength = videoDuration ? 1000 * videoDuration : 0;
     return Math.max(videoLength, subtitlesLength);
 }
 
@@ -110,9 +114,9 @@ function pause(clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean
 }
 
 export interface MediaSources {
-    subtitleFiles: File[];
+    subtitleFiles: FileWithId[];
     flattenSubtitleFiles?: boolean;
-    videoFile?: File;
+    videoFile?: FileWithId;
     videoFileUrl?: string;
 }
 
@@ -150,9 +154,9 @@ interface PlayerProps {
     onAppBarToggle: () => void;
     onHideSubtitlePlayer: () => void;
     onVideoPopOut: () => void;
-    onPlayModeChangedViaBind: (playModes: Set<PlayMode>, targetMode: PlayMode) => void;
     onSubtitles: React.Dispatch<React.SetStateAction<DisplaySubtitleModel[] | undefined>>;
     onLoadFiles?: () => void;
+    onLoadSubtitles?: () => void;
     disableKeyEvents: boolean;
     jumpToSubtitle?: SubtitleModel;
     onJumpToSubtitleHandled?: () => void;
@@ -160,59 +164,71 @@ interface PlayerProps {
     hideControls?: boolean;
     forceCompressedMode?: boolean;
     webSocketClient?: WebSocketClient;
+    playbackTimelineFileName?: string;
+    playbackTimelineModeLabels: PlaybackTimelineModeLabels;
+    playbackTimelineOptionLabels: PlaybackTimelineOptionLabels;
 }
 
-const Player = React.memo(function Player({
-    sources,
-    subtitles,
-    mediaId,
-    subtitleReader,
-    dictionaryProvider,
-    settingsProvider,
-    settings,
-    playbackPreferences,
-    keyBinder,
-    extension,
-    videoFrameRef,
-    videoChannelRef,
-    drawerOpen,
-    appBarHidden,
-    showCopyButton,
-    videoFullscreen,
-    hideSubtitlePlayer,
-    videoPopOut,
-    tab,
-    availableTabs,
-    miningContext,
-    origin,
-    statisticsOverlay,
-    onError,
-    onUnloadVideo,
-    onCopy,
-    onLoaded,
-    onTabSelected,
-    onAnkiDialogRequest,
-    onAppBarToggle,
-    onHideSubtitlePlayer,
-    onVideoPopOut,
-    onPlayModeChangedViaBind,
-    onSubtitles,
-    onLoadFiles,
-    disableKeyEvents,
-    jumpToSubtitle,
-    onJumpToSubtitleHandled,
-    rewindSubtitle,
-    hideControls,
-    forceCompressedMode,
-    webSocketClient,
-}: PlayerProps) {
-    const [playModes, setPlayModes] = useState<Set<PlayMode>>(new Set([PlayMode.normal]));
-    const playModesRef = useRef<Set<PlayMode>>(new Set([PlayMode.normal]));
-    const pendingAutoRepeatTargetTimestamp = useRef<number>(0);
-    const lastSeekDurationRef = useRef<number>(0);
-    const resetPendingAutoRepeatTargetTimestamp = useCallback(() => {
-        pendingAutoRepeatTargetTimestamp.current = 0;
-    }, []);
+export interface PlayerRef {
+    downloadSubtitleTimeline: () => void;
+}
+
+const Player = React.memo(React.forwardRef<PlayerRef, PlayerProps>(PlayerComponent));
+
+function PlayerComponent(
+    {
+        sources,
+        subtitles,
+        mediaId,
+        subtitleReader,
+        dictionaryProvider,
+        settingsProvider,
+        settings,
+        playbackPreferences,
+        keyBinder,
+        extension,
+        videoFrameRef,
+        videoChannelRef,
+        drawerOpen,
+        appBarHidden,
+        showCopyButton,
+        videoFullscreen,
+        hideSubtitlePlayer,
+        videoPopOut,
+        tab,
+        availableTabs,
+        miningContext,
+        origin,
+        statisticsOverlay,
+        onError,
+        onUnloadVideo,
+        onCopy,
+        onLoaded,
+        onTabSelected,
+        onAnkiDialogRequest,
+        onAppBarToggle,
+        onHideSubtitlePlayer,
+        onVideoPopOut,
+        onSubtitles,
+        onLoadFiles,
+        onLoadSubtitles,
+        disableKeyEvents,
+        jumpToSubtitle,
+        onJumpToSubtitleHandled,
+        rewindSubtitle,
+        hideControls,
+        forceCompressedMode,
+        webSocketClient,
+        playbackTimelineFileName,
+        playbackTimelineModeLabels,
+        playbackTimelineOptionLabels,
+    }: PlayerProps,
+    ref: React.ForwardedRef<PlayerRef>
+) {
+    const { t } = useTranslation();
+    const [playModes, setPlayModes] = useState<Set<PlayMode>>(() => new Set([PlayMode.normal]));
+    const playModesRef = useRef<Set<PlayMode>>(playModes);
+    playModesRef.current = playModes;
     const [subtitlesSentThroughChannel, setSubtitlesSentThroughChannel] = useState<boolean>();
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
@@ -221,11 +237,6 @@ const Player = React.memo(function Player({
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
     >(SubtitleCollection.empty<DisplaySubtitleModel>());
-    const seekableSubtitleCollection = useMemo(() => {
-        const collection = new SubtitleCollection(subtitleCollectionOptions);
-        collection.setSubtitles(subtitles.filter((s) => isTrackSeekable(settings.seekableTracks, s.track)));
-        return collection;
-    }, [subtitles, settings.seekableTracks]);
     const subtitleCollectionRef = useRef<SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>>(
         subtitleCollection
     );
@@ -235,16 +246,19 @@ const Player = React.memo(function Player({
     const flattenSubtitleFiles = sources?.flattenSubtitleFiles;
     const videoFile = sources?.videoFile;
     const videoFileUrl = sources?.videoFileUrl;
+    const playbackPositionKey = videoFile?.file.name;
+    const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
     const [loadingSubtitles, setLoadingSubtitles] = useState<boolean>(false);
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
-    const [playbackRate, setPlaybackRate] = useState<number>(1);
+    const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [channelId, setChannelId] = useState<string>();
     const [channel, setChannel] = useState<VideoChannel>();
+    const videoDurationRef = useRef<number>(0);
     const channelRef = useRef<VideoChannel>(undefined);
     channelRef.current = channel;
     const playbackPreferencesRef = useRef<PlaybackPreferences>(undefined);
@@ -261,33 +275,89 @@ const Player = React.memo(function Player({
 
         return new MediaAdapter({ current: undefined });
     }, [channel, videoFileUrl, tab]);
-    const clock = useMemo<Clock>(() => new Clock(), []);
+    const clock = useMemo<Clock>(() => new Clock(() => performance.now()), []);
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
+    const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
+    const applyOffsetRef = useRef<(offset: number, forwardToVideo: boolean) => void>(undefined);
+    const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
+    const resumePlaybackSnackbar = useSnackbar({
+        open: pendingPlaybackPosition !== undefined,
+        onClose: () => syntheticPlaybackEngineRef.current?.dismissPlaybackPosition(),
+    });
+    const [syntheticShowingSubtitles, setSyntheticShowingSubtitles] = useState<readonly DisplaySubtitleModel[]>([]);
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
-    const calculateLength = () => trackLength(channelRef.current, subtitlesRef.current);
+    const calculateLengthMs = (videoDurationRef: MutableRefObject<number>, playerSubtitles = subtitlesRef.current) =>
+        trackLengthMs(videoDurationRef.current, playerSubtitles);
 
-    useEffect(() => {
-        playModesRef.current = playModes;
-    }, [playModes]);
+    const handleDownloadSubtitleTimeline = useCallback(() => {
+        const displaySubtitles = subtitlesRef.current ?? [];
+        const timelineSettingsSummary = playbackTimelineSettingsSummary(settings, playbackTimelineOptionLabels);
+        const timelineTracks = [...new Set(displaySubtitles.map((subtitle) => subtitle.track))]
+            .sort((left, right) => left - right)
+            .map((track) => ({
+                track,
+                label: playbackTimelineOptionLabels.subtitleTrack(track + 1),
+            }));
+        const selectedTrack = timelineTracks[0]?.track;
+        const playbackSubtitles =
+            selectedTrack === undefined ? [] : displaySubtitles.filter((subtitle) => subtitle.track === selectedTrack);
+        const currentPlayModes = playModesRef.current;
+        const playbackPlan = buildPlaybackTimelineExportPlan({
+            subtitles: playbackSubtitles,
+            durationMs: calculateLengthMs(videoDurationRef, displaySubtitles),
+            settings,
+            playbackRate,
+        });
+        const title = playbackTimelineFileName ?? 'Subtitle playback timeline';
+        download(
+            new Blob(
+                [
+                    playbackTimelineToHtml({
+                        plan: playbackPlan,
+                        themeColor: createTheme(settings.themeType).palette.primary.main,
+                        title,
+                        modeLabels: playbackTimelineModeLabels,
+                        timelineOptionsTitle: timelineSettingsSummary.title,
+                        timelineOptions: timelineSettingsSummary.options,
+                        timelineSettings: timelineSettingsSummary.settings,
+                        timelineTracks,
+                        initialModeVisibility: {
+                            normal: currentPlayModes.has(PlayMode.normal),
+                            fastForward: currentPlayModes.has(PlayMode.fastForward),
+                            condensed: currentPlayModes.has(PlayMode.condensed),
+                            autoPauseAtStart:
+                                currentPlayModes.has(PlayMode.autoPause) &&
+                                settings.autoPausePreference !== AutoPausePreference.atEnd,
+                            autoPauseAtEnd:
+                                currentPlayModes.has(PlayMode.autoPause) &&
+                                settings.autoPausePreference !== AutoPausePreference.atStart,
+                            repeat: currentPlayModes.has(PlayMode.repeat),
+                        },
+                        timelineSubtitles: displaySubtitles,
+                    }),
+                ],
+                { type: 'text/html' }
+            ),
+            `${title}.html`
+        );
+    }, [playbackRate, playbackTimelineFileName, playbackTimelineModeLabels, playbackTimelineOptionLabels, settings]);
+
+    useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
+        handleDownloadSubtitleTimeline,
+    ]);
 
     const seek = useCallback(
-        async (time: number, clock: Clock, forwardToMedia: boolean, isUserInitiated: boolean = false) => {
-            if (isUserInitiated) {
-                resetPendingAutoRepeatTargetTimestamp();
-            }
-
+        async (time: number, clock: Clock, forwardToMedia: boolean) => {
             const clampedTime = clampMediaTimestamp(time, (channelRef.current?.duration ?? 0) * 1000);
             clock.setTime(clampedTime);
 
             if (forwardToMedia) {
                 await mediaAdapter.seek(clampedTime / 1000);
             }
-
-            autoPauseContextRef.current?.clear();
         },
-        [mediaAdapter, resetPendingAutoRepeatTargetTimestamp]
+        [mediaAdapter]
     );
 
     const handleSubtitlePlayerResizeStart = useCallback(() => setSubtitlePlayerResizing(true), []);
@@ -302,118 +372,112 @@ const Player = React.memo(function Player({
         [playbackPreferences, settings.videoSubtitleSplitBehavior]
     );
 
-    const handleOnStartedShowingSubtitle = useCallback(
-        (subtitle: SubtitleModel) => {
-            if (
-                !playModes.has(PlayMode.autoPause) ||
-                settings.autoPausePreference !== AutoPausePreference.atStart ||
-                !isTrackSeekable(settings.seekableTracks, subtitle.track) ||
-                videoFileUrl // Let VideoPlayer do the auto-pausing
-            ) {
-                return;
-            }
-
-            pause(clock, mediaAdapter, true);
-        },
-        [playModes, clock, mediaAdapter, videoFileUrl, settings.autoPausePreference, settings.seekableTracks]
-    );
-
-    const handleOnWillStopShowingSubtitle = useCallback(
-        async (subtitle: SubtitleModel) => {
-            if (!isTrackSeekable(settings.seekableTracks, subtitle.track)) {
-                return;
-            }
-
-            resetPendingAutoRepeatTargetTimestamp();
-
-            const isAutoPauseAtEndEnabled =
-                playModes.has(PlayMode.autoPause) && settings.autoPausePreference === AutoPausePreference.atEnd;
-            const isAutoPauseAtStartEnabled =
-                playModes.has(PlayMode.autoPause) && settings.autoPausePreference === AutoPausePreference.atStart;
-            const isRepeatEnabled = playModes.has(PlayMode.repeat);
-            const isCondensedEnabled = playModes.has(PlayMode.condensed);
-
-            if (!isAutoPauseAtEndEnabled && !isRepeatEnabled && !isAutoPauseAtStartEnabled) return;
-
-            if (isAutoPauseAtEndEnabled && !videoFileUrl) {
-                pause(clock, mediaAdapter, true);
-            }
-
-            if (isRepeatEnabled) {
-                if (isAutoPauseAtEndEnabled) {
-                    pendingAutoRepeatTargetTimestamp.current = subtitle.start;
-                } else {
-                    void seek(subtitle.start, clock, true);
-                }
-                return;
-            }
-
-            if (isCondensedEnabled) {
-                const slice = subtitleCollection.subtitlesAt(subtitle.end + 1);
-
-                if (slice.nextToShow && slice.nextToShow.length > 0) {
-                    const nextSubtitle = slice.nextToShow[0];
-                    const timeGap = nextSubtitle.start - subtitle.end;
-
-                    const baseThreshold = lastSeekDurationRef.current || 1000;
-                    const safetyBuffer = 500;
-                    const seekThreshold = baseThreshold + safetyBuffer;
-
-                    if (timeGap < seekThreshold) {
-                        return;
-                    }
-
-                    if (isAutoPauseAtEndEnabled) {
-                        pendingAutoRepeatTargetTimestamp.current = nextSubtitle.start;
-                    } else {
-                        const wasPlaying = clock.running;
-
-                        if (wasPlaying) clock.stop();
-
-                        const t0 = Date.now();
-                        await seek(nextSubtitle.start, clock, true);
-                        lastSeekDurationRef.current = Date.now() - t0;
-
-                        if (wasPlaying) clock.start();
-                    }
-                }
-            }
-        },
-        [
-            playModes,
-            clock,
-            mediaAdapter,
-            videoFileUrl,
-            settings.autoPausePreference,
-            settings.seekableTracks,
-            seek,
-            subtitleCollection,
-            resetPendingAutoRepeatTargetTimestamp,
-        ]
-    );
-
-    const autoPauseContext = useMemo(() => {
-        const context = new AutoPauseContext();
-        context.onStartedShowing = handleOnStartedShowingSubtitle;
-        context.onWillStopShowing = handleOnWillStopShowingSubtitle;
-        return context;
-    }, [handleOnStartedShowingSubtitle, handleOnWillStopShowingSubtitle]);
-    const autoPauseContextRef = useRef<AutoPauseContext>(undefined);
-    autoPauseContextRef.current = autoPauseContext;
-
     const updatePlaybackRate = useCallback(
         (playbackRate: number, forwardToMedia: boolean) => {
             if (clock.rate !== playbackRate) {
                 clock.rate = playbackRate;
                 setPlaybackRate(playbackRate);
-
-                if (forwardToMedia) {
-                    mediaAdapter.playbackRate(playbackRate);
-                }
+                if (forwardToMedia) mediaAdapter.playbackRate(playbackRate);
             }
         },
         [clock, mediaAdapter]
     );
+
+    useEffect(() => {
+        if (!syntheticPlayback) {
+            setSyntheticShowingSubtitles([]);
+            return;
+        }
+
+        const playbackEngine = new PlaybackEngine({
+            settings: settingsRef.current,
+            subtitles: subtitlesRef.current ?? [],
+            ready: { settings: true },
+            playbackModesSuppressed: true,
+            playbackPositionKeys: playbackPositionKey ? [playbackPositionKey] : [],
+            timingDriver: new AnimationFrameTimingDriver({
+                paused: () => !clock.running,
+                durationMs: () => trackLengthMs(undefined, subtitlesRef.current),
+                currentTimeMs: () => clock.time({ maxMs: Number.POSITIVE_INFINITY }),
+                playbackRate: () => clock.rate,
+                requestAnimationFrameCallback: (callback) => requestAnimationFrame(callback),
+                cancelAnimationFrameCallback: (handle) => cancelAnimationFrame(handle),
+                addEventListener: (type, listener) => {
+                    switch (type) {
+                        case 'play':
+                            clock.onEvent('start', listener);
+                            break;
+                        case 'pause':
+                            clock.onEvent('stop', listener);
+                            break;
+                        case 'seeked':
+                            clock.onEvent('settime', listener);
+                            break;
+                        case 'timeupdate':
+                            clock.onEvent('timeupdate', listener);
+                            break;
+                    }
+                },
+                removeEventListener: (type, listener) => {
+                    switch (type) {
+                        case 'play':
+                            clock.removeEvent('start', listener);
+                            break;
+                        case 'pause':
+                            clock.removeEvent('stop', listener);
+                            break;
+                        case 'seeked':
+                            clock.removeEvent('settime', listener);
+                            break;
+                        case 'timeupdate':
+                            clock.removeEvent('timeupdate', listener);
+                            break;
+                    }
+                },
+            }),
+            callbacks: {
+                pause: () => clock.stop(),
+                play: async () => {
+                    clock.start();
+                },
+                seek: async (timestampMs) => {
+                    clock.setTime(timestampMs);
+                },
+                setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
+                setSubtitleOffset: (offset) => applyOffsetRef.current?.(offset, false),
+                showingSubtitlesChanged: setSyntheticShowingSubtitles,
+                playbackPositionChanged: setPendingPlaybackPosition,
+                saveSettings: (settings) => {
+                    void settingsProvider.set(settings).catch(onError);
+                },
+                playbackModesChanged: (transition) => {
+                    const modes = new Set(transition.modes);
+                    playModesRef.current = modes;
+                    setPlayModes(modes);
+                },
+                onError,
+            },
+        });
+        syntheticPlaybackEngineRef.current = playbackEngine;
+        playbackEngine.bind();
+
+        return () => {
+            playbackEngine.unbind();
+            if (syntheticPlaybackEngineRef.current === playbackEngine) {
+                syntheticPlaybackEngineRef.current = undefined;
+            }
+        };
+    }, [clock, onError, playbackPositionKey, settingsProvider, syntheticPlayback, updatePlaybackRate]);
+
+    useEffect(() => {
+        if (!syntheticPlayback) return;
+        syntheticPlaybackEngineRef.current?.settingsChanged(settings);
+    }, [settings, syntheticPlayback]);
+
+    useEffect(() => {
+        if (!syntheticPlayback) return;
+        syntheticPlaybackEngineRef.current?.subtitlesChanged(subtitles);
+    }, [subtitles, syntheticPlayback]);
 
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
@@ -444,7 +508,7 @@ const Player = React.memo(function Player({
 
                     // Older versions of extension don't support the offset message
                     if (tab !== undefined && extension.installed && !extension.supportsOffsetMessage) {
-                        channel.subtitles(newSubtitles, subtitleFiles?.map((f) => f.name) ?? ['']);
+                        channel.subtitles(newSubtitles, subtitleFiles?.map((f) => f.file.name) ?? ['']);
                     }
                 }
             }
@@ -454,6 +518,7 @@ const Player = React.memo(function Player({
         },
         [subtitleFiles, subtitles, extension, playbackPreferences, tab, channel, onSubtitles]
     );
+    applyOffsetRef.current = applyOffset;
 
     useEffect(() => {
         if (!videoFile && !tab) {
@@ -466,7 +531,7 @@ const Player = React.memo(function Player({
             const channelId = uuidv4();
             channel = new VideoChannel(new BroadcastChannelVideoProtocol(channelId));
             setChannelId(channelId);
-            onLoaded([videoFile]);
+            onLoaded([videoFile.file]);
         } else {
             channel = new VideoChannel(new ChromeTabVideoProtocol(tab!.id, tab!.src, extension));
             channel.init();
@@ -495,7 +560,10 @@ const Player = React.memo(function Player({
                 setLoadingSubtitles(true);
 
                 try {
-                    const nodes = await subtitleReader.subtitles(subtitleFiles, flattenSubtitleFiles);
+                    const nodes = await subtitleReader.subtitles(
+                        subtitleFiles.map((f) => f.file),
+                        flattenSubtitleFiles
+                    );
                     const length = nodes.length > 0 ? nodes[nodes.length - 1].end + offset : 0;
 
                     subtitles = nodes.map((s, i) => ({
@@ -513,9 +581,6 @@ const Player = React.memo(function Player({
 
                     setSubtitlesSentThroughChannel(false);
                     onSubtitles(subtitles);
-                    setPlayModes((playModes) =>
-                        !subtitles || subtitles.length === 0 ? new Set([PlayMode.normal]) : playModes
-                    );
                 } catch (e) {
                     onError(e);
                     onSubtitles([]);
@@ -524,11 +589,10 @@ const Player = React.memo(function Player({
                 }
             } else {
                 subtitles = undefined;
-                setPlayModes(new Set([PlayMode.normal]));
             }
         }
 
-        void init().then(() => onLoaded(subtitleFiles ?? []));
+        void init().then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []));
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
@@ -562,7 +626,7 @@ const Player = React.memo(function Player({
                     return allSubtitles;
                 });
             },
-            () => clockRef.current.time(calculateLength())
+            () => clockRef.current.time({ maxMs: calculateLengthMs(videoDurationRef) })
         );
         if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current);
         subtitleAnnotations.bind();
@@ -736,7 +800,8 @@ const Player = React.memo(function Player({
     useEffect(
         () =>
             channel?.onReady(() => {
-                return channel?.ready(trackLength(channel, subtitles), videoFile?.name);
+                videoDurationRef.current = channel.duration;
+                return channel?.ready(calculateLengthMs(videoDurationRef, subtitles), videoFile?.file?.name);
             }),
         [channel, subtitles, videoFile]
     );
@@ -755,7 +820,7 @@ const Player = React.memo(function Player({
             setSubtitlesSentThroughChannel(true);
             channel.subtitles(
                 subtitles,
-                flattenSubtitleFiles ? [subtitleFiles[0].name] : subtitleFiles.map((f) => f.name)
+                flattenSubtitleFiles ? [subtitleFiles[0].file.name] : subtitleFiles.map((f) => f.file.name)
             );
         });
     }, [subtitles, channel, flattenSubtitleFiles, subtitleFiles, subtitlesSentThroughChannel]);
@@ -766,7 +831,6 @@ const Player = React.memo(function Player({
     );
     useEffect(() => channel?.ankiSettings(settings), [channel, settings]);
     useEffect(() => channel?.miscSettings(settings), [channel, settings]);
-    useEffect(() => channel?.playModes(playModes), [channel, playModes]);
     useEffect(
         () =>
             channel?.onReady(() => {
@@ -800,24 +864,20 @@ const Player = React.memo(function Player({
             }),
         [channel, clock]
     );
-    const play = useCallback(
-        (clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) => {
-            if (
-                (playModesRef.current.has(PlayMode.repeat) || playModesRef.current.has(PlayMode.autoPause)) &&
-                pendingAutoRepeatTargetTimestamp.current > 0
-            ) {
-                void seek(pendingAutoRepeatTargetTimestamp.current, clock, forwardToMedia);
-                resetPendingAutoRepeatTargetTimestamp();
-            }
-
-            clock.start();
-
-            if (forwardToMedia) {
-                mediaAdapter.play();
-            }
-        },
-        [seek, resetPendingAutoRepeatTargetTimestamp]
+    useEffect(
+        () =>
+            channel?.onDuration(() => {
+                videoDurationRef.current = channel.duration;
+            }),
+        [channel]
     );
+    const play = useCallback((clock: Clock, mediaAdapter: MediaAdapter, forwardToMedia: boolean) => {
+        clock.start();
+
+        if (forwardToMedia) {
+            mediaAdapter.play();
+        }
+    }, []);
 
     useEffect(
         () => channel?.onPlay((forwardToMedia) => play(clock, mediaAdapter, forwardToMedia)),
@@ -828,7 +888,7 @@ const Player = React.memo(function Player({
         [channel, mediaAdapter, clock]
     );
     useEffect(() => {
-        return channel?.onOffset((offset) => applyOffset(Math.max(-calculateLength() || 0, offset), false));
+        return channel?.onOffset((offset) => applyOffset(offset, false));
     }, [channel, applyOffset]);
     useEffect(() => channel?.onPlaybackRate(updatePlaybackRate), [channel, updatePlaybackRate]);
     useEffect(
@@ -849,13 +909,13 @@ const Player = React.memo(function Player({
                         {
                             subtitle,
                             surroundingSubtitles,
-                            subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.name ?? '') : '',
+                            subtitleFileName: subtitle ? (subtitleFiles?.[subtitle.track]?.file?.name ?? '') : '',
                             ...cardTextFieldValues,
                             mediaTimestamp: mediaTimestamp ?? 0,
                             file: videoFile
                                 ? {
-                                      name: videoFile.name,
-                                      blobUrl: createBlobUrl(videoFile),
+                                      name: videoFile.file.name,
+                                      blobUrl: createBlobUrl(videoFile.file),
                                       audioTrack: channel?.selectedAudioTrack,
                                       playbackRate: channel?.playbackRate,
                                   }
@@ -870,15 +930,18 @@ const Player = React.memo(function Player({
             ),
         [channel, onCopy, videoFile, subtitleFiles]
     );
-    useEffect(
-        () =>
-            channel?.onPlayModes((playModes) => {
-                playModesRef.current = playModes;
-                setPlayModes(playModes);
-                channel?.playModes(playModes);
-            }),
-        [channel, playModes]
-    );
+    useEffect(() => {
+        if (channel === undefined) return;
+
+        const unsubscribe = channel.onPlayModes((playModes) => {
+            playModesRef.current = playModes;
+            setPlayModes(playModes);
+        });
+        const playModes = channel.playModes;
+        playModesRef.current = playModes;
+        setPlayModes(playModes);
+        return unsubscribe;
+    }, [channel]);
     useEffect(
         () =>
             channel?.onCurrentTime((currentTime, forwardToMedia) => {
@@ -889,11 +952,7 @@ const Player = React.memo(function Player({
                         clock.stop();
                     }
 
-                    // When forwardToMedia is false, the message came from the video element's seeked event,
-                    // which is typically triggered by user actions (progress bar, keyboard shortcuts)
-                    const isUserInitiated = !forwardToMedia;
-
-                    await seek(currentTime * 1000, clock, forwardToMedia, isUserInitiated);
+                    await seek(currentTime * 1000, clock, forwardToMedia);
 
                     if (playing) {
                         clock.start();
@@ -935,7 +994,7 @@ const Player = React.memo(function Player({
         [channel]
     );
     useEffect(() => channel?.onLoadFiles(() => onLoadFiles?.()), [channel, onLoadFiles]);
-
+    useEffect(() => channel?.onLoadSubtitles(() => onLoadSubtitles?.()), [channel, onLoadSubtitles]);
     useEffect(() => {
         return miningContext.onEvent('stopped-mining', () => {
             switch (settings.postMiningPlaybackState) {
@@ -966,93 +1025,6 @@ const Player = React.memo(function Player({
     }, [miningContext, clock, mediaAdapter]);
 
     useEffect(() => {
-        if (!playModes.has(PlayMode.condensed)) {
-            return;
-        }
-
-        if (!subtitles || subtitles.length === 0) {
-            return;
-        }
-
-        let seeking = false;
-        let expectedSeekTime = 1000;
-
-        const interval = setInterval(() => {
-            void (async () => {
-                const timestamp = clock.time(calculateLength());
-                const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
-
-                if (slice.nextToShow && slice.nextToShow.length > 0) {
-                    const nextSubtitle = slice.nextToShow[0];
-
-                    if (nextSubtitle.start - timestamp < expectedSeekTime + 500) {
-                        return;
-                    }
-
-                    const playing = clock.running;
-
-                    if (pendingAutoRepeatTargetTimestamp.current > 0) {
-                        return;
-                    }
-
-                    if (playing) {
-                        clock.stop();
-                    }
-                    if (!seeking) {
-                        seeking = true;
-                        const t0 = Date.now();
-                        await seek(nextSubtitle.start, clock, true);
-                        expectedSeekTime = Date.now() - t0;
-                        seeking = false;
-                    }
-                    if (playing) {
-                        clock.start();
-                    }
-                }
-            })();
-        }, 100);
-
-        return () => clearInterval(interval);
-    }, [subtitles, seekableSubtitleCollection, playModes, clock, settings.seekableTracks, seek]);
-
-    useEffect(() => {
-        if (!playModes.has(PlayMode.fastForward)) {
-            return;
-        }
-
-        if (!subtitles || subtitles.length === 0) {
-            return;
-        }
-
-        const interval = setInterval(() => {
-            if (!playModesRef.current.has(PlayMode.fastForward)) return;
-
-            const timestamp = clock.time(calculateLength());
-            const slice = seekableSubtitleCollection.subtitlesAt(timestamp);
-
-            if (
-                slice.showing.length === 0 &&
-                (slice.nextToShow === undefined ||
-                    (slice.nextToShow.length > 0 && slice.nextToShow[0].start - timestamp > 1000))
-            ) {
-                updatePlaybackRate(settings.fastForwardModePlaybackRate, true);
-            } else {
-                updatePlaybackRate(1, true);
-            }
-        }, 100);
-
-        return () => clearInterval(interval);
-    }, [
-        updatePlaybackRate,
-        seekableSubtitleCollection,
-        clock,
-        subtitles,
-        playModes,
-        settings.fastForwardModePlaybackRate,
-        settings.seekableTracks,
-    ]);
-
-    useEffect(() => {
         if (videoPopOut && videoFileUrl && channelId) {
             window.open(
                 origin + '?video=' + encodeURIComponent(videoFileUrl) + '&channel=' + channelId + '&popout=true',
@@ -1074,7 +1046,7 @@ const Player = React.memo(function Player({
                 clock.stop();
             }
 
-            await seek(progress * calculateLength(), clock, true, true);
+            await seek(progress * calculateLengthMs(videoDurationRef), clock, true);
 
             if (playing) {
                 clock.start();
@@ -1089,7 +1061,7 @@ const Player = React.memo(function Player({
                 pause(clock, mediaAdapter, true);
             }
 
-            await seek(time, clock, true, true);
+            await seek(time, clock, true);
 
             if (shouldPlay && !clock.running) {
                 // play method will start the clock again
@@ -1119,16 +1091,16 @@ const Player = React.memo(function Player({
                     {
                         subtitle,
                         surroundingSubtitles,
-                        subtitleFileName: subtitleFiles?.[subtitle.track]?.name ?? '',
-                        mediaTimestamp: clock.time(calculateLength()),
+                        subtitleFileName: subtitleFiles?.[subtitle.track]?.file?.name ?? '',
+                        mediaTimestamp: clock.time({ maxMs: calculateLengthMs(videoDurationRef) }),
                         file:
                             videoFile === undefined
                                 ? undefined
                                 : {
-                                      name: videoFile.name,
+                                      name: videoFile.file.name,
                                       audioTrack: selectedAudioTrack,
                                       playbackRate,
-                                      blobUrl: createBlobUrl(videoFile),
+                                      blobUrl: createBlobUrl(videoFile.file),
                                   },
                         ...cardTextFieldValues,
                     },
@@ -1150,7 +1122,7 @@ const Player = React.memo(function Player({
             channel?.audioTrackSelected(id);
             pause(clock, mediaAdapter, true);
 
-            await seek(0, clock, true, true);
+            await seek(0, clock, true);
 
             if (clock.running) {
                 play(clock, mediaAdapter, true);
@@ -1161,25 +1133,33 @@ const Player = React.memo(function Player({
 
     const handleOffsetChange = useCallback(
         (offset: number) => {
-            const length = calculateLength();
-            applyOffset(Math.max(-length || 0, offset), true);
+            if (syntheticPlaybackEngineRef.current) {
+                syntheticPlaybackEngineRef.current.subtitleOffsetChanged(offset, { notifyPlayer: false });
+                return;
+            }
+
+            applyOffset(offset, true);
         },
         [applyOffset]
     );
 
     const handlePlaybackRateChange = useCallback(
         (playbackRate: number) => {
+            if (syntheticPlaybackEngineRef.current) {
+                syntheticPlaybackEngineRef.current.playbackRateChanged(playbackRate);
+                return;
+            }
             updatePlaybackRate(playbackRate, true);
         },
         [updatePlaybackRate]
     );
 
-    const handlePlayMode = useCallback((targetMode: PlayMode) => {
-        setPlayModes((prevModes) => {
-            const manager = new PlayModeManager(prevModes);
-            return manager.toggle(targetMode);
-        });
-    }, []);
+    const handlePlayMode = useCallback(
+        (targetMode: PlayMode) => {
+            channel?.playMode(targetMode);
+        },
+        [channel]
+    );
 
     const handleToggleSubtitleTrack = useCallback(
         (track: number) =>
@@ -1218,7 +1198,7 @@ const Player = React.memo(function Player({
 
         const interval = setInterval(() => {
             void (async () => {
-                const progress = clock.progress(calculateLength());
+                const progress = clock.progress({ durationMs: calculateLengthMs(videoDurationRef) });
 
                 if (progress >= 1) {
                     pause(clock, mediaAdapter, true);
@@ -1251,41 +1231,22 @@ const Player = React.memo(function Player({
             (event, increase) => {
                 event.preventDefault();
                 if (increase) {
-                    updatePlaybackRate(Math.min(5, playbackRate + settings.speedChangeStep), true);
+                    handlePlaybackRateChange(playbackRate + settings.speedChangeStep);
                 } else {
-                    updatePlaybackRate(Math.max(0.1, playbackRate - settings.speedChangeStep), true);
+                    handlePlaybackRateChange(playbackRate - settings.speedChangeStep);
                 }
             },
             () => disableKeyEvents
         );
-    }, [updatePlaybackRate, playbackRate, settings.speedChangeStep, disableKeyEvents, keyBinder]);
+    }, [handlePlaybackRateChange, playbackRate, settings.speedChangeStep, disableKeyEvents, keyBinder]);
 
     const togglePlayMode = useCallback(
         (event: KeyboardEvent, targetMode: PlayMode) => {
-            if (!playModeEnabled) {
-                return;
-            }
-
+            if (!playModeEnabled) return;
             event.preventDefault();
-
-            setPlayModes((prevModes) => {
-                const manager = new PlayModeManager(prevModes);
-                const newModes = manager.toggle(targetMode, ({ shouldResetPlaybackRate }) => {
-                    if (shouldResetPlaybackRate) {
-                        updatePlaybackRate(1, true);
-                    }
-                });
-
-                // Update ref immediately to prevent race conditions with interval callbacks
-                playModesRef.current = newModes;
-
-                channel?.playModes(newModes);
-                onPlayModeChangedViaBind(prevModes, targetMode);
-
-                return newModes;
-            });
+            channel?.playMode(targetMode);
         },
-        [playModeEnabled, updatePlaybackRate, channel, onPlayModeChangedViaBind]
+        [playModeEnabled, channel]
     );
 
     useEffect(() => {
@@ -1311,18 +1272,10 @@ const Player = React.memo(function Player({
 
     useEffect(() => {
         return keyBinder.bindToggleRepeat(
-            (event) => {
-                const length = calculateLength();
-                const timestamp = clock.time(length);
-                const slice = subtitleCollection.subtitlesAt(timestamp);
-
-                if (slice.showing.length > 0) {
-                    togglePlayMode(event, PlayMode.repeat);
-                }
-            },
+            (event) => togglePlayMode(event, PlayMode.repeat),
             () => disableKeyEvents
         );
-    }, [keyBinder, disableKeyEvents, togglePlayMode, subtitleCollection, clock]);
+    }, [keyBinder, disableKeyEvents, togglePlayMode]);
 
     useEffect(() => channel?.appBarToggle(appBarHidden), [channel, appBarHidden]);
     useEffect(() => channel?.fullscreenToggle(videoFullscreen), [channel, videoFullscreen]);
@@ -1334,7 +1287,7 @@ const Player = React.memo(function Player({
 
         pause(clock, mediaAdapter, true);
 
-        void seek(rewindSubtitle.start, clock, true, true);
+        void seek(rewindSubtitle.start, clock, true);
     }, [clock, rewindSubtitle?.start, mediaAdapter, seek]);
 
     useEffect(() => {
@@ -1372,7 +1325,7 @@ const Player = React.memo(function Player({
         }
 
         webSocketClient.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
-            void seek(timestamp * 1000, clock, true, true);
+            void seek(timestamp * 1000, clock, true);
         };
     }, [webSocketClient, extension, seek, clock]);
 
@@ -1402,6 +1355,29 @@ const Player = React.memo(function Player({
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
+            <Alert
+                open={resumePlaybackSnackbar.open}
+                useAppLogo={false}
+                onClose={resumePlaybackSnackbar.close}
+                onMouseEnter={resumePlaybackSnackbar.onMouseEnter}
+                onMouseLeave={resumePlaybackSnackbar.onMouseLeave}
+                autoHideDuration={0}
+                disableAutoHide={true}
+                severity="info"
+                anchor="top"
+            >
+                {t('info.resumePlaybackPrompt', {
+                    time: timeDurationDisplay(pendingPlaybackPosition ?? 0, pendingPlaybackPosition ?? 0, false),
+                })}
+                <Button
+                    size="small"
+                    color="inherit"
+                    style={{ pointerEvents: 'auto', marginLeft: 12 }}
+                    onClick={() => void syntheticPlaybackEngineRef.current?.resumePlaybackPosition()}
+                >
+                    {t('info.resumePlaybackButton')}
+                </Button>
+            </Alert>
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>
                 {videoInWindow && (
@@ -1438,8 +1414,8 @@ const Player = React.memo(function Player({
                         <Controls
                             mousePositionRef={mousePositionRef}
                             clock={clock}
-                            length={calculateLength()}
-                            displayLength={trackLength(channel, subtitles, false)}
+                            length={calculateLengthMs(videoDurationRef)}
+                            displayLength={calculateLengthMs(videoDurationRef, subtitles)}
                             audioTracks={audioTracks}
                             selectedAudioTrack={selectedAudioTrack}
                             tabs={(!videoFileUrl && availableTabs) || undefined}
@@ -1458,6 +1434,7 @@ const Player = React.memo(function Player({
                             onTabSelected={onTabSelected}
                             onOffsetChange={handleOffsetChange}
                             onPlayMode={handlePlayMode}
+                            onLoadSubtitles={onLoadSubtitles}
                             disableKeyEvents={disableKeyEvents}
                             playbackPreferences={playbackPreferences}
                             showOnMouseMovement={true}
@@ -1467,9 +1444,10 @@ const Player = React.memo(function Player({
                     <SubtitlePlayer
                         subtitles={subtitles}
                         subtitleCollection={subtitleCollection}
+                        timelineShowingSubtitles={syntheticPlayback ? syntheticShowingSubtitles : undefined}
                         clock={clock}
                         extension={extension}
-                        length={calculateLength()}
+                        length={calculateLengthMs(videoDurationRef)}
                         jumpToSubtitle={jumpToSubtitle}
                         onJumpToSubtitleHandled={onJumpToSubtitleHandled}
                         drawerOpen={drawerOpen}
@@ -1478,7 +1456,7 @@ const Player = React.memo(function Player({
                         resizable={videoInWindow}
                         showCopyButton={showCopyButton}
                         loading={loadingSubtitles}
-                        displayHelp={(videoPopOut && videoFile?.name) || undefined}
+                        displayHelp={(videoPopOut && videoFile?.file?.name) || undefined}
                         disableKeyEvents={disableKeyEvents}
                         // On later versions of the extension, VideoPlayer will receive the mining commands instead
                         disableMiningBinds={extension.supportsVideoPlayerMiningCommands && videoFile !== undefined}
@@ -1495,7 +1473,6 @@ const Player = React.memo(function Player({
                         onResizeStart={handleSubtitlePlayerResizeStart}
                         onResizeEnd={handleSubtitlePlayerResizeEnd}
                         maxResizeWidth={subtitlePlayerMaxResizeWidth}
-                        autoPauseContext={autoPauseContext}
                         settings={settings}
                         keyBinder={keyBinder}
                         webSocketClient={webSocketClient}
@@ -1505,6 +1482,6 @@ const Player = React.memo(function Player({
             </Grid>
         </div>
     );
-});
+}
 
 export default Player;

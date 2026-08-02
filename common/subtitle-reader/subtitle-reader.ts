@@ -6,6 +6,19 @@ import { XMLParser } from 'fast-xml-parser';
 import { SubtitleHtml, SubtitleTextImage, Token, Tokenization } from '@project/common';
 import DOMPurify from 'dompurify';
 
+/**
+ * Subtitle files are untrusted input.  Keep this list deliberately small: subtitle
+ * markup is for presentation only and must not be able to navigate, fetch, or run
+ * code.  In particular, do not add `style` or URL-bearing attributes here.
+ */
+export const sanitizeSubtitleHtml = (html: string) =>
+    DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'br', 'ruby', 'rt', 'rp', 'span'],
+        ALLOWED_ATTR: [],
+        ALLOW_DATA_ATTR: false,
+        ALLOW_ARIA_ATTR: false,
+    });
+
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
@@ -121,25 +134,16 @@ export default class SubtitleReader {
             .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
+        // Sanitize after all parser, filter, decoding, and flattening transformations.
+        // Ruby tokenization runs afterwards because it relies on positions in this
+        // sanitized text and does not introduce any new markup.
+        for (const node of allNodes) node.text = sanitizeSubtitleHtml(node.text);
+
         if (this._convertNetflixRuby) {
-            if (flatten) {
-                // Flattened output keeps inline base(reading) without tokenizing, so
-                // the ruby base markers are simply dropped here.
-                for (const node of allNodes) {
-                    node.text = node.text.replaceAll(netflixRubyBaseMarker, '');
-                }
-            } else {
-                for (const node of allNodes) {
-                    this._convertNetflixRubyToHtml(node);
-                }
-            }
+            for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        if (flatten) {
-            return this._deduplicate(allNodes);
-        }
-
-        return allNodes;
+        return flatten ? this._deduplicate(allNodes) : allNodes;
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
@@ -766,7 +770,6 @@ export default class SubtitleReader {
     }
 
     private _filterText(text: string): string {
-        text = DOMPurify.sanitize(text);
         text =
             this._textFilter === undefined
                 ? text
