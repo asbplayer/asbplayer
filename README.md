@@ -142,6 +142,7 @@ Thank you to all those who have translated asbplayer:
 **Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
 **NeverWinterSwor** (Simplified Chinese),
 **[@AkihaZhang](https://github.com/AkihaZhang)** (Simlified Chinese),
+**senorli** (Simlified Chinese),
 **Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
 **Leo Gonzalez** (Spanish),
 **[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
