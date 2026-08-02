@@ -381,7 +381,7 @@
         "subtitleTriggerGapOffsetHelperText": "Use a non-negative start offset from the subtitle end and a non-positive end offset before the next subtitle to control gap playback.",
         "autoPausePreference": "自動一時停止の設定",
         "autoPausePreferenceHelperText": "自動一時停止を有効化する項目ではなく、自動一時停止がオンになっている時に一時停止するタイミングを設定する。",
-        "condensedPlaybackMinimumSkipInterval": "Condensed playback minimum skip interval",
+        "condensedPlaybackMinimumSkipInterval": "短縮プレイバックでスキップする時間の最小値",
         "seekDuration": "巻き戻し/早送り間隔（秒）",
         "speedChangeStep": "キーボードショートカット使用時の再生速度調整刻み値",
         "fastForwardModePlaybackRate": "早送りモードの再生速度",

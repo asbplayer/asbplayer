@@ -381,7 +381,7 @@
         "subtitleTriggerGapOffsetHelperText": "Use a non-negative start offset from the subtitle end and a non-positive end offset before the next subtitle to control gap playback.",
         "autoPausePreference": "Pysäytä asetus",
         "autoPausePreferenceHelperText": "Ei ota käyttöön automaattista taukoa. Asettaa asetuksen, kun tauko on otettu käyttöön.",
-        "condensedPlaybackMinimumSkipInterval": "Condensed playback minimum skip interval",
+        "condensedPlaybackMinimumSkipInterval": "Tiivistetty toiston minimiaika väliin",
         "seekDuration": "Seek interval (seconds)",
         "speedChangeStep": "Toiston nopeussäädön vaihe",
         "fastForwardModePlaybackRate": "Nopea tilan toistotaajuus",

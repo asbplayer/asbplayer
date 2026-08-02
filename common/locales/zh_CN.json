@@ -381,7 +381,7 @@
         "subtitleTriggerGapOffsetHelperText": "Use a non-negative start offset from the subtitle end and a non-positive end offset before the next subtitle to control gap playback.",
         "autoPausePreference": "自动暂停偏好",
         "autoPausePreferenceHelperText": "设置启用自动暂停功能时的默认暂停位置（开头或结尾）。",
-        "condensedPlaybackMinimumSkipInterval": "Condensed playback minimum skip interval",
+        "condensedPlaybackMinimumSkipInterval": "紧凑播放的最小跳过间隔",
         "seekDuration": "快进/快退跨度（秒）",
         "speedChangeStep": "播放速度调整步长",
         "fastForwardModePlaybackRate": "快进模式播放速度",

@@ -381,7 +381,7 @@
         "subtitleTriggerGapOffsetHelperText": "Use a non-negative start offset from the subtitle end and a non-positive end offset before the next subtitle to control gap playback.",
         "autoPausePreference": "Preferenza pausa automatica",
         "autoPausePreferenceHelperText": "Non abilita la pausa automatica. Imposta la preferenza su quando mettere in pausa quando la pausa automatica è attiva.",
-        "condensedPlaybackMinimumSkipInterval": "Condensed playback minimum skip interval",
+        "condensedPlaybackMinimumSkipInterval": "Intervallo minimo di salto per la riproduzione condensata",
         "seekDuration": "Intervallo di ricerca (secondi)",
         "speedChangeStep": "Passo di regolazione velocità",
         "fastForwardModePlaybackRate": "Velocità di riproduzione in modalità avanzamento rapido",

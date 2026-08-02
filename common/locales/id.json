@@ -381,7 +381,7 @@
         "subtitleTriggerGapOffsetHelperText": "Use a non-negative start offset from the subtitle end and a non-positive end offset before the next subtitle to control gap playback.",
         "autoPausePreference": "Preferensi jeda otomatis",
         "autoPausePreferenceHelperText": "Tidak langsung mengaktifkan jeda otomatis. Hanya mengatur kapan harus jeda jika jeda otomatis diaktifkan.",
-        "condensedPlaybackMinimumSkipInterval": "Condensed playback minimum skip interval",
+        "condensedPlaybackMinimumSkipInterval": "Interval lompatan minimum untuk pemutaran ringkas",
         "seekDuration": "Interval lompat (detik)",
         "speedChangeStep": "Langkah penyesuaian kecepatan pemutaran",
         "fastForwardModePlaybackRate": "Kecepatan pemutaran mode maju cepat",
