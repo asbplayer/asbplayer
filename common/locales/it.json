@@ -631,10 +631,10 @@
             "applyToSelected": "Applica alla selezione",
             "deleteSelected": "Elimina selezionato",
             "updateSelected": "Aggiorna {{selectedCount}} parole selezionate",
-            "confirmApplyToSelected": "Are you sure you want to apply the selected changes to {{count}} entries?",
-            "confirmApplyToSelectedDeleteWarning": "Entries that are uncollected with no states will be deleted.",
-            "confirmDeleteSelected": "Are you sure you want to delete {{count}} selected entries?",
-            "results": "Showing {{shown}} of {{total}} entries",
+            "confirmApplyToSelected": "Sei sicuro di voler applicare le modifiche selezionate alle {{count}} voci?",
+            "confirmApplyToSelectedDeleteWarning": "Le voci non raccolte senza stati saranno cancellate.",
+            "confirmDeleteSelected": "Sei sicuro di voler eliminare {{count}} voci selezionate?",
+            "results": "{{shown}} di {{total}} voci mostrate",
             "noResults": "Nessuna parola corrispondente trovata.",
             "columns": {
                 "word": "Parola",
@@ -666,7 +666,7 @@
         "webSocketInterface": "Interfaccia WebSocket",
         "yomitanHelperText": "Le istruzioni per configurare l'API Yomitan sono <0>qui</0>.",
         "seekableTracks": "Tracce dei sottotitoli influenzate dalle modalità di riproduzione e dalle scorciatoie da tastiera",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
+        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica"
     },
     "statistics": {
         "title": "Statistiche",

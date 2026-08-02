@@ -28,5 +28,8 @@
     },
     "shortcutOpenSidePanel": {
         "message": "隐藏侧边栏"
+    },
+    "shortcutExportCardDescription": {
+        "message": "绕过Anki的对话框，直接导出卡片至 Anki。"
     }
 }
