@@ -206,6 +206,7 @@ function extractSources(files: FileWithId[]): MediaSources {
 
 interface RenderVideoProps {
     searchParams: URLSearchParams;
+    settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
     extension: ChromeExtension;
     miningContext: MiningContext;
@@ -1824,6 +1825,7 @@ function App({
                         <>
                             <RenderVideo
                                 searchParams={searchParams}
+                                settingsProvider={settingsProvider}
                                 settings={settings}
                                 extension={extension}
                                 miningContext={miningContext}

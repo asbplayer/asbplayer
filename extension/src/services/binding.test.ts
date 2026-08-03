@@ -705,6 +705,9 @@ describe('Binding playback mode integration', () => {
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
 
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
         binding.togglePlayMode(PlayMode.fastForward);
@@ -730,6 +733,8 @@ describe('Binding playback mode integration', () => {
         const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
 
         expect(mockPlaybackModeOverlayShows).toBe(1);
 

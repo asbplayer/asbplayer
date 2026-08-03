@@ -390,10 +390,9 @@ function PlayerComponent(
         }
 
         const playbackEngine = new PlaybackEngine({
-            settings: settingsRef.current,
+            settingsProvider,
             appIntegration: extension.supportsAppIntegration,
             subtitles: subtitlesRef.current ?? [],
-            ready: { settings: true },
             playbackModesSuppressed: true,
             playbackPositionKeys: playbackPositionKey ? [playbackPositionKey] : [],
             timingDriver: new AnimationFrameTimingDriver({

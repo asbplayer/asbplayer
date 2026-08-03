@@ -26,6 +26,7 @@ import {
     TokenState,
     ApplyStrategy,
     DictionaryTrack,
+    SettingsProvider,
 } from '@project/common/settings';
 import {
     arrayEquals,
@@ -262,6 +263,7 @@ export interface SeekRequest {
 
 interface Props {
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     extension: ChromeExtension;
     videoFile: string;
     channel: string;
@@ -317,6 +319,7 @@ const saveLastControlType = async (controlType: ControlType): Promise<void> => {
 
 export default function VideoPlayer({
     settings,
+    settingsProvider,
     extension,
     videoFile,
     channel,
@@ -332,8 +335,6 @@ export default function VideoPlayer({
     const classes = useStyles();
     const { t } = useTranslation();
     const poppingInRef = useRef<boolean>(undefined);
-    const settingsRef = useRef(settings);
-    settingsRef.current = settings;
     const onSettingsChangedRef = useRef(onSettingsChanged);
     onSettingsChangedRef.current = onSettingsChanged;
     const videoRef = useRef<ExperimentalHTMLVideoElement>(undefined);
@@ -484,7 +485,7 @@ export default function VideoPlayer({
 
     const notifyPlaybackRate = useCallback(
         (options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) => {
-            if (!options.notify) return;
+            if (!options?.notify) return;
             setAlertSeverity('info');
             const text = i18n.t(options.locKey, { rate: options.playbackRate.toFixed(1) });
             setAlertMessage(text);
@@ -500,6 +501,7 @@ export default function VideoPlayer({
             if (!playbackEngine) return;
 
             const result = playbackEngine.playbackRateChanged(playbackRate);
+            if (result === undefined) return;
             clock.rate = result.playbackRate;
             notifyPlaybackRate(result);
         },
@@ -597,10 +599,9 @@ export default function VideoPlayer({
         if (!video) return;
 
         const playbackEngine = new PlaybackEngine({
-            settings: { ...settingsRef.current, ...miscSettingsRef.current },
+            settingsProvider,
             appIntegration: extension.supportsAppIntegration,
             subtitles: subtitlesRef.current,
-            ready: { settings: true },
             playbackModesSuppressed: false,
             playbackPositionKeys: videoFileNameRef.current ? [videoFileNameRef.current] : [],
             timingDriver: new VideoFrameTimingDriver(
@@ -690,6 +691,7 @@ export default function VideoPlayer({
         handleDurationChanged,
         handlePlaybackRateChanged,
         playerChannel,
+        settingsProvider,
         t,
         updatePlayerState,
         updateSubtitlesWithOffset,
@@ -840,7 +842,7 @@ export default function VideoPlayer({
         playerChannel.onOffset((offset) => {
             const playbackEngine = playbackEngineRef.current;
             if (!playbackEngine) return;
-            playbackEngine.subtitleOffsetChanged(offset, { notifyPlayer: false });
+            playbackEngine.subtitleOffsetChanged(offset, { notifyPlayer: true });
         });
         playerChannel.onPlaybackRate((playbackRate) => updatePlaybackRate(playbackRate, false));
         playerChannel.onAlert((message, severity) => {

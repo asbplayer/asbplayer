@@ -38,7 +38,6 @@ const makeController = ({
     const playCalls: number[] = [];
     const state = { currentTimeMs, durationMs };
     const controller = new PlaybackPositionController<IndexedSubtitleModel>({
-        settings: { ...defaultSettings, ...settings },
         playbackPositionKeys,
         currentTimeMs: () => state.currentTimeMs,
         durationMs: () => state.durationMs,
@@ -54,6 +53,7 @@ const makeController = ({
             showingSubtitlesAt,
         },
     });
+    controller.setSettings({ ...defaultSettings, ...settings });
 
     return {
         controller,

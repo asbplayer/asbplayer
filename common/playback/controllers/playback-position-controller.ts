@@ -47,7 +47,6 @@ export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleMo
 }
 
 export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleModel> {
-    readonly settings: AsbplayerSettings;
     readonly playbackPositionKeys: readonly string[];
     readonly currentTimeMs: () => number;
     readonly durationMs: () => number;
@@ -56,7 +55,7 @@ export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleMode
 
 /** Controller for managing playback positions for resume on next session. */
 export default class PlaybackPositionController<T extends IndexedSubtitleModel> {
-    private settings: AsbplayerSettings;
+    private settings?: AsbplayerSettings;
     private readonly currentTimeMs: () => number;
     private readonly durationMs: () => number;
     private readonly callbacks: PlaybackPositionControllerCallbacks<T>;
@@ -68,14 +67,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     private playbackPositionSaveTimer?: ReturnType<typeof setInterval>;
     private readonly locallyChangedPositionKeys = new Set<string>();
 
-    constructor({
-        settings,
-        playbackPositionKeys,
-        currentTimeMs,
-        durationMs,
-        callbacks,
-    }: PlaybackPositionControllerOptions<T>) {
-        this.settings = settings;
+    constructor({ playbackPositionKeys, currentTimeMs, durationMs, callbacks }: PlaybackPositionControllerOptions<T>) {
         this.restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
         this.currentTimeMs = currentTimeMs;
         this.durationMs = durationMs;
@@ -98,7 +90,12 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         this.skipInitialDiscontinuity = true;
     }
 
-    settingsChanged(settings: AsbplayerSettings): AsbplayerSettings {
+    setSettings(settings: AsbplayerSettings): void {
+        this.settings = settings;
+    }
+
+    settingsChanged(settings: AsbplayerSettings): AsbplayerSettings | undefined {
+        if (!this.settings) return;
         const locallyChangedPositions = this.settings.lastPlaybackPositions.filter(({ fileName }) =>
             this.locallyChangedPositionKeys.has(fileName)
         );
@@ -140,6 +137,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     }
 
     savePlaybackPosition(timestampMs: number): void {
+        if (!this.settings) return;
         if (!this.restoreKeys.length || !Number.isFinite(timestampMs) || this.lastSavedTimestampMs === timestampMs) {
             return;
         }
@@ -186,6 +184,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     }
 
     private removeRememberedPlaybackPositions(): void {
+        if (!this.settings) return;
         const lastPlaybackPositions = this.settings.lastPlaybackPositions.filter(
             ({ fileName }) => !this.restoreKeys.includes(fileName)
         );
@@ -197,6 +196,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     }
 
     private restorePlaybackPosition(): void {
+        if (!this.settings) return;
         if (
             !this.restoreKeys.length ||
             this.playbackPositionSaveTimer === undefined ||
