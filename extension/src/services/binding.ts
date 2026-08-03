@@ -521,6 +521,7 @@ export default class Binding {
                     if (notification) this.subtitleController.notification({ text: notification });
                 },
                 initialPlaybackSettingsChanged: ({
+                    autoHideDuration,
                     playbackRate,
                     playbackRateNotificationEnabled,
                     fastForwarding,
@@ -543,7 +544,12 @@ export default class Binding {
                     }
                     const modeNotification = this._handlePlaybackModesChanged(playbackModeTransition);
                     if (modeNotification) notifications.push(modeNotification);
-                    if (notifications.length) this.subtitleController.notification({ text: notifications.join(join) });
+                    if (notifications.length) {
+                        this.subtitleController.notification({
+                            text: notifications.join(join),
+                            autoHideDuration,
+                        });
+                    }
                 },
                 onError: (error) => console.error('Playback plan update failed', error),
             },

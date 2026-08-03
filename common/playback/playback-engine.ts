@@ -24,12 +24,14 @@ import { CachedLocalStorage } from '@project/common/app/services/cached-local-st
 
 const internalSeekWatchdogMs = 10_000;
 const subtitleOffsetStorageKey = 'offset';
+const initialPlaybackSettingsAutoHideDuration = 6000;
 
 export interface SubtitleOffsetOptions {
     readonly notifyPlayer: boolean;
 }
 
 export interface InitialPlaybackSettings {
+    readonly autoHideDuration: number;
     readonly playbackRate: number;
     readonly playbackRateNotificationEnabled: boolean;
     readonly fastForwarding: boolean;
@@ -215,6 +217,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
         const { join } = playbackModeNotifications(playbackModeTransition);
         this.callbacks.initialPlaybackSettingsChanged({
+            autoHideDuration: initialPlaybackSettingsAutoHideDuration,
             playbackRate: this.executor.isFastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate,
             playbackRateNotificationEnabled: this.settings.playbackRateNotificationEnabled,
             fastForwarding: this.executor.isFastForwarding,

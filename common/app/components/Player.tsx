@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle, MutableRefObject } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
-import { type AlertColor } from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
@@ -62,7 +61,7 @@ import {
     playbackTimelineToHtml,
 } from '@project/common/playback/timeline/playback-timeline-html';
 import { createTheme } from '../../theme/theme';
-import Alert from './Alert';
+import Alert, { type AlertNotification } from './Alert';
 import useSnackbar from '../../hooks/use-snackbar';
 
 const minVideoPlayerWidth = 300;
@@ -256,8 +255,7 @@ function PlayerComponent(
     const [offset, setOffset] = useState<number>(0);
     const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
     const [alertOpen, setAlertOpen] = useState<boolean>(false);
-    const [alertMessage, setAlertMessage] = useState<string>('');
-    const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info');
+    const [alertNotifications, setAlertNotifications] = useState<AlertNotification[]>([]);
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [channelId, setChannelId] = useState<string>();
@@ -385,11 +383,15 @@ function PlayerComponent(
         [clock, mediaAdapter]
     );
 
-    const showInfoAlert = useCallback((message: string) => {
-        setAlertSeverity('info');
-        setAlertMessage(message);
+    const showAlerts = useCallback((notifications: readonly AlertNotification[]) => {
+        setAlertNotifications([...notifications]);
         setAlertOpen(true);
     }, []);
+
+    const showInfoAlert = useCallback(
+        (message: string, autoHideDuration?: number) => showAlerts([{ message, severity: 'info', autoHideDuration }]),
+        [showAlerts]
+    );
 
     const formatOffsetNotification = useCallback((offset: number, enabled: boolean) => {
         if (!enabled) return;
@@ -502,6 +504,7 @@ function PlayerComponent(
                 },
                 playbackModesChanged: ({ modes }) => synchronizePlaybackModes(modes),
                 initialPlaybackSettingsChanged: ({
+                    autoHideDuration,
                     playbackRate,
                     playbackRateNotificationEnabled,
                     fastForwarding,
@@ -519,7 +522,7 @@ function PlayerComponent(
                     ].filter((notification): notification is string => notification !== undefined);
                     synchronizePlaybackModes(playbackModeTransition.modes);
                     if (!notifications.length) return;
-                    showInfoAlert(notifications.join(join));
+                    showInfoAlert(notifications.join(join), autoHideDuration);
                 },
                 onError,
             },
@@ -1465,13 +1468,10 @@ function PlayerComponent(
             <Alert
                 open={alertOpen}
                 onClose={handleAlertClosed}
-                autoHideDuration={3000}
-                severity={alertSeverity}
+                notifications={alertNotifications}
                 useAppLogo={false}
                 anchor="top"
-            >
-                {alertMessage}
-            </Alert>
+            />
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>
                 {videoInWindow && (

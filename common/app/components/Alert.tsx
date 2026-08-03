@@ -5,6 +5,8 @@ import Grow from '@mui/material/Grow';
 import { remove, update, type Stack } from './notification-stack';
 import LogoIcon from '../../components/LogoIcon';
 
+const defaultAutoHideDuration = 3000;
+
 const useAlertStyles = makeStyles(() => ({
     root: {
         display: 'flex',
@@ -44,7 +46,7 @@ export function AlertStack({ anchor, children }: AlertStackProps) {
 
 interface Props {
     open: boolean;
-    autoHideDuration: number;
+    autoHideDuration?: number;
     useAppLogo: boolean;
     onClose: () => void;
     onMouseEnter?: () => void;
@@ -59,11 +61,13 @@ interface Props {
 export interface AlertNotification {
     message: React.ReactNode;
     severity: AlertColor | undefined;
+    autoHideDuration?: number;
 }
 
 interface AlertNotificationValue {
     children: React.ReactNode;
     severity: AlertColor | undefined;
+    autoHideDuration?: number;
     disableAutoHide: boolean;
     open: boolean;
 }
@@ -75,6 +79,7 @@ function toAlertNotification(
     return {
         children: notification.message,
         severity: notification.severity,
+        autoHideDuration: notification.autoHideDuration,
         disableAutoHide: disableAutoHide ?? false,
         open: true,
     };
@@ -138,12 +143,14 @@ function alertNotificationsEqual(first: readonly AlertNotification[], second: re
         first.every(
             (notification, index) =>
                 Object.is(notification.message, second[index].message) &&
-                notification.severity === second[index].severity
+                notification.severity === second[index].severity &&
+                notification.autoHideDuration === second[index].autoHideDuration
         )
     );
 }
 
 export default function Alert(props: Props) {
+    const defaultDuration = props.autoHideDuration ?? defaultAutoHideDuration;
     const initialRequestedNotifications = props.open
         ? (props.notifications ?? [{ message: props.children, severity: props.severity }])
         : [];
@@ -202,15 +209,15 @@ export default function Alert(props: Props) {
         <AlertStack anchor={props.anchor}>
             {notifications.map((notification) => (
                 <AlertItem
+                    {...notification.value}
                     key={notification.id}
                     id={notification.id}
-                    autoHideDuration={props.autoHideDuration}
+                    autoHideDuration={notification.value.autoHideDuration ?? defaultDuration}
                     useAppLogo={props.useAppLogo}
                     onClose={closeNotification}
                     onExitedAnimation={removeNotification}
                     onMouseEnter={props.onMouseEnter}
                     onMouseLeave={props.onMouseLeave}
-                    {...notification.value}
                     open={notification.value.open && props.open}
                 />
             ))}

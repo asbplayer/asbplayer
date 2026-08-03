@@ -317,6 +317,7 @@ describe('PlaybackEngine', () => {
         expect(harness.playbackRates).toEqual([1.4]);
         expect(harness.initialPlaybackSettings).toEqual([
             {
+                autoHideDuration: 6000,
                 playbackRate: 1.4,
                 playbackRateNotificationEnabled: true,
                 fastForwarding: false,
