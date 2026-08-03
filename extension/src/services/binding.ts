@@ -64,7 +64,6 @@ import {
     SeekableTracks,
     SettingsProvider,
     SubtitleListPreference,
-    defaultSettings,
     isSaveOnlySettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
@@ -348,7 +347,7 @@ export default class Binding {
     }
 
     private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
-        if (!options.notify) return;
+        if (!options?.notify) return;
         this.subtitleController.notification({
             locKey: options.locKey,
             replacements: {
@@ -385,10 +384,9 @@ export default class Binding {
         const video = this.video as HTMLVideoElement;
         const subtitles = this.subtitleController.subtitles;
         return new PlaybackEngine({
-            settings: defaultSettings,
+            settingsProvider: this.settings,
             appIntegration: true,
             subtitles,
-            ready: { settings: false },
             playbackModesSuppressed: this.recordingMedia,
             playbackPositionKeys: this._playbackPositionKeys(
                 this._nonEmptyTrackIndexes(subtitles),
