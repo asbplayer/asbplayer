@@ -736,10 +736,10 @@ describe('Binding playback mode integration', () => {
         await Promise.resolve();
         await Promise.resolve();
 
-        expect(mockPlaybackModeOverlayShows).toBe(1);
+        expect(mockPlaybackModeOverlayShows).toBe(0);
 
         sendSubtitles(binding, []);
-        expect(mockPlaybackModeOverlayShows).toBe(1);
+        expect(mockPlaybackModeOverlayShows).toBe(0);
 
         sendSubtitles(binding, [makeSubtitle()]);
         expect(mockPlaybackModeOverlayShows).toBe(1);
@@ -759,6 +759,40 @@ describe('Binding playback mode integration', () => {
         sendSubtitles(binding, []);
         expect(mockPlaybackModeOverlayShows).toBe(4);
 
+        binding.unbind();
+    });
+
+    it('shows remembered offset and playback rate notifications on the first subtitle load', async () => {
+        await storage.set({ lastSubtitleOffset: 375, playbackRate: 1.4 });
+        const binding = new Binding(createVideo(), false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        expect(notification).toHaveBeenCalledTimes(1);
+        expect(notification.mock.calls[0][0]).toEqual({
+            text: expect.stringContaining('+375 ms'),
+        });
+        expect(notification.mock.calls[0][0].text).toMatch(/^\+375 ms \| /);
+
+        notification.mockClear();
+        sendSubtitles(binding, [makeSubtitle({ index: 1 })]);
+        expect(notification).not.toHaveBeenCalled();
+        binding.unbind();
+    });
+
+    it('respects the playback rate notification setting on the first subtitle load', async () => {
+        await storage.set({ lastSubtitleOffset: 375, playbackRate: 1.4, playbackRateNotificationEnabled: false });
+        const binding = new Binding(createVideo(), false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        expect(notification).toHaveBeenCalledWith({ text: '+375 ms' });
         binding.unbind();
     });
 
@@ -833,6 +867,7 @@ describe('Binding playback mode integration', () => {
         const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
 
         sendPlaybackRate(binding, 1);
         sendPlaybackRate(binding, 1.5);
@@ -913,7 +948,7 @@ describe('Binding playback mode integration', () => {
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
 
-        expect(video.playbackRate).toBe(1.4);
+        expect(video.playbackRate).toBe(1);
         sendSubtitles(binding, [makeSubtitle()]);
         expect(video.playbackRate).toBe(1.4);
         binding.unbind();

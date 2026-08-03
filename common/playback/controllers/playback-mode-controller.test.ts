@@ -9,7 +9,7 @@ import PlaybackModeController, {
 const sortedModes = (modes: Set<PlayMode>) => [...modes].sort((left, right) => left - right);
 
 function controllerWithModes(...modes: PlayMode[]) {
-    return new PlaybackModeController(new Set(modes));
+    return new PlaybackModeController(new Set(modes), false);
 }
 
 interface ModeSelectionCase {
@@ -97,7 +97,8 @@ describe('playback mode selection', () => {
         },
     ])('selects startup modes for $name', ({ rememberPlaybackModes, lastPlaybackModes, expected }) => {
         const controller = new PlaybackModeController(
-            playbackModesFromSettings({ rememberPlaybackModes, lastPlaybackModes })
+            playbackModesFromSettings({ rememberPlaybackModes, lastPlaybackModes }),
+            false
         );
 
         expect(sortedModes(controller.playModes)).toEqual(expected);
@@ -117,6 +118,14 @@ describe('playback mode selection', () => {
 
         expect(sortedModes(empty.playModes)).toEqual([PlayMode.normal]);
         expect(sortedModes(mixed.playModes)).toEqual([PlayMode.autoPause, PlayMode.repeat]);
+    });
+
+    it('keeps playback modes normal when disabled', () => {
+        const controller = new PlaybackModeController(new Set([PlayMode.repeat]), true);
+
+        expect(sortedModes(controller.playModes)).toEqual([PlayMode.normal]);
+        expect(sortedModes(controller.setModes(new Set([PlayMode.repeat])).modes)).toEqual([PlayMode.normal]);
+        expect(sortedModes(controller.transition(PlayMode.repeat).modes)).toEqual([PlayMode.normal]);
     });
 
     it('returns defensive mode snapshots', () => {
