@@ -16,7 +16,6 @@ import {
 import {
     MiscSettings,
     SubtitleSettings,
-    SaveSettingsOptions,
     AnkiSettings,
     AsbplayerSettings,
     SubtitleAlignment,
@@ -280,7 +279,7 @@ interface Props {
         cardTextFieldValues: CardTextFieldValues,
         timestamp: number
     ) => void;
-    onSettingsChanged: (settings: Partial<AsbplayerSettings>, options?: SaveSettingsOptions) => void;
+    onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
 }
@@ -658,8 +657,7 @@ export default function VideoPlayer({
                 setSubtitleOffset: (offset, options) => updateSubtitlesWithOffset(offset, options.notifyPlayer),
                 showingSubtitlesChanged: (showingSubtitles) => showingSubtitlesChangedRef.current(showingSubtitles),
                 playbackPositionChanged: setPendingPlaybackPosition,
-                saveSettings: (settings, options: SaveSettingsOptions) =>
-                    onSettingsChangedRef.current(settings, options),
+                saveSettings: (settings) => onSettingsChangedRef.current(settings),
                 playbackModesChanged: (transition) => {
                     synchronizePlaybackModesRef.current(transition.modes);
                     if (!transition.added.size && !transition.removed.size) return;

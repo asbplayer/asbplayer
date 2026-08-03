@@ -65,6 +65,7 @@ import {
     SettingsProvider,
     SubtitleListPreference,
     defaultSettings,
+    isSaveOnlySettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { playbackModeNotifications } from '@project/common/playback/controllers/playback-mode-controller';
@@ -482,6 +483,7 @@ export default class Binding {
                     void this.settings
                         .set(settings)
                         .then(() => {
+                            if (isSaveOnlySettings(settings)) return;
                             const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
                                 sender: 'asbplayer-video',
                                 message: { command: 'settings-updated' },

@@ -128,6 +128,7 @@ interface PlayerProps {
     dictionaryProvider: DictionaryProvider;
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
+    onSettingsChanged?: (settings: Partial<AsbplayerSettings>) => void;
     playbackPreferences: PlaybackPreferenceController;
     keyBinder: KeyBinder;
     extension: ChromeExtension;
@@ -184,6 +185,7 @@ function PlayerComponent(
         dictionaryProvider,
         settingsProvider,
         settings,
+        onSettingsChanged,
         playbackPreferences,
         keyBinder,
         extension,
@@ -447,7 +449,8 @@ function PlayerComponent(
                 showingSubtitlesChanged: setSyntheticShowingSubtitles,
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => {
-                    void settingsProvider.set(settings).catch(onError);
+                    if (onSettingsChanged !== undefined) void onSettingsChanged(settings);
+                    else void settingsProvider.set(settings).catch(onError);
                 },
                 playbackModesChanged: (transition) => {
                     const modes = new Set(transition.modes);
@@ -467,7 +470,16 @@ function PlayerComponent(
                 syntheticPlaybackEngineRef.current = undefined;
             }
         };
-    }, [clock, extension, onError, playbackPositionKey, settingsProvider, syntheticPlayback, updatePlaybackRate]);
+    }, [
+        clock,
+        extension,
+        onError,
+        onSettingsChanged,
+        playbackPositionKey,
+        settingsProvider,
+        syntheticPlayback,
+        updatePlaybackRate,
+    ]);
 
     useEffect(() => {
         if (!syntheticPlayback) return;
