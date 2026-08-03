@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
 import { defaultSettings, type AsbplayerSettings } from '@project/common/settings';
 import PlaybackEngine from '@project/common/playback/playback-engine';
@@ -7,6 +7,10 @@ import type {
     TimingDriver,
     TimingDriverCallbacks,
 } from '@project/common/playback/timing/timing-driver';
+
+beforeEach(() => {
+    localStorage.clear();
+});
 
 class FakeTimingDriver implements TimingDriver {
     callbacks: TimingDriverCallbacks = {
@@ -74,6 +78,8 @@ class FakeTimingDriver implements TimingDriver {
         return this.durationMsValue;
     }
 
+    onDurationChange(): void {}
+
     paused(): boolean {
         return this.isPaused;
     }
@@ -140,6 +146,7 @@ function makePlaybackEngine(
         durationMs?: number;
         settings: Partial<AsbplayerSettings>;
         settingsReady: boolean;
+        appIntegration?: boolean;
         playbackPositionKeys?: readonly string[];
     }> = {}
 ) {
@@ -155,6 +162,7 @@ function makePlaybackEngine(
     const savedSettingsOnly: boolean[] = [];
     const playbackRates: number[] = [];
     const subtitleOffsets: number[] = [];
+    const publishedSubtitleOffsets: number[] = [];
     const playbackPositionChanges: (number | undefined)[] = [];
     const modeChanges: {
         readonly modes: Set<PlayMode>;
@@ -168,6 +176,7 @@ function makePlaybackEngine(
     });
     const playbackEngine = new PlaybackEngine({
         settings,
+        appIntegration: overrides.appIntegration ?? true,
         subtitles,
         ready: { settings: overrides.settingsReady ?? true },
         playbackModesSuppressed: false,
@@ -200,6 +209,7 @@ function makePlaybackEngine(
                 savedSettingsOnly.push(options.saveOnly);
             },
             playbackModesChanged: (transition) => modeChanges.push(transition),
+            subtitleOffsetChanged: (offset) => publishedSubtitleOffsets.push(offset),
             onError: () => {},
         },
     });
@@ -215,6 +225,7 @@ function makePlaybackEngine(
         savedSettingsOnly,
         playbackRates,
         subtitleOffsets,
+        publishedSubtitleOffsets,
         playbackPositionChanges,
         settings,
         setDuration: (value: number) => {
@@ -224,6 +235,180 @@ function makePlaybackEngine(
 }
 
 describe('PlaybackEngine', () => {
+    it('exposes the remember-aware initial subtitle offset to its consumers', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            settings: { lastSubtitleOffset: 375, rememberSubtitleOffset: false },
+        });
+
+        expect(harness.playbackEngine.lastSubtitleOffset).toBe(0);
+
+        harness.playbackEngine.settingsChanged({ ...harness.settings, rememberSubtitleOffset: true });
+
+        expect(harness.playbackEngine.lastSubtitleOffset).toBe(375);
+    });
+
+    it('retains engine-owned playback modes when settings updates echo stale modes', () => {
+        const harness = makePlaybackEngine([PlayMode.normal]);
+
+        harness.playbackEngine.togglePlaybackMode(PlayMode.repeat);
+        harness.playbackEngine.settingsChanged({ ...harness.settings, lastPlaybackModes: [PlayMode.normal] });
+
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
+        expect(harness.savedSettings).toEqual([{ lastPlaybackModes: [PlayMode.repeat] }]);
+    });
+
+    it('does not change the engine-owned offset when settings are refreshed', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            settings: { lastSubtitleOffset: 375, rememberSubtitleOffset: false },
+        });
+
+        harness.playbackEngine.subtitleOffsetChanged(250, { notifyPlayer: false });
+        harness.playbackEngine.settingsChanged({
+            ...harness.settings,
+            lastSubtitleOffset: -500,
+            rememberSubtitleOffset: false,
+        });
+
+        expect(harness.playbackEngine.lastSubtitleOffset).toBe(0);
+        expect(harness.subtitleOffsets).toEqual([250]);
+        expect(harness.savedSettings).toEqual([{ lastSubtitleOffset: 250 }]);
+    });
+
+    it('uses and updates the legacy local offset when app integration is unavailable', () => {
+        localStorage.setItem('offset', '375');
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            appIntegration: false,
+            settings: { rememberSubtitleOffset: true, lastSubtitleOffset: 900 },
+        });
+
+        expect(harness.playbackEngine.lastSubtitleOffset).toBe(375);
+
+        harness.playbackEngine.subtitleOffsetChanged(250, { notifyPlayer: false });
+
+        expect(localStorage.getItem('offset')).toBe('250');
+        expect(harness.savedSettings).toEqual([]);
+    });
+
+    it('publishes the offset when binding', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            settings: { lastSubtitleOffset: 375, playbackRate: 1.4 },
+        });
+
+        harness.playbackEngine.bind();
+
+        expect(harness.publishedSubtitleOffsets).toEqual([375]);
+        expect(harness.playbackRates).toEqual([1.4]);
+    });
+
+    it('does not reset remembered playback state for an initial empty subtitle update', () => {
+        const harness = makePlaybackEngine([PlayMode.fastForward], 0, [], {
+            settings: {
+                playbackRate: 1.4,
+                fastForwardModePlaybackRate: 2.7,
+                lastSubtitleOffset: 375,
+                rememberSubtitleOffset: true,
+            },
+        });
+
+        harness.playbackEngine.subtitlesChanged([]);
+
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.fastForward]));
+        expect(harness.playbackRates).toEqual([]);
+
+        harness.playbackEngine.subtitlesChanged([subtitle]);
+
+        expect(harness.playbackRates).not.toContain(1.4);
+        expect(harness.playbackRates.at(-1)).toBe(2.7);
+        expect(harness.publishedSubtitleOffsets).toEqual([375]);
+    });
+
+    it('refreshes the plan duration before binding', () => {
+        const harness = makePlaybackEngine([PlayMode.normal]);
+        harness.driver.durationMsReads = 0;
+        harness.setDuration(12_000);
+
+        harness.playbackEngine.bind();
+
+        expect(harness.driver.durationMsReads).toBe(1);
+    });
+
+    it('starts from the current time when binding after time has elapsed', async () => {
+        const harness = makePlaybackEngine([PlayMode.autoPause], 0, [subtitle], {
+            settings: { autoPausePreference: AutoPausePreference.atStart },
+        });
+        harness.driver.emitInitialDiscontinuity = true;
+        harness.driver.timestampMs = 1500;
+
+        harness.playbackEngine.bind();
+        await harness.driver.time(2000);
+
+        expect(harness.pauses).toEqual([]);
+        expect(harness.showing.at(-1)).toEqual([]);
+    });
+
+    it('uses playback settings loaded before ready instead of preserving constructor settings', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            durationMs: 70_000,
+            settingsReady: false,
+            settings: { rememberPlaybackModes: false, lastPlaybackPositions: [] },
+            playbackPositionKeys: ['video.mp4'],
+        });
+        const loadedSettings = {
+            ...harness.settings,
+            rememberPlaybackModes: true,
+            lastPlaybackModes: [PlayMode.repeat],
+            playbackRate: 1.4,
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+            lastSubtitleOffset: 375,
+            rememberSubtitleOffset: true,
+        };
+
+        harness.playbackEngine.settingsChanged(loadedSettings);
+
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
+        expect(harness.playbackRates).toContain(1.4);
+        expect(harness.publishedSubtitleOffsets).toEqual([375]);
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
+    });
+
+    it('preserves every engine-owned playback setting across a post-ready settings change', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 2500, [subtitle], {
+            settings: {
+                rememberPlaybackRate: true,
+                rememberPlaybackModes: true,
+                rememberSubtitleOffset: true,
+                lastPlaybackPositions: [],
+                playbackRate: 1,
+                fastForwardModePlaybackRate: 2,
+            },
+        });
+
+        harness.playbackEngine.playbackRateChanged(1.7);
+        harness.playbackEngine.togglePlaybackMode(PlayMode.fastForward);
+        harness.playbackEngine.bind();
+        harness.playbackEngine.playbackRateChanged(3.1);
+        harness.playbackEngine.togglePlaybackMode(PlayMode.repeat);
+        harness.playbackEngine.subtitleOffsetChanged(250, { notifyPlayer: false });
+
+        const staleSettings = {
+            ...harness.settings,
+            playbackRate: 1,
+            fastForwardModePlaybackRate: 2,
+            lastPlaybackModes: [PlayMode.normal],
+            lastPlaybackPositions: [],
+            lastSubtitleOffset: 0,
+        };
+        harness.playbackEngine.settingsChanged(staleSettings);
+
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.fastForward, PlayMode.repeat]));
+        expect(harness.playbackEngine.lastSubtitleOffset).toBe(250);
+
+        harness.playbackEngine.togglePlaybackMode(PlayMode.normal);
+        expect(harness.playbackRates.at(-1)).toBe(1.7);
+        harness.playbackEngine.togglePlaybackMode(PlayMode.fastForward);
+        expect(harness.playbackRates.at(-1)).toBe(3.1);
+    });
+
     it('owns playback modes and rebuilds behavior from AsbplayerSettings', async () => {
         const harness = makePlaybackEngine([PlayMode.normal], 1500);
 
@@ -244,6 +429,7 @@ describe('PlaybackEngine', () => {
         const driver = new FakeTimingDriver();
         const playbackEngine = new PlaybackEngine<IndexedSubtitleModel>({
             settings: playbackSettings(),
+            appIntegration: true,
             subtitles: [],
             ready: { settings: true },
             playbackModesSuppressed: false,
@@ -259,6 +445,7 @@ describe('PlaybackEngine', () => {
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
+                subtitleOffsetChanged: () => {},
                 onError: () => {},
             },
         });
@@ -529,14 +716,17 @@ describe('PlaybackEngine', () => {
         expect(harness.seeks).toEqual([1999]);
     });
 
-    it('restores remembered modes when settings enable mode remembering', () => {
+    it('restores engine-owned remembered modes when settings enable mode remembering', () => {
         const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
-            settings: { rememberPlaybackModes: false },
+            settings: {
+                rememberPlaybackModes: false,
+                lastPlaybackModes: [PlayMode.repeat],
+            },
         });
         harness.playbackEngine.settingsChanged({
             ...harness.settings,
             rememberPlaybackModes: true,
-            lastPlaybackModes: [PlayMode.repeat],
+            lastPlaybackModes: [PlayMode.normal],
         });
 
         expect(harness.modeChanges.at(-1)?.modes).toEqual(new Set([PlayMode.repeat]));
@@ -585,6 +775,7 @@ describe('PlaybackEngine', () => {
         const setPlaybackRate = jest.fn();
         const rebound = new PlaybackEngine({
             settings: harness.settings,
+            appIntegration: true,
             subtitles: [subtitle],
             ready: { settings: true },
             playbackModesSuppressed: false,
@@ -600,6 +791,7 @@ describe('PlaybackEngine', () => {
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
+                subtitleOffsetChanged: () => {},
                 onError: () => {},
             },
         });
@@ -842,6 +1034,40 @@ describe('PlaybackEngine', () => {
         expect(harness.savedSettings).toContainEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 62_000 }],
         });
+    });
+
+    it('retains playback positions saved by the engine across a settings refresh', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+        });
+        harness.driver.emitInitialDiscontinuity = true;
+        harness.playbackEngine.bind();
+        harness.driver.discontinuity(62_000);
+
+        harness.playbackEngine.settingsChanged({ ...harness.settings, lastPlaybackPositions: [] });
+        harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4']);
+        harness.playbackEngine.playbackPositionKeysChanged(['video.mp4']);
+
+        expect(harness.playbackPositionChanges).toEqual([62_000]);
+    });
+
+    it('accepts remembered positions for other playback owners during a settings refresh', () => {
+        const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+        });
+        harness.driver.emitInitialDiscontinuity = true;
+        harness.playbackEngine.bind();
+        harness.driver.discontinuity(62_000);
+
+        harness.playbackEngine.settingsChanged({
+            ...harness.settings,
+            lastPlaybackPositions: [{ fileName: 'other-video.mp4', position: 63_000 }],
+        });
+        harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4']);
+
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
     });
 
     it('removes remembered positions when the current position is below one minute', () => {

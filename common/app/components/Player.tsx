@@ -42,7 +42,7 @@ import MediaAdapter from '../services/media-adapter';
 import SubtitlePlayer, { minSubtitlePlayerWidth } from './SubtitlePlayer';
 import VideoChannel from '../services/video-channel';
 import ChromeExtension from '../services/chrome-extension';
-import PlaybackPreferences from '../services/playback-preferences';
+import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import { useWindowSize } from '../hooks/use-window-size';
 import { useAppBarHeight } from '../../hooks/use-app-bar-height';
 import { createBlobUrl } from '../../blob-url';
@@ -128,7 +128,7 @@ interface PlayerProps {
     dictionaryProvider: DictionaryProvider;
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
-    playbackPreferences: PlaybackPreferences;
+    playbackPreferences: PlaybackPreferenceController;
     keyBinder: KeyBinder;
     extension: ChromeExtension;
     videoFrameRef?: MutableRefObject<HTMLIFrameElement | null>;
@@ -261,8 +261,6 @@ function PlayerComponent(
     const videoDurationRef = useRef<number>(0);
     const channelRef = useRef<VideoChannel>(undefined);
     channelRef.current = channel;
-    const playbackPreferencesRef = useRef<PlaybackPreferences>(undefined);
-    playbackPreferencesRef.current = playbackPreferences;
     const [wasPlayingWhenMiningStarted, setWasPlayingWhenMiningStarted] = useState<boolean>();
     const hideSubtitlePlayerRef = useRef<boolean>(undefined);
     hideSubtitlePlayerRef.current = hideSubtitlePlayer;
@@ -303,7 +301,7 @@ function PlayerComponent(
         const selectedTrack = timelineTracks[0]?.track;
         const playbackSubtitles =
             selectedTrack === undefined ? [] : displaySubtitles.filter((subtitle) => subtitle.track === selectedTrack);
-        const currentPlayModes = playModesRef.current;
+        const currentPlayModes = syntheticPlaybackEngineRef.current?.playbackModes ?? playModesRef.current;
         const playbackPlan = buildPlaybackTimelineExportPlan({
             subtitles: playbackSubtitles,
             durationMs: calculateLengthMs(videoDurationRef, displaySubtitles),
@@ -391,6 +389,7 @@ function PlayerComponent(
 
         const playbackEngine = new PlaybackEngine({
             settings: settingsRef.current,
+            appIntegration: extension.supportsAppIntegration,
             subtitles: subtitlesRef.current ?? [],
             ready: { settings: true },
             playbackModesSuppressed: true,
@@ -455,6 +454,7 @@ function PlayerComponent(
                     playModesRef.current = modes;
                     setPlayModes(modes);
                 },
+                subtitleOffsetChanged: () => {},
                 onError,
             },
         });
@@ -467,7 +467,7 @@ function PlayerComponent(
                 syntheticPlaybackEngineRef.current = undefined;
             }
         };
-    }, [clock, onError, playbackPositionKey, settingsProvider, syntheticPlayback, updatePlaybackRate]);
+    }, [clock, extension, onError, playbackPositionKey, settingsProvider, syntheticPlayback, updatePlaybackRate]);
 
     useEffect(() => {
         if (!syntheticPlayback) return;
@@ -479,10 +479,14 @@ function PlayerComponent(
         syntheticPlaybackEngineRef.current?.subtitlesChanged(subtitles);
     }, [subtitles, syntheticPlayback]);
 
+    useEffect(() => {
+        if (syntheticPlayback || !tab || subtitles.length === 0) return;
+        setOffset(subtitles[0].start - subtitles[0].originalStart);
+    }, [subtitles, syntheticPlayback, tab]);
+
     const applyOffset = useCallback(
         (offset: number, forwardToVideo: boolean) => {
             setOffset(offset);
-
             if (!subtitles) {
                 return;
             }
@@ -514,9 +518,8 @@ function PlayerComponent(
             }
 
             onSubtitles(newSubtitles);
-            playbackPreferences.offset = offset;
         },
-        [subtitleFiles, subtitles, extension, playbackPreferences, tab, channel, onSubtitles]
+        [subtitleFiles, subtitles, extension, tab, channel, onSubtitles]
     );
     applyOffsetRef.current = applyOffset;
 
@@ -552,8 +555,7 @@ function PlayerComponent(
 
     useEffect(() => {
         async function init() {
-            const offset = playbackPreferencesRef.current?.offset ?? 0;
-            setOffset(offset);
+            const offset = syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? 0;
             let subtitles: DisplaySubtitleModel[] | undefined;
 
             if (subtitleFiles !== undefined && subtitleFiles.length > 0) {

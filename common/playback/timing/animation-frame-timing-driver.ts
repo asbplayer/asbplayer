@@ -146,6 +146,8 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
         this.schedule();
     };
 
+    readonly onDurationChange = () => {};
+
     private readonly onTimeUpdate = () => {
         if (!this._bound) return;
         if (this.discontinuityPending) {

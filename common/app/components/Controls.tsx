@@ -35,7 +35,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
 import { SubtitleAlignment } from '@project/common/settings';
 import Clock from '@project/common/playback/timing/clock';
-import PlaybackPreferences from '../services/playback-preferences';
+import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import Tooltip from '../../components/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -606,7 +606,7 @@ interface ControlsProps {
     onPlaybackRateChange: (playbackRate: number) => void;
     onVolumeChange?: (volume: number) => void;
     disableKeyEvents?: boolean;
-    playbackPreferences: PlaybackPreferences;
+    playbackPreferences: PlaybackPreferenceController;
     closeEnabled?: boolean;
     onClose?: () => void;
     volumeEnabled?: boolean;

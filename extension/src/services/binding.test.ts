@@ -745,6 +745,15 @@ describe('Binding playback mode integration', () => {
         sendSubtitles(binding, []);
         expect(mockPlaybackModeOverlayShows).toBe(2);
 
+        sendSubtitles(binding, [makeSubtitle()]);
+        expect(mockPlaybackModeOverlayShows).toBe(3);
+
+        sendSubtitles(binding, [makeSubtitle()]);
+        expect(mockPlaybackModeOverlayShows).toBe(3);
+
+        sendSubtitles(binding, []);
+        expect(mockPlaybackModeOverlayShows).toBe(4);
+
         binding.unbind();
     });
 
