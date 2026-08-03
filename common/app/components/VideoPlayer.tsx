@@ -52,8 +52,7 @@ import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-
 import Controls, { Point } from './Controls';
 import PlayerChannel from '../services/player-channel';
 import ChromeExtension from '../services/chrome-extension';
-import { type AlertColor } from '@mui/material/Alert';
-import Alert from './Alert';
+import Alert, { type AlertNotification } from './Alert';
 import Button from '@mui/material/Button';
 import { useSubtitleDomCache } from '../hooks/use-subtitle-dom-cache';
 import { useAppKeyBinder } from '../hooks/use-app-key-binder';
@@ -418,8 +417,7 @@ export default function VideoPlayer({
     const lastMouseMovementTimestamp = useRef<number>(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const [alertOpen, setAlertOpen] = useState<boolean>(false);
-    const [alertMessage, setAlertMessage] = useState<string>('');
-    const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info');
+    const [alertNotifications, setAlertNotifications] = useState<AlertNotification[]>([]);
     const [alertDisableAutoHide, setAlertDisableAutoHide] = useState<boolean>(false);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
     const resumePlaybackSnackbar = useSnackbar({
@@ -484,11 +482,12 @@ export default function VideoPlayer({
     const onErrorRef = useRef(onError);
     onErrorRef.current = onError;
 
-    const showInfoAlert = useCallback((message: string) => {
-        setAlertSeverity('info');
-        setAlertMessage(message);
+    const showAlerts = useCallback((notifications: readonly AlertNotification[]) => {
+        setAlertNotifications([...notifications]);
         setAlertOpen(true);
     }, []);
+
+    const showInfoAlert = useCallback((message: string) => showAlerts([{ message, severity: 'info' }]), [showAlerts]);
 
     const formatOffsetNotification = useCallback((offset: number) => {
         const addedSign = offset >= 0 ? '+' : '';
@@ -696,20 +695,29 @@ export default function VideoPlayer({
                     playbackModeTransition,
                     join,
                 }) => {
-                    const notifications: string[] = [];
+                    const offsetAndRateNotifications: string[] = [];
+                    playerChannel.offset(subtitleOffset);
                     clock.rate = playbackRate;
                     playerChannel.playbackRate(playbackRate, false);
-                    playerChannel.offset(subtitleOffset);
-                    if (subtitleOffset) notifications.push(formatOffsetNotification(subtitleOffset));
+                    if (subtitleOffset) offsetAndRateNotifications.push(formatOffsetNotification(subtitleOffset));
                     const playbackRateNotification = formatPlaybackRateNotification(
                         playbackRate,
                         playbackRateNotificationEnabled && playbackRate !== 1,
                         fastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
                     );
-                    if (playbackRateNotification) notifications.push(playbackRateNotification);
-                    handlePlaybackModesChanged(playbackModeTransition, (message) => notifications.push(message));
-                    if (!notifications.length) return;
-                    showInfoAlert(notifications.join(join));
+                    if (playbackRateNotification) offsetAndRateNotifications.push(playbackRateNotification);
+
+                    const playbackModeMessages: string[] = [];
+                    handlePlaybackModesChanged(playbackModeTransition, (message) => playbackModeMessages.push(message));
+
+                    const notifications: AlertNotification[] = [];
+                    if (offsetAndRateNotifications.length) {
+                        notifications.push({ message: offsetAndRateNotifications.join(join), severity: 'info' });
+                    }
+                    if (playbackModeMessages.length) {
+                        notifications.push({ message: playbackModeMessages.join(join), severity: 'info' });
+                    }
+                    if (notifications.length) showAlerts(notifications);
                 },
                 onError: (error) => onErrorRef.current?.(String(error)),
             },
@@ -734,6 +742,7 @@ export default function VideoPlayer({
         settingsProvider,
         formatOffsetNotification,
         formatPlaybackRateNotification,
+        showAlerts,
         showInfoAlert,
         t,
         updatePlayerState,
@@ -889,9 +898,7 @@ export default function VideoPlayer({
         });
         playerChannel.onPlaybackRate((playbackRate) => updatePlaybackRate(playbackRate, false));
         playerChannel.onAlert((message, severity) => {
-            setAlertOpen(true);
-            setAlertMessage(message);
-            setAlertSeverity(severity as AlertColor);
+            showAlerts([{ message, severity: severity as AlertNotification['severity'] }]);
         });
 
         window.onbeforeunload = () => {
@@ -908,6 +915,7 @@ export default function VideoPlayer({
         playerChannel,
         requestFullscreen,
         requestRememberedPlaybackModesOverlay,
+        showAlerts,
         togglePlaybackMode,
         updatePlaybackRate,
         updateSubtitlesWithOffset,
@@ -1447,10 +1455,8 @@ export default function VideoPlayer({
                 }
 
                 if (!isMobile) {
-                    setAlertSeverity('info');
-                    setAlertMessage(t('info.manualMiningIntervalPrompt'));
+                    showAlerts([{ message: t('info.manualMiningIntervalPrompt'), severity: 'info' }]);
                     setAlertDisableAutoHide(true);
-                    setAlertOpen(true);
                 }
             } else {
                 setAlertDisableAutoHide(false);
@@ -1520,6 +1526,7 @@ export default function VideoPlayer({
             subtitles,
             settings.surroundingSubtitlesCountRadius,
             settings.surroundingSubtitlesTimeRadius,
+            showAlerts,
         ]
     );
 
@@ -2047,12 +2054,10 @@ export default function VideoPlayer({
                 disableAutoHide={alertDisableAutoHide}
                 onClose={handleAlertClosed}
                 autoHideDuration={3000}
-                severity={alertSeverity}
+                notifications={alertNotifications}
                 anchor={alertAnchor}
                 useAppLogo={false}
-            >
-                {alertMessage}
-            </Alert>
+            />
             <MobileVideoOverlay
                 ref={mobileOverlayRef}
                 model={mobileOverlayModel()}

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { makeStyles } from '@mui/styles';
 import MuiAlert, { type AlertColor } from '@mui/material/Alert';
 import Grow from '@mui/material/Grow';
-import { prepend, remove, update, type Stack } from './notification-stack';
+import { remove, update, type Stack } from './notification-stack';
 import LogoIcon from '../../components/LogoIcon';
 
 const useAlertStyles = makeStyles(() => ({
@@ -49,13 +49,19 @@ interface Props {
     onClose: () => void;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
-    severity: AlertColor | undefined;
+    severity?: AlertColor | undefined;
     disableAutoHide?: boolean;
     anchor?: 'top' | 'bottom';
-    children: React.ReactNode;
+    children?: React.ReactNode;
+    notifications?: readonly AlertNotification[];
 }
 
-interface AlertNotification {
+export interface AlertNotification {
+    message: React.ReactNode;
+    severity: AlertColor | undefined;
+}
+
+interface AlertNotificationValue {
     children: React.ReactNode;
     severity: AlertColor | undefined;
     disableAutoHide: boolean;
@@ -63,19 +69,18 @@ interface AlertNotification {
 }
 
 function toAlertNotification(
-    children: React.ReactNode,
-    severity: AlertColor | undefined,
+    notification: AlertNotification,
     disableAutoHide: boolean | undefined
-): AlertNotification {
+): AlertNotificationValue {
     return {
-        children,
-        severity,
+        children: notification.message,
+        severity: notification.severity,
         disableAutoHide: disableAutoHide ?? false,
         open: true,
     };
 }
 
-interface AlertItemProps extends AlertNotification {
+interface AlertItemProps extends AlertNotificationValue {
     id: number;
     open: boolean;
     autoHideDuration: number;
@@ -127,16 +132,31 @@ function AlertItem({
     );
 }
 
-export default function Alert(props: Props) {
-    const initialNotification = props.open
-        ? toAlertNotification(props.children, props.severity, props.disableAutoHide)
-        : undefined;
-    const [notifications, setNotifications] = useState<Stack<AlertNotification>[]>(() =>
-        initialNotification === undefined ? [] : [{ id: 0, value: initialNotification }]
+function alertNotificationsEqual(first: readonly AlertNotification[], second: readonly AlertNotification[]): boolean {
+    return (
+        first.length === second.length &&
+        first.every(
+            (notification, index) =>
+                Object.is(notification.message, second[index].message) &&
+                notification.severity === second[index].severity
+        )
     );
-    const nextNotificationIdRef = useRef(initialNotification === undefined ? 0 : 1);
-    const previousPropsRef = useRef<AlertNotification | undefined>(initialNotification);
-    const hadNotificationsRef = useRef(props.open);
+}
+
+export default function Alert(props: Props) {
+    const initialRequestedNotifications = props.open
+        ? (props.notifications ?? [{ message: props.children, severity: props.severity }])
+        : [];
+    const initialNotifications = initialRequestedNotifications.map((notification, index) => ({
+        id: index,
+        value: toAlertNotification(notification, props.disableAutoHide),
+    }));
+    const [notifications, setNotifications] = useState<Stack<AlertNotificationValue>[]>(initialNotifications);
+    const nextNotificationIdRef = useRef(initialNotifications.length);
+    const previousPropsRef = useRef<readonly AlertNotification[] | undefined>(
+        props.open ? initialRequestedNotifications : undefined
+    );
+    const hadNotificationsRef = useRef(initialNotifications.length > 0);
     const onCloseRef = useRef(props.onClose);
     onCloseRef.current = props.onClose;
 
@@ -160,24 +180,23 @@ export default function Alert(props: Props) {
             return;
         }
 
-        const currentProps = toAlertNotification(props.children, props.severity, props.disableAutoHide);
-        const previousProps = previousPropsRef.current;
+        const currentNotifications = props.notifications ?? [{ message: props.children, severity: props.severity }];
+        const previousNotifications = previousPropsRef.current;
         const changed =
-            previousProps === undefined ||
-            !Object.is(previousProps.children, currentProps.children) ||
-            previousProps.severity !== currentProps.severity ||
-            previousProps.disableAutoHide !== currentProps.disableAutoHide;
+            previousNotifications === undefined ||
+            !alertNotificationsEqual(previousNotifications, currentNotifications) ||
+            (notifications.length > 0 && notifications[0].value.disableAutoHide !== (props.disableAutoHide ?? false));
 
-        if (changed) {
+        if (changed && currentNotifications.length > 0) {
             hadNotificationsRef.current = true;
-            const notification = {
+            const newNotifications = currentNotifications.map((notification) => ({
                 id: nextNotificationIdRef.current++,
-                value: currentProps,
-            };
-            setNotifications((current) => prepend(current, notification));
+                value: toAlertNotification(notification, props.disableAutoHide),
+            }));
+            setNotifications((current) => [...newNotifications, ...current]);
         }
-        previousPropsRef.current = currentProps;
-    }, [props.open, props.children, props.severity, props.disableAutoHide]);
+        previousPropsRef.current = currentNotifications;
+    }, [props.open, props.notifications, props.children, props.severity, props.disableAutoHide, notifications]);
 
     return (
         <AlertStack anchor={props.anchor}>
