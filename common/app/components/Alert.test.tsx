@@ -32,6 +32,20 @@ describe('Alert', () => {
         });
     };
 
+    const renderNotifications = (notifications: { message: string; severity: 'info' | 'warning' }[]) => {
+        act(() => {
+            root.render(
+                <Alert
+                    useAppLogo={true}
+                    open={true}
+                    autoHideDuration={3000}
+                    onClose={() => {}}
+                    notifications={notifications}
+                />
+            );
+        });
+    };
+
     it('keeps successive notifications visible as separate alerts in newest-first order', () => {
         renderAlert('Fast-forward enabled');
         renderAlert('Playback rate: 2.0');
@@ -47,5 +61,18 @@ describe('Alert', () => {
             'Playback rate: 2.0',
             'Fast-forward enabled',
         ]);
+    });
+
+    it('renders notifications from one request in the supplied order', () => {
+        renderNotifications([
+            { message: 'Offset | playback rate', severity: 'info' },
+            { message: 'Repeat enabled', severity: 'warning' },
+        ]);
+
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        expect(alerts.map((alert) => alert.textContent)).toEqual(['Offset | playback rate', 'Repeat enabled']);
+        expect(alerts[0].classList.contains('MuiAlert-standardInfo')).toBe(true);
+        expect(alerts[1].classList.contains('MuiAlert-standardWarning')).toBe(true);
     });
 });
