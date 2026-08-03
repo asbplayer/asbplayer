@@ -84,9 +84,11 @@ export const playbackModeNotifications = (
 /** Coordinates playback-mode selection. */
 export default class PlaybackModeController {
     private modes: Set<PlayMode>;
+    private readonly playbackModesDisabled: boolean;
 
-    constructor(initialModes: ReadonlySet<PlayMode>) {
-        this.modes = normalizePlaybackModes(initialModes);
+    constructor(initialModes: ReadonlySet<PlayMode>, playbackModesDisabled: boolean) {
+        this.playbackModesDisabled = playbackModesDisabled;
+        this.modes = this.normalizeModes(initialModes);
     }
 
     get playModes(): Set<PlayMode> {
@@ -95,7 +97,7 @@ export default class PlaybackModeController {
 
     setModes(modes: ReadonlySet<PlayMode>): PlayModeTransition {
         const oldModes = this.playModes;
-        this.modes = normalizePlaybackModes(modes);
+        this.modes = this.normalizeModes(modes);
         const newModes = this.playModes;
         return {
             modes: newModes,
@@ -105,6 +107,13 @@ export default class PlaybackModeController {
 
     transition(targetMode: PlayMode): PlayModeTransition {
         const oldModes = this.playModes;
+        if (this.playbackModesDisabled) {
+            return {
+                modes: oldModes,
+                added: new Set(),
+                removed: new Set(),
+            };
+        }
 
         if (targetMode === PlayMode.normal) {
             this.modes = new Set([PlayMode.normal]);
@@ -121,5 +130,9 @@ export default class PlaybackModeController {
             modes,
             ...modeChanges(oldModes, modes),
         };
+    }
+
+    private normalizeModes(modes: ReadonlySet<PlayMode>): Set<PlayMode> {
+        return this.playbackModesDisabled ? new Set([PlayMode.normal]) : normalizePlaybackModes(modes);
     }
 }

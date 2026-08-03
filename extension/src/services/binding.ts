@@ -67,7 +67,10 @@ import {
     isSaveOnlySettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { playbackModeNotifications } from '@project/common/playback/controllers/playback-mode-controller';
+import {
+    playbackModeNotifications,
+    type PlayModeTransition,
+} from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildSubtitleTracks,
     clampMediaTimestamp,
@@ -348,12 +351,33 @@ export default class Binding {
 
     private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
         if (!options?.notify) return;
-        this.subtitleController.notification({
-            locKey: options.locKey,
+        this.subtitleController.notification(this._playbackRateNotification(options.playbackRate, options.locKey));
+    }
+
+    private _playbackRateNotification(playbackRate: number, locKey: string) {
+        return {
+            locKey,
             replacements: {
-                rate: options.playbackRate.toFixed(1),
+                rate: playbackRate.toFixed(1),
             },
-        });
+        };
+    }
+
+    private _formatSubtitleOffsetNotification(offset: number): string | undefined {
+        const roundedOffset = Math.floor(offset);
+        if (!roundedOffset) return;
+        const addedSign = roundedOffset >= 0 ? '+' : '';
+        return `${addedSign}${roundedOffset} ms`;
+    }
+
+    private _handlePlaybackModesChanged(transition: PlayModeTransition): string | undefined {
+        this._notifyPlaybackModes(transition.modes);
+        if (!transition.added.size && !transition.removed.size) return;
+        const { notifications, join } = playbackModeNotifications(transition);
+        this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
+        this.mobileVideoOverlayController.showPlaybackModes();
+        if (!notifications.length) return;
+        return notifications.map((notification) => i18n.t(notification)).join(join);
     }
 
     subtitleFileName(track: number = 0) {
@@ -387,6 +411,7 @@ export default class Binding {
             settingsProvider: this.settings,
             appIntegration: true,
             subtitles,
+            playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
             playbackPositionKeys: this._playbackPositionKeys(
                 this._nonEmptyTrackIndexes(subtitles),
@@ -492,17 +517,34 @@ export default class Binding {
                         .catch(console.error);
                 },
                 playbackModesChanged: (transition) => {
-                    this._notifyPlaybackModes(transition.modes);
-                    if (!transition.added.size && !transition.removed.size) return;
-
-                    const { notifications, join } = playbackModeNotifications(transition);
-                    if (notifications.length) {
-                        this.subtitleController.notification({ text: notifications.map((n) => i18n.t(n)).join(join) });
-                    }
-                    this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
-                    this.mobileVideoOverlayController.showPlaybackModes();
+                    const notification = this._handlePlaybackModesChanged(transition);
+                    if (notification) this.subtitleController.notification({ text: notification });
                 },
-                subtitleOffsetChanged: (offset) => this._notifySubtitleOffset(offset),
+                initialPlaybackSettingsChanged: ({
+                    playbackRate,
+                    playbackRateNotificationEnabled,
+                    fastForwarding,
+                    subtitleOffset,
+                    playbackModeTransition,
+                    join,
+                }) => {
+                    const notifications: string[] = [];
+                    this._notifySubtitleOffset(subtitleOffset);
+                    const offsetNotification = this._formatSubtitleOffsetNotification(subtitleOffset);
+                    if (offsetNotification) notifications.push(offsetNotification);
+                    if (playbackRateNotificationEnabled && playbackRate !== 1) {
+                        const playbackRateNotification = this._playbackRateNotification(
+                            playbackRate,
+                            fastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
+                        );
+                        notifications.push(
+                            i18n.t(playbackRateNotification.locKey, playbackRateNotification.replacements)
+                        );
+                    }
+                    const modeNotification = this._handlePlaybackModesChanged(playbackModeTransition);
+                    if (modeNotification) notifications.push(modeNotification);
+                    if (notifications.length) this.subtitleController.notification({ text: notifications.join(join) });
+                },
                 onError: (error) => console.error('Playback plan update failed', error),
             },
         });

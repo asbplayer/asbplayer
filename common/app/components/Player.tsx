@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle, MutableRefObject } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
+import { type AlertColor } from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
@@ -234,8 +235,6 @@ function PlayerComponent(
     const [subtitlesSentThroughChannel, setSubtitlesSentThroughChannel] = useState<boolean>();
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
-    const settingsRef = useRef(settings);
-    settingsRef.current = settings;
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
     >(SubtitleCollection.empty<DisplaySubtitleModel>());
@@ -256,6 +255,9 @@ function PlayerComponent(
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
     const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
+    const [alertOpen, setAlertOpen] = useState<boolean>(false);
+    const [alertMessage, setAlertMessage] = useState<string>('');
+    const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info');
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [channelId, setChannelId] = useState<string>();
@@ -383,6 +385,49 @@ function PlayerComponent(
         [clock, mediaAdapter]
     );
 
+    const showInfoAlert = useCallback((message: string) => {
+        setAlertSeverity('info');
+        setAlertMessage(message);
+        setAlertOpen(true);
+    }, []);
+
+    const formatOffsetNotification = useCallback((offset: number, enabled: boolean) => {
+        if (!enabled) return;
+        const addedSign = offset >= 0 ? '+' : '';
+        return `${addedSign}${offset} ms`;
+    }, []);
+
+    const formatPlaybackRateNotification = useCallback(
+        (playbackRate: number, enabled: boolean, locKey: string) => {
+            if (!enabled) return;
+            return t(locKey, { rate: playbackRate.toFixed(1) });
+        },
+        [t]
+    );
+
+    const notifyOffset = useCallback(
+        (offset: number) => {
+            const message = formatOffsetNotification(offset, true);
+            if (message) showInfoAlert(message);
+        },
+        [formatOffsetNotification, showInfoAlert]
+    );
+
+    const notifyPlaybackRate = useCallback(
+        (options: ReturnType<PlaybackEngine<DisplaySubtitleModel>['playbackRateChanged']>) => {
+            if (!options?.notify) return;
+            const message = formatPlaybackRateNotification(options.playbackRate, true, options.locKey);
+            if (message) showInfoAlert(message);
+        },
+        [formatPlaybackRateNotification, showInfoAlert]
+    );
+
+    const synchronizePlaybackModes = useCallback((modes: ReadonlySet<PlayMode>) => {
+        const synchronizedModes = new Set(modes);
+        playModesRef.current = synchronizedModes;
+        setPlayModes(synchronizedModes);
+    }, []);
+
     useEffect(() => {
         if (!syntheticPlayback) {
             setSyntheticShowingSubtitles([]);
@@ -393,7 +438,8 @@ function PlayerComponent(
             settingsProvider,
             appIntegration: extension.supportsAppIntegration,
             subtitles: subtitlesRef.current ?? [],
-            playbackModesSuppressed: true,
+            playbackModesDisabled: true,
+            playbackModesSuppressed: false,
             playbackPositionKeys: playbackPositionKey ? [playbackPositionKey] : [],
             timingDriver: new AnimationFrameTimingDriver({
                 paused: () => !clock.running,
@@ -444,19 +490,37 @@ function PlayerComponent(
                     clock.setTime(timestampMs);
                 },
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
-                setSubtitleOffset: (offset) => applyOffsetRef.current?.(offset, false),
+                setSubtitleOffset: (offset, options) => {
+                    applyOffsetRef.current?.(offset, false);
+                    if (options.notifyPlayer) notifyOffset(offset);
+                },
                 showingSubtitlesChanged: setSyntheticShowingSubtitles,
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => {
                     if (onSettingsChanged !== undefined) void onSettingsChanged(settings);
                     else void settingsProvider.set(settings).catch(onError);
                 },
-                playbackModesChanged: (transition) => {
-                    const modes = new Set(transition.modes);
-                    playModesRef.current = modes;
-                    setPlayModes(modes);
+                playbackModesChanged: ({ modes }) => synchronizePlaybackModes(modes),
+                initialPlaybackSettingsChanged: ({
+                    playbackRate,
+                    playbackRateNotificationEnabled,
+                    fastForwarding,
+                    subtitleOffset,
+                    playbackModeTransition,
+                    join,
+                }) => {
+                    const notifications = [
+                        formatOffsetNotification(subtitleOffset, subtitleOffset !== 0),
+                        formatPlaybackRateNotification(
+                            playbackRate,
+                            playbackRateNotificationEnabled && playbackRate !== 1,
+                            fastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
+                        ),
+                    ].filter((notification): notification is string => notification !== undefined);
+                    synchronizePlaybackModes(playbackModeTransition.modes);
+                    if (!notifications.length) return;
+                    showInfoAlert(notifications.join(join));
                 },
-                subtitleOffsetChanged: () => {},
                 onError,
             },
         });
@@ -477,6 +541,12 @@ function PlayerComponent(
         playbackPositionKey,
         settingsProvider,
         syntheticPlayback,
+        t,
+        formatOffsetNotification,
+        formatPlaybackRateNotification,
+        notifyOffset,
+        showInfoAlert,
+        synchronizePlaybackModes,
         updatePlaybackRate,
     ]);
 
@@ -1147,7 +1217,7 @@ function PlayerComponent(
     const handleOffsetChange = useCallback(
         (offset: number) => {
             if (syntheticPlaybackEngineRef.current) {
-                syntheticPlaybackEngineRef.current.subtitleOffsetChanged(offset, { notifyPlayer: false });
+                syntheticPlaybackEngineRef.current.subtitleOffsetChanged(offset, { notifyPlayer: true });
                 return;
             }
 
@@ -1159,12 +1229,12 @@ function PlayerComponent(
     const handlePlaybackRateChange = useCallback(
         (playbackRate: number) => {
             if (syntheticPlaybackEngineRef.current) {
-                syntheticPlaybackEngineRef.current.playbackRateChanged(playbackRate);
+                notifyPlaybackRate(syntheticPlaybackEngineRef.current.playbackRateChanged(playbackRate));
                 return;
             }
             updatePlaybackRate(playbackRate, true);
         },
-        [updatePlaybackRate]
+        [notifyPlaybackRate, updatePlaybackRate]
     );
 
     const handlePlayMode = useCallback(
@@ -1365,6 +1435,7 @@ function PlayerComponent(
     const actuallyHideSubtitlePlayer =
         videoInWindow &&
         (hideSubtitlePlayer || !subtitles || subtitles?.length === 0 || notEnoughSpaceForSubtitlePlayer);
+    const handleAlertClosed = useCallback(() => setAlertOpen(false), []);
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
@@ -1390,6 +1461,16 @@ function PlayerComponent(
                 >
                     {t('info.resumePlaybackButton')}
                 </Button>
+            </Alert>
+            <Alert
+                open={alertOpen}
+                onClose={handleAlertClosed}
+                autoHideDuration={3000}
+                severity={alertSeverity}
+                useAppLogo={false}
+                anchor="top"
+            >
+                {alertMessage}
             </Alert>
             {!videoInWindow && statisticsOverlay}
             <Grid container direction="row" wrap="nowrap" className={classes.container}>

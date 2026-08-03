@@ -6,7 +6,7 @@ import {
     type AsbplayerSettings,
     type SettingsProvider,
 } from '@project/common/settings';
-import PlaybackEngine from '@project/common/playback/playback-engine';
+import PlaybackEngine, { type InitialPlaybackSettings } from '@project/common/playback/playback-engine';
 import type {
     InternalSeekCompletion,
     TimingDriver,
@@ -153,6 +153,7 @@ async function makePlaybackEngine(
         settingsReady: boolean;
         emitInitialDiscontinuity?: boolean;
         appIntegration?: boolean;
+        playbackModesDisabled?: boolean;
         playbackPositionKeys?: readonly string[];
     }> = {}
 ) {
@@ -168,7 +169,7 @@ async function makePlaybackEngine(
     const savedSettings: Partial<AsbplayerSettings>[] = [];
     const playbackRates: number[] = [];
     const subtitleOffsets: number[] = [];
-    const publishedSubtitleOffsets: number[] = [];
+    const initialPlaybackSettings: InitialPlaybackSettings[] = [];
     const playbackPositionChanges: (number | undefined)[] = [];
     const modeChanges: {
         readonly modes: Set<PlayMode>;
@@ -195,6 +196,7 @@ async function makePlaybackEngine(
         settingsProvider,
         appIntegration: overrides.appIntegration ?? true,
         subtitles,
+        playbackModesDisabled: overrides.playbackModesDisabled ?? false,
         playbackModesSuppressed: false,
         playbackPositionKeys: overrides.playbackPositionKeys ?? [],
         timingDriver: driver,
@@ -224,7 +226,7 @@ async function makePlaybackEngine(
                 savedSettings.push(settings);
             },
             playbackModesChanged: (transition) => modeChanges.push(transition),
-            subtitleOffsetChanged: (offset) => publishedSubtitleOffsets.push(offset),
+            initialPlaybackSettingsChanged: (settings) => initialPlaybackSettings.push(settings),
             onError: () => {},
         },
     });
@@ -240,7 +242,7 @@ async function makePlaybackEngine(
         savedSettings,
         playbackRates,
         subtitleOffsets,
-        publishedSubtitleOffsets,
+        initialPlaybackSettings,
         playbackPositionChanges,
         settings,
         setDuration: (value: number) => {
@@ -312,8 +314,21 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.bind();
 
-        expect(harness.publishedSubtitleOffsets).toEqual([375]);
         expect(harness.playbackRates).toEqual([1.4]);
+        expect(harness.initialPlaybackSettings).toEqual([
+            {
+                playbackRate: 1.4,
+                playbackRateNotificationEnabled: true,
+                fastForwarding: false,
+                subtitleOffset: 375,
+                playbackModeTransition: {
+                    modes: new Set([PlayMode.normal]),
+                    added: new Set(),
+                    removed: new Set(),
+                },
+                join: ' | ',
+            },
+        ]);
     });
 
     it('does not reset remembered playback state for an initial empty subtitle update', async () => {
@@ -328,14 +343,27 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.subtitlesChanged([]);
 
-        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.fastForward]));
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.normal]));
         expect(harness.playbackRates).toEqual([]);
 
         harness.playbackEngine.subtitlesChanged([subtitle]);
 
         expect(harness.playbackRates).not.toContain(1.4);
         expect(harness.playbackRates.at(-1)).toBe(2.7);
-        expect(harness.publishedSubtitleOffsets).toEqual([375]);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.fastForward]));
+        expect(harness.initialPlaybackSettings.at(-1)?.subtitleOffset).toBe(375);
+    });
+
+    it('publishes the active fast-forward rate when binding', async () => {
+        const harness = await makePlaybackEngine([PlayMode.fastForward], 0, [subtitle], {
+            settings: { fastForwardModePlaybackRate: 2.7 },
+        });
+
+        expect(harness.initialPlaybackSettings.at(-1)).toMatchObject({
+            playbackRate: 2.7,
+            fastForwarding: true,
+        });
+        expect(harness.playbackRates.at(-1)).toBe(2.7);
     });
 
     it('refreshes the plan duration before binding', async () => {
@@ -387,7 +415,7 @@ describe('PlaybackEngine', () => {
 
         expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
         expect(harness.playbackRates).toContain(1.4);
-        expect(harness.publishedSubtitleOffsets).toEqual([375]);
+        expect(harness.initialPlaybackSettings.at(-1)?.subtitleOffset).toBe(375);
         expect(harness.playbackPositionChanges).toEqual([63_000]);
     });
 
@@ -444,6 +472,24 @@ describe('PlaybackEngine', () => {
         expect(harness.seeks).toEqual([1000]);
     });
 
+    it('keeps playback modes normal when disabled', async () => {
+        const harness = await makePlaybackEngine([PlayMode.repeat], 0, [subtitle], {
+            playbackModesDisabled: true,
+        });
+
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.normal]));
+        expect(harness.initialPlaybackSettings.at(-1)?.playbackModeTransition).toEqual({
+            modes: new Set([PlayMode.normal]),
+            added: new Set(),
+            removed: new Set(),
+        });
+
+        harness.playbackEngine.togglePlaybackMode(PlayMode.repeat);
+
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.normal]));
+        expect(harness.modeChanges).toEqual([]);
+    });
+
     it('does not bind timing without subtitles', async () => {
         const driver = new FakeTimingDriver();
         const settings = playbackSettings();
@@ -451,6 +497,7 @@ describe('PlaybackEngine', () => {
             settingsProvider: { getAll: async () => settings } as SettingsProvider,
             appIntegration: true,
             subtitles: [],
+            playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: [],
             timingDriver: driver,
@@ -464,7 +511,7 @@ describe('PlaybackEngine', () => {
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
-                subtitleOffsetChanged: () => {},
+                initialPlaybackSettingsChanged: () => {},
                 onError: () => {},
             },
         });
@@ -571,10 +618,10 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.bind();
 
-        expect(harness.modeChanges.at(-1)).toEqual({
+        expect(harness.initialPlaybackSettings.at(-1)?.playbackModeTransition).toEqual({
             modes: new Set([PlayMode.repeat]),
-            added: new Set(),
-            removed: new Set(),
+            added: new Set([PlayMode.repeat]),
+            removed: new Set([PlayMode.normal]),
         });
     });
 
@@ -767,13 +814,38 @@ describe('PlaybackEngine', () => {
             lastPlaybackModes: [PlayMode.normal],
         });
 
-        expect(harness.modeChanges.at(-1)?.modes).toEqual(new Set([PlayMode.repeat]));
         expect(harness.modeChanges.at(-1)).toEqual({
             modes: new Set([PlayMode.repeat]),
             added: new Set([PlayMode.repeat]),
             removed: new Set([PlayMode.normal]),
         });
         expect(harness.savedSettings).toEqual([]);
+    });
+
+    it('defers remembered modes until binding when settings change before subtitles load', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [], {
+            settings: {
+                rememberPlaybackModes: false,
+                lastPlaybackModes: [PlayMode.repeat],
+            },
+        });
+
+        harness.playbackEngine.settingsChanged({
+            ...harness.settings,
+            rememberPlaybackModes: true,
+            lastPlaybackModes: [PlayMode.repeat],
+        });
+
+        expect(harness.modeChanges).toEqual([]);
+        expect(harness.initialPlaybackSettings).toEqual([]);
+
+        harness.playbackEngine.subtitlesChanged([subtitle]);
+
+        expect(harness.initialPlaybackSettings.at(-1)?.playbackModeTransition).toEqual({
+            modes: new Set([PlayMode.repeat]),
+            added: new Set([PlayMode.repeat]),
+            removed: new Set([PlayMode.normal]),
+        });
     });
 
     it('does not persist automatic mode resets while remembering is disabled', async () => {
@@ -804,7 +876,9 @@ describe('PlaybackEngine', () => {
         harness.playbackEngine.subtitlesChanged([]);
         harness.playbackEngine.subtitlesChanged([subtitle]);
 
-        expect(harness.modeChanges.at(-1)?.modes).toEqual(new Set([PlayMode.repeat]));
+        expect(harness.initialPlaybackSettings.at(-1)?.playbackModeTransition.modes).toEqual(
+            new Set([PlayMode.repeat])
+        );
         expect(harness.driver.bound).toBe(true);
     });
 
@@ -815,6 +889,7 @@ describe('PlaybackEngine', () => {
             settingsProvider: { getAll: async () => harness.settings } as SettingsProvider,
             appIntegration: true,
             subtitles: [subtitle],
+            playbackModesDisabled: false,
             playbackModesSuppressed: false,
             playbackPositionKeys: [],
             timingDriver: new FakeTimingDriver(),
@@ -828,7 +903,7 @@ describe('PlaybackEngine', () => {
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
-                subtitleOffsetChanged: () => {},
+                initialPlaybackSettingsChanged: () => {},
                 onError: () => {},
             },
         });
