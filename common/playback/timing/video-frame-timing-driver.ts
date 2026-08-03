@@ -282,7 +282,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.eventCallbacks.onPlaybackRateChanged(playbackRate);
     };
 
-    private readonly onDurationChange = () => {
+    readonly onDurationChange = () => {
         this.eventCallbacks.onDurationChanged(this.video.durationMs());
     };
 

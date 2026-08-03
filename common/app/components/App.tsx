@@ -364,7 +364,7 @@ function App({
     const webSocketClient = useAppWebSocketClient({ settings });
     const supportsDictionaryStatistics = !extension.installed || extension.supportsDictionaryStatistics;
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>([]);
-    const playbackPreferences = usePlaybackPreferences(settings, extension);
+    const playbackPreferences = usePlaybackPreferences();
     const theme = useMemo<Theme>(() => createTheme(settings.themeType), [settings.themeType]);
     const anki = useAnki({ settings, fetcher });
     const searchParams = useMemo(() => new URLSearchParams(location.search), []);

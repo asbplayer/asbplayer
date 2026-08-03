@@ -215,6 +215,27 @@ describe('PlaybackPositionController', () => {
         harness.controller.unbind();
     });
 
+    it('keeps a locally removed position deleted across a stale settings refresh', () => {
+        const harness = makeController({
+            currentTimeMs: 0,
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }],
+            },
+        });
+
+        harness.controller.bind();
+        harness.controller.savePlaybackPosition(0);
+        harness.controller.settingsChanged({
+            ...defaultSettings,
+            lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }],
+        });
+        harness.controller.playbackPositionKeysChanged(['other.mp4']);
+        harness.controller.playbackPositionKeysChanged(['video.mp4']);
+
+        expect(harness.playbackPositionChanges).toEqual([61_000, undefined]);
+        harness.controller.unbind();
+    });
+
     it('does not restore while unbound', () => {
         const harness = makeController({
             settings: {

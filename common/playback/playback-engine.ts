@@ -19,8 +19,10 @@ import PlaybackModeController, {
 } from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
+import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 
 const internalSeekWatchdogMs = 10_000;
+const subtitleOffsetStorageKey = 'offset';
 
 export interface SubtitleOffsetOptions {
     readonly notifyPlayer: boolean;
@@ -36,11 +38,13 @@ export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
     readonly playbackPositionChanged: (position: number | undefined) => void;
     readonly saveSettings: (settings: Partial<AsbplayerSettings>, options: SaveSettingsOptions) => void;
     readonly playbackModesChanged: (transition: PlayModeTransition) => void;
+    readonly subtitleOffsetChanged: (offset: number) => void;
     readonly onError: (error: unknown) => void;
 }
 
 export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly settings: AsbplayerSettings;
+    readonly appIntegration: boolean;
     readonly subtitles: readonly T[];
     readonly ready: { settings: boolean };
     readonly playbackModesSuppressed: boolean;
@@ -73,6 +77,8 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  */
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
+    private readonly appIntegration: boolean;
+    private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
     private ready: { settings: boolean; subtitles: boolean };
     private playbackModesSuppressed: boolean;
@@ -85,6 +91,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     constructor({
         settings,
+        appIntegration,
         subtitles,
         ready,
         playbackModesSuppressed,
@@ -93,6 +100,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         timingDriver,
     }: PlaybackEngineOptions<T>) {
         this.settings = settings;
+        this.appIntegration = appIntegration;
         this.subtitles = subtitles;
         this.ready = { settings: ready.settings, subtitles: subtitles.length > 0 };
         this.playbackModesSuppressed = playbackModesSuppressed;
@@ -137,7 +145,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             currentTimeMs: () => this.timingDriver.currentTimeMs(),
             durationMs: () => this.timingDriver.durationMs(),
             callbacks: {
-                saveSettings: (settings) => callbacks.saveSettings(settings, { saveOnly: true }),
+                saveSettings: (settings) => {
+                    this.settings = { ...this.settings, ...settings };
+                    callbacks.saveSettings(settings, { saveOnly: true });
+                },
                 playbackPositionChanged: callbacks.playbackPositionChanged,
                 seek: (timestampMs) => this.seek(timestampMs),
                 play: callbacks.play,
@@ -159,15 +170,31 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
     }
 
+    get lastSubtitleOffset(): number {
+        if (!this.settings.rememberSubtitleOffset) return 0;
+        if (this.appIntegration) return this.settings.lastSubtitleOffset;
+        const value = this.subtitleOffsetStorage.get(subtitleOffsetStorageKey);
+        return value === null ? 0 : Number(value);
+    }
+
+    get playbackModes(): Set<PlayMode> {
+        return this.playbackModeController.playModes;
+    }
+
     bind(): void {
         if (this.timingDriver.bound) return;
         if (!this.ready.settings || !this.ready.subtitles) return;
-
-        const transition = this.playbackModeController.setModes(this.playbackModeController.playModes);
-        this.callbacks.playbackModesChanged(transition);
-        this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
         this.timingDriver.bind();
         this.playbackPositionController.bind();
+
+        // Sync states now that playback is ready
+        const transition = this.playbackModeController.setModes(this.playbackModeController.playModes);
+        this.callbacks.playbackModesChanged(transition);
+        this.callbacks.subtitleOffsetChanged(this.lastSubtitleOffset);
+        this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
+        this.timingDriver.onDurationChange();
+
+        this.rebuildPlan(); // Certain things may have changed since construction
     }
 
     unbind(): void {
@@ -178,18 +205,22 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     settingsChanged(settings: AsbplayerSettings): void {
         const rememberPlaybackModesNow = !this.settings.rememberPlaybackModes && settings.rememberPlaybackModes;
-        const activeRateSetting = this.executor.isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
-        // Preserve the live rate across settings echoes so saveSettings round-trips cannot overwrite it. A settings UI
-        // change to the active rate is therefore ignored until a later session/settings update.
+        // PlaybackEngine is the single source of truth for these settings and may not push updates to the settings from outside.
         this.settings = this.ready.settings
-            ? { ...settings, [activeRateSetting]: this.settings[activeRateSetting] }
+            ? {
+                  ...settings,
+                  playbackRate: this.settings.playbackRate,
+                  fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
+                  lastPlaybackModes: this.settings.lastPlaybackModes,
+                  ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
+              }
             : settings;
         this.ready.settings = true;
-        this.playbackPositionController.settingsChanged(this.settings);
+        this.settings = this.playbackPositionController.settingsChanged(this.settings);
         this.bind();
         if (rememberPlaybackModesNow) {
             this.applyPlaybackModeTransition(
-                this.playbackModeController.setModes(playbackModesFromSettings(settings)),
+                this.playbackModeController.setModes(playbackModesFromSettings(this.settings)),
                 { savePlaybackModes: false, rebuildWhenUnchanged: true }
             );
         } else {
@@ -216,7 +247,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.bind();
                 this.rebuildPlan();
             }
-        } else {
+        } else if (this.ready.subtitles) {
             this.ready.subtitles = false;
             this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
                 savePlaybackModes: false,
@@ -247,11 +278,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     subtitleOffsetChanged(offset: number, options: SubtitleOffsetOptions): void {
-        this.settings = { ...this.settings, lastSubtitleOffset: offset };
-        this.callbacks.setSubtitleOffset(offset, options);
-        if (this.settings.rememberSubtitleOffset) {
+        if (this.appIntegration) {
+            this.settings = { ...this.settings, lastSubtitleOffset: offset };
             this.callbacks.saveSettings({ lastSubtitleOffset: offset }, { saveOnly: true });
+        } else {
+            this.subtitleOffsetStorage.set(subtitleOffsetStorageKey, String(offset));
         }
+        this.callbacks.setSubtitleOffset(offset, options);
     }
 
     adjustPlaybackRate(delta: number): ReturnType<typeof this.playbackRateChanged> {
@@ -276,6 +309,14 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     togglePlaybackMode(targetMode: PlayMode): void {
         const transition = this.playbackModeController.transition(targetMode);
         this.applyPlaybackModeTransition(transition, { savePlaybackModes: true, rebuildWhenUnchanged: false });
+    }
+
+    dismissPlaybackPosition(): void {
+        this.playbackPositionController.dismissPlaybackPosition();
+    }
+
+    async resumePlaybackPosition(): Promise<void> {
+        await this.playbackPositionController.resumePlaybackPosition();
     }
 
     /** Reports a discontinuity from a non-standard media adapter, such as Disney+'s page-script seek event. */
@@ -422,13 +463,5 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const durationMs = this.timingDriver.durationMs();
         if (!Number.isFinite(durationMs)) return Math.max(0, timestampMs);
         return Math.max(0, Math.min(durationMs, timestampMs));
-    }
-
-    dismissPlaybackPosition(): void {
-        this.playbackPositionController.dismissPlaybackPosition();
-    }
-
-    async resumePlaybackPosition(): Promise<void> {
-        await this.playbackPositionController.resumePlaybackPosition();
     }
 }

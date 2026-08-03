@@ -13,6 +13,7 @@ import {
     ExtensionSyncMessage,
     ImageCaptureParams,
     NotificationDialogMessage,
+    OffsetFromVideoMessage,
     NotifyErrorMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
@@ -384,6 +385,7 @@ export default class Binding {
         const subtitles = this.subtitleController.subtitles;
         return new PlaybackEngine({
             settings: defaultSettings,
+            appIntegration: true,
             subtitles,
             ready: { settings: false },
             playbackModesSuppressed: this.recordingMedia,
@@ -438,16 +440,7 @@ export default class Binding {
                     onSeeked: () => this.seekedListener?.(new Event('seeked')),
                     onPlaybackRateChanged: (playbackRate) => {
                         if (disneyPlus) this.disneyPlusClock.updateRate(playbackRate, performance.now());
-                        const command: VideoToExtensionCommand<PlaybackRateFromVideoMessage> = {
-                            sender: 'asbplayer-video',
-                            message: {
-                                command: 'playbackRate',
-                                value: playbackRate,
-                                echo: false,
-                            },
-                            src: this._registeredVideoSrc,
-                        };
-                        void browser.runtime.sendMessage(command);
+                        this._notifyPlaybackRateChanged(playbackRate);
 
                         this.notifyPlaybackRate(this.playbackEngine.playbackRateChanged(playbackRate));
                         void this.mobileVideoOverlayController.updateModel();
@@ -509,6 +502,7 @@ export default class Binding {
                     this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
                     this.mobileVideoOverlayController.showPlaybackModes();
                 },
+                subtitleOffsetChanged: (offset) => this._notifySubtitleOffset(offset),
                 onError: (error) => console.error('Playback plan update failed', error),
             },
         });
@@ -520,6 +514,31 @@ export default class Binding {
             message: {
                 command: 'playModes',
                 playModes: [...modes],
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
+    }
+
+    private _notifySubtitleOffset(offset: number): void {
+        const command: VideoToExtensionCommand<OffsetFromVideoMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'offset',
+                value: offset,
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
+    }
+
+    private _notifyPlaybackRateChanged(playbackRate: number): void {
+        const command: VideoToExtensionCommand<PlaybackRateFromVideoMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'playbackRate',
+                value: playbackRate,
+                echo: false,
             },
             src: this._registeredVideoSrc,
         };
@@ -1702,16 +1721,12 @@ export default class Binding {
             streamingSubtitleListPreference,
             subtitleRegexFilter,
             subtitleRegexFilterTextReplacement,
-            rememberSubtitleOffset,
-            lastSubtitleOffset,
             subtitleHtml,
             convertNetflixRuby: convertNetflixRuby,
         } = await this.settings.get([
             'streamingSubtitleListPreference',
             'subtitleRegexFilter',
             'subtitleRegexFilterTextReplacement',
-            'rememberSubtitleOffset',
-            'lastSubtitleOffset',
             'subtitleHtml',
             'convertNetflixRuby',
         ]);
@@ -1747,8 +1762,7 @@ export default class Binding {
                     convertNetflixRuby: convertNetflixRuby,
                     pgsParserWorkerFactory: pgsParserWorkerFactory,
                 });
-                const userOffset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
-                const offset = userOffset;
+                const offset = this.playbackEngine.lastSubtitleOffset;
                 const subtitles = await reader.subtitles(files, flatten);
 
                 // Order is important: sync with tab first, then update our subtitle controller
