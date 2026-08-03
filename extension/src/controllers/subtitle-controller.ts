@@ -695,10 +695,12 @@ export default class SubtitleController {
         replacements,
         locKey,
         text,
+        autoHideDuration = 3000,
     }: {
         replacements?: { [key: string]: string };
         locKey?: string;
         text?: string;
+        autoHideDuration?: number;
     }) {
         if (!text && !locKey) {
             return;
@@ -714,7 +716,7 @@ export default class SubtitleController {
         this.notificationElementOverlayHideTimeout = setTimeout(() => {
             this.notificationElementOverlay.hide();
             this.notificationElementOverlayHideTimeout = undefined;
-        }, 3000);
+        }, autoHideDuration);
     }
 
     showLoadedMessage(nonEmptyTrackIndex: number[]) {

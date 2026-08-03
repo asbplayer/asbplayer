@@ -688,6 +688,7 @@ export default function VideoPlayer({
                 saveSettings: (settings) => onSettingsChangedRef.current(settings),
                 playbackModesChanged: (transition) => handlePlaybackModesChanged(transition, showInfoAlert),
                 initialPlaybackSettingsChanged: ({
+                    autoHideDuration,
                     playbackRate,
                     playbackRateNotificationEnabled,
                     subtitleOffset,
@@ -712,10 +713,18 @@ export default function VideoPlayer({
 
                     const notifications: AlertNotification[] = [];
                     if (offsetAndRateNotifications.length) {
-                        notifications.push({ message: offsetAndRateNotifications.join(join), severity: 'info' });
+                        notifications.push({
+                            message: offsetAndRateNotifications.join(join),
+                            severity: 'info',
+                            autoHideDuration,
+                        });
                     }
                     if (playbackModeMessages.length) {
-                        notifications.push({ message: playbackModeMessages.join(join), severity: 'info' });
+                        notifications.push({
+                            message: playbackModeMessages.join(join),
+                            severity: 'info',
+                            autoHideDuration,
+                        });
                     }
                     if (notifications.length) showAlerts(notifications);
                 },
@@ -2053,7 +2062,6 @@ export default function VideoPlayer({
                 open={alertOpen}
                 disableAutoHide={alertDisableAutoHide}
                 onClose={handleAlertClosed}
-                autoHideDuration={3000}
                 notifications={alertNotifications}
                 anchor={alertAnchor}
                 useAppLogo={false}

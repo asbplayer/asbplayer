@@ -774,6 +774,7 @@ describe('Binding playback mode integration', () => {
         expect(notification).toHaveBeenCalledTimes(1);
         expect(notification.mock.calls[0][0]).toEqual({
             text: expect.stringContaining('+375 ms'),
+            autoHideDuration: 6000,
         });
         expect(notification.mock.calls[0][0].text).toMatch(/^\+375 ms \| /);
 
@@ -792,7 +793,7 @@ describe('Binding playback mode integration', () => {
 
         sendSubtitles(binding, [makeSubtitle()]);
 
-        expect(notification).toHaveBeenCalledWith({ text: '+375 ms' });
+        expect(notification).toHaveBeenCalledWith({ text: '+375 ms', autoHideDuration: 6000 });
         binding.unbind();
     });
 

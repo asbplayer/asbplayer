@@ -1811,13 +1811,7 @@ function App({
                     onDragLeave={handleDragLeave}
                 >
                     {!sources.videoFile && !inVideoPlayer && (
-                        <Alert
-                            open={alertOpen}
-                            useAppLogo={false}
-                            onClose={handleAlertClosed}
-                            autoHideDuration={3000}
-                            severity={alertSeverity}
-                        >
+                        <Alert open={alertOpen} useAppLogo={false} onClose={handleAlertClosed} severity={alertSeverity}>
                             {alert}
                         </Alert>
                     )}
