@@ -171,7 +171,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 > This command is only available when extension v1.20.0+ (unreleased) is installed
 
-Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's video element; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
+Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
 Returns an empty list when no matching media is found or no subtitles are loaded.
 
 #### Request

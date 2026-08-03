@@ -203,7 +203,6 @@ export interface CopySubtitleMessage extends Message, CardTextFieldValues {
 export interface CopySubtitleWithAdditionalFieldsMessage extends Message, CardTextFieldValues {
     readonly command: 'copy-subtitle-with-additional-fields';
     readonly postMineAction: PostMineAction;
-    readonly targetedByMediaId?: boolean;
 }
 
 export interface TakeScreenshotMessage extends Message {

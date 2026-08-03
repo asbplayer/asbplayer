@@ -1104,14 +1104,7 @@ export default function SubtitlePlayer({
                     return;
                 }
 
-                const copySubtitleMessage = message.data as CopySubtitleWithAdditionalFieldsMessage;
-
-                // Commands targeting specific media are routed to a single asbplayer
-                if (!copySubtitleMessage.targetedByMediaId && !document.hasFocus()) {
-                    return;
-                }
-
-                copyFromWebSocketClient(copySubtitleMessage);
+                copyFromWebSocketClient(message.data as CopySubtitleWithAdditionalFieldsMessage);
             });
         }
     }, [extension, copyFromWebSocketClient]);
