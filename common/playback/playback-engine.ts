@@ -1,4 +1,4 @@
-import type { AsbplayerSettings, SaveSettingsOptions } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
 import { isTrackSeekable } from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import { PlayMode } from '@project/common';
@@ -36,7 +36,7 @@ export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
     readonly setSubtitleOffset: (offset: number, options: SubtitleOffsetOptions) => void;
     readonly showingSubtitlesChanged: (subtitles: readonly T[]) => void;
     readonly playbackPositionChanged: (position: number | undefined) => void;
-    readonly saveSettings: (settings: Partial<AsbplayerSettings>, options: SaveSettingsOptions) => void;
+    readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
     readonly playbackModesChanged: (transition: PlayModeTransition) => void;
     readonly subtitleOffsetChanged: (offset: number) => void;
     readonly onError: (error: unknown) => void;
@@ -147,7 +147,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             callbacks: {
                 saveSettings: (settings) => {
                     this.settings = { ...this.settings, ...settings };
-                    callbacks.saveSettings(settings, { saveOnly: true });
+                    callbacks.saveSettings(settings);
                 },
                 playbackPositionChanged: callbacks.playbackPositionChanged,
                 seek: (timestampMs) => this.seek(timestampMs),
@@ -201,6 +201,15 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         if (!this.timingDriver.bound) return;
         this.playbackPositionController.unbind();
         this.timingDriver.unbind();
+        // Need to update these as PlaybackEngine doesn't keep them all synced with external settings.
+        // This relies on the fact playbackRate is not considered a save only setting thus publishing the new settings.
+        this.callbacks.saveSettings({
+            playbackRate: this.settings.playbackRate,
+            fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
+            lastPlaybackModes: this.settings.lastPlaybackModes,
+            ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
+            lastPlaybackPositions: this.settings.lastPlaybackPositions,
+        });
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
@@ -272,7 +281,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.settings = { ...this.settings, [setting]: normalizedPlaybackRate };
         if (!this.rebuildPlan()) return { notify: false, playbackRate: this.settings[setting], locKey };
         if (this.settings.rememberPlaybackRate) {
-            this.callbacks.saveSettings({ [setting]: normalizedPlaybackRate }, { saveOnly: true });
+            this.callbacks.saveSettings({ [setting]: normalizedPlaybackRate });
         }
         return { notify: this.settings.playbackRateNotificationEnabled, playbackRate: normalizedPlaybackRate, locKey };
     }
@@ -280,7 +289,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     subtitleOffsetChanged(offset: number, options: SubtitleOffsetOptions): void {
         if (this.appIntegration) {
             this.settings = { ...this.settings, lastSubtitleOffset: offset };
-            this.callbacks.saveSettings({ lastSubtitleOffset: offset }, { saveOnly: true });
+            this.callbacks.saveSettings({ lastSubtitleOffset: offset });
         } else {
             this.subtitleOffsetStorage.set(subtitleOffsetStorageKey, String(offset));
         }
@@ -399,7 +408,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         if (options.savePlaybackModes) {
             const lastPlaybackModes = [...transition.modes];
             this.settings = { ...this.settings, lastPlaybackModes };
-            this.callbacks.saveSettings({ lastPlaybackModes }, { saveOnly: true });
+            this.callbacks.saveSettings({ lastPlaybackModes });
         }
         this.callbacks.playbackModesChanged(transition);
     }

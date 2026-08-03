@@ -7,6 +7,7 @@ import {
     prefixKey,
     prefixedSettings,
     settingsDeserializers,
+    saveOnlySettings,
     unprefixKey,
 } from '@project/common/settings';
 
@@ -157,7 +158,11 @@ export class LocalSettingsStorage implements AppSettingsStorage {
     onSettingsUpdated(callback: () => void) {
         if (this._settingsUpdatedCallbacks.length === 0) {
             this._storageListener = (event: StorageEvent) => {
-                if (event.key !== null && event.key in defaultSettings) {
+                if (
+                    event.key !== null &&
+                    event.key in defaultSettings &&
+                    !saveOnlySettings.includes(event.key as (typeof saveOnlySettings)[number])
+                ) {
                     cachedLocalStorage.bustCache();
 
                     for (const c of this._settingsUpdatedCallbacks) {

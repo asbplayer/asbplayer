@@ -2016,6 +2016,7 @@ function App({
                                     settings={settings}
                                     dictionaryProvider={dictionaryProvider}
                                     settingsProvider={settingsProvider}
+                                    onSettingsChanged={onSettingsChanged}
                                     playbackPreferences={playbackPreferences}
                                     onCopy={handleCopy}
                                     onError={handleError}
