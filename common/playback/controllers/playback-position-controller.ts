@@ -1,5 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import type { AsbplayerSettings } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { PlaybackPosition } from '@project/common/settings';
 
 export const minimumPlaybackPositionMs = 60_000;
@@ -44,12 +44,15 @@ export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleMo
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly play: () => Promise<void>;
     readonly showingSubtitlesAt: (timestampMs: number) => readonly T[];
+    readonly playbackPositionsChanged: (positions: readonly PlaybackPosition[]) => void;
+    readonly onError: (error: unknown) => void;
 }
 
 export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleModel> {
     readonly playbackPositionKeys: readonly string[];
     readonly currentTimeMs: () => number;
     readonly durationMs: () => number;
+    readonly settingsProvider: SettingsProvider;
     readonly callbacks: PlaybackPositionControllerCallbacks<T>;
 }
 
@@ -58,6 +61,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     private settings?: AsbplayerSettings;
     private readonly currentTimeMs: () => number;
     private readonly durationMs: () => number;
+    private readonly settingsProvider: SettingsProvider;
     private readonly callbacks: PlaybackPositionControllerCallbacks<T>;
     private restoreKeys: readonly string[];
     private lastSavedTimestampMs?: number;
@@ -65,21 +69,28 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     private pendingTimestampMs?: number;
     private skipInitialDiscontinuity = true;
     private playbackPositionSaveTimer?: ReturnType<typeof setInterval>;
-    private readonly locallyChangedPositionKeys = new Set<string>();
+    private saveOperation: Promise<void> = Promise.resolve();
+    private saveOperationId = 0;
 
-    constructor({ playbackPositionKeys, currentTimeMs, durationMs, callbacks }: PlaybackPositionControllerOptions<T>) {
+    constructor({
+        playbackPositionKeys,
+        currentTimeMs,
+        durationMs,
+        settingsProvider,
+        callbacks,
+    }: PlaybackPositionControllerOptions<T>) {
         this.restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
         this.currentTimeMs = currentTimeMs;
         this.durationMs = durationMs;
+        this.settingsProvider = settingsProvider;
         this.callbacks = callbacks;
     }
 
     bind(): void {
         if (this.playbackPositionSaveTimer !== undefined) return;
-        this.playbackPositionSaveTimer = setInterval(
-            () => this.savePlaybackPosition(this.currentTimeMs()),
-            playbackPositionSaveIntervalMs
-        );
+        this.playbackPositionSaveTimer = setInterval(() => {
+            void this.savePlaybackPosition(this.currentTimeMs());
+        }, playbackPositionSaveIntervalMs);
         this.restorePlaybackPosition();
     }
 
@@ -90,24 +101,24 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         this.skipInitialDiscontinuity = true;
     }
 
+    cancelPendingSaves(): void {
+        ++this.saveOperationId;
+    }
+
+    profileChanged(): void {
+        this.cancelPendingSaves();
+        this.dismissPlaybackPosition();
+        this.hasOfferedRestorePosition = false;
+        this.lastSavedTimestampMs = undefined;
+    }
+
     setSettings(settings: AsbplayerSettings): void {
         this.settings = settings;
     }
 
-    settingsChanged(settings: AsbplayerSettings): AsbplayerSettings | undefined {
-        if (!this.settings) return;
-        const locallyChangedPositions = this.settings.lastPlaybackPositions.filter(({ fileName }) =>
-            this.locallyChangedPositionKeys.has(fileName)
-        );
-        const incomingPositions = settings.lastPlaybackPositions.filter(
-            ({ fileName }) => !this.locallyChangedPositionKeys.has(fileName)
-        );
-        this.settings = {
-            ...settings,
-            lastPlaybackPositions: [...locallyChangedPositions, ...incomingPositions].slice(0, maxPlaybackPositions),
-        };
+    settingsChanged(settings: AsbplayerSettings): void {
+        this.settings = settings;
         this.restorePlaybackPosition();
-        return this.settings;
     }
 
     playbackPositionKeysChanged(playbackPositionKeys: readonly string[]): void {
@@ -116,16 +127,13 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
 
         this.dismissPlaybackPosition();
         this.restoreKeys = restoreKeys;
-        for (const key of this.locallyChangedPositionKeys) {
-            if (!restoreKeys.includes(key)) this.locallyChangedPositionKeys.delete(key);
-        }
         this.hasOfferedRestorePosition = false;
         this.lastSavedTimestampMs = undefined;
         this.restorePlaybackPosition();
     }
 
     playbackPaused(): void {
-        this.savePlaybackPosition(this.currentTimeMs());
+        void this.savePlaybackPosition(this.currentTimeMs());
     }
 
     discontinuity(timestampMs: number): void {
@@ -133,30 +141,34 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
             this.skipInitialDiscontinuity = false;
             return;
         }
-        this.savePlaybackPosition(timestampMs);
+        void this.savePlaybackPosition(timestampMs);
     }
 
-    savePlaybackPosition(timestampMs: number): void {
-        if (!this.settings) return;
-        if (!this.restoreKeys.length || !Number.isFinite(timestampMs) || this.lastSavedTimestampMs === timestampMs) {
-            return;
+    savePlaybackPosition(timestampMs: number): Promise<void> {
+        if (!this.settings) return Promise.resolve();
+        const restoreKeys = this.restoreKeys;
+        if (!restoreKeys.length || !Number.isFinite(timestampMs) || this.lastSavedTimestampMs === timestampMs) {
+            return Promise.resolve();
         }
 
         if (timestampMs < minimumPlaybackPositionMs) {
             this.lastSavedTimestampMs = timestampMs;
-            this.removeRememberedPlaybackPositions();
-            return;
+            return this.removeRememberedPlaybackPositions();
         }
 
-        const lastPlaybackPositions = upsertPlaybackPositions(
-            this.settings.lastPlaybackPositions,
-            this.restoreKeys,
-            Math.max(0, timestampMs)
-        );
         this.lastSavedTimestampMs = timestampMs;
-        this.settings = { ...this.settings, lastPlaybackPositions };
-        for (const key of this.restoreKeys) this.locallyChangedPositionKeys.add(key);
-        this.callbacks.saveSettings({ lastPlaybackPositions });
+        this.settings = {
+            ...this.settings,
+            lastPlaybackPositions: upsertPlaybackPositions(
+                this.settings.lastPlaybackPositions,
+                restoreKeys,
+                Math.max(0, timestampMs)
+            ),
+        };
+        this.callbacks.playbackPositionsChanged(this.settings.lastPlaybackPositions);
+        return this.enqueueLastPlaybackPositions((lastPlaybackPositions) =>
+            upsertPlaybackPositions(lastPlaybackPositions, restoreKeys, Math.max(0, timestampMs))
+        );
     }
 
     dismissPlaybackPosition(): void {
@@ -183,16 +195,55 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         return first.length === second.length && first.every((key, index) => key === second[index]);
     }
 
-    private removeRememberedPlaybackPositions(): void {
-        if (!this.settings) return;
+    private removeRememberedPlaybackPositions(): Promise<void> {
+        if (!this.settings) return Promise.resolve();
+        const restoreKeys = this.restoreKeys;
         const lastPlaybackPositions = this.settings.lastPlaybackPositions.filter(
-            ({ fileName }) => !this.restoreKeys.includes(fileName)
+            ({ fileName }) => !restoreKeys.includes(fileName)
         );
-        if (lastPlaybackPositions.length === this.settings.lastPlaybackPositions.length) return;
+        if (lastPlaybackPositions.length === this.settings.lastPlaybackPositions.length) return Promise.resolve();
+        this.settings = {
+            ...this.settings,
+            lastPlaybackPositions,
+        };
+        this.callbacks.playbackPositionsChanged(this.settings.lastPlaybackPositions);
+        return this.enqueueLastPlaybackPositions((lastPlaybackPositions) =>
+            lastPlaybackPositions.filter(({ fileName }) => !restoreKeys.includes(fileName)).length ===
+            lastPlaybackPositions.length
+                ? [...lastPlaybackPositions]
+                : lastPlaybackPositions.filter(({ fileName }) => !restoreKeys.includes(fileName))
+        );
+    }
 
-        for (const key of this.restoreKeys) this.locallyChangedPositionKeys.add(key);
-        this.settings = { ...this.settings, lastPlaybackPositions };
-        this.callbacks.saveSettings({ lastPlaybackPositions });
+    /**
+     * Serializes this controller's position updates and reads the latest persisted positions before each write so
+     * concurrent playback owners can preserve positions written before their read. The read/modify/write sequence is
+     * is hard to make globally atomic, so this is best-effort and may result in dropped updates if multiple owners
+     * write at the same time. Considering the frequency of writes, this approach balances consistency with complexity.
+     */
+    private enqueueLastPlaybackPositions(
+        update: (lastPlaybackPositions: readonly PlaybackPosition[]) => PlaybackPosition[]
+    ): Promise<void> {
+        const saveOperationId = this.saveOperationId;
+        this.saveOperation = this.saveOperation
+            .catch(() => undefined)
+            .then(async () => {
+                if (saveOperationId !== this.saveOperationId || !this.settings) return;
+                const existingPositions = await this.settingsProvider.getSingle('lastPlaybackPositions');
+                if (saveOperationId !== this.saveOperationId || !this.settings) return;
+                const lastPlaybackPositions = update(existingPositions);
+                if (
+                    lastPlaybackPositions.length === existingPositions.length &&
+                    lastPlaybackPositions.every((position, index) => position === existingPositions[index])
+                ) {
+                    return;
+                }
+                this.settings = { ...this.settings, lastPlaybackPositions };
+                this.callbacks.playbackPositionsChanged(lastPlaybackPositions);
+                this.callbacks.saveSettings({ lastPlaybackPositions });
+            });
+        void this.saveOperation.catch((error) => this.callbacks.onError(error));
+        return this.saveOperation;
     }
 
     private restorePlaybackPosition(): void {
@@ -209,7 +260,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         this.hasOfferedRestorePosition = true;
         if (position === undefined) return;
         if (position < minimumPlaybackPositionMs) {
-            this.removeRememberedPlaybackPositions();
+            void this.removeRememberedPlaybackPositions();
             return;
         }
         if (position >= this.durationMs()) return;

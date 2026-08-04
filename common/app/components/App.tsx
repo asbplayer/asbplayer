@@ -223,6 +223,7 @@ interface RenderVideoProps {
         timestamp: number
     ) => void;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    profile?: string;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
 }
@@ -326,6 +327,7 @@ interface Props {
     extension: ChromeExtension;
     fetcher: Fetcher;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    profile?: string;
     profiles: Profile[];
     activeProfile?: string;
     onNewProfile: (name: string) => void;
@@ -344,6 +346,7 @@ function App({
     extension,
     fetcher,
     onSettingsChanged,
+    profile,
     onGlobalStateChanged,
     ...profilesContext
 }: Props) {
@@ -1826,6 +1829,7 @@ function App({
                                 ankiDialogOpen={ankiDialogOpen}
                                 seekRequest={videoPlayerSeekRequest}
                                 onSettingsChanged={onSettingsChanged}
+                                profile={profile}
                                 onAnkiDialogRequest={handleAnkiDialogRequestFromVideoPlayer}
                                 onAnkiDialogRewind={handleAnkiDialogRewindFromVideoPlayer}
                                 onError={handleError}
@@ -2013,6 +2017,7 @@ function App({
                                     dictionaryProvider={dictionaryProvider}
                                     settingsProvider={settingsProvider}
                                     onSettingsChanged={onSettingsChanged}
+                                    profile={profile}
                                     playbackPreferences={playbackPreferences}
                                     onCopy={handleCopy}
                                     onError={handleError}

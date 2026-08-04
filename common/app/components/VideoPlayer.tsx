@@ -282,6 +282,7 @@ interface Props {
         timestamp: number
     ) => void;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    profile?: string;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
 }
@@ -331,6 +332,7 @@ export default function VideoPlayer({
     onError,
     onAnkiDialogRewind,
     onSettingsChanged,
+    profile,
 }: Props) {
     const classes = useStyles();
     const { t } = useTranslation();
@@ -340,6 +342,7 @@ export default function VideoPlayer({
     const videoRef = useRef<ExperimentalHTMLVideoElement>(undefined);
     const [video, setVideo] = useState<ExperimentalHTMLVideoElement>();
     const playbackEngineRef = useRef<PlaybackEngine<IndexedSubtitleModel>>(undefined);
+    const profileRef = useRef(profile);
     const hiddenVideoRef = useRef<HTMLVideoElement | null>(null); // seek preview thumbnail
     const [hiddenVideoReady, setHiddenVideoReady] = useState(false);
     const [windowWidth, windowHeight] = useWindowSize(true);
@@ -758,6 +761,12 @@ export default function VideoPlayer({
         updateSubtitlesWithOffset,
         video,
     ]);
+
+    useEffect(() => {
+        if (profileRef.current === profile) return;
+        profileRef.current = profile;
+        playbackEngineRef.current?.profileChanged(profile);
+    }, [profile]);
 
     function selectAudioTrack(id: string) {
         const audioTracks = videoRef.current?.audioTracks;

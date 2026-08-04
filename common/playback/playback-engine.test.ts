@@ -139,6 +139,12 @@ const playbackSettings = (overrides: Partial<AsbplayerSettings> = {}): Asbplayer
     ...overrides,
 });
 
+const flushPlaybackSaves = async (): Promise<void> => {
+    for (let i = 0; i < 6; i++) await Promise.resolve();
+};
+
+const flushPlaybackInitialization = flushPlaybackSaves;
+
 async function makePlaybackEngine(
     modes: PlayMode[],
     timestampMs = 0,
@@ -155,6 +161,7 @@ async function makePlaybackEngine(
         appIntegration?: boolean;
         playbackModesDisabled?: boolean;
         playbackPositionKeys?: readonly string[];
+        profile?: string;
     }> = {}
 ) {
     const driver = new FakeTimingDriver();
@@ -182,17 +189,27 @@ async function makePlaybackEngine(
         rememberPlaybackModes: overrides.settings?.rememberPlaybackModes ?? true,
         lastPlaybackModes: overrides.settings?.lastPlaybackModes ?? modes,
     });
+    let providerPositions = settings.lastPlaybackPositions;
+    let providerProfile = overrides.profile;
     let resolveSettings: ((settings: AsbplayerSettings) => void) | undefined;
-    const settingsProvider = (
-        overrides.settingsReady === false
-            ? {
-                  getAll: () =>
-                      new Promise<AsbplayerSettings>((resolve) => {
-                          resolveSettings = resolve;
-                      }),
-              }
-            : { getAll: async () => settings }
-    ) as SettingsProvider;
+    let settingsLoadPending = overrides.settingsReady === false;
+    const settingsProvider = (overrides.settingsReady === false
+        ? {
+              getAll: () => {
+                  if (!settingsLoadPending) return Promise.resolve(settings);
+                  settingsLoadPending = false;
+                  return new Promise<AsbplayerSettings>((resolve) => {
+                      resolveSettings = resolve;
+                  });
+              },
+              getSingle: async () => providerPositions,
+              activeProfile: async () => (providerProfile === undefined ? undefined : { name: providerProfile }),
+          }
+        : {
+              getAll: async () => settings,
+              getSingle: async () => providerPositions,
+              activeProfile: async () => (providerProfile === undefined ? undefined : { name: providerProfile }),
+          }) as unknown as SettingsProvider;
     const playbackEngine = new PlaybackEngine({
         settingsProvider,
         appIntegration: overrides.appIntegration ?? true,
@@ -228,6 +245,9 @@ async function makePlaybackEngine(
             playbackPositionChanged: (position) => playbackPositionChanges.push(position),
             saveSettings: (settings) => {
                 savedSettings.push(settings);
+                if (settings.lastPlaybackPositions !== undefined) {
+                    providerPositions = settings.lastPlaybackPositions;
+                }
             },
             playbackModesChanged: (transition) => modeChanges.push(transition),
             initialPlaybackSettingsChanged: (settings) => initialPlaybackSettings.push(settings),
@@ -254,6 +274,9 @@ async function makePlaybackEngine(
             driver.durationMsValue = value;
         },
         resolveSettings: (loadedSettings: AsbplayerSettings) => resolveSettings?.(loadedSettings),
+        setProfile: (profile: string | undefined) => {
+            providerProfile = profile;
+        },
     };
 }
 
@@ -381,6 +404,7 @@ describe('PlaybackEngine', () => {
 
         harness.resolveSettings(harness.settings);
         await Promise.resolve();
+        await Promise.resolve();
 
         expect(harness.driver.durationMsReads).toBeGreaterThan(0);
     });
@@ -408,7 +432,7 @@ describe('PlaybackEngine', () => {
         harness.driver.timestampMs = 1500;
 
         harness.resolveSettings(harness.settings);
-        await Promise.resolve();
+        await flushPlaybackInitialization();
         await harness.driver.time(2000);
 
         expect(harness.pauses).toEqual([]);
@@ -433,7 +457,7 @@ describe('PlaybackEngine', () => {
         };
 
         harness.resolveSettings(loadedSettings);
-        await Promise.resolve();
+        await flushPlaybackInitialization();
 
         expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
         expect(harness.playbackRates).toContain(1.4);
@@ -516,7 +540,11 @@ describe('PlaybackEngine', () => {
         const driver = new FakeTimingDriver();
         const settings = playbackSettings();
         const playbackEngine = new PlaybackEngine<IndexedSubtitleModel>({
-            settingsProvider: { getAll: async () => settings } as SettingsProvider,
+            settingsProvider: {
+                getAll: async () => settings,
+                getSingle: async () => settings.lastPlaybackPositions,
+                activeProfile: async () => undefined,
+            } as unknown as SettingsProvider,
             appIntegration: true,
             subtitles: [],
             playbackModesDisabled: false,
@@ -548,7 +576,7 @@ describe('PlaybackEngine', () => {
         playbackEngine.togglePlaybackMode(PlayMode.repeat);
         expect(playbackEngine.playbackModes).toEqual(new Set([PlayMode.normal]));
 
-        await Promise.resolve();
+        await flushPlaybackInitialization();
         playbackEngine.durationChanged(6000);
         playbackEngine.subtitlesChanged([subtitle]);
         expect(driver.bound).toBe(true);
@@ -590,7 +618,32 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.settingsChanged(harness.settings);
         harness.resolveSettings(harness.settings);
-        await Promise.resolve();
+        await flushPlaybackInitialization();
+
+        expect(harness.driver.bound).toBe(true);
+        expect(harness.driver.bindCalls).toBe(1);
+    });
+
+    it('retries the settings read when an update arrives during initialization', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], { settingsReady: false });
+
+        harness.playbackEngine.settingsChanged({ ...harness.settings, playbackRate: 1.5 });
+        harness.resolveSettings(harness.settings);
+        await flushPlaybackInitialization();
+
+        expect(harness.initialPlaybackSettings.at(-1)?.playbackRate).toBe(harness.settings.playbackRate);
+    });
+
+    it('retries initialization when the profile changes before settings are ready', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            settingsReady: false,
+            profile: 'old-profile',
+        });
+
+        harness.setProfile('new-profile');
+        harness.playbackEngine.profileChanged('new-profile');
+        harness.resolveSettings(harness.settings);
+        await flushPlaybackInitialization();
 
         expect(harness.driver.bound).toBe(true);
         expect(harness.driver.bindCalls).toBe(1);
@@ -608,7 +661,7 @@ describe('PlaybackEngine', () => {
             ...harness.settings,
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
         });
-        await Promise.resolve();
+        await flushPlaybackInitialization();
 
         expect(harness.playbackPositionChanges).toEqual([63_000]);
     });
@@ -622,6 +675,29 @@ describe('PlaybackEngine', () => {
 
         expect(harness.driver.unbindCalls).toBe(1);
         expect(harness.savedSettings).toHaveLength(1);
+    });
+
+    it('reinitializes on a profile change without persisting the previous profile', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            profile: 'old-profile',
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 61_000 }],
+            },
+        });
+
+        harness.driver.discontinuity(0);
+        harness.driver.discontinuity(62_000);
+        harness.setProfile('new-profile');
+        harness.playbackEngine.profileChanged('new-profile');
+        await flushPlaybackSaves();
+
+        expect(harness.savedSettings).toEqual([]);
+        expect(harness.playbackPositionChanges).toEqual([61_000, undefined, 61_000]);
+        expect(harness.driver.bound).toBe(true);
+        expect(harness.driver.bindCalls).toBe(2);
+        expect(harness.driver.unbindCalls).toBe(1);
     });
 
     it('publishes the current playback settings when unbinding', async () => {
@@ -931,7 +1007,11 @@ describe('PlaybackEngine', () => {
         const harness = await makePlaybackEngine([PlayMode.normal]);
         const setPlaybackRate = jest.fn();
         const rebound = new PlaybackEngine({
-            settingsProvider: { getAll: async () => harness.settings } as SettingsProvider,
+            settingsProvider: {
+                getAll: async () => harness.settings,
+                getSingle: async () => harness.settings.lastPlaybackPositions,
+                activeProfile: async () => undefined,
+            } as unknown as SettingsProvider,
             appIntegration: true,
             subtitles: [subtitle],
             playbackModesDisabled: false,
@@ -955,7 +1035,7 @@ describe('PlaybackEngine', () => {
 
         expect(setPlaybackRate).not.toHaveBeenCalled();
         setPlaybackRate.mockClear();
-        await Promise.resolve();
+        await flushPlaybackInitialization();
         rebound.settingsChanged(harness.settings);
         expect(setPlaybackRate).toHaveBeenCalledWith(harness.settings.playbackRate);
     });
@@ -1072,6 +1152,7 @@ describe('PlaybackEngine', () => {
         harness.playbackEngine.bind();
         await harness.driver.time(61_000);
         jest.advanceTimersByTime(10_000);
+        await flushPlaybackSaves();
 
         expect(harness.savedSettings).toContainEqual({
             lastPlaybackPositions: [
@@ -1095,6 +1176,7 @@ describe('PlaybackEngine', () => {
 
         await harness.driver.time(71_000);
         jest.advanceTimersByTime(1);
+        await flushPlaybackSaves();
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 71_000 }],
         });
@@ -1180,11 +1262,13 @@ describe('PlaybackEngine', () => {
         harness.playbackEngine.bind();
         harness.driver.discontinuity(62_000);
         harness.driver.callbacks.onPlaybackPaused();
+        await flushPlaybackSaves();
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 62_000 }],
         });
 
         harness.driver.discontinuity(64_000);
+        await flushPlaybackSaves();
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 64_000 }],
         });
@@ -1199,14 +1283,16 @@ describe('PlaybackEngine', () => {
 
         harness.resolveSettings(harness.settings);
         await Promise.resolve();
+        await Promise.resolve();
         harness.driver.discontinuity(62_000);
+        await flushPlaybackSaves();
 
         expect(harness.savedSettings).toContainEqual({
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 62_000 }],
         });
     });
 
-    it('retains playback positions saved by the engine across a settings refresh', async () => {
+    it('accepts settings refreshes without preserving stale local playback positions', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
             durationMs: 70_000,
             playbackPositionKeys: ['video.mp4'],
@@ -1214,14 +1300,15 @@ describe('PlaybackEngine', () => {
             emitInitialDiscontinuity: true,
         });
         harness.resolveSettings(harness.settings);
-        await Promise.resolve();
+        await flushPlaybackInitialization();
         harness.driver.discontinuity(62_000);
+        await flushPlaybackSaves();
 
         harness.playbackEngine.settingsChanged({ ...harness.settings, lastPlaybackPositions: [] });
         harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4']);
         harness.playbackEngine.playbackPositionKeysChanged(['video.mp4']);
 
-        expect(harness.playbackPositionChanges).toEqual([62_000]);
+        expect(harness.playbackPositionChanges).toEqual([]);
     });
 
     it('accepts remembered positions for other playback owners during a settings refresh', async () => {
@@ -1232,7 +1319,7 @@ describe('PlaybackEngine', () => {
             emitInitialDiscontinuity: true,
         });
         harness.resolveSettings(harness.settings);
-        await Promise.resolve();
+        await flushPlaybackInitialization();
         harness.driver.discontinuity(62_000);
 
         harness.playbackEngine.settingsChanged({
@@ -1257,6 +1344,7 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.bind();
         harness.driver.callbacks.onPlaybackPaused();
+        await flushPlaybackSaves();
 
         expect(harness.savedSettings.at(-1)).toEqual({
             lastPlaybackPositions: [{ fileName: 'other-video.mp4', position: 120_000 }],
@@ -1273,6 +1361,7 @@ describe('PlaybackEngine', () => {
 
         harness.playbackEngine.bind();
         await Promise.resolve();
+        await flushPlaybackSaves();
 
         expect(harness.savedSettings).toEqual([{ lastPlaybackPositions: [] }]);
         expect(harness.playbackPositionChanges).toEqual([]);
