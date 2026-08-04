@@ -296,7 +296,7 @@ describe('playbackTimelineToHtml', () => {
         expect(document.querySelector('.event.autoPause-start')?.getAttribute('style')).toContain('left:15%');
     });
 
-    it('keeps normal subtitles visible while making normal and other modes mutually exclusive', () => {
+    it('keeps normal subtitles visible while allowing fast-forward and condensed modes together', () => {
         const html = playbackTimelineToHtml({
             plan: plan([makeTextSubtitle(1000, 2000, 'one', 0)]),
             themeColor: '#123456',
@@ -312,8 +312,10 @@ describe('playbackTimelineToHtml', () => {
         window.eval(scriptText ?? '');
         const normalCheckbox = document.querySelector<HTMLInputElement>('input[data-mode="normal"]');
         const fastForwardCheckbox = document.querySelector<HTMLInputElement>('input[data-mode="fast-forward"]');
+        const condensedCheckbox = document.querySelector<HTMLInputElement>('input[data-mode="condensed"]');
         expect(normalCheckbox?.checked).toBe(true);
         expect(fastForwardCheckbox?.checked).toBe(false);
+        expect(condensedCheckbox?.checked).toBe(false);
 
         fastForwardCheckbox!.checked = true;
         fastForwardCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
@@ -321,10 +323,17 @@ describe('playbackTimelineToHtml', () => {
         expect(document.body.classList).not.toContain('hide-normal');
         expect(document.querySelector('.event.normal')).not.toBeNull();
 
+        condensedCheckbox!.checked = true;
+        condensedCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(fastForwardCheckbox?.checked).toBe(true);
+        expect(condensedCheckbox?.checked).toBe(true);
+
         normalCheckbox!.checked = true;
         normalCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
         expect(fastForwardCheckbox?.checked).toBe(false);
+        expect(condensedCheckbox?.checked).toBe(false);
         expect(document.body.classList).toContain('hide-fast-forward');
+        expect(document.body.classList).toContain('hide-condensed');
 
         normalCheckbox!.checked = false;
         normalCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));

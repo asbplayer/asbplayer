@@ -64,6 +64,13 @@ describe('buildPlaybackPlan', () => {
         expect(mode === PlayMode.condensed ? plan.condensed : plan.fastForward).toBeDefined();
     });
 
+    it('encodes condensed seeking and fast-forward rate changes together', () => {
+        const plan = makePlan([PlayMode.condensed, PlayMode.fastForward]);
+
+        expect(plan.condensed).toEqual({ minimumSkipIntervalMs: 500, pauseAtStart: false });
+        expect(plan.fastForward).toEqual({ playbackRate: 2.5, minimumSkipIntervalMs: 250 });
+    });
+
     it('swaps crossed playback mode offset roles for auto-pause and repeat', () => {
         const plan = makePlan([PlayMode.autoPause, PlayMode.repeat], {
             autoPausePreference: AutoPausePreference.atStartAndEnd,
@@ -201,6 +208,20 @@ describe('buildPlaybackPlan', () => {
         expect(rateAt(3999)).toBe(1.25);
         expect(rateAt(4500)).toBe(1.25);
         expect(rateAt(5000)).toBe(2.5);
+    });
+
+    it('retains both condensed and fast-forward timeline state in the same gap', () => {
+        const plan = makePlan([PlayMode.condensed, PlayMode.fastForward], {
+            subtitles: [
+                makeSubtitle(),
+                makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 }),
+            ],
+        });
+        const timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
+        const lookup = timeline.lookupAt(2100);
+
+        expect(lookup.segment.condensedTarget).toBe(3999);
+        expect(fastForwardingForPlanState(plan, lookup.state)).toBe(true);
     });
 
     it('keeps an entire subminimum subtitle gap at the normal rate', () => {
