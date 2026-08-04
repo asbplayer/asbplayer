@@ -41,12 +41,15 @@ it('changes separate keys for different profiles', async () => {
     expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
 });
 
-it('does not notify settings callbacks for playback-owned storage events', () => {
+it('busts the cache without notifying settings callbacks for playback-owned storage events', async () => {
     const onSettingsUpdated = jest.fn();
     const unsubscribe = settingsStorage.onSettingsUpdated(onSettingsUpdated);
 
+    await settingsStorage.set({ lastSubtitleOffset: 100 });
+    localStorage.setItem('lastSubtitleOffset', '200');
     window.dispatchEvent(new StorageEvent('storage', { key: 'lastSubtitleOffset' }));
     expect(onSettingsUpdated).not.toHaveBeenCalled();
+    expect(await settingsStorage.get({ lastSubtitleOffset: 0 })).toEqual({ lastSubtitleOffset: 200 });
 
     window.dispatchEvent(new StorageEvent('storage', { key: 'playbackRate' }));
     expect(onSettingsUpdated).toHaveBeenCalledTimes(1);
