@@ -100,7 +100,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly callbacks: PlaybackEngineCallbacks<T>;
     private readonly timingDriver: TimingDriver;
     private readonly playbackPositionController: PlaybackPositionController<T>;
+    private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
+    private settingsChangedOperationId = 0;
+    private lastProfile?: string;
 
     constructor({
         settingsProvider,
@@ -114,6 +117,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }: PlaybackEngineOptions<T>) {
         this.settings = {} as AsbplayerSettings;
         this.appIntegration = appIntegration;
+        this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
         this.ready = { settings: false, subtitles: subtitles.length > 0 };
         this.playbackModesSuppressed = playbackModesSuppressed;
@@ -127,7 +131,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             paused: () => this.timingDriver.paused(),
             pause: () => {
                 callbacks.pause();
-                this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
+                void this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
             },
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
             setPlaybackRate: (playbackRate) => {
@@ -167,7 +171,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 seek: (timestampMs) => this.seek(timestampMs),
                 play: callbacks.play,
                 showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
+                playbackPositionsChanged: (positions) => {
+                    this.settings = { ...this.settings, lastPlaybackPositions: [...positions] };
+                },
+                onError: callbacks.onError,
             },
+            settingsProvider,
         });
         this.timingDriver.setCallbacks({
             onTime: (currentTimestampMs, { lookaheadTimestampMs }) => {
@@ -182,17 +191,26 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             onPlaybackStarted: () => this.executor.playbackStarted(),
             onError: callbacks.onError,
         });
-        void this.initializeSettings(settingsProvider);
+        void this.initializeSettings();
     }
 
-    private async initializeSettings(settingsProvider: SettingsProvider): Promise<void> {
+    private async initializeSettings(): Promise<void> {
         const unbindOperationId = this.unbindOperationId;
         try {
-            this.settings = await settingsProvider.getAll();
-            this.playbackPositionController.setSettings(this.settings);
-            this.ready.settings = true;
-            if (unbindOperationId !== this.unbindOperationId) return;
-            this.bind();
+            while (true) {
+                const settingsChangedOperationId = this.settingsChangedOperationId;
+                const settings = await this.settingsProvider.getAll();
+                const activeProfile = await this.settingsProvider.activeProfile();
+                const profile = activeProfile?.name;
+                if (settingsChangedOperationId !== this.settingsChangedOperationId) continue;
+                if (unbindOperationId !== this.unbindOperationId) return;
+                this.settings = settings;
+                this.lastProfile = profile;
+                this.playbackPositionController.setSettings(this.settings);
+                this.ready.settings = true;
+                this.bind();
+                return;
+            }
         } catch (error) {
             this.callbacks.onError(error);
         }
@@ -237,10 +255,24 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     unbind(): void {
+        this.teardown({ saveSettings: true });
+    }
+
+    profileChanged(profile?: string): void {
+        if (this.lastProfile === profile) return;
+        this.teardown({ saveSettings: false });
+        this.ready.settings = false;
+        ++this.settingsChangedOperationId;
+        void this.initializeSettings();
+    }
+
+    private teardown({ saveSettings }: { readonly saveSettings: boolean }): void {
         ++this.unbindOperationId;
+        if (!saveSettings) this.playbackPositionController.profileChanged();
         if (!this.timingDriver.bound) return;
         this.playbackPositionController.unbind();
         this.timingDriver.unbind();
+        if (!saveSettings) return;
         // Need to update these as PlaybackEngine doesn't keep them all synced with external settings.
         this.callbacks.saveSettings({
             lastPlaybackModes: this.settings.lastPlaybackModes,
@@ -257,6 +289,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
+        ++this.settingsChangedOperationId;
         if (!this.ready.settings) return;
         const rememberPlaybackModesNow =
             !this.settings.rememberPlaybackModes && settings.rememberPlaybackModes && this.timingDriver.bound;
@@ -268,7 +301,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             lastPlaybackModes: this.settings.lastPlaybackModes,
             ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
         };
-        this.settings = this.playbackPositionController.settingsChanged(this.settings)!;
+        this.playbackPositionController.settingsChanged(this.settings);
         this.bind();
         if (rememberPlaybackModesNow) {
             this.applyPlaybackModeTransition(
@@ -488,7 +521,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             await this.callbacks.seek(targetTimestampMs);
             if ((await Promise.race([seekCompletion, watchdog])) !== 'completed') return;
             this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);
-            this.playbackPositionController.savePlaybackPosition(targetTimestampMs);
+            void this.playbackPositionController.savePlaybackPosition(targetTimestampMs);
         } catch (error) {
             this.timingDriver.cancelExpectedInternalSeek();
             throw error;

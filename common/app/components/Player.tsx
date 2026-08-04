@@ -129,6 +129,7 @@ interface PlayerProps {
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
     onSettingsChanged?: (settings: Partial<AsbplayerSettings>) => void;
+    profile?: string;
     playbackPreferences: PlaybackPreferenceController;
     keyBinder: KeyBinder;
     extension: ChromeExtension;
@@ -186,6 +187,7 @@ function PlayerComponent(
         settingsProvider,
         settings,
         onSettingsChanged,
+        profile,
         playbackPreferences,
         keyBinder,
         extension,
@@ -279,6 +281,7 @@ function PlayerComponent(
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
+    const profileRef = useRef(profile);
     const applyOffsetRef = useRef<(offset: number, forwardToVideo: boolean) => void>(undefined);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
     const resumePlaybackSnackbar = useSnackbar({
@@ -499,7 +502,7 @@ function PlayerComponent(
                 showingSubtitlesChanged: setSyntheticShowingSubtitles,
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => {
-                    if (onSettingsChanged !== undefined) void onSettingsChanged(settings);
+                    if (onSettingsChanged !== undefined) onSettingsChanged(settings);
                     else void settingsProvider.set(settings).catch(onError);
                 },
                 playbackModesChanged: ({ modes }) => synchronizePlaybackModes(modes),
@@ -552,6 +555,12 @@ function PlayerComponent(
         synchronizePlaybackModes,
         updatePlaybackRate,
     ]);
+
+    useEffect(() => {
+        if (profileRef.current === profile) return;
+        profileRef.current = profile;
+        syntheticPlaybackEngineRef.current?.profileChanged(profile);
+    }, [profile]);
 
     useEffect(() => {
         if (!syntheticPlayback) return;

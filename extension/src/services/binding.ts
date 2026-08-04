@@ -1236,6 +1236,8 @@ export default class Binding {
     }
 
     async _refreshSettings() {
+        const activeProfile = (await this.settings.activeProfile())?.name;
+        this.playbackEngine.profileChanged(activeProfile);
         const currentSettings = await this.settings.getAll();
         this.playbackEngine.settingsChanged(currentSettings);
         this._seekDurationMs = currentSettings.seekDuration * 1000;

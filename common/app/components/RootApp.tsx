@@ -94,6 +94,7 @@ const RootApp = ({
             extension={extension}
             fetcher={fetcher}
             onSettingsChanged={handleSettingsChanged}
+            profile={profilesContext.activeProfile}
             onGlobalStateChanged={handleGlobalStateChanged}
             {...profilesContext}
         />
