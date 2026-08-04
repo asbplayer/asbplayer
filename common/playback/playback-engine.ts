@@ -100,6 +100,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly callbacks: PlaybackEngineCallbacks<T>;
     private readonly timingDriver: TimingDriver;
     private readonly playbackPositionController: PlaybackPositionController<T>;
+    private unbindOperationId = 0;
 
     constructor({
         settingsProvider,
@@ -185,10 +186,16 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     private async initializeSettings(settingsProvider: SettingsProvider): Promise<void> {
-        this.settings = await settingsProvider.getAll();
-        this.playbackPositionController.setSettings(this.settings);
-        this.ready.settings = true;
-        this.bind();
+        const unbindOperationId = this.unbindOperationId;
+        try {
+            this.settings = await settingsProvider.getAll();
+            this.playbackPositionController.setSettings(this.settings);
+            this.ready.settings = true;
+            if (unbindOperationId !== this.unbindOperationId) return;
+            this.bind();
+        } catch (error) {
+            this.callbacks.onError(error);
+        }
     }
 
     get lastSubtitleOffset(): number {
@@ -215,30 +222,37 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
         this.rebuildPlan();
 
+        const subtitleOffset = this.lastSubtitleOffset;
+        if (subtitleOffset) this.callbacks.setSubtitleOffset(subtitleOffset, { notifyPlayer: false });
         const { join } = playbackModeNotifications(playbackModeTransition);
         this.callbacks.initialPlaybackSettingsChanged({
             autoHideDuration: initialPlaybackSettingsAutoHideDuration,
             playbackRate: this.executor.isFastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate,
             playbackRateNotificationEnabled: this.settings.playbackRateNotificationEnabled,
             fastForwarding: this.executor.isFastForwarding,
-            subtitleOffset: this.lastSubtitleOffset,
+            subtitleOffset,
             playbackModeTransition,
             join,
         });
     }
 
     unbind(): void {
+        ++this.unbindOperationId;
         if (!this.timingDriver.bound) return;
         this.playbackPositionController.unbind();
         this.timingDriver.unbind();
         // Need to update these as PlaybackEngine doesn't keep them all synced with external settings.
-        // This relies on the fact playbackRate is not considered a save only setting thus publishing the new settings.
         this.callbacks.saveSettings({
-            playbackRate: this.settings.playbackRate,
-            fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
             lastPlaybackModes: this.settings.lastPlaybackModes,
             ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
             lastPlaybackPositions: this.settings.lastPlaybackPositions,
+            rememberPlaybackRate: this.settings.rememberPlaybackRate, // This is done to ensure everyone is notified as its not in saveOnlySettings
+            ...(this.settings.rememberPlaybackRate
+                ? {
+                      playbackRate: this.settings.playbackRate,
+                      fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
+                  }
+                : {}),
         });
     }
 

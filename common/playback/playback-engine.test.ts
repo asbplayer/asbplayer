@@ -169,6 +169,7 @@ async function makePlaybackEngine(
     const savedSettings: Partial<AsbplayerSettings>[] = [];
     const playbackRates: number[] = [];
     const subtitleOffsets: number[] = [];
+    const subtitleOffsetOptions: { readonly offset: number; readonly notifyPlayer: boolean }[] = [];
     const initialPlaybackSettings: InitialPlaybackSettings[] = [];
     const playbackPositionChanges: (number | undefined)[] = [];
     const modeChanges: {
@@ -219,7 +220,10 @@ async function makePlaybackEngine(
                 playbackRates.push(playbackRate);
                 driver.playbackRateValue = playbackRate;
             },
-            setSubtitleOffset: (offset) => subtitleOffsets.push(offset),
+            setSubtitleOffset: (offset, options) => {
+                subtitleOffsets.push(offset);
+                subtitleOffsetOptions.push({ offset, notifyPlayer: options.notifyPlayer });
+            },
             showingSubtitlesChanged: (values) => showing.push(values),
             playbackPositionChanged: (position) => playbackPositionChanges.push(position),
             saveSettings: (settings) => {
@@ -242,6 +246,7 @@ async function makePlaybackEngine(
         savedSettings,
         playbackRates,
         subtitleOffsets,
+        subtitleOffsetOptions,
         initialPlaybackSettings,
         playbackPositionChanges,
         settings,
@@ -315,6 +320,8 @@ describe('PlaybackEngine', () => {
         harness.playbackEngine.bind();
 
         expect(harness.playbackRates).toEqual([1.4]);
+        expect(harness.subtitleOffsets).toEqual([375]);
+        expect(harness.subtitleOffsetOptions).toEqual([{ offset: 375, notifyPlayer: false }]);
         expect(harness.initialPlaybackSettings).toEqual([
             {
                 autoHideDuration: 6000,
@@ -376,6 +383,20 @@ describe('PlaybackEngine', () => {
         await Promise.resolve();
 
         expect(harness.driver.durationMsReads).toBeGreaterThan(0);
+    });
+
+    it('does not bind after unbinding invalidates a pending settings load', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], { settingsReady: false });
+
+        harness.playbackEngine.bind();
+        harness.playbackEngine.unbind();
+        harness.resolveSettings(harness.settings);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(harness.driver.bindCalls).toBe(0);
+        expect(harness.driver.bound).toBe(false);
+        expect(harness.initialPlaybackSettings).toEqual([]);
     });
 
     it('starts from the current time when binding after time has elapsed', async () => {
@@ -610,6 +631,7 @@ describe('PlaybackEngine', () => {
             lastPlaybackModes: [PlayMode.repeat],
             lastSubtitleOffset: 250,
             lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+            rememberPlaybackRate: true,
         });
         expect(isSaveOnlySettings(finalSettings!)).toBe(false);
     });
@@ -1004,6 +1026,19 @@ describe('PlaybackEngine', () => {
         expect(harness.playbackEngine.adjustPlaybackRate(1)!.playbackRate).toBe(3);
 
         expect(harness.savedSettings).not.toContainEqual({ fastForwardModePlaybackRate: 3 });
+    });
+
+    it('does not persist changed playback rates when unbinding with remembering disabled', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
+            settings: { rememberPlaybackRate: false },
+        });
+        harness.playbackEngine.bind();
+
+        harness.playbackEngine.playbackRateChanged(1.7);
+        harness.playbackEngine.unbind();
+
+        expect(harness.savedSettings.at(-1)).not.toHaveProperty('playbackRate');
+        expect(harness.savedSettings.at(-1)).not.toHaveProperty('fastForwardModePlaybackRate');
     });
 
     it('always saves the current position, even when remembering is disabled', async () => {
