@@ -214,6 +214,7 @@ interface RenderVideoProps {
     onAnkiDialogRequest: (
         videoFileUrl: string,
         videoFileName: string,
+        transcodedAudioFileUrl: string | undefined,
         selectedAudioTrack: string | undefined,
         playbackRate: number,
         subtitle: SubtitleModel,
@@ -498,6 +499,7 @@ function App({
         async (
             videoFileUrl: string,
             videoFileName: string,
+            transcodedAudioFileUrl: string | undefined,
             audioTrack: string | undefined,
             playbackRate: number,
             subtitle: SubtitleModel,
@@ -518,6 +520,8 @@ function App({
                     blobUrl: videoFileUrl,
                     audioTrack,
                     playbackRate,
+                    // Set only when this browser can't decode the file's own audio track
+                    transcodedAudioBlobUrl: transcodedAudioFileUrl,
                 },
             };
             handleAnkiDialogRequest(item);
