@@ -183,7 +183,7 @@ export default function Alert(props: Props) {
         if (!props.open) {
             previousPropsRef.current = undefined;
             hadNotificationsRef.current = false;
-            setNotifications([]);
+            if (notifications.length) setNotifications([]);
             return;
         }
 
