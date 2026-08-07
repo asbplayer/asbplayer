@@ -25,7 +25,7 @@ import { CachedLocalStorage } from '@project/common/app/services/cached-local-st
 
 const internalSeekWatchdogMs = 10_000;
 const subtitleOffsetStorageKey = 'offset';
-const initialPlaybackSettingsAutoHideDuration = 6000;
+const initialPlaybackSettingsAutoHideDurationMs = 6000;
 
 export interface SubtitleOffsetOptions {
     readonly notifyPlayer: boolean;
@@ -126,6 +126,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private unbindOperationId = 0;
     private settingsChangedOperationId = 0;
     private lastProfile?: string;
+    private settingsInitialization?: {
+        readonly unbindOperationId: number;
+        readonly promise: Promise<void>;
+    };
 
     constructor({
         settingsProvider,
@@ -213,11 +217,21 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             onPlaybackStarted: () => this.executor.playbackStarted(),
             onError: callbacks.onError,
         });
-        void this.initializeSettings();
+        this.initializeSettings();
     }
 
-    private async initializeSettings(): Promise<void> {
+    private initializeSettings(): void {
+        if (this.ready.settings) return;
         const unbindOperationId = this.unbindOperationId;
+        if (this.settingsInitialization?.unbindOperationId === unbindOperationId) return;
+        const promise = this.loadSettings(unbindOperationId);
+        this.settingsInitialization = { unbindOperationId, promise };
+        void promise.finally(() => {
+            if (this.settingsInitialization?.promise === promise) this.settingsInitialization = undefined;
+        });
+    }
+
+    private async loadSettings(unbindOperationId: number): Promise<void> {
         try {
             while (true) {
                 const settingsChangedOperationId = this.settingsChangedOperationId;
@@ -271,7 +285,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 ),
             });
         }
-
         return {
             offsetAndRate,
             playbackMode: playbackModeNotifications(playbackModeTransition),
@@ -280,16 +293,18 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     bind(): void {
         if (this.timingDriver.bound) return;
-        if (!this.ready.settings || !this.ready.subtitles) return;
+        if (!this.ready.settings) {
+            this.initializeSettings();
+            return;
+        }
+        if (!this.ready.subtitles) return;
 
         this.timingDriver.bind();
         this.playbackPositionController.bind();
 
         const playbackModeTransition = this.playbackModeController.setModes(playbackModesFromSettings(this.settings));
-        this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
         this.timingDriver.onDurationChange();
-
-        this.rebuildPlan();
+        this.rebuildPlan({ initializePlaybackRate: true });
 
         const subtitleOffset = this.lastSubtitleOffset;
         if (subtitleOffset) this.callbacks.setSubtitleOffset(subtitleOffset, { notifyPlayer: false });
@@ -302,7 +317,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             playbackModeTransition,
         });
         this.callbacks.initialPlaybackSettingsChanged({
-            autoHideDuration: initialPlaybackSettingsAutoHideDuration,
+            autoHideDuration: initialPlaybackSettingsAutoHideDurationMs,
             playbackRate,
             subtitleOffset,
             playbackModeTransition,
@@ -319,7 +334,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.teardown({ saveSettings: false });
         this.ready.settings = false;
         ++this.settingsChangedOperationId;
-        void this.initializeSettings();
+        this.initializeSettings();
     }
 
     private teardown({ saveSettings }: { readonly saveSettings: boolean }): void {
@@ -350,6 +365,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const rememberPlaybackModesNow =
             !this.settings.rememberPlaybackModes && settings.rememberPlaybackModes && this.timingDriver.bound;
         // PlaybackEngine is the single source of truth for these settings and may not push updates to the settings from outside.
+        // For playbackRate, this has a side effect of ignoring changes in the UI for the current playback. This is acceptable and
+        // means that playback rate in the UI is for init only, live playback rate changes must be through other means.
         this.settings = {
             ...settings,
             playbackRate: this.settings.playbackRate,
@@ -535,12 +552,18 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
      * the plan or timeline should as rebuilding to update them is always preferred. It also serves to simplify
      * the overall logic by reducing runtime checks.
      */
-    private rebuildPlan(): boolean {
+    private rebuildPlan(options: { readonly initializePlaybackRate?: boolean } = {}): boolean {
         const plan = this.buildPlan();
-        if (playbackPlansEqual(this.plan, plan)) return false;
-        this.plan = plan;
-        this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs());
-        return true;
+        const planChanged = !playbackPlansEqual(this.plan, plan);
+        if (planChanged) {
+            this.plan = plan;
+            this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
+                forcePlaybackRate: options.initializePlaybackRate,
+            });
+        } else if (options.initializePlaybackRate) {
+            this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
+        }
+        return planChanged;
     }
 
     private applyPlaybackModeTransition(

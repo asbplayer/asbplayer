@@ -112,7 +112,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return this.timeline.showingSubtitlesAt(timestampMs);
     }
 
-    replacePlan(plan: PlaybackPlan<T>, timestampMs: number): void {
+    replacePlan(
+        plan: PlaybackPlan<T>,
+        timestampMs: number,
+        options: { readonly forcePlaybackRate?: boolean } = {}
+    ): void {
         this.invalidatePendingOperations({ preserveExpectedDiscontinuity: true });
         const playbackRateChanged =
             this.plan.playbackRate !== plan.playbackRate ||
@@ -144,7 +148,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.callbacks.setPlaybackRate(plan.playbackRate);
             this._isFastForwarding = false;
         }
-        this.reconcileAt(timestampMs, { forcePlaybackRate: playbackRateChanged && !resetPlaybackRate });
+        this.reconcileAt(timestampMs, {
+            forcePlaybackRate: !resetPlaybackRate && (playbackRateChanged || options.forcePlaybackRate === true),
+        });
     }
 
     async update(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void> {
