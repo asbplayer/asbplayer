@@ -454,6 +454,21 @@ describe('PlaybackEngine', () => {
         expect(harness.initialPlaybackSettings).toEqual([]);
     });
 
+    it('reinitializes settings when binding again after an invalidated settings load', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], { settingsReady: false });
+
+        harness.playbackEngine.bind();
+        harness.playbackEngine.unbind();
+        harness.resolveSettings(harness.settings);
+        await flushPlaybackInitialization();
+
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+
+        expect(harness.driver.bound).toBe(true);
+        expect(harness.driver.bindCalls).toBe(1);
+    });
+
     it('starts from the current time when binding after time has elapsed', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 0, [subtitle], {
             settings: { autoPausePreference: AutoPausePreference.atStart },
@@ -1047,6 +1062,17 @@ describe('PlaybackEngine', () => {
         await flushPlaybackInitialization();
         rebound.settingsChanged(harness.settings);
         expect(setPlaybackRate).toHaveBeenCalledWith(harness.settings.playbackRate);
+    });
+
+    it('reinitializes the media rate when rebinding an unchanged plan', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal]);
+
+        harness.playbackEngine.unbind();
+        harness.driver.playbackRateValue = 0.5;
+
+        harness.playbackEngine.bind();
+
+        expect(harness.driver.playbackRateValue).toBe(harness.settings.playbackRate);
     });
 
     it('updates and remembers the normal plan rate while fast-forward is enabled but inactive', async () => {
