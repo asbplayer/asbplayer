@@ -12,6 +12,8 @@ import {
     ensureStoragePersisted,
     extractText,
     filterAsync,
+    formatAsSigned,
+    formatAsSignedMs,
     fromBatches,
     getCurrentTimeString,
     getKanaMoras,
@@ -215,6 +217,26 @@ describe('humanReadableTime', () => {
         jest.useFakeTimers().setSystemTime(new Date(2026, 4, 1, 2, 3, 4));
 
         expect(getCurrentTimeString()).toBe('2026-5-1-2-3-4');
+    });
+});
+
+describe('formatAsSigned', () => {
+    it('adds a plus sign to non-negative values and preserves negative values', () => {
+        expect(formatAsSigned(0)).toBe('+0');
+        expect(formatAsSigned(1.5)).toBe('+1.5');
+        expect(formatAsSigned(-1.5)).toBe('-1.5');
+    });
+
+    it('supports fixed decimal formatting', () => {
+        expect(formatAsSigned(1.5, 2)).toBe('+1.50');
+        expect(formatAsSigned(-1.5, 2)).toBe('-1.50');
+    });
+});
+
+describe('formatAsSignedMs', () => {
+    it('formats milliseconds with a sign and unit', () => {
+        expect(formatAsSignedMs(100)).toBe('+100 ms');
+        expect(formatAsSignedMs(-100)).toBe('-100 ms');
     });
 });
 

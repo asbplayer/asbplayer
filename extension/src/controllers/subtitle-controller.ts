@@ -27,6 +27,7 @@ import {
     arrayEquals,
     compareSubtitlesForDisplay,
     computeStyleString,
+    formatAsSignedMs,
     surroundingSubtitles,
 } from '@project/common/util';
 import i18n from 'i18next';
@@ -688,7 +689,7 @@ export default class SubtitleController {
 
     private _formatOffset(offset: number): string {
         const roundedOffset = Math.floor(offset);
-        return roundedOffset >= 0 ? '+' + roundedOffset + ' ms' : roundedOffset + ' ms';
+        return formatAsSignedMs(roundedOffset);
     }
 
     notification({

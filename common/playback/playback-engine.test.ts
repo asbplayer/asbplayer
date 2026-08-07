@@ -6,7 +6,10 @@ import {
     type AsbplayerSettings,
     type SettingsProvider,
 } from '@project/common/settings';
-import PlaybackEngine, { type InitialPlaybackSettings } from '@project/common/playback/playback-engine';
+import PlaybackEngine, {
+    formatPlaybackRateNotification,
+    type InitialPlaybackSettings,
+} from '@project/common/playback/playback-engine';
 import type {
     InternalSeekCompletion,
     TimingDriver,
@@ -349,15 +352,22 @@ describe('PlaybackEngine', () => {
             {
                 autoHideDuration: 6000,
                 playbackRate: 1.4,
-                playbackRateNotificationEnabled: true,
-                fastForwarding: false,
                 subtitleOffset: 375,
                 playbackModeTransition: {
                     modes: new Set([PlayMode.normal]),
                     added: new Set(),
                     removed: new Set(),
                 },
-                join: ' | ',
+                notifications: {
+                    offsetAndRate: [
+                        { type: 'message', message: '+375 ms' },
+                        {
+                            type: 'translation',
+                            notification: { locKey: 'info.playbackRate', replacements: { rate: '1.4' } },
+                        },
+                    ],
+                    playbackMode: { notifications: [], join: ' | ' },
+                },
             },
         ]);
     });
@@ -392,9 +402,30 @@ describe('PlaybackEngine', () => {
 
         expect(harness.initialPlaybackSettings.at(-1)).toMatchObject({
             playbackRate: 2.7,
-            fastForwarding: true,
+            notifications: {
+                offsetAndRate: [
+                    {
+                        type: 'translation',
+                        notification: {
+                            locKey: 'info.fastForwardPlaybackRate',
+                            replacements: { rate: '2.7' },
+                        },
+                    },
+                ],
+            },
         });
         expect(harness.playbackRates.at(-1)).toBe(2.7);
+    });
+
+    it('formats playback rate notifications without trailing zeros', () => {
+        expect(formatPlaybackRateNotification(1, 'info.playbackRate')).toEqual({
+            locKey: 'info.playbackRate',
+            replacements: { rate: '1' },
+        });
+        expect(formatPlaybackRateNotification(1.1, 'info.playbackRate')).toEqual({
+            locKey: 'info.playbackRate',
+            replacements: { rate: '1.1' },
+        });
     });
 
     it('refreshes the plan duration before binding', async () => {
