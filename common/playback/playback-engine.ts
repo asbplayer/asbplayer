@@ -2,6 +2,7 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 import { isTrackSeekable } from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import { PlayMode } from '@project/common';
+import { formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
     playbackPlansEqual,
@@ -33,11 +34,32 @@ export interface SubtitleOffsetOptions {
 export interface InitialPlaybackSettings {
     readonly autoHideDuration: number;
     readonly playbackRate: number;
-    readonly playbackRateNotificationEnabled: boolean;
-    readonly fastForwarding: boolean;
     readonly subtitleOffset: number;
     readonly playbackModeTransition: PlayModeTransition;
-    readonly join: string;
+    readonly notifications: InitialPlaybackSettingsNotifications;
+}
+
+export interface PlaybackRateNotification {
+    readonly locKey: string;
+    readonly replacements: { readonly rate: string };
+}
+
+export function formatPlaybackRateNotification(playbackRate: number, locKey: string): PlaybackRateNotification {
+    return {
+        locKey,
+        replacements: {
+            rate: String(Number(playbackRate.toFixed(2))),
+        },
+    };
+}
+
+export type InitialPlaybackNotification =
+    | { readonly type: 'message'; readonly message: string }
+    | { readonly type: 'translation'; readonly notification: PlaybackRateNotification };
+
+export interface InitialPlaybackSettingsNotifications {
+    readonly offsetAndRate: InitialPlaybackNotification[];
+    readonly playbackMode: ReturnType<typeof playbackModeNotifications>;
 }
 
 export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
@@ -227,6 +249,35 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         return this.playbackModeController.playModes;
     }
 
+    private initialPlaybackSettingsNotifications({
+        playbackRate,
+        fastForwarding,
+        subtitleOffset,
+        playbackModeTransition,
+    }: {
+        readonly playbackRate: number;
+        readonly fastForwarding: boolean;
+        readonly subtitleOffset: number;
+        readonly playbackModeTransition: PlayModeTransition;
+    }): InitialPlaybackSettingsNotifications {
+        const offsetAndRate: InitialPlaybackNotification[] = [];
+        if (subtitleOffset !== 0) offsetAndRate.push({ type: 'message', message: formatAsSignedMs(subtitleOffset) });
+        if (this.settings.playbackRateNotificationEnabled && playbackRate !== 1) {
+            offsetAndRate.push({
+                type: 'translation',
+                notification: formatPlaybackRateNotification(
+                    playbackRate,
+                    fastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
+                ),
+            });
+        }
+
+        return {
+            offsetAndRate,
+            playbackMode: playbackModeNotifications(playbackModeTransition),
+        };
+    }
+
     bind(): void {
         if (this.timingDriver.bound) return;
         if (!this.ready.settings || !this.ready.subtitles) return;
@@ -242,15 +293,20 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
         const subtitleOffset = this.lastSubtitleOffset;
         if (subtitleOffset) this.callbacks.setSubtitleOffset(subtitleOffset, { notifyPlayer: false });
-        const { join } = playbackModeNotifications(playbackModeTransition);
-        this.callbacks.initialPlaybackSettingsChanged({
-            autoHideDuration: initialPlaybackSettingsAutoHideDuration,
-            playbackRate: this.executor.isFastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate,
-            playbackRateNotificationEnabled: this.settings.playbackRateNotificationEnabled,
-            fastForwarding: this.executor.isFastForwarding,
+        const fastForwarding = this.executor.isFastForwarding;
+        const playbackRate = fastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate;
+        const notifications = this.initialPlaybackSettingsNotifications({
+            playbackRate,
+            fastForwarding,
             subtitleOffset,
             playbackModeTransition,
-            join,
+        });
+        this.callbacks.initialPlaybackSettingsChanged({
+            autoHideDuration: initialPlaybackSettingsAutoHideDuration,
+            playbackRate,
+            subtitleOffset,
+            playbackModeTransition,
+            notifications,
         });
     }
 
@@ -338,23 +394,34 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         | {
               readonly notify: boolean;
               readonly playbackRate: number;
-              readonly locKey: string;
+              readonly notification: PlaybackRateNotification;
           }
         | undefined {
         if (!this.timingDriver.bound) return;
         const isFastForwarding = this.executor.isFastForwarding;
         const setting = isFastForwarding ? 'fastForwardModePlaybackRate' : 'playbackRate';
         const locKey = isFastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate';
+        const notification = formatPlaybackRateNotification(this.settings[setting], locKey);
         const normalizedPlaybackRate = normalizePlaybackRate(playbackRate);
         if (normalizedPlaybackRate === undefined || this.settings[setting] === normalizedPlaybackRate) {
-            return { notify: false, playbackRate: this.settings[setting], locKey };
+            return { notify: false, playbackRate: this.settings[setting], notification };
         }
         this.settings = { ...this.settings, [setting]: normalizedPlaybackRate };
-        if (!this.rebuildPlan()) return { notify: false, playbackRate: this.settings[setting], locKey };
+        if (!this.rebuildPlan()) {
+            return {
+                notify: false,
+                playbackRate: this.settings[setting],
+                notification: formatPlaybackRateNotification(this.settings[setting], locKey),
+            };
+        }
         if (this.settings.rememberPlaybackRate) {
             this.callbacks.saveSettings({ [setting]: normalizedPlaybackRate });
         }
-        return { notify: this.settings.playbackRateNotificationEnabled, playbackRate: normalizedPlaybackRate, locKey };
+        return {
+            notify: this.settings.playbackRateNotificationEnabled,
+            playbackRate: normalizedPlaybackRate,
+            notification: formatPlaybackRateNotification(normalizedPlaybackRate, locKey),
+        };
     }
 
     subtitleOffsetChanged(offset: number, options: SubtitleOffsetOptions): void {
@@ -373,7 +440,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const isFastForwarding = this.executor.isFastForwarding;
         const playbackRate = isFastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate;
         const locKey = isFastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate';
-        if (!delta || !Number.isFinite(delta)) return { notify: false, playbackRate, locKey };
+        if (!delta || !Number.isFinite(delta)) {
+            return {
+                notify: false,
+                playbackRate,
+                notification: formatPlaybackRateNotification(playbackRate, locKey),
+            };
+        }
         return this.playbackRateChanged(playbackRate + delta);
     }
 

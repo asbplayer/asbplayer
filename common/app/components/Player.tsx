@@ -32,7 +32,13 @@ import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { KeyBinder } from '@project/common/key-binder';
-import { clampMediaTimestamp, download, surroundingSubtitles, timeDurationDisplay } from '@project/common/util';
+import {
+    clampMediaTimestamp,
+    download,
+    formatAsSignedMs,
+    surroundingSubtitles,
+    timeDurationDisplay,
+} from '@project/common/util';
 import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
 import Clock from '@project/common/playback/timing/clock';
@@ -256,8 +262,10 @@ function PlayerComponent(
     const [lastJumpToTopTimestamp, setLastJumpToTopTimestamp] = useState<number>(0);
     const [offset, setOffset] = useState<number>(0);
     const [playbackRate, setPlaybackRate] = useState<number>(settings.playbackRate);
-    const [alertOpen, setAlertOpen] = useState<boolean>(false);
-    const [alertNotifications, setAlertNotifications] = useState<AlertNotification[]>([]);
+    const [alert, setAlert] = useState<{ open: boolean; notifications: AlertNotification[] }>({
+        open: false,
+        notifications: [],
+    });
     const [audioTracks, setAudioTracks] = useState<AudioTrackModel[]>();
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<string>();
     const [channelId, setChannelId] = useState<string>();
@@ -386,45 +394,17 @@ function PlayerComponent(
         [clock, mediaAdapter]
     );
 
-    const showAlerts = useCallback((notifications: readonly AlertNotification[]) => {
-        setAlertNotifications([...notifications]);
-        setAlertOpen(true);
+    const notifyOffset = useCallback((offset: number) => {
+        setAlert({ open: true, notifications: [{ message: formatAsSignedMs(offset), severity: 'info' }] });
     }, []);
-
-    const showInfoAlert = useCallback(
-        (message: string, autoHideDuration?: number) => showAlerts([{ message, severity: 'info', autoHideDuration }]),
-        [showAlerts]
-    );
-
-    const formatOffsetNotification = useCallback((offset: number, enabled: boolean) => {
-        if (!enabled) return;
-        const addedSign = offset >= 0 ? '+' : '';
-        return `${addedSign}${offset} ms`;
-    }, []);
-
-    const formatPlaybackRateNotification = useCallback(
-        (playbackRate: number, enabled: boolean, locKey: string) => {
-            if (!enabled) return;
-            return t(locKey, { rate: playbackRate.toFixed(1) });
-        },
-        [t]
-    );
-
-    const notifyOffset = useCallback(
-        (offset: number) => {
-            const message = formatOffsetNotification(offset, true);
-            if (message) showInfoAlert(message);
-        },
-        [formatOffsetNotification, showInfoAlert]
-    );
 
     const notifyPlaybackRate = useCallback(
         (options: ReturnType<PlaybackEngine<DisplaySubtitleModel>['playbackRateChanged']>) => {
             if (!options?.notify) return;
-            const message = formatPlaybackRateNotification(options.playbackRate, true, options.locKey);
-            if (message) showInfoAlert(message);
+            const message = t(options.notification.locKey, options.notification.replacements);
+            if (message) setAlert({ open: true, notifications: [{ message, severity: 'info' }] });
         },
-        [formatPlaybackRateNotification, showInfoAlert]
+        [t]
     );
 
     const synchronizePlaybackModes = useCallback((modes: ReadonlySet<PlayMode>) => {
@@ -506,26 +486,24 @@ function PlayerComponent(
                     else void settingsProvider.set(settings).catch(onError);
                 },
                 playbackModesChanged: ({ modes }) => synchronizePlaybackModes(modes),
-                initialPlaybackSettingsChanged: ({
-                    autoHideDuration,
-                    playbackRate,
-                    playbackRateNotificationEnabled,
-                    fastForwarding,
-                    subtitleOffset,
-                    playbackModeTransition,
-                    join,
-                }) => {
-                    const notifications = [
-                        formatOffsetNotification(subtitleOffset, subtitleOffset !== 0),
-                        formatPlaybackRateNotification(
-                            playbackRate,
-                            playbackRateNotificationEnabled && playbackRate !== 1,
-                            fastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
-                        ),
-                    ].filter((notification): notification is string => notification !== undefined);
-                    synchronizePlaybackModes(playbackModeTransition.modes);
+                initialPlaybackSettingsChanged: (settings) => {
+                    const notifications = settings.notifications.offsetAndRate.map((notification) =>
+                        notification.type === 'message'
+                            ? notification.message
+                            : t(notification.notification.locKey, notification.notification.replacements)
+                    );
+                    synchronizePlaybackModes(settings.playbackModeTransition.modes);
                     if (!notifications.length) return;
-                    showInfoAlert(notifications.join(join), autoHideDuration);
+                    setAlert({
+                        open: true,
+                        notifications: [
+                            {
+                                message: notifications.join(settings.notifications.playbackMode.join),
+                                severity: 'info',
+                                autoHideDuration: settings.autoHideDuration,
+                            },
+                        ],
+                    });
                 },
                 onError,
             },
@@ -548,10 +526,7 @@ function PlayerComponent(
         settingsProvider,
         syntheticPlayback,
         t,
-        formatOffsetNotification,
-        formatPlaybackRateNotification,
         notifyOffset,
-        showInfoAlert,
         synchronizePlaybackModes,
         updatePlaybackRate,
     ]);
@@ -1447,7 +1422,7 @@ function PlayerComponent(
     const actuallyHideSubtitlePlayer =
         videoInWindow &&
         (hideSubtitlePlayer || !subtitles || subtitles?.length === 0 || notEnoughSpaceForSubtitlePlayer);
-    const handleAlertClosed = useCallback(() => setAlertOpen(false), []);
+    const handleAlertClosed = useCallback(() => setAlert((alert) => ({ ...alert, open: false })), []);
 
     return (
         <div onMouseMove={handleMouseMove} className={classes.root}>
@@ -1475,9 +1450,9 @@ function PlayerComponent(
                 </Button>
             </Alert>
             <Alert
-                open={alertOpen}
+                open={alert.open}
                 onClose={handleAlertClosed}
-                notifications={alertNotifications}
+                notifications={alert.notifications}
                 useAppLogo={false}
                 anchor="top"
             />

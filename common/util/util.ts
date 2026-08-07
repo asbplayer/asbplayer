@@ -95,6 +95,15 @@ export function humanReadableTime(timestamp: number, nearestTenth = false, fully
     }
 }
 
+export function formatAsSigned(value: number, decimalPlaces?: number): string {
+    const stringValue = decimalPlaces === undefined ? String(value) : value.toFixed(decimalPlaces);
+    return value >= 0 ? `+${stringValue}` : stringValue;
+}
+
+export function formatAsSignedMs(milliseconds: number): string {
+    return `${formatAsSigned(milliseconds)} ms`;
+}
+
 export function timeDurationDisplay(
     milliseconds: number,
     totalMilliseconds: number,

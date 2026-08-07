@@ -351,29 +351,16 @@ export default class Binding {
 
     private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
         if (!options?.notify) return;
-        this.subtitleController.notification(this._playbackRateNotification(options.playbackRate, options.locKey));
+        this.subtitleController.notification(options.notification);
     }
 
-    private _playbackRateNotification(playbackRate: number, locKey: string) {
-        return {
-            locKey,
-            replacements: {
-                rate: playbackRate.toFixed(1),
-            },
-        };
-    }
-
-    private _formatSubtitleOffsetNotification(offset: number): string | undefined {
-        const roundedOffset = Math.floor(offset);
-        if (!roundedOffset) return;
-        const addedSign = roundedOffset >= 0 ? '+' : '';
-        return `${addedSign}${roundedOffset} ms`;
-    }
-
-    private _handlePlaybackModesChanged(transition: PlayModeTransition): string | undefined {
+    private _handlePlaybackModesChanged(
+        transition: PlayModeTransition,
+        modeNotifications = playbackModeNotifications(transition)
+    ): string | undefined {
         this._notifyPlaybackModes(transition.modes);
         if (!transition.added.size && !transition.removed.size) return;
-        const { notifications, join } = playbackModeNotifications(transition);
+        const { notifications, join } = modeNotifications;
         this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
         this.mobileVideoOverlayController.showPlaybackModes();
         if (!notifications.length) return;
@@ -520,34 +507,22 @@ export default class Binding {
                     const notification = this._handlePlaybackModesChanged(transition);
                     if (notification) this.subtitleController.notification({ text: notification });
                 },
-                initialPlaybackSettingsChanged: ({
-                    autoHideDuration,
-                    playbackRate,
-                    playbackRateNotificationEnabled,
-                    fastForwarding,
-                    subtitleOffset,
-                    playbackModeTransition,
-                    join,
-                }) => {
-                    const notifications: string[] = [];
-                    this._notifySubtitleOffset(subtitleOffset);
-                    const offsetNotification = this._formatSubtitleOffsetNotification(subtitleOffset);
-                    if (offsetNotification) notifications.push(offsetNotification);
-                    if (playbackRateNotificationEnabled && playbackRate !== 1) {
-                        const playbackRateNotification = this._playbackRateNotification(
-                            playbackRate,
-                            fastForwarding ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
-                        );
-                        notifications.push(
-                            i18n.t(playbackRateNotification.locKey, playbackRateNotification.replacements)
-                        );
-                    }
-                    const modeNotification = this._handlePlaybackModesChanged(playbackModeTransition);
-                    if (modeNotification) notifications.push(modeNotification);
+                initialPlaybackSettingsChanged: (settings) => {
+                    this._notifySubtitleOffset(settings.subtitleOffset);
+                    const notifications = settings.notifications.offsetAndRate.map((notification) =>
+                        notification.type === 'message'
+                            ? notification.message
+                            : i18n.t(notification.notification.locKey, notification.notification.replacements)
+                    );
+                    const playbackMode = this._handlePlaybackModesChanged(
+                        settings.playbackModeTransition,
+                        settings.notifications.playbackMode
+                    );
+                    if (playbackMode) notifications.push(playbackMode);
                     if (notifications.length) {
                         this.subtitleController.notification({
-                            text: notifications.join(join),
-                            autoHideDuration,
+                            text: notifications.join(settings.notifications.playbackMode.join),
+                            autoHideDuration: settings.autoHideDuration,
                         });
                     }
                 },
