@@ -266,7 +266,6 @@ const MobileVideoOverlayUi = () => {
                     onPlaybackRate={handlePlaybackRate}
                     onPlayModeSelected={handlePlayModeSelected}
                     onToggleSubtitles={handleToggleSubtitles}
-                    playModeSelectorRequest={model?.playModeSelectorRequest}
                     onPlayModeSelectorOpened={handlePlayModeSelectorOpened}
                     onPlayModeSelectorClosed={handlePlayModeSelectorClosed}
                 />

@@ -8,8 +8,6 @@ const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo:
     videoSrcChangesIndicateNewVideo,
 });
 
-let mockPlaybackModeOverlayShows = 0;
-
 jest.mock('@project/common/subtitle-reader', () => ({
     SubtitleReader: class SubtitleReader {},
 }));
@@ -52,9 +50,6 @@ jest.mock('../controllers/mobile-video-overlay-controller', () => ({
         disposeOverlay() {}
         setPlaybackModes() {}
         show() {}
-        showPlaybackModes() {
-            mockPlaybackModeOverlayShows++;
-        }
         async updateModel() {}
     },
 }));
@@ -202,7 +197,6 @@ describe('Binding playback mode integration', () => {
         jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         jest.spyOn(console, 'error').mockImplementation(() => undefined);
         runtimeListeners.clear();
-        mockPlaybackModeOverlayShows = 0;
         storage = new MockStorageArea();
         (globalThis as any).browser = {
             storage: { local: storage },
@@ -725,40 +719,9 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
-    it('restores enabled modes when settings load and resets them when subtitles clear', async () => {
-        await storage.set({
-            rememberPlaybackModes: true,
-            lastPlaybackModes: [PlayMode.fastForward, PlayMode.repeat],
-        });
-        const binding = new Binding(createVideo(), bindingOptions(false, false));
-        binding.bind();
-        await jest.advanceTimersByTimeAsync(0);
-        await Promise.resolve();
-        await Promise.resolve();
-
-        expect(mockPlaybackModeOverlayShows).toBe(0);
-
-        sendSubtitles(binding, []);
-        expect(mockPlaybackModeOverlayShows).toBe(0);
-
-        sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(1);
-
-        sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(1);
-
-        sendSubtitles(binding, []);
-        expect(mockPlaybackModeOverlayShows).toBe(2);
-
-        sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(3);
-
-        binding.unbind();
-    });
-
     it('shows remembered offset and playback rate notifications on the first subtitle load', async () => {
         await storage.set({ lastSubtitleOffset: 375, playbackRate: 1.4 });
-        const binding = new Binding(createVideo(), false);
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
@@ -780,7 +743,7 @@ describe('Binding playback mode integration', () => {
 
     it('respects the playback rate notification setting on the first subtitle load', async () => {
         await storage.set({ lastSubtitleOffset: 375, playbackRate: 1.4, playbackRateNotificationEnabled: false });
-        const binding = new Binding(createVideo(), false);
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
@@ -788,21 +751,6 @@ describe('Binding playback mode integration', () => {
         sendSubtitles(binding, [makeSubtitle()]);
 
         expect(notification).toHaveBeenCalledWith({ text: '+375 ms', autoHideDuration: 6000 });
-        binding.unbind();
-    });
-
-    it('does not show the playback mode overlay when the remembered selection has no enabled modes', async () => {
-        await storage.set({
-            rememberPlaybackModes: true,
-            lastPlaybackModes: [PlayMode.normal],
-        });
-        const binding = new Binding(createVideo(), bindingOptions(false, false));
-        binding.bind();
-        await jest.advanceTimersByTimeAsync(0);
-
-        sendSubtitles(binding, [makeSubtitle()]);
-
-        expect(mockPlaybackModeOverlayShows).toBe(0);
         binding.unbind();
     });
 

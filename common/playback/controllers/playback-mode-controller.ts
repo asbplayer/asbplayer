@@ -26,9 +26,6 @@ export const playbackModesFromSettings = ({
 }: PlaybackModeRememberSettings): Set<PlayMode> =>
     new Set(rememberPlaybackModes ? lastPlaybackModes : [PlayMode.normal]);
 
-export const hasEnabledPlaybackModes = (modes: ReadonlySet<PlayMode>): boolean =>
-    [...modes].some((mode) => mode !== PlayMode.normal);
-
 export const normalizePlaybackModes = (modes: ReadonlySet<PlayMode>): Set<PlayMode> => {
     const normalized = new Set(modes);
     if (normalized.size === 0) {

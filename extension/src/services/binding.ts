@@ -362,7 +362,6 @@ export default class Binding {
         if (!transition.added.size && !transition.removed.size) return;
         const { notifications, join } = modeNotifications;
         this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
-        this.mobileVideoOverlayController.showPlaybackModes();
         if (!notifications.length) return;
         return notifications.map((notification) => i18n.t(notification)).join(join);
     }
