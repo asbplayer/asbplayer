@@ -110,4 +110,10 @@ describe('Alert', () => {
         act(() => jest.advanceTimersByTime(1001));
         expect(onClose).toHaveBeenCalledTimes(1);
     });
+
+    it('does not update indefinitely when closed', () => {
+        renderAlert('Hidden', false);
+
+        expect(container.querySelectorAll('[role="alert"]')).toHaveLength(0);
+    });
 });
