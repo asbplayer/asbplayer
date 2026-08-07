@@ -642,6 +642,7 @@ export default class SubtitleController {
         }
 
         const previousOffset = this._computeOffset();
+        if (previousOffset === offset) return;
 
         this.subtitles = this.subtitles.map((s) => ({
             text: s.text,
