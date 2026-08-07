@@ -307,7 +307,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.rebuildPlan({ initializePlaybackRate: true });
 
         const subtitleOffset = this.lastSubtitleOffset;
-        if (subtitleOffset) this.callbacks.setSubtitleOffset(subtitleOffset, { notifyPlayer: false });
+        this.callbacks.setSubtitleOffset(subtitleOffset, { notifyPlayer: false });
         const fastForwarding = this.executor.isFastForwarding;
         const playbackRate = fastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate;
         const notifications = this.initialPlaybackSettingsNotifications({
@@ -345,10 +345,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.timingDriver.unbind();
         if (!saveSettings) return;
         // Need to update these as PlaybackEngine doesn't keep them all synced with external settings.
+        // lastPlaybackPositions are managed by the playbackPositionController and should not be explicitly saved here.
         this.callbacks.saveSettings({
             lastPlaybackModes: this.settings.lastPlaybackModes,
             ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
-            lastPlaybackPositions: this.settings.lastPlaybackPositions,
             rememberPlaybackRate: this.settings.rememberPlaybackRate, // This is done to ensure everyone is notified as its not in saveOnlySettings
             ...(this.settings.rememberPlaybackRate
                 ? {

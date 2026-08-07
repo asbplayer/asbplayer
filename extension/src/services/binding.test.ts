@@ -453,7 +453,7 @@ describe('Binding playback mode integration', () => {
     });
 
     it('applies an initially loaded subtitle offset to playback timing', async () => {
-        await storage.set({ autoPausePreference: AutoPausePreference.atStart });
+        await storage.set({ autoPausePreference: AutoPausePreference.atStart, lastSubtitleOffset: 1000 });
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(false, false));
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
