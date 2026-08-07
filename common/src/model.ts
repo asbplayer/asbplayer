@@ -325,7 +325,6 @@ export interface MobileOverlayModel {
     subtitlesAreVisible: boolean;
     themeType: 'dark' | 'light';
     playModes: PlayMode[];
-    playModeSelectorRequest?: number;
     overlayInstanceId?: string;
 }
 

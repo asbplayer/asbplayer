@@ -1,7 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import PlaybackModeController, {
-    hasEnabledPlaybackModes,
     playbackModeNotifications,
     playbackModesFromSettings,
 } from '@project/common/playback/controllers/playback-mode-controller';
@@ -67,15 +66,6 @@ const modeSelectionCases: ModeSelectionCase[] = [
 ];
 
 describe('playback mode selection', () => {
-    it.each([
-        { name: 'no modes', modes: [], expected: false },
-        { name: 'normal mode only', modes: [PlayMode.normal], expected: false },
-        { name: 'one enabled mode', modes: [PlayMode.repeat], expected: true },
-        { name: 'two enabled modes', modes: [PlayMode.autoPause, PlayMode.repeat], expected: true },
-    ])('reports whether $name should be shown on first load', ({ modes, expected }) => {
-        expect(hasEnabledPlaybackModes(new Set(modes))).toBe(expected);
-    });
-
     it.each([
         {
             name: 'remembering disabled with two stored modes',

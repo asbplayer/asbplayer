@@ -614,8 +614,6 @@ interface ControlsProps {
     previewEnabled: boolean;
     playModeEnabled?: boolean;
     onPlayMode?: (playMode: PlayMode) => void;
-    onPlayModeSelectorOpened?: () => void;
-    onPlayModeSelectorClosed?: () => void;
     subtitlesEnabled?: boolean;
     subtitlesToggle?: boolean;
     onSubtitlesToggle?: () => void;
@@ -676,8 +674,6 @@ export default function Controls({
     playModes,
     playModeEnabled,
     onPlayMode,
-    onPlayModeSelectorOpened,
-    onPlayModeSelectorClosed,
     subtitlesEnabled,
     subtitlesToggle,
     onSubtitlesToggle,
@@ -887,17 +883,12 @@ export default function Controls({
     const handlePlayModeSelectorClosed = useCallback(() => {
         setPlayModeSelectorAnchorEl(undefined);
         setPlayModeSelectorOpen(false);
-        onPlayModeSelectorClosed?.();
-    }, [onPlayModeSelectorClosed]);
+    }, []);
 
-    const handlePlayModeSelectorClicked = useCallback(
-        (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-            setPlayModeSelectorAnchorEl(e.currentTarget);
-            setPlayModeSelectorOpen(true);
-            onPlayModeSelectorOpened?.();
-        },
-        [onPlayModeSelectorOpened]
-    );
+    const handlePlayModeSelectorClicked = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        setPlayModeSelectorAnchorEl(e.currentTarget);
+        setPlayModeSelectorOpen(true);
+    }, []);
 
     const handlePlayModeSelected = useCallback(
         (playMode: PlayMode) => {
