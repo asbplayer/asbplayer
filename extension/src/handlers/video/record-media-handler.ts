@@ -149,7 +149,7 @@ export default class RecordMediaHandler {
             }
         }
 
-        const { isBulkExport, ...messageWithoutBulkFlag } = message;
+        const { isBulkExport, noteId, ...messageWithoutBulkFlag } = message;
         const card: CardModel = {
             image: imageModel,
             audio: audioModel,
@@ -159,7 +159,7 @@ export default class RecordMediaHandler {
         if (isBulkExport) {
             void this._cardPublisher.publishBulk(card, tabId, recordMediaCommand.src);
         } else {
-            void this._cardPublisher.publish(card, message.postMineAction, tabId, recordMediaCommand.src);
+            void this._cardPublisher.publish(card, message.postMineAction, tabId, recordMediaCommand.src, noteId);
         }
     }
 }

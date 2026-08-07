@@ -114,7 +114,6 @@ export default class PlaybackModeController {
         } else {
             this.modes.delete(PlayMode.normal);
             this.modes.add(targetMode);
-            this.resolveConflicts(targetMode);
         }
 
         const modes = this.playModes;
@@ -122,10 +121,5 @@ export default class PlaybackModeController {
             modes,
             ...modeChanges(oldModes, modes),
         };
-    }
-
-    private resolveConflicts(newMode: PlayMode): void {
-        if (newMode === PlayMode.condensed) this.modes.delete(PlayMode.fastForward);
-        if (newMode === PlayMode.fastForward) this.modes.delete(PlayMode.condensed);
     }
 }

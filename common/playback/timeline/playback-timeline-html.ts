@@ -729,14 +729,6 @@ document.querySelectorAll('input[data-mode]').forEach((checkbox) => {
             if (normalCheckbox) normalCheckbox.checked = false;
         }
 
-        if (mode === 'fast-forward' || mode === 'condensed') {
-            const otherMode = mode === 'fast-forward' ? 'condensed' : 'fast-forward';
-            const otherCheckbox = document.querySelector('input[data-mode="' + otherMode + '"]');
-            if (checkbox.checked && otherCheckbox) {
-                otherCheckbox.checked = false;
-                document.body.classList.add('hide-' + otherMode);
-            }
-        }
         document.body.classList.toggle('hide-' + mode, !checkbox.checked);
         if (!checkbox.checked) {
             const normalCheckbox = document.querySelector('input[data-mode="normal"]');

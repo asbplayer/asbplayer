@@ -387,6 +387,10 @@ export default class Binding {
                     playbackRate: () => this.video.playbackRate,
                     durationMs: () => this.video.duration * 1000,
                     currentTimeMs: () => this.currentTimeMs,
+                    hasVideoTrack: () =>
+                        video.readyState >= HTMLMediaElement.HAVE_METADATA &&
+                        video.videoWidth > 0 &&
+                        video.videoHeight > 0,
                     frameTimestampMs: disneyPlus ? (now) => this._disneyPlusTimeAt(now) : () => undefined,
                     externalSeekEvents: disneyPlus,
                     requestVideoFrameCallback: (callback) => video.requestVideoFrameCallback(callback),
@@ -1334,6 +1338,7 @@ export default class Binding {
         word,
         customFieldValues,
         isBulkExport,
+        noteId,
     }: CopySubtitleMessage) {
         if (!subtitle || !surroundingSubtitles) {
             return;
@@ -1396,6 +1401,7 @@ export default class Binding {
                 word,
                 customFieldValues,
                 isBulkExport,
+                noteId,
                 ...this._imageCaptureParams,
             },
             src: this._registeredVideoSrc,

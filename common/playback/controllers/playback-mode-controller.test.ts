@@ -39,6 +39,11 @@ const modeSelectionCases: ModeSelectionCase[] = [
         expected: [PlayMode.condensed, PlayMode.repeat],
     },
     {
+        name: 'condensed + fast-forward',
+        toggles: [PlayMode.condensed, PlayMode.fastForward],
+        expected: [PlayMode.condensed, PlayMode.fastForward],
+    },
+    {
         name: 'condensed + auto-pause + repeat',
         toggles: [PlayMode.condensed, PlayMode.autoPause, PlayMode.repeat],
         expected: [PlayMode.condensed, PlayMode.autoPause, PlayMode.repeat],
@@ -173,23 +178,23 @@ describe('playback mode selection', () => {
         ]);
     });
 
-    it('makes condensed and fast-forward mutually exclusive and reports the observable transition', () => {
+    it('allows condensed and fast-forward together and reports the observable transition', () => {
         const controller = controllerWithModes(PlayMode.fastForward, PlayMode.repeat);
 
         const transition = controller.transition(PlayMode.condensed);
 
-        expect(sortedModes(transition.modes)).toEqual([PlayMode.condensed, PlayMode.repeat]);
+        expect(sortedModes(transition.modes)).toEqual([PlayMode.condensed, PlayMode.fastForward, PlayMode.repeat]);
         expect(transition).toMatchObject({
             added: new Set([PlayMode.condensed]),
-            removed: new Set([PlayMode.fastForward]),
+            removed: new Set(),
         });
         expect(transition).not.toHaveProperty('resetPlaybackRate');
 
         const reverseTransition = controller.transition(PlayMode.fastForward);
-        expect(sortedModes(reverseTransition.modes)).toEqual([PlayMode.fastForward, PlayMode.repeat]);
+        expect(sortedModes(reverseTransition.modes)).toEqual([PlayMode.condensed, PlayMode.repeat]);
         expect(reverseTransition).toMatchObject({
-            added: new Set([PlayMode.fastForward]),
-            removed: new Set([PlayMode.condensed]),
+            added: new Set(),
+            removed: new Set([PlayMode.fastForward]),
         });
     });
 

@@ -112,6 +112,14 @@ const playbackBehaviorCases: PlaybackBehaviorCase[] = [
         fastForward: false,
     },
     {
+        name: 'condensed + fast-forward',
+        modes: [PlayMode.condensed, PlayMode.fastForward],
+        autoPausePreference: AutoPausePreference.atEnd,
+        corrections: [],
+        seeks: [3999],
+        fastForward: true,
+    },
+    {
         name: 'fast-forward',
         modes: [PlayMode.fastForward],
         autoPausePreference: AutoPausePreference.atEnd,
