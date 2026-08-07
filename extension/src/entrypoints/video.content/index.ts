@@ -155,7 +155,11 @@ export default defineContentScript({
                     for (let j = 0; j < videoElements.length; ++j) {
                         const videoElement = videoElements[j];
 
-                        if (videoElement.isSameNode(b.video) && hasValidVideoSource(videoElement, page)) {
+                        if (
+                            videoElement.isSameNode(b.video) &&
+                            hasValidVideoSource(videoElement, page) &&
+                            !page?.shouldIgnore(videoElement)
+                        ) {
                             videoElementExists = true;
                             break;
                         }

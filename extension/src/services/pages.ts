@@ -37,6 +37,9 @@ interface PageConfig {
     // Whether video elements with blank src should be bindable on this page
     allowVideoElementsWithBlankSrc?: boolean;
 
+    // CSS selector that video elements must match to be bindable on this page
+    videoElementSelector?: string;
+
     autoSync?: {
         // Whether to attempt to load detected subtitles automatically
         enabled: boolean;
@@ -149,6 +152,10 @@ export class PageDelegate {
     }
 
     shouldIgnore(element: HTMLMediaElement) {
+        if (this.config.videoElementSelector !== undefined && !element.matches(this.config.videoElementSelector)) {
+            return true;
+        }
+
         if (this.config.ignoreVideoElements === undefined) {
             return false;
         }
