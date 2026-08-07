@@ -38,10 +38,16 @@ const rubyWithPrecedingKanaXml =
     '</div></body>' +
     '</tt>';
 
-const nfimscDocument = (text: string) =>
+const nfimscDocument = (text: string, begin = '10000000', end = '30000000') =>
     '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">' +
-    `<body><div><p begin="10000000t" end="30000000t">${text}</p></div></body>` +
+    `<body><div><p begin="${begin}t" end="${end}t">${text}</p></div></body>` +
     '</tt>';
+
+const duplicateNfimscDocument = (count: number) =>
+    '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">' +
+    '<body><div>' +
+    Array.from({ length: count }, () => '<p begin="10000000t" end="30000000t">Duplicate cue</p>').join('') +
+    '</div></body></tt>';
 
 describe('SubtitleReader Netflix IMSC parsing', () => {
     it('parses Netflix IMSC cues', async () => {
@@ -145,6 +151,62 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
             track: 0,
             text: 'safe',
         });
+    });
+
+    it('deduplicates duplicate cues within a track without flattening', async () => {
+        const subtitles = await parse(duplicateNfimscDocument(3));
+
+        expect(subtitles).toHaveLength(1);
+        expect(subtitles[0]).toMatchObject({ start: 1000, end: 3000, text: 'Duplicate cue', track: 0 });
+    });
+
+    it('deduplicates duplicate cues after flattening files into one track', async () => {
+        const subtitles = await parse(duplicateNfimscDocument(3), false, true, 3);
+
+        expect(subtitles).toHaveLength(1);
+        expect(subtitles[0]).toMatchObject({ start: 1000, end: 3000, text: 'Duplicate cue', track: 0 });
+    });
+
+    it.each([
+        {
+            difference: 'start',
+            first: nfimscDocument('Same text', '10000000'),
+            second: nfimscDocument('Same text', '20000000'),
+            expected: [
+                { start: 1000, end: 3000, text: 'Same text' },
+                { start: 2000, end: 3000, text: 'Same text' },
+            ],
+        },
+        {
+            difference: 'end',
+            first: nfimscDocument('Same text', '10000000', '30000000'),
+            second: nfimscDocument('Same text', '10000000', '40000000'),
+            expected: [
+                { start: 1000, end: 3000, text: 'Same text' },
+                { start: 1000, end: 4000, text: 'Same text' },
+            ],
+        },
+        {
+            difference: 'text',
+            first: nfimscDocument('First text'),
+            second: nfimscDocument('Second text'),
+            expected: [
+                { start: 1000, end: 3000, text: 'First text' },
+                { start: 1000, end: 3000, text: 'Second text' },
+            ],
+        },
+    ])('preserves flattened cues when only the $difference differs', async ({ first, second, expected }) => {
+        const subtitles = await createReader().subtitles([nfimscFile(first), nfimscFile(second)], true);
+
+        expect(subtitles).toHaveLength(2);
+        expect(subtitles).toMatchObject(expected.map((cue) => ({ ...cue, track: 0 })));
+    });
+
+    it('preserves equal cues from separate tracks without flattening', async () => {
+        const subtitles = await parse(nfimscDocument('Same text'), false, false, 2);
+
+        expect(subtitles).toHaveLength(2);
+        expect(subtitles.map((subtitle) => subtitle.track)).toEqual([0, 1]);
     });
 
     it('does not fence a reading containing a closing paren', async () => {
