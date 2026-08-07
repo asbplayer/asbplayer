@@ -6,12 +6,26 @@ import TimingUpdateQueue, {
 } from '@project/common/playback/timing/timing-driver';
 
 const defaultFrameTimeMs = 1000 / 60;
+type VideoFrameTimingEvent =
+    | 'play'
+    | 'pause'
+    | 'seeking'
+    | 'seeked'
+    | 'timeupdate'
+    | 'ratechange'
+    | 'durationchange'
+    | 'loadedmetadata'
+    | 'resize'
+    | 'emptied'
+    | 'error';
 
 export interface VideoFrameTimingSource {
     readonly paused: () => boolean;
     readonly playbackRate: () => number;
     readonly durationMs: () => number;
     readonly currentTimeMs: () => number;
+    /** Whether the loaded media resource has a video track (e.g., an audio-only element). */
+    readonly hasVideoTrack: () => boolean;
     /** Overrides requestVideoFrameCallback metadata when the media element does not expose content time. */
     readonly frameTimestampMs: (now: number, metadata: VideoFrameCallbackMetadata) => number | undefined;
     /** Uses owner-supplied seek lifecycle events instead of native seeking/seeked events. */
@@ -19,14 +33,8 @@ export interface VideoFrameTimingSource {
     /** ~0.05ms for the hot path (no state changes/actions) and <1ms otherwise per frame */
     requestVideoFrameCallback(callback: VideoFrameRequestCallback): number;
     cancelVideoFrameCallback(handle: number): void;
-    addEventListener(
-        type: 'play' | 'pause' | 'seeking' | 'seeked' | 'timeupdate' | 'ratechange' | 'durationchange' | 'error',
-        listener: EventListener
-    ): void;
-    removeEventListener(
-        type: 'play' | 'pause' | 'seeking' | 'seeked' | 'timeupdate' | 'ratechange' | 'durationchange' | 'error',
-        listener: EventListener
-    ): void;
+    addEventListener(type: VideoFrameTimingEvent, listener: EventListener): void;
+    removeEventListener(type: VideoFrameTimingEvent, listener: EventListener): void;
 }
 
 /**
@@ -163,10 +171,13 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         }
         this.video.addEventListener('ratechange', this.onRateChange);
         this.video.addEventListener('durationchange', this.onDurationChange);
+        this.video.addEventListener('loadedmetadata', this.onMetadataChange);
+        this.video.addEventListener('resize', this.onMetadataChange);
+        this.video.addEventListener('emptied', this.onMetadataChange);
         this.video.addEventListener('error', this.onError);
-        document.addEventListener('visibilitychange', this.onVisibilityChange);
+        document.addEventListener('visibilitychange', this.onMetadataChange);
         this.reset();
-        this.onVisibilityChange();
+        this.onMetadataChange();
     }
 
     get bound(): boolean {
@@ -184,10 +195,13 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         }
         this.video.removeEventListener('ratechange', this.onRateChange);
         this.video.removeEventListener('durationchange', this.onDurationChange);
+        this.video.removeEventListener('loadedmetadata', this.onMetadataChange);
+        this.video.removeEventListener('resize', this.onMetadataChange);
+        this.video.removeEventListener('emptied', this.onMetadataChange);
         this.video.removeEventListener('error', this.onError);
         if (this.timeUpdatesBound) this.video.removeEventListener('timeupdate', this.onTimeUpdate);
         this.timeUpdatesBound = false;
-        document.removeEventListener('visibilitychange', this.onVisibilityChange);
+        document.removeEventListener('visibilitychange', this.onMetadataChange);
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: false });
         this.previousFrame = undefined;
@@ -234,10 +248,11 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     /**
      * Browsers will no longer fire rVFC events when the document is hidden but continue playing audio.
-     * To work around this, we listen for 'timeupdate' events while the document is hidden to keep the timing driver updated.
+     * Audio-only media also has no video frames, even though rVFC is defined on the element.
+     * To work around both cases, listen for 'timeupdate' events whenever there is no usable video frame source.
      */
-    private readonly onVisibilityChange = () => {
-        if (document.hidden) {
+    private readonly onMetadataChange = () => {
+        if (document.hidden || !this.video.hasVideoTrack()) {
             this.cancelScheduledUpdate();
             this.previousFrame = undefined;
             if (this.timeUpdatesBound) return;
@@ -284,7 +299,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     private schedule(): void {
         if (!this.shouldProcess()) return;
-        if (document.hidden) return; // Browser will not fire rVFC events when hidden, see onVisibilityChange
+        if (this.timeUpdatesBound) return;
         if (this.frameHandle !== undefined) return;
 
         this.frameHandle = this.video.requestVideoFrameCallback((now, metadata) => {

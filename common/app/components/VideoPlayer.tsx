@@ -607,6 +607,10 @@ export default function VideoPlayer({
                     playbackRate: () => video.playbackRate,
                     durationMs: () => video.duration * 1000,
                     currentTimeMs: () => video.currentTime * 1000,
+                    hasVideoTrack: () =>
+                        video.readyState >= HTMLMediaElement.HAVE_METADATA &&
+                        video.videoWidth > 0 &&
+                        video.videoHeight > 0,
                     frameTimestampMs: () => undefined,
                     externalSeekEvents: false,
                     requestVideoFrameCallback: (callback) => video.requestVideoFrameCallback(callback),

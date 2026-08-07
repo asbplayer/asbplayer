@@ -104,7 +104,7 @@ describe('Binding playback mode integration', () => {
 
     type FrameTestVideo = HTMLVideoElement & { presentFrame(timestampMs: number): void };
 
-    const createVideo = (): FrameTestVideo => {
+    const createVideo = ({ width = 1920, height = 1080 }: { width?: number; height?: number } = {}): FrameTestVideo => {
         const video = document.createElement('video') as FrameTestVideo;
         let nextFrameHandle = 1;
         const frameCallbacks = new Map<number, VideoFrameRequestCallback>();
@@ -112,6 +112,8 @@ describe('Binding playback mode integration', () => {
         Object.defineProperties(video, {
             readyState: { configurable: true, value: 4 },
             duration: { configurable: true, value: 120 },
+            videoWidth: { configurable: true, value: width },
+            videoHeight: { configurable: true, value: height },
             paused: { configurable: true, value: false, writable: true },
             requestVideoFrameCallback: {
                 configurable: true,
@@ -244,6 +246,21 @@ describe('Binding playback mode integration', () => {
         await jest.advanceTimersByTimeAsync(100);
         expect(video.playbackRate).toBe(1.5);
 
+        binding.unbind();
+    });
+
+    it('uses timeupdate for audio-only media', async () => {
+        const video = createVideo({ width: 0, height: 0 });
+        const binding = new Binding(video, false);
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+
+        video.currentTime = 1.5;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flushPlaybackTiming();
+
+        expect(binding.subtitleController.currentSubtitle()[0]?.text).toBe('subtitle');
         binding.unbind();
     });
 

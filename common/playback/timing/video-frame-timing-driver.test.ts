@@ -13,11 +13,14 @@ class FakeVideo extends EventTarget {
     currentTime = 0;
     playbackRate = 1;
     paused = true;
+    hasVideoTrack = true;
+    requestVideoFrameCallbackCalls = 0;
     private nextHandle = 1;
     private callbacks = new Map<number, VideoFrameRequestCallback>();
     private presentedFrameCount = 0;
 
     requestVideoFrameCallback(callback: VideoFrameRequestCallback): number {
+        this.requestVideoFrameCallbackCalls++;
         const handle = this.nextHandle++;
         this.callbacks.set(handle, callback);
         return handle;
@@ -88,6 +91,7 @@ const videoSource = (video: FakeVideo, currentTimeMs = () => video.currentTime *
     playbackRate: () => video.playbackRate,
     durationMs: () => 120_000,
     currentTimeMs,
+    hasVideoTrack: () => video.hasVideoTrack,
     frameTimestampMs: () => undefined,
     externalSeekEvents: false,
     requestVideoFrameCallback: (callback) => video.requestVideoFrameCallback(callback),
@@ -958,6 +962,98 @@ describe('VideoFrameTimingDriver', () => {
         await flush();
 
         expect(updates).toEqual([250, 250]);
+        driver.unbind();
+    });
+
+    it('uses timeupdate for audio-only media and switches to video frame callbacks after metadata changes', async () => {
+        const video = new FakeVideo();
+        video.hasVideoTrack = false;
+        const updates: number[] = [];
+        const driver = timingDriver(videoSource(video), {
+            onTime: async (timestampMs) => {
+                updates.push(timestampMs);
+            },
+            onDiscontinuity: () => {},
+        });
+
+        driver.bind();
+        video.play();
+        video.currentTime = 0.25;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+
+        expect(updates).toEqual([250]);
+        expect(video.requestVideoFrameCallbackCalls).toBe(0);
+
+        video.hasVideoTrack = true;
+        video.dispatchEvent(new Event('loadedmetadata'));
+        video.currentTime = 0.5;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+
+        expect(updates).toEqual([250]);
+        video.present(500);
+        await flush();
+
+        expect(updates).toEqual([250, 500]);
+        expect(video.requestVideoFrameCallbackCalls).toBeGreaterThan(0);
+        driver.unbind();
+    });
+
+    it('reevaluates the video track after binding, visibility, and media metadata changes', () => {
+        const video = new FakeVideo();
+        let hasVideoTrackCalls = 0;
+        const source = {
+            ...videoSource(video),
+            hasVideoTrack: () => {
+                hasVideoTrackCalls++;
+                return video.hasVideoTrack;
+            },
+        };
+        const driver = timingDriver(source, {});
+
+        expect(hasVideoTrackCalls).toBe(0);
+        driver.bind();
+        expect(hasVideoTrackCalls).toBe(1);
+
+        document.dispatchEvent(new Event('visibilitychange'));
+        video.dispatchEvent(new Event('timeupdate'));
+        expect(hasVideoTrackCalls).toBe(2);
+
+        video.dispatchEvent(new Event('loadedmetadata'));
+        video.dispatchEvent(new Event('resize'));
+        video.dispatchEvent(new Event('emptied'));
+        expect(hasVideoTrackCalls).toBe(5);
+
+        driver.unbind();
+        video.dispatchEvent(new Event('loadedmetadata'));
+        expect(hasVideoTrackCalls).toBe(5);
+    });
+
+    it('cancels a pending video frame callback when the video track disappears', async () => {
+        const video = new FakeVideo();
+        const updates: number[] = [];
+        const driver = timingDriver(videoSource(video), {
+            onTime: async (timestampMs) => {
+                updates.push(timestampMs);
+            },
+            onDiscontinuity: () => {},
+        });
+
+        driver.bind();
+        video.play();
+        expect(video.requestVideoFrameCallbackCalls).toBe(1);
+
+        video.hasVideoTrack = false;
+        video.dispatchEvent(new Event('resize'));
+        video.currentTime = 0.25;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+
+        expect(updates).toEqual([250]);
+        video.present(500);
+        await flush();
+        expect(updates).toEqual([250]);
         driver.unbind();
     });
 
