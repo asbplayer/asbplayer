@@ -2481,13 +2481,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ffmpeg/util@npm:^0.12.2":
-  version: 0.12.2
-  resolution: "@ffmpeg/util@npm:0.12.2"
-  checksum: 95440dab00f373df1ad421583a1acdbb79b06ad544f5a4e26c2406858b9d0b0068dff6109ca0134d60ce21fa2883d6497fbd6e47f66bd92b4d7da2468c9391d3
-  languageName: node
-  linkType: hard
-
 "@flatten-js/interval-tree@npm:^1.0.19":
   version: 1.0.19
   resolution: "@flatten-js/interval-tree@npm:1.0.19"
@@ -3598,7 +3591,6 @@ __metadata:
   resolution: "@project/common@workspace:common"
   dependencies:
     "@ffmpeg/ffmpeg": ^0.12.15
-    "@ffmpeg/util": ^0.12.2
     "@flatten-js/interval-tree": ^1.0.19
     "@plausible-analytics/tracker": ^0.4.5
     "@qgustavor/srt-parser": ^2.0.0

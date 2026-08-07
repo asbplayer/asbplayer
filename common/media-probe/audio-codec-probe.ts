@@ -166,7 +166,7 @@ export const audioTrackRequiringTranscode = async (blob: Blob): Promise<ProbedAu
         return undefined;
     }
 
-    // Converting the audio of a file the browser can't open at all - an mkv in Firefox, any avi -
+    // Converting the audio of a file the browser can't open at all - any avi, for instance -
     // would leave the user with sound and no picture, so leave those alone too.
     if (!canPlayType(container.mimeType)) {
         return undefined;

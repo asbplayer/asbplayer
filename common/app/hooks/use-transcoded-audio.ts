@@ -56,10 +56,14 @@ export const useTranscodedAudio = (videoFile: FileWithId | undefined): Transcode
         let cancelled = false;
 
         audioTrackRequiringTranscode(videoFile.file)
-            .then((track) => {
-                // Nothing to do when the file already plays, or when the decoder can't be fetched -
-                // an offline browser should just behave as it always has.
-                if (cancelled || track === undefined || !audioTranscodingAvailable()) {
+            .then(async (track) => {
+                // Nothing to do when the file already plays.
+                if (cancelled || track === undefined) {
+                    return;
+                }
+
+                // An offline browser with no cached decoder should behave exactly as it always has.
+                if (!(await audioTranscodingAvailable()) || cancelled) {
                     return;
                 }
 

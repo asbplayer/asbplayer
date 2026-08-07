@@ -2,11 +2,46 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { clamp } from '../util';
 
 // Pinned to the version verified to carry an E-AC-3 decoder. ffmpeg-core.wasm is ~32 MB, so it is
-// fetched from a CDN on first use rather than shipped with the app, and cached for the session.
+// fetched from a CDN on first use rather than shipped with the app.
 const coreVersion = '0.12.10';
 // The ESM build, because Vite builds the ffmpeg worker as a module worker - a module worker can't
 // call importScripts, so the core has to be imported rather than injected.
 const coreBaseUrl = `https://unpkg.com/@ffmpeg/core@${coreVersion}/dist/esm`;
+
+interface CoreFile {
+    readonly name: string;
+    readonly mimeType: string;
+    /** Base64 SHA-256 of the file's contents, as published by the registry. */
+    readonly integrity: string;
+    /**
+     * Uncompressed size. The CDN serves the core gzipped without a Content-Length, so this is what
+     * download progress is measured against - the response can't say how much is coming.
+     */
+    readonly size: number;
+}
+
+/**
+ * The decoder is executable code served by a third party, so its bytes are checked against the
+ * hashes the registry publishes before any of it is allowed to run. Update these together with
+ * `coreVersion` - a mismatch fails the conversion rather than executing what arrived.
+ */
+const coreScript: CoreFile = {
+    name: 'ffmpeg-core.js',
+    mimeType: 'text/javascript',
+    integrity: 'Z6SPEWRfhUOfP95PIRkELBazdLkQIGt6eiTzQuKNyuM=',
+    size: 111_804,
+};
+const coreWasm: CoreFile = {
+    name: 'ffmpeg-core.wasm',
+    mimeType: 'application/wasm',
+    integrity: 'n1eUelvVMNjwDFs/LLKjSS+qfl2CMxU0LWqGVtCmt7c=',
+    size: 32_232_419,
+};
+
+// Named by version so that bumping the decoder can't serve the previous one, and by a shared prefix
+// so that the superseded copy is deleted rather than left holding 32 MB indefinitely.
+const coreCachePrefix = 'asbplayer-audio-decoder';
+const coreCacheName = `${coreCachePrefix}-${coreVersion}`;
 
 const mountPoint = '/mnt';
 const inputFileName = 'input';
@@ -83,6 +118,7 @@ type OutputFormat = (typeof outputFormats)[number];
 type ProgressCallback = (progress: AudioTranscodeProgress) => void;
 
 let coreUrls: Promise<CoreUrls> | undefined;
+let coreCache: Promise<Cache | undefined> | undefined;
 let probeElement: HTMLAudioElement | undefined;
 
 const playableOutputFormats = () => {
@@ -91,22 +127,137 @@ const playableOutputFormats = () => {
     return playable.length === 0 ? outputFormats : playable;
 };
 
+const openCoreCache = () => {
+    if (coreCache === undefined) {
+        coreCache = (async () => {
+            // Cache Storage is absent in insecure contexts and can be switched off by the user, in
+            // which case the decoder still works - it just has to be downloaded again next session.
+            if (typeof caches === 'undefined') {
+                return undefined;
+            }
+
+            try {
+                const cache = await caches.open(coreCacheName);
+                const names = await caches.keys();
+                await Promise.all(
+                    names
+                        .filter((name) => name.startsWith(coreCachePrefix) && name !== coreCacheName)
+                        .map((name) => caches.delete(name))
+                );
+                return cache;
+            } catch (e) {
+                console.warn('Audio decoder cache is unavailable:', e);
+                return undefined;
+            }
+        })();
+    }
+
+    return coreCache;
+};
+
+const coreFileUrl = (file: CoreFile) => `${coreBaseUrl}/${file.name}`;
+
+const matchesIntegrity = async (bytes: Uint8Array<ArrayBuffer>, integrity: string) => {
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    return btoa(String.fromCharCode(...digest)) === integrity;
+};
+
+const download = async (file: CoreFile, onProgress?: (ratio: number) => void) => {
+    const response = await fetch(coreFileUrl(file));
+
+    if (!response.ok) {
+        throw new Error(`Failed to download ${file.name}: ${response.status}`);
+    }
+
+    if (response.body === null) {
+        return new Uint8Array(await response.arrayBuffer());
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    let reportedPercent = -1;
+
+    for (;;) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+            break;
+        }
+
+        chunks.push(value);
+        received += value.length;
+
+        // The core arrives in thousands of chunks, so only report when the displayed figure moves.
+        const percent = Math.floor(clamp(received / file.size, 0, 1) * 100);
+
+        if (percent !== reportedPercent) {
+            reportedPercent = percent;
+            onProgress?.(percent / 100);
+        }
+    }
+
+    const bytes = new Uint8Array(received);
+    let offset = 0;
+
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    return bytes;
+};
+
+/**
+ * Reads one file of the decoder, preferring the copy an earlier session cached. Whatever the
+ * source, the bytes are verified before being handed back - a cached copy that no longer matches
+ * its hash is treated as corrupt and fetched again.
+ */
+const coreFileBytes = async (file: CoreFile, onProgress?: (ratio: number) => void) => {
+    const cache = await openCoreCache();
+    const url = coreFileUrl(file);
+    const cached = await cache?.match(url);
+
+    if (cached !== undefined) {
+        const cachedBytes = new Uint8Array(await cached.arrayBuffer());
+
+        if (await matchesIntegrity(cachedBytes, file.integrity)) {
+            // Deliberately silent: nothing is being downloaded, so reporting download progress here
+            // would flash "Downloading the audio converter" at a user who is only waiting on startup.
+            return cachedBytes;
+        }
+
+        await cache?.delete(url);
+    }
+
+    const bytes = await download(file, onProgress);
+
+    if (!(await matchesIntegrity(bytes, file.integrity))) {
+        throw new Error(`Integrity check failed for ${file.name}`);
+    }
+
+    try {
+        await cache?.put(url, new Response(bytes, { headers: { 'Content-Type': file.mimeType } }));
+    } catch (e) {
+        // Running out of quota costs a download next session, but shouldn't fail this conversion.
+        console.warn('Failed to cache the audio decoder:', e);
+    }
+
+    return bytes;
+};
+
 const loadCoreUrls = (onProgress?: ProgressCallback) => {
     if (coreUrls === undefined) {
         coreUrls = (async () => {
-            const { toBlobURL } = await import('@ffmpeg/util');
-
             try {
+                // Progress is reported for the wasm alone - the script beside it is a rounding error.
+                const script = await coreFileBytes(coreScript);
+                const wasm = await coreFileBytes(coreWasm, (ratio) => onProgress?.({ stage: 'loadingDecoder', ratio }));
+
                 // The core has to be same-origin for the worker to load it, hence the blob URLs.
                 return {
-                    coreURL: await toBlobURL(`${coreBaseUrl}/ffmpeg-core.js`, 'text/javascript'),
-                    wasmURL: await toBlobURL(
-                        `${coreBaseUrl}/ffmpeg-core.wasm`,
-                        'application/wasm',
-                        true,
-                        ({ received, total }) =>
-                            onProgress?.({ stage: 'loadingDecoder', ratio: total ? clamp(received / total, 0, 1) : 0 })
-                    ),
+                    coreURL: URL.createObjectURL(new Blob([script], { type: coreScript.mimeType })),
+                    wasmURL: URL.createObjectURL(new Blob([wasm], { type: coreWasm.mimeType })),
                 };
             } catch (e) {
                 // Allow a later attempt to retry the download.
@@ -121,9 +272,22 @@ const loadCoreUrls = (onProgress?: ProgressCallback) => {
 
 /**
  * @returns whether a transcode could be started right now. The decoder is downloaded on first use,
- * so an offline browser that has not already fetched it cannot transcode anything.
+ * so an offline browser can only transcode when an earlier session cached it.
  */
-export const audioTranscodingAvailable = () => coreUrls !== undefined || navigator.onLine;
+export const audioTranscodingAvailable = async () => {
+    if (coreUrls !== undefined || navigator.onLine) {
+        return true;
+    }
+
+    const cache = await openCoreCache();
+
+    if (cache === undefined) {
+        return false;
+    }
+
+    const cached = await Promise.all([coreScript, coreWasm].map((file) => cache.match(coreFileUrl(file))));
+    return cached.every((response) => response !== undefined);
+};
 
 /**
  * Reads the duration from the browser rather than the container. Only files the browser can already
