@@ -47,7 +47,7 @@ sidebar_position: 7
 | HBO Max                 |                                                             See [issue](https://github.com/asbplayer/asbplayer/issues/1006)                                                              |
 | Yle Areena              |                                                                                            ✓                                                                                             |
 | iWantTFC                |                                                                                            ✓                                                                                             |
-| Stemio                  |                                                              See [issue](https://github.com/asbplayer/asbplayer/issues/800)                                                              |
+| Stremio                 |                                                                                            ✓                                                                                             |
 | Comprehensible Japanese |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |
