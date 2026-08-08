@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
-import Binding from './binding';
+import Binding, { type BindingOptions } from './binding';
 import { MockStorageArea } from './mock-storage-area';
+
+const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo: boolean): BindingOptions => ({
+    hasPageScript,
+    videoSrcChangesIndicateNewVideo,
+});
 
 let mockPlaybackModeOverlayShows = 0;
 
@@ -44,6 +49,7 @@ jest.mock('../controllers/mobile-video-overlay-controller', () => ({
     MobileVideoOverlayController: class MobileVideoOverlayController {
         bind() {}
         unbind() {}
+        disposeOverlay() {}
         setPlaybackModes() {}
         show() {}
         showPlaybackModes() {
@@ -222,7 +228,7 @@ describe('Binding playback mode integration', () => {
 
     it('applies playback modes through real video timing without overwriting the inactive rate', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [
@@ -251,7 +257,7 @@ describe('Binding playback mode integration', () => {
 
     it('uses timeupdate for audio-only media', async () => {
         const video = createVideo({ width: 0, height: 0 });
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
@@ -264,9 +270,72 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('ignores same-source metadata events after subtitles are synced', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(true, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        const requestSubtitles = jest.spyOn(binding.videoDataSyncController, 'requestSubtitles');
+        const resetSubtitles = jest.spyOn(binding as any, '_resetSubtitles');
+
+        video.dispatchEvent(new Event('loadedmetadata'));
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(requestSubtitles).not.toHaveBeenCalled();
+        expect(resetSubtitles).not.toHaveBeenCalled();
+        binding.unbind();
+    });
+
+    it('refreshes subtitles when a configured page changes source without changing location', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(true, true));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+        await jest.advanceTimersByTimeAsync(1100);
+        video.presentFrame(0);
+        await flushPlaybackTiming();
+        expect(displayedSubtitleTexts()).toContain('subtitle');
+
+        const requestSubtitles = jest.spyOn(binding.videoDataSyncController, 'requestSubtitles');
+        const resetSubtitles = jest.spyOn(binding as any, '_resetSubtitles');
+
+        video.src = 'https://example.com/episode-2.mp4';
+        // The heartbeat may update _registeredVideoSrc before loadedmetadata.
+        await jest.advanceTimersByTimeAsync(1000);
+        video.dispatchEvent(new Event('loadedmetadata'));
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(requestSubtitles).toHaveBeenCalledWith({ videoChanged: true });
+        expect(resetSubtitles).toHaveBeenCalledTimes(1);
+        expect(displayedSubtitleTexts()).toEqual([]);
+        binding.unbind();
+    });
+
+    it('keeps same-location source changes suppressed for pages without the opt-in', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(true, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        const requestSubtitles = jest.spyOn(binding.videoDataSyncController, 'requestSubtitles');
+        const resetSubtitles = jest.spyOn(binding as any, '_resetSubtitles');
+
+        video.src = 'https://example.com/rotated-stream.mp4';
+        video.dispatchEvent(new Event('loadedmetadata'));
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(requestSubtitles).not.toHaveBeenCalled();
+        expect(resetSubtitles).not.toHaveBeenCalled();
+        binding.unbind();
+    });
+
     it('does not persist empty subtitle track filenames as playback-position keys', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle()], ['subtitle.srt', 'Empty.srt']);
@@ -282,7 +351,7 @@ describe('Binding playback mode integration', () => {
 
     it('receives play-mode intents and publishes authoritative mode state', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle()]);
@@ -304,7 +373,7 @@ describe('Binding playback mode integration', () => {
 
     it('publishes compiled subtitle visibility changes from presented video frames', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
@@ -324,7 +393,7 @@ describe('Binding playback mode integration', () => {
     it('reconciles subtitle visibility on a user seek without firing auto-pause actions', async () => {
         await storage.set({ autoPausePreference: AutoPausePreference.atStartAndEnd });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -347,7 +416,7 @@ describe('Binding playback mode integration', () => {
 
     it('shifts visible subtitle state immediately when the offset changes while paused', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000, originalStart: 1000, originalEnd: 2000 })]);
@@ -371,7 +440,7 @@ describe('Binding playback mode integration', () => {
             subtitleTriggerEndOffset: 400,
         });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -392,7 +461,7 @@ describe('Binding playback mode integration', () => {
     it('applies an initially loaded subtitle offset to playback timing', async () => {
         await storage.set({ autoPausePreference: AutoPausePreference.atStart });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -425,7 +494,7 @@ describe('Binding playback mode integration', () => {
             repeatCountPreference: 1,
         });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
@@ -454,7 +523,7 @@ describe('Binding playback mode integration', () => {
         };
         document.addEventListener('asbplayer-netflix-seek', onNetflixSeek);
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
 
         try {
             binding.bind();
@@ -480,7 +549,7 @@ describe('Binding playback mode integration', () => {
 
     it('resolves a Netflix play request when the owner is already playing', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const onPlay = () => {
             Object.defineProperty(video, 'paused', { configurable: true, value: false, writable: true });
         };
@@ -498,7 +567,7 @@ describe('Binding playback mode integration', () => {
     it('cancels an unavailable Netflix seek without persisting its target and continues timing', async () => {
         document.dispatchEvent(new CustomEvent('asbplayer-netflix-enabled', { detail: true }));
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const netflixSeeks: number[] = [];
         const onNetflixSeek = (event: Event) => {
             netflixSeeks.push((event as CustomEvent<number>).detail);
@@ -535,7 +604,7 @@ describe('Binding playback mode integration', () => {
             subtitleTriggerGapStartOffset: 400,
         });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const play = jest.spyOn(binding, 'play').mockResolvedValue(undefined);
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -557,7 +626,7 @@ describe('Binding playback mode integration', () => {
 
     it('uses normal playback while recording', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -602,7 +671,7 @@ describe('Binding playback mode integration', () => {
             seekableTracks: 1,
         });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         const pause = jest.spyOn(binding, 'pause').mockImplementation(() => {});
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -634,7 +703,7 @@ describe('Binding playback mode integration', () => {
 
     it('keeps active modes for non-empty subtitles and resets them when subtitles are cleared', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
 
         sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
@@ -658,7 +727,7 @@ describe('Binding playback mode integration', () => {
             rememberPlaybackModes: true,
             lastPlaybackModes: [PlayMode.fastForward, PlayMode.repeat],
         });
-        const binding = new Binding(createVideo(), false);
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
 
@@ -684,7 +753,7 @@ describe('Binding playback mode integration', () => {
             rememberPlaybackModes: true,
             lastPlaybackModes: [PlayMode.normal],
         });
-        const binding = new Binding(createVideo(), false);
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
 
@@ -711,7 +780,7 @@ describe('Binding playback mode integration', () => {
                 lastPlaybackModes: [PlayMode.fastForward],
             });
             const video = createVideo();
-            const binding = new Binding(video, false);
+            const binding = new Binding(video, bindingOptions(false, false));
 
             binding.bind();
             await jest.advanceTimersByTimeAsync(0);
@@ -747,7 +816,7 @@ describe('Binding playback mode integration', () => {
 
     it('applies the latest incoming playback rate', async () => {
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
 
@@ -765,7 +834,7 @@ describe('Binding playback mode integration', () => {
     ])('honors the playback-rate notification setting when $name', async ({ enabled, expectedNotifications }) => {
         await storage.set({ playbackRateNotificationEnabled: enabled });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle()]);
@@ -781,7 +850,7 @@ describe('Binding playback mode integration', () => {
     it('notifies once when a keybind changes the playback rate', async () => {
         await storage.set({ playbackRateNotificationEnabled: true });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [makeSubtitle()]);
@@ -801,7 +870,7 @@ describe('Binding playback mode integration', () => {
     it('uses the fast-forward playback-rate localization key when a keybind changes the active rate', async () => {
         await storage.set({ playbackRateNotificationEnabled: true });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
         sendSubtitles(binding, [
@@ -825,7 +894,7 @@ describe('Binding playback mode integration', () => {
     it('applies the configured playback rate after settings load', async () => {
         await storage.set({ playbackRate: 1.4 });
         const video = createVideo();
-        const binding = new Binding(video, false);
+        const binding = new Binding(video, bindingOptions(false, false));
 
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
@@ -844,7 +913,7 @@ describe('Binding playback mode integration', () => {
         async ({ rememberPlaybackRate }) => {
             await storage.set({ playbackRate: 1.1, rememberPlaybackRate });
             const video = createVideo();
-            const binding = new Binding(video, false);
+            const binding = new Binding(video, bindingOptions(false, false));
             binding.bind();
             await jest.advanceTimersByTimeAsync(0);
 

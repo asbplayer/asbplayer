@@ -169,8 +169,15 @@ export default class SubtitleController {
     reset() {
         this.subtitles = [];
         this.subtitleFileNames = undefined;
+        this.timelineShowingSubtitles = [];
+        this.showingSubtitles = undefined;
+        this.showingLoadedMessage = false;
+        if (this.loadedMessageHideTimeout) clearTimeout(this.loadedMessageHideTimeout);
+        this.loadedMessageHideTimeout = undefined;
         this.cacheHtml();
         this.subtitleAnnotations.reset();
+        this.bottomSubtitlesElementOverlay.hide();
+        this.topSubtitlesElementOverlay.hide();
     }
 
     cacheHtml() {

@@ -22,6 +22,9 @@ interface PageConfig {
     // Page script to load
     pageScript?: string;
 
+    // Whether a changed media source identifies a new video even when the page URL is unchanged
+    videoSrcChangesIndicateNewVideo?: boolean;
+
     // URL relative path regex where subtitle track data syncing is allowed
     syncAllowedAtPath?: string;
 

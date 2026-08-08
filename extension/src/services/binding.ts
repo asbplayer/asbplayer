@@ -152,6 +152,12 @@ const startAudioRecordingErrorResponse: (e: any) => StartRecordingResponse = (e:
     return errorResponse;
 };
 
+export interface BindingOptions {
+    readonly hasPageScript: boolean;
+    readonly frameId?: string;
+    readonly videoSrcChangesIndicateNewVideo: boolean;
+}
+
 export default class Binding {
     private readonly _fallbackVideoSrc = uuidv4();
 
@@ -163,6 +169,8 @@ export default class Binding {
     private _synced: boolean;
     private _syncedTimestamp?: number;
     private _lastSyncedLocation?: string;
+    private _lastLoadedMetadataVideoSrc: string;
+    private readonly _videoSrcChangesIndicateNewVideo: boolean;
 
     private _recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
@@ -237,10 +245,12 @@ export default class Binding {
 
     private readonly frameId?: string;
 
-    constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string) {
+    constructor(video: HTMLMediaElement, options: BindingOptions) {
         this.video = video;
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
-        this.hasPageScript = hasPageScript;
+        this._lastLoadedMetadataVideoSrc = this._registeredVideoSrc;
+        this.hasPageScript = options.hasPageScript;
+        this._videoSrcChangesIndicateNewVideo = options.videoSrcChangesIndicateNewVideo;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
@@ -273,7 +283,7 @@ export default class Binding {
         this.postMinePlayback = PostMinePlayback.remember;
         this._synced = false;
         this.recordingMediaWithScreenshot = false;
-        this.frameId = frameId;
+        this.frameId = options.frameId;
     }
 
     get registeredVideoSrc() {
@@ -548,7 +558,7 @@ export default class Binding {
         this._notifyReady();
         this._subscribe();
         void this._refreshSettings().then(() => {
-            void this.videoDataSyncController.requestSubtitles();
+            void this.videoDataSyncController.requestSubtitles({ videoChanged: false });
         });
         this.subtitleController.bind();
         this.playbackEngine.bind();
@@ -696,30 +706,39 @@ export default class Binding {
         this.subtitleController.onMouseOut = (mouseEvent: MouseEvent) => this.hoveredToken.handleMouseOut(mouseEvent);
 
         if (this.hasPageScript) {
+            let forceRefreshForSameLocation = false;
             const debouncedChangeListener = debounced(
                 () => {
-                    void this.videoDataSyncController.requestSubtitles();
+                    const videoChanged = forceRefreshForSameLocation;
+                    forceRefreshForSameLocation = false;
+                    void this.videoDataSyncController.requestSubtitles({ videoChanged });
                     this._resetSubtitles();
                 },
                 disneyPlus ? 1000 : 0
             );
             this.videoChangeListener = () => {
-                this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
+                const videoSrc = this.video.src || this._fallbackVideoSrc;
+                const sourceChanged = videoSrc !== this._lastLoadedMetadataVideoSrc;
+                this._lastLoadedMetadataVideoSrc = videoSrc;
+                this._updateRegisteredVideoSrc(videoSrc);
+                const sameLocationVideoChanged = this._videoSrcChangesIndicateNewVideo && sourceChanged;
 
                 // Player events (e.g. Hulu blob URL rotation) can fire loadedmetadata
                 // without an actual video change. Skip refresh when the picker is open
                 // here or subtitles are already synced for it.
                 if (
                     this.videoDataSyncController.pickerVisible &&
-                    this.videoDataSyncController.openedLocation === window.location.href
+                    this.videoDataSyncController.openedLocation === window.location.href &&
+                    !sameLocationVideoChanged
                 ) {
                     return;
                 }
 
-                if (this._synced && this._lastSyncedLocation === window.location.href) {
+                if (this._synced && this._lastSyncedLocation === window.location.href && !sameLocationVideoChanged) {
                     return;
                 }
 
+                forceRefreshForSameLocation ||= sameLocationVideoChanged;
                 debouncedChangeListener();
                 if (disneyPlus) this.disneyPlusClock.reset();
             };
@@ -1833,6 +1852,7 @@ export default class Binding {
     private _resetSubtitles() {
         this.subtitleController.reset();
         this.playbackEngine.playbackPositionKeysChanged([]);
+        this.playbackEngine.subtitlesChanged([]);
         this.ankiUiSavedState = undefined;
         this._synced = false;
         this._syncedTimestamp = undefined;
