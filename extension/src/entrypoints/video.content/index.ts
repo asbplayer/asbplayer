@@ -16,6 +16,7 @@ import { ExtensionSettingsStorage } from '@/services/extension-settings-storage'
 import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
 import { isFirefoxBuild } from '@/services/build-flags';
+import AutoSyncCoordinator, { type AutoSyncClaim } from '@/services/auto-sync-coordinator';
 
 import './video.css';
 
@@ -97,6 +98,7 @@ export default defineContentScript({
 
         const bind = async () => {
             const bindings: Binding[] = [];
+            const autoSyncCoordinator = new AutoSyncCoordinator();
             const page = await currentPageDelegate();
             const hasPageScript = page?.config.pageScript !== undefined;
             let frameInfoListener: FrameInfoListener | undefined;
@@ -113,6 +115,20 @@ export default defineContentScript({
             }
 
             const bindToVideoElements = () => {
+                const currentLocation = window.location.href;
+                let revokedAutoSyncClaim: AutoSyncClaim | undefined;
+                let preferredAutoSyncVideo: HTMLVideoElement | undefined;
+                const clearRevokedAutoSync = (claim: AutoSyncClaim | undefined) => {
+                    if (claim === undefined) return;
+                    revokedAutoSyncClaim = claim;
+                    bindings.find((binding) => binding.video.isSameNode(claim.video))?.clearAutoSyncedSubtitles(claim);
+                };
+
+                if (currentLocation !== autoSyncLocation) {
+                    autoSyncLocation = currentLocation;
+                    clearRevokedAutoSync(autoSyncCoordinator.reset());
+                }
+
                 const videoElements = [...document.getElementsByTagName('video')];
 
                 for (const shadowRootHost of shadowRootHosts) {
@@ -129,6 +145,24 @@ export default defineContentScript({
                     }
                 }
 
+                const bindableVideoElements = videoElements.filter(
+                    (videoElement) => hasValidVideoSource(videoElement, page) && !page?.shouldIgnore(videoElement)
+                );
+                if (page !== undefined) {
+                    const autoSyncCandidates = bindableVideoElements.filter((v) => page.canAutoSync(v));
+                    preferredAutoSyncVideo = autoSyncCandidates
+                        .slice()
+                        .sort(
+                            (a, b) => page.videoElementSelectorPreference(a) - page.videoElementSelectorPreference(b)
+                        )[0];
+                    clearRevokedAutoSync(autoSyncCoordinator.reconcile(autoSyncCandidates, preferredAutoSyncVideo));
+                } else {
+                    preferredAutoSyncVideo = bindableVideoElements[0];
+                    clearRevokedAutoSync(autoSyncCoordinator.reconcile(bindableVideoElements, preferredAutoSyncVideo));
+                }
+                const preferredAutoSyncVideoChanged = preferredAutoSyncVideo !== lastPreferredAutoSyncVideo;
+                lastPreferredAutoSyncVideo = preferredAutoSyncVideo;
+
                 for (let i = 0; i < videoElements.length; ++i) {
                     const videoElement = videoElements[i];
                     const bindingExists = bindings.filter((b) => b.video.isSameNode(videoElement)).length > 0;
@@ -138,7 +172,7 @@ export default defineContentScript({
                         hasValidVideoSource(videoElement, page) &&
                         !page?.shouldIgnore(videoElement)
                     ) {
-                        const b = new Binding(videoElement, {
+                        const b = new Binding(videoElement, autoSyncCoordinator, {
                             hasPageScript,
                             frameId: frameInfoBroadcaster?.frameId,
                             videoSrcChangesIndicateNewVideo: page?.config.videoSrcChangesIndicateNewVideo ?? false,
@@ -178,16 +212,23 @@ export default defineContentScript({
                     bindings.sort((a, b) => preferenceByVideo.get(a.video)! - preferenceByVideo.get(b.video)!);
                 }
 
-                const autoSyncBinding =
-                    page !== undefined ? bindings.find((binding) => page.canAutoSync(binding.video)) : bindings[0];
-                for (const b of bindings) b.videoDataSyncController.setPreferredForAutoSync(b === autoSyncBinding);
-
                 if (bindings.length === 0) {
                     frameInfoBroadcaster?.unbind();
                 } else {
                     frameInfoBroadcaster?.bind();
                 }
+
+                if (
+                    preferredAutoSyncVideo !== undefined &&
+                    (revokedAutoSyncClaim !== undefined || preferredAutoSyncVideoChanged)
+                ) {
+                    const preferredBinding = bindings.find((b) => b.video.isSameNode(preferredAutoSyncVideo));
+                    void preferredBinding?.videoDataSyncController.requestSubtitles({ videoChanged: true });
+                }
             };
+
+            let autoSyncLocation = window.location.href;
+            let lastPreferredAutoSyncVideo: HTMLVideoElement | undefined;
 
             bindToVideoElements();
             const videoInterval = setInterval(bindToVideoElements, 1000);

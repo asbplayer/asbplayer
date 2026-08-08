@@ -87,6 +87,7 @@ import NotificationController from '../controllers/notification-controller';
 import SubtitleController from '../controllers/subtitle-controller';
 import BulkExportController from '../controllers/bulk-export-controller';
 import VideoDataSyncController from '../controllers/video-data-sync-controller';
+import AutoSyncCoordinator, { type AutoSyncClaim } from './auto-sync-coordinator';
 import AudioRecorder, { TimedRecordingInProgressError } from './audio-recorder';
 import { isMobile } from '@project/common/device-detection/mobile';
 import { OffsetAnchor } from './element-overlay';
@@ -196,6 +197,7 @@ export default class Binding {
     readonly keyBindings: KeyBindings;
     readonly dictionary: DictionaryProvider;
     readonly settings: SettingsProvider;
+    private readonly _autoSyncCoordinator: AutoSyncCoordinator;
     private readonly _audioRecorder = new AudioRecorder();
     readonly bulkExportController: BulkExportController;
 
@@ -245,8 +247,9 @@ export default class Binding {
 
     private readonly frameId?: string;
 
-    constructor(video: HTMLMediaElement, options: BindingOptions) {
+    constructor(video: HTMLMediaElement, autoSyncCoordinator: AutoSyncCoordinator, options: BindingOptions) {
         this.video = video;
+        this._autoSyncCoordinator = autoSyncCoordinator;
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
         this._lastLoadedMetadataVideoSrc = this._registeredVideoSrc;
         this.hasPageScript = options.hasPageScript;
@@ -255,7 +258,7 @@ export default class Binding {
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
         this.playbackEngine = this._createPlaybackEngine();
-        this.videoDataSyncController = new VideoDataSyncController(this, this.settings);
+        this.videoDataSyncController = new VideoDataSyncController(this, this.settings, autoSyncCoordinator);
         this.controlsController = new ControlsController(video);
         this.dragController = new DragController(video);
         this.keyBindings = new KeyBindings();
@@ -1697,7 +1700,7 @@ export default class Binding {
         return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl);
     }
 
-    async loadSubtitles(files: File[], flatten: boolean, syncWithAsbplayerId?: string) {
+    async loadSubtitles(files: File[], flatten: boolean, syncWithAsbplayerId?: string, autoSyncClaim?: AutoSyncClaim) {
         const {
             streamingSubtitleListPreference,
             subtitleRegexFilter,
@@ -1716,6 +1719,8 @@ export default class Binding {
             'convertNetflixRuby',
         ]);
         const syncWithAsbplayerTab = async (withSyncedAsbplayerOnly: boolean, withAsbplayerId: string | undefined) => {
+            if (!this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
+
             const syncMessage: VideoToExtensionCommand<ExtensionSyncMessage> = {
                 sender: 'asbplayer-video',
                 message: {
@@ -1735,8 +1740,12 @@ export default class Binding {
                 },
                 src: this._registeredVideoSrc,
             };
+
+            if (!this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
             void browser.runtime.sendMessage(syncMessage);
         };
+
+        if (!this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
 
         switch (streamingSubtitleListPreference) {
             case SubtitleListPreference.noSubtitleList: {
@@ -1750,6 +1759,8 @@ export default class Binding {
                 const userOffset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
                 const offset = userOffset;
                 const subtitles = await reader.subtitles(files, flatten);
+
+                if (!this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
 
                 // Order is important: sync with tab first, then update our subtitle controller
                 // since the subtitle controller may send coloring messages as soon as it gets
@@ -1765,6 +1776,8 @@ export default class Binding {
                 } catch (error) {
                     console.error('Failed to sync with asbplayer tab when loading subtitles:', error);
                 }
+
+                if (!this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
 
                 this._updateSubtitles(
                     subtitles.map((s, index) => ({
@@ -1786,6 +1799,11 @@ export default class Binding {
                 await syncWithAsbplayerTab(false, undefined);
                 break;
         }
+    }
+
+    clearAutoSyncedSubtitles(autoSyncClaim: AutoSyncClaim) {
+        if (this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
+        this._resetSubtitles();
     }
 
     private _updateSubtitles(subtitles: IndexedSubtitleModel[], subtitleFileNames: string[]) {
