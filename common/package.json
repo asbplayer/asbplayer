@@ -3,6 +3,7 @@
     "name": "@project/common",
     "version": "0.1.0",
     "dependencies": {
+        "@ffmpeg/ffmpeg": "^0.12.15",
         "@flatten-js/interval-tree": "^1.0.19",
         "@plausible-analytics/tracker": "^0.4.5",
         "@qgustavor/srt-parser": "^2.0.0",

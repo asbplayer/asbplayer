@@ -30,6 +30,8 @@ Make sure Anki's card browser is closed when using "update last card." There is 
 
 Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility).
 
+If the audio is in a Dolby-patented format like AC-3, E-AC-3, or DTS, asbplayer will offer to convert it so that it can be played. Accept the prompt and wait for the conversion to finish. Browsers that can decode these formats on their own, such as Safari, are not prompted.
+
 ### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel
 
 For security reasons, browsers do not allow extension scripts to be injected into other extension pages, so there is no fix for this. If you want to scan text with other extensions then you will need to do it from the subtitles displayed inside the video element, or from the subtitle list on the asbplayer website.

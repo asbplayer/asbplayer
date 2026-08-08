@@ -411,6 +411,15 @@ export interface AudioTrackSelectedToVideoMessage extends Message {
     readonly id: string;
 }
 
+/**
+ * Blob URL of audio transcoded from a track the browser cannot decode, to be played in place of the
+ * video's own audio. Undefined when there is none.
+ */
+export interface TranscodedAudioToVideoMessage extends Message {
+    readonly command: 'transcodedAudio';
+    readonly audioFileUrl?: string;
+}
+
 export interface ToggleSubtitleTrackInListFromVideoMessage extends Message {
     readonly command: 'toggleSubtitleTrackInList';
     readonly track: number;
