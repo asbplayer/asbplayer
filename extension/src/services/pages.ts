@@ -37,6 +37,9 @@ interface PageConfig {
     // Whether video elements with blank src should be bindable on this page
     allowVideoElementsWithBlankSrc?: boolean;
 
+    // CSS selectors that prefer video elements matching earlier selectors on this page
+    videoElementSelectorPreferences?: string[];
+
     autoSync?: {
         // Whether to attempt to load detected subtitles automatically
         enabled: boolean;
@@ -171,12 +174,18 @@ export class PageDelegate {
         return false;
     }
 
+    videoElementSelectorPreference(element: HTMLMediaElement) {
+        const preferences = this.config.videoElementSelectorPreferences ?? [];
+        const preference = preferences.findIndex((selector) => element.matches(selector));
+        return preference !== -1 ? preference : preferences.length;
+    }
+
     canAutoSync(element: HTMLMediaElement) {
+        const autoSync = this.config.autoSync;
+        if (autoSync === undefined || !autoSync.enabled) return false;
         return (
-            this.config.autoSync !== undefined &&
-            this.config.autoSync.enabled &&
-            (this.config.autoSync.elementId === undefined || element.id === this.config.autoSync.elementId) &&
-            (this.config.autoSync.videoSrc === undefined || new RegExp(this.config.autoSync.videoSrc).test(element.src))
+            (autoSync.elementId === undefined || element.id === autoSync.elementId) &&
+            (autoSync.videoSrc === undefined || new RegExp(autoSync.videoSrc).test(element.src))
         );
     }
 
