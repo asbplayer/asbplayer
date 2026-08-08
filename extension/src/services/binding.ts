@@ -706,11 +706,8 @@ export default class Binding {
         this.subtitleController.onMouseOut = (mouseEvent: MouseEvent) => this.hoveredToken.handleMouseOut(mouseEvent);
 
         if (this.hasPageScript) {
-            let forceRefreshForSameLocation = false;
             const debouncedChangeListener = debounced(
-                () => {
-                    const videoChanged = forceRefreshForSameLocation;
-                    forceRefreshForSameLocation = false;
+                (videoChanged: boolean) => {
                     void this.videoDataSyncController.requestSubtitles({ videoChanged });
                     this._resetSubtitles();
                 },
@@ -738,8 +735,7 @@ export default class Binding {
                     return;
                 }
 
-                forceRefreshForSameLocation ||= sameLocationVideoChanged;
-                debouncedChangeListener();
+                debouncedChangeListener(sameLocationVideoChanged);
                 if (disneyPlus) this.disneyPlusClock.reset();
             };
             this.video.addEventListener('loadedmetadata', this.videoChangeListener);
