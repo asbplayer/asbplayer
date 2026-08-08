@@ -1,5 +1,9 @@
-import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
-import { isTrackSeekable } from '@project/common/settings';
+import {
+    defaultSettings,
+    isTrackSeekable,
+    type AsbplayerSettings,
+    type SettingsProvider,
+} from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import { PlayMode } from '@project/common';
 import { formatAsSignedMs } from '@project/common/util';
@@ -141,7 +145,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         callbacks,
         timingDriver,
     }: PlaybackEngineOptions<T>) {
-        this.settings = {} as AsbplayerSettings;
+        this.settings = defaultSettings;
         this.appIntegration = appIntegration;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
@@ -244,6 +248,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.lastProfile = profile;
                 this.playbackPositionController.setSettings(this.settings);
                 this.ready.settings = true;
+                this.rebuildPlan();
                 this.bind();
                 return;
             }
