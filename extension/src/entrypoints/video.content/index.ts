@@ -98,7 +98,7 @@ export default defineContentScript({
 
         const bind = async () => {
             const bindings: Binding[] = [];
-            const autoSyncCoordinator = new AutoSyncCoordinator();
+            const autoSyncCoordinator = new AutoSyncCoordinator(() => performance.now());
             const page = await currentPageDelegate();
             const hasPageScript = page?.config.pageScript !== undefined;
             let frameInfoListener: FrameInfoListener | undefined;

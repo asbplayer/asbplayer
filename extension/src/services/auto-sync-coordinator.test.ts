@@ -4,7 +4,7 @@ import AutoSyncCoordinator from './auto-sync-coordinator';
 const video = () => document.createElement('video');
 
 it('allows only the preferred candidate to claim auto-sync and reuse its claim', () => {
-    const coordinator = new AutoSyncCoordinator();
+    const coordinator = new AutoSyncCoordinator(() => performance.now());
     const preferred = video();
     const fallback = video();
 
@@ -17,7 +17,7 @@ it('allows only the preferred candidate to claim auto-sync and reuse its claim',
 });
 
 it('does not claim an invalid-first candidate until it becomes eligible', () => {
-    const coordinator = new AutoSyncCoordinator();
+    const coordinator = new AutoSyncCoordinator(() => performance.now());
     const invalidVideo = video();
     const validVideo = video();
 
@@ -29,7 +29,7 @@ it('does not claim an invalid-first candidate until it becomes eligible', () => 
 });
 
 it('can move ownership before a claim is made', () => {
-    const coordinator = new AutoSyncCoordinator();
+    const coordinator = new AutoSyncCoordinator(() => performance.now());
     const first = video();
     const second = video();
 
@@ -41,7 +41,7 @@ it('can move ownership before a claim is made', () => {
 });
 
 it('allows a new candidate to claim after the previous candidate disappears', () => {
-    const coordinator = new AutoSyncCoordinator();
+    const coordinator = new AutoSyncCoordinator(() => performance.now());
     const first = video();
     const second = video();
 
@@ -53,7 +53,7 @@ it('allows a new candidate to claim after the previous candidate disappears', ()
 });
 
 it('revokes the active claim when reset', () => {
-    const coordinator = new AutoSyncCoordinator();
+    const coordinator = new AutoSyncCoordinator(() => performance.now());
     const candidate = video();
 
     coordinator.reconcile([candidate], candidate);
@@ -64,7 +64,7 @@ it('revokes the active claim when reset', () => {
 });
 
 it('revokes a claimed video when a higher-preference candidate appears later', () => {
-    const coordinator = new AutoSyncCoordinator();
+    const coordinator = new AutoSyncCoordinator(() => performance.now());
     const fallback = video();
     const preferred = video();
 
@@ -78,5 +78,26 @@ it('revokes a claimed video when a higher-preference candidate appears later', (
     expect(revokedClaim).toBe(fallbackClaim);
     expect(coordinator.isCurrent(fallbackClaim)).toBe(false);
     expect(coordinator.tryClaim(fallback)).toBeUndefined();
+    expect(coordinator.tryClaim(preferred)).toBeDefined();
+});
+
+it('does not promote a claimed video after the promotion time limit', () => {
+    let now = 0;
+    const coordinator = new AutoSyncCoordinator(() => now);
+    const fallback = video();
+    const preferred = video();
+
+    coordinator.reconcile([fallback], fallback);
+    const fallbackClaim = coordinator.tryClaim(fallback);
+    expect(fallbackClaim).toBeDefined();
+
+    now = 10_000;
+
+    expect(coordinator.reconcile([preferred, fallback], preferred)).toBeUndefined();
+    expect(coordinator.isCurrent(fallbackClaim)).toBe(true);
+    expect(coordinator.tryClaim(fallback)).toBe(fallbackClaim);
+    expect(coordinator.tryClaim(preferred)).toBeUndefined();
+
+    expect(coordinator.reconcile([preferred], preferred)).toBe(fallbackClaim);
     expect(coordinator.tryClaim(preferred)).toBeDefined();
 });

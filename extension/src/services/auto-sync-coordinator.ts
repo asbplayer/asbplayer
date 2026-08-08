@@ -1,3 +1,5 @@
+const autoSyncPromotionTimeLimitMs = 5000;
+
 export interface AutoSyncClaim {
     readonly video: HTMLMediaElement;
 }
@@ -5,6 +7,12 @@ export interface AutoSyncClaim {
 export default class AutoSyncCoordinator {
     private preferredVideo?: HTMLMediaElement;
     private claim?: AutoSyncClaim;
+    private claimStartedAt?: number;
+    private readonly now: () => number;
+
+    constructor(now: () => number) {
+        this.now = now;
+    }
 
     /**
      * Reconciles the current candidates and preference with the active claim.
@@ -17,19 +25,27 @@ export default class AutoSyncCoordinator {
         candidates: readonly HTMLMediaElement[],
         preferredVideo: HTMLMediaElement | undefined
     ): AutoSyncClaim | undefined {
-        if (
-            this.claim !== undefined &&
-            (!candidates.includes(this.claim.video) ||
-                (preferredVideo !== undefined && preferredVideo !== this.claim.video))
-        ) {
-            const revokedClaim = this.claim;
-            this.claim = undefined;
+        if (this.claim === undefined) {
             this.preferredVideo = preferredVideo;
-            return revokedClaim;
+            return;
         }
-
-        if (this.claim === undefined) this.preferredVideo = preferredVideo;
+        if (!candidates.includes(this.claim.video)) return this.revokeClaim(preferredVideo);
+        if (preferredVideo !== undefined && preferredVideo !== this.claim.video && this.isPromotionAllowed()) {
+            return this.revokeClaim(preferredVideo);
+        }
         return;
+    }
+
+    private isPromotionAllowed(): boolean {
+        return this.claimStartedAt !== undefined && this.now() - this.claimStartedAt < autoSyncPromotionTimeLimitMs;
+    }
+
+    private revokeClaim(preferredVideo: HTMLMediaElement | undefined): AutoSyncClaim | undefined {
+        const revokedClaim = this.claim;
+        this.preferredVideo = preferredVideo;
+        this.claim = undefined;
+        this.claimStartedAt = undefined;
+        return revokedClaim;
     }
 
     /**
@@ -38,10 +54,7 @@ export default class AutoSyncCoordinator {
      * @return The claim revoked by the reset, or undefined when there was no active claim.
      */
     reset(): AutoSyncClaim | undefined {
-        const revokedClaim = this.claim;
-        this.preferredVideo = undefined;
-        this.claim = undefined;
-        return revokedClaim;
+        return this.revokeClaim(undefined);
     }
 
     tryClaim(video: HTMLMediaElement): AutoSyncClaim | undefined {
@@ -49,6 +62,7 @@ export default class AutoSyncCoordinator {
         if (this.preferredVideo !== video) return;
         const claim = { video };
         this.claim = claim;
+        this.claimStartedAt = this.now();
         return claim;
     }
 

@@ -11,7 +11,7 @@ const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo:
 
 class Binding extends BindingBase {
     constructor(video: HTMLMediaElement, options: BindingOptions) {
-        super(video, new AutoSyncCoordinator(), options);
+        super(video, new AutoSyncCoordinator(() => performance.now()), options);
     }
 }
 
