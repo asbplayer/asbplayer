@@ -660,6 +660,21 @@ describe('PlaybackEngine', () => {
         ]);
     });
 
+    it('rebuilds the plan after settings load before subtitles arrive', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 0, [], {
+            settingsReady: false,
+            settings: { playbackRate: 1.4 },
+        });
+
+        const initialPlan = (harness.playbackEngine as unknown as { plan: { playbackRate: number } }).plan;
+        expect(initialPlan.playbackRate).toBe(defaultSettings.playbackRate);
+
+        harness.resolveSettings(harness.settings);
+        await flushPlaybackInitialization();
+        const plan = (harness.playbackEngine as unknown as { plan: { playbackRate: number } }).plan;
+        expect(plan.playbackRate).toBe(harness.settings.playbackRate);
+    });
+
     it('does not bind until settings are ready', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], { settingsReady: false });
 
