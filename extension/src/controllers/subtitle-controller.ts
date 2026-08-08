@@ -533,11 +533,16 @@ export default class SubtitleController {
                             </div>
                         `;
                     } else {
-                        return this._buildTextHtml(
-                            subtitle.text,
-                            subtitle.track,
-                            rendered?.richText,
-                            rendered?.richTextOnHover
+                        const { before, after } = _buildSubtitleContextHtml(subtitle.index, this.subtitles);
+                        return (
+                            before +
+                            this._buildTextHtml(
+                                subtitle.text,
+                                subtitle.track,
+                                rendered?.richText,
+                                rendered?.richTextOnHover
+                            ) +
+                            after
                         );
                     }
                 },
@@ -808,4 +813,26 @@ export default class SubtitleController {
 
         return false;
     }
+}
+
+export function buildSubtitleContextText(currentSubtitleIndex: number, subtitles: IndexedSubtitleModel[]) {
+    const beforeSubtitles = subtitles.slice(0, currentSubtitleIndex);
+    const afterSubtitles = subtitles.slice(currentSubtitleIndex + 1);
+
+    const fullBeforeText = beforeSubtitles.map((s) => s.text.trim()).join(' ');
+    const fullAfterText = afterSubtitles.map((s) => s.text.trim()).join(' ');
+
+    return {
+        before: fullBeforeText.substring(fullBeforeText.length - 500),
+        after: fullAfterText.substring(0, 500),
+    };
+}
+
+function _buildSubtitleContextHtml(currentSubtitleIndex: number, subtitles: IndexedSubtitleModel[]) {
+    const { before, after } = buildSubtitleContextText(currentSubtitleIndex, subtitles);
+
+    return {
+        before: `<span class="asbplayer-subtitle-context" style="width:0;height:0;overflow:hidden;display:inline-block">${before}</span>`,
+        after: `<span class="asbplayer-subtitle-context" style="width:0;height:0;overflow:hidden;display:inline-block">${after}</span>`,
+    };
 }
