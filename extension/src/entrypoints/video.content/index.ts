@@ -171,6 +171,17 @@ export default defineContentScript({
                     }
                 }
 
+                if (page !== undefined) {
+                    const preferenceByVideo = new Map(
+                        bindings.map((binding) => [binding.video, page.videoElementSelectorPreference(binding.video)])
+                    );
+                    bindings.sort((a, b) => preferenceByVideo.get(a.video)! - preferenceByVideo.get(b.video)!);
+                }
+
+                const autoSyncBinding =
+                    page !== undefined ? bindings.find((binding) => page.canAutoSync(binding.video)) : bindings[0];
+                for (const b of bindings) b.videoDataSyncController.setPreferredForAutoSync(b === autoSyncBinding);
+
                 if (bindings.length === 0) {
                     frameInfoBroadcaster?.unbind();
                 } else {

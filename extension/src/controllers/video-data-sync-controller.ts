@@ -77,6 +77,7 @@ export default class VideoDataSyncController {
     private readonly _settings: SettingsProvider;
 
     private _autoSync?: boolean;
+    private _preferredForAutoSync = true;
     private _lastLanguagesSynced: { [key: string]: string[] };
     private _emptySubtitle: VideoDataSubtitleTrack;
     private _syncedData?: VideoData;
@@ -144,6 +145,10 @@ export default class VideoDataSyncController {
                 });
             });
         }
+    }
+
+    setPreferredForAutoSync(preferred: boolean) {
+        this._preferredForAutoSync = preferred;
     }
 
     get pickerVisible(): boolean {
@@ -354,11 +359,8 @@ export default class VideoDataSyncController {
     private async _canAutoSync(): Promise<boolean> {
         const page = await currentPageDelegate();
 
-        if (page === undefined) {
-            return this._autoSync ?? false;
-        }
-
-        return this._autoSync === true && page.canAutoSync(this._context.video);
+        if (page === undefined) return (this._autoSync ?? false) && this._preferredForAutoSync;
+        return this._autoSync === true && this._preferredForAutoSync && page.canAutoSync(this._context.video);
     }
 
     private async _pageHidesTrackPrefToggle() {
