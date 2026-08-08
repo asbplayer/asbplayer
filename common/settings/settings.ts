@@ -8,9 +8,17 @@ import {
 } from '../src/model';
 import { arrayEquals } from '../util';
 
-export interface SaveSettingsOptions {
-    readonly saveOnly: boolean;
-}
+// Settings visible in UI probably shouldn't ever be here to prevent user confusion.
+export const saveOnlySettings: readonly (keyof AsbplayerSettings)[] = [
+    'lastSubtitleOffset',
+    'lastPlaybackModes',
+    'lastPlaybackPositions',
+];
+
+export const isSaveOnlySettings = (settings: Partial<AsbplayerSettings>): boolean => {
+    const changedKeys = Object.keys(settings) as (keyof AsbplayerSettings)[];
+    return changedKeys.every((key) => saveOnlySettings.includes(key));
+};
 
 export enum PauseOnHoverMode {
     disabled = 0,

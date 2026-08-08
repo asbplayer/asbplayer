@@ -206,6 +206,7 @@ function extractSources(files: FileWithId[]): MediaSources {
 
 interface RenderVideoProps {
     searchParams: URLSearchParams;
+    settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
     extension: ChromeExtension;
     miningContext: MiningContext;
@@ -222,6 +223,7 @@ interface RenderVideoProps {
         timestamp: number
     ) => void;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    profile?: string;
     onAnkiDialogRewind: () => void;
     onError: (error: string) => void;
 }
@@ -325,6 +327,7 @@ interface Props {
     extension: ChromeExtension;
     fetcher: Fetcher;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    profile?: string;
     profiles: Profile[];
     activeProfile?: string;
     onNewProfile: (name: string) => void;
@@ -343,6 +346,7 @@ function App({
     extension,
     fetcher,
     onSettingsChanged,
+    profile,
     onGlobalStateChanged,
     ...profilesContext
 }: Props) {
@@ -364,7 +368,7 @@ function App({
     const webSocketClient = useAppWebSocketClient({ settings });
     const supportsDictionaryStatistics = !extension.installed || extension.supportsDictionaryStatistics;
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>([]);
-    const playbackPreferences = usePlaybackPreferences(settings, extension);
+    const playbackPreferences = usePlaybackPreferences();
     const theme = useMemo<Theme>(() => createTheme(settings.themeType), [settings.themeType]);
     const anki = useAnki({ settings, fetcher });
     const searchParams = useMemo(() => new URLSearchParams(location.search), []);
@@ -1810,13 +1814,7 @@ function App({
                     onDragLeave={handleDragLeave}
                 >
                     {!sources.videoFile && !inVideoPlayer && (
-                        <Alert
-                            open={alertOpen}
-                            useAppLogo={false}
-                            onClose={handleAlertClosed}
-                            autoHideDuration={3000}
-                            severity={alertSeverity}
-                        >
+                        <Alert open={alertOpen} useAppLogo={false} onClose={handleAlertClosed} severity={alertSeverity}>
                             {alert}
                         </Alert>
                     )}
@@ -1824,12 +1822,14 @@ function App({
                         <>
                             <RenderVideo
                                 searchParams={searchParams}
+                                settingsProvider={settingsProvider}
                                 settings={settings}
                                 extension={extension}
                                 miningContext={miningContext}
                                 ankiDialogOpen={ankiDialogOpen}
                                 seekRequest={videoPlayerSeekRequest}
                                 onSettingsChanged={onSettingsChanged}
+                                profile={profile}
                                 onAnkiDialogRequest={handleAnkiDialogRequestFromVideoPlayer}
                                 onAnkiDialogRewind={handleAnkiDialogRewindFromVideoPlayer}
                                 onError={handleError}
@@ -2016,6 +2016,8 @@ function App({
                                     settings={settings}
                                     dictionaryProvider={dictionaryProvider}
                                     settingsProvider={settingsProvider}
+                                    onSettingsChanged={onSettingsChanged}
+                                    profile={profile}
                                     playbackPreferences={playbackPreferences}
                                     onCopy={handleCopy}
                                     onError={handleError}

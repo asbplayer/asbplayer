@@ -1,6 +1,6 @@
 import { AsbplayerSettings, defaultSettings } from '@project/common/settings';
 import { LocalSettingsStorage } from './local-settings-storage';
-import { expect, it, beforeEach } from '@jest/globals';
+import { expect, it, beforeEach, jest } from '@jest/globals';
 
 const settingsStorage = new LocalSettingsStorage();
 
@@ -39,4 +39,20 @@ it('changes separate keys for different profiles', async () => {
 
     // Default profile still has default value 'en'
     expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
+});
+
+it('busts the cache without notifying settings callbacks for playback-owned storage events', async () => {
+    const onSettingsUpdated = jest.fn();
+    const unsubscribe = settingsStorage.onSettingsUpdated(onSettingsUpdated);
+
+    await settingsStorage.set({ lastSubtitleOffset: 100 });
+    localStorage.setItem('lastSubtitleOffset', '200');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'lastSubtitleOffset' }));
+    expect(onSettingsUpdated).not.toHaveBeenCalled();
+    expect(await settingsStorage.get({ lastSubtitleOffset: 0 })).toEqual({ lastSubtitleOffset: 200 });
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'playbackRate' }));
+    expect(onSettingsUpdated).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
 });

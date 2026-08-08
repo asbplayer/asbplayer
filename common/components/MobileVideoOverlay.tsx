@@ -88,7 +88,6 @@ interface Props {
     onPlayModeSelected: (playMode: PlayMode) => void;
     onSeek: (timestamp: number) => void;
     onToggleSubtitles: () => void;
-    playModeSelectorRequest?: number;
     flexDirection: React.CSSProperties['flexDirection'];
     onPlayModeSelectorOpened?: () => void;
     onPlayModeSelectorClosed?: () => void;
@@ -109,7 +108,6 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
         onPlayModeSelected,
         onSeek,
         onToggleSubtitles,
-        playModeSelectorRequest,
         flexDirection,
         onPlayModeSelectorOpened,
         onPlayModeSelectorClosed,
@@ -432,13 +430,12 @@ const MobileVideoOverlay = React.forwardRef<HTMLDivElement, Props>(function Mobi
                         </Tooltip>
                     </Grid>
                 )}
-                {(!model.emptySubtitleTrack || playModeSelectorRequest !== undefined) && (
+                {!model.emptySubtitleTrack && (
                     <Grid item>
                         <PlaybackModeSelector
                             selectedPlayModes={new Set(model.playModes)}
                             onPlayMode={onPlayModeSelected}
                             keepManualSelectorOpen
-                            temporaryOpenRequest={playModeSelectorRequest}
                             onSelectorOpened={onPlayModeSelectorOpened}
                             onSelectorClosed={onPlayModeSelectorClosed}
                             renderButton={({ anchorRef, onClick, onMouseEnter, onMouseLeave }) => (

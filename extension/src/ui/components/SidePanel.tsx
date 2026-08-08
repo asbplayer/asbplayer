@@ -27,7 +27,7 @@ import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Player, { PlayerRef } from '@project/common/app/components/Player';
 import { DisplaySubtitleModel } from '@project/common';
-import { PlaybackPreferences } from '@project/common/app';
+import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import { AlertColor } from '@mui/material/Alert';
 import Alert from '@project/common/app/components/Alert';
 import { LocalizedError } from '@project/common/app';
@@ -97,7 +97,7 @@ const miningContext = new MiningContext();
 
 export default function SidePanel({ dictionaryProvider, settingsProvider, settings, extension }: Props) {
     const { t } = useTranslation();
-    const playbackPreferences = useMemo(() => new PlaybackPreferences(settings, extension), [settings, extension]);
+    const playbackPreferences = useMemo(() => new PlaybackPreferenceController(), []);
     const subtitleReader = useMemo(
         () =>
             new SubtitleReader({
@@ -626,13 +626,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
 
     return (
         <div style={{ width: '100%', height: '100%' }} onMouseMove={handleMouseMove}>
-            <Alert
-                open={alertOpen}
-                useAppLogo={false}
-                onClose={handleAlertClosed}
-                autoHideDuration={3000}
-                severity={alertSeverity}
-            >
+            <Alert open={alertOpen} useAppLogo={false} onClose={handleAlertClosed} severity={alertSeverity}>
                 {alert}
             </Alert>
             {viewingAsbplayer && (appRequestedLocation === 'mining-history' || appRequestedLocation === undefined) && (

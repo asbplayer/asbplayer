@@ -27,6 +27,7 @@ import {
     arrayEquals,
     compareSubtitlesForDisplay,
     computeStyleString,
+    formatAsSignedMs,
     surroundingSubtitles,
 } from '@project/common/util';
 import i18n from 'i18next';
@@ -641,6 +642,7 @@ export default class SubtitleController {
         }
 
         const previousOffset = this._computeOffset();
+        if (previousOffset === offset) return;
 
         this.subtitles = this.subtitles.map((s) => ({
             text: s.text,
@@ -688,17 +690,19 @@ export default class SubtitleController {
 
     private _formatOffset(offset: number): string {
         const roundedOffset = Math.floor(offset);
-        return roundedOffset >= 0 ? '+' + roundedOffset + ' ms' : roundedOffset + ' ms';
+        return formatAsSignedMs(roundedOffset);
     }
 
     notification({
         replacements,
         locKey,
         text,
+        autoHideDuration = 3000,
     }: {
         replacements?: { [key: string]: string };
         locKey?: string;
         text?: string;
+        autoHideDuration?: number;
     }) {
         if (!text && !locKey) {
             return;
@@ -714,7 +718,7 @@ export default class SubtitleController {
         this.notificationElementOverlayHideTimeout = setTimeout(() => {
             this.notificationElementOverlay.hide();
             this.notificationElementOverlayHideTimeout = undefined;
-        }, 3000);
+        }, autoHideDuration);
     }
 
     showLoadedMessage(nonEmptyTrackIndex: number[]) {
