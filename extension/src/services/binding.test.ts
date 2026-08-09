@@ -1,19 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
-import BindingBase, { type BindingOptions } from './binding';
-import AutoSyncCoordinator from './auto-sync-coordinator';
+import Binding, { type BindingOptions } from './binding';
 import { MockStorageArea } from './mock-storage-area';
 
 const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo: boolean): BindingOptions => ({
     hasPageScript,
     videoSrcChangesIndicateNewVideo,
 });
-
-class Binding extends BindingBase {
-    constructor(video: HTMLMediaElement, options: BindingOptions) {
-        super(video, new AutoSyncCoordinator(() => performance.now()), options);
-    }
-}
 
 let mockPlaybackModeOverlayShows = 0;
 

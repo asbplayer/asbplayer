@@ -16,7 +16,6 @@ import {
 import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
 import Binding from '../services/binding';
-import AutoSyncCoordinator, { type AutoSyncClaim } from '../services/auto-sync-coordinator';
 import { currentPageDelegate } from '../services/pages';
 import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { fetchLocalization } from '../services/localization-fetcher';
@@ -78,7 +77,6 @@ export default class VideoDataSyncController {
     private readonly _settings: SettingsProvider;
 
     private _autoSync?: boolean;
-    private readonly _autoSyncCoordinator: AutoSyncCoordinator;
     private _lastLanguagesSynced: { [key: string]: string[] };
     private _emptySubtitle: VideoDataSubtitleTrack;
     private _syncedData?: VideoData;
@@ -91,10 +89,9 @@ export default class VideoDataSyncController {
     private _dataReceivedListener?: (event: Event) => void;
     private _isTutorial: boolean;
 
-    constructor(context: Binding, settings: SettingsProvider, autoSyncCoordinator: AutoSyncCoordinator) {
+    constructor(context: Binding, settings: SettingsProvider) {
         this._context = context;
         this._settings = settings;
-        this._autoSyncCoordinator = autoSyncCoordinator;
         this._autoSync = false;
         this._lastLanguagesSynced = {};
         this._emptySubtitle = {
@@ -330,15 +327,14 @@ export default class VideoDataSyncController {
         const wasLoading = this._syncedData?.subtitles === undefined;
         this._syncedData = data;
 
-        const autoSyncClaim = this._syncedData?.subtitles !== undefined ? await this._canAutoSync() : undefined;
-        if (autoSyncClaim !== undefined) {
+        if (this._syncedData?.subtitles !== undefined && (await this._canAutoSync())) {
             if (!this._autoSyncAttempted) {
                 this._autoSyncAttempted = true;
                 const subs = this._matchLastSyncedWithAvailableTracks();
 
                 if (subs.completeMatch && !this.pickerVisible) {
                     const autoSelectedTracks: VideoDataSubtitleTrack[] = subs.autoSelectedTracks;
-                    await this._syncData(autoSelectedTracks, autoSyncClaim);
+                    await this._syncData(autoSelectedTracks);
                 } else if (!subs.completeMatch && !this.pickerVisible) {
                     const shouldPrompt = await this._settings.getSingle('streamingAutoSyncPromptOnFailure');
 
@@ -355,13 +351,14 @@ export default class VideoDataSyncController {
         }
     }
 
-    private async _canAutoSync(): Promise<AutoSyncClaim | undefined> {
+    private async _canAutoSync(): Promise<boolean> {
         const page = await currentPageDelegate();
-        const canAutoSync =
-            page !== undefined
-                ? this._autoSync === true && page.canAutoSync(this._context.video)
-                : (this._autoSync ?? false);
-        return canAutoSync ? this._autoSyncCoordinator.tryClaim(this._context.video) : undefined;
+
+        if (page === undefined) {
+            return this._autoSync ?? false;
+        }
+
+        return this._autoSync === true && page.canAutoSync(this._context.video);
     }
 
     private async _pageHidesTrackPrefToggle() {
@@ -541,7 +538,7 @@ export default class VideoDataSyncController {
         this._wasPaused = undefined;
     }
 
-    private async _syncData(data: VideoDataSubtitleTrack[], autoSyncClaim?: AutoSyncClaim) {
+    private async _syncData(data: VideoDataSubtitleTrack[]) {
         try {
             const subtitles: SerializedSubtitleFile[] = [];
 
@@ -561,9 +558,7 @@ export default class VideoDataSyncController {
 
             await this._syncSubtitles(
                 subtitles,
-                data.some((track) => typeof track.url === 'object'),
-                undefined,
-                autoSyncClaim
+                data.some((track) => typeof track.url === 'object')
             );
             return true;
         } catch (error) {
@@ -605,14 +600,12 @@ export default class VideoDataSyncController {
     private async _syncSubtitles(
         serializedFiles: SerializedSubtitleFile[],
         flatten: boolean,
-        syncWithAsbplayerId?: string,
-        autoSyncClaim?: AutoSyncClaim
+        syncWithAsbplayerId?: string
     ) {
         const files: File[] = await Promise.all(
             serializedFiles.map(async (f) => new File([base64ToBlob(f.base64, 'text/plain')], f.name))
         );
-        if (!this._autoSyncCoordinator.isCurrent(autoSyncClaim)) return;
-        await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId, autoSyncClaim);
+        await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
     }
 
     private async _subtitlesForUrl(
