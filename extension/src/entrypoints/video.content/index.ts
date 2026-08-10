@@ -171,6 +171,13 @@ export default defineContentScript({
                     }
                 }
 
+                if (page !== undefined) {
+                    bindings.sort(
+                        (a, b) =>
+                            page.videoElementSelectorPreference(a.video) - page.videoElementSelectorPreference(b.video)
+                    );
+                }
+
                 if (bindings.length === 0) {
                     frameInfoBroadcaster?.unbind();
                 } else {

@@ -722,7 +722,7 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
-    it('restores enabled modes when settings load and resets them when subtitles clear', async () => {
+    it('does not report a reset until loaded subtitles are cleared', async () => {
         await storage.set({
             rememberPlaybackModes: true,
             lastPlaybackModes: [PlayMode.fastForward, PlayMode.repeat],
@@ -734,16 +734,16 @@ describe('Binding playback mode integration', () => {
         expect(mockPlaybackModeOverlayShows).toBe(1);
 
         sendSubtitles(binding, []);
-        expect(mockPlaybackModeOverlayShows).toBe(2);
+        expect(mockPlaybackModeOverlayShows).toBe(1);
 
         sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(3);
+        expect(mockPlaybackModeOverlayShows).toBe(1);
 
         sendSubtitles(binding, [makeSubtitle()]);
-        expect(mockPlaybackModeOverlayShows).toBe(3);
+        expect(mockPlaybackModeOverlayShows).toBe(1);
 
         sendSubtitles(binding, []);
-        expect(mockPlaybackModeOverlayShows).toBe(4);
+        expect(mockPlaybackModeOverlayShows).toBe(2);
 
         binding.unbind();
     });

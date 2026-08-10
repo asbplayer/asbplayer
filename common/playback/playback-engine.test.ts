@@ -277,6 +277,28 @@ describe('PlaybackEngine', () => {
         expect(driver.bindCalls).toBe(1);
     });
 
+    it('does not report a playback-mode reset when subtitles were already empty', () => {
+        const harness = makePlaybackEngine([PlayMode.repeat], 0, []);
+
+        harness.playbackEngine.subtitlesChanged([]);
+
+        expect(harness.modeChanges).toEqual([]);
+    });
+
+    it('reports a playback-mode reset when loaded subtitles are cleared', () => {
+        const harness = makePlaybackEngine([PlayMode.repeat]);
+
+        harness.playbackEngine.subtitlesChanged([]);
+
+        expect(harness.modeChanges).toEqual([
+            {
+                modes: new Set([PlayMode.normal]),
+                added: new Set([PlayMode.normal]),
+                removed: new Set([PlayMode.repeat]),
+            },
+        ]);
+    });
+
     it('does not bind until settings are ready', () => {
         const harness = makePlaybackEngine([PlayMode.normal], 0, [subtitle], { settingsReady: false });
 

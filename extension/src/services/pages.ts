@@ -37,7 +37,7 @@ interface PageConfig {
     // Whether video elements with blank src should be bindable on this page
     allowVideoElementsWithBlankSrc?: boolean;
 
-    // CSS selector that video elements must match to be bindable on this page
+    // CSS selector for videos that may auto-sync and should sort first in manual video selection
     videoElementSelector?: string;
 
     autoSync?: {
@@ -152,10 +152,6 @@ export class PageDelegate {
     }
 
     shouldIgnore(element: HTMLMediaElement) {
-        if (this.config.videoElementSelector !== undefined && !element.matches(this.config.videoElementSelector)) {
-            return true;
-        }
-
         if (this.config.ignoreVideoElements === undefined) {
             return false;
         }
@@ -178,10 +174,16 @@ export class PageDelegate {
         return false;
     }
 
+    videoElementSelectorPreference(element: HTMLMediaElement) {
+        const selector = this.config.videoElementSelector;
+        return selector === undefined || element.matches(selector) ? 0 : 1;
+    }
+
     canAutoSync(element: HTMLMediaElement) {
         return (
             this.config.autoSync !== undefined &&
             this.config.autoSync.enabled &&
+            (this.config.videoElementSelector === undefined || element.matches(this.config.videoElementSelector)) &&
             (this.config.autoSync.elementId === undefined || element.id === this.config.autoSync.elementId) &&
             (this.config.autoSync.videoSrc === undefined || new RegExp(this.config.autoSync.videoSrc).test(element.src))
         );

@@ -217,11 +217,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.rebuildPlan();
             }
         } else {
-            this.ready.subtitles = false;
-            this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
-                savePlaybackModes: false,
-                rebuildWhenUnchanged: true,
-            }); // Reset to normal while subtitles are unavailable
+            if (hadSubtitles) {
+                this.ready.subtitles = false;
+                this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
+                    savePlaybackModes: false,
+                    rebuildWhenUnchanged: true,
+                });
+            }
             this.unbind();
         }
     }
