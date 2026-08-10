@@ -48,6 +48,6 @@ sidebar_position: 7
 | Yle Areena              |                                                                                            ✓                                                                                             |
 | iWantTFC                |                                                                                            ✓                                                                                             |
 | Stemio                  |                                                              See [issue](https://github.com/asbplayer/asbplayer/issues/800)                                                              |
-| Comprehensible Japanese |                                                                                            ✓                                                                                             |
+| Natural Japanese        |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |

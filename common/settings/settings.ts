@@ -990,7 +990,7 @@ export interface PageSettings {
     yleAreena: Page;
     hboMax: Page;
     stremio: Page;
-    cijapanese: Page;
+    nijapanese: Page;
     iwanttfc: Page;
     svtplay: Page;
     urplay: Page;

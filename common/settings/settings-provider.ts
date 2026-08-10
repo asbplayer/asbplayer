@@ -272,7 +272,7 @@ export const defaultSettings: AsbplayerSettings = {
         yleAreena: {},
         hboMax: {},
         stremio: {},
-        cijapanese: {},
+        nijapanese: {},
         iwanttfc: {},
         svtplay: {},
         urplay: {},
