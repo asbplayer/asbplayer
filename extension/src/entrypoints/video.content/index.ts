@@ -191,7 +191,9 @@ export default defineContentScript({
                 ? setInterval(incrementallyFindShadowRoots, 100)
                 : undefined;
 
-            const videoSelectController = new VideoSelectController(bindings);
+            const videoSelectController = new VideoSelectController(bindings, {
+                isBindingsSorted: page?.config.videoElementSelector !== undefined,
+            });
             videoSelectController.bind();
 
             const ankiUiController = new TabAnkiUiController(settingsProvider);

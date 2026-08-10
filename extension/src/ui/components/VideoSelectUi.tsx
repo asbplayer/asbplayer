@@ -32,6 +32,7 @@ interface Props {
 export interface VideoElement {
     src: string;
     imageDataUrl: string;
+    preferred: boolean;
 }
 
 export default function VideoSelectUi({ bridge }: Props) {
@@ -62,7 +63,7 @@ export default function VideoSelectUi({ bridge }: Props) {
 
             if (state.videoElements !== undefined) {
                 setVideoElements(state.videoElements);
-                setSelectedVideoElementSrc('');
+                setSelectedVideoElementSrc(state.videoElements.find((v: VideoElement) => v.preferred)?.src ?? '');
             }
 
             if (state.openedFromMiningCommand !== undefined) {
@@ -130,6 +131,7 @@ export default function VideoSelectUi({ bridge }: Props) {
                                         {videoElements.map((v) => (
                                             <MenuItem value={v.src} key={v.src}>
                                                 <img style={{ maxWidth: 20, marginRight: 12 }} src={v.imageDataUrl} />
+                                                {v.preferred && '* '}
                                                 {v.src}
                                             </MenuItem>
                                         ))}
