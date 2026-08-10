@@ -3,6 +3,7 @@ import { AppSettingsStorage } from '@project/common/app/services/app-settings-st
 import {
     AsbplayerSettings,
     Profile,
+    TargetProfile,
     defaultSettings,
     prefixKey,
     prefixedSettings,
@@ -18,9 +19,16 @@ export class LocalSettingsStorage implements AppSettingsStorage {
     private readonly _settingsUpdatedCallbacks: (() => void)[] = [];
     private _storageListener?: (event: StorageEvent) => void;
 
-    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
-        const activeProfile = this._activeProfile();
-        return this._get(keysAndDefaults, activeProfile);
+    async get(keysAndDefaults: Partial<AsbplayerSettings>, profile?: TargetProfile) {
+        return this._get(keysAndDefaults, this._targetProfile(profile));
+    }
+
+    private _targetProfile(target: TargetProfile): Profile | undefined {
+        if (target === undefined) {
+            return this._activeProfile();
+        }
+
+        return target === null ? undefined : { name: target };
     }
 
     private _get(keysAndDefaults: Partial<AsbplayerSettings>, activeProfile?: Profile) {
@@ -62,9 +70,8 @@ export class LocalSettingsStorage implements AppSettingsStorage {
         return settings as Partial<AsbplayerSettings>;
     }
 
-    async set(settings: Partial<AsbplayerSettings>) {
-        const activeProfile = this._activeProfile();
-        this._set(settings, activeProfile);
+    async set(settings: Partial<AsbplayerSettings>, profile?: TargetProfile) {
+        this._set(settings, this._targetProfile(profile));
     }
 
     private _set(settings: Partial<AsbplayerSettings>, activeProfile?: Profile) {

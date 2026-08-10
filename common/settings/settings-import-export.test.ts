@@ -7,8 +7,9 @@ import {
     TokenFrequencyAnnotation,
     VideoSubtitleSplitBehavior,
 } from './settings';
-import { validateSettings } from './settings-import-export';
-import { defaultSettings } from './settings-provider';
+import { exportedSettings, importSettings, validateExportedSettings, validateSettings } from './settings-import-export';
+import { defaultSettings, SettingsProvider } from './settings-provider';
+import { MockSettingsStorage } from './mock-settings-storage';
 import { expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 
@@ -443,4 +444,140 @@ it('validates exported settings', () => {
             },
         ],
     });
+});
+
+const providerWithProfiles = async () => {
+    const provider = new SettingsProvider(new MockSettingsStorage());
+    await provider.set({ tabName: 'default-tab' });
+    await provider.addProfile('profile a');
+    await provider.setActiveProfile('profile a');
+    await provider.set({ tabName: 'a-tab' });
+    await provider.addProfile('profile b');
+    await provider.setActiveProfile('profile b');
+    await provider.set({ tabName: 'b-tab' });
+    return provider;
+};
+
+it('exports the settings of every profile', async () => {
+    const provider = await providerWithProfiles();
+    const exported = await exportedSettings(provider, true);
+
+    expect(exported.activeProfile).toBe('profile b');
+    expect(exported.profiles.map((p) => p.name)).toEqual([undefined, 'profile a', 'profile b']);
+    expect(exported.profiles.map((p) => p.settings.tabName)).toEqual(['default-tab', 'a-tab', 'b-tab']);
+});
+
+it('exports only the active profile when all-profile export is unsupported', async () => {
+    const provider = await providerWithProfiles();
+    const exported = await exportedSettings(provider, false);
+
+    expect(exported.activeProfile).toBe('profile b');
+    expect(exported.profiles.map((p) => p.name)).toEqual(['profile b']);
+    expect(exported.profiles[0].settings.tabName).toBe('b-tab');
+});
+
+it('does not export ignored keys', async () => {
+    const provider = await providerWithProfiles();
+    const exported = await exportedSettings(provider, true);
+
+    for (const profile of exported.profiles) {
+        expect('streamingPages' in profile.settings).toBe(false);
+    }
+});
+
+it('validates exported settings from all profiles', () => {
+    const validated = validateExportedSettings({
+        activeProfile: 'profile a',
+        profiles: [{ settings: { tabName: 'default-tab' } }, { name: 'profile a', settings: { tabName: 'a-tab' } }],
+    });
+
+    expect(validated.profiles.map((p) => p.name)).toEqual([undefined, 'profile a']);
+});
+
+it('validates settings exported by an older version of asbplayer as belonging to the active profile', () => {
+    const validated = validateExportedSettings({ ...defaultSettings, tabName: 'legacy-tab' });
+
+    expect(validated.forActiveProfile).toBe(true);
+    expect(validated.activeProfile).toBeUndefined();
+    expect(validated.profiles).toHaveLength(1);
+    expect(validated.profiles[0].name).toBeUndefined();
+    expect(validated.profiles[0].settings.tabName).toBe('legacy-tab');
+});
+
+it('fails validation when a profile contains an unknown key', () => {
+    expect(() => validateExportedSettings({ profiles: [{ settings: { asdf: 'jkl;' } }] })).toThrow(
+        "Unknown key 'asdf'"
+    );
+});
+
+it('fails validation when a profile name is not a name', () => {
+    expect(() => validateExportedSettings({ profiles: [{ name: 5, settings: {} }] })).toThrow(
+        "Invalid profile name '5'"
+    );
+});
+
+it('imports the settings of every profile, creating profiles that do not exist yet', async () => {
+    const provider = new SettingsProvider(new MockSettingsStorage());
+    const exported = validateExportedSettings({
+        activeProfile: 'profile a',
+        profiles: [{ settings: { tabName: 'default-tab' } }, { name: 'profile a', settings: { tabName: 'a-tab' } }],
+    });
+    await importSettings(provider, exported, true);
+
+    expect((await provider.profiles()).map((p) => p.name)).toEqual(['profile a']);
+    expect((await provider.activeProfile())?.name).toBe('profile a');
+    expect((await provider.getAllForProfile(undefined)).tabName).toBe('default-tab');
+    expect((await provider.getAllForProfile('profile a')).tabName).toBe('a-tab');
+});
+
+it('leaves profiles that are absent from the imported settings alone', async () => {
+    const provider = await providerWithProfiles();
+    const exported = validateExportedSettings({
+        profiles: [{ name: 'profile a', settings: { tabName: 'imported-a-tab' } }],
+    });
+    await importSettings(provider, exported, true);
+
+    expect((await provider.profiles()).map((p) => p.name)).toEqual(['profile a', 'profile b']);
+    expect((await provider.getAllForProfile('profile a')).tabName).toBe('imported-a-tab');
+    expect((await provider.getAllForProfile('profile b')).tabName).toBe('b-tab');
+    // Active profile was restored to the default profile
+    expect(await provider.activeProfile()).toBeUndefined();
+});
+
+it('imports only the active profile when all-profile import is unsupported', async () => {
+    const provider = await providerWithProfiles();
+    const exported = validateExportedSettings({
+        activeProfile: 'profile a',
+        profiles: [
+            { settings: { tabName: 'imported-default-tab' } },
+            { name: 'profile a', settings: { tabName: 'imported-a-tab' } },
+        ],
+    });
+    await importSettings(provider, exported, false);
+
+    // Still on 'profile b', which received the settings of the default profile
+    expect((await provider.activeProfile())?.name).toBe('profile b');
+    expect((await provider.getAllForProfile('profile b')).tabName).toBe('imported-default-tab');
+    expect((await provider.getAllForProfile('profile a')).tabName).toBe('a-tab');
+    expect((await provider.getAllForProfile(undefined)).tabName).toBe('default-tab');
+});
+
+it('imports settings exported by an older version of asbplayer into the active profile', async () => {
+    const provider = await providerWithProfiles();
+    const exported = validateExportedSettings({ ...defaultSettings, tabName: 'legacy-tab' });
+    await importSettings(provider, exported, true);
+
+    expect((await provider.activeProfile())?.name).toBe('profile b');
+    expect((await provider.getAllForProfile('profile b')).tabName).toBe('legacy-tab');
+    expect((await provider.getAllForProfile(undefined)).tabName).toBe('default-tab');
+});
+
+it('round trips the settings of every profile', async () => {
+    const provider = await providerWithProfiles();
+    const exported = await exportedSettings(provider, true);
+
+    const otherProvider = new SettingsProvider(new MockSettingsStorage());
+    await importSettings(otherProvider, validateExportedSettings(JSON.parse(JSON.stringify(exported))), true);
+
+    expect(await exportedSettings(otherProvider, true)).toEqual(exported);
 });

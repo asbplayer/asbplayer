@@ -1,6 +1,6 @@
 import { Validator } from 'jsonschema';
 import { AsbplayerSettings } from './settings';
-import { ensureConsistencyOnRead } from './settings-provider';
+import { ensureConsistencyOnRead, SettingsProvider } from './settings-provider';
 import { download, getCurrentTimeString } from '../util';
 
 const keyBindSchema = {
@@ -739,11 +739,111 @@ const withIgnoredKeysRemoved = (settings: any) => {
     return copy;
 };
 
-export const exportSettings = (settings: AsbplayerSettings) => {
+export interface ExportedSettingsProfile {
+    // Undefined for the default profile
+    name?: string;
+    // Complete when exported, but may be missing keys when read from a file written by an older version of asbplayer
+    settings: Partial<AsbplayerSettings>;
+}
+
+export interface ExportedSettings {
+    // Profile that was active when the settings were exported, undefined for the default profile
+    activeProfile?: string;
+    profiles: ExportedSettingsProfile[];
+}
+
+export interface ImportableSettings extends ExportedSettings {
+    // Never written to a settings file: true when the file contained no profile information at all,
+    // in which case its settings belong to whichever profile is active
+    forActiveProfile?: boolean;
+}
+
+export const exportedSettings = async (
+    settingsProvider: SettingsProvider,
+    allProfiles: boolean
+): Promise<ExportedSettings> => {
+    const activeProfile = (await settingsProvider.activeProfile())?.name;
+    const profileNames = allProfiles
+        ? [undefined, ...(await settingsProvider.profiles()).map((p) => p.name)]
+        : [activeProfile];
+    const profiles: ExportedSettingsProfile[] = [];
+
+    for (const name of profileNames) {
+        profiles.push({
+            ...(name === undefined ? {} : { name }),
+            settings: withIgnoredKeysRemoved(await settingsProvider.getAllForProfile(name)),
+        });
+    }
+
+    return {
+        ...(activeProfile === undefined ? {} : { activeProfile }),
+        profiles,
+    };
+};
+
+export const exportSettings = async (settingsProvider: SettingsProvider, allProfiles: boolean) => {
+    const exported = await exportedSettings(settingsProvider, allProfiles);
     download(
-        new Blob([JSON.stringify(withIgnoredKeysRemoved(settings))], { type: 'application/json' }),
+        new Blob([JSON.stringify(exported)], { type: 'application/json' }),
         `asbplayer-settings-${getCurrentTimeString()}.json`
     );
+};
+
+const isExportedSettings = (parsed: any): boolean => {
+    return typeof parsed === 'object' && parsed !== null && Array.isArray(parsed.profiles);
+};
+
+export const validateExportedSettings = (parsed: any): ImportableSettings => {
+    if (!isExportedSettings(parsed)) {
+        // Settings file from an older version of asbplayer containing only one profile's settings
+        return { profiles: [{ settings: validateSettings(parsed) }], forActiveProfile: true };
+    }
+
+    const profiles = parsed.profiles.map((profile: any) => {
+        // Profile names end up in storage keys, so make sure they are actually names
+        if (profile.name !== undefined && typeof profile.name !== 'string') {
+            throw new Error(`Invalid profile name '${profile.name}'`);
+        }
+
+        return { name: profile.name, settings: validateSettings(profile.settings) };
+    });
+
+    return { activeProfile: parsed.activeProfile, profiles };
+};
+
+export const importSettings = async (
+    settingsProvider: SettingsProvider,
+    imported: ImportableSettings,
+    allProfiles: boolean
+) => {
+    const activeProfile = (await settingsProvider.activeProfile())?.name;
+
+    if (!allProfiles || imported.forActiveProfile) {
+        const profile =
+            imported.profiles.find((p) => p.name === activeProfile) ??
+            imported.profiles.find((p) => p.name === undefined) ??
+            imported.profiles[0];
+
+        if (profile !== undefined) {
+            await settingsProvider.set(profile.settings);
+        }
+
+        return;
+    }
+
+    const existingProfiles = new Set((await settingsProvider.profiles()).map((p) => p.name));
+
+    for (const { name, settings } of imported.profiles) {
+        if (name !== undefined && !existingProfiles.has(name)) {
+            await settingsProvider.addProfile(name);
+        }
+
+        await settingsProvider.setForProfile(settings, name);
+    }
+
+    if (imported.activeProfile !== activeProfile) {
+        await settingsProvider.setActiveProfile(imported.activeProfile);
+    }
 };
 
 export const validateSettings = (settings: any) => {

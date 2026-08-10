@@ -4,6 +4,7 @@ import {
     type AsbplayerSettingsProfile,
     type Profile,
     type SettingsStorage,
+    type TargetProfile,
     unprefixedSettings,
 } from './settings-provider';
 
@@ -12,31 +13,33 @@ export class MockSettingsStorage implements SettingsStorage {
     private _profiles: Profile[] = [];
     private _data: any = {};
 
-    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
+    async get(keysAndDefaults: Partial<AsbplayerSettings>, profile?: TargetProfile) {
+        const name = this._targetProfileName(profile);
         const settings: any = {};
 
-        const actualKeysAndDefaults =
-            this._activeProfile === undefined
-                ? keysAndDefaults
-                : prefixedSettings(keysAndDefaults, this._activeProfile);
+        const actualKeysAndDefaults = name === undefined ? keysAndDefaults : prefixedSettings(keysAndDefaults, name);
 
         for (const [key, defaultValue] of Object.entries(actualKeysAndDefaults)) {
             // Simulate retrieval from actual storage - object references should change
             settings[key] = JSON.parse(JSON.stringify(this._data[key] ?? defaultValue));
         }
 
-        return this._activeProfile === undefined
+        return name === undefined
             ? (settings as Partial<AsbplayerSettings>)
-            : unprefixedSettings(settings as Partial<AsbplayerSettingsProfile<string>>, this._activeProfile);
+            : unprefixedSettings(settings as Partial<AsbplayerSettingsProfile<string>>, name);
     }
 
-    async set(settings: Partial<AsbplayerSettings>) {
-        const actualSettings =
-            this._activeProfile === undefined ? settings : prefixedSettings(settings, this._activeProfile);
+    async set(settings: Partial<AsbplayerSettings>, profile?: TargetProfile) {
+        const name = this._targetProfileName(profile);
+        const actualSettings = name === undefined ? settings : prefixedSettings(settings, name);
 
         for (const [key, value] of Object.entries(actualSettings)) {
             this._data[key] = value;
         }
+    }
+
+    private _targetProfileName(target: TargetProfile) {
+        return target === undefined ? this._activeProfile : (target ?? undefined);
     }
 
     async activeProfile(): Promise<Profile | undefined> {

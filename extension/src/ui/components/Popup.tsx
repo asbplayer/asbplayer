@@ -3,6 +3,7 @@ import { Command, HttpPostMessage, OpenStatisticsOverlayMessage, PopupToExtensio
 import {
     AsbplayerSettings,
     Profile,
+    SettingsProvider,
     chromeCommandBindsToKeyBinds,
     dictionaryTrackEnabled,
 } from '@project/common/settings';
@@ -43,8 +44,10 @@ const globalStateProvider = new ExtensionGlobalStateProvider();
 interface Props {
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     commands: any;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     onOpenApp: () => void;
     onOpenSidePanel: () => void;
     onOpenExtensionShortcuts: () => void;
@@ -98,10 +101,12 @@ const NavButton: React.FC<ButtonProps & { label: string }> = ({ label, ...button
 const Popup = ({
     dictionaryProvider,
     settings,
+    settingsProvider,
     commands,
     onOpenApp,
     onOpenSidePanel,
     onSettingsChanged,
+    onSettingsImported,
     onOpenExtensionShortcuts,
     onOpenUserGuide,
     ...profilesContext
@@ -238,11 +243,13 @@ const Popup = ({
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             extensionSupportsDictionaryYomitanMecab
                             extensionSupportsSubtitleTrackSelectorInWebApp
+                            extensionSupportsSettingsProfileImportExport
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
                             dictionaryProvider={dictionaryProvider}
                             settings={settings}
+                            settingsProvider={settingsProvider}
                             profiles={profilesContext.profiles}
                             activeProfile={profilesContext.activeProfile}
                             pageConfigs={settingsPageConfigs}
@@ -251,6 +258,7 @@ const Popup = ({
                             localFontFamilies={localFontFamilies}
                             supportedLanguages={supportedLanguages}
                             onSettingsChanged={onSettingsChanged}
+                            onSettingsImported={onSettingsImported}
                             onOpenChromeExtensionShortcuts={onOpenExtensionShortcuts}
                             onUnlockLocalFonts={handleUnlockLocalFonts}
                             inAnnotationTutorial={inAnnotationTutorial}

@@ -8,7 +8,7 @@ import ChromeExtension from '../services/chrome-extension';
 import SettingsForm from '../../components/SettingsForm';
 import { useLocalFontFamilies } from '../../hooks';
 import { Anki } from '../../anki';
-import { AsbplayerSettings, Profile, supportedLanguages, testCard } from '../../settings';
+import { AsbplayerSettings, Profile, SettingsProvider, supportedLanguages, testCard } from '../../settings';
 import SettingsProfileSelectMenu from '../../components/SettingsProfileSelectMenu';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -49,8 +49,10 @@ interface Props {
     open: boolean;
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     scrollToId?: string;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     onClose: () => void;
     profiles: Profile[];
     activeProfile?: string;
@@ -65,8 +67,10 @@ export default function SettingsDialog({
     open,
     dictionaryProvider,
     settings,
+    settingsProvider,
     scrollToId,
     onSettingsChanged,
+    onSettingsImported,
     onClose,
     ...profilesContext
 }: Props) {
@@ -123,14 +127,17 @@ export default function SettingsDialog({
                     }
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
+                    extensionSupportsSettingsProfileImportExport={extension.supportsSettingsProfileImportExport}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersion={import.meta.env.VITE_APP_GIT_COMMIT}
                     chromeKeyBinds={extension.extensionCommands}
                     onOpenChromeExtensionShortcuts={extension.openShortcuts}
                     onSettingsChanged={onSettingsChanged}
+                    onSettingsImported={onSettingsImported}
                     dictionaryProvider={dictionaryProvider}
                     settings={settings}
+                    settingsProvider={settingsProvider}
                     profiles={profilesContext.profiles}
                     activeProfile={profilesContext.activeProfile}
                     scrollToId={scrollToId}

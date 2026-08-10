@@ -68,14 +68,17 @@ export default defineContentScript({
                         case 'get-settings': {
                             const getSettingsMessage = command.message as GetSettingsMessage;
                             sendMessageToPlayer({
-                                response: await settingsStorage.get(getSettingsMessage.keysAndDefaults),
+                                response: await settingsStorage.get(
+                                    getSettingsMessage.keysAndDefaults,
+                                    getSettingsMessage.profile
+                                ),
                                 messageId: command.message.messageId,
                             });
                             break;
                         }
                         case 'set-settings': {
                             const setSettingsMessage = command.message as SetSettingsMessage;
-                            await settingsStorage.set(setSettingsMessage.settings);
+                            await settingsStorage.set(setSettingsMessage.settings, setSettingsMessage.profile);
                             sendMessageToPlayer({
                                 messageId: command.message.messageId,
                             });

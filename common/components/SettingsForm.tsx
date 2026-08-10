@@ -5,7 +5,7 @@ import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import { type Theme } from '@mui/material';
 import { CardModel } from '@project/common';
-import { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
+import { AsbplayerSettings, PageConfig, PageSettings, Profile, SettingsProvider } from '@project/common/settings';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -187,10 +187,12 @@ interface Props {
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
+    extensionSupportsSettingsProfileImportExport: boolean;
     insideApp?: boolean;
     appVersion?: string;
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     profiles: Profile[];
     activeProfile?: string;
     pageConfigs?: PageConfigMap;
@@ -207,6 +209,7 @@ interface Props {
     heightConstrained?: boolean;
     testCard?: () => Promise<CardModel>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     onOpenChromeExtensionShortcuts: () => void;
     onUnlockLocalFonts: () => void;
 }
@@ -215,6 +218,7 @@ export default function SettingsForm({
     anki,
     dictionaryProvider,
     settings,
+    settingsProvider,
     profiles,
     activeProfile,
     pageConfigs,
@@ -239,6 +243,7 @@ export default function SettingsForm({
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
+    extensionSupportsSettingsProfileImportExport,
     insideApp,
     appVersion,
     scrollToId,
@@ -254,6 +259,7 @@ export default function SettingsForm({
     heightConstrained,
     testCard,
     onSettingsChanged,
+    onSettingsImported,
     onOpenChromeExtensionShortcuts,
     onUnlockLocalFonts,
 }: Props) {
@@ -265,6 +271,7 @@ export default function SettingsForm({
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
+    const supportsSettingsProfileImportExport = !extensionInstalled || extensionSupportsSettingsProfileImportExport;
     const theme = useTheme();
     const settingsTheme = useMemo(
         () =>
@@ -563,8 +570,9 @@ export default function SettingsForm({
                 <TabPanel value={tabIndex} index={tabIndicesById['misc-settings']} tabsOrientation={tabsOrientation}>
                     <MiscSettingsTab
                         settings={settings}
+                        settingsProvider={settingsProvider}
                         onSettingChanged={handleSettingChanged}
-                        onSettingsChanged={onSettingsChanged}
+                        onSettingsImported={onSettingsImported}
                         supportedLanguages={supportedLanguages}
                         insideApp={insideApp}
                         extensionInstalled={extensionInstalled}
@@ -572,6 +580,7 @@ export default function SettingsForm({
                         extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
                         supportsPlaybackEngine={supportsPlaybackEngine}
+                        supportsSettingsProfileImportExport={supportsSettingsProfileImportExport}
                         onViewPlaybackModeKeyboardShortcuts={() => {
                             setTabIndex(tabIndicesById['keyboard-shortcuts']);
                             setTimeout(
