@@ -34,12 +34,38 @@ describe('Clock', () => {
     it('seeks in milliseconds and reports progress against a millisecond duration', () => {
         const clock = new Clock(() => 0);
 
-        clock.setTime(2_500);
+        clock.setTime(2_500, { paused: !clock.running });
 
         expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(2_500);
         expect(clock.time({ maxMs: 2_000 })).toBe(2_000);
         expect(clock.progress({ durationMs: 10_000 })).toBe(0.25);
         expect(clock.progress({ durationMs: 0 })).toBe(0);
+    });
+
+    it('sets the playback state atomically with the timestamp when requested', () => {
+        let nowMs = 0;
+        const clock = new Clock(() => nowMs);
+        const runningDuringSetTime: boolean[] = [];
+        const playbackEvents: string[] = [];
+        clock.onEvent('settime', () => runningDuringSetTime.push(clock.running));
+        clock.onEvent('start', () => playbackEvents.push('start'));
+        clock.onEvent('stop', () => playbackEvents.push('stop'));
+
+        clock.start();
+        nowMs = 100;
+        clock.setTime(500, { paused: true });
+        nowMs = 200;
+
+        expect(clock.running).toBe(false);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(500);
+
+        clock.setTime(1_000, { paused: false });
+        nowMs = 300;
+
+        expect(clock.running).toBe(true);
+        expect(clock.time({ maxMs: Number.POSITIVE_INFINITY })).toBe(1_100);
+        expect(runningDuringSetTime).toEqual([false, true]);
+        expect(playbackEvents).toEqual(['start', 'stop', 'start']);
     });
 
     it('notifies every listener when one listener unsubscribes during dispatch', () => {
@@ -62,13 +88,31 @@ describe('Clock', () => {
             const clock = new Clock(() => 0);
             const listener = jest.fn();
             const unsubscribe = clock.onEvent('timeupdate', listener);
+            clock.start();
 
             jest.advanceTimersByTime(700);
-            expect(listener).toHaveBeenCalledTimes(7);
+            expect(listener).toHaveBeenCalledTimes(14);
 
+            clock.stop();
             unsubscribe();
             jest.advanceTimersByTime(700);
-            expect(listener).toHaveBeenCalledTimes(7);
+            expect(listener).toHaveBeenCalledTimes(14);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('continues notifying timeupdate listeners while paused for hidden discontinuities', () => {
+        jest.useFakeTimers();
+        try {
+            const clock = new Clock(() => 0);
+            const listener = jest.fn();
+            clock.onEvent('timeupdate', listener);
+
+            clock.setTime(500, { paused: true });
+            jest.advanceTimersByTime(100);
+
+            expect(listener).toHaveBeenCalledTimes(2);
         } finally {
             jest.useRealTimers();
         }

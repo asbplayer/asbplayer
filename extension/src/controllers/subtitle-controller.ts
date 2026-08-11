@@ -8,6 +8,7 @@ import {
     Fetcher,
     HttpPostMessage,
     IndexedSubtitleModel,
+    PlaybackState,
 } from '@project/common';
 import {
     AutoCopyableTracks,
@@ -404,8 +405,10 @@ export default class SubtitleController {
         this.subtitleAnnotations.bind();
     }
 
-    showingSubtitlesChanged(subtitles: readonly IndexedSubtitleModel[]): void {
-        this.timelineShowingSubtitles = subtitles;
+    playbackStateChanged(state: PlaybackState): void {
+        this.timelineShowingSubtitles = state.showingSubtitleIndexes
+            .map((index) => this.subtitles[index])
+            .filter((subtitle): subtitle is IndexedSubtitleModel => subtitle !== undefined);
         this.refreshShowingSubtitles();
     }
 

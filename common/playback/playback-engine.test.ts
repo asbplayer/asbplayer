@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
+import { AutoPausePreference, type IndexedSubtitleModel, type PlaybackState, PlayMode } from '@project/common';
 import {
     defaultSettings,
     isSaveOnlySettings,
@@ -154,6 +154,7 @@ async function makePlaybackEngine(
     subtitles: readonly IndexedSubtitleModel[] = [subtitle],
     overrides: Partial<{
         paused: boolean;
+        notifyPauseSynchronously: boolean;
         pause: () => void;
         play: () => Promise<void>;
         seek: (timestampMs: number) => Promise<void>;
@@ -178,6 +179,7 @@ async function makePlaybackEngine(
     const plays: number[] = [];
     const savedSettings: Partial<AsbplayerSettings>[] = [];
     const playbackRates: number[] = [];
+    const playbackStates: PlaybackState[] = [];
     const subtitleOffsets: number[] = [];
     const subtitleOffsetOptions: { readonly offset: number; readonly notifyPlayer: boolean }[] = [];
     const initialPlaybackSettings: InitialPlaybackSettings[] = [];
@@ -223,10 +225,17 @@ async function makePlaybackEngine(
         playbackPositionKeys: overrides.playbackPositionKeys ?? [],
         timingDriver: driver,
         callbacks: {
-            pause: overrides.pause ?? (() => pauses.push(driver.timestampMs)),
+            pause:
+                overrides.pause ??
+                (() => {
+                    driver.isPaused = true;
+                    pauses.push(driver.timestampMs);
+                    if (overrides.notifyPauseSynchronously) driver.callbacks.onPlaybackPaused();
+                }),
             play:
                 overrides.play ??
                 (() => {
+                    driver.isPaused = false;
                     plays.push(driver.timestampMs);
                     return Promise.resolve();
                 }),
@@ -245,7 +254,10 @@ async function makePlaybackEngine(
                 subtitleOffsets.push(offset);
                 subtitleOffsetOptions.push({ offset, notifyPlayer: options.notifyPlayer });
             },
-            showingSubtitlesChanged: (values) => showing.push(values),
+            playbackStateChanged: (state) => {
+                playbackStates.push(state);
+                showing.push(state.showingSubtitleIndexes.map((index) => subtitles[index]));
+            },
             playbackPositionChanged: (position) => playbackPositionChanges.push(position),
             saveSettings: (settings) => {
                 savedSettings.push(settings);
@@ -269,6 +281,7 @@ async function makePlaybackEngine(
         modeChanges,
         savedSettings,
         playbackRates,
+        playbackStates,
         subtitleOffsets,
         subtitleOffsetOptions,
         initialPlaybackSettings,
@@ -431,6 +444,10 @@ describe('PlaybackEngine', () => {
         expect(formatPlaybackRateNotification(1.1, 'info.playbackRate')).toEqual({
             locKey: 'info.playbackRate',
             replacements: { rate: '1.1' },
+        });
+        expect(formatPlaybackRateNotification(1.05, 'info.playbackRate')).toEqual({
+            locKey: 'info.playbackRate',
+            replacements: { rate: '1.05' },
         });
     });
 
@@ -609,7 +626,7 @@ describe('PlaybackEngine', () => {
                 seek: async () => {},
                 setPlaybackRate: () => {},
                 setSubtitleOffset: () => {},
-                showingSubtitlesChanged: () => {},
+                playbackStateChanged: () => {},
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},
@@ -897,6 +914,19 @@ describe('PlaybackEngine', () => {
         expect(harness.showing).toHaveLength(showingCount);
     });
 
+    it('publishes a new state when only showing subtitles change', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 1500, [subtitle]);
+        harness.playbackEngine.bind();
+
+        harness.playbackEngine.subtitlesChanged([{ ...subtitle, start: 2000, end: 3000 }]);
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [],
+            paused: false,
+        });
+    });
+
     it('retains a live playback rate across every post-ready settings change', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], 1500, [subtitle], {
             settings: { rememberPlaybackRate: true },
@@ -951,6 +981,143 @@ describe('PlaybackEngine', () => {
         harness.driver.discontinuity(1500);
 
         expect(harness.showing.at(-1)).toEqual([subtitle]);
+    });
+
+    it('publishes the paused timestamp and showing indexes as one state', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 1500, [subtitle], { paused: true });
+        harness.playbackEngine.bind();
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            paused: true,
+        });
+    });
+
+    it('publishes state for a non-standard seek callback', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 1500, [subtitle]);
+        harness.playbackEngine.bind();
+
+        harness.playbackEngine.seeked(2500);
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 2500,
+            showingSubtitleIndexes: [],
+            paused: false,
+        });
+    });
+
+    it('publishes the corrected subtitle state after an auto-pause boundary', async () => {
+        const firstSubtitle = { ...subtitle, start: 0, end: 1000, originalStart: 0, originalEnd: 1000 };
+        const nextSubtitle = {
+            ...subtitle,
+            start: 1100,
+            end: 2000,
+            originalStart: 1100,
+            originalEnd: 2000,
+            index: 1,
+        };
+        const harness = await makePlaybackEngine([PlayMode.autoPause], 500, [firstSubtitle, nextSubtitle]);
+
+        await harness.driver.time(1200);
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 999,
+            showingSubtitleIndexes: [0],
+            paused: true,
+        });
+    });
+
+    it('does not publish transient post-boundary state when pause is reported during auto-pause correction', async () => {
+        const firstSubtitle = { ...subtitle, start: 0, end: 1000, originalStart: 0, originalEnd: 1000 };
+        const nextSubtitle = {
+            ...subtitle,
+            start: 1100,
+            end: 2000,
+            originalStart: 1100,
+            originalEnd: 2000,
+            index: 1,
+        };
+        const harness = await makePlaybackEngine([PlayMode.autoPause], 500, [firstSubtitle, nextSubtitle], {
+            notifyPauseSynchronously: true,
+        });
+        harness.playbackStates.length = 0;
+
+        await harness.driver.time(1200);
+
+        expect(harness.playbackStates).toEqual([
+            {
+                timestampMs: 999,
+                showingSubtitleIndexes: [0],
+                paused: true,
+            },
+        ]);
+    });
+
+    it('reconciles a pause that arrives during an unrelated in-flight update', async () => {
+        let resolveSeek!: () => void;
+        const seekFinished = new Promise<void>((resolve) => {
+            resolveSeek = resolve;
+        });
+        const harness = await makePlaybackEngine(
+            [PlayMode.condensed, PlayMode.fastForward],
+            1500,
+            [subtitle, secondSubtitle],
+            {
+                seek: async () => seekFinished,
+            }
+        );
+        harness.playbackEngine.bind();
+        harness.playbackStates.length = 0;
+
+        const update = harness.driver.time(2000);
+        harness.driver.timestampMs = 4500;
+        harness.driver.isPaused = true;
+        harness.driver.callbacks.onPlaybackPaused();
+        expect(harness.playbackStates).toEqual([]);
+
+        resolveSeek();
+        await update;
+
+        expect(harness.playbackRates.at(-1)).toBe(1);
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 4500,
+            showingSubtitleIndexes: [1],
+            paused: true,
+        });
+    });
+
+    it('does not publish an intermediate state when the plan changes during an in-flight update', async () => {
+        let resolveSeek!: () => void;
+        const seekFinished = new Promise<void>((resolve) => {
+            resolveSeek = resolve;
+        });
+        const harness = await makePlaybackEngine(
+            [PlayMode.condensed, PlayMode.fastForward],
+            1500,
+            [subtitle, secondSubtitle],
+            {
+                seek: async () => seekFinished,
+            }
+        );
+        harness.playbackEngine.bind();
+        harness.playbackStates.length = 0;
+
+        const update = harness.driver.time(2000);
+        harness.playbackEngine.togglePlaybackMode(PlayMode.normal);
+        expect(harness.playbackStates).toEqual([]);
+
+        resolveSeek();
+        await update;
+
+        expect(harness.playbackRates.at(-1)).toBe(1);
+        expect(harness.playbackStates).toEqual([
+            {
+                timestampMs: 2000,
+                showingSubtitleIndexes: [],
+                paused: false,
+            },
+        ]);
     });
 
     it('preserves internal repeat state when its discontinuity arrives', async () => {
@@ -1166,7 +1333,7 @@ describe('PlaybackEngine', () => {
                 seek: async () => {},
                 setPlaybackRate,
                 setSubtitleOffset: () => {},
-                showingSubtitlesChanged: () => {},
+                playbackStateChanged: () => {},
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
                 playbackModesChanged: () => {},

@@ -21,14 +21,13 @@ function executorHarness(
     modes: PlayMode[],
     timestampMs: number,
     overrides = {},
-    callbackOverrides: Partial<PlaybackPlanExecutorCallbacks<IndexedSubtitleModel>> = {}
+    callbackOverrides: Partial<PlaybackPlanExecutorCallbacks> = {}
 ) {
     const plan = makePlan(modes, overrides);
     const pauses: number[] = [];
     const seeks: number[] = [];
     const corrections: number[] = [];
     const rates: number[] = [];
-    const showing: (readonly IndexedSubtitleModel[])[] = [];
     const plays: number[] = [];
     let paused = false;
     const executor = new PlaybackPlanExecutor(plan, timestampMs, {
@@ -48,7 +47,6 @@ function executorHarness(
             corrections.push(targetTimestampMs);
             return { seekIssued: true };
         },
-        showingSubtitlesChanged: (subtitles) => showing.push(subtitles),
         ...callbackOverrides,
     });
     executor.initializePlaybackRate(timestampMs);
@@ -58,7 +56,6 @@ function executorHarness(
         seeks,
         corrections,
         rates,
-        showing,
         plays,
         pauseMedia: () => {
             paused = true;
@@ -344,7 +341,7 @@ describe('PlaybackPlanExecutor', () => {
 
         expect(harness.pauses).toHaveLength(1);
         expect(harness.corrections).toEqual([1999]);
-        expect(harness.showing.at(-1)).toEqual([subtitle]);
+        expect(harness.executor.showingSubtitlesAt(1999)).toEqual([subtitle]);
     });
 
     it('executes an auto-pause action when the next frame is predicted to cross it', async () => {
@@ -485,7 +482,11 @@ describe('PlaybackPlanExecutor', () => {
         await harness.executor.update(2000, { lookaheadTimestampMs: undefined });
         await harness.executor.update(3000, { lookaheadTimestampMs: undefined });
 
-        expect(harness.showing).toEqual([[longer, shorter], [longer], []]);
+        expect([
+            harness.executor.showingSubtitlesAt(1000),
+            harness.executor.showingSubtitlesAt(2000),
+            harness.executor.showingSubtitlesAt(3000),
+        ]).toEqual([[longer, shorter], [longer], []]);
     });
 
     it.each([
@@ -504,13 +505,13 @@ describe('PlaybackPlanExecutor', () => {
         await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
 
         expect(harness.seeks).toEqual(queued ? [] : [1000]);
-        expect(harness.showing.at(-1)).toEqual([subtitle]);
+        expect(harness.executor.showingSubtitlesAt(1999)).toEqual([subtitle]);
 
         if (queued) {
             harness.resume();
             await harness.executor.playbackStarted();
             expect(harness.seeks).toEqual([1000]);
-            expect(harness.showing.at(-1)).toEqual([subtitle]);
+            expect(harness.executor.showingSubtitlesAt(1000)).toEqual([subtitle]);
         }
     });
 
@@ -525,11 +526,11 @@ describe('PlaybackPlanExecutor', () => {
 
         await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
         expect(harness.rates).toEqual([1.25]);
-        expect(harness.showing.at(-1)).toEqual([subtitle]);
+        expect(harness.executor.showingSubtitlesAt(1999)).toEqual([subtitle]);
 
         await harness.executor.update(2000, { lookaheadTimestampMs: undefined });
         expect(harness.rates).toEqual([1.25, 2.5]);
-        expect(harness.showing.at(-1)).toEqual([]);
+        expect(harness.executor.showingSubtitlesAt(2000)).toEqual([]);
     });
 
     it('starts condensed playback on the first millisecond without a visible subtitle', async () => {
@@ -545,11 +546,11 @@ describe('PlaybackPlanExecutor', () => {
 
         await harness.executor.update(1999, { lookaheadTimestampMs: undefined });
         expect(harness.seeks).toEqual([]);
-        expect(harness.showing.at(-1)).toEqual([first]);
+        expect(harness.executor.showingSubtitlesAt(1999)).toEqual([first]);
 
         await harness.executor.update(2000, { lookaheadTimestampMs: undefined });
         expect(harness.seeks).toEqual([3999]);
-        expect(harness.showing.at(-1)).toEqual([]);
+        expect(harness.executor.showingSubtitlesAt(2000)).toEqual([]);
     });
 
     it('executes a bounded repeat immediately when the end action does not pause', async () => {
@@ -729,7 +730,7 @@ describe('PlaybackPlanExecutor', () => {
         harness.executor.reset(1000, { includeAtTimestamp: true, cause: 'internal-seek' });
         await harness.executor.update(1000, { lookaheadTimestampMs: undefined });
 
-        expect(harness.showing).toEqual([[earlier, later], [later], [earlier]]);
+        expect(harness.executor.showingSubtitlesAt(2500)).toEqual([earlier, later]);
         expect(harness.pauses).toHaveLength(1);
         expect(harness.corrections).toEqual([3999]);
     });
@@ -1284,7 +1285,7 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.seeks).toEqual([1000, 2999]);
     });
 
-    it('reconciles visible subtitles on a user seek without firing crossed playback actions', async () => {
+    it('does not fire crossed playback actions after a user seek', async () => {
         const first = makeSubtitle();
         const second = makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 });
         const harness = executorHarness([PlayMode.autoPause], 0, {
@@ -1296,21 +1297,46 @@ describe('PlaybackPlanExecutor', () => {
         harness.executor.reset(4000, { includeAtTimestamp: true, cause: 'user-seek' });
         await harness.executor.update(4100, { lookaheadTimestampMs: undefined });
 
-        expect(harness.showing.at(-1)).toEqual([second]);
+        expect(harness.executor.showingSubtitlesAt(4100)).toEqual([second]);
         expect(harness.pauses).toEqual([]);
         expect(harness.corrections).toEqual([]);
     });
 
-    it('does not report a visibility change when an equivalent plan retains the same subtitle indexes', () => {
+    it('reconciles playback mode and rate at a public timestamp', () => {
+        const second = makeSubtitle({ start: 4000, end: 5000, originalStart: 4000, originalEnd: 5000, index: 1 });
+        const harness = executorHarness([PlayMode.fastForward], 1500, {
+            subtitles: [makeSubtitle(), second],
+        });
+
+        harness.executor.reconcileAt(3000, { forcePlaybackRate: false });
+        expect(harness.executor.isFastForwarding).toBe(true);
+        expect(harness.rates).toEqual([1.25, 2.5]);
+
+        harness.executor.reconcileAt(4500, { forcePlaybackRate: false });
+        expect(harness.executor.isFastForwarding).toBe(false);
+        expect(harness.rates).toEqual([1.25, 2.5, 1.25]);
+    });
+
+    it('reapplies an unchanged playback rate when reconciliation is forced', () => {
+        const harness = executorHarness([PlayMode.fastForward], 1500);
+
+        harness.executor.reconcileAt(1500, { forcePlaybackRate: false });
+        expect(harness.rates).toEqual([1.25]);
+
+        harness.executor.reconcileAt(1500, { forcePlaybackRate: true });
+        expect(harness.rates).toEqual([1.25, 1.25]);
+    });
+
+    it('keeps the same visible subtitles after an equivalent plan replacement', () => {
         const harness = executorHarness([PlayMode.normal], 1500);
-        const initiallyShowing = harness.showing[0];
+        const initiallyShowing = harness.executor.showingSubtitlesAt(1500);
 
         harness.executor.replacePlan(makePlan([PlayMode.normal], { playbackRate: 1.5 }), 1500);
 
-        expect(harness.showing).toEqual([initiallyShowing]);
+        expect(harness.executor.showingSubtitlesAt(1500)).toEqual(initiallyShowing);
     });
 
-    it('reports a changed subtitle when its index is retained by a replacement plan', () => {
+    it('updates visible subtitle records after a replacement plan', () => {
         const oldSubtitle = makeSubtitle({ text: 'old text', index: 12 });
         const newSubtitle = makeSubtitle({ text: 'new text', index: 12 });
         const harness = executorHarness([PlayMode.normal], 1500, {
@@ -1323,7 +1349,7 @@ describe('PlaybackPlanExecutor', () => {
             1500
         );
 
-        expect(harness.showing.at(-1)).toEqual([newSubtitle]);
+        expect(harness.executor.showingSubtitlesAt(1500)).toEqual([newSubtitle]);
     });
 
     it('applies the fast-forward rate immediately after a user seek into a qualifying gap', () => {

@@ -10,6 +10,7 @@ import {
     CardTextFieldValues,
     AutoPausePreference,
     IndexedSubtitleModel,
+    PlaybackState,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
@@ -256,6 +257,7 @@ function PlayerComponent(
     const videoFileUrl = sources?.videoFileUrl;
     const playbackPositionKey = videoFile?.file.name;
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
+    const supportsPlaybackEngine = syntheticPlayback || videoFileUrl !== undefined || extension.supportsPlaybackEngine;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
     const [loadingSubtitles, setLoadingSubtitles] = useState<boolean>(false);
@@ -296,7 +298,7 @@ function PlayerComponent(
         open: pendingPlaybackPosition !== undefined,
         onClose: () => syntheticPlaybackEngineRef.current?.dismissPlaybackPosition(),
     });
-    const [syntheticShowingSubtitles, setSyntheticShowingSubtitles] = useState<readonly DisplaySubtitleModel[]>([]);
+    const [playbackState, setPlaybackState] = useState<PlaybackState>();
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const calculateLengthMs = (videoDurationRef: MutableRefObject<number>, playerSubtitles = subtitlesRef.current) =>
@@ -360,9 +362,9 @@ function PlayerComponent(
     ]);
 
     const seek = useCallback(
-        async (time: number, clock: Clock, forwardToMedia: boolean) => {
+        async (time: number, clock: Clock, forwardToMedia: boolean, options: { readonly paused: boolean }) => {
             const clampedTime = clampMediaTimestamp(time, (channelRef.current?.duration ?? 0) * 1000);
-            clock.setTime(clampedTime);
+            clock.setTime(clampedTime, options);
 
             if (forwardToMedia) {
                 await mediaAdapter.seek(clampedTime / 1000);
@@ -415,7 +417,7 @@ function PlayerComponent(
 
     useEffect(() => {
         if (!syntheticPlayback) {
-            setSyntheticShowingSubtitles([]);
+            setPlaybackState(undefined);
             return;
         }
 
@@ -472,14 +474,14 @@ function PlayerComponent(
                     clock.start();
                 },
                 seek: async (timestampMs) => {
-                    clock.setTime(timestampMs);
+                    clock.setTime(timestampMs, { paused: !clock.running });
                 },
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
                 setSubtitleOffset: (offset, options) => {
                     applyOffsetRef.current?.(offset, false);
                     if (options.notifyPlayer) notifyOffset(offset);
                 },
-                showingSubtitlesChanged: setSyntheticShowingSubtitles,
+                playbackStateChanged: setPlaybackState,
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => {
                     if (onSettingsChanged !== undefined) onSettingsChanged(settings);
@@ -597,6 +599,7 @@ function PlayerComponent(
         }
 
         let channel: VideoChannel;
+        setPlaybackState(undefined);
 
         if (videoFile) {
             const channelId = uuidv4();
@@ -615,8 +618,8 @@ function PlayerComponent(
         setChannel(channel);
 
         return () => {
-            clock.setTime(0);
-            clock.stop();
+            setPlaybackState(undefined);
+            clock.setTime(0, { paused: true });
             channel.close();
         };
     }, [clock, videoPopOut, videoFile, tab, extension, videoChannelRef, onLoaded]);
@@ -918,13 +921,7 @@ function PlayerComponent(
         () =>
             channel?.onReady((paused) => {
                 if (channel) {
-                    clock.setTime(channel.currentTime * 1000);
-                }
-
-                if (paused) {
-                    clock.stop();
-                } else {
-                    clock.start();
+                    clock.setTime(channel.currentTime * 1000, { paused });
                 }
 
                 if (channel?.playbackRate) {
@@ -934,6 +931,17 @@ function PlayerComponent(
             }),
         [channel, clock]
     );
+    useEffect(() => {
+        if (!supportsPlaybackEngine) {
+            setPlaybackState(undefined);
+            return;
+        }
+
+        return channel?.onPlaybackState((state) => {
+            setPlaybackState(state);
+            clock.setTime(state.timestampMs, { paused: state.paused });
+        });
+    }, [channel, clock, supportsPlaybackEngine]);
     useEffect(
         () =>
             channel?.onDuration(() => {
@@ -1012,25 +1020,15 @@ function PlayerComponent(
         setPlayModes(playModes);
         return unsubscribe;
     }, [channel]);
-    useEffect(
-        () =>
-            channel?.onCurrentTime((currentTime, forwardToMedia) => {
-                void (async () => {
-                    const playing = clock.running;
-
-                    if (playing) {
-                        clock.stop();
-                    }
-
-                    await seek(currentTime * 1000, clock, forwardToMedia);
-
-                    if (playing) {
-                        clock.start();
-                    }
-                })();
-            }),
-        [channel, clock, seek]
-    );
+    useEffect(() => {
+        return channel?.onCurrentTime((currentTime, forwardToMedia) => {
+            void (async () => {
+                const playing = clock.running;
+                await seek(currentTime * 1000, clock, forwardToMedia, { paused: true });
+                if (playing) clock.start();
+            })();
+        });
+    }, [channel, clock, seek]);
     useEffect(
         () =>
             channel?.onAudioTrackSelected((id) => {
@@ -1111,12 +1109,7 @@ function PlayerComponent(
     const handleSeek = useCallback(
         async (progress: number) => {
             const playing = clock.running;
-
-            if (playing) {
-                clock.stop();
-            }
-
-            await seek(progress * calculateLengthMs(videoDurationRef), clock, true);
+            await seek(progress * calculateLengthMs(videoDurationRef), clock, true, { paused: true });
 
             if (playing) {
                 clock.start();
@@ -1131,7 +1124,7 @@ function PlayerComponent(
                 pause(clock, mediaAdapter, true);
             }
 
-            await seek(time, clock, true);
+            await seek(time, clock, true, { paused: shouldPlay ? !clock.running : true });
 
             if (shouldPlay && !clock.running) {
                 // play method will start the clock again
@@ -1192,7 +1185,7 @@ function PlayerComponent(
             channel?.audioTrackSelected(id);
             pause(clock, mediaAdapter, true);
 
-            await seek(0, clock, true);
+            await seek(0, clock, true, { paused: true });
 
             if (clock.running) {
                 play(clock, mediaAdapter, true);
@@ -1357,12 +1350,12 @@ function PlayerComponent(
 
         pause(clock, mediaAdapter, true);
 
-        void seek(rewindSubtitle.start, clock, true);
+        void seek(rewindSubtitle.start, clock, true, { paused: true });
     }, [clock, rewindSubtitle?.start, mediaAdapter, seek]);
 
     useEffect(() => {
         const unsubscribeSeek = dictionaryProvider.onRequestStatisticsSeek((timestamp) => {
-            void seek(timestamp, clock, true);
+            void seek(timestamp, clock, true, { paused: !clock.running });
         });
         const unsubscribeMine = dictionaryProvider.onRequestStatisticsMineSentences((_mediaId, indexes) => {
             const subtitleIndex = indexes[0];
@@ -1395,7 +1388,7 @@ function PlayerComponent(
         }
 
         webSocketClient.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
-            void seek(timestamp * 1000, clock, true);
+            void seek(timestamp * 1000, clock, true, { paused: !clock.running });
         };
     }, [webSocketClient, extension, seek, clock]);
 
@@ -1522,7 +1515,8 @@ function PlayerComponent(
                     <SubtitlePlayer
                         subtitles={subtitles}
                         subtitleCollection={subtitleCollection}
-                        timelineShowingSubtitles={syntheticPlayback ? syntheticShowingSubtitles : undefined}
+                        playbackState={playbackState}
+                        supportsPlaybackEngine={supportsPlaybackEngine}
                         clock={clock}
                         extension={extension}
                         length={calculateLengthMs(videoDurationRef)}

@@ -12,6 +12,7 @@ import {
     PostMinePlayback,
     ControlType,
     IndexedSubtitleModel,
+    PlaybackState,
 } from '@project/common';
 import {
     MiscSettings,
@@ -400,8 +401,8 @@ export default function VideoPlayer({
     const [, setTopSubtitlePositionOffset] = useState<number>(subtitleSettings.topSubtitlePositionOffset);
     const showSubtitlesRef = useRef<IndexedSubtitleModel[]>([]);
     showSubtitlesRef.current = showSubtitles;
-    const timelineShowingSubtitlesRef = useRef<readonly IndexedSubtitleModel[]>([]);
-    const showingSubtitlesChangedRef = useRef<(subtitles: readonly IndexedSubtitleModel[]) => void>(() => {});
+    const showingSubtitleIndexesRef = useRef<readonly number[]>([]);
+    const playbackStateChangedRef = useRef<(state: PlaybackState) => void>(() => {});
     const clock = useMemo<Clock>(() => new Clock(() => performance.now()), []);
     const mousePositionRef = useRef<Point | undefined>(undefined);
     const [showCursor, setShowCursor] = useState<boolean>(isMobile);
@@ -539,7 +540,7 @@ export default function VideoPlayer({
             const videoElement = element as ExperimentalHTMLVideoElement;
             videoRef.current = videoElement;
             setVideo(videoElement);
-            clock.setTime(videoElement.currentTime * 1000);
+            clock.setTime(videoElement.currentTime * 1000, { paused: videoElement.paused });
 
             if (videoElement.readyState === 4) {
                 notifyReady(videoElement, playerChannel, setAudioTracks, setSelectedAudioTrack);
@@ -557,11 +558,7 @@ export default function VideoPlayer({
 
             videoElement.oncanplay = () => {
                 playerChannel.readyState(4);
-                clock.setTime(videoElement.currentTime * 1000);
-
-                if (playing()) {
-                    clock.start();
-                }
+                clock.setTime(videoElement.currentTime * 1000, { paused: videoElement.paused });
             };
 
             if (isMobile) videoElement.volume = 1; // Force volume to 1 on mobile - users can control device volume
@@ -594,8 +591,6 @@ export default function VideoPlayer({
         }));
         subtitlesRef.current = shiftedSubtitles;
         setSubtitles(shiftedSubtitles);
-
-        showingSubtitlesChangedRef.current(timelineShowingSubtitlesRef.current);
     }, []);
 
     useEffect(() => {
@@ -635,7 +630,7 @@ export default function VideoPlayer({
                         updatePlayerState();
                     },
                     onSeeked: (timestampMs) => {
-                        clock.setTime(timestampMs); // rVFC may not run during pause
+                        clock.setTime(timestampMs, { paused: video.paused }); // rVFC may not run during pause
                         updatePlayerState();
                     },
                     onPlaybackRateChanged: handlePlaybackRateChanged,
@@ -654,13 +649,16 @@ export default function VideoPlayer({
                 },
                 seek: async (timestampMs) => {
                     video.currentTime = timestampMs / 1000;
-                    clock.setTime(timestampMs);
+                    clock.setTime(timestampMs, { paused: video.paused });
                 },
                 setPlaybackRate: (playbackRate) => {
                     if (video.playbackRate !== playbackRate) video.playbackRate = playbackRate;
                 },
                 setSubtitleOffset: (offset, options) => updateSubtitlesWithOffset(offset, options.notifyPlayer),
-                showingSubtitlesChanged: (showingSubtitles) => showingSubtitlesChangedRef.current(showingSubtitles),
+                playbackStateChanged: (state) => {
+                    playbackStateChangedRef.current(state);
+                    playerChannel.playbackState(state.timestampMs, state.showingSubtitleIndexes, state.paused);
+                },
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => onSettingsChangedRef.current(settings),
                 playbackModesChanged: (transition) => {
@@ -795,8 +793,7 @@ export default function VideoPlayer({
                 playerChannel.readyState(4);
             }
 
-            clock.stop();
-            clock.setTime(actualCurrentTime * 1000);
+            clock.setTime(actualCurrentTime * 1000, { paused: true });
         });
 
         playerChannel.onAudioTrackSelected((id) => {
@@ -1026,11 +1023,13 @@ export default function VideoPlayer({
         playerChannel.loadSubtitles();
     }, [playerChannel]);
 
-    showingSubtitlesChangedRef.current = (timelineSubtitles) => {
-        timelineShowingSubtitlesRef.current = timelineSubtitles;
-        const showingSubtitles = timelineSubtitles
-            .filter((subtitle) => !disabledSubtitleTracksRef.current[subtitle.track])
-            .map((subtitle) => subtitlesRef.current[subtitle.index] ?? subtitle)
+    const updateShowingSubtitles = useCallback((showingSubtitleIndexes: readonly number[]) => {
+        const showingSubtitles = showingSubtitleIndexes
+            .map((index) => subtitlesRef.current[index])
+            .filter(
+                (subtitle): subtitle is IndexedSubtitleModel =>
+                    subtitle !== undefined && !disabledSubtitleTracksRef.current[subtitle.track]
+            )
             .slice()
             .sort(compareSubtitlesForDisplay);
         if (arrayEquals(showingSubtitles, showSubtitlesRef.current, (left, right) => left === right)) {
@@ -1044,11 +1043,16 @@ export default function VideoPlayer({
                 // ignore
             });
         }
+    }, []);
+
+    playbackStateChangedRef.current = (state) => {
+        showingSubtitleIndexesRef.current = state.showingSubtitleIndexes;
+        updateShowingSubtitles(state.showingSubtitleIndexes);
     };
 
     useEffect(() => {
-        showingSubtitlesChangedRef.current(timelineShowingSubtitlesRef.current);
-    }, [disabledSubtitleTracks]);
+        updateShowingSubtitles(showingSubtitleIndexesRef.current);
+    }, [disabledSubtitleTracks, updateShowingSubtitles]);
 
     const handleOffsetChange = useCallback(
         (offset: number) => {

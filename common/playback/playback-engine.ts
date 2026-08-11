@@ -4,7 +4,7 @@ import {
     type AsbplayerSettings,
     type SettingsProvider,
 } from '@project/common/settings';
-import type { IndexedSubtitleModel } from '@project/common';
+import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { PlayMode } from '@project/common';
 import { formatAsSignedMs } from '@project/common/util';
 import {
@@ -24,6 +24,7 @@ import PlaybackModeController, {
     type PlayModeTransition,
 } from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
+import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 
@@ -66,13 +67,13 @@ export interface InitialPlaybackSettingsNotifications {
     readonly playbackMode: ReturnType<typeof playbackModeNotifications>;
 }
 
-export interface PlaybackEngineCallbacks<T extends IndexedSubtitleModel> {
+export interface PlaybackEngineCallbacks {
     readonly pause: () => void;
     readonly play: () => Promise<void>;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
     readonly setSubtitleOffset: (offset: number, options: SubtitleOffsetOptions) => void;
-    readonly showingSubtitlesChanged: (subtitles: readonly T[]) => void;
+    readonly playbackStateChanged: (state: PlaybackState) => void;
     readonly playbackPositionChanged: (position: number | undefined) => void;
     readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
     readonly playbackModesChanged: (transition: PlayModeTransition) => void;
@@ -87,7 +88,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly playbackModesDisabled: boolean;
     readonly playbackModesSuppressed: boolean;
     readonly playbackPositionKeys: readonly string[];
-    readonly callbacks: PlaybackEngineCallbacks<T>;
+    readonly callbacks: PlaybackEngineCallbacks;
     readonly timingDriver: TimingDriver;
 }
 
@@ -123,9 +124,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private plan: PlaybackPlan<T>;
     private readonly playbackModeController: PlaybackModeController;
     private readonly executor: PlaybackPlanExecutor<T>;
-    private readonly callbacks: PlaybackEngineCallbacks<T>;
+    private readonly callbacks: PlaybackEngineCallbacks;
     private readonly timingDriver: TimingDriver;
     private readonly playbackPositionController: PlaybackPositionController<T>;
+    private readonly playbackStateController: PlaybackStateController<T>;
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
     private settingsChangedOperationId = 0;
@@ -156,7 +158,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.timingDriver = timingDriver;
         this.plan = this.buildPlan();
 
-        const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
+        const executorCallbacks: PlaybackPlanExecutorCallbacks = {
             play: callbacks.play,
             paused: () => this.timingDriver.paused(),
             pause: () => {
@@ -183,9 +185,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             correctAutoPause: async (targetTimestampMs) => {
                 return this.correctTimestamp(targetTimestampMs, 'pause-correction');
             },
-            showingSubtitlesChanged: (subtitles) => {
-                callbacks.showingSubtitlesChanged(subtitles);
-            },
         };
         this.executor = new PlaybackPlanExecutor(this.plan, this.timingDriver.currentTimeMs(), executorCallbacks);
         this.playbackPositionController = new PlaybackPositionController({
@@ -208,17 +207,44 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             },
             settingsProvider,
         });
+        this.playbackStateController = new PlaybackStateController({
+            paused: () => this.timingDriver.paused(),
+            showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
+            playbackStateChanged: callbacks.playbackStateChanged,
+            now: () => performance.now(),
+        });
         this.timingDriver.setCallbacks({
-            onTime: (currentTimestampMs, { lookaheadTimestampMs }) => {
-                return this.executor.update(currentTimestampMs, { lookaheadTimestampMs });
+            onTime: async (currentTimestampMs, { lookaheadTimestampMs }) => {
+                const playbackStateLock = this.playbackStateController.lock(); // This update can trigger a lot of events
+                try {
+                    await this.executor.update(currentTimestampMs, { lookaheadTimestampMs });
+                } finally {
+                    this.playbackStateController.unlockAndNotify(playbackStateLock, this.timingDriver.currentTimeMs(), {
+                        force: false,
+                    });
+                }
             },
-            onPlaybackPaused: () => this.playbackPositionController.playbackPaused(),
+            onPlaybackPaused: () => {
+                this.playbackPositionController.playbackPaused();
+                const timestampMs = this.timingDriver.currentTimeMs();
+                this.playbackStateController.reconcileAndNotify(
+                    timestampMs,
+                    (reconcileTimestampMs) => {
+                        this.executor.reconcileAt(reconcileTimestampMs, { forcePlaybackRate: false });
+                    },
+                    { force: true }
+                );
+            },
             onDiscontinuity: (currentTimestampMs) => {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 this.executor.handleDiscontinuity(currentTimestampMs);
+                this.playbackStateController.notify(currentTimestampMs, { force: true });
             },
             onCancel: (options) => this.executor.cancelPendingOperations(options),
-            onPlaybackStarted: () => this.executor.playbackStarted(),
+            onPlaybackStarted: async () => {
+                await this.executor.playbackStarted();
+                this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
+            },
             onError: callbacks.onError,
         });
         this.initializeSettings();
@@ -304,6 +330,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
         if (!this.ready.subtitles) return;
 
+        this.playbackStateController.bind();
         this.timingDriver.bind();
         this.playbackPositionController.bind();
 
@@ -328,6 +355,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             playbackModeTransition,
             notifications,
         });
+        this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
     }
 
     unbind(): void {
@@ -455,6 +483,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.subtitleOffsetStorage.set(subtitleOffsetStorageKey, String(offset));
         }
         this.callbacks.setSubtitleOffset(offset, options);
+        this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
     }
 
     adjustPlaybackRate(delta: number): ReturnType<typeof this.playbackRateChanged> {
@@ -504,6 +533,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             return;
         }
         this.executor.handleDiscontinuity(timestampMs);
+        this.playbackStateController.notify(timestampMs, { force: true });
     }
 
     /** Reports that a seek operation has started from a non-standard media adapter, such as Disney+'s page-script seek event. */
@@ -565,6 +595,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,
             });
+            if (this.timingDriver.bound) {
+                this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
+            }
         } else if (options.initializePlaybackRate) {
             this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
         }

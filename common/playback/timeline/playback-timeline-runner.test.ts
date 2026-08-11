@@ -1,5 +1,4 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import type { IndexedSubtitleModel } from '@project/common';
 import { makeSubtitle, makeTimeline as compileTimeline } from '@project/common/playback/playback-test-utils';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
@@ -106,15 +105,15 @@ describe('PlaybackTimelineRunner', () => {
 
     it('reconciles persistent state but does not run edge actions when crossing backward', async () => {
         const timeline = makeTimeline();
-        const states: (readonly IndexedSubtitleModel[])[] = [];
+        const states: number[] = [];
         const starts = jest.fn(async () => ({ autoPaused: false }));
         const ends = jest.fn(async () => ({ autoPaused: false, seeked: false }));
         const runner = new PlaybackTimelineRunner(timeline, 1500, {
             onStart: starts,
             onEnd: ends,
             correctAutoPause: async () => {},
-            onState: async (_state, segment) => {
-                states.push(segment.showingSubtitles);
+            onState: async (state) => {
+                states.push(state.current?.playbackModeStartMs ?? -1);
             },
             onAfterState: async () => ({ stateChangedTimestampMs: undefined }),
         });
@@ -123,7 +122,7 @@ describe('PlaybackTimelineRunner', () => {
         states.length = 0;
         await runner.update(500);
 
-        expect(states).toEqual([[]]);
+        expect(states).toEqual([-1]);
         expect(starts).not.toHaveBeenCalled();
         expect(ends).not.toHaveBeenCalled();
     });

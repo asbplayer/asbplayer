@@ -264,6 +264,49 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('publishes the audio timestamp and showing indexes when timeupdate and pause occur', async () => {
+        const video = createVideo({ width: 0, height: 0 });
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+        await flushPlaybackTiming();
+
+        const sendMessage = (globalThis as any).browser.runtime.sendMessage as jest.Mock;
+        sendMessage.mockClear();
+        video.currentTime = 1.5;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flushPlaybackTiming();
+
+        expect(sendMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: {
+                    command: 'playbackState',
+                    timestampMs: 1500,
+                    showingSubtitleIndexes: [0],
+                    paused: false,
+                },
+            })
+        );
+
+        Object.defineProperty(video, 'paused', { configurable: true, value: true });
+        sendMessage.mockClear();
+        video.dispatchEvent(new Event('pause'));
+        await flushPlaybackTiming();
+
+        expect(sendMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message: {
+                    command: 'playbackState',
+                    timestampMs: 1500,
+                    showingSubtitleIndexes: [0],
+                    paused: true,
+                },
+            })
+        );
+        binding.unbind();
+    });
+
     it('ignores same-source metadata events after subtitles are synced', async () => {
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(true, false));
@@ -848,13 +891,13 @@ describe('Binding playback mode integration', () => {
         sendSubtitles(binding, [makeSubtitle()]);
         const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
 
-        binding.adjustPlaybackRate(0.1);
+        binding.adjustPlaybackRate(0.05);
         video.dispatchEvent(new Event('ratechange'));
 
         expect(notification).toHaveBeenCalledTimes(1);
         expect(notification).toHaveBeenCalledWith({
             locKey: 'info.playbackRate',
-            replacements: { rate: '1.1' },
+            replacements: { rate: '1.05' },
         });
         binding.unbind();
     });

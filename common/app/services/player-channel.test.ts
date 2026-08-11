@@ -34,6 +34,55 @@ afterEach(() => {
 });
 
 describe('PlayerChannel playback state', () => {
+    it('sends the timestamp, showing indexes, and paused state together', () => {
+        const channel = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+
+        channel.playbackState(1234, [2, 5], true);
+
+        expect(broadcastChannel.sent).toEqual([
+            {
+                command: 'playbackState',
+                timestampMs: 1234,
+                showingSubtitleIndexes: [2, 5],
+                paused: true,
+            },
+        ]);
+
+        channel.close();
+    });
+
+    it('delivers playback states in transport order', () => {
+        const channel = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+        const received: number[] = [];
+        channel.onPlaybackState((state) => received.push(state.timestampMs));
+
+        broadcastChannel.onmessage?.(
+            new MessageEvent('message', {
+                data: {
+                    command: 'playbackState',
+                    timestampMs: 1000,
+                    showingSubtitleIndexes: [],
+                    paused: false,
+                },
+            })
+        );
+        broadcastChannel.onmessage?.(
+            new MessageEvent('message', {
+                data: {
+                    command: 'playbackState',
+                    timestampMs: 900,
+                    showingSubtitleIndexes: [],
+                    paused: false,
+                },
+            })
+        );
+
+        expect(received).toEqual([1000, 900]);
+        channel.close();
+    });
+
     it('sends authoritative mode state from the media owner', () => {
         const channel = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;

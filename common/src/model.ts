@@ -63,6 +63,12 @@ export interface IndexedSubtitleModel extends SubtitleModel {
     readonly index: number;
 }
 
+export interface PlaybackState {
+    readonly timestampMs: number;
+    readonly showingSubtitleIndexes: readonly number[];
+    readonly paused: boolean;
+}
+
 export interface DisplaySubtitleModel extends IndexedSubtitleModel {
     readonly displayTime: string;
 }

@@ -6,6 +6,7 @@ import TimingUpdateQueue, {
 } from '@project/common/playback/timing/timing-driver';
 
 const defaultFrameTimeMs = 1000 / 60;
+const timeUpdateIntervalMs = 50;
 type VideoFrameTimingEvent =
     | 'play'
     | 'pause'
@@ -48,6 +49,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private expectedInternalSeek = false;
     private timeUpdatesBound = false;
     private frameHandle?: number;
+    private timeUpdateHandle?: ReturnType<typeof setInterval>;
     private previousFrame?: {
         readonly expectedDisplayTimeMs: number;
         readonly callbackTimeMs: number;
@@ -201,6 +203,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.video.removeEventListener('error', this.onError);
         if (this.timeUpdatesBound) this.video.removeEventListener('timeupdate', this.onTimeUpdate);
         this.timeUpdatesBound = false;
+        this.stopTimeUpdatePolling();
         document.removeEventListener('visibilitychange', this.onMetadataChange);
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: false });
@@ -215,12 +218,14 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     }
 
     private readonly onPlay = () => {
+        this.startTimeUpdatePolling();
         this.updates.enqueuePlaybackStarted();
         if (this.pendingSeekCompletion === undefined) this.schedule();
         this.eventCallbacks.onPlay();
     };
 
     private readonly onPause = () => {
+        this.stopTimeUpdatePolling();
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: this.pendingSeekCompletion !== undefined });
         this.previousFrame = undefined;
@@ -246,6 +251,14 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.updates.enqueue(this.currentTimeMs(), { lookaheadTimestampMs: undefined });
     };
 
+    private readonly onTimeUpdateInterval = () => {
+        if (this.video.paused()) {
+            this.stopTimeUpdatePolling();
+            return;
+        }
+        this.onTimeUpdate();
+    };
+
     /**
      * Browsers will no longer fire rVFC events when the document is hidden but continue playing audio.
      * Audio-only media also has no video frames, even though rVFC is defined on the element.
@@ -255,15 +268,18 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         if (document.hidden || !this.video.hasVideoTrack()) {
             this.cancelScheduledUpdate();
             this.previousFrame = undefined;
-            if (this.timeUpdatesBound) return;
-            this.video.addEventListener('timeupdate', this.onTimeUpdate);
-            this.timeUpdatesBound = true;
+            if (!this.timeUpdatesBound) {
+                this.video.addEventListener('timeupdate', this.onTimeUpdate);
+                this.timeUpdatesBound = true;
+            }
+            this.startTimeUpdatePolling();
             return;
         }
         if (this.timeUpdatesBound) {
             this.video.removeEventListener('timeupdate', this.onTimeUpdate);
             this.timeUpdatesBound = false;
         }
+        this.stopTimeUpdatePolling();
         this.schedule();
     };
 
@@ -340,6 +356,16 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         const frameCount = presentedFrameInterval > 0 ? presentedFrameInterval : 1;
         this.lastFrameTimeMs = (frameIntervalMs * playbackRate) / frameCount;
         return mediaTimeMs + frameIntervalMs * playbackRate;
+    }
+
+    private startTimeUpdatePolling(): void {
+        if (!this.timeUpdatesBound || this.video.paused() || this.timeUpdateHandle !== undefined) return;
+        this.timeUpdateHandle = setInterval(this.onTimeUpdateInterval, timeUpdateIntervalMs);
+    }
+
+    private stopTimeUpdatePolling(): void {
+        if (this.timeUpdateHandle !== undefined) clearInterval(this.timeUpdateHandle);
+        this.timeUpdateHandle = undefined;
     }
 
     private cancelScheduledUpdate(): void {

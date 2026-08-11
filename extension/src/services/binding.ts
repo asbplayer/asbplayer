@@ -17,6 +17,8 @@ import {
     NotifyErrorMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PlaybackState,
+    PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
@@ -471,7 +473,10 @@ export default class Binding {
                     if (this.video.playbackRate !== playbackRate) this.video.playbackRate = playbackRate;
                 },
                 setSubtitleOffset: (offset, options) => this.subtitleController.offset(offset, !options.notifyPlayer),
-                showingSubtitlesChanged: (subtitles) => this.subtitleController.showingSubtitlesChanged(subtitles),
+                playbackStateChanged: (state) => {
+                    this.subtitleController.playbackStateChanged(state);
+                    this._notifyPlaybackState(state);
+                },
                 playbackPositionChanged: (position) => {
                     if (position === undefined) {
                         this.notificationController.hide();
@@ -561,6 +566,20 @@ export default class Binding {
                 command: 'playbackRate',
                 value: playbackRate,
                 echo: false,
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
+    }
+
+    private _notifyPlaybackState(state: PlaybackState): void {
+        const command: VideoToExtensionCommand<PlaybackStateFromVideoMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'playbackState',
+                timestampMs: state.timestampMs,
+                showingSubtitleIndexes: [...state.showingSubtitleIndexes],
+                paused: state.paused,
             },
             src: this._registeredVideoSrc,
         };
