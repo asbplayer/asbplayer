@@ -479,10 +479,20 @@ export default function VideoPlayer({
     const notifyPlaybackRate = useCallback(
         (options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) => {
             if (!options?.notify) return;
-            const message = t(options.notification.locKey, options.notification.replacements);
-            if (message) setAlert({ open: true, notifications: [{ message, severity: 'info' }] });
+            setAlert({
+                open: true,
+                notifications: [
+                    {
+                        message: {
+                            locKey: options.notification.locKey,
+                            replacements: options.notification.replacements,
+                        },
+                        severity: 'info',
+                    },
+                ],
+            });
         },
-        [t]
+        []
     );
 
     const updatePlaybackRate = useCallback(

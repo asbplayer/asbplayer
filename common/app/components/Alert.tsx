@@ -4,6 +4,8 @@ import MuiAlert, { type AlertColor } from '@mui/material/Alert';
 import Grow from '@mui/material/Grow';
 import { remove, update, type Stack } from './notification-stack';
 import LogoIcon from '../../components/LogoIcon';
+import { useTranslation } from 'react-i18next';
+import { type TFunction } from 'i18next';
 
 const defaultAutoHideDuration = 3000;
 
@@ -58,14 +60,19 @@ interface Props {
     notifications?: readonly AlertNotification[];
 }
 
+interface LocalizableMessage {
+    locKey: string;
+    replacements: { [key: string]: any };
+}
+
 export interface AlertNotification {
-    message: React.ReactNode;
+    message: React.ReactNode | LocalizableMessage;
     severity: AlertColor | undefined;
     autoHideDuration?: number;
 }
 
 interface AlertNotificationValue {
-    children: React.ReactNode;
+    children: React.ReactNode | LocalizableMessage;
     severity: AlertColor | undefined;
     autoHideDuration?: number;
     disableAutoHide: boolean;
@@ -96,6 +103,13 @@ interface AlertItemProps extends AlertNotificationValue {
     onMouseLeave?: () => void;
 }
 
+const tryLocalize = (children: React.ReactNode | LocalizableMessage, t: TFunction): React.ReactNode => {
+    if (typeof children === 'object' && children !== null && 'locKey' in children) {
+        return t(children.locKey, children.replacements);
+    }
+    return children;
+};
+
 function AlertItem({
     id,
     open,
@@ -110,6 +124,7 @@ function AlertItem({
     disableAutoHide,
 }: AlertItemProps) {
     const classes = useAlertStyles();
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (!open || disableAutoHide) {
@@ -130,7 +145,7 @@ function AlertItem({
                     onMouseLeave={onMouseLeave}
                     style={{ pointerEvents: 'auto' }}
                 >
-                    {children}
+                    {tryLocalize(children, t)}
                 </MuiAlert>
             </Grow>
         </div>
