@@ -692,6 +692,17 @@ export class SettingsProvider {
         return this.get(Object.keys(defaultSettings) as SettingsKey[]);
     }
 
+    async getAllForProfile(profile: string | undefined): Promise<AsbplayerSettings> {
+        const data = await this._storage.get({ ...defaultSettings }, profile ?? defaultProfile);
+        const result: any = {};
+
+        for (const key of Object.keys(defaultSettings)) {
+            result[key] = data?.[key as SettingsKey] ?? defaultSettings[key as SettingsKey];
+        }
+
+        return ensureConsistencyOnRead(result) as AsbplayerSettings;
+    }
+
     async getSingle<K extends keyof AsbplayerSettings>(key: K): Promise<AsbplayerSettings[K]> {
         const vals = (await this.get([key])) as Partial<AsbplayerSettings>;
         const val = vals[key];
@@ -729,10 +740,15 @@ export class SettingsProvider {
     }
 
     async set(settings: Partial<AsbplayerSettings>): Promise<void> {
-        await this._storage.set(await this._ensureConsistencyOnWrite(settings));
+        await this._storage.set(await this._ensureConsistencyOnWrite(settings, undefined));
     }
 
-    private async _ensureConsistencyOnWrite(settings: Partial<AsbplayerSettings>) {
+    async setForProfile(settings: Partial<AsbplayerSettings>, profile: string | undefined): Promise<void> {
+        const target = profile ?? defaultProfile;
+        await this._storage.set(await this._ensureConsistencyOnWrite(settings, target), target);
+    }
+
+    private async _ensureConsistencyOnWrite(settings: Partial<AsbplayerSettings>, profile: TargetProfile) {
         ensureDictionaryTracksConsistency(settings);
 
         if (settings.customAnkiFields === undefined) {
@@ -741,9 +757,12 @@ export class SettingsProvider {
         const customAnkiFieldSettings =
             settings.customAnkiFieldSettings ??
             (
-                await this._storage.get({
-                    customAnkiFieldSettings: defaultSettings.customAnkiFieldSettings,
-                })
+                await this._storage.get(
+                    {
+                        customAnkiFieldSettings: defaultSettings.customAnkiFieldSettings,
+                    },
+                    profile
+                )
             ).customAnkiFieldSettings!;
 
         let modifyCustomAnkiFieldSettings = false;
@@ -827,9 +846,24 @@ export interface Profile {
     name: string;
 }
 
+export type TargetProfile = string | null | undefined;
+
+export const defaultProfile = null;
+
+export const targetProfileName = async (
+    target: TargetProfile,
+    activeProfile: () => Promise<Profile | undefined>
+): Promise<string | undefined> => {
+    if (target === undefined) {
+        return (await activeProfile())?.name;
+    }
+
+    return target ?? undefined;
+};
+
 export interface SettingsStorage {
-    get: (keysAndDefaults: Partial<AsbplayerSettings>) => Promise<Partial<AsbplayerSettings>>;
-    set: (settings: Partial<AsbplayerSettings>) => Promise<void>;
+    get: (keysAndDefaults: Partial<AsbplayerSettings>, profile?: TargetProfile) => Promise<Partial<AsbplayerSettings>>;
+    set: (settings: Partial<AsbplayerSettings>, profile?: TargetProfile) => Promise<void>;
 
     activeProfile: () => Promise<Profile | undefined>;
     setActiveProfile: (name: string | undefined) => Promise<void>;

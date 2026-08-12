@@ -325,6 +325,7 @@ interface Props {
     extension: ChromeExtension;
     fetcher: Fetcher;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     profiles: Profile[];
     activeProfile?: string;
     onNewProfile: (name: string) => void;
@@ -343,6 +344,7 @@ function App({
     extension,
     fetcher,
     onSettingsChanged,
+    onSettingsImported,
     onGlobalStateChanged,
     ...profilesContext
 }: Props) {
@@ -1904,9 +1906,11 @@ function App({
                                 extension={extension}
                                 open={settingsDialogOpen}
                                 onSettingsChanged={onSettingsChanged}
+                                onSettingsImported={onSettingsImported}
                                 onClose={handleCloseSettings}
                                 dictionaryProvider={dictionaryProvider}
                                 settings={settings}
+                                settingsProvider={settingsProvider}
                                 activeProfile={profilesContext.activeProfile}
                                 scrollToId={settingsDialogScrollToId}
                                 {...profilesContext}

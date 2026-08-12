@@ -1,5 +1,5 @@
 import { ExtensionSettingsStorage } from './extension-settings-storage';
-import { defaultSettings } from '@project/common/settings';
+import { defaultProfile, defaultSettings } from '@project/common/settings';
 import { MockStorageArea } from './mock-storage-area';
 import { expect, it, beforeEach } from '@jest/globals';
 
@@ -33,4 +33,23 @@ it('changes separate keys for different profiles', async () => {
 
     // Default profile still has default value 'en'
     expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
+});
+
+it('changes keys for a profile other than the active one', async () => {
+    await settingsStorage.addProfile('new profile');
+    await settingsStorage.set({ language: 'es' }, 'new profile');
+
+    // Active (default) profile still has default value 'en'
+    expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
+    expect(await settingsStorage.get({ language: 'en' }, 'new profile')).toEqual({ language: 'es' });
+});
+
+it('changes keys for the default profile while another profile is active', async () => {
+    await settingsStorage.addProfile('new profile');
+    await settingsStorage.setActiveProfile('new profile');
+    await settingsStorage.set({ language: 'es' }, defaultProfile);
+
+    // Active profile still has default value 'en'
+    expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
+    expect(await settingsStorage.get({ language: 'en' }, defaultProfile)).toEqual({ language: 'es' });
 });

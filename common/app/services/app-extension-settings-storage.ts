@@ -1,4 +1,4 @@
-import { AsbplayerSettings, Profile } from '@project/common/settings';
+import { AsbplayerSettings, Profile, TargetProfile } from '@project/common/settings';
 import { ChromeExtension } from '@project/common/app';
 import { AppSettingsStorage } from '@project/common/app/services/app-settings-storage';
 
@@ -11,12 +11,14 @@ export class AppExtensionSettingsStorage implements AppSettingsStorage {
         this._extension = extension;
     }
 
-    get(keysAndDefaults: Partial<AsbplayerSettings>): Promise<Partial<AsbplayerSettings>> {
-        return this._extension.getSettings(keysAndDefaults);
+    // Only pass a profile when the extension supports it - older extensions ignore the field and
+    // would silently read from/write to the active profile instead
+    get(keysAndDefaults: Partial<AsbplayerSettings>, profile?: TargetProfile): Promise<Partial<AsbplayerSettings>> {
+        return this._extension.getSettings(keysAndDefaults, profile);
     }
 
-    set(settings: Partial<AsbplayerSettings>): Promise<void> {
-        return this._extension.setSettings(settings);
+    set(settings: Partial<AsbplayerSettings>, profile?: TargetProfile): Promise<void> {
+        return this._extension.setSettings(settings, profile);
     }
 
     activeProfile(): Promise<Profile | undefined> {

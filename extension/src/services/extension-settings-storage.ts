@@ -1,6 +1,8 @@
 import {
     AsbplayerSettings,
     SettingsStorage,
+    TargetProfile,
+    targetProfileName,
     unprefixedSettings,
     prefixedSettings,
     defaultSettings,
@@ -27,26 +29,23 @@ export class ExtensionSettingsStorage implements SettingsStorage {
         this._storage = storage ?? browser.storage.local;
     }
 
-    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
-        const activeProfile = await this.activeProfile();
+    async get(keysAndDefaults: Partial<AsbplayerSettings>, profile?: TargetProfile) {
+        const name = await targetProfileName(profile, () => this.activeProfile());
 
-        if (activeProfile === undefined) {
+        if (name === undefined) {
             return this._storage.get(keysAndDefaults);
         }
 
-        return unprefixedSettings(
-            await this._storage.get(prefixedSettings(keysAndDefaults, activeProfile.name)),
-            activeProfile.name
-        );
+        return unprefixedSettings(await this._storage.get(prefixedSettings(keysAndDefaults, name)), name);
     }
 
-    async set(settings: Partial<AsbplayerSettings>) {
-        const activeProfile = await this.activeProfile();
+    async set(settings: Partial<AsbplayerSettings>, profile?: TargetProfile) {
+        const name = await targetProfileName(profile, () => this.activeProfile());
 
-        if (activeProfile === undefined) {
+        if (name === undefined) {
             await this._storage.set(settings);
         } else {
-            await this._storage.set(prefixedSettings(settings, activeProfile.name));
+            await this._storage.set(prefixedSettings(settings, name));
         }
     }
 

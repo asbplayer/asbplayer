@@ -18,12 +18,14 @@ import {
     AsbplayerSettings,
     autoPausePreferenceForCheckboxChange,
     exportSettings,
+    importSettings,
     isTrackAutoCopyable,
     isTrackSeekable,
     PauseOnHoverMode,
+    SettingsProvider,
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
-    validateSettings,
+    validateExportedSettings,
 } from '../settings';
 import { Trans, useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -49,8 +51,9 @@ function regexIsValid(regex: string) {
 
 interface Props {
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
-    onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     supportedLanguages: string[];
     insideApp?: boolean;
     extensionInstalled?: boolean;
@@ -58,13 +61,15 @@ interface Props {
     extensionSupportsSeekableTrackSetting?: boolean;
     extensionSupportsAutoCopyableTrackSetting?: boolean;
     supportsPlaybackEngine: boolean;
+    supportsSettingsProfileImportExport: boolean;
     onViewPlaybackModeKeyboardShortcuts: () => void;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
     settings,
+    settingsProvider,
     onSettingChanged,
-    onSettingsChanged,
+    onSettingsImported,
     supportedLanguages,
     insideApp,
     extensionInstalled,
@@ -72,6 +77,7 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
     supportsPlaybackEngine,
+    supportsSettingsProfileImportExport,
     onViewPlaybackModeKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
@@ -158,20 +164,20 @@ const MiscSettingTab: React.FC<Props> = ({
                 return;
             }
 
-            const importedSettings = JSON.parse(await file.text());
-            const validatedSettings = validateSettings(importedSettings);
-            onSettingsChanged(validatedSettings);
+            const importedSettings = validateExportedSettings(JSON.parse(await file.text()));
+            await importSettings(settingsProvider, importedSettings, supportsSettingsProfileImportExport);
+            onSettingsImported();
         } catch (e) {
             console.error(e);
         }
-    }, [onSettingsChanged]);
+    }, [settingsProvider, supportsSettingsProfileImportExport, onSettingsImported]);
 
     const handleImportSettings = useCallback(() => {
         settingsFileInputRef.current?.click();
     }, []);
     const handleExportSettings = useCallback(() => {
-        exportSettings(settings);
-    }, [settings]);
+        exportSettings(settingsProvider, supportsSettingsProfileImportExport).catch(console.error);
+    }, [settingsProvider, supportsSettingsProfileImportExport]);
 
     return (
         <>
