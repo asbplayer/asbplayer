@@ -298,7 +298,6 @@ function PlayerComponent(
         onClose: () => syntheticPlaybackEngineRef.current?.dismissPlaybackPosition(),
     });
     const [playbackState, setPlaybackState] = useState<PlaybackState>();
-    const receivedPlaybackState = playbackState !== undefined;
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const calculateLengthMs = (videoDurationRef: MutableRefObject<number>, playerSubtitles = subtitlesRef.current) =>
@@ -1521,7 +1520,6 @@ function PlayerComponent(
                         subtitles={subtitles}
                         subtitleCollection={subtitleCollection}
                         playbackState={playbackState}
-                        receivedPlaybackState={receivedPlaybackState}
                         clock={clock}
                         extension={extension}
                         length={calculateLengthMs(videoDurationRef)}

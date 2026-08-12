@@ -650,7 +650,6 @@ interface SubtitlePlayerProps {
     subtitles: DisplaySubtitleModel[];
     subtitleCollection: SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>;
     playbackState?: PlaybackState;
-    receivedPlaybackState: boolean;
     length: number;
     jumpToSubtitle?: SubtitleModel;
     onJumpToSubtitleHandled?: () => void;
@@ -688,7 +687,6 @@ export default function SubtitlePlayer({
     subtitles,
     subtitleCollection,
     playbackState,
-    receivedPlaybackState,
     length,
     jumpToSubtitle,
     onJumpToSubtitleHandled,
@@ -833,16 +831,19 @@ export default function SubtitlePlayer({
     }, []);
 
     useEffect(() => {
-        if (!receivedPlaybackState) return;
+        if (playbackState === undefined) return;
 
-        const showingSubtitles = (playbackState?.showingSubtitleIndexes ?? [])
+        let showingSubtitles: IndexedSubtitleModel[] = playbackState.showingSubtitleIndexes
             .map((index) => subtitleListRef.current[index])
             .filter((subtitle): subtitle is DisplaySubtitleModel => subtitle !== undefined);
+        if (!showingSubtitles.length) {
+            showingSubtitles = subtitleCollectionRef.current.subtitlesAt(playbackState.timestampMs).lastShown ?? [];
+        }
         updateShowingSubtitles(showingSubtitles);
-    }, [playbackState, subtitles, receivedPlaybackState, updateShowingSubtitles]);
+    }, [playbackState, subtitles, updateShowingSubtitles]);
 
     useEffect(() => {
-        if (receivedPlaybackState) return;
+        if (playbackState !== undefined) return;
 
         const update = () => {
             const timestamp = clockRef.current.time({ maxMs: lengthRef.current });
@@ -858,7 +859,7 @@ export default function SubtitlePlayer({
                 cancelAnimationFrame(requestAnimationRef.current);
             }
         };
-    }, [receivedPlaybackState, updateShowingSubtitles]);
+    }, [playbackState, updateShowingSubtitles]);
 
     const scrollToCurrentSubtitle = useCallback(() => {
         const indexes = highlightedSubtitleIndexesRef.current;
