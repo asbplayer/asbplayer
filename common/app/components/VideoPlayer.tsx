@@ -1440,7 +1440,12 @@ export default function VideoPlayer({
                 if (!isMobile) {
                     setAlert({
                         open: true,
-                        notifications: [{ message: t('info.manualMiningIntervalPrompt'), severity: 'info' }],
+                        notifications: [
+                            {
+                                message: { locKey: 'info.manualMiningIntervalPrompt', replacements: {} },
+                                severity: 'info',
+                            },
+                        ],
                     });
                     setAlertDisableAutoHide(true);
                 }
@@ -1500,7 +1505,6 @@ export default function VideoPlayer({
             }
         },
         [
-            t,
             mineSubtitle,
             playerChannel,
             mineIntervalStartTimestamp,

@@ -3,6 +3,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Alert from './Alert';
 
+jest.mock('react-i18next', () => ({
+    useTranslation: () => ({
+        t: (locKey: string, replacements?: { rate?: string }) => `${locKey}:${replacements?.rate ?? ''}`,
+    }),
+}));
+
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('Alert', () => {
@@ -66,6 +72,23 @@ describe('Alert', () => {
         expect(alerts.map((alert) => alert.textContent)).toEqual(['Offset | playback rate', 'Repeat enabled']);
         expect(alerts[0].classList.contains('MuiAlert-standardInfo')).toBe(true);
         expect(alerts[1].classList.contains('MuiAlert-standardWarning')).toBe(true);
+    });
+
+    it('localizes notification messages when given a loc key', () => {
+        act(() => {
+            root.render(
+                <Alert
+                    useAppLogo={true}
+                    open={true}
+                    onClose={() => {}}
+                    notifications={[
+                        { message: { locKey: 'info.playbackRate', replacements: { rate: '1.4' } }, severity: 'info' },
+                    ]}
+                />
+            );
+        });
+
+        expect(container.querySelector('[role="alert"]')?.textContent).toBe('info.playbackRate:1.4');
     });
 
     it('uses a notification-specific auto-hide duration', () => {

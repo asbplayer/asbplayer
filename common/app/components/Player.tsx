@@ -403,10 +403,20 @@ function PlayerComponent(
     const notifyPlaybackRate = useCallback(
         (options: ReturnType<PlaybackEngine<DisplaySubtitleModel>['playbackRateChanged']>) => {
             if (!options?.notify) return;
-            const message = t(options.notification.locKey, options.notification.replacements);
-            if (message) setAlert({ open: true, notifications: [{ message, severity: 'info' }] });
+            setAlert({
+                open: true,
+                notifications: [
+                    {
+                        message: {
+                            locKey: options.notification.locKey,
+                            replacements: options.notification.replacements,
+                        },
+                        severity: 'info',
+                    },
+                ],
+            });
         },
-        [t]
+        []
     );
 
     const synchronizePlaybackModes = useCallback((modes: ReadonlySet<PlayMode>) => {
