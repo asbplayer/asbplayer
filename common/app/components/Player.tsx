@@ -257,7 +257,6 @@ function PlayerComponent(
     const videoFileUrl = sources?.videoFileUrl;
     const playbackPositionKey = videoFile?.file.name;
     const syntheticPlayback = videoFileUrl === undefined && tab === undefined;
-    const supportsPlaybackEngine = syntheticPlayback || videoFileUrl !== undefined || extension.supportsPlaybackEngine;
     const playModeEnabled = subtitles && subtitles.length > 0 && Boolean(videoFileUrl);
     const [subtitlePlayerResizing, setSubtitlePlayerResizing] = useState<boolean>(false);
     const [loadingSubtitles, setLoadingSubtitles] = useState<boolean>(false);
@@ -299,6 +298,7 @@ function PlayerComponent(
         onClose: () => syntheticPlaybackEngineRef.current?.dismissPlaybackPosition(),
     });
     const [playbackState, setPlaybackState] = useState<PlaybackState>();
+    const receivedPlaybackState = playbackState !== undefined;
     const appBarHeight = useAppBarHeight();
     const classes = useStyles({ appBarHidden, appBarHeight });
     const calculateLengthMs = (videoDurationRef: MutableRefObject<number>, playerSubtitles = subtitlesRef.current) =>
@@ -942,16 +942,11 @@ function PlayerComponent(
         [channel, clock]
     );
     useEffect(() => {
-        if (!supportsPlaybackEngine) {
-            setPlaybackState(undefined);
-            return;
-        }
-
         return channel?.onPlaybackState((state) => {
             setPlaybackState(state);
             clock.setTime(state.timestampMs, { paused: state.paused });
         });
-    }, [channel, clock, supportsPlaybackEngine]);
+    }, [channel, clock]);
     useEffect(
         () =>
             channel?.onDuration(() => {
@@ -1526,7 +1521,7 @@ function PlayerComponent(
                         subtitles={subtitles}
                         subtitleCollection={subtitleCollection}
                         playbackState={playbackState}
-                        supportsPlaybackEngine={supportsPlaybackEngine}
+                        receivedPlaybackState={receivedPlaybackState}
                         clock={clock}
                         extension={extension}
                         length={calculateLengthMs(videoDurationRef)}

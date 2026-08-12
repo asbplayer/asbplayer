@@ -650,7 +650,7 @@ interface SubtitlePlayerProps {
     subtitles: DisplaySubtitleModel[];
     subtitleCollection: SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>;
     playbackState?: PlaybackState;
-    supportsPlaybackEngine: boolean;
+    receivedPlaybackState: boolean;
     length: number;
     jumpToSubtitle?: SubtitleModel;
     onJumpToSubtitleHandled?: () => void;
@@ -688,7 +688,7 @@ export default function SubtitlePlayer({
     subtitles,
     subtitleCollection,
     playbackState,
-    supportsPlaybackEngine,
+    receivedPlaybackState,
     length,
     jumpToSubtitle,
     onJumpToSubtitleHandled,
@@ -833,16 +833,16 @@ export default function SubtitlePlayer({
     }, []);
 
     useEffect(() => {
-        if (!supportsPlaybackEngine) return;
+        if (!receivedPlaybackState) return;
 
         const showingSubtitles = (playbackState?.showingSubtitleIndexes ?? [])
             .map((index) => subtitleListRef.current[index])
             .filter((subtitle): subtitle is DisplaySubtitleModel => subtitle !== undefined);
         updateShowingSubtitles(showingSubtitles);
-    }, [playbackState, subtitles, supportsPlaybackEngine, updateShowingSubtitles]);
+    }, [playbackState, subtitles, receivedPlaybackState, updateShowingSubtitles]);
 
     useEffect(() => {
-        if (supportsPlaybackEngine) return;
+        if (receivedPlaybackState) return;
 
         const update = () => {
             const timestamp = clockRef.current.time({ maxMs: lengthRef.current });
@@ -858,7 +858,7 @@ export default function SubtitlePlayer({
                 cancelAnimationFrame(requestAnimationRef.current);
             }
         };
-    }, [supportsPlaybackEngine, updateShowingSubtitles]);
+    }, [receivedPlaybackState, updateShowingSubtitles]);
 
     const scrollToCurrentSubtitle = useCallback(() => {
         const indexes = highlightedSubtitleIndexesRef.current;
