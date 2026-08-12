@@ -375,7 +375,7 @@ describe('Binding playback mode integration', () => {
         const binding = new Binding(video, bindingOptions(false, false));
         binding.bind();
         await jest.advanceTimersByTimeAsync(0);
-        sendSubtitles(binding, [makeSubtitle()], ['subtitle.srt', 'Empty.srt']);
+        sendSubtitles(binding, [makeSubtitle({ end: 120_000, originalEnd: 120_000 })], ['subtitle.srt', 'Empty.srt']);
 
         video.currentTime = 62;
         await jest.advanceTimersByTimeAsync(10_000);

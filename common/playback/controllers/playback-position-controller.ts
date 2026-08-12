@@ -2,9 +2,9 @@ import type { IndexedSubtitleModel } from '@project/common';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { PlaybackPosition } from '@project/common/settings';
 
-export const minimumPlaybackPositionMs = 60_000;
+export const minimumPlaybackPositionMs = 30_000;
 export const playbackPositionSaveIntervalMs = 10_000;
-export const maxPlaybackPositions = 50;
+export const maxPlaybackPositions = 25;
 
 export interface PlaybackPositionRememberSettings {
     readonly lastPlaybackPositions: PlaybackPosition[];
@@ -51,7 +51,7 @@ export interface PlaybackPositionControllerCallbacks<T extends IndexedSubtitleMo
 export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleModel> {
     readonly playbackPositionKeys: readonly string[];
     readonly currentTimeMs: () => number;
-    readonly durationMs: () => number;
+    readonly lastSubtitleEndMs: () => number | undefined;
     readonly settingsProvider: SettingsProvider;
     readonly callbacks: PlaybackPositionControllerCallbacks<T>;
 }
@@ -60,7 +60,7 @@ export interface PlaybackPositionControllerOptions<T extends IndexedSubtitleMode
 export default class PlaybackPositionController<T extends IndexedSubtitleModel> {
     private settings?: AsbplayerSettings;
     private readonly currentTimeMs: () => number;
-    private readonly durationMs: () => number;
+    private readonly lastSubtitleEndMs: () => number | undefined;
     private readonly settingsProvider: SettingsProvider;
     private readonly callbacks: PlaybackPositionControllerCallbacks<T>;
     private restoreKeys: readonly string[];
@@ -75,13 +75,13 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     constructor({
         playbackPositionKeys,
         currentTimeMs,
-        durationMs,
+        lastSubtitleEndMs,
         settingsProvider,
         callbacks,
     }: PlaybackPositionControllerOptions<T>) {
         this.restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
         this.currentTimeMs = currentTimeMs;
-        this.durationMs = durationMs;
+        this.lastSubtitleEndMs = lastSubtitleEndMs;
         this.settingsProvider = settingsProvider;
         this.callbacks = callbacks;
     }
@@ -152,6 +152,10 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         }
 
         if (timestampMs < minimumPlaybackPositionMs) {
+            this.lastSavedTimestampMs = timestampMs;
+            return this.removeRememberedPlaybackPositions();
+        }
+        if (this.isAtOrBeyondLastSubtitleEnd(timestampMs)) {
             this.lastSavedTimestampMs = timestampMs;
             return this.removeRememberedPlaybackPositions();
         }
@@ -263,9 +267,21 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
             void this.removeRememberedPlaybackPositions();
             return;
         }
-        if (position >= this.durationMs()) return;
+        if (this.isAtOrBeyondLastSubtitleEnd(position)) {
+            void this.removeRememberedPlaybackPositions();
+            return;
+        }
 
         this.pendingTimestampMs = position;
         this.callbacks.playbackPositionChanged(position);
+    }
+
+    private isAtOrBeyondLastSubtitleEnd(timestampMs: number): boolean {
+        const lastSubtitleEndMs = this.lastSubtitleEndMs();
+        return (
+            typeof lastSubtitleEndMs === 'number' &&
+            Number.isFinite(lastSubtitleEndMs) &&
+            timestampMs >= lastSubtitleEndMs
+        );
     }
 }

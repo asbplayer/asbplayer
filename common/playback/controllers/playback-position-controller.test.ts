@@ -23,20 +23,20 @@ const makeController = ({
     settings = {},
     playbackPositionKeys = ['video.mp4'],
     currentTimeMs = 65_000,
-    durationMs = 120_000,
+    lastSubtitleEndMs = 120_000,
     showingSubtitlesAt = () => [],
 }: {
     settings?: Partial<AsbplayerSettings>;
     playbackPositionKeys?: readonly string[];
     currentTimeMs?: number;
-    durationMs?: number;
+    lastSubtitleEndMs?: number;
     showingSubtitlesAt?: (timestampMs: number) => readonly IndexedSubtitleModel[];
 } = {}) => {
     const savedSettings: Partial<AsbplayerSettings>[] = [];
     const playbackPositionChanges: (number | undefined)[] = [];
     const seekCalls: number[] = [];
     const playCalls: number[] = [];
-    const state = { currentTimeMs, durationMs };
+    const state = { currentTimeMs, lastSubtitleEndMs };
     let providerPositions = [...(settings.lastPlaybackPositions ?? defaultSettings.lastPlaybackPositions)];
     let providerReadPromise: Promise<AsbplayerSettings['lastPlaybackPositions']> | undefined;
     const settingsProvider = {
@@ -50,7 +50,7 @@ const makeController = ({
     const controller = new PlaybackPositionController<IndexedSubtitleModel>({
         playbackPositionKeys,
         currentTimeMs: () => state.currentTimeMs,
-        durationMs: () => state.durationMs,
+        lastSubtitleEndMs: () => state.lastSubtitleEndMs,
         settingsProvider,
         callbacks: {
             saveSettings: (updatedSettings) => {
@@ -208,6 +208,49 @@ describe('PlaybackPositionController', () => {
         harness.controller.bind();
 
         expect(harness.playbackPositionChanges).toEqual([minimumPlaybackPositionMs]);
+        harness.controller.unbind();
+    });
+
+    it('does not save a position at or beyond the last subtitle end', async () => {
+        const harness = makeController({
+            lastSubtitleEndMs: 120_000,
+            settings: {
+                lastPlaybackPositions: [
+                    { fileName: 'video.mp4', position: 90_000 },
+                    { fileName: 'other.mp4', position: 130_000 },
+                ],
+            },
+        });
+
+        await harness.controller.savePlaybackPosition(120_001);
+
+        expect(harness.savedSettings).toEqual([
+            {
+                lastPlaybackPositions: [{ fileName: 'other.mp4', position: 130_000 }],
+            },
+        ]);
+    });
+
+    it('removes a remembered position at or beyond the last subtitle end', async () => {
+        const harness = makeController({
+            lastSubtitleEndMs: 120_000,
+            settings: {
+                lastPlaybackPositions: [
+                    { fileName: 'video.mp4', position: 120_000 },
+                    { fileName: 'other.mp4', position: 130_000 },
+                ],
+            },
+        });
+
+        harness.controller.bind();
+        await flushSave();
+
+        expect(harness.playbackPositionChanges).toEqual([]);
+        expect(harness.savedSettings).toEqual([
+            {
+                lastPlaybackPositions: [{ fileName: 'other.mp4', position: 130_000 }],
+            },
+        ]);
         harness.controller.unbind();
     });
 

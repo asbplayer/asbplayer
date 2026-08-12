@@ -190,7 +190,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackPositionController = new PlaybackPositionController({
             playbackPositionKeys,
             currentTimeMs: () => this.timingDriver.currentTimeMs(),
-            durationMs: () => this.timingDriver.durationMs(),
+            lastSubtitleEndMs: () => this.subtitles[this.subtitles.length - 1]?.end,
             callbacks: {
                 saveSettings: (settings) => {
                     this.settings = { ...this.settings, ...settings };
