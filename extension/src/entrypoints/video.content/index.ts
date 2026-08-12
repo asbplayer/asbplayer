@@ -173,8 +173,7 @@ export default defineContentScript({
 
                 if (page !== undefined) {
                     bindings.sort(
-                        (a, b) =>
-                            page.videoElementSelectorPreference(a.video) - page.videoElementSelectorPreference(b.video)
+                        (a, b) => page.videoElementPreference(a.video) - page.videoElementPreference(b.video)
                     );
                 }
 
@@ -192,7 +191,7 @@ export default defineContentScript({
                 : undefined;
 
             const videoSelectController = new VideoSelectController(bindings, {
-                isBindingsSorted: page?.config.videoElementSelector !== undefined,
+                isBindingsSorted: page?.config.preferredVideoElementSelector !== undefined,
             });
             videoSelectController.bind();
 

@@ -40,7 +40,7 @@ it('keeps nonmatching videos bindable but prevents them from auto-syncing', () =
     const page = new PageDelegate(
         {
             host: 'www\\.youtube\\.com',
-            videoElementSelector: '#movie_player video',
+            preferredVideoElementSelector: '#movie_player video',
             autoSync: { enabled: true },
         },
         new URL('https://www.youtube.com/watch?v=video')
@@ -58,11 +58,11 @@ it('keeps nonmatching videos bindable but prevents them from auto-syncing', () =
     expect(page.canAutoSync(thumbnailVideo)).toBe(false);
 });
 
-it('sorts selector matches before nonmatching videos for manual selection', () => {
+it('sorts preferred videos before nonmatching videos for manual selection', () => {
     const page = new PageDelegate(
         {
             host: 'www\\.youtube\\.com',
-            videoElementSelector: '#movie_player video',
+            preferredVideoElementSelector: '#movie_player video',
             autoSync: { enabled: true },
         },
         new URL('https://www.youtube.com/watch?v=video')
@@ -76,7 +76,7 @@ it('sorts selector matches before nonmatching videos for manual selection', () =
     document.body.append(firstThumbnailVideo, player, secondThumbnailVideo);
 
     const sorted = [firstThumbnailVideo, playerVideo, secondThumbnailVideo].sort(
-        (a, b) => page.videoElementSelectorPreference(a) - page.videoElementSelectorPreference(b)
+        (a, b) => page.videoElementPreference(a) - page.videoElementPreference(b)
     );
 
     expect(sorted).toEqual([playerVideo, firstThumbnailVideo, secondThumbnailVideo]);
@@ -96,6 +96,6 @@ it('preserves auto-sync eligibility and ordering when no selector is configured'
     expect(page.shouldIgnore(firstVideo)).toBe(false);
     expect(page.canAutoSync(firstVideo)).toBe(true);
     expect(page.canAutoSync(secondVideo)).toBe(true);
-    expect(page.videoElementSelectorPreference(firstVideo)).toBe(0);
-    expect(page.videoElementSelectorPreference(secondVideo)).toBe(0);
+    expect(page.videoElementPreference(firstVideo)).toBe(0);
+    expect(page.videoElementPreference(secondVideo)).toBe(0);
 });
