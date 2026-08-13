@@ -3,17 +3,17 @@ import { AppSettingsStorage } from '@project/common/app/services/app-settings-st
 import {
     AsbplayerSettings,
     Profile,
+    activeProfileKey,
     defaultSettings,
     prefixKey,
     prefixedSettings,
+    profilesKey,
     settingsDeserializers,
     saveOnlySettings,
     unprefixKey,
 } from '@project/common/settings';
 
 const cachedLocalStorage = new CachedLocalStorage();
-const activeProfileKey = 'activeSettingsProfile';
-const profilesKey = 'settingsProfiles';
 
 export class LocalSettingsStorage implements AppSettingsStorage {
     private readonly _settingsUpdatedCallbacks: (() => void)[] = [];
@@ -158,11 +158,26 @@ export class LocalSettingsStorage implements AppSettingsStorage {
     onSettingsUpdated(callback: () => void) {
         if (this._settingsUpdatedCallbacks.length === 0) {
             this._storageListener = (event: StorageEvent) => {
-                if (event.key === null || !(event.key in defaultSettings)) return;
+                const key = event.key;
+                if (key === null) return;
+
+                if (key === activeProfileKey || key === profilesKey) {
+                    cachedLocalStorage.bustCache();
+                    for (const c of this._settingsUpdatedCallbacks) c();
+                    return;
+                }
+
+                const activeProfile = this._activeProfile();
+                let settingKey = key;
+                if (activeProfile !== undefined) {
+                    const profilePrefix = prefixKey('', activeProfile.name);
+                    if (!key.startsWith(profilePrefix)) return;
+                    settingKey = unprefixKey(key, activeProfile.name);
+                }
+                if (!(settingKey in defaultSettings)) return;
 
                 cachedLocalStorage.bustCache();
-                if (saveOnlySettings.includes(event.key as (typeof saveOnlySettings)[number])) return;
-
+                if (saveOnlySettings.includes(settingKey as (typeof saveOnlySettings)[number])) return;
                 for (const c of this._settingsUpdatedCallbacks) c();
             };
             window.addEventListener('storage', this._storageListener);
