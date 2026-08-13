@@ -50,6 +50,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import Tooltip from '@mui/material/Tooltip';
+import { asbError } from '@project/common/util';
 import { timeDurationDisplay } from '@project/common/util/util';
 import { SxProps, type Theme } from '@mui/material/styles';
 import Stack from '@mui/material/Stack';
@@ -572,7 +573,10 @@ function useWaniKaniUserInfo(apiToken: string) {
         void new WaniKani(trimmedApiToken)
             .user()
             .then((user) => setUserInfo(user))
-            .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+            .catch((e) => {
+                asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
+                setError(e instanceof Error ? e.message : String(e));
+            });
     }, [apiToken]);
 
     return { userInfo, error };

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     CaptureVisibleTabMessage,
     ForegroundToExtensionCommand,
@@ -201,7 +202,7 @@ export default class VideoSelectController {
                         this._frame.hide();
                         this._subtitleFiles = undefined;
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError(error, { asbLogLabel: 'video/select' }));
             });
         }
 

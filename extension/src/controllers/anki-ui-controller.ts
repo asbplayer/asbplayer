@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     ActiveProfileMessage,
     AnkiDialogSettings,
@@ -315,7 +316,9 @@ export default class AnkiUiController {
                             return;
                         }
                         case 'dismissedQuickSelectFtue':
-                            globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                            globalStateProvider
+                                .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
+                                .catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
@@ -418,9 +421,12 @@ export default class AnkiUiController {
                             break;
                         }
                         default:
-                            console.error('Unknown message received from bridge: ' + message.command);
+                            asbError(
+                                { asbLogLabel: 'anki/ui' },
+                                'Unknown message received from bridge: ' + message.command
+                            );
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
             });
         }
 

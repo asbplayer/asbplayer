@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     AsbPlayerToTabCommand,
     AsbPlayerToVideoCommandV2,
@@ -197,7 +198,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 }
 
                 setInitializing(false);
-            })().catch(console.error);
+            })().catch((error) => asbError(error, { asbLogLabel: 'side-panel' }));
         });
     }, [extension, subtitles, initializing, currentTabId, syncedVideoTab]);
 
@@ -276,7 +277,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
 
     const handleError = useCallback(
         (message: any) => {
-            console.error(message);
+            asbError({ asbLogLabel: 'side-panel' }, message);
 
             setAlertSeverity('error');
 

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { ensureOffscreenAudioServiceDocument } from '@/services/offscreen-document';
 import {
@@ -36,7 +37,7 @@ export default class EncodeMp3Handler {
             Mp3Encoder.encode(base64ToBlob(base64, `audio/${extension}`), () => new Worker('mp3-encoder-worker.js'))
                 .then((blob) => blob.arrayBuffer())
                 .then((buffer) => sendResponse(bufferToBase64(buffer)))
-                .catch(console.error);
+                .catch((error) => asbError(error, { asbLogLabel: 'recording/encoding' }));
         } else {
             ensureOffscreenAudioServiceDocument()
                 .then(() => {
@@ -51,7 +52,7 @@ export default class EncodeMp3Handler {
                     return browser.runtime.sendMessage(audioServiceCommand);
                 })
                 .then(sendResponse)
-                .catch(console.error);
+                .catch((error) => asbError(error, { asbLogLabel: 'recording/encoding' }));
         }
 
         return true;

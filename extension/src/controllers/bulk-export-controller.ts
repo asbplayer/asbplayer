@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { CardExportedMessage, CopySubtitleMessage, Message, PostMineAction } from '@project/common';
 import { surroundingSubtitlesAroundInterval } from '@project/common/util';
 import Binding from '../services/binding';
@@ -50,7 +51,7 @@ export default class BulkExportController {
                 this._currentIndex++;
 
                 if (exported.exportError) {
-                    console.error('Bulk export error:', exported.exportError);
+                    asbError({ asbLogLabel: 'anki/export' }, 'Bulk export error:', exported.exportError);
                 } else if (exported.skippedDuplicate) {
                     this._context.subtitleController.notification({
                         locKey: 'info.cardNotExported',
@@ -124,7 +125,7 @@ export default class BulkExportController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(startedMessage).catch(console.error);
+        browser.runtime.sendMessage(startedMessage).catch((error) => asbError(error, { asbLogLabel: 'anki/export' }));
 
         // Kick off first item
         this._sendNext();

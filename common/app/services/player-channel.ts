@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     AlertMessage,
     AnkiSettingsToVideoMessage,
@@ -280,7 +281,7 @@ export default class PlayerChannel {
                     break;
                 }
                 default:
-                    console.error('Unrecognized event ' + event.data.command);
+                    asbError({ asbLogLabel: 'app/messages' }, 'Unrecognized event ' + event.data.command);
             }
         };
     }

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     CardExportedMessage,
     CardModel,
@@ -220,7 +221,7 @@ export class CardPublisher {
             });
             return true;
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'anki/export' }, e);
             return false;
         }
     }

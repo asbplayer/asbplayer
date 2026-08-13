@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
@@ -128,7 +129,7 @@ const MiscSettingTab: React.FC<Props> = ({
             .then(() => client.ping())
             .then(() => setWebSocketConnectionSucceeded(true))
             .catch((e) => {
-                console.error(e);
+                asbError({ asbLogLabel: 'settings' }, e);
                 setWebSocketConnectionSucceeded(false);
             })
             .finally(() => client.unbind());
@@ -162,7 +163,7 @@ const MiscSettingTab: React.FC<Props> = ({
             const validatedSettings = validateSettings(importedSettings);
             onSettingsChanged(validatedSettings);
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'settings' }, e);
         }
     }, [onSettingsChanged]);
 

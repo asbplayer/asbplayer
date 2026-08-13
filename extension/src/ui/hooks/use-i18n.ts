@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import i18n, { ReadCallback } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import resourcesToBackend from 'i18next-resources-to-backend';
@@ -37,7 +38,7 @@ export const useI18n = ({ language }: { language: string }) => {
     }, [initialized]);
 
     useEffect(() => {
-        init = init.then(() => i18n.changeLanguage(language)).catch((e) => console.error(e));
+        init = init.then(() => i18n.changeLanguage(language)).catch((e) => asbError({ asbLogLabel: 'i18n' }, e));
     }, [language]);
 
     return { initialized };

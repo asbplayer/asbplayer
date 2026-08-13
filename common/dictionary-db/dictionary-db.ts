@@ -1,3 +1,4 @@
+import { asbError, asbWarn } from '@project/common/util';
 import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
 import {
     ApplyStrategy,
@@ -781,7 +782,10 @@ export class DictionaryDB {
             const tokensToDelete: string[] = [];
             for (const localTokenInput of localTokenInputs) {
                 if (!HAS_LETTER_REGEX.test(localTokenInput.token)) {
-                    console.error(`Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`);
+                    asbError(
+                        { asbLogLabel: 'dictionary' },
+                        `Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`
+                    );
                     continue;
                 }
                 const existingRecord = tokenRecordMap.get(localTokenInput.token); // Ignore existing lemmas as they should be re-calculated
@@ -798,7 +802,10 @@ export class DictionaryDB {
                 localTokenInput.states = Array.from(new Set(localTokenInput.states)).sort((lhs, rhs) => lhs - rhs);
                 localTokenInput.lemmas = localTokenInput.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
                 if (!localTokenInput.lemmas.length) {
-                    console.error(`Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`);
+                    asbError(
+                        { asbLogLabel: 'dictionary' },
+                        `Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`
+                    );
                     continue;
                 }
                 if (localTokenInput.status === TokenStatus.UNCOLLECTED && !localTokenInput.states.length) {
@@ -806,7 +813,8 @@ export class DictionaryDB {
                         tokensToDelete.push(localTokenInput.token);
                         continue;
                     } else {
-                        console.error(
+                        asbError(
+                            { asbLogLabel: 'dictionary' },
                             `Cannot save local token with uncollected status and no states: ${JSON.stringify(localTokenInput)}`
                         );
                         continue;
@@ -1260,7 +1268,8 @@ export async function _ensureBuildId(
         if (existingBuildId && existingBuildId !== nextBuildId) {
             const existingBuildExpiration = _buildIdExpiration(trackMeta, buildIdSlot);
             if (buildTs < existingBuildExpiration) return false;
-            console.warn(
+            asbWarn(
+                { asbLogLabel: 'dictionary' },
                 `Stale ${buildIdLabel(buildIdSlot)} ${existingBuildId} which expired at ${new Date(existingBuildExpiration).toISOString()} detected for track ${key[1] + 1}, ignoring.`
             );
         }
@@ -1319,7 +1328,10 @@ export async function _clearBuildIds(
         try {
             await clearBuildId(db, key, nextBuildId, buildIdSlot);
         } catch (e) {
-            console.error(`Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`);
+            asbError(
+                { asbLogLabel: 'dictionary' },
+                `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`
+            );
         }
     }
 }

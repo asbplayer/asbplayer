@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Stack from '@mui/material/Stack';
@@ -73,7 +74,10 @@ const DictionaryImport: React.FC<Props> = ({
         yomitan
             .version()
             .then(() => setYomitanError(''))
-            .catch((e) => setYomitanError(e instanceof Error ? e.message : String(e)));
+            .catch((e) => {
+                asbError({ asbLogLabel: 'dictionary/import' }, e);
+                setYomitanError(e instanceof Error ? e.message : String(e));
+            });
     }, [importClipboardTrack, dictionaryTracks, open]);
 
     useEffect(() => {
@@ -140,6 +144,7 @@ const DictionaryImport: React.FC<Props> = ({
             setImportClipboardPreview(entries);
             setImportClipboardPreviewHasChanges(false);
         } catch (e) {
+            asbError({ asbLogLabel: 'dictionary/import' }, e);
             const message = e instanceof Error ? e.message : String(e);
             setImportClipboardMessageSeverity('error');
             setImportClipboardMessage(message);
@@ -166,6 +171,7 @@ const DictionaryImport: React.FC<Props> = ({
             setImportClipboardText('');
             setImportClipboardMessage(undefined);
         } catch (e) {
+            asbError({ asbLogLabel: 'dictionary/import' }, e);
             setImportClipboardMessageSeverity('error');
             setImportClipboardMessage(e instanceof Error ? e.message : String(e));
         } finally {
@@ -206,7 +212,7 @@ const DictionaryImport: React.FC<Props> = ({
             try {
                 text = await file.text();
             } catch (e) {
-                console.error(e);
+                asbError({ asbLogLabel: 'dictionary/import' }, e);
                 setImportClipboardMessageSeverity('error');
                 setImportClipboardMessage(e instanceof Error ? e.message : String(e));
                 return;
@@ -232,7 +238,7 @@ const DictionaryImport: React.FC<Props> = ({
                 );
                 onClose();
             } catch (e) {
-                console.error(e);
+                asbError({ asbLogLabel: 'dictionary/import' }, e);
                 setImportClipboardMessageSeverity('error');
                 setImportClipboardMessage(e instanceof Error ? e.message : String(e));
             } finally {
@@ -247,7 +253,7 @@ const DictionaryImport: React.FC<Props> = ({
         try {
             await tryImportFile(file);
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'dictionary/import' }, e);
         } finally {
             if (dictionaryDBFileInputRef.current) {
                 // Reset value to allow same file to be opened again

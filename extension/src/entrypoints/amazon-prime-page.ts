@@ -1,5 +1,6 @@
 import { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { extractExtension, poll, trackId } from '@/pages/util';
+import { asbError } from '@project/common/util';
 
 declare global {
     interface XMLHttpRequest {
@@ -236,6 +237,7 @@ export default defineUnlistedScript(() => {
                     );
                 }
             })().catch((e) => {
+                asbError({ asbLogLabel: 'amazon-prime' }, e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {

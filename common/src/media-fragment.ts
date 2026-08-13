@@ -1,3 +1,4 @@
+import { asbWarn } from '@project/common/util';
 import { CardModel, FileModel, MediaFragmentErrorCode } from './model';
 import { isActiveBlobUrl } from '../blob-url';
 import { download } from '../util/util';
@@ -132,8 +133,9 @@ export const createVideoElement = async (blobUrl: string): Promise<HTMLVideoElem
             }
 
             if (timedOut && !isFullySeekable) {
-                console.warn(
-                    `[MediaFragment] Video did not become ready within ${videoReadyTimeoutMs}ms. Continuing with fallback initialization.`
+                asbWarn(
+                    `Video did not become ready within ${videoReadyTimeoutMs}ms. Continuing with fallback initialization.`,
+                    { asbLogLabel: 'media-fragment' }
                 );
             }
 

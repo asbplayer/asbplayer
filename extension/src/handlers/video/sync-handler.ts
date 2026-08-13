@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     Command,
     ExtensionSyncMessage,
@@ -72,7 +73,7 @@ export default class SyncHandler {
                 });
             }
         } catch (error) {
-            console.error(error);
+            asbError({ asbLogLabel: 'video/sync' }, error);
         }
     }
 }

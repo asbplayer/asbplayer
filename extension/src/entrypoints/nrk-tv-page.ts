@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { inferTracks } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
@@ -46,7 +47,7 @@ export default defineUnlistedScript(() => {
                 }
             }
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'nrk' }, e);
         }
 
         return tracks;

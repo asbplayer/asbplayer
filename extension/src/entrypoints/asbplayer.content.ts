@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import type {
     AddProfileMessage,
     DictionaryBuildAnkiCacheMessage,
@@ -317,7 +318,7 @@ export default defineContentScript({
                             break;
                     }
                 }
-            })().catch(console.error);
+            })().catch((error) => asbError(error, { asbLogLabel: 'content' }));
         });
 
         browser.runtime.onMessage.addListener((request) => {
@@ -360,7 +361,7 @@ export default defineContentScript({
                 };
 
                 sendMessageToPlayer(versionMessage);
-            })().catch(console.error);
+            })().catch((error) => asbError(error, { asbLogLabel: 'content' }));
         });
     },
 });

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     AnkiUiInitialState,
     OpenAsbplayerSettingsMessage,
@@ -174,7 +175,9 @@ export class TabAnkiUiController {
                             return;
                         }
                         case 'dismissedQuickSelectFtue':
-                            globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                            globalStateProvider
+                                .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
+                                .catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
@@ -206,7 +209,7 @@ export class TabAnkiUiController {
                             return;
                         }
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
             });
         }
 

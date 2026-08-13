@@ -820,7 +820,10 @@ describe('ensureStoragePersisted', () => {
         });
 
         await expect(ensureStoragePersisted()).resolves.toBe(false);
-        expect(warn).toHaveBeenCalledWith('Storage could not be persisted, data may be cleared by the browser');
+        expect(warn).toHaveBeenCalledWith(
+            '[asbplayer][storage]',
+            'Storage could not be persisted, data may be cleared by the browser'
+        );
     });
 });
 

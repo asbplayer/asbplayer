@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { RectModel } from './model';
 
 export const resizeCanvas = (
@@ -52,7 +53,7 @@ export const cropAndResize = async (
                     await resizeCanvas(canvas, ctx, maxWidth, maxHeight);
                     resolve(canvas.toDataURL('image/jpeg'));
                 } catch (e) {
-                    console.error('Failed to crop and resize image: ' + e);
+                    asbError({ asbLogLabel: 'image' }, 'Failed to crop and resize image: ' + e);
                     reject(e);
                 }
             } else {

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { bufferToBase64 } from '@project/common/base64';
 
 export class TimedRecordingInProgressError extends Error {}
@@ -25,7 +26,7 @@ export default class AudioRecorder {
         doNotManageStream: boolean = false
     ): Promise<string> {
         if (this.recording) {
-            console.error('Already recording, cannot start with timeout.');
+            asbError({ asbLogLabel: 'recording/audio' }, 'Already recording, cannot start with timeout.');
             return Promise.reject('Already recording');
         }
 

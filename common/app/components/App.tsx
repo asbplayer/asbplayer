@@ -1,3 +1,4 @@
+import { asbError, asbWarn } from '@project/common/util';
 import React, { useCallback, useEffect, useState, useMemo, useRef, ComponentProps } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material/styles';
@@ -162,7 +163,7 @@ async function extractDropFileHandles(items: DataTransferItemList): Promise<File
             }
         } catch (e) {
             // Best-effort only; if handle access fails, keep loading dropped files normally.
-            console.warn('Failed to read dropped file handle:', e);
+            asbWarn({ asbLogLabel: 'app/files' }, 'Failed to read dropped file handle:', e);
             return undefined;
         }
     }
@@ -444,7 +445,7 @@ function App({
 
     const handleError = useCallback(
         (message: any) => {
-            console.error(message);
+            asbError({ asbLogLabel: 'app/errors' }, message);
             setLastError(message);
             setAlertSeverity('error');
 
@@ -1103,7 +1104,7 @@ function App({
 
             // Persist in background so session saving never blocks current file loading.
             void saveFileSession({ videoHandle, subtitleHandles }).catch((e) => {
-                console.error('Failed to save file session:', e);
+                asbError({ asbLogLabel: 'app/session' }, 'Failed to save file session:', e);
                 handleError(e);
             });
         },
@@ -1118,7 +1119,7 @@ function App({
 
             // Persist in background so session saving never blocks current file loading.
             void saveBufferedHandlesToFileSession(handles).catch((e) => {
-                console.error('Failed to save file session:', e);
+                asbError({ asbLogLabel: 'app/session' }, 'Failed to save file session:', e);
                 handleError(e);
             });
         },
@@ -1149,7 +1150,7 @@ function App({
                 await clearFileSession();
             }
         } catch (e) {
-            console.error('Failed to restore last session:', e);
+            asbError({ asbLogLabel: 'app/session' }, 'Failed to restore last session:', e);
             handleError(e);
         }
     }, [fetchFileSession, clearFileSession, handleFiles, handleError, t]);
@@ -1234,7 +1235,8 @@ function App({
 
                 if (tabs.length === 0) {
                     if (message.src) {
-                        console.error(
+                        asbError(
+                            { asbLogLabel: 'app/messages' },
                             'Received sync request but the requesting tab ID ' +
                                 message.tabId +
                                 ' with src ' +
@@ -1242,7 +1244,8 @@ function App({
                                 ' was not found'
                         );
                     } else {
-                        console.error(
+                        asbError(
+                            { asbLogLabel: 'app/messages' },
                             'Received sync request but the requesting tab ID ' + message.tabId + ' was not found'
                         );
                     }
@@ -1272,7 +1275,7 @@ function App({
                     );
                     flatten = syncMessage.flatten ?? false;
                 } else {
-                    console.error('Unknown message ' + message.data.command);
+                    asbError({ asbLogLabel: 'app/messages' }, 'Unknown message ' + message.data.command);
                     return;
                 }
 
@@ -1426,7 +1429,7 @@ function App({
                             persistFileSessionHandles(handlesWithId);
                         })
                         .catch((e) => {
-                            console.warn('Failed to collect dropped file handles:', e);
+                            asbWarn({ asbLogLabel: 'app/files' }, 'Failed to collect dropped file handles:', e);
                         });
                 }
             }
@@ -1467,7 +1470,7 @@ function App({
                     return files;
                 }
             } catch (e) {
-                console.error('Failed to pick files via File System Access API:', e);
+                asbError({ asbLogLabel: 'app/files' }, 'Failed to pick files via File System Access API:', e);
                 handleError(e);
             }
         },
@@ -1628,7 +1631,9 @@ function App({
     }, [sources.videoFile, alert, alertSeverity, alertOpen]);
 
     const handleCopyToClipboard = useCallback((blob: Blob) => {
-        navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]).catch(console.error);
+        navigator.clipboard
+            .write([new ClipboardItem({ [blob.type]: blob })])
+            .catch((error) => asbError(error, { asbLogLabel: 'app/clipboard' }));
     }, []);
 
     useEffect(() => {
@@ -1733,7 +1738,11 @@ function App({
                             const file = new File([blob], isEmptyTrack ? '.srt' : `${t.name}.${t.extension}`);
                             files.push({ file, id: t.id });
                         } else {
-                            console.warn('unexpected url array when downloading subtitle track selection', t);
+                            asbWarn(
+                                { asbLogLabel: 'app/subtitles' },
+                                'unexpected url array when downloading subtitle track selection',
+                                t
+                            );
                         }
                     }
                     if (handleFiles({ files })) {

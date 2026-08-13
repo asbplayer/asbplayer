@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { CopySubtitleMessage, PostMineAction, SubtitleModel } from '@project/common';
 import { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';
 import { SeekableTracks, TokenStatus } from '@project/common/settings';
@@ -39,7 +40,10 @@ export default class AppKeyBinder implements KeyBinder {
                             handlers = this.exportCardHandlers;
                             break;
                         default:
-                            console.error('Unknown post mine action ' + command.postMineAction);
+                            asbError(
+                                { asbLogLabel: 'app/messages' },
+                                'Unknown post mine action ' + command.postMineAction
+                            );
                     }
                 } else if (message.data.command === 'take-screenshot') {
                     handlers = this.takeScreenshotHandlers;

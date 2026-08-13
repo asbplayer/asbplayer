@@ -378,7 +378,11 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.ankiState.recentlyModifiedCardIds).toEqual(new Set());
         expect(runtime.ankiState.recentlyModifiedFirstCheck).toBe(false);
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
-        expect(consoleError).toHaveBeenCalledWith('Error checking Anki recently modified cards:', expect.any(Error));
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Error checking Anki recently modified cards:',
+            expect.any(Error)
+        );
 
         await runtime._checkAnkiRecentlyModifiedCards('Profile', ['Word'], []);
         expect(consoleError).toHaveBeenCalledTimes(1);
@@ -453,7 +457,11 @@ describe('SubtitleAnnotations', () => {
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
         expect(checkRecentlyModified).toHaveBeenCalledWith('Profile', ['Word'], []);
         expect(runtime.ankiState.refreshing).toBe(false);
-        expect(consoleWarn).toHaveBeenCalledWith('Anki permission request failed:', expect.any(Error));
+        expect(consoleWarn).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Anki permission request failed:',
+            expect.any(Error)
+        );
 
         await runtime._refreshAnki();
         expect(consoleWarn).toHaveBeenCalledTimes(1);
@@ -480,7 +488,11 @@ describe('SubtitleAnnotations', () => {
 
         expect(runtime.ankiState.refreshed).toBe(false);
         expect(runtime.ankiState.refreshing).toBe(false);
-        expect(consoleWarn).toHaveBeenCalledWith('Anki refresh failed:', expect.any(Error));
+        expect(consoleWarn).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Anki refresh failed:',
+            expect.any(Error)
+        );
     });
 
     it('builds and caches the Anki statistics snapshot, including due-card requests', async () => {
@@ -571,7 +583,11 @@ describe('SubtitleAnnotations', () => {
             cardsStatus: {},
             dueCards: {},
         });
-        expect(consoleError).toHaveBeenCalledWith('Error refreshing Anki for statistics:', expect.any(Error));
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Error refreshing Anki for statistics:',
+            expect.any(Error)
+        );
 
         await runtime._refreshAnkiStatistics('Profile', ['Word'], []);
         expect(consoleError).toHaveBeenCalledTimes(1);
@@ -630,7 +646,11 @@ describe('SubtitleAnnotations', () => {
 
         expect(runtime.waniKaniState.refreshed).toBe(false);
         expect(runtime.waniKaniState.refreshing).toBe(false);
-        expect(consoleWarn).toHaveBeenCalledWith('WaniKani refresh failed:', expect.any(Error));
+        expect(consoleWarn).toHaveBeenCalledWith(
+            '[asbplayer][annotations/wanikani]',
+            'WaniKani refresh failed:',
+            expect.any(Error)
+        );
     });
 
     it('builds per-track WaniKani statistics while isolating a failed track', async () => {
@@ -664,6 +684,7 @@ describe('SubtitleAnnotations', () => {
         });
         expect(runtime.waniKaniState.statisticsRefreshed).toBe(true);
         expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/wanikani]',
             'Error refreshing WaniKani for Track2 statistics:',
             expect.any(Error)
         );
@@ -773,7 +794,11 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.initialized).toBe(false);
         expect(runtime.annotationsBuilding).toBe(false);
         expect(runtime.tokenRequestFailedForTracks).toEqual(new Set());
-        expect(consoleError).toHaveBeenCalledWith('Error annotating subtitle text for Track1:', expect.any(Error));
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/tokenization]',
+            'Error annotating subtitle text for Track1:',
+            expect.any(Error)
+        );
     });
 
     it('cancels an in-flight annotation build without publishing partial results', async () => {

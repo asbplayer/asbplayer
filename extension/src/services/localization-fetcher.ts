@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { LocalizationConfig, fetchExtensionConfig } from './extension-config';
 import { SettingsProvider, supportedLanguages as defaultSupportedLanguages } from '@project/common/settings';
 import { ExtensionSettingsStorage } from './extension-settings-storage';
@@ -58,7 +59,7 @@ export const primeLocalization = async (lang: string): Promise<void> => {
             await fetchAndCache(langConfig);
         }
     } catch (e) {
-        console.error(e);
+        asbError({ asbLogLabel: 'i18n' }, e);
     }
 };
 
@@ -74,7 +75,7 @@ const fetchAndCache = async ({ code, url, version }: LocalizationConfig): Promis
             await browser.storage.local.set({ [stringsKey]: strings, [versionKey]: version });
         }
     } catch (e) {
-        console.error(e);
+        asbError({ asbLogLabel: 'i18n' }, e);
     }
 };
 

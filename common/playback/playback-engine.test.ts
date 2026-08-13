@@ -1202,7 +1202,8 @@ describe('PlaybackEngine', () => {
 
             expect(harness.driver.cancelExpectedInternalSeekCalls).toBe(1);
             expect(warning).toHaveBeenCalledWith(
-                '[asbplayer/playback] Internal seek did not complete before the watchdog timeout',
+                '[asbplayer][playback/seek]',
+                'Internal seek did not complete before the watchdog timeout',
                 expect.objectContaining({ targetTimestampMs: 1000, timeoutMs: 10_000 })
             );
         } finally {

@@ -25,6 +25,7 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Toolbar from '@mui/material/Toolbar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import { asbError } from '@project/common/util';
 
 interface OnlineSubtitleImportCandidate {
     name: string;
@@ -212,6 +213,7 @@ export default function OnlineSubtitleSourceDialog({
             setJimakuFiles(undefined);
             selectedEntryIdRef.current = undefined;
         } catch (e) {
+            asbError({ asbLogLabel: 'subtitle/source' }, e);
             setError((e as Error).message);
         } finally {
             setSearching(false);
@@ -249,6 +251,7 @@ export default function OnlineSubtitleSourceDialog({
                     upsertRecentWork({ id: entry.id, name: entry.name });
                 }
             } catch (e) {
+                asbError({ asbLogLabel: 'subtitle/source' }, e);
                 if (fileLoadRequestIdRef.current === requestId && selectedEntryIdRef.current === entry.id) {
                     setError((e as Error).message);
                     setJimakuSelectedEntry(undefined);
@@ -272,6 +275,7 @@ export default function OnlineSubtitleSourceDialog({
                 await onImport(file);
                 onClose();
             } catch (e) {
+                asbError({ asbLogLabel: 'subtitle/source' }, e);
                 setError((e as Error).message);
             } finally {
                 setLoadingFiles(false);

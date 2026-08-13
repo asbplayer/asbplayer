@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import TabRegistry, { Asbplayer } from '@/services/tab-registry';
 import ImageCapturer from '@/services/image-capturer';
 import VideoHeartbeatHandler from '@/handlers/video/video-heartbeat-handler';
@@ -535,10 +536,10 @@ export default defineBackground(() => {
                             browser.runtime.reload();
                         }
                     } catch (e) {
-                        console.error(e);
+                        asbError({ asbLogLabel: 'background' }, e);
                     }
                 }
-            })().catch(console.error);
+            })().catch((error) => asbError(error, { asbLogLabel: 'background' }));
         });
     } else {
         if (!isMobile) {

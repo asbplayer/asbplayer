@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     StartRecordingAudioWithTimeoutMessage,
     StopRecordingAudioMessage,
@@ -93,7 +94,7 @@ window.onload = async () => {
                             )
                         )
                         .catch((e) => {
-                            console.error(e);
+                            asbError({ asbLogLabel: 'recording/audio' }, e);
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
@@ -105,7 +106,7 @@ window.onload = async () => {
                         .then((stream) => audioRecorder.stopSafely().then(() => audioRecorder.start(stream)))
                         .then(() => sendResponse({ started: true }))
                         .catch((e) => {
-                            console.error(e);
+                            asbError({ asbLogLabel: 'recording/audio' }, e);
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
@@ -135,7 +136,7 @@ window.onload = async () => {
                                 // Just no-op if nothing is recording--this can happen in bulk export.
                                 errorCode = StopRecordingErrorCode.other;
                             } else {
-                                console.error(e);
+                                asbError({ asbLogLabel: 'recording/audio' }, e);
                                 errorCode = StopRecordingErrorCode.other;
                             }
 
@@ -158,7 +159,7 @@ window.onload = async () => {
                     Mp3Encoder.encode(base64ToBlob(base64, `audio/${extension}`), mp3WorkerFactory)
                         .then((blob) => blob.arrayBuffer())
                         .then((buffer) => sendResponse(bufferToBase64(buffer)))
-                        .catch(console.error);
+                        .catch((error) => asbError(error, { asbLogLabel: 'recording/encoding' }));
                     return true;
                 }
             }

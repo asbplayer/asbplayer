@@ -1,3 +1,4 @@
+import { asbInfo } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import makeStyles from '@mui/styles/makeStyles';
@@ -450,7 +451,7 @@ const AnkiDialog = ({
 
             e.preventDefault();
             e.stopPropagation();
-            audioClip!.play().catch(console.info);
+            audioClip!.play().catch((error) => asbInfo(error, { asbLogLabel: 'anki/ui' }));
         },
         [audioClip]
     );

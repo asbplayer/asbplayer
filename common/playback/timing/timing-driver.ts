@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 export interface TimingDriverCallbacks {
     onTime(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void>;
     onPlaybackStarted(): Promise<void>;
@@ -157,7 +158,11 @@ export default class TimingUpdateQueue {
         try {
             this.callbacks.onError(error);
         } catch (callbackError) {
-            console.error('[asbplayer/playback] Timing update error handler failed', { error, callbackError });
+            asbError(
+                'Timing update error handler failed',
+                { error, callbackError },
+                { asbLogLabel: 'playback/timing' }
+            );
         }
     }
 }

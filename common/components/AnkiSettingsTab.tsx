@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import FormHelperText from '@mui/material/FormHelperText';
 import AnkiConnectTutorialBubble from './AnkiConnectTutorialBubble';
 import DeckFieldTutorialBubble from './DeckFieldTutorialBubble';
@@ -222,7 +223,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
             setAnkiConnectUrlError(undefined);
         } catch (e) {
             setAnkiConnectApiKeyRequired(apiKeyRequired || Anki.requiresApiKey(e));
-            console.error(e);
+            asbError({ asbLogLabel: 'anki/connect' }, e);
             setDeckNames(undefined);
             setModelNames(undefined);
 
@@ -273,7 +274,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     return;
                 }
 
-                console.error(e);
+                asbError({ asbLogLabel: 'anki/connect' }, e);
                 setFieldNames(undefined);
 
                 if (e instanceof Error) {
@@ -356,7 +357,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
         anki.createDeck(defaultDeckName)
             .then(() => requestAnkiConnect())
             .then(() => onSettingChanged('deck', defaultDeckName))
-            .catch(console.error);
+            .catch((error) => asbError(error, { asbLogLabel: 'anki/connect' }));
     }, [anki, requestAnkiConnect, onSettingChanged]);
 
     useEffect(() => {
@@ -380,7 +381,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     onSettingChanged('urlField', 'URL'),
                 ])
             )
-            .catch(console.error);
+            .catch((error) => asbError(error, { asbLogLabel: 'anki/connect' }));
         if (tutorialStep === TutorialStep.ankiFields) {
             onTutorialStepChanged(TutorialStep.testCard);
         }

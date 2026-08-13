@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { GlobalState, GlobalStateProvider, initialGlobalState } from '@project/common/global-state';
 import ChromeExtension from './chrome-extension';
 
@@ -35,7 +36,7 @@ export class AppExtensionGlobalStateProvider implements GlobalStateProvider {
 
             return partialState;
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'app/state' }, e);
             return Object.fromEntries(keys.map((k) => [k, initialGlobalState[k]]));
         }
     }

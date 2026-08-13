@@ -1,3 +1,4 @@
+import { asbInfo } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
 import { AnkiExportMode, CardModel, MediaFragment, Progress } from '@project/common';
 import { HttpFetcher, Fetcher } from '@project/common';
@@ -16,7 +17,7 @@ const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
 
 const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {
-    console.info(`[asbplayer] ${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
+    asbInfo({ asbLogLabel: 'anki/media' }, `${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
 };
 
 const timedMediaBase64 = async (

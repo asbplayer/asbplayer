@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     OpenStatisticsMessage,
     PlayMode,
@@ -337,7 +338,7 @@ export default class KeyBindings {
                         };
                         void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
-                    .catch(console.error);
+                    .catch((error) => asbError(error, { asbLogLabel: 'key-bindings' }));
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -364,7 +365,7 @@ export default class KeyBindings {
                         };
                         void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
-                    .catch(console.error);
+                    .catch((error) => asbError(error, { asbLogLabel: 'key-bindings' }));
             },
             () => context.subtitleController.subtitles.length === 0,
             true

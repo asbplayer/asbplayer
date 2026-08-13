@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import ImageCapturer from '../../services/image-capturer';
 import {
     Command,
@@ -49,7 +50,7 @@ export default class TakeScreenshotHandler {
                 extension: 'jpeg',
             };
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'recording/screenshot' }, e);
             imageModel = {
                 base64: '',
                 extension: 'jpeg',

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
@@ -56,7 +57,7 @@ export default function WordField({
                     setDuplicateNotes(await anki.findNotesWithWord(trimmedWord));
                     setLastSearchedWord(trimmedWord);
                 } catch (e) {
-                    console.error(e);
+                    asbError({ asbLogLabel: 'dictionary' }, e);
                 }
             })();
         }, 500);

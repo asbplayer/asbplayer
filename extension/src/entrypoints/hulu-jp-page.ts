@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { extractExtension, poll, trackFromDef } from '@/pages/util';
 
@@ -97,7 +98,7 @@ export default defineUnlistedScript(() => {
                             detail: response ?? { basename: '', error: 'Timed out' },
                         })
                     );
-                })().catch(console.error);
+                })().catch((error) => asbError(error, { asbLogLabel: 'hulu' }));
             },
             false
         );

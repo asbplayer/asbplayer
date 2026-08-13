@@ -6,7 +6,7 @@ import {
 } from '@project/common/settings';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { PlayMode } from '@project/common';
-import { formatAsSignedMs } from '@project/common/util';
+import { asbWarn, formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
     playbackPlansEqual,
@@ -184,10 +184,14 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     (!Number.isFinite(actualPlaybackRate) ||
                         Math.abs(actualPlaybackRate - playbackRate) > minimumPlaybackRate)
                 ) {
-                    console.warn('[asbplayer/playback] Playback rate command was not respected', {
-                        requestedPlaybackRate: playbackRate,
-                        actualPlaybackRate,
-                    });
+                    asbWarn(
+                        'Playback rate command was not respected',
+                        {
+                            requestedPlaybackRate: playbackRate,
+                            actualPlaybackRate,
+                        },
+                        { asbLogLabel: 'playback/rate' }
+                    );
                 }
             },
             correctAutoPause: async (targetTimestampMs) => {
@@ -653,10 +657,14 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         let watchdogHandle: ReturnType<typeof setTimeout> | undefined;
         const watchdog = new Promise<'cancelled'>((resolve) => {
             watchdogHandle = setTimeout(() => {
-                console.warn('[asbplayer/playback] Internal seek did not complete before the watchdog timeout', {
-                    targetTimestampMs,
-                    timeoutMs: internalSeekWatchdogMs,
-                });
+                asbWarn(
+                    'Internal seek did not complete before the watchdog timeout',
+                    {
+                        targetTimestampMs,
+                        timeoutMs: internalSeekWatchdogMs,
+                    },
+                    { asbLogLabel: 'playback/seek' }
+                );
                 this.timingDriver.cancelExpectedInternalSeek();
                 resolve('cancelled');
             }, internalSeekWatchdogMs);
@@ -678,11 +686,15 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const actualTimestampMs = this.timingDriver.currentTimeMs();
         const frameTimeMs = this.timingDriver.frameTimeMs();
         if (frameTimeMs <= 0 || Math.abs(actualTimestampMs - targetTimestampMs) <= frameTimeMs / 2) return;
-        console.warn(`[asbplayer/playback] ${command} command has a timestamp mismatch`, {
-            targetTimestampMs,
-            actualTimestampMs,
-            frameTimeMs,
-        });
+        asbWarn(
+            `${command} command has a timestamp mismatch`,
+            {
+                targetTimestampMs,
+                actualTimestampMs,
+                frameTimeMs,
+            },
+            { asbLogLabel: 'playback/seek' }
+        );
     }
 
     private clampTimestamp(timestampMs: number): number {

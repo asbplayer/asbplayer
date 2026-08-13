@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { HttpPostMessage, Message, TabToExtensionCommand, VideoToExtensionCommand } from '@project/common';
 
 export interface FetchOptions {
@@ -100,7 +101,9 @@ export default class FrameBridgeClient {
                             this._resolveHttpPost(message.message as HttpPostMessage);
                         } else {
                             if (this.serverMessageListener) {
-                                void this.serverMessageListener(message.message).catch(console.error);
+                                void this.serverMessageListener(message.message).catch((error) =>
+                                    asbError(error, { asbLogLabel: 'bridge' })
+                                );
                             }
                         }
                         break;

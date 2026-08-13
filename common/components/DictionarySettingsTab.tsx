@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import LabelWithHoverEffect from './LabelWithHoverEffect';
@@ -798,6 +799,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 setWaniKaniUserInfo(user);
             } catch (e) {
                 if (requestId !== waniKaniUserInfoRequestId.current) return;
+                asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
                 waniKaniUserInfoApiToken.current = undefined;
                 setWaniKaniUserInfo(undefined);
                 if (e instanceof Error) {
@@ -844,7 +846,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 />
             );
         } catch (e) {
-            console.error(e);
+            asbError({ asbLogLabel: 'dictionary/yomitan' }, e);
             if (e instanceof Error) {
                 setDictionaryYomitanUrlError(e.message);
             } else if (typeof e === 'string') {
@@ -904,6 +906,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
             } catch (e) {
                 setDeckNames(undefined);
                 setAllFieldNames(undefined);
+                asbError({ asbLogLabel: 'anki/connect' }, e);
                 setAnkiError(e instanceof Error ? e.message : String(e));
             }
         })();
@@ -951,7 +954,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
             void ensureStoragePersisted();
             await dictionaryProvider.buildAnkiCache(activeProfile, settings);
         } catch (e) {
-            console.error('Failed to send build Anki cache message', e);
+            asbError({ asbLogLabel: 'dictionary/anki' }, 'Failed to send build Anki cache message', e);
             setBuildAnkiCacheState({
                 type: DictionaryBuildAnkiCacheStateType.error,
                 body: {
@@ -975,7 +978,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
             void ensureStoragePersisted();
             await dictionaryProvider.buildWaniKaniCache(activeProfile);
         } catch (e) {
-            console.error('Failed to send build WaniKani cache message', e);
+            asbError({ asbLogLabel: 'dictionary/wanikani' }, 'Failed to send build WaniKani cache message', e);
             dictionaryTracks.forEach((dt, track) => {
                 if (!dictionaryStatusCollectionEnabled(dt, { includeStates: false })) return;
                 setBuildWaniKaniCacheState({

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { WebSocketClientSettings } from '../../settings';
 import { CardTextFieldValues, PostMineAction } from '../../src/model';
 import { WebSocketClient } from '../../web-socket-client';
@@ -13,7 +14,7 @@ export const useAppWebSocketClient = ({ settings }: { settings: WebSocketClientS
     useEffect(() => {
         if (settings.webSocketClientEnabled && settings.webSocketServerUrl) {
             const client = new WebSocketClient();
-            client.bind(settings.webSocketServerUrl).catch(console.error);
+            client.bind(settings.webSocketServerUrl).catch((error) => asbError(error, { asbLogLabel: 'web-socket' }));
             setClient(client);
             return () => client.unbind();
         }

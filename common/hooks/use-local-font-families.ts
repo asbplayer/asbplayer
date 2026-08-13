@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { useCallback, useEffect, useState } from 'react';
 
 // @ts-expect-error: queryLocalFonts is not yet in the TypeScript lib.dom.d.ts
@@ -28,7 +29,7 @@ export const useLocalFontFamilies = () => {
 
                     setLocalFontFamilies(Object.keys(families));
                 })
-                .catch(console.error);
+                .catch((error: unknown) => asbError(error, { asbLogLabel: 'fonts' }));
         }
     }, []);
 

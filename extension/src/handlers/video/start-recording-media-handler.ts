@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import ImageCapturer from '../../services/image-capturer';
 import {
     AudioErrorCode,
@@ -79,7 +80,7 @@ export default class StartRecordingMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                console.error(e);
+                asbError({ asbLogLabel: 'recording/video' }, e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',

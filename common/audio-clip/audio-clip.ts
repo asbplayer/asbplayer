@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import Mp3Encoder from './mp3-encoder';
 
 import { AudioErrorCode, CardModel, FileModel } from '@project/common';
@@ -573,7 +574,7 @@ class FileAudioData implements AudioData {
                 })
                 .catch((e) => {
                     if (!(e instanceof ClippingCancelledError)) {
-                        console.error(e);
+                        asbError({ asbLogLabel: 'audio-clip' }, e);
                     }
                 });
             invokeCallbacks('play', this._callbacks);

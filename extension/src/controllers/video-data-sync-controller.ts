@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
@@ -402,7 +403,9 @@ export default class VideoDataSyncController {
                     }
 
                     if ('dismissFtue' === message.command) {
-                        globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
+                        globalStateProvider
+                            .set({ ftueHasSeenSubtitleTrackSelector: true })
+                            .catch((error) => asbError(error, { asbLogLabel: 'video/sync' }));
                         return;
                     }
 
@@ -461,7 +464,7 @@ export default class VideoDataSyncController {
                     if (dataWasSynced) {
                         this._hideAndResume();
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError(error, { asbLogLabel: 'video/sync' }));
             });
         }
 

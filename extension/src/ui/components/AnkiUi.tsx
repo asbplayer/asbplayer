@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     MediaFragmentModel,
@@ -197,7 +198,7 @@ export default function AnkiUi({ bridge }: Props) {
                     bridge.sendMessageFromServer({ command: 'card-exported-dialog' });
                 }
             } catch (e) {
-                console.error(e);
+                asbError({ asbLogLabel: 'anki/ui' }, e);
                 setAlertSeverity('error');
 
                 if (e instanceof Error) {
