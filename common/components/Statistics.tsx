@@ -56,7 +56,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { asbError } from '@project/common/util';
 import { timeDurationDisplay } from '@project/common/util/util';
 import type { SxProps } from '@mui/material/styles';
-import { type Theme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import Stack from '@mui/material/Stack';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';

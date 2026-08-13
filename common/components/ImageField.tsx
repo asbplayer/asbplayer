@@ -7,7 +7,7 @@ import FileCopyIcon from '@mui/icons-material/FileCopy';
 import { useTranslation } from 'react-i18next';
 import type { MediaFragment } from '@project/common';
 import { MediaFragmentErrorCode } from '@project/common';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import { useImageData } from '@project/common/hooks/use-image-data';
 import Tooltip from '@project/common/components/Tooltip';
 import ImageIcon from '@mui/icons-material/Image';

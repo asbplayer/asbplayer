@@ -1,4 +1,4 @@
-import { type IndexedSubtitleModel, type Token } from '@project/common';
+import type { IndexedSubtitleModel, Token } from '@project/common';
 import { jest } from '@jest/globals';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import {

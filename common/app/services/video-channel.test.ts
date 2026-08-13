@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { type Message, PlayMode } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
 import VideoChannel from '@project/common/app/services/video-channel';
-import { type VideoProtocol, type VideoProtocolMessage } from '@project/common/app/services/video-protocol';
+import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 
 class TestVideoProtocol implements VideoProtocol {
     readonly sent: Message[] = [];

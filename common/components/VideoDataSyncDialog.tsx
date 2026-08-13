@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import MiniProfileSelector from '@project/common/components/MiniProfileSelector';
 import type { Profile } from '@project/common/settings';
 import Alert from '@mui/material/Alert';
-import { type ButtonBaseActions } from '@mui/material';
+import type { ButtonBaseActions } from '@mui/material';
 import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
 import type { TFunction } from 'i18next';

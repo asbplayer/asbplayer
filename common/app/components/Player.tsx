@@ -1,7 +1,7 @@
 import type { MutableRefObject } from 'react';
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';

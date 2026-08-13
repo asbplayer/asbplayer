@@ -1,7 +1,7 @@
 import type { ForwardedRef, ReactNode } from 'react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import type {
     ContextProp,
     ItemProps,

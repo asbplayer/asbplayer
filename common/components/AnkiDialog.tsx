@@ -48,7 +48,7 @@ import MiniProfileSelector from '@project/common/components/MiniProfileSelector'
 import Alert from '@mui/material/Alert';
 import { isMacOs } from '@project/common/device-detection/mac';
 import AnkiDialogButton from '@project/common/components/AnkiDialogButton';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import AnkiDialogTutorialBubble from '@project/common/components/AnkiDialogTutorialBubble';
 import CardSelectView from '@project/common/components/CardSelectView';

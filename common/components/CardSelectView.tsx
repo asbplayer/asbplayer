@@ -23,7 +23,7 @@ import DialogContent from '@mui/material/DialogContent';
 import Stack from '@mui/material/Stack';
 import ListItem from '@mui/material/ListItem';
 import Tooltip from '@mui/material/Tooltip';
-import { type ButtonBaseActions } from '@mui/material';
+import type { ButtonBaseActions } from '@mui/material';
 import { asbError } from '@project/common/util';
 
 interface Props {

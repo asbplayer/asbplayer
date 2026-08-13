@@ -76,7 +76,7 @@ import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
 import BlurOverlay from '@project/common/app/components/BlurOverlay';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
-import { type Theme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 
 const overlayContainerHeight = 48;
 interface ExperimentalHTMLVideoElement extends HTMLVideoElement {

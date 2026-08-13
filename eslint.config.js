@@ -71,6 +71,7 @@ module.exports = [
         rules: {
             '@typescript-eslint/consistent-type-imports': 'error',
             '@typescript-eslint/consistent-type-exports': 'error',
+            '@typescript-eslint/no-import-type-side-effects': 'error',
             '@typescript-eslint/no-unnecessary-type-assertion': 'error',
             '@typescript-eslint/return-await': 'error',
             '@typescript-eslint/await-thenable': 'error',

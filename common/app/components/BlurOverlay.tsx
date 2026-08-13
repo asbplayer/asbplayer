@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import { useOverlayBounds } from '@project/common/app/hooks/use-overlay-bounds';
 
 // Resizable, draggable blur mask that stays within its container and auto-hides its handles when idle

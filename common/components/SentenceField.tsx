@@ -3,7 +3,7 @@ import TextField from '@mui/material/TextField';
 import makeStyles from '@mui/styles/makeStyles';
 import type { SubtitleModel } from '..';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 
 interface TextImageSetProps {
     selectedSubtitles: SubtitleModel[];

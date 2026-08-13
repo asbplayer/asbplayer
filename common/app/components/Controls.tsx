@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { makeStyles, withStyles } from '@mui/styles';
 import { useTheme } from '@mui/material/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlurOnIcon from '@mui/icons-material/BlurOn';
 import BlurOffIcon from '@mui/icons-material/BlurOff';

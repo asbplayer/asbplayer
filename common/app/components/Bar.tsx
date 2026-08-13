@@ -1,5 +1,5 @@
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import AppBar from '@mui/material/AppBar';

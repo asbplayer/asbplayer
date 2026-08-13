@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { useCallback, type ComponentProps } from 'react';
 
 import StatisticsSentenceDetailsDialog from '@project/common/components/StatisticsSentenceDetailsDialog';
-import { type DictionaryProvider } from '@project/common/dictionary-db';
-import { type DictionaryStatisticsSentence } from '@project/common/dictionary-statistics';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryStatisticsSentence } from '@project/common/dictionary-statistics';
 
 interface Props
     extends Omit<

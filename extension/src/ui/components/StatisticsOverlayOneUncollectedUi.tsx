@@ -5,7 +5,7 @@ import type Bridge from '@project/extension/src/ui/bridge';
 import { createTheme } from '@project/common/theme';
 import type { Message, UpdateStateMessage } from '@project/common';
 import OneUncollectedSentenceDetailsDialog from '@project/common/components/OneUncollectedSentenceDetailsDialog';
-import { type DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
+import type { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';

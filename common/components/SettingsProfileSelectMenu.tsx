@@ -8,7 +8,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import type { Profile } from '@project/common/settings';
 import type { TFunction } from 'i18next';
 

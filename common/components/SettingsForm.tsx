@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { type CreateCSSProperties, makeStyles } from '@mui/styles';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import type { CardModel } from '@project/common';
 import type { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
 import { isMobile } from 'react-device-detect';

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import type { SubtitleSettings, TextSubtitleSettings } from '@project/common/settings';
 import { textSubtitleSettingsForTrack } from '@project/common/settings';
 import { computeStyles } from '@project/common/util';
