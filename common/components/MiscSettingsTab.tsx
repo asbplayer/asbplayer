@@ -20,6 +20,7 @@ import {
     exportSettings,
     isTrackAutoCopyable,
     isTrackSeekable,
+    mergeImportedSettings,
     PauseOnHoverMode,
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
@@ -164,12 +165,12 @@ const MiscSettingTab: React.FC<Props> = ({
             }
 
             const importedSettings = JSON.parse(await file.text());
-            const validatedSettings = validateSettings(importedSettings);
+            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings));
             onSettingsChanged(validatedSettings);
         } catch (e) {
             asbError('settings/import', e);
         }
-    }, [onSettingsChanged]);
+    }, [onSettingsChanged, settings]);
 
     const handleImportSettings = useCallback(() => {
         settingsFileInputRef.current?.click();

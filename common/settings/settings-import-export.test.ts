@@ -7,9 +7,14 @@ import {
     TokenFrequencyAnnotation,
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings/settings';
-import { validateSettings } from '@project/common/settings/settings-import-export';
+import {
+    mergeImportedSettings,
+    omitPath,
+    settingsForExport,
+    validateSettings,
+} from '@project/common/settings/settings-import-export';
 import { defaultSettings } from '@project/common/settings/settings-provider';
-import { expect, it } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 
 it('validates the default settings', () => {
@@ -28,6 +33,159 @@ it('fails validation when an unknown key bind key is encountered', () => {
 
 it('validates last languages synced', () => {
     validateSettings({ ...defaultSettings, streamingLastLanguagesSynced: { 'domain.com': ['en', 'ja'] } });
+});
+
+describe('omitPath', () => {
+    it('removes a top-level key', () => {
+        const value = { keep: 'value', remove: 'secret' };
+
+        expect(omitPath(value, ['remove'])).toEqual({ keep: 'value' });
+    });
+
+    it('removes a nested key', () => {
+        const value = { outer: { keep: 'value', remove: 'secret' } };
+
+        expect(omitPath(value, ['outer', 'remove'])).toEqual({ outer: { keep: 'value' } });
+    });
+
+    it('applies a wildcard to every array item', () => {
+        const value = {
+            tracks: [
+                { keep: 'first', remove: 'first-secret' },
+                { keep: 'second', remove: 'second-secret' },
+            ],
+        };
+
+        expect(omitPath(value, ['tracks', '*', 'remove'])).toEqual({
+            tracks: [{ keep: 'first' }, { keep: 'second' }],
+        });
+    });
+
+    it('handles empty arrays and out-of-range indexes', () => {
+        const empty = { tracks: [] };
+        const populated = { tracks: [{ keep: 'value' }] };
+
+        expect(omitPath(empty, ['tracks', '*', 'remove'])).toEqual({ tracks: [] });
+        expect(omitPath(populated, ['tracks', '1', 'remove'])).toEqual(populated);
+    });
+
+    it('applies a path to one array index', () => {
+        const value = {
+            tracks: [
+                { keep: 'first', remove: 'first-secret' },
+                { keep: 'second', remove: 'second-secret' },
+                { keep: 'third', remove: 'third-secret' },
+            ],
+        };
+
+        expect(omitPath(value, ['tracks', '1', 'remove'])).toEqual({
+            tracks: [
+                { keep: 'first', remove: 'first-secret' },
+                { keep: 'second' },
+                { keep: 'third', remove: 'third-secret' },
+            ],
+        });
+    });
+
+    it('applies a wildcard to object values', () => {
+        const value = {
+            profiles: {
+                first: { keep: 'first', remove: 'first-secret' },
+                second: { keep: 'second', remove: 'second-secret' },
+            },
+        };
+
+        expect(omitPath(value, ['profiles', '*', 'remove'])).toEqual({
+            profiles: { first: { keep: 'first' }, second: { keep: 'second' } },
+        });
+    });
+
+    it('does not mutate the input', () => {
+        const value = { nested: { remove: 'secret' } };
+
+        omitPath(value, ['nested', 'remove']);
+
+        expect(value).toEqual({ nested: { remove: 'secret' } });
+    });
+
+    it('leaves values unchanged when the path cannot be traversed', () => {
+        const value = { nested: null, primitive: 'value' };
+
+        expect(omitPath(value, ['missing', 'key'])).toEqual(value);
+        expect(omitPath(value, ['nested', 'key'])).toEqual(value);
+        expect(omitPath(value, ['primitive', 'key'])).toEqual(value);
+        expect(omitPath(value, [])).toBe(value);
+    });
+});
+
+it('excludes credentials from settings exports without mutating the settings', () => {
+    const settings = {
+        ...defaultSettings,
+        ankiConnectApiKey: 'anki-secret',
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track, index) => ({
+            ...track,
+            dictionaryWaniKaniApiToken: `wanikani-secret-${index}`,
+        })),
+    };
+
+    const exportedSettings = settingsForExport(settings);
+
+    expect(exportedSettings).not.toHaveProperty('ankiConnectApiKey');
+    expect(exportedSettings).not.toHaveProperty('streamingPages');
+    expect(exportedSettings.dictionaryTracks).toHaveLength(3);
+    expect(exportedSettings.dictionaryTracks).toEqual([
+        expect.not.objectContaining({ dictionaryWaniKaniApiToken: expect.any(String) }),
+        expect.not.objectContaining({ dictionaryWaniKaniApiToken: expect.any(String) }),
+        expect.not.objectContaining({ dictionaryWaniKaniApiToken: expect.any(String) }),
+    ]);
+    expect(settings.ankiConnectApiKey).toBe('anki-secret');
+    expect(settings.dictionaryTracks[0].dictionaryWaniKaniApiToken).toBe('wanikani-secret-0');
+});
+
+it('restores omitted credentials when importing a redacted export', () => {
+    const currentSettings = {
+        ...defaultSettings,
+        ankiConnectApiKey: 'anki-secret',
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track, index) => ({
+            ...track,
+            dictionaryWaniKaniApiToken: `wanikani-secret-${index}`,
+        })),
+    };
+    const exportedSettings = settingsForExport(currentSettings);
+
+    const importedSettings = mergeImportedSettings(exportedSettings, currentSettings);
+    const validatedSettings = validateSettings(importedSettings);
+
+    expect(validatedSettings.ankiConnectApiKey).toBe('anki-secret');
+    expect(validatedSettings.dictionaryTracks?.map((track) => track.dictionaryWaniKaniApiToken)).toEqual([
+        'wanikani-secret-0',
+        'wanikani-secret-1',
+        'wanikani-secret-2',
+    ]);
+});
+
+it('does not restore credentials that are explicitly present in an import', () => {
+    const currentSettings = {
+        ...defaultSettings,
+        ankiConnectApiKey: 'existing-anki-secret',
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track) => ({
+            ...track,
+            dictionaryWaniKaniApiToken: 'existing-wanikani-secret',
+        })),
+    };
+    const importedSettings = {
+        ...settingsForExport(currentSettings),
+        ankiConnectApiKey: '',
+        dictionaryTracks: currentSettings.dictionaryTracks.map((track) => ({
+            ...track,
+            dictionaryWaniKaniApiToken: '',
+        })),
+    };
+
+    const mergedSettings = mergeImportedSettings(importedSettings, currentSettings);
+
+    expect(mergedSettings.ankiConnectApiKey).toBe('');
+    expect(mergedSettings.dictionaryTracks?.map((track) => track.dictionaryWaniKaniApiToken)).toEqual(['', '', '']);
 });
 
 it('validates exported settings', () => {

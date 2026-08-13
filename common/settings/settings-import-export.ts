@@ -727,27 +727,85 @@ const settingsSchema = {
     },
 };
 
-const ignoreKeys: (keyof AsbplayerSettings)[] = [
-    'streamingPages', // Ignored due to security risk (e.g. disable CSP)
-];
+export type IgnorePathSegment = string | '*';
+export type IgnorePath = readonly IgnorePathSegment[];
 
-const withIgnoredKeysRemoved = (settings: any) => {
-    const copy = { ...settings };
-    for (const ignoreKey of ignoreKeys) {
-        delete copy[ignoreKey];
+const ignorePaths: readonly IgnorePath[] = [
+    ['ankiConnectApiKey'],
+    ['dictionaryTracks', '*', 'dictionaryWaniKaniApiToken'],
+    ['streamingPages'], // Ignored due to security risk (e.g. disable CSP)
+];
+const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
+
+export const omitPath = (value: any, path: IgnorePath): any => {
+    if (value === null || typeof value !== 'object' || !path.length) return value;
+
+    const [segment, ...remainingPath] = path;
+    if (segment === '*') {
+        if (Array.isArray(value)) return value.map((item) => omitPath(item, remainingPath));
+        return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, omitPath(child, remainingPath)]));
+    }
+
+    const copy = Array.isArray(value) ? [...value] : { ...value };
+    if (!remainingPath.length) {
+        delete copy[segment];
+    } else if (segment in copy) {
+        copy[segment] = omitPath(copy[segment], remainingPath);
     }
     return copy;
 };
 
+const omitPaths = (settings: any, paths: readonly IgnorePath[]) =>
+    paths.reduce((settingsCopy, ignorePath) => omitPath(settingsCopy, ignorePath), settings);
+
+export const settingsForExport = (settings: AsbplayerSettings): Partial<AsbplayerSettings> => {
+    return omitPaths(settings, ignorePaths);
+};
+
+/**
+ * Redacted exports omit credentials. Restore those values from the current settings before validation so
+ * ensureConsistencyOnRead does not replace omitted values with their empty default.
+ */
+export const mergeImportedSettings = (
+    importedSettings: Partial<AsbplayerSettings>,
+    currentSettings: AsbplayerSettings
+): Partial<AsbplayerSettings> => {
+    const mergedSettings = { ...importedSettings };
+
+    if (!('ankiConnectApiKey' in importedSettings)) {
+        mergedSettings.ankiConnectApiKey = currentSettings.ankiConnectApiKey;
+    }
+
+    if (Array.isArray(importedSettings.dictionaryTracks)) {
+        mergedSettings.dictionaryTracks = importedSettings.dictionaryTracks.map((track, index) => {
+            const currentTrack = currentSettings.dictionaryTracks[index];
+            if (
+                track === null ||
+                typeof track !== 'object' ||
+                'dictionaryWaniKaniApiToken' in track ||
+                currentTrack === undefined
+            ) {
+                return track;
+            }
+            return {
+                ...(track as Record<string, unknown>),
+                dictionaryWaniKaniApiToken: currentTrack.dictionaryWaniKaniApiToken,
+            };
+        }) as AsbplayerSettings['dictionaryTracks'];
+    }
+
+    return mergedSettings;
+};
+
 export const exportSettings = (settings: AsbplayerSettings) => {
     download(
-        new Blob([JSON.stringify(withIgnoredKeysRemoved(settings))], { type: 'application/json' }),
+        new Blob([JSON.stringify(settingsForExport(settings))], { type: 'application/json' }),
         `asbplayer-settings-${getCurrentTimeString()}.json`
     );
 };
 
 export const validateSettings = (settings: any) => {
-    const copy = withIgnoredKeysRemoved(settings);
+    const copy = omitPaths(settings, validationIgnorePaths);
     const validator = new Validator();
     validator.addSchema(keyBindSchema);
     validator.addSchema(ankiFieldSchema);
