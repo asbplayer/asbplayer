@@ -318,7 +318,7 @@ export default defineContentScript({
                             break;
                     }
                 }
-            })().catch((error) => asbError(error, { asbLogLabel: 'content' }));
+            })().catch((error) => asbError('content', error));
         });
 
         browser.runtime.onMessage.addListener((request) => {
@@ -361,7 +361,7 @@ export default defineContentScript({
                 };
 
                 sendMessageToPlayer(versionMessage);
-            })().catch((error) => asbError(error, { asbLogLabel: 'content' }));
+            })().catch((error) => asbError('content', error));
         });
     },
 });

@@ -119,10 +119,7 @@ export async function buildWaniKaniCachePipeline(
             });
             if (existingBuild !== undefined) {
                 const expiration = _buildIdExpiration(existingBuild, 'waniKani');
-                asbError(
-                    { asbLogLabel: 'dictionary/wanikani' },
-                    `Build already in progress - expires at ${expiration}`
-                );
+                asbError('dictionary/wanikani', `Build already in progress - expires at ${expiration}`);
                 statusUpdates({
                     type: DictionaryBuildWaniKaniCacheStateType.error,
                     body: {
@@ -163,7 +160,7 @@ export async function buildWaniKaniCachePipeline(
             try {
                 await yomitan.version();
             } catch (e) {
-                asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
+                asbError('dictionary/wanikani', e);
                 statusUpdates({
                     type: DictionaryBuildWaniKaniCacheStateType.error,
                     body: {
@@ -275,7 +272,7 @@ export async function buildWaniKaniCachePipeline(
                 });
                 if (clearTokens || clearResources) tracksWithClearedData.add(track);
             } catch (e) {
-                asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
+                asbError('dictionary/wanikani', e);
                 statusUpdates({
                     type: DictionaryBuildWaniKaniCacheStateType.error,
                     body: {
@@ -375,7 +372,7 @@ export async function buildWaniKaniCachePipeline(
 
         _publishWaniKaniTrackStats(statusUpdates, buildTs, trackStats);
     } catch (e) {
-        asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
+        asbError('dictionary/wanikani', e);
         const errorTracks = tracksWithStatus.size ? tracksWithStatus : currentTrack === undefined ? [] : [currentTrack];
         _publishWaniKaniTrackErrors(statusUpdates, errorTracks, e, modifiedTokensByTrack);
     } finally {
@@ -559,7 +556,7 @@ export async function _processWaniKaniTracks(
         await _saveWaniKaniTrackMetadataForDB(db, profile, buildId, activeTracks, trackStates);
     } catch (e) {
         error = e;
-        asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
+        asbError('dictionary/wanikani', e);
     } finally {
         await _clearBuildIds(db, activeTracks, buildId, 'waniKani');
         if (error) {

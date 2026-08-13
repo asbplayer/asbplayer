@@ -315,11 +315,9 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
             throw new Error('WebM capture is not supported in this browser');
         }
 
-        asbInfo(`Using WebM codec: ${mimeType}`, { asbLogLabel: 'media-fragment' });
+        asbInfo('media-fragment', `Using WebM codec: ${mimeType}`);
         if (!mimeType.includes('av1')) {
-            asbInfo(`WebM codec fallback triggered: preferred AV1 unavailable, using ${mimeType}`, {
-                asbLogLabel: 'media-fragment',
-            });
+            asbInfo('media-fragment', `WebM codec fallback triggered: preferred AV1 unavailable, using ${mimeType}`);
         }
 
         return mimeType;
@@ -494,8 +492,8 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         }
 
         asbInfo(
-            `Capture-stream fallback triggered: requestFrame unavailable, using timed capture at ${captureFrameRate}fps`,
-            { asbLogLabel: 'media-fragment' }
+            'media-fragment',
+            `Capture-stream fallback triggered: requestFrame unavailable, using timed capture at ${captureFrameRate}fps`
         );
 
         for (const track of manualCaptureStream?.getTracks() ?? []) {
@@ -594,9 +592,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         const frameSchedulerMode: FrameSchedulerMode =
             typeof video.requestVideoFrameCallback === 'function' ? 'video-frame-callback' : 'animation-frame';
         if (frameSchedulerMode !== 'video-frame-callback') {
-            asbInfo('Frame-scheduler fallback triggered: using requestAnimationFrame', {
-                asbLogLabel: 'media-fragment',
-            });
+            asbInfo('media-fragment', 'Frame-scheduler fallback triggered: using requestAnimationFrame');
         }
         const done = (mediaTimeSeconds?: number) => {
             const mediaTimeMs = (mediaTimeSeconds ?? video.currentTime) * 1000;
@@ -670,7 +666,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
                     clearScheduledFrame();
                     pauseCapture?.();
                     video.pause();
-                    asbInfo('Pausing WebM render while tab is hidden', { asbLogLabel: 'media-fragment' });
+                    asbInfo('media-fragment', 'Pausing WebM render while tab is hidden');
                 }
                 function resumeAfterHiddenTab() {
                     if (settled || !waitingForVisibleTab || !pageVisible()) {
@@ -678,7 +674,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
                     }
 
                     waitingForVisibleTab = false;
-                    asbInfo('Resuming WebM render after tab became visible', { asbLogLabel: 'media-fragment' });
+                    asbInfo('media-fragment', 'Resuming WebM render after tab became visible');
                     resumeCapture?.();
                     Promise.resolve(video.paused && !video.ended ? video.play() : undefined)
                         .then(() => {
@@ -844,7 +840,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
     }
 
     private _logWebmCaptureSettings(settings: WebmCaptureLogSettings) {
-        asbInfo('WebM capture settings', settings, { asbLogLabel: 'media-fragment' });
+        asbInfo('media-fragment', 'WebM capture settings', settings);
     }
 
     private async _seekVideo(video: HTMLVideoElement, timestamp: number, abortSignal?: AbortSignal): Promise<void> {

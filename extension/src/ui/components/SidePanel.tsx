@@ -201,7 +201,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 }
 
                 setInitializing(false);
-            })().catch((error) => asbError(error, { asbLogLabel: 'side-panel' }));
+            })().catch((error) => asbError('side-panel', error));
         });
     }, [extension, subtitles, initializing, currentTabId, syncedVideoTab]);
 
@@ -280,7 +280,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
 
     const handleError = useCallback(
         (message: any) => {
-            asbError({ asbLogLabel: 'side-panel' }, message);
+            asbError('side-panel', message);
 
             setAlertSeverity('error');
 

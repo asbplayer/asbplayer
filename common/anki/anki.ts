@@ -16,7 +16,7 @@ const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
 
 const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {
-    asbInfo({ asbLogLabel: 'anki/media' }, `${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
+    asbInfo('anki/media', `${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
 };
 
 const timedMediaBase64 = async (

@@ -223,7 +223,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
             setAnkiConnectUrlError(undefined);
         } catch (e) {
             setAnkiConnectApiKeyRequired(apiKeyRequired || Anki.requiresApiKey(e));
-            asbError({ asbLogLabel: 'anki/connect' }, e);
+            asbError('anki/connect', e);
             setDeckNames(undefined);
             setModelNames(undefined);
 
@@ -274,7 +274,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     return;
                 }
 
-                asbError({ asbLogLabel: 'anki/connect' }, e);
+                asbError('anki/connect', e);
                 setFieldNames(undefined);
 
                 if (e instanceof Error) {
@@ -357,7 +357,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
         anki.createDeck(defaultDeckName)
             .then(() => requestAnkiConnect())
             .then(() => onSettingChanged('deck', defaultDeckName))
-            .catch((error) => asbError(error, { asbLogLabel: 'anki/connect' }));
+            .catch((error) => asbError('anki/connect', error));
     }, [anki, requestAnkiConnect, onSettingChanged]);
 
     useEffect(() => {
@@ -381,7 +381,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     onSettingChanged('urlField', 'URL'),
                 ])
             )
-            .catch((error) => asbError(error, { asbLogLabel: 'anki/connect' }));
+            .catch((error) => asbError('anki/connect', error));
         if (tutorialStep === TutorialStep.ankiFields) {
             onTutorialStepChanged(TutorialStep.testCard);
         }

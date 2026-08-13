@@ -454,7 +454,7 @@ const AnkiDialog = ({
 
             e.preventDefault();
             e.stopPropagation();
-            audioClip!.play().catch((error) => asbInfo(error, { asbLogLabel: 'anki/ui' }));
+            audioClip!.play().catch((error) => asbInfo('anki/ui', error));
         },
         [audioClip]
     );

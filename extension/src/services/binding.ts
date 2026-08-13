@@ -148,7 +148,7 @@ const startAudioRecordingErrorResponse: (e: any) => StartRecordingResponse = (e:
     if (e.name === 'NS_ERROR_FAILURE') {
         errorCode = StartRecordingErrorCode.drmProtected;
     } else {
-        asbError({ asbLogLabel: 'video/binding' }, e);
+        asbError('video/binding', e);
         errorCode = StartRecordingErrorCode.other;
     }
 
@@ -465,7 +465,7 @@ export default class Binding {
                         void this.mobileVideoOverlayController.updateModel();
                     },
                     onDurationChanged: (durationMs) => this.playbackEngine.durationChanged(durationMs),
-                    onError: () => asbError({ asbLogLabel: 'video/binding' }, errorMessageFromVideo(this.video)),
+                    onError: () => asbError('video/binding', errorMessageFromVideo(this.video)),
                 }
             ),
             callbacks: {
@@ -512,7 +512,7 @@ export default class Binding {
                             };
                             return browser.runtime.sendMessage(settingsUpdatedCommand);
                         })
-                        .catch((error) => asbError(error, { asbLogLabel: 'video/binding' }));
+                        .catch((error) => asbError('video/binding', error));
                 },
                 playbackModesChanged: (transition) => {
                     const notification = this._handlePlaybackModesChanged(transition);
@@ -536,7 +536,7 @@ export default class Binding {
                         });
                     }
                 },
-                onError: (error) => asbError({ asbLogLabel: 'video/binding' }, 'Playback plan update failed', error),
+                onError: (error) => asbError('video/binding', 'Playback plan update failed', error),
             },
         });
     }
@@ -1174,7 +1174,7 @@ export default class Binding {
                                 if (e instanceof TimedRecordingInProgressError) {
                                     errorCode = StopRecordingErrorCode.timedAudioRecordingInProgress;
                                 } else {
-                                    asbError({ asbLogLabel: 'video/binding' }, e);
+                                    asbError('video/binding', e);
                                     errorCode = StopRecordingErrorCode.other;
                                 }
 
@@ -1686,7 +1686,7 @@ export default class Binding {
                                     await this.video.play();
                                     break;
                                 } catch (ex2) {
-                                    asbError({ asbLogLabel: 'video/binding' }, ex2);
+                                    asbError('video/binding', ex2);
                                 }
                             }
 
@@ -1826,11 +1826,7 @@ export default class Binding {
                 try {
                     await syncWithAsbplayerTab(withSyncedAsbplayerOnly, syncWithAsbplayerId);
                 } catch (error) {
-                    asbError(
-                        { asbLogLabel: 'video/binding' },
-                        'Failed to sync with asbplayer tab when loading subtitles:',
-                        error
-                    );
+                    asbError('video/binding', 'Failed to sync with asbplayer tab when loading subtitles:', error);
                 }
 
                 this._updateSubtitles(

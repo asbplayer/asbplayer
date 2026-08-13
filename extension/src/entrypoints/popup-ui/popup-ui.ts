@@ -33,5 +33,5 @@ document.addEventListener('DOMContentLoaded', () => {
         const commands = await commandsPromise;
         const rootElement = document.getElementById('root')!;
         await renderPopupUi(rootElement, { currentSettings, commands });
-    })().catch((error) => asbError(error, { asbLogLabel: 'popup' }));
+    })().catch((error) => asbError('popup', error));
 });

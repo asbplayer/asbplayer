@@ -760,8 +760,7 @@ export async function ensureStoragePersisted(): Promise<boolean | undefined> {
     if (!navigator.storage?.persist) return;
     if (await navigator.storage.persisted()) return true;
     const persisted = await navigator.storage.persist();
-    if (!persisted)
-        asbWarn({ asbLogLabel: 'storage' }, 'Storage could not be persisted, data may be cleared by the browser');
+    if (!persisted) asbWarn('storage', 'Storage could not be persisted, data may be cleared by the browser');
     return persisted;
 }
 

@@ -50,7 +50,7 @@ export default class HttpPostHandler {
             .then((response) => response.json())
             .then((json) => sendResponse(json))
             .catch((e) => {
-                asbError({ asbLogLabel: 'http-post' }, e);
+                asbError('http-post', e);
                 sendResponse({ error: e.message });
             });
 

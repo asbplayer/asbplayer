@@ -70,7 +70,7 @@ const useSearchAnki = ({ anki, querier }: { anki: Anki; querier: (anki: Anki) =>
 
             setNotes(noteInfos);
         } catch (e) {
-            asbError({ asbLogLabel: 'anki/connect' }, e);
+            asbError('anki/connect', e);
             setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
@@ -144,7 +144,7 @@ export default function CardSelectView({
         try {
             await onUpdate([...selectedNoteIds]);
         } catch (e) {
-            asbError({ asbLogLabel: 'anki/connect' }, e);
+            asbError('anki/connect', e);
             setError(e instanceof Error ? e.message : String(e));
         }
     }, [selectedNoteIds, onUpdate]);
@@ -154,7 +154,7 @@ export default function CardSelectView({
             try {
                 await onUpdate([noteId]);
             } catch (e) {
-                asbError({ asbLogLabel: 'anki/connect' }, e);
+                asbError('anki/connect', e);
                 setError(e instanceof Error ? e.message : String(e));
             }
         },

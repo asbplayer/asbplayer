@@ -200,7 +200,7 @@ export default function AnkiUi({ bridge }: Props) {
                     bridge.sendMessageFromServer({ command: 'card-exported-dialog' });
                 }
             } catch (e) {
-                asbError({ asbLogLabel: 'anki/ui' }, e);
+                asbError('anki/ui', e);
                 setAlertSeverity('error');
 
                 if (e instanceof Error) {

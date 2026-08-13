@@ -338,7 +338,7 @@ export default class KeyBindings {
                         };
                         void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
-                    .catch((error) => asbError(error, { asbLogLabel: 'key-bindings' }));
+                    .catch((error) => asbError('key-bindings', error));
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -365,7 +365,7 @@ export default class KeyBindings {
                         };
                         void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
-                    .catch((error) => asbError(error, { asbLogLabel: 'key-bindings' }));
+                    .catch((error) => asbError('key-bindings', error));
             },
             () => context.subtitleController.subtitles.length === 0,
             true

@@ -221,7 +221,7 @@ export class CardPublisher {
             });
             return true;
         } catch (e) {
-            asbError({ asbLogLabel: 'anki/export' }, e);
+            asbError('anki/export', e);
             return false;
         }
     }

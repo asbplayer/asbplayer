@@ -340,7 +340,7 @@ export default class VideoChannel {
                     break;
                 }
                 default:
-                    asbError({ asbLogLabel: 'app/messages' }, 'Unrecognized event ' + event.data.command);
+                    asbError('app/messages', 'Unrecognized event ' + event.data.command);
             }
         };
     }

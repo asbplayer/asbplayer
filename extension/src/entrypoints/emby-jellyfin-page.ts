@@ -78,7 +78,7 @@ export default defineUnlistedScript(() => {
                     })
                 );
             })().catch((e) => {
-                asbError({ asbLogLabel: 'emby-jellyfin' }, e);
+                asbError('emby-jellyfin', e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {

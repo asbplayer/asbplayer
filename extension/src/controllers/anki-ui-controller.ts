@@ -318,7 +318,7 @@ export default class AnkiUiController {
                         case 'dismissedQuickSelectFtue':
                             globalStateProvider
                                 .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
-                                .catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
+                                .catch((error) => asbError('anki/ui', error));
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
@@ -421,12 +421,9 @@ export default class AnkiUiController {
                             break;
                         }
                         default:
-                            asbError(
-                                { asbLogLabel: 'anki/ui' },
-                                'Unknown message received from bridge: ' + message.command
-                            );
+                            asbError('anki/ui', 'Unknown message received from bridge: ' + message.command);
                     }
-                })().catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
+                })().catch((error) => asbError('anki/ui', error));
             });
         }
 

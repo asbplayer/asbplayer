@@ -237,7 +237,7 @@ export default defineUnlistedScript(() => {
                     );
                 }
             })().catch((e) => {
-                asbError({ asbLogLabel: 'amazon-prime' }, e);
+                asbError('amazon-prime', e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {

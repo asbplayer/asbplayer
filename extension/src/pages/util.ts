@@ -156,7 +156,7 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
                                     );
                                 }
                             }
-                        ).catch((error) => asbError(error, { asbLogLabel: 'subtitle/source' }));
+                        ).catch((error) => asbError('subtitle/source', error));
                     }
 
                     const ready = () => {
@@ -181,7 +181,7 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
 
                     garbageCollect();
                     trackDataRequestHandled = true;
-                })().catch((error) => asbError(error, { asbLogLabel: 'subtitle/source' }));
+                })().catch((error) => asbError('subtitle/source', error));
             },
             false
         );

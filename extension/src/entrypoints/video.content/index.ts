@@ -230,17 +230,17 @@ export default defineContentScript({
                                     if (blob.type.startsWith('text/plain')) {
                                         blob.text()
                                             .then((text) => navigator.clipboard.writeText(text))
-                                            .catch((error) => asbInfo(error, { asbLogLabel: 'video' }));
+                                            .catch((error) => asbInfo('video', error));
                                     } else {
                                         asbError(
-                                            { asbLogLabel: 'video' },
+                                            'video',
                                             `Cannot write blob type ${blob.type} to clipboard on Firefox`
                                         );
                                     }
                                 } else {
                                     navigator.clipboard
                                         .write([new ClipboardItem({ [blob.type]: blob })])
-                                        .catch((error) => asbError(error, { asbLogLabel: 'video' }));
+                                        .catch((error) => asbError('video', error));
                                 }
                             });
                         break;
@@ -311,11 +311,11 @@ export default defineContentScript({
         };
 
         if (document.readyState === 'complete') {
-            bind().catch((error) => asbError(error, { asbLogLabel: 'video' }));
+            bind().catch((error) => asbError('video', error));
         } else {
             document.addEventListener('readystatechange', () => {
                 if (document.readyState === 'complete') {
-                    bind().catch((error) => asbError(error, { asbLogLabel: 'video' }));
+                    bind().catch((error) => asbError('video', error));
                 }
             });
         }

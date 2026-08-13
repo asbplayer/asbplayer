@@ -102,7 +102,7 @@ export default class FrameBridgeClient {
                         } else {
                             if (this.serverMessageListener) {
                                 void this.serverMessageListener(message.message).catch((error) =>
-                                    asbError(error, { asbLogLabel: 'bridge' })
+                                    asbError('bridge', error)
                                 );
                             }
                         }

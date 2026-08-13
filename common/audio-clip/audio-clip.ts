@@ -574,7 +574,7 @@ class FileAudioData implements AudioData {
                 })
                 .catch((e) => {
                     if (!(e instanceof ClippingCancelledError)) {
-                        asbError({ asbLogLabel: 'audio-clip' }, e);
+                        asbError('audio-clip', e);
                     }
                 });
             invokeCallbacks('play', this._callbacks);

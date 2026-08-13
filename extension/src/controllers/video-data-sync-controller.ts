@@ -406,7 +406,7 @@ export default class VideoDataSyncController {
                     if ('dismissFtue' === message.command) {
                         globalStateProvider
                             .set({ ftueHasSeenSubtitleTrackSelector: true })
-                            .catch((error) => asbError(error, { asbLogLabel: 'video/sync' }));
+                            .catch((error) => asbError('video/sync', error));
                         return;
                     }
 
@@ -465,7 +465,7 @@ export default class VideoDataSyncController {
                     if (dataWasSynced) {
                         this._hideAndResume();
                     }
-                })().catch((error) => asbError(error, { asbLogLabel: 'video/sync' }));
+                })().catch((error) => asbError('video/sync', error));
             });
         }
 

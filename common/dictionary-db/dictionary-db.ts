@@ -783,7 +783,7 @@ export class DictionaryDB {
             for (const localTokenInput of localTokenInputs) {
                 if (!HAS_LETTER_REGEX.test(localTokenInput.token)) {
                     asbError(
-                        { asbLogLabel: 'dictionary' },
+                        'dictionary',
                         `Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`
                     );
                     continue;
@@ -803,7 +803,7 @@ export class DictionaryDB {
                 localTokenInput.lemmas = localTokenInput.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
                 if (!localTokenInput.lemmas.length) {
                     asbError(
-                        { asbLogLabel: 'dictionary' },
+                        'dictionary',
                         `Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`
                     );
                     continue;
@@ -814,7 +814,7 @@ export class DictionaryDB {
                         continue;
                     } else {
                         asbError(
-                            { asbLogLabel: 'dictionary' },
+                            'dictionary',
                             `Cannot save local token with uncollected status and no states: ${JSON.stringify(localTokenInput)}`
                         );
                         continue;
@@ -1269,7 +1269,7 @@ export async function _ensureBuildId(
             const existingBuildExpiration = _buildIdExpiration(trackMeta, buildIdSlot);
             if (buildTs < existingBuildExpiration) return false;
             asbWarn(
-                { asbLogLabel: 'dictionary' },
+                'dictionary',
                 `Stale ${buildIdLabel(buildIdSlot)} ${existingBuildId} which expired at ${new Date(existingBuildExpiration).toISOString()} detected for track ${key[1] + 1}, ignoring.`
             );
         }
@@ -1328,10 +1328,7 @@ export async function _clearBuildIds(
         try {
             await clearBuildId(db, key, nextBuildId, buildIdSlot);
         } catch (e) {
-            asbError(
-                { asbLogLabel: 'dictionary' },
-                `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`
-            );
+            asbError('dictionary', `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`);
         }
     }
 }

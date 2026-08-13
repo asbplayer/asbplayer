@@ -135,8 +135,8 @@ export const createVideoElement = async (blobUrl: string): Promise<HTMLVideoElem
 
             if (timedOut && !isFullySeekable) {
                 asbWarn(
-                    `Video did not become ready within ${videoReadyTimeoutMs}ms. Continuing with fallback initialization.`,
-                    { asbLogLabel: 'media-fragment' }
+                    'media-fragment',
+                    `Video did not become ready within ${videoReadyTimeoutMs}ms. Continuing with fallback initialization.`
                 );
             }
 

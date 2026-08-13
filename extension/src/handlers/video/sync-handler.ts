@@ -73,7 +73,7 @@ export default class SyncHandler {
                 });
             }
         } catch (error) {
-            asbError({ asbLogLabel: 'video/sync' }, error);
+            asbError('video/sync', error);
         }
     }
 }

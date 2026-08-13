@@ -60,7 +60,7 @@ export const primeLocalization = async (lang: string): Promise<void> => {
             await fetchAndCache(langConfig);
         }
     } catch (e) {
-        asbError({ asbLogLabel: 'i18n' }, e);
+        asbError('i18n', e);
     }
 };
 
@@ -76,7 +76,7 @@ const fetchAndCache = async ({ code, url, version }: LocalizationConfig): Promis
             await browser.storage.local.set({ [stringsKey]: strings, [versionKey]: version });
         }
     } catch (e) {
-        asbError({ asbLogLabel: 'i18n' }, e);
+        asbError('i18n', e);
     }
 };
 

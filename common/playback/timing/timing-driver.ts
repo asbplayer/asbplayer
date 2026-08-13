@@ -158,11 +158,7 @@ export default class TimingUpdateQueue {
         try {
             this.callbacks.onError(error);
         } catch (callbackError) {
-            asbError(
-                'Timing update error handler failed',
-                { error, callbackError },
-                { asbLogLabel: 'playback/timing' }
-            );
+            asbError('playback/timing', 'Timing update error handler failed', { error, callbackError });
         }
     }
 }

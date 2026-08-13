@@ -537,10 +537,10 @@ export default defineBackground(() => {
                             browser.runtime.reload();
                         }
                     } catch (e) {
-                        asbError({ asbLogLabel: 'background' }, e);
+                        asbError('background', e);
                     }
                 }
-            })().catch((error) => asbError(error, { asbLogLabel: 'background' }));
+            })().catch((error) => asbError('background', error));
         });
     } else {
         if (!isMobile) {

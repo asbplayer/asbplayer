@@ -203,7 +203,7 @@ export default class VideoSelectController {
                         this._frame.hide();
                         this._subtitleFiles = undefined;
                     }
-                })().catch((error) => asbError(error, { asbLogLabel: 'video/select' }));
+                })().catch((error) => asbError('video/select', error));
             });
         }
 

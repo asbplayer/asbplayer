@@ -178,7 +178,7 @@ export class TabAnkiUiController {
                         case 'dismissedQuickSelectFtue':
                             globalStateProvider
                                 .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
-                                .catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
+                                .catch((error) => asbError('anki/ui', error));
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
@@ -210,7 +210,7 @@ export class TabAnkiUiController {
                             return;
                         }
                     }
-                })().catch((error) => asbError(error, { asbLogLabel: 'anki/ui' }));
+                })().catch((error) => asbError('anki/ui', error));
             });
         }
 

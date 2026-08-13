@@ -82,7 +82,7 @@ export default class StopRecordingMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                asbError({ asbLogLabel: 'recording/video' }, e);
+                asbError('recording/video', e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',

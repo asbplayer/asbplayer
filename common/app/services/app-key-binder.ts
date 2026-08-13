@@ -42,10 +42,7 @@ export default class AppKeyBinder implements KeyBinder {
                             handlers = this.exportCardHandlers;
                             break;
                         default:
-                            asbError(
-                                { asbLogLabel: 'app/messages' },
-                                'Unknown post mine action ' + command.postMineAction
-                            );
+                            asbError('app/messages', 'Unknown post mine action ' + command.postMineAction);
                     }
                 } else if (message.data.command === 'take-screenshot') {
                     handlers = this.takeScreenshotHandlers;

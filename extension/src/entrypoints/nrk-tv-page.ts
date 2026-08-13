@@ -47,7 +47,7 @@ export default defineUnlistedScript(() => {
                 }
             }
         } catch (e) {
-            asbError({ asbLogLabel: 'nrk' }, e);
+            asbError('nrk', e);
         }
 
         return tracks;

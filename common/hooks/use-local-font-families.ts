@@ -29,7 +29,7 @@ export const useLocalFontFamilies = () => {
 
                     setLocalFontFamilies(Object.keys(families));
                 })
-                .catch((error: unknown) => asbError(error, { asbLogLabel: 'fonts' }));
+                .catch((error: unknown) => asbError('fonts', error));
         }
     }, []);
 

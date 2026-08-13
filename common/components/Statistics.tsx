@@ -580,7 +580,7 @@ function useWaniKaniUserInfo(apiToken: string) {
             .user()
             .then((user) => setUserInfo(user))
             .catch((e) => {
-                asbError({ asbLogLabel: 'dictionary/wanikani' }, e);
+                asbError('dictionary/wanikani', e);
                 setError(e instanceof Error ? e.message : String(e));
             });
     }, [apiToken]);

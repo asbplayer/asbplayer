@@ -25,7 +25,7 @@ export default defineUnlistedScript(() => {
                 const playerSessionIds = netflixVideo.getAllPlayerSessionIds?.() || [];
 
                 if (0 === playerSessionIds.length) {
-                    asbError({ asbLogLabel: 'netflix' }, 'No Netflix player session IDs');
+                    asbError('netflix', 'No Netflix player session IDs');
                     return undefined;
                 }
 
@@ -33,7 +33,7 @@ export default defineUnlistedScript(() => {
                 return netflixVideo.getVideoPlayerBySessionId?.(playerSessionId);
             }
 
-            asbError({ asbLogLabel: 'netflix' }, 'Missing netflix global');
+            asbError('netflix', 'Missing netflix global');
             return undefined;
         }
 
@@ -227,7 +227,7 @@ export default defineUnlistedScript(() => {
                         })
                     );
                 })().catch((e) => {
-                    asbError({ asbLogLabel: 'netflix' }, e);
+                    asbError('netflix', e);
                     const error = e instanceof Error ? e.message : String(e);
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-synced-data', {
@@ -325,7 +325,7 @@ export default defineUnlistedScript(() => {
                 currentFetchForLanguagePromise = nextFetchForLanguagePromise;
 
                 void nextFetchForLanguagePromise
-                    .catch((error) => asbError(error, { asbLogLabel: 'netflix' }))
+                    .catch((error) => asbError('netflix', error))
                     .finally(() => {
                         if (currentFetchForLanguagePromise === nextFetchForLanguagePromise) {
                             currentFetchForLanguagePromise = undefined;
@@ -362,7 +362,7 @@ export default defineUnlistedScript(() => {
                         detail: apiAvailable,
                     })
                 );
-            })().catch((error) => asbError(error, { asbLogLabel: 'netflix' }));
+            })().catch((error) => asbError('netflix', error));
         });
     }, 0);
 });

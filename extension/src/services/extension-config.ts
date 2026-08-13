@@ -56,7 +56,7 @@ export const fetchExtensionConfig = async (noCache = false): Promise<ExtensionCo
             return extensionJson as ExtensionConfig;
         }
     } catch (e) {
-        asbError({ asbLogLabel: 'config' }, e);
+        asbError('config', e);
     }
 
     return undefined;

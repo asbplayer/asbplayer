@@ -37,7 +37,7 @@ export default class EncodeMp3Handler {
             Mp3Encoder.encode(base64ToBlob(base64, `audio/${extension}`), () => new Worker('mp3-encoder-worker.js'))
                 .then((blob) => blob.arrayBuffer())
                 .then((buffer) => sendResponse(bufferToBase64(buffer)))
-                .catch((error) => asbError(error, { asbLogLabel: 'recording/encoding' }));
+                .catch((error) => asbError('recording/encoding', error));
         } else {
             ensureOffscreenAudioServiceDocument()
                 .then(() => {
@@ -52,7 +52,7 @@ export default class EncodeMp3Handler {
                     return browser.runtime.sendMessage(audioServiceCommand);
                 })
                 .then(sendResponse)
-                .catch((error) => asbError(error, { asbLogLabel: 'recording/encoding' }));
+                .catch((error) => asbError('recording/encoding', error));
         }
 
         return true;

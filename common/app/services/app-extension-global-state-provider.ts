@@ -37,7 +37,7 @@ export class AppExtensionGlobalStateProvider implements GlobalStateProvider {
 
             return partialState;
         } catch (e) {
-            asbError({ asbLogLabel: 'app/state' }, e);
+            asbError('app/state', e);
             return Object.fromEntries(keys.map((k) => [k, initialGlobalState[k]]));
         }
     }

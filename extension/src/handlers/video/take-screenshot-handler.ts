@@ -50,7 +50,7 @@ export default class TakeScreenshotHandler {
                 extension: 'jpeg',
             };
         } catch (e) {
-            asbError({ asbLogLabel: 'recording/screenshot' }, e);
+            asbError('recording/screenshot', e);
             imageModel = {
                 base64: '',
                 extension: 'jpeg',

@@ -1,74 +1,33 @@
-/**
- * Optional metadata for an asb logging call.
- *
- * When supplied as the first or last argument, `asbLogLabel` is removed from
- * the message arguments and appended to the `[asbplayer]` console prefix.
- * The prefixed name avoids colliding with ordinary payload properties such as
- * `label` when these functions are used as console-compatible replacements.
- */
-export interface AsbLogOptions {
-    /** The subsystem or operation name to include in the console prefix. */
-    readonly asbLogLabel?: string;
-}
+type LogArgs = [firstArg: unknown, ...args: unknown[]];
 
-function isAsbLogOptions(value: unknown): value is AsbLogOptions {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'asbLogLabel' in value &&
-        (typeof value.asbLogLabel === 'string' || value.asbLogLabel === undefined)
-    );
-}
-
-function splitOptions(args: readonly unknown[]): { asbLogLabel?: string; args: readonly unknown[] } {
-    const first = args[0];
-    const last = args[args.length - 1];
-    if (isAsbLogOptions(first)) return { asbLogLabel: first.asbLogLabel, args: args.slice(1) };
-    if (isAsbLogOptions(last)) return { asbLogLabel: last.asbLogLabel, args: args.slice(0, -1) };
-    return { args };
-}
-
-function writeLog(method: (...args: unknown[]) => void, args: readonly unknown[]): void {
-    const { asbLogLabel, args: messageArgs } = splitOptions(args);
-    method.apply(console, [asbLogLabel?.length ? `[asbplayer][${asbLogLabel}]` : '[asbplayer]', ...messageArgs]);
+function writeLog(method: (...args: unknown[]) => void, label: string, ...args: LogArgs): void {
+    method.apply(console, [label.length ? `[asbplayer][${label}]` : '[asbplayer]', ...args]);
 }
 
 /**
- * Logs a message using `console.log` with an `[asbplayer]` prefix.
- *
- * Accepts the same variadic arguments as `console.log`. An optional
- * {@link AsbLogOptions} object may be supplied as the first or last argument.
+ * Logs a message using `console.log` with an `[asbplayer]` prefix and label.
  */
-export function asbLog(...args: unknown[]): void {
-    writeLog(console.log, args);
+export function asbLog(label: string, ...args: LogArgs): void {
+    writeLog(console.log, label, ...args);
 }
 
 /**
- * Logs an informational message using `console.info` with an `[asbplayer]` prefix.
- *
- * Accepts the same variadic arguments as `console.info`. An optional
- * {@link AsbLogOptions} object may be supplied as the first or last argument.
+ * Logs an info message using `console.info` with an `[asbplayer]` prefix and label.
  */
-export function asbInfo(...args: unknown[]): void {
-    writeLog(console.info, args);
+export function asbInfo(label: string, ...args: LogArgs): void {
+    writeLog(console.info, label, ...args);
 }
 
 /**
- * Logs a warning using `console.warn` with an `[asbplayer]` prefix.
- *
- * Accepts the same variadic arguments as `console.warn`. An optional
- * {@link AsbLogOptions} object may be supplied as the first or last argument.
+ * Logs a warning using `console.warn` with an `[asbplayer]` prefix and label.
  */
-export function asbWarn(...args: unknown[]): void {
-    writeLog(console.warn, args);
+export function asbWarn(label: string, ...args: LogArgs): void {
+    writeLog(console.warn, label, ...args);
 }
 
 /**
- * Logs an error using `console.error` with an `[asbplayer]` prefix.
- *
- * Accepts the same variadic arguments as `console.error`. An optional
- * {@link AsbLogOptions} object may be supplied as the first or last argument.
+ * Logs an error using `console.error` with an `[asbplayer]` prefix and label.
  */
-export function asbError(...args: unknown[]): void {
-    writeLog(console.error, args);
+export function asbError(label: string, ...args: LogArgs): void {
+    writeLog(console.error, label, ...args);
 }

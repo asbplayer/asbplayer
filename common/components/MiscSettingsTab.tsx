@@ -129,7 +129,7 @@ const MiscSettingTab: React.FC<Props> = ({
             .then(() => client.ping())
             .then(() => setWebSocketConnectionSucceeded(true))
             .catch((e) => {
-                asbError({ asbLogLabel: 'settings' }, e);
+                asbError('settings', e);
                 setWebSocketConnectionSucceeded(false);
             })
             .finally(() => client.unbind());
@@ -163,7 +163,7 @@ const MiscSettingTab: React.FC<Props> = ({
             const validatedSettings = validateSettings(importedSettings);
             onSettingsChanged(validatedSettings);
         } catch (e) {
-            asbError({ asbLogLabel: 'settings' }, e);
+            asbError('settings', e);
         }
     }, [onSettingsChanged]);
 

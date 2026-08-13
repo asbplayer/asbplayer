@@ -26,7 +26,7 @@ export default class AudioRecorder {
         doNotManageStream: boolean = false
     ): Promise<string> {
         if (this.recording) {
-            asbError({ asbLogLabel: 'recording/audio' }, 'Already recording, cannot start with timeout.');
+            asbError('recording/audio', 'Already recording, cannot start with timeout.');
             return Promise.reject('Already recording');
         }
 

@@ -622,7 +622,7 @@ const BulkUpdateDialog: React.FC<{
             );
             onClose();
         } catch (error) {
-            asbError({ asbLogLabel: 'dictionary/word-browser' }, error);
+            asbError('dictionary/word-browser', error);
             setError(error instanceof Error ? error.message : String(error));
         } finally {
             setMutating(false);
@@ -645,7 +645,7 @@ const BulkUpdateDialog: React.FC<{
             await onDeleteSelected(selectedRows.map((row) => row.tokenKey));
             onClose();
         } catch (error) {
-            asbError({ asbLogLabel: 'dictionary/word-browser' }, error);
+            asbError('dictionary/word-browser', error);
             setError(error instanceof Error ? error.message : String(error));
         } finally {
             setMutating(false);
@@ -862,7 +862,7 @@ export default function WordBrowserDialog({
                 setRecords(nextRecords);
             } catch (error) {
                 if (requestId !== loadRequestIdRef.current) return;
-                asbError({ asbLogLabel: 'dictionary/word-browser' }, error);
+                asbError('dictionary/word-browser', error);
                 setLoadError(errorMessage(error));
             } finally {
                 if (requestId === loadRequestIdRef.current) {
@@ -1662,7 +1662,7 @@ export default function WordBrowserDialog({
                 setSelectedRowKeys(new Set());
                 await loadRecords(draftViewCriteria);
             } catch (error) {
-                asbError({ asbLogLabel: 'dictionary/word-browser' }, error);
+                asbError('dictionary/word-browser', error);
                 setLoadError(error instanceof Error ? error.message : String(error));
             } finally {
                 setMutating(false);
@@ -1680,7 +1680,7 @@ export default function WordBrowserDialog({
                 setSelectedRowKeys(new Set());
                 await loadRecords(draftViewCriteria);
             } catch (error) {
-                asbError({ asbLogLabel: 'dictionary/word-browser' }, error);
+                asbError('dictionary/word-browser', error);
                 setLoadError(error instanceof Error ? error.message : String(error));
             } finally {
                 setMutating(false);

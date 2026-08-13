@@ -67,7 +67,7 @@ export default defineUnlistedScript(() => {
                     }
                 }
             } catch (e) {
-                asbError('Failed to infer tracks from', lastVideoApiUrl, e, { asbLogLabel: 'svtplay' });
+                asbError('svtplay', 'Failed to infer tracks from', lastVideoApiUrl, e);
             }
         },
 

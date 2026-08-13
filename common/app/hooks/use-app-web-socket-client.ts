@@ -14,7 +14,7 @@ export const useAppWebSocketClient = ({ settings }: { settings: WebSocketClientS
     useEffect(() => {
         if (settings.webSocketClientEnabled && settings.webSocketServerUrl) {
             const client = new WebSocketClient();
-            client.bind(settings.webSocketServerUrl).catch((error) => asbError(error, { asbLogLabel: 'web-socket' }));
+            client.bind(settings.webSocketServerUrl).catch((error) => asbError('web-socket', error));
             setClient(client);
             return () => client.unbind();
         }

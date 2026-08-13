@@ -73,7 +73,7 @@ export const useImageData = ({ image, smoothTransition }: { image?: MediaFragmen
             })
             .catch((e) => {
                 if (!(e instanceof CancelledMediaFragmentDataRenderingError)) {
-                    asbError({ asbLogLabel: 'image' }, e);
+                    asbError('image', e);
                 }
             });
 

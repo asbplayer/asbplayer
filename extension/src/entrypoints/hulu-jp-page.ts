@@ -98,7 +98,7 @@ export default defineUnlistedScript(() => {
                             detail: response ?? { basename: '', error: 'Timed out' },
                         })
                     );
-                })().catch((error) => asbError(error, { asbLogLabel: 'hulu' }));
+                })().catch((error) => asbError('hulu', error));
             },
             false
         );

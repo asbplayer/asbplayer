@@ -179,14 +179,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     (!Number.isFinite(actualPlaybackRate) ||
                         Math.abs(actualPlaybackRate - playbackRate) > minimumPlaybackRate)
                 ) {
-                    asbWarn(
-                        'Playback rate command was not respected',
-                        {
-                            requestedPlaybackRate: playbackRate,
-                            actualPlaybackRate,
-                        },
-                        { asbLogLabel: 'playback/rate' }
-                    );
+                    asbWarn('playback/rate', 'Playback rate command was not respected', {
+                        requestedPlaybackRate: playbackRate,
+                        actualPlaybackRate,
+                    });
                 }
             },
             correctAutoPause: async (targetTimestampMs) => {
@@ -652,14 +648,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         let watchdogHandle: ReturnType<typeof setTimeout> | undefined;
         const watchdog = new Promise<'cancelled'>((resolve) => {
             watchdogHandle = setTimeout(() => {
-                asbWarn(
-                    'Internal seek did not complete before the watchdog timeout',
-                    {
-                        targetTimestampMs,
-                        timeoutMs: internalSeekWatchdogMs,
-                    },
-                    { asbLogLabel: 'playback/seek' }
-                );
+                asbWarn('playback/seek', 'Internal seek did not complete before the watchdog timeout', {
+                    targetTimestampMs,
+                    timeoutMs: internalSeekWatchdogMs,
+                });
                 this.timingDriver.cancelExpectedInternalSeek();
                 resolve('cancelled');
             }, internalSeekWatchdogMs);
@@ -681,15 +673,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const actualTimestampMs = this.timingDriver.currentTimeMs();
         const frameTimeMs = this.timingDriver.frameTimeMs();
         if (frameTimeMs <= 0 || Math.abs(actualTimestampMs - targetTimestampMs) <= frameTimeMs / 2) return;
-        asbWarn(
-            `${command} command has a timestamp mismatch`,
-            {
-                targetTimestampMs,
-                actualTimestampMs,
-                frameTimeMs,
-            },
-            { asbLogLabel: 'playback/seek' }
-        );
+        asbWarn('playback/seek', `${command} command has a timestamp mismatch`, {
+            targetTimestampMs,
+            actualTimestampMs,
+            frameTimeMs,
+        });
     }
 
     private clampTimestamp(timestampMs: number): number {

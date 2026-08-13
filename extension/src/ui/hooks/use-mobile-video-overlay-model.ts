@@ -61,7 +61,7 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
                 await requestModel();
             } catch (e) {
                 asbLog(
-                    { asbLogLabel: 'mobile-overlay' },
+                    'mobile-overlay',
                     'Failed to request overlay model, retrying in 1s. Message: ' +
                         (e instanceof Error ? e.message : String(e))
                 );

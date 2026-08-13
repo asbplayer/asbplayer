@@ -240,7 +240,7 @@ const publishCurrentTracks = async ({
         response.subtitles = subtitles ?? [];
         return videoId;
     } catch (error) {
-        asbError({ asbLogLabel: 'youtube' }, error);
+        asbError('youtube', error);
         if (error instanceof Error) {
             response.error = error.message;
         } else {
@@ -297,6 +297,6 @@ export default defineUnlistedScript(() => {
             } finally {
                 publishing = false;
             }
-        })().catch((error) => asbError(error, { asbLogLabel: 'youtube' }));
+        })().catch((error) => asbError('youtube', error));
     }, 500);
 });

@@ -296,7 +296,7 @@ export default defineUnlistedScript(() => {
                     })
                 );
             })().catch((e) => {
-                asbError({ asbLogLabel: 'plex' }, e);
+                asbError('plex', e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {

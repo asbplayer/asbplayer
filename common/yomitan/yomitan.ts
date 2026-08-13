@@ -358,8 +358,8 @@ export class Yomitan {
             if (this.tokenizeBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.tokenizeBatchSize / 2);
                 asbWarn(
-                    `Yomitan tokenize failed due to batch size too many times, reducing batch size from ${this.tokenizeBatchSize} to ${newDefaultBatchSize}`,
-                    { asbLogLabel: 'yomitan/tokenize' }
+                    'yomitan/tokenize',
+                    `Yomitan tokenize failed due to batch size too many times, reducing batch size from ${this.tokenizeBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.tokenizeBatchSize = newDefaultBatchSize;
                 this.tokenizeBatchFailCount = 0;
@@ -871,8 +871,8 @@ export class Yomitan {
             if (this.termEntriesBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.termEntriesBatchSize / 2);
                 asbWarn(
-                    `Yomitan termEntries failed due to batch size too many times, reducing batch size from ${this.termEntriesBatchSize} to ${newDefaultBatchSize}`,
-                    { asbLogLabel: 'yomitan/term-entries' }
+                    'yomitan/term-entries',
+                    `Yomitan termEntries failed due to batch size too many times, reducing batch size from ${this.termEntriesBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.termEntriesBatchSize = newDefaultBatchSize;
                 this.termEntriesBatchFailCount = 0;
@@ -925,12 +925,12 @@ export class Yomitan {
 
             if (previousFrequencyMode === frequencyMode) continue;
             asbLog(
+                'yomitan/frequency',
                 `Inferred '${frequencyMode}' for the '${dictionary}' frequency dictionary (previously ${previousFrequencyMode}) based on:`,
                 {
                     mostOccurringWords,
                     leastOccurringWords,
-                },
-                { asbLogLabel: 'yomitan/frequency' }
+                }
             );
 
             this.inferredFrequencyModes.set(dictionary, frequencyMode);
@@ -1010,8 +1010,8 @@ export class Yomitan {
             );
             if (tokenizeResults[0].source !== 'mecab') {
                 asbError(
-                    `Yomitan did not return MeCab results as expected for '${text}': ${JSON.stringify(tokenizeResults)}`,
-                    { asbLogLabel: 'yomitan/mecab' }
+                    'yomitan/mecab',
+                    `Yomitan did not return MeCab results as expected for '${text}': ${JSON.stringify(tokenizeResults)}`
                 );
                 this.supportsMecab = false;
                 this.supportsMecabLemma = false;
@@ -1019,24 +1019,26 @@ export class Yomitan {
             }
             const tokenParts = tokenizeResults[0].content[0];
             if (tokenParts.map((p) => p.text).join('') !== '思い出せなく') {
-                asbError(`Yomitan MeCab tokenization unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`, {
-                    asbLogLabel: 'yomitan/mecab',
-                });
+                asbError(
+                    'yomitan/mecab',
+                    `Yomitan MeCab tokenization unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`
+                );
                 this.supportsMecab = false;
                 this.supportsMecabLemma = false;
                 return;
             }
             this.supportsMecab = true;
             if (tokenParts[0].lemma !== '思い出す' || tokenParts[0].lemmaReading !== 'おもいだす') {
-                asbError(`Yomitan MeCab lemma unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`, {
-                    asbLogLabel: 'yomitan/mecab',
-                });
+                asbError(
+                    'yomitan/mecab',
+                    `Yomitan MeCab lemma unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`
+                );
                 this.supportsMecabLemma = false;
                 return;
             }
             this.supportsMecabLemma = true;
         } catch (e) {
-            asbError(`Yomitan MeCab support check failed for '${text}':`, e, { asbLogLabel: 'yomitan/mecab' });
+            asbError('yomitan/mecab', `Yomitan MeCab support check failed for '${text}':`, e);
             this.supportsMecab = false;
             this.supportsMecabLemma = false;
         }

@@ -51,7 +51,7 @@ export default class BulkExportController {
                 this._currentIndex++;
 
                 if (exported.exportError) {
-                    asbError({ asbLogLabel: 'anki/export' }, 'Bulk export error:', exported.exportError);
+                    asbError('anki/export', 'Bulk export error:', exported.exportError);
                 } else if (exported.skippedDuplicate) {
                     this._context.subtitleController.notification({
                         locKey: 'info.cardNotExported',
@@ -125,7 +125,7 @@ export default class BulkExportController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(startedMessage).catch((error) => asbError(error, { asbLogLabel: 'anki/export' }));
+        browser.runtime.sendMessage(startedMessage).catch((error) => asbError('anki/export', error));
 
         // Kick off first item
         this._sendNext();

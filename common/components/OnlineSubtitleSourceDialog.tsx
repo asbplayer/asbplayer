@@ -214,7 +214,7 @@ export default function OnlineSubtitleSourceDialog({
             setJimakuFiles(undefined);
             selectedEntryIdRef.current = undefined;
         } catch (e) {
-            asbError({ asbLogLabel: 'subtitle/source' }, e);
+            asbError('subtitle/source', e);
             setError((e as Error).message);
         } finally {
             setSearching(false);
@@ -252,7 +252,7 @@ export default function OnlineSubtitleSourceDialog({
                     upsertRecentWork({ id: entry.id, name: entry.name });
                 }
             } catch (e) {
-                asbError({ asbLogLabel: 'subtitle/source' }, e);
+                asbError('subtitle/source', e);
                 if (fileLoadRequestIdRef.current === requestId && selectedEntryIdRef.current === entry.id) {
                     setError((e as Error).message);
                     setJimakuSelectedEntry(undefined);
@@ -276,7 +276,7 @@ export default function OnlineSubtitleSourceDialog({
                 await onImport(file);
                 onClose();
             } catch (e) {
-                asbError({ asbLogLabel: 'subtitle/source' }, e);
+                asbError('subtitle/source', e);
                 setError((e as Error).message);
             } finally {
                 setLoadingFiles(false);

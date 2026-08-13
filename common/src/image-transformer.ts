@@ -53,7 +53,7 @@ export const cropAndResize = async (
                     await resizeCanvas(canvas, ctx, maxWidth, maxHeight);
                     resolve(canvas.toDataURL('image/jpeg'));
                 } catch (e) {
-                    asbError({ asbLogLabel: 'image' }, 'Failed to crop and resize image: ' + e);
+                    asbError('image', 'Failed to crop and resize image: ' + e);
                     reject(e);
                 }
             } else {
