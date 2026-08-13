@@ -1,6 +1,6 @@
 const blobUrls: { [key: string]: boolean } = {};
 
-export const createBlobUrl = (file: File) => {
+export const createBlobUrl = (file: Blob) => {
     const blobUrl = URL.createObjectURL(file);
     blobUrls[blobUrl] = true;
     return blobUrl;

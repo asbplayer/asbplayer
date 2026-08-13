@@ -234,6 +234,19 @@ class FileAudioClipper {
         this._trackId = trackId;
     }
 
+    /**
+     * The transcoded audio when the file's own audio track can't be decoded by this browser -
+     * recording from the original file would capture silence.
+     */
+    private get _sourceBlobUrl() {
+        return this._file.transcodedAudioBlobUrl ?? this._file.blobUrl;
+    }
+
+    /** Transcoded audio has a single track, so there is nothing to select. */
+    private get _selectTrack() {
+        return this._file.transcodedAudioBlobUrl === undefined;
+    }
+
     latestBlobPromise(): Promise<Blob> | undefined {
         return this._blobPromise;
     }
@@ -267,7 +280,7 @@ class FileAudioClipper {
             invokeCallbacks('play', this._callbacks);
             this._playingAudioElement = audio;
         } else {
-            const audio = await this._audioElement(this._file.blobUrl, true);
+            const audio = await this._audioElement(this._sourceBlobUrl, this._selectTrack);
             audio.oncanplay = async () => {
                 void audio.play();
                 invokeCallbacks('play', this._callbacks);
@@ -295,7 +308,7 @@ class FileAudioClipper {
         this._clippingAudibly = audible;
         this._blobPromise = new Promise((resolve, reject) => {
             void (async () => {
-                const audio = await this._audioElement(this._file.blobUrl, true);
+                const audio = await this._audioElement(this._sourceBlobUrl, this._selectTrack);
                 audio.oncanplay = () => {
                     audio.oncanplay = null;
 
@@ -599,8 +612,11 @@ class FileAudioData implements AudioData {
     }
 
     get error() {
-        if (this._file.blobUrl) {
-            return isActiveBlobUrl(this._file.blobUrl) ? undefined : AudioErrorCode.fileLinkLost;
+        // Whichever blob the clip will actually be recorded from is the one that has to still be alive
+        const blobUrl = this._file.transcodedAudioBlobUrl ?? this._file.blobUrl;
+
+        if (blobUrl) {
+            return isActiveBlobUrl(blobUrl) ? undefined : AudioErrorCode.fileLinkLost;
         }
 
         return undefined;

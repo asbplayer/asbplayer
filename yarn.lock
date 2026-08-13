@@ -2465,6 +2465,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ffmpeg/ffmpeg@npm:^0.12.15":
+  version: 0.12.15
+  resolution: "@ffmpeg/ffmpeg@npm:0.12.15"
+  dependencies:
+    "@ffmpeg/types": ^0.12.4
+  checksum: a16cb08043b42da50341d22ac2094f8a8db0f3f25fc51778674be01e4f3cbd1fcd11ab53aa38cbbfa4afd13aa1da062dafa3c9fa3e5adf6a284c09fd148a477d
+  languageName: node
+  linkType: hard
+
+"@ffmpeg/types@npm:^0.12.4":
+  version: 0.12.4
+  resolution: "@ffmpeg/types@npm:0.12.4"
+  checksum: 8b898163e79945d2eba26f2a46f35a22d00296cb53424f16118060f28c36f694d74d48c49f6570f2974320dc089b7aa9f64c3a0fde45109ba125aa9e3c0926db
+  languageName: node
+  linkType: hard
+
 "@flatten-js/interval-tree@npm:^1.0.19":
   version: 1.0.19
   resolution: "@flatten-js/interval-tree@npm:1.0.19"
@@ -3574,6 +3590,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@project/common@workspace:common"
   dependencies:
+    "@ffmpeg/ffmpeg": ^0.12.15
     "@flatten-js/interval-tree": ^1.0.19
     "@plausible-analytics/tracker": ^0.4.5
     "@qgustavor/srt-parser": ^2.0.0
