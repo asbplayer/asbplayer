@@ -1530,6 +1530,36 @@ describe('PlaybackEngine', () => {
         expect(harness.playbackPositionChanges).toEqual([63_000, undefined]);
     });
 
+    it('uses the maximum subtitle end when restoring a remembered position', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 1_000, [subtitle, subtitleWithLongEnd], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+            },
+        });
+
+        harness.playbackEngine.bind();
+
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
+        expect(harness.savedSettings).toEqual([]);
+    });
+
+    it('recalculates the maximum subtitle end when subtitles change', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], 1_000, [], {
+            durationMs: 70_000,
+            playbackPositionKeys: ['video.mp4'],
+            settings: {
+                lastPlaybackPositions: [{ fileName: 'video.mp4', position: 63_000 }],
+            },
+        });
+
+        harness.playbackEngine.subtitlesChanged([subtitle, subtitleWithLongEnd]);
+
+        expect(harness.playbackPositionChanges).toEqual([63_000]);
+        expect(harness.savedSettings).toEqual([]);
+    });
+
     it('does not resume a remembered position when playback starts normally', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], 1_000, [subtitleWithLongEnd], {
             durationMs: 70_000,

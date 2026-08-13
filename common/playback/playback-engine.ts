@@ -119,6 +119,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly appIntegration: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
+    private lastSubtitleEndMs?: number;
     private ready: { settings: boolean; subtitles: boolean };
     private playbackModesSuppressed: boolean;
     private plan: PlaybackPlan<T>;
@@ -151,6 +152,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.appIntegration = appIntegration;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
+        this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
         this.ready = { settings: false, subtitles: subtitles.length > 0 };
         this.playbackModesSuppressed = playbackModesSuppressed;
         this.playbackModeController = new PlaybackModeController(new Set([PlayMode.normal]), playbackModesDisabled);
@@ -190,7 +192,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackPositionController = new PlaybackPositionController({
             playbackPositionKeys,
             currentTimeMs: () => this.timingDriver.currentTimeMs(),
-            lastSubtitleEndMs: () => this.subtitles[this.subtitles.length - 1]?.end,
+            lastSubtitleEndMs: () => this.lastSubtitleEndMs,
             callbacks: {
                 saveSettings: (settings) => {
                     this.settings = { ...this.settings, ...settings };
@@ -392,6 +394,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
     }
 
+    private calculateLastSubtitleEndMs(subtitles: readonly T[]): number | undefined {
+        if (!subtitles.length) return;
+        return Math.max(...subtitles.map((subtitle) => subtitle.end));
+    }
+
     settingsChanged(settings: AsbplayerSettings): void {
         ++this.settingsChangedOperationId;
         if (!this.ready.settings) return;
@@ -426,6 +433,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     subtitlesChanged(subtitles: readonly T[]): void {
         const hadSubtitles = this.ready.subtitles;
         this.subtitles = subtitles;
+        this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
         if (subtitles.length) {
             this.ready.subtitles = true;
             this.bind();
