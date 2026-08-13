@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AutoPausePreference, type IndexedSubtitleModel, type PlaybackState, PlayMode } from '@project/common';
-import {
-    defaultSettings,
-    isSaveOnlySettings,
-    type AsbplayerSettings,
-    type SettingsProvider,
-} from '@project/common/settings';
-import PlaybackEngine, {
-    formatPlaybackRateNotification,
-    type InitialPlaybackSettings,
-} from '@project/common/playback/playback-engine';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
+import { defaultSettings, isSaveOnlySettings } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import PlaybackEngine, { formatPlaybackRateNotification } from '@project/common/playback/playback-engine';
+import type { InitialPlaybackSettings } from '@project/common/playback/playback-engine';
 import type {
     InternalSeekCompletion,
     TimingDriver,

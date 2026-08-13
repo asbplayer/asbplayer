@@ -1,7 +1,8 @@
-import TimingUpdateQueue, {
-    type InternalSeekCompletion,
-    type TimingDriver,
-    type TimingDriverCallbacks,
+import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
+import type {
+    InternalSeekCompletion,
+    TimingDriver,
+    TimingDriverCallbacks,
 } from '@project/common/playback/timing/timing-driver';
 
 const defaultFrameTimeMs = 1000 / 60;

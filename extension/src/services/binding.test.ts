@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
-import Binding, { type BindingOptions } from '@project/extension/src/services/binding';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
+import Binding from '@project/extension/src/services/binding';
+import type { BindingOptions } from '@project/extension/src/services/binding';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 
 const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo: boolean): BindingOptions => ({

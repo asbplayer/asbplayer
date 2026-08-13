@@ -1,5 +1,6 @@
 import React from 'react';
-import MuiDrawer, { type DrawerProps } from '@mui/material/Drawer';
+import MuiDrawer from '@mui/material/Drawer';
+import type { DrawerProps } from '@mui/material/Drawer';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';

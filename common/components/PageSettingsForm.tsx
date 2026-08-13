@@ -9,7 +9,6 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
-import TextField from '@project/common/components/SettingsTextField';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Alert from '@mui/material/Alert';
@@ -204,7 +203,7 @@ const DefaultPageSettingsForm = ({
                                 {t('extension.settings.pages.overridesWarning')}
                             </Alert>
                         )}
-                        <TextField
+                        <SettingsTextField
                             disabled
                             label={t('extension.settings.pages.host')}
                             value={defaultPageConfig.hostRegex}
@@ -227,27 +226,27 @@ const DefaultPageSettingsForm = ({
                                 });
                             }}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.syncAllowedAtPath')}
                             value={overrides?.syncAllowedAtPath ?? defaultPageConfig.syncAllowedAtPath ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('syncAllowedAtPath', e.target.value)}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.syncAllowedAtHash')}
                             value={overrides?.syncAllowedAtHash ?? defaultPageConfig.syncAllowedAtHash ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('syncAllowedAtHash', e.target.value)}
                         />
-                        {/* <TextField
+                        {/* <SettingsTextField
                             label={t('extension.settings.pages.autoSyncVideoSrc')}
                             value={overrides?.autoSyncVideoSrc ?? defaultPageConfig.autoSyncVideoSrc ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('autoSyncVideoSrc', e.target.value)}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.autoSyncElementId')}
                             value={overrides?.autoSyncElementId ?? defaultPageConfig.autoSyncElementId ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('autoSyncElementId', e.target.value)}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.ignoreVideoElementsClass')}
                             value={
                                 overrides?.ignoreVideoElementsClass ?? defaultPageConfig.ignoreVideoElementsClass ?? ''

@@ -58,7 +58,8 @@ jest.mock('@project/common/yomitan/yomitan', () => ({
     }),
 }));
 
-import { WaniKaniApiError, type WaniKaniAssignment, type WaniKaniSubject } from '@project/common/wanikani';
+import { WaniKaniApiError } from '@project/common/wanikani';
+import type { WaniKaniAssignment, WaniKaniSubject } from '@project/common/wanikani';
 import {
     DictionaryDB,
     _buildIdHealthCheck,

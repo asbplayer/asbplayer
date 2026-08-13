@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyledEngineProvider, ThemeProvider, type PaletteMode } from '@mui/material/styles';
+import { StyledEngineProvider, ThemeProvider } from '@mui/material/styles';
+import type { PaletteMode } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import type Bridge from '@project/extension/src/ui/bridge';
 import { createTheme } from '@project/common/theme';

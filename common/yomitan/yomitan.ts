@@ -1,8 +1,7 @@
-import { asbError, asbLog, asbWarn } from '@project/common/util';
-import type { Fetcher, Progress } from '@project/common';
-import { HttpFetcher } from '@project/common';
-import type { DictionaryTrack } from '@project/common/settings';
 import {
+    asbError,
+    asbLog,
+    asbWarn,
     AsyncSemaphore,
     fromBatches,
     HAS_LETTER_REGEX,
@@ -11,6 +10,9 @@ import {
     NEWLINES_REGEX,
     STERM_AND_NEWLINES_REGEX,
 } from '@project/common/util';
+import type { Fetcher, Progress } from '@project/common';
+import { HttpFetcher } from '@project/common';
+import type { DictionaryTrack } from '@project/common/settings';
 import { coerce, lt, gte } from 'semver';
 
 const TOKENIZE_BATCH_SIZE = 100; // 1k can cause 1.5GB memory on Yomitan for subtitles, Anki cards may be larger too

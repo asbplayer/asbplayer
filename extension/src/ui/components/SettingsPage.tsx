@@ -17,7 +17,8 @@ import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-suppo
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
 import type { AsbplayerSettings, Profile } from '@project/common/settings';
 import { testCard } from '@project/common/settings';
-import { useTheme, type Theme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';

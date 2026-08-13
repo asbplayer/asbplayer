@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import type { IndexedSubtitleModel } from '@project/common';
-import AnimationFrameTimingDriver, {
-    type AnimationFrameTimingSource,
-} from '@project/common/playback/timing/animation-frame-timing-driver';
+import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
+import type { AnimationFrameTimingSource } from '@project/common/playback/timing/animation-frame-timing-driver';
 import Clock from '@project/common/playback/timing/clock';
 import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-test-utils';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';

@@ -1,4 +1,14 @@
-import { asbError, asbWarn } from '@project/common/util';
+import {
+    asbError,
+    asbWarn,
+    arrayEquals,
+    HAS_LETTER_REGEX,
+    inBatches,
+    iterateOverStringInBlocks,
+    areTokenizationsEqual,
+    isKanaOnly,
+    normalizeToken,
+} from '@project/common/util';
 import type {
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateError,
@@ -43,15 +53,6 @@ import type {
 import { DictionaryStatistics, REVIEW_DUES } from '@project/common/dictionary-statistics';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
-import {
-    arrayEquals,
-    HAS_LETTER_REGEX,
-    inBatches,
-    iterateOverStringInBlocks,
-    areTokenizationsEqual,
-    isKanaOnly,
-    normalizeToken,
-} from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import type { InternalToken } from '@project/common/annotations';
 import { resolveTokenStatus, TokenCollection, TokenCollectionArray } from '@project/common/annotations';

@@ -2,15 +2,14 @@ import type { IndexedSubtitleModel, Token } from '@project/common';
 import { jest } from '@jest/globals';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import {
-    type AsbplayerSettings,
     defaultSettings,
-    type DictionaryTrack,
     SettingsProvider,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
+import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 import { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
 

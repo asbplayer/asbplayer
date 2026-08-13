@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError, HAS_LETTER_REGEX, inBatches } from '@project/common/util';
 import type {
     DictionaryBuildWaniKaniCacheProgress,
     DictionaryBuildWaniKaniCacheStart,
@@ -10,7 +10,6 @@ import type {
 import { DictionaryBuildWaniKaniCacheStateErrorCode, DictionaryBuildWaniKaniCacheStateType } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { dictionaryStatusCollectionEnabled, DictionaryTokenSource, isWaniKaniSource } from '@project/common/settings';
-import { HAS_LETTER_REGEX, inBatches } from '@project/common/util';
 import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
 import { WaniKani, WaniKaniApiError } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';

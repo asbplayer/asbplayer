@@ -4,9 +4,9 @@ import {
     createVideoElement,
     disposeVideoElement,
     makeMediaFragmentFileName,
-    type MediaFragmentData,
     mediaFragmentErrorForFile,
 } from '@project/common/src/media-fragment';
+import type { MediaFragmentData } from '@project/common/src/media-fragment';
 import type { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
 
 export const defaultJpegCompressionQuality = 0.85;

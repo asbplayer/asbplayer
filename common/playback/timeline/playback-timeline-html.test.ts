@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
 import { makeTextSubtitle } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';

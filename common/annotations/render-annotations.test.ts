@@ -1,12 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 import {
-    type DictionaryTrack,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenStatus,
     TokenStyling,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     computeRichText,
     emptyRichTextWindow,

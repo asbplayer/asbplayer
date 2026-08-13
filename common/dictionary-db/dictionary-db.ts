@@ -1,4 +1,4 @@
-import { asbError, asbWarn } from '@project/common/util';
+import { asbError, asbWarn, getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
 import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
 import type {
     AsbplayerSettings,
@@ -17,12 +17,10 @@ import {
     isWaniKaniSource,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
 import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
 import type { Yomitan } from '@project/common/yomitan';
 import Dexie from 'dexie';
-import { buildAnkiCachePipeline } from '@project/common/dictionary-db';
-import { buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
+import { buildAnkiCachePipeline, buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
 import type { CardInfo } from '@project/common/anki';
 
 /**

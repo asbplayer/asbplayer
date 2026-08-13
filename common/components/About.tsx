@@ -1,6 +1,7 @@
 import React from 'react';
 import Box from '@mui/material/Box';
-import MuiLink, { type LinkProps } from '@mui/material/Link';
+import MuiLink from '@mui/material/Link';
+import type { LinkProps } from '@mui/material/Link';
 import LogoIcon from '@project/common/components/LogoIcon';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';

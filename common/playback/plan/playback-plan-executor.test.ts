@@ -1,10 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
-import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
-import PlaybackPlanExecutor, {
-    type PlaybackPlanExecutorCallbacks,
-} from '@project/common/playback/plan/playback-plan-executor';
+import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
+import type { PlaybackPlanExecutorCallbacks } from '@project/common/playback/plan/playback-plan-executor';
 
 const makePlan = (
     modes: PlayMode[],

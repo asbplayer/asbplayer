@@ -1,4 +1,15 @@
-import { asbError } from '@project/common/util';
+import {
+    asbError,
+    buildSubtitleTracks,
+    clampMediaTimestamp,
+    errorMessageFromVideo,
+    extractText,
+    seekWithNudge,
+    sourceString,
+    subtitleTimestampWithDelay,
+    surroundingSubtitlesAroundInterval,
+    timeDurationDisplay,
+} from '@project/common/util';
 import type {
     AckMessage,
     AnkiUiSavedState,
@@ -72,23 +83,8 @@ import {
     isSaveOnlySettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import {
-    formatPlaybackModeNotifications,
-    PlaybackModeNotificationFormatOptions,
-    playbackModeNotificationJoin,
-    type PlayModeTransition,
-} from '@project/common/playback/controllers/playback-mode-controller';
-import {
-    buildSubtitleTracks,
-    clampMediaTimestamp,
-    errorMessageFromVideo,
-    extractText,
-    seekWithNudge,
-    sourceString,
-    subtitleTimestampWithDelay,
-    surroundingSubtitlesAroundInterval,
-    timeDurationDisplay,
-} from '@project/common/util';
+import { formatPlaybackModeNotifications, playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
+import type { PlaybackModeNotificationFormatOptions, PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
 import AnkiUiController from '@project/extension/src/controllers/anki-ui-controller';
 import ControlsController from '@project/extension/src/controllers/controls-controller';
 import DragController from '@project/extension/src/controllers/drag-controller';

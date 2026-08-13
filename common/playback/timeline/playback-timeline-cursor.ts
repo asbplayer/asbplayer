@@ -1,10 +1,7 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import type PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
-import {
-    advanceTimestampIndex,
-    firstTimestampIndex,
-    type PlaybackTimelineEventGroup,
-} from '@project/common/playback/timeline/playback-timeline';
+import { advanceTimestampIndex, firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
+import type { PlaybackTimelineEventGroup } from '@project/common/playback/timeline/playback-timeline';
 
 /** Tracks a monotonic playback position and returns every compiled boundary crossed by each update. */
 export default class PlaybackTimelineCursor<T extends IndexedSubtitleModel> {

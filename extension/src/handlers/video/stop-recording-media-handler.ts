@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError, mockSurroundingSubtitles } from '@project/common/util';
 import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     AudioModel,
@@ -11,7 +11,6 @@ import type {
 } from '@project/common';
 import { ImageErrorCode, PostMineAction } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
-import { mockSurroundingSubtitles } from '@project/common/util';
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
 import {

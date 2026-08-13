@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type CreateCSSProperties, makeStyles } from '@mui/styles';
+import { makeStyles } from '@mui/styles';
+import type { CreateCSSProperties } from '@mui/styles';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import type { Theme } from '@mui/material';
@@ -21,7 +22,8 @@ import KeyboardShortcutsSettingsTab from '@project/common/components/KeyboardSho
 import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
 import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
-import TutorialBubble, { type TutorialBubbleProps } from '@project/common/components/TutorialBubble';
+import TutorialBubble from '@project/common/components/TutorialBubble';
+import type { TutorialBubbleProps } from '@project/common/components/TutorialBubble';
 
 interface AnnotationTutorialPosition {
     left: number;

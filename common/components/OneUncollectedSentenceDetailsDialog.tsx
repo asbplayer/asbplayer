@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { useCallback, type ComponentProps } from 'react';
+import { useCallback } from 'react';
+import type { ComponentProps } from 'react';
 
 import StatisticsSentenceDetailsDialog from '@project/common/components/StatisticsSentenceDetailsDialog';
 import type { DictionaryProvider } from '@project/common/dictionary-db';

@@ -45,19 +45,16 @@ import {
 } from '@project/common/util';
 import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
 import Clock from '@project/common/playback/timing/clock';
-import {
-    formatPlaybackModeNotifications,
-    PlaybackModeNotificationFormatOptions,
-    playbackModeNotificationJoin,
-    type PlayModeTransition,
-} from '@project/common/playback/controllers/playback-mode-controller';
+import { formatPlaybackModeNotifications, playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
+import type { PlaybackModeNotificationFormatOptions, PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import type { Point } from '@project/common/app/components/Controls';
 import Controls from '@project/common/app/components/Controls';
 import PlayerChannel from '@project/common/app/services/player-channel';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import Alert, { type AlertNotification } from '@project/common/app/components/Alert';
+import Alert from '@project/common/app/components/Alert';
+import type { AlertNotification } from '@project/common/app/components/Alert';
 import Button from '@mui/material/Button';
 import { useSubtitleDomCache } from '@project/common/app/hooks/use-subtitle-dom-cache';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';

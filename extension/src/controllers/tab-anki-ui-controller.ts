@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError, sourceString } from '@project/common/util';
 import type {
     AnkiUiInitialState,
     OpenAsbplayerSettingsMessage,
@@ -16,7 +16,6 @@ import type {
 } from '@project/common';
 import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
 import { ankiSettingsKeys } from '@project/common/settings';
-import { sourceString } from '@project/common/util';
 import type UiFrame from '@project/extension/src/services/ui-frame';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';

@@ -4,8 +4,8 @@ import { makeSubtitle, makeTimelineOptions } from '@project/common/playback/play
 import {
     compilePlaybackTimeline,
     compilePlaybackTimelineSubtitles,
-    type PlaybackTimelineOptions,
 } from '@project/common/playback/timeline/playback-timeline-compiler';
+import type { PlaybackTimelineOptions } from '@project/common/playback/timeline/playback-timeline-compiler';
 
 const compile = (
     subtitles: IndexedSubtitleModel[],

@@ -25,6 +25,7 @@ import {
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
     validateSettings,
+    VideoSubtitleSplitBehavior,
 } from '@project/common/settings';
 import { Trans, useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,7 +36,6 @@ import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
 import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
-import { VideoSubtitleSplitBehavior } from '@project/common/settings';
 import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 

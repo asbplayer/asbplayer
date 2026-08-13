@@ -7,7 +7,8 @@ import PanelIcon from '@project/common/components/PanelIcon';
 import LaunchIcon from '@mui/icons-material/Launch';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useCallback, useMemo } from 'react';
-import Button, { type ButtonProps } from '@mui/material/Button';
+import Button from '@mui/material/Button';
+import type { ButtonProps } from '@mui/material/Button';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import { useTranslation } from 'react-i18next';
 import type { Fetcher } from '@project/common/src/fetcher';
@@ -26,13 +27,12 @@ import Paper from '@mui/material/Paper';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
-import { uiTabRegistry, useMediaId } from '@project/extension/src/ui/hooks/use-media-id';
+import { uiTabRegistry, useMediaId, useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
 import Statistics from '@project/common/components/Statistics';
 import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
 import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
-import { useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 

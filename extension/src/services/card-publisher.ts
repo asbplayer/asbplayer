@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError, humanReadableTime } from '@project/common/util';
 import type {
     CardExportedMessage,
     CardModel,
@@ -10,7 +10,6 @@ import type {
     ShowCardSelectUiMessage,
 } from '@project/common';
 import { PostMineAction } from '@project/common';
-import { humanReadableTime } from '@project/common/util';
 import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
 import { ankiSettingsKeys } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';

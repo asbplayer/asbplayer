@@ -32,6 +32,7 @@ import {
     formatAsSignedMs,
     surroundingSubtitles,
     timeDurationDisplay,
+    ensureStoragePersisted,
 } from '@project/common/util';
 import BroadcastChannelVideoProtocol from '@project/common/app/services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '@project/common/app/services/chrome-tab-video-protocol';
@@ -49,7 +50,6 @@ import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 import { createBlobUrl } from '@project/common/blob-url';
 import type { MiningContext } from '@project/common/app/services/mining-context';
 import type { SeekTimestampCommand, WebSocketClient } from '@project/common/web-socket-client';
-import { ensureStoragePersisted } from '@project/common/util';
 import {
     resolveVideoSubtitleSplitLayout,
     useVideoAspectRatio,
@@ -60,13 +60,16 @@ import PlaybackEngine from '@project/common/playback/playback-engine';
 import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildPlaybackTimelineExportPlan,
-    type PlaybackTimelineModeLabels,
-    type PlaybackTimelineOptionLabels,
     playbackTimelineSettingsSummary,
     playbackTimelineToHtml,
 } from '@project/common/playback/timeline/playback-timeline-html';
+import type {
+    PlaybackTimelineModeLabels,
+    PlaybackTimelineOptionLabels,
+} from '@project/common/playback/timeline/playback-timeline-html';
 import { createTheme } from '@project/common/theme/theme';
-import Alert, { type AlertNotification } from '@project/common/app/components/Alert';
+import Alert from '@project/common/app/components/Alert';
+import type { AlertNotification } from '@project/common/app/components/Alert';
 import useSnackbar from '@project/common/hooks/use-snackbar';
 
 const minVideoPlayerWidth = 300;

@@ -19,17 +19,15 @@ import type {
     DictionaryRequestStatisticsSnapshotMessage,
     DictionaryRequestStatisticsSeekMessage,
     DictionaryRequestStatisticsMineSentencesMessage,
-} from '@project/common';
-import type { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
-import type { Asbplayer, VideoElement } from '@/services/tab-registry';
-import type TabRegistry from '@/services/tab-registry';
-import type {
     DictionaryGetBulkMessage,
     DictionaryGetByLemmaBulkMessage,
     DictionarySaveRecordLocalBulkMessage,
     DictionaryDeleteRecordLocalBulkMessage,
     DictionaryDeleteProfileMessage,
 } from '@project/common';
+import type { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
+import type { Asbplayer, VideoElement } from '@/services/tab-registry';
+import type TabRegistry from '@/services/tab-registry';
 
 export default class DictionaryHandler {
     private readonly dictionaryDB: DictionaryDB;

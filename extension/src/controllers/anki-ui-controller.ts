@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError, sourceString } from '@project/common/util';
 import type {
     ActiveProfileMessage,
     AnkiDialogSettings,
@@ -23,7 +23,6 @@ import type {
 } from '@project/common';
 import { PostMinePlayback } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
-import { sourceString } from '@project/common/util';
 import type Binding from '@project/extension/src/services/binding';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import type UiFrame from '@project/extension/src/services/ui-frame';

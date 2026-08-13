@@ -1,10 +1,10 @@
 import {
-    type AutoPausePreferenceEdge,
     autoPausePreferenceForCheckboxChange,
     calculateSeekableTracksValue,
     isTrackSeekable,
     updateSeekableTracksValue,
 } from '.';
+import type { AutoPausePreferenceEdge } from '.';
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference } from '@project/common/src/model';
 

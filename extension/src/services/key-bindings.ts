@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError, ensureStoragePersisted } from '@project/common/util';
 import type {
     OpenStatisticsMessage,
     SettingsUpdatedMessage,
@@ -11,7 +11,6 @@ import type { KeyBindSet } from '@project/common/settings';
 import { ApplyStrategy, TokenState } from '@project/common/settings';
 import { DefaultKeyBinder } from '@project/common/key-binder';
 import type Binding from '@project/extension/src/services/binding';
-import { ensureStoragePersisted } from '@project/common/util';
 
 type Unbinder = (() => void) | false;
 

@@ -1,16 +1,15 @@
-import { asbInfo } from '@project/common/util';
+import { asbInfo, clamp } from '@project/common/util';
 import {
     CancelledMediaFragmentDataRenderingError,
     createVideoElement,
     disposeVideoElement,
     makeMediaFragmentFileName,
     minWebmMediaFragmentDurationMs,
-    type MediaFragmentData,
     preferredWebmMediaFragmentMimeType,
     mediaFragmentErrorForFile,
 } from '@project/common/src/media-fragment';
+import type { MediaFragmentData } from '@project/common/src/media-fragment';
 import type { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
-import { clamp } from '@project/common/util';
 
 const videoSeekEpsilonSeconds = 0.001;
 const defaultCaptureFrameRate = 24;

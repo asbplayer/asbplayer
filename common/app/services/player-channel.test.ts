@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { type Message, PlayMode } from '@project/common';
+import { PlayMode } from '@project/common';
+import type { Message } from '@project/common';
 import PlayerChannel from '@project/common/app/services/player-channel';
 
 class TestBroadcastChannel {

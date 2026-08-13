@@ -1,4 +1,5 @@
 const js = require('@eslint/js');
+const importPlugin = require('eslint-plugin-import');
 const reactRecommended = require('eslint-plugin-react/configs/recommended');
 const reactHooks = require('eslint-plugin-react-hooks');
 const typescriptParser = require('@typescript-eslint/parser');
@@ -25,6 +26,7 @@ module.exports = [
             'react/jsx-uses-react': 'off',
             'react/react-in-jsx-scope': 'off',
             'react/prop-types': 'off',
+            'import/no-duplicates': 'error',
             'no-restricted-imports': [
                 'error',
                 {
@@ -38,6 +40,7 @@ module.exports = [
             ],
         },
         plugins: {
+            import: importPlugin,
             ...reactRecommended.plugins,
             'react-hooks': { rules: { ...reactHooks.rules } },
         },
@@ -69,9 +72,10 @@ module.exports = [
             '@typescript-eslint': tseslint.plugin,
         },
         rules: {
+            'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
+            '@typescript-eslint/no-import-type-side-effects': 'error',
             '@typescript-eslint/consistent-type-imports': 'error',
             '@typescript-eslint/consistent-type-exports': 'error',
-            '@typescript-eslint/no-import-type-side-effects': 'error',
             '@typescript-eslint/no-unnecessary-type-assertion': 'error',
             '@typescript-eslint/return-await': 'error',
             '@typescript-eslint/await-thenable': 'error',
