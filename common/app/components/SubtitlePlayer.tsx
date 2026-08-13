@@ -22,6 +22,7 @@ import {
     CopySubtitleWithAdditionalFieldsMessage,
     CardTextFieldValues,
     IndexedSubtitleModel,
+    PlaybackState,
 } from '@project/common';
 import {
     AsbplayerSettings,
@@ -646,9 +647,9 @@ interface SubtitlePlayerProps {
     onMouseOut: (e: React.MouseEvent) => void;
     onResizeStart?: () => void;
     onResizeEnd?: (width: number) => void;
-    subtitles?: DisplaySubtitleModel[];
+    subtitles: DisplaySubtitleModel[];
     subtitleCollection: SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>;
-    timelineShowingSubtitles?: readonly DisplaySubtitleModel[];
+    playbackState?: PlaybackState;
     length: number;
     jumpToSubtitle?: SubtitleModel;
     onJumpToSubtitleHandled?: () => void;
@@ -685,7 +686,7 @@ export default function SubtitlePlayer({
     onResizeEnd,
     subtitles,
     subtitleCollection,
-    timelineShowingSubtitles,
+    playbackState,
     length,
     jumpToSubtitle,
     onJumpToSubtitleHandled,
@@ -710,7 +711,7 @@ export default function SubtitlePlayer({
     const { t } = useTranslation();
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
-    const subtitleListRef = useRef<DisplaySubtitleModel[]>(undefined);
+    const subtitleListRef = useRef<DisplaySubtitleModel[]>([]);
     subtitleListRef.current = subtitles;
 
     const virtuosoRef = useRef<TableVirtuosoHandle>(null);
@@ -830,14 +831,22 @@ export default function SubtitlePlayer({
     }, []);
 
     useEffect(() => {
-        if (timelineShowingSubtitles !== undefined) {
-            updateShowingSubtitles(timelineShowingSubtitles);
-            return;
+        if (playbackState === undefined) return;
+
+        let showingSubtitles: IndexedSubtitleModel[] = playbackState.showingSubtitleIndexes
+            .map((index) => subtitleListRef.current[index])
+            .filter((subtitle): subtitle is DisplaySubtitleModel => subtitle !== undefined);
+        if (!showingSubtitles.length) {
+            showingSubtitles = subtitleCollectionRef.current.subtitlesAt(playbackState.timestampMs).lastShown ?? [];
         }
+        updateShowingSubtitles(showingSubtitles);
+    }, [playbackState, subtitles, updateShowingSubtitles]);
+
+    useEffect(() => {
+        if (playbackState !== undefined) return;
 
         const update = () => {
-            const clock = clockRef.current;
-            const timestamp = clock.time({ maxMs: lengthRef.current });
+            const timestamp = clockRef.current.time({ maxMs: lengthRef.current });
             const slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
             updateShowingSubtitles(slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing);
             requestAnimationRef.current = requestAnimationFrame(update);
@@ -850,7 +859,7 @@ export default function SubtitlePlayer({
                 cancelAnimationFrame(requestAnimationRef.current);
             }
         };
-    }, [timelineShowingSubtitles, updateShowingSubtitles]);
+    }, [playbackState, updateShowingSubtitles]);
 
     const scrollToCurrentSubtitle = useCallback(() => {
         const indexes = highlightedSubtitleIndexesRef.current;

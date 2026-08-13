@@ -138,7 +138,11 @@ export default defineContentScript({
                         hasValidVideoSource(videoElement, page) &&
                         !page?.shouldIgnore(videoElement)
                     ) {
-                        const b = new Binding(videoElement, hasPageScript, frameInfoBroadcaster?.frameId);
+                        const b = new Binding(videoElement, {
+                            hasPageScript,
+                            frameId: frameInfoBroadcaster?.frameId,
+                            videoSrcChangesIndicateNewVideo: page?.config.videoSrcChangesIndicateNewVideo ?? false,
+                        });
                         b.bind();
                         bindings.push(b);
                     }
@@ -151,7 +155,11 @@ export default defineContentScript({
                     for (let j = 0; j < videoElements.length; ++j) {
                         const videoElement = videoElements[j];
 
-                        if (videoElement.isSameNode(b.video) && hasValidVideoSource(videoElement, page)) {
+                        if (
+                            videoElement.isSameNode(b.video) &&
+                            hasValidVideoSource(videoElement, page) &&
+                            !page?.shouldIgnore(videoElement)
+                        ) {
                             videoElementExists = true;
                             break;
                         }
@@ -161,6 +169,12 @@ export default defineContentScript({
                         bindings.splice(i, 1);
                         b.unbind();
                     }
+                }
+
+                if (page !== undefined) {
+                    bindings.sort(
+                        (a, b) => page.videoElementPreference(a.video) - page.videoElementPreference(b.video)
+                    );
                 }
 
                 if (bindings.length === 0) {
@@ -176,7 +190,9 @@ export default defineContentScript({
                 ? setInterval(incrementallyFindShadowRoots, 100)
                 : undefined;
 
-            const videoSelectController = new VideoSelectController(bindings);
+            const videoSelectController = new VideoSelectController(bindings, {
+                isBindingsSorted: page?.config.preferredVideoElementSelector !== undefined,
+            });
             videoSelectController.bind();
 
             const ankiUiController = new TabAnkiUiController(settingsProvider);

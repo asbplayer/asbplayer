@@ -14,6 +14,7 @@
             "host": "(m|www)\\.youtube\\.com",
             "pageScript": "youtube-page.js",
             "syncAllowedAtPath": "watch|shorts|embed",
+            "preferredVideoElementSelector": "#movie_player video",
             "autoSync": {
                 "enabled": true
             }
@@ -126,6 +127,7 @@
             "key": "embyJellyfin",
             "host": "(jellyfin.*)|(emby.*)|(:8096$)",
             "pageScript": "emby-jellyfin-page.js",
+            "videoSrcChangesIndicateNewVideo": true,
             "syncAllowedAtHash": "#!/videoosd/videoosd.html|#/video",
             "autoSync": {
                 "enabled": true

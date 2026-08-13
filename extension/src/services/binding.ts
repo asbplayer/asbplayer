@@ -13,9 +13,12 @@ import {
     ExtensionSyncMessage,
     ImageCaptureParams,
     NotificationDialogMessage,
+    OffsetFromVideoMessage,
     NotifyErrorMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PlaybackState,
+    PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
@@ -63,10 +66,13 @@ import {
     SeekableTracks,
     SettingsProvider,
     SubtitleListPreference,
-    defaultSettings,
+    isSaveOnlySettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { playbackModeNotifications } from '@project/common/playback/controllers/playback-mode-controller';
+import {
+    playbackModeNotifications,
+    type PlayModeTransition,
+} from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildSubtitleTracks,
     clampMediaTimestamp,
@@ -152,6 +158,12 @@ const startAudioRecordingErrorResponse: (e: any) => StartRecordingResponse = (e:
     return errorResponse;
 };
 
+export interface BindingOptions {
+    readonly hasPageScript: boolean;
+    readonly frameId?: string;
+    readonly videoSrcChangesIndicateNewVideo: boolean;
+}
+
 export default class Binding {
     private readonly _fallbackVideoSrc = uuidv4();
 
@@ -163,6 +175,8 @@ export default class Binding {
     private _synced: boolean;
     private _syncedTimestamp?: number;
     private _lastSyncedLocation?: string;
+    private _lastLoadedMetadataVideoSrc: string;
+    private readonly _videoSrcChangesIndicateNewVideo: boolean;
 
     private _recordingState: RecordingState = RecordingState.notRecording;
     recordingPostMineAction?: PostMineAction;
@@ -237,10 +251,12 @@ export default class Binding {
 
     private readonly frameId?: string;
 
-    constructor(video: HTMLMediaElement, hasPageScript: boolean, frameId?: string) {
+    constructor(video: HTMLMediaElement, options: BindingOptions) {
         this.video = video;
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
-        this.hasPageScript = hasPageScript;
+        this._lastLoadedMetadataVideoSrc = this._registeredVideoSrc;
+        this.hasPageScript = options.hasPageScript;
+        this._videoSrcChangesIndicateNewVideo = options.videoSrcChangesIndicateNewVideo;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
@@ -273,7 +289,7 @@ export default class Binding {
         this.postMinePlayback = PostMinePlayback.remember;
         this._synced = false;
         this.recordingMediaWithScreenshot = false;
-        this.frameId = frameId;
+        this.frameId = options.frameId;
     }
 
     get registeredVideoSrc() {
@@ -336,13 +352,20 @@ export default class Binding {
     }
 
     private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
-        if (!options.notify) return;
-        this.subtitleController.notification({
-            locKey: options.locKey,
-            replacements: {
-                rate: options.playbackRate.toFixed(1),
-            },
-        });
+        if (!options?.notify) return;
+        this.subtitleController.notification(options.notification);
+    }
+
+    private _handlePlaybackModesChanged(
+        transition: PlayModeTransition,
+        modeNotifications = playbackModeNotifications(transition)
+    ): string | undefined {
+        this._notifyPlaybackModes(transition.modes);
+        if (!transition.added.size && !transition.removed.size) return;
+        const { notifications, join } = modeNotifications;
+        this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
+        if (!notifications.length) return;
+        return notifications.map((notification) => i18n.t(notification)).join(join);
     }
 
     subtitleFileName(track: number = 0) {
@@ -373,9 +396,10 @@ export default class Binding {
         const video = this.video as HTMLVideoElement;
         const subtitles = this.subtitleController.subtitles;
         return new PlaybackEngine({
-            settings: defaultSettings,
+            settingsProvider: this.settings,
+            appIntegration: true,
             subtitles,
-            ready: { settings: false },
+            playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
             playbackPositionKeys: this._playbackPositionKeys(
                 this._nonEmptyTrackIndexes(subtitles),
@@ -428,16 +452,7 @@ export default class Binding {
                     onSeeked: () => this.seekedListener?.(new Event('seeked')),
                     onPlaybackRateChanged: (playbackRate) => {
                         if (disneyPlus) this.disneyPlusClock.updateRate(playbackRate, performance.now());
-                        const command: VideoToExtensionCommand<PlaybackRateFromVideoMessage> = {
-                            sender: 'asbplayer-video',
-                            message: {
-                                command: 'playbackRate',
-                                value: playbackRate,
-                                echo: false,
-                            },
-                            src: this._registeredVideoSrc,
-                        };
-                        void browser.runtime.sendMessage(command);
+                        this._notifyPlaybackRateChanged(playbackRate);
 
                         this.notifyPlaybackRate(this.playbackEngine.playbackRateChanged(playbackRate));
                         void this.mobileVideoOverlayController.updateModel();
@@ -458,7 +473,10 @@ export default class Binding {
                     if (this.video.playbackRate !== playbackRate) this.video.playbackRate = playbackRate;
                 },
                 setSubtitleOffset: (offset, options) => this.subtitleController.offset(offset, !options.notifyPlayer),
-                showingSubtitlesChanged: (subtitles) => this.subtitleController.showingSubtitlesChanged(subtitles),
+                playbackStateChanged: (state) => {
+                    this.subtitleController.playbackStateChanged(state);
+                    this._notifyPlaybackState(state);
+                },
                 playbackPositionChanged: (position) => {
                     if (position === undefined) {
                         this.notificationController.hide();
@@ -479,6 +497,7 @@ export default class Binding {
                     void this.settings
                         .set(settings)
                         .then(() => {
+                            if (isSaveOnlySettings(settings)) return;
                             const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
                                 sender: 'asbplayer-video',
                                 message: { command: 'settings-updated' },
@@ -489,15 +508,27 @@ export default class Binding {
                         .catch(console.error);
                 },
                 playbackModesChanged: (transition) => {
-                    this._notifyPlaybackModes(transition.modes);
-                    if (!transition.added.size && !transition.removed.size) return;
-
-                    const { notifications, join } = playbackModeNotifications(transition);
+                    const notification = this._handlePlaybackModesChanged(transition);
+                    if (notification) this.subtitleController.notification({ text: notification });
+                },
+                initialPlaybackSettingsChanged: (settings) => {
+                    this._notifySubtitleOffset(settings.subtitleOffset);
+                    const notifications = settings.notifications.offsetAndRate.map((notification) =>
+                        notification.type === 'message'
+                            ? notification.message
+                            : i18n.t(notification.notification.locKey, notification.notification.replacements)
+                    );
+                    const playbackMode = this._handlePlaybackModesChanged(
+                        settings.playbackModeTransition,
+                        settings.notifications.playbackMode
+                    );
+                    if (playbackMode) notifications.push(playbackMode);
                     if (notifications.length) {
-                        this.subtitleController.notification({ text: notifications.map((n) => i18n.t(n)).join(join) });
+                        this.subtitleController.notification({
+                            text: notifications.join(settings.notifications.playbackMode.join),
+                            autoHideDuration: settings.autoHideDuration,
+                        });
                     }
-                    this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
-                    this.mobileVideoOverlayController.showPlaybackModes();
                 },
                 onError: (error) => console.error('Playback plan update failed', error),
             },
@@ -510,6 +541,45 @@ export default class Binding {
             message: {
                 command: 'playModes',
                 playModes: [...modes],
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
+    }
+
+    private _notifySubtitleOffset(offset: number): void {
+        const command: VideoToExtensionCommand<OffsetFromVideoMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'offset',
+                value: offset,
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
+    }
+
+    private _notifyPlaybackRateChanged(playbackRate: number): void {
+        const command: VideoToExtensionCommand<PlaybackRateFromVideoMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'playbackRate',
+                value: playbackRate,
+                echo: false,
+            },
+            src: this._registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(command);
+    }
+
+    private _notifyPlaybackState(state: PlaybackState): void {
+        const command: VideoToExtensionCommand<PlaybackStateFromVideoMessage> = {
+            sender: 'asbplayer-video',
+            message: {
+                command: 'playbackState',
+                timestampMs: state.timestampMs,
+                showingSubtitleIndexes: [...state.showingSubtitleIndexes],
+                paused: state.paused,
             },
             src: this._registeredVideoSrc,
         };
@@ -548,7 +618,7 @@ export default class Binding {
         this._notifyReady();
         this._subscribe();
         void this._refreshSettings().then(() => {
-            void this.videoDataSyncController.requestSubtitles();
+            void this.videoDataSyncController.requestSubtitles({ videoChanged: false });
         });
         this.subtitleController.bind();
         this.playbackEngine.bind();
@@ -697,30 +767,35 @@ export default class Binding {
 
         if (this.hasPageScript) {
             const debouncedChangeListener = debounced(
-                () => {
-                    void this.videoDataSyncController.requestSubtitles();
+                (videoChanged: boolean) => {
+                    void this.videoDataSyncController.requestSubtitles({ videoChanged });
                     this._resetSubtitles();
                 },
                 disneyPlus ? 1000 : 0
             );
             this.videoChangeListener = () => {
-                this._updateRegisteredVideoSrc(this.video.src || this._fallbackVideoSrc);
+                const videoSrc = this.video.src || this._fallbackVideoSrc;
+                const sourceChanged = videoSrc !== this._lastLoadedMetadataVideoSrc;
+                this._lastLoadedMetadataVideoSrc = videoSrc;
+                this._updateRegisteredVideoSrc(videoSrc);
+                const sameLocationVideoChanged = this._videoSrcChangesIndicateNewVideo && sourceChanged;
 
                 // Player events (e.g. Hulu blob URL rotation) can fire loadedmetadata
                 // without an actual video change. Skip refresh when the picker is open
                 // here or subtitles are already synced for it.
                 if (
                     this.videoDataSyncController.pickerVisible &&
-                    this.videoDataSyncController.openedLocation === window.location.href
+                    this.videoDataSyncController.openedLocation === window.location.href &&
+                    !sameLocationVideoChanged
                 ) {
                     return;
                 }
 
-                if (this._synced && this._lastSyncedLocation === window.location.href) {
+                if (this._synced && this._lastSyncedLocation === window.location.href && !sameLocationVideoChanged) {
                     return;
                 }
 
-                debouncedChangeListener();
+                debouncedChangeListener(sameLocationVideoChanged);
                 if (disneyPlus) this.disneyPlusClock.reset();
             };
             this.video.addEventListener('loadedmetadata', this.videoChangeListener);
@@ -1154,6 +1229,8 @@ export default class Binding {
     }
 
     async _refreshSettings() {
+        const activeProfile = (await this.settings.activeProfile())?.name;
+        this.playbackEngine.profileChanged(activeProfile);
         const currentSettings = await this.settings.getAll();
         this.playbackEngine.settingsChanged(currentSettings);
         this._seekDurationMs = currentSettings.seekDuration * 1000;
@@ -1687,16 +1764,12 @@ export default class Binding {
             streamingSubtitleListPreference,
             subtitleRegexFilter,
             subtitleRegexFilterTextReplacement,
-            rememberSubtitleOffset,
-            lastSubtitleOffset,
             subtitleHtml,
             convertNetflixRuby: convertNetflixRuby,
         } = await this.settings.get([
             'streamingSubtitleListPreference',
             'subtitleRegexFilter',
             'subtitleRegexFilterTextReplacement',
-            'rememberSubtitleOffset',
-            'lastSubtitleOffset',
             'subtitleHtml',
             'convertNetflixRuby',
         ]);
@@ -1732,8 +1805,7 @@ export default class Binding {
                     convertNetflixRuby: convertNetflixRuby,
                     pgsParserWorkerFactory: pgsParserWorkerFactory,
                 });
-                const userOffset = rememberSubtitleOffset ? lastSubtitleOffset : 0;
-                const offset = userOffset;
+                const offset = this.playbackEngine.lastSubtitleOffset;
                 const subtitles = await reader.subtitles(files, flatten);
 
                 // Order is important: sync with tab first, then update our subtitle controller
@@ -1833,6 +1905,7 @@ export default class Binding {
     private _resetSubtitles() {
         this.subtitleController.reset();
         this.playbackEngine.playbackPositionKeysChanged([]);
+        this.playbackEngine.subtitlesChanged([]);
         this.ankiUiSavedState = undefined;
         this._synced = false;
         this._syncedTimestamp = undefined;

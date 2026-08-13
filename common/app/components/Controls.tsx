@@ -35,7 +35,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
 import { SubtitleAlignment } from '@project/common/settings';
 import Clock from '@project/common/playback/timing/clock';
-import PlaybackPreferences from '../services/playback-preferences';
+import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import Tooltip from '../../components/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -606,7 +606,7 @@ interface ControlsProps {
     onPlaybackRateChange: (playbackRate: number) => void;
     onVolumeChange?: (volume: number) => void;
     disableKeyEvents?: boolean;
-    playbackPreferences: PlaybackPreferences;
+    playbackPreferences: PlaybackPreferenceController;
     closeEnabled?: boolean;
     onClose?: () => void;
     volumeEnabled?: boolean;
@@ -614,8 +614,6 @@ interface ControlsProps {
     previewEnabled: boolean;
     playModeEnabled?: boolean;
     onPlayMode?: (playMode: PlayMode) => void;
-    onPlayModeSelectorOpened?: () => void;
-    onPlayModeSelectorClosed?: () => void;
     subtitlesEnabled?: boolean;
     subtitlesToggle?: boolean;
     onSubtitlesToggle?: () => void;
@@ -676,8 +674,6 @@ export default function Controls({
     playModes,
     playModeEnabled,
     onPlayMode,
-    onPlayModeSelectorOpened,
-    onPlayModeSelectorClosed,
     subtitlesEnabled,
     subtitlesToggle,
     onSubtitlesToggle,
@@ -887,17 +883,12 @@ export default function Controls({
     const handlePlayModeSelectorClosed = useCallback(() => {
         setPlayModeSelectorAnchorEl(undefined);
         setPlayModeSelectorOpen(false);
-        onPlayModeSelectorClosed?.();
-    }, [onPlayModeSelectorClosed]);
+    }, []);
 
-    const handlePlayModeSelectorClicked = useCallback(
-        (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-            setPlayModeSelectorAnchorEl(e.currentTarget);
-            setPlayModeSelectorOpen(true);
-            onPlayModeSelectorOpened?.();
-        },
-        [onPlayModeSelectorOpened]
-    );
+    const handlePlayModeSelectorClicked = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        setPlayModeSelectorAnchorEl(e.currentTarget);
+        setPlayModeSelectorOpen(true);
+    }, []);
 
     const handlePlayModeSelected = useCallback(
         (playMode: PlayMode) => {

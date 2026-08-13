@@ -1,6 +1,10 @@
 export type ClockEvent = 'stop' | 'start' | 'settime' | 'timeupdate';
 
-const TIMEUPDATE_INTERVAL_MS = 100;
+type ClockSetTimeOptions = {
+    readonly paused: boolean;
+};
+
+const TIMEUPDATE_INTERVAL_MS = 50;
 
 /** A monotonic millisecond-based media clock for playback without a media element. */
 export default class Clock {
@@ -54,13 +58,21 @@ export default class Clock {
         if (this.started) return;
         this.startedAtMs = this.now();
         this.started = true;
+        this.startTimeUpdateInterval();
         this.fireEvent('start');
     }
 
-    setTime(timeMs: number): void {
+    setTime(timeMs: number, { paused }: ClockSetTimeOptions): void {
+        const wasStarted = this.started;
         this.accumulatedMs = timeMs;
-        if (this.started) this.startedAtMs = this.now();
+        this.started = !paused;
+        if (this.started) {
+            this.startedAtMs = this.now();
+            this.startTimeUpdateInterval();
+        }
+
         this.fireEvent('settime');
+        if (wasStarted !== this.started) this.fireEvent(this.started ? 'start' : 'stop');
     }
 
     progress({ durationMs }: { durationMs: number }): number {
@@ -69,23 +81,29 @@ export default class Clock {
 
     onEvent(eventName: ClockEvent, callback: () => void): () => void {
         this.callbacks[eventName].push(callback);
-        if (eventName === 'timeupdate' && this.timeUpdateHandle === undefined) {
-            this.timeUpdateHandle = setInterval(() => this.fireEvent('timeupdate'), TIMEUPDATE_INTERVAL_MS);
-        }
+        if (eventName === 'timeupdate') this.startTimeUpdateInterval();
         return () => this.removeEvent(eventName, callback);
     }
 
     removeEvent(eventName: ClockEvent, callback: () => void): void {
         const callbacks = this.callbacks[eventName];
         this.remove(callback, callbacks);
-        if (eventName === 'timeupdate' && callbacks.length === 0 && this.timeUpdateHandle !== undefined) {
-            clearInterval(this.timeUpdateHandle);
-            this.timeUpdateHandle = undefined;
-        }
+        if (eventName === 'timeupdate' && !callbacks.length) this.stopTimeUpdateInterval();
     }
 
     private elapsedMs(): number {
         return (this.now() - this.startedAtMs) * this.playbackRate;
+    }
+
+    private startTimeUpdateInterval(): void {
+        if (!this.callbacks.timeupdate.length || this.timeUpdateHandle !== undefined) return;
+        this.timeUpdateHandle = setInterval(() => this.fireEvent('timeupdate'), TIMEUPDATE_INTERVAL_MS);
+    }
+
+    private stopTimeUpdateInterval(): void {
+        if (this.timeUpdateHandle === undefined) return;
+        clearInterval(this.timeUpdateHandle);
+        this.timeUpdateHandle = undefined;
     }
 
     private fireEvent(eventName: ClockEvent): void {

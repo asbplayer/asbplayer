@@ -5,7 +5,7 @@ import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-t
 import VideoFrameTimingDriver, {
     type VideoFrameTimingSource,
 } from '@project/common/playback/timing/video-frame-timing-driver';
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
 import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/timing/timing-driver';
 
@@ -432,6 +432,86 @@ describe('VideoFrameTimingDriver', () => {
         driver.unbind();
     });
 
+    it('processes audio-only timeupdate events without lookahead prediction', async () => {
+        const video = new FakeVideo();
+        video.hasVideoTrack = false;
+        video.playbackRate = 1.5;
+        const updates: [number, number | undefined][] = [];
+        const driver = timingDriver(videoSource(video), {
+            onTime: async (timestampMs, { lookaheadTimestampMs }) => {
+                updates.push([timestampMs, lookaheadTimestampMs]);
+            },
+            onDiscontinuity: () => {},
+        });
+        driver.bind();
+        video.play();
+
+        video.currentTime = 0.25;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+
+        video.currentTime = 0.5;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+
+        expect(updates).toEqual([
+            [250, undefined],
+            [500, undefined],
+        ]);
+        driver.unbind();
+    });
+
+    it('polls time updates every 50 ms without prediction', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            video.hasVideoTrack = false;
+            const updates: [number, number | undefined][] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs, { lookaheadTimestampMs }) => {
+                    updates.push([timestampMs, lookaheadTimestampMs]);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+
+            video.currentTime = 0.05;
+            jest.advanceTimersByTime(50);
+            await flush();
+
+            video.currentTime = 0.075;
+            video.dispatchEvent(new Event('timeupdate'));
+            await flush();
+
+            expect(updates).toEqual([
+                [50, undefined],
+                [75, undefined],
+            ]);
+
+            video.currentTime = 0.1;
+            jest.advanceTimersByTime(50);
+            await flush();
+            expect(updates).toEqual([
+                [50, undefined],
+                [75, undefined],
+                [100, undefined],
+            ]);
+
+            video.pause();
+            const updateCountWhilePaused = updates.length;
+            video.currentTime = 0.2;
+            jest.advanceTimersByTime(100);
+            await flush();
+            expect(updates).toHaveLength(updateCountWhilePaused);
+
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     it('accounts for submitted frames missed between callbacks', () => {
         const video = new FakeVideo();
         video.playbackRate = 2;
@@ -561,7 +641,6 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };
             },
-            showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
@@ -640,7 +719,6 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };
             },
-            showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
@@ -728,7 +806,6 @@ describe('VideoFrameTimingDriver', () => {
             },
             setPlaybackRate: () => {},
             correctAutoPause: async () => ({ seekIssued: false }),
-            showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
@@ -804,7 +881,6 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };
             },
-            showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
@@ -891,7 +967,6 @@ describe('VideoFrameTimingDriver', () => {
                 video.seek(timestampMs / 1000);
                 return { seekIssued: true };
             },
-            showingSubtitlesChanged: () => {},
         });
         const driver = timingDriver(videoSource(video), {
             onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),

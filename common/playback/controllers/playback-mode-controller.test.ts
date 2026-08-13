@@ -1,7 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import PlaybackModeController, {
-    hasEnabledPlaybackModes,
     playbackModeNotifications,
     playbackModesFromSettings,
 } from '@project/common/playback/controllers/playback-mode-controller';
@@ -9,7 +8,7 @@ import PlaybackModeController, {
 const sortedModes = (modes: Set<PlayMode>) => [...modes].sort((left, right) => left - right);
 
 function controllerWithModes(...modes: PlayMode[]) {
-    return new PlaybackModeController(new Set(modes));
+    return new PlaybackModeController(new Set(modes), false);
 }
 
 interface ModeSelectionCase {
@@ -68,15 +67,6 @@ const modeSelectionCases: ModeSelectionCase[] = [
 
 describe('playback mode selection', () => {
     it.each([
-        { name: 'no modes', modes: [], expected: false },
-        { name: 'normal mode only', modes: [PlayMode.normal], expected: false },
-        { name: 'one enabled mode', modes: [PlayMode.repeat], expected: true },
-        { name: 'two enabled modes', modes: [PlayMode.autoPause, PlayMode.repeat], expected: true },
-    ])('reports whether $name should be shown on first load', ({ modes, expected }) => {
-        expect(hasEnabledPlaybackModes(new Set(modes))).toBe(expected);
-    });
-
-    it.each([
         {
             name: 'remembering disabled with two stored modes',
             rememberPlaybackModes: false,
@@ -97,7 +87,8 @@ describe('playback mode selection', () => {
         },
     ])('selects startup modes for $name', ({ rememberPlaybackModes, lastPlaybackModes, expected }) => {
         const controller = new PlaybackModeController(
-            playbackModesFromSettings({ rememberPlaybackModes, lastPlaybackModes })
+            playbackModesFromSettings({ rememberPlaybackModes, lastPlaybackModes }),
+            false
         );
 
         expect(sortedModes(controller.playModes)).toEqual(expected);
@@ -117,6 +108,14 @@ describe('playback mode selection', () => {
 
         expect(sortedModes(empty.playModes)).toEqual([PlayMode.normal]);
         expect(sortedModes(mixed.playModes)).toEqual([PlayMode.autoPause, PlayMode.repeat]);
+    });
+
+    it('keeps playback modes normal when disabled', () => {
+        const controller = new PlaybackModeController(new Set([PlayMode.repeat]), true);
+
+        expect(sortedModes(controller.playModes)).toEqual([PlayMode.normal]);
+        expect(sortedModes(controller.setModes(new Set([PlayMode.repeat])).modes)).toEqual([PlayMode.normal]);
+        expect(sortedModes(controller.transition(PlayMode.repeat).modes)).toEqual([PlayMode.normal]);
     });
 
     it('returns defensive mode snapshots', () => {

@@ -40,7 +40,6 @@ export class MobileVideoOverlayController {
     private _frameParams?: FrameParams;
     private _enabled = false;
     private _configuredOffsetAnchor: OffsetAnchor;
-    private _playModeSelectorRequest?: number;
     private _playModeSelectorOpen = false;
     private _overlayInstanceId = uuidv4();
     private _playModes = new Set<PlayMode>([PlayMode.normal]);
@@ -72,8 +71,6 @@ export class MobileVideoOverlayController {
 
     set offsetAnchor(value: OffsetAnchor) {
         this._configuredOffsetAnchor = value;
-        if (this._playModeSelectorRequest !== undefined) return;
-
         this._setOverlayOffsetAnchor(value);
     }
 
@@ -97,7 +94,7 @@ export class MobileVideoOverlayController {
         this._enabled = value;
         if (value) {
             this.bind();
-        } else if (this._playModeSelectorRequest === undefined) {
+        } else {
             this.unbind();
         }
     }
@@ -126,7 +123,7 @@ export class MobileVideoOverlayController {
             }
         };
         this._playListener = () => {
-            if (this._playModeSelectorRequest === undefined) this._hide();
+            if (!this._playModeSelectorOpen) this._hide();
         };
         this._seekedListener = () => {
             void this.updateModel();
@@ -223,7 +220,6 @@ export class MobileVideoOverlayController {
             subtitleDisplaying,
             subtitlesAreVisible: streamingDisplaySubtitles,
             playModes: Array.from(this._playModes),
-            playModeSelectorRequest: this._playModeSelectorRequest,
             overlayInstanceId: this._overlayInstanceId,
             themeType,
         };
@@ -238,27 +234,8 @@ export class MobileVideoOverlayController {
         this._show();
     }
 
-    showPlaybackModes() {
-        if (this._playModeSelectorOpen) {
-            void this.updateModel();
-            return;
-        }
-        if (this._playModeSelectorRequest !== undefined) {
-            this._playModeSelectorRequest += 1;
-            void this.updateModel();
-            return;
-        }
-        this._playModeSelectorRequest = (this._playModeSelectorRequest ?? 0) + 1;
-        if (this._forceHiding) return;
-        this._setOverlayOffsetAnchor(OffsetAnchor.top);
-        this.bind();
-        this._show();
-        void this.updateModel();
-    }
-
     private _playModeSelectorClosed() {
         this._playModeSelectorOpen = false;
-        this._playModeSelectorRequest = undefined;
 
         if (!this._enabled) {
             this.unbind();
@@ -278,11 +255,7 @@ export class MobileVideoOverlayController {
     }
 
     private _show() {
-        if (
-            !this._context.synced ||
-            this._forceHiding ||
-            (!this._enabled && this._playModeSelectorRequest === undefined)
-        ) {
+        if (!this._context.synced || this._forceHiding || !this._enabled) {
             return;
         }
 
@@ -320,9 +293,9 @@ export class MobileVideoOverlayController {
         const anchor = this._overlay.offsetAnchor === OffsetAnchor.bottom ? 'bottom' : 'top';
         const videoRect = this._context.video.getBoundingClientRect();
         const smallScreen = videoRect.height < smallScreenVideoHeightThreshold;
-        const height = this._playModeSelectorRequest === undefined ? (smallScreen ? 64 : 108) : 128;
+        const height = smallScreen ? 64 : 108;
         const tooltips = !smallScreen;
-        const width = Math.min(window.innerWidth, this._playModeSelectorRequest === undefined ? 410 : 1000);
+        const width = Math.min(window.innerWidth, 410);
         const src = encodeURIComponent(this._context.registeredVideoSrc);
 
         return { width, height, anchor, src, tooltips };
@@ -375,7 +348,6 @@ export class MobileVideoOverlayController {
 
     unbind() {
         this._playModeSelectorOpen = false;
-        this._playModeSelectorRequest = undefined;
         if (this._pauseListener) {
             this._context.video.removeEventListener('pause', this._pauseListener);
             this._pauseListener = undefined;

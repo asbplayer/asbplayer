@@ -22,6 +22,9 @@ interface PageConfig {
     // Page script to load
     pageScript?: string;
 
+    // Whether a changed media source identifies a new video even when the page URL is unchanged
+    videoSrcChangesIndicateNewVideo?: boolean;
+
     // URL relative path regex where subtitle track data syncing is allowed
     syncAllowedAtPath?: string;
 
@@ -33,6 +36,9 @@ interface PageConfig {
 
     // Whether video elements with blank src should be bindable on this page
     allowVideoElementsWithBlankSrc?: boolean;
+
+    // CSS selector for preferred videos that may auto-sync and should sort first in manual video selection
+    preferredVideoElementSelector?: string;
 
     autoSync?: {
         // Whether to attempt to load detected subtitles automatically
@@ -168,10 +174,17 @@ export class PageDelegate {
         return false;
     }
 
+    videoElementPreference(element: HTMLMediaElement) {
+        const selector = this.config.preferredVideoElementSelector;
+        return selector === undefined || element.matches(selector) ? 0 : 1;
+    }
+
     canAutoSync(element: HTMLMediaElement) {
         return (
             this.config.autoSync !== undefined &&
             this.config.autoSync.enabled &&
+            (this.config.preferredVideoElementSelector === undefined ||
+                element.matches(this.config.preferredVideoElementSelector)) &&
             (this.config.autoSync.elementId === undefined || element.id === this.config.autoSync.elementId) &&
             (this.config.autoSync.videoSrc === undefined || new RegExp(this.config.autoSync.videoSrc).test(element.src))
         );

@@ -34,6 +34,7 @@ export interface TimingDriver {
     frameTimeMs: () => number;
     playbackRate: () => number;
     durationMs(): number;
+    onDurationChange: () => void;
     paused(): boolean;
 }
 

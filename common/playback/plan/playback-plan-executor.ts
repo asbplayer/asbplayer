@@ -2,7 +2,6 @@ import type { IndexedSubtitleModel } from '@project/common';
 import PlaybackTimeline, {
     type PlaybackTimelineBlock,
     type PlaybackTimelineEvent,
-    type PlaybackTimelineSegment,
     type PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';
 import {
@@ -12,18 +11,16 @@ import {
 } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
 import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/playback-timeline-lookahead-cursor';
-import { areSubtitleModelsEqual, arrayEquals } from '@project/common/util';
 
 type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
 
-export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
+export interface PlaybackPlanExecutorCallbacks {
     readonly play: () => Promise<void>;
     readonly paused: () => boolean;
     readonly pause: () => void;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
     readonly correctAutoPause: (timestampMs: number) => Promise<{ readonly seekIssued: boolean }>;
-    readonly showingSubtitlesChanged: (subtitles: readonly T[]) => void;
 }
 
 type RepeatedBlock = {
@@ -59,9 +56,6 @@ type PlaybackRateReconciliationOptions = {
     readonly forcePlaybackRate: boolean;
 };
 
-const sameSubtitles = <T extends IndexedSubtitleModel>(left: readonly T[], right: readonly T[]): boolean =>
-    arrayEquals(left, right, areSubtitleModelsEqual);
-
 /**
  * Executes an already-resolved playback plan against a media adapter.
  */
@@ -70,20 +64,19 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private readonly runner: PlaybackTimelineRunner<T>;
     private readonly lookaheadCursor: PlaybackTimelineLookaheadCursor<T>;
-    private readonly callbacks: PlaybackPlanExecutorCallbacks<T>;
+    private readonly callbacks: PlaybackPlanExecutorCallbacks;
     private repeatedBlock?: RepeatedBlock;
     private pendingTarget?: PendingTarget;
     private startPauseSuppression?: StartPauseSuppression;
     private condensedOperation?: number;
     private operationGeneration = 0;
     private updateOperationGeneration = 0;
-    private showingSubtitles: readonly T[] = [];
     private _isFastForwarding: boolean;
     private expectedDiscontinuity?: ExpectedDiscontinuity;
     private updateInProgress = false;
     private deferredDiscontinuity?: DeferredDiscontinuity;
 
-    constructor(plan: PlaybackPlan<T>, timestampMs: number, callbacks: PlaybackPlanExecutorCallbacks<T>) {
+    constructor(plan: PlaybackPlan<T>, timestampMs: number, callbacks: PlaybackPlanExecutorCallbacks) {
         this.plan = plan;
         this._isFastForwarding = false;
         this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
@@ -94,14 +87,12 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             correctAutoPause: async (targetTimestampMs) => {
                 await this.correctAutoPause(targetTimestampMs);
             },
-            onState: async (state, segment) => {
-                this.reconcilePersistentState(state, segment, { forcePlaybackRate: false });
+            onState: async (state) => {
+                this.reconcilePlaybackRate(state, { forcePlaybackRate: false });
             },
             onAfterState: (currentTimestampMs) => this.onAfterState(currentTimestampMs),
         });
         this.lookaheadCursor = new PlaybackTimelineLookaheadCursor(this.timeline, timestampMs);
-        this.showingSubtitles = this.timeline.showingSubtitlesAt(timestampMs);
-        if (this.showingSubtitles.length) this.callbacks.showingSubtitlesChanged(this.showingSubtitles);
     }
 
     get isFastForwarding(): boolean {
@@ -112,7 +103,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return this.timeline.showingSubtitlesAt(timestampMs);
     }
 
-    replacePlan(plan: PlaybackPlan<T>, timestampMs: number): void {
+    replacePlan(
+        plan: PlaybackPlan<T>,
+        timestampMs: number,
+        options: { readonly forcePlaybackRate?: boolean } = {}
+    ): void {
         this.invalidatePendingOperations({ preserveExpectedDiscontinuity: true });
         const playbackRateChanged =
             this.plan.playbackRate !== plan.playbackRate ||
@@ -144,7 +139,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.callbacks.setPlaybackRate(plan.playbackRate);
             this._isFastForwarding = false;
         }
-        this.reconcileAt(timestampMs, { forcePlaybackRate: playbackRateChanged && !resetPlaybackRate });
+        this.reconcileAt(timestampMs, {
+            forcePlaybackRate: !resetPlaybackRate && (playbackRateChanged || options.forcePlaybackRate === true),
+        });
     }
 
     async update(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void> {
@@ -292,25 +289,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return { autoPaused: action.pause, seeked };
     }
 
-    private reconcileAt(timestampMs: number, options: PlaybackRateReconciliationOptions): void {
+    reconcileAt(timestampMs: number, options: PlaybackRateReconciliationOptions): void {
         const lookup = this.timeline.lookupAt(timestampMs);
-        this.reconcilePersistentState(lookup.state, lookup.segment, options);
-    }
-
-    private reconcilePersistentState(
-        state: PlaybackTimelineState,
-        segment: PlaybackTimelineSegment<T>,
-        options: PlaybackRateReconciliationOptions
-    ): void {
-        const showingSubtitles = segment.showingSubtitles;
-        this.reconcileShowingSubtitles(showingSubtitles);
-        this.reconcilePlaybackRate(state, options);
-    }
-
-    private reconcileShowingSubtitles(showingSubtitles: readonly T[]): void {
-        if (sameSubtitles(showingSubtitles, this.showingSubtitles)) return;
-        this.showingSubtitles = showingSubtitles;
-        this.callbacks.showingSubtitlesChanged(showingSubtitles);
+        this.reconcilePlaybackRate(lookup.state, options);
     }
 
     private reconcilePlaybackRate(state: PlaybackTimelineState, options: PlaybackRateReconciliationOptions): void {

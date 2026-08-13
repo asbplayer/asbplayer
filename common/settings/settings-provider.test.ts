@@ -4,6 +4,8 @@ import {
     VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
+    isSaveOnlySettings,
+    saveOnlySettings,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
 import { expect, it } from '@jest/globals';
@@ -22,6 +24,16 @@ it('starts at default settings', async () => {
     expect(initialSettings.rememberPlaybackModes).toBe(false);
     expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
     expect(initialSettings.lastPlaybackPositions).toEqual([]);
+});
+
+it('keeps playback-owned settings separate from UI settings', () => {
+    expect(saveOnlySettings).toEqual(['lastSubtitleOffset', 'lastPlaybackModes', 'lastPlaybackPositions']);
+    expect(saveOnlySettings).not.toContain('playbackRate');
+    expect(saveOnlySettings).not.toContain('fastForwardModePlaybackRate');
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100 })).toBe(true);
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100, lastPlaybackModes: [PlayMode.normal] })).toBe(true);
+    expect(isSaveOnlySettings({ playbackRate: 1 })).toBe(false);
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100, language: 'ja' })).toBe(false);
 });
 
 it('can change the value of object-typed settings', async () => {

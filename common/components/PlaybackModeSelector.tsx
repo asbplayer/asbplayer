@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayMode } from '@project/common';
 import PlayModeSelector from './PlayModeSelector';
 
-const playbackModeOverlayAutoHideDuration = 3000;
 const playbackModeOverlayAutoHideDurationMouseLeave = 1000;
 
 type SelectorProps = Omit<
@@ -22,7 +21,6 @@ interface Props {
     onPlayMode: (playMode: PlayMode) => void;
     renderButton: (props: PlaybackModeSelectorButtonProps) => React.ReactNode;
     keepManualSelectorOpen?: boolean;
-    temporaryOpenRequest?: number;
     onSelectorOpened?: () => void;
     onSelectorClosed?: () => void;
     selectorProps?: SelectorProps;
@@ -33,7 +31,6 @@ export default function PlaybackModeSelector({
     onPlayMode,
     renderButton,
     keepManualSelectorOpen = false,
-    temporaryOpenRequest,
     onSelectorOpened,
     onSelectorClosed,
     selectorProps,
@@ -41,8 +38,6 @@ export default function PlaybackModeSelector({
     const [open, setOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState<HTMLElement>();
     const buttonRef = useRef<HTMLButtonElement>(null);
-    const paperRef = useRef<HTMLDivElement>(null);
-    const openTypeRef = useRef<'manual' | 'temporary' | undefined>(undefined);
     const hoveredRef = useRef(false);
     const autoHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const onSelectorClosedRef = useRef(onSelectorClosed);
@@ -57,12 +52,10 @@ export default function PlaybackModeSelector({
 
     const closeSelector = useCallback(() => {
         cancelAutoHide();
-        const openType = openTypeRef.current;
-        openTypeRef.current = undefined;
         hoveredRef.current = false;
         setOpen(false);
         setAnchorEl(undefined);
-        if (openType !== undefined) onSelectorClosedRef.current?.();
+        onSelectorClosedRef.current?.();
     }, [cancelAutoHide]);
 
     const startAutoHide = useCallback(
@@ -89,28 +82,13 @@ export default function PlaybackModeSelector({
         if (!hoveredRef.current) return;
 
         hoveredRef.current = false;
-        if (keepManualSelectorOpen && openTypeRef.current === 'manual') return;
+        if (keepManualSelectorOpen) return;
 
         startAutoHide(playbackModeOverlayAutoHideDurationMouseLeave);
     }, [keepManualSelectorOpen, startAutoHide]);
 
-    useLayoutEffect(() => {
-        if (!open || openTypeRef.current !== 'temporary') return;
-
-        const animationFrame = requestAnimationFrame(() => {
-            if (buttonRef.current?.matches(':hover') || paperRef.current?.matches(':hover')) {
-                handleMouseEnter();
-            }
-        });
-
-        return () => cancelAnimationFrame(animationFrame);
-    }, [handleMouseEnter, open]);
-
     const handleButtonClick = useCallback(
         (event: React.MouseEvent<HTMLButtonElement>) => {
-            if (openTypeRef.current === 'temporary') return;
-
-            openTypeRef.current = 'manual';
             cancelAutoHide();
             onSelectorOpened?.();
             setAnchorEl(event.currentTarget);
@@ -118,18 +96,6 @@ export default function PlaybackModeSelector({
         },
         [cancelAutoHide, onSelectorOpened]
     );
-
-    useEffect(() => {
-        if (temporaryOpenRequest === undefined || openTypeRef.current === 'manual') return;
-
-        const anchor = buttonRef.current;
-        if (anchor === null) return;
-
-        openTypeRef.current = 'temporary';
-        setAnchorEl(anchor);
-        setOpen(true);
-        startAutoHide(playbackModeOverlayAutoHideDuration);
-    }, [cancelAutoHide, startAutoHide, temporaryOpenRequest]);
 
     useEffect(() => cancelAutoHide, [cancelAutoHide]);
 
@@ -153,7 +119,6 @@ export default function PlaybackModeSelector({
                     onPlayMode={onPlayMode}
                     slotProps={{
                         paper: {
-                            ref: paperRef,
                             onMouseEnter: handleMouseEnter,
                             onMouseLeave: handleMouseLeave,
                         },

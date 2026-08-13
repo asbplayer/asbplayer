@@ -13,10 +13,15 @@ import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { fetchLocalization } from '../services/localization-fetcher';
 import { ExtensionSettingsStorage } from '../services/extension-settings-storage';
 
+interface VideoSelectControllerOptions {
+    readonly isBindingsSorted: boolean;
+}
+
 export default class VideoSelectController {
     private readonly _bindings: Binding[];
     private readonly _frame: UiFrame;
     private readonly _settings: SettingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
+    private readonly _isBindingsSorted: boolean;
     private _subtitleFiles?: SubtitleFile[];
 
     private messageListener?: (
@@ -25,8 +30,9 @@ export default class VideoSelectController {
         sendResponse: (response?: any) => void
     ) => void;
 
-    constructor(bindings: Binding[]) {
+    constructor(bindings: Binding[], options: VideoSelectControllerOptions) {
         this._bindings = bindings;
+        this._isBindingsSorted = options.isBindingsSorted;
         this._frame = uiFrameForHtml(
             async (lang) => `<!DOCTYPE html>
                 <html lang="en">
@@ -134,10 +140,11 @@ export default class VideoSelectController {
         };
 
         const tabImageDataUrl = await browser.runtime.sendMessage(captureVisibleTabCommand);
-        const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b) => {
+        const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b, index) => {
             return {
                 src: b.registeredVideoSrc,
                 imageDataUrl: await b.cropAndResize(tabImageDataUrl),
+                preferred: this._isBindingsSorted && index === 0,
             };
         });
 

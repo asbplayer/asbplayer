@@ -390,6 +390,13 @@ export interface CurrentTimeFromVideoMessage extends Message {
     readonly echo: boolean;
 }
 
+export interface PlaybackStateFromVideoMessage extends Message {
+    readonly command: 'playbackState';
+    readonly timestampMs: number;
+    readonly showingSubtitleIndexes: readonly number[];
+    readonly paused: boolean;
+}
+
 export interface CurrentTimeToVideoMessage extends Message {
     readonly command: 'currentTime';
     readonly value: number;

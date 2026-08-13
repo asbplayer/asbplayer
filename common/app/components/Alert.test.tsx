@@ -3,6 +3,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import Alert from './Alert';
 
+jest.mock('react-i18next', () => ({
+    useTranslation: () => ({
+        t: (locKey: string, replacements?: { rate?: string }) => `${locKey}:${replacements?.rate ?? ''}`,
+    }),
+}));
+
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('Alert', () => {
@@ -25,10 +31,16 @@ describe('Alert', () => {
     const renderAlert = (message: string, open = true) => {
         act(() => {
             root.render(
-                <Alert useAppLogo={true} open={open} autoHideDuration={3000} onClose={() => {}} severity="info">
+                <Alert useAppLogo={true} open={open} onClose={() => {}} severity="info">
                     {message}
                 </Alert>
             );
+        });
+    };
+
+    const renderNotifications = (notifications: { message: string; severity: 'info' | 'warning' }[]) => {
+        act(() => {
+            root.render(<Alert useAppLogo={true} open={true} onClose={() => {}} notifications={notifications} />);
         });
     };
 
@@ -47,5 +59,84 @@ describe('Alert', () => {
             'Playback rate: 2.0',
             'Fast-forward enabled',
         ]);
+    });
+
+    it('renders notifications from one request in the supplied order', () => {
+        renderNotifications([
+            { message: 'Offset | playback rate', severity: 'info' },
+            { message: 'Repeat enabled', severity: 'warning' },
+        ]);
+
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        expect(alerts.map((alert) => alert.textContent)).toEqual(['Offset | playback rate', 'Repeat enabled']);
+        expect(alerts[0].classList.contains('MuiAlert-standardInfo')).toBe(true);
+        expect(alerts[1].classList.contains('MuiAlert-standardWarning')).toBe(true);
+    });
+
+    it('localizes notification messages when given a loc key', () => {
+        act(() => {
+            root.render(
+                <Alert
+                    useAppLogo={true}
+                    open={true}
+                    onClose={() => {}}
+                    notifications={[
+                        { message: { locKey: 'info.playbackRate', replacements: { rate: '1.4' } }, severity: 'info' },
+                    ]}
+                />
+            );
+        });
+
+        expect(container.querySelector('[role="alert"]')?.textContent).toBe('info.playbackRate:1.4');
+    });
+
+    it('uses a notification-specific auto-hide duration', () => {
+        const onClose = jest.fn();
+
+        act(() => {
+            root.render(
+                <Alert
+                    useAppLogo={true}
+                    open={true}
+                    onClose={onClose}
+                    notifications={[{ message: 'Initial settings', severity: 'info', autoHideDuration: 6000 }]}
+                />
+            );
+        });
+
+        act(() => jest.advanceTimersByTime(3000));
+        expect(onClose).not.toHaveBeenCalled();
+
+        act(() => jest.advanceTimersByTime(3001));
+        act(() => jest.advanceTimersByTime(1000));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('uses the default auto-hide duration when a notification does not specify one', () => {
+        const onClose = jest.fn();
+
+        act(() => {
+            root.render(
+                <Alert
+                    useAppLogo={true}
+                    open={true}
+                    onClose={onClose}
+                    notifications={[{ message: 'Default duration', severity: 'info' }]}
+                />
+            );
+        });
+
+        act(() => jest.advanceTimersByTime(3000));
+        expect(onClose).not.toHaveBeenCalled();
+
+        act(() => jest.advanceTimersByTime(1001));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not update indefinitely when closed', () => {
+        renderAlert('Hidden', false);
+
+        expect(container.querySelectorAll('[role="alert"]')).toHaveLength(0);
     });
 });

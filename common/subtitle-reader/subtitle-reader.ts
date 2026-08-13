@@ -143,14 +143,14 @@ export default class SubtitleReader {
             for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        return flatten ? this._deduplicate(allNodes) : allNodes;
+        return this._deduplicate(allNodes);
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
         const deduplicated: SubtitleNode[] = [];
 
         for (const node of nodes) {
-            if (deduplicated.length == 0 || !this._isSame(node, deduplicated[deduplicated.length - 1])) {
+            if (!deduplicated.length || !this._isSame(node, deduplicated[deduplicated.length - 1])) {
                 deduplicated.push(node);
             }
         }
@@ -159,11 +159,8 @@ export default class SubtitleReader {
     }
 
     private _isSame(a: SubtitleNode, b: SubtitleNode) {
-        if (a.textImage || b.textImage) {
-            return false;
-        }
-
-        return a.start === b.start && a.end === b.end && a.text === b.text;
+        if (a.textImage || b.textImage) return false;
+        return a.start === b.start && a.end === b.end && a.text === b.text && a.track === b.track;
     }
 
     async _subtitles(file: File, track: number): Promise<SubtitleNode[]> {

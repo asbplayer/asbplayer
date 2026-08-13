@@ -8,6 +8,7 @@ import {
     Fetcher,
     HttpPostMessage,
     IndexedSubtitleModel,
+    PlaybackState,
 } from '@project/common';
 import {
     AutoCopyableTracks,
@@ -27,6 +28,7 @@ import {
     arrayEquals,
     compareSubtitlesForDisplay,
     computeStyleString,
+    formatAsSignedMs,
     surroundingSubtitles,
 } from '@project/common/util';
 import i18n from 'i18next';
@@ -169,8 +171,15 @@ export default class SubtitleController {
     reset() {
         this.subtitles = [];
         this.subtitleFileNames = undefined;
+        this.timelineShowingSubtitles = [];
+        this.showingSubtitles = undefined;
+        this.showingLoadedMessage = false;
+        if (this.loadedMessageHideTimeout) clearTimeout(this.loadedMessageHideTimeout);
+        this.loadedMessageHideTimeout = undefined;
         this.cacheHtml();
         this.subtitleAnnotations.reset();
+        this.bottomSubtitlesElementOverlay.hide();
+        this.topSubtitlesElementOverlay.hide();
     }
 
     cacheHtml() {
@@ -396,8 +405,10 @@ export default class SubtitleController {
         this.subtitleAnnotations.bind();
     }
 
-    showingSubtitlesChanged(subtitles: readonly IndexedSubtitleModel[]): void {
-        this.timelineShowingSubtitles = subtitles;
+    playbackStateChanged(state: PlaybackState): void {
+        this.timelineShowingSubtitles = state.showingSubtitleIndexes
+            .map((index) => this.subtitles[index])
+            .filter((subtitle): subtitle is IndexedSubtitleModel => subtitle !== undefined);
         this.refreshShowingSubtitles();
     }
 
@@ -634,6 +645,7 @@ export default class SubtitleController {
         }
 
         const previousOffset = this._computeOffset();
+        if (previousOffset === offset) return;
 
         this.subtitles = this.subtitles.map((s) => ({
             text: s.text,
@@ -681,17 +693,19 @@ export default class SubtitleController {
 
     private _formatOffset(offset: number): string {
         const roundedOffset = Math.floor(offset);
-        return roundedOffset >= 0 ? '+' + roundedOffset + ' ms' : roundedOffset + ' ms';
+        return formatAsSignedMs(roundedOffset);
     }
 
     notification({
         replacements,
         locKey,
         text,
+        autoHideDuration = 3000,
     }: {
         replacements?: { [key: string]: string };
         locKey?: string;
         text?: string;
+        autoHideDuration?: number;
     }) {
         if (!text && !locKey) {
             return;
@@ -707,7 +721,7 @@ export default class SubtitleController {
         this.notificationElementOverlayHideTimeout = setTimeout(() => {
             this.notificationElementOverlay.hide();
             this.notificationElementOverlayHideTimeout = undefined;
-        }, 3000);
+        }, autoHideDuration);
     }
 
     showLoadedMessage(nonEmptyTrackIndex: number[]) {

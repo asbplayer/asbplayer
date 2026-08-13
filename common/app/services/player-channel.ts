@@ -16,6 +16,7 @@ import {
     OffsetFromVideoMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
@@ -50,6 +51,8 @@ export default class PlayerChannel {
     private readyCallbacks: ((duration: number, videoFileName?: string) => void)[];
     private playCallbacks: (() => void)[];
     private pauseCallbacks: (() => void)[];
+    private playbackStateCallbacks: ((state: PlaybackStateFromVideoMessage) => void)[];
+    private latestPlaybackState?: PlaybackStateFromVideoMessage;
     private currentTimeCallbacks: ((currentTime: number) => void)[];
     private audioTrackSelectedCallbacks: ((id: string) => void)[];
     private closeCallbacks: (() => void)[];
@@ -83,6 +86,7 @@ export default class PlayerChannel {
         this.channel = new BroadcastChannel(channel);
         this.playCallbacks = [];
         this.pauseCallbacks = [];
+        this.playbackStateCallbacks = [];
         this.currentTimeCallbacks = [];
         this.audioTrackSelectedCallbacks = [];
         this.closeCallbacks = [];
@@ -125,6 +129,14 @@ export default class PlayerChannel {
                         callback();
                     }
                     break;
+                case 'playbackState': {
+                    const playbackStateMessage = event.data as PlaybackStateFromVideoMessage;
+                    this.latestPlaybackState = playbackStateMessage;
+                    for (const callback of this.playbackStateCallbacks) {
+                        callback(playbackStateMessage);
+                    }
+                    break;
+                }
                 case 'currentTime': {
                     const currentTimeMessage = event.data as CurrentTimeToVideoMessage;
 
@@ -287,6 +299,12 @@ export default class PlayerChannel {
         return () => this._remove(callback, this.pauseCallbacks);
     }
 
+    onPlaybackState(callback: (state: PlaybackStateFromVideoMessage) => void) {
+        this.playbackStateCallbacks.push(callback);
+        if (this.latestPlaybackState !== undefined) callback(this.latestPlaybackState);
+        return () => this._remove(callback, this.playbackStateCallbacks);
+    }
+
     onCurrentTime(callback: (currentTime: number) => void) {
         this.currentTimeCallbacks.push(callback);
         return () => this._remove(callback, this.currentTimeCallbacks);
@@ -426,6 +444,16 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
+    playbackState(timestampMs: number, showingSubtitleIndexes: readonly number[], paused: boolean) {
+        const message: PlaybackStateFromVideoMessage = {
+            command: 'playbackState',
+            timestampMs,
+            showingSubtitleIndexes,
+            paused,
+        };
+        this.channel?.postMessage(message);
+    }
+
     audioTrackSelected(id: string) {
         const message: AudioTrackSelectedFromVideoMessage = { command: 'audioTrackSelected', id: id };
         this.channel?.postMessage(message);
@@ -528,6 +556,8 @@ export default class PlayerChannel {
             this.channel = undefined;
             this.playCallbacks = [];
             this.pauseCallbacks = [];
+            this.playbackStateCallbacks = [];
+            this.latestPlaybackState = undefined;
             this.currentTimeCallbacks = [];
             this.audioTrackSelectedCallbacks = [];
             this.closeCallbacks = [];

@@ -78,6 +78,7 @@ import {
 import {
     ApplyStrategy,
     AsbplayerSettings,
+    isSaveOnlySettings,
     PageSettings,
     Profile,
     SettingsFormPageConfig,
@@ -615,7 +616,9 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId).then(() => this.notifySettingsUpdated());
+        return this._createResponsePromise(messageId).then(() => {
+            if (!isSaveOnlySettings(settings)) this.notifySettingsUpdated();
+        });
     }
 
     getGlobalState(): Promise<GlobalState> {

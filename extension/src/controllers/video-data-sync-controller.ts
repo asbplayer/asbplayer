@@ -52,6 +52,10 @@ interface ShowOptions {
     fromAsbplayerId?: string;
 }
 
+interface RequestSubtitlesOptions {
+    readonly videoChanged: boolean;
+}
+
 const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
     return new Promise((resolve) => {
         const listener = (event: Event) => {
@@ -150,16 +154,18 @@ export default class VideoDataSyncController {
         return this._openedLocation;
     }
 
-    async requestSubtitles() {
+    async requestSubtitles({ videoChanged }: RequestSubtitlesOptions) {
         if (!this._context.hasPageScript) {
             return;
         }
 
         // While the picker is open on the same location, skip refresh so
         // player events do not clobber an in-progress user selection. On a
-        // true soft-navigation, dismiss the stale picker and continue.
+        // true soft-navigation or an explicitly reported video change,
+        // dismiss the stale picker and continue.
         if (this.pickerVisible) {
-            if (this.openedLocation !== undefined && window.location.href !== this.openedLocation) {
+            const locationChanged = this.openedLocation !== undefined && window.location.href !== this.openedLocation;
+            if (locationChanged || videoChanged) {
                 this._hideAndResume();
             } else {
                 return;

@@ -5,10 +5,9 @@ import {
     prefixedSettings,
     defaultSettings,
     Profile,
+    activeProfileKey,
+    profilesKey,
 } from '@project/common/settings';
-
-const activeProfileKey = 'activeSettingsProfile';
-const profilesKey = 'settingsProfiles';
 
 export interface StorageArea {
     set(items: { [key: string]: any }): Promise<void>;

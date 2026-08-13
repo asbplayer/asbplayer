@@ -1,7 +1,6 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import PlaybackTimeline, {
     type PlaybackTimelineEvent,
-    type PlaybackTimelineSegment,
     type PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';
 import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
@@ -11,15 +10,15 @@ export interface PlaybackTimelineActionResult {
     readonly seeked: boolean;
 }
 
-export interface PlaybackTimelineRunnerCallbacks<T extends IndexedSubtitleModel> {
+export interface PlaybackTimelineRunnerCallbacks {
     onStart(event: PlaybackTimelineEvent): Promise<{ readonly autoPaused: boolean }>;
     onEnd(
         event: PlaybackTimelineEvent,
         options: { readonly alreadyAutoPaused: boolean }
     ): Promise<PlaybackTimelineActionResult>;
     correctAutoPause(timestampMs: number): Promise<void>;
-    /** Reconciles state that must survive seeks, including showing subtitles and playback rate. */
-    onState(state: PlaybackTimelineState, segment: PlaybackTimelineSegment<T>): Promise<void>;
+    /** Reconciles state that must survive seeks, such as the playback rate. */
+    onState(state: PlaybackTimelineState): Promise<void>;
     /** Applies non-edge continuous behavior such as condensed playback after state is current. */
     onAfterState(timestampMs: number): Promise<{ readonly stateChangedTimestampMs?: number }>;
 }
@@ -28,10 +27,10 @@ export interface PlaybackTimelineRunnerCallbacks<T extends IndexedSubtitleModel>
 export default class PlaybackTimelineRunner<T extends IndexedSubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private readonly cursor: PlaybackTimelineCursor<T>;
-    private readonly callbacks: PlaybackTimelineRunnerCallbacks<T>;
+    private readonly callbacks: PlaybackTimelineRunnerCallbacks;
     private initialUpdate = true;
 
-    constructor(timeline: PlaybackTimeline<T>, timestampMs: number, callbacks: PlaybackTimelineRunnerCallbacks<T>) {
+    constructor(timeline: PlaybackTimeline<T>, timestampMs: number, callbacks: PlaybackTimelineRunnerCallbacks) {
         this.timeline = timeline;
         this.cursor = new PlaybackTimelineCursor(timeline, timestampMs);
         this.callbacks = callbacks;
@@ -89,7 +88,6 @@ export default class PlaybackTimelineRunner<T extends IndexedSubtitleModel> {
     }
 
     private async applyState(timestampMs: number): Promise<void> {
-        const lookup = this.timeline.lookupAt(timestampMs);
-        await this.callbacks.onState(lookup.state, lookup.segment);
+        await this.callbacks.onState(this.timeline.lookupAt(timestampMs).state);
     }
 }
