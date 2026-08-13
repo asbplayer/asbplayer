@@ -1,7 +1,7 @@
-import Binding from '../services/binding';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import FrameBridgeClient from '../services/frame-bridge-client';
-import { fetchLocalization } from '../services/localization-fetcher';
+import Binding from '@project/extension/src/services/binding';
+import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 export default class NotificationController {

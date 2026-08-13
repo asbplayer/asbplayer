@@ -3,7 +3,7 @@ import i18n, { ReadCallback } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import resourcesToBackend from 'i18next-resources-to-backend';
 import { useEffect, useState } from 'react';
-import { fetchLocalization } from '../../services/localization-fetcher';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 
 let init: Promise<any> = i18n
     .use(

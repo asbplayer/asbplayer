@@ -1,7 +1,7 @@
-import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
-import type { OnlineSubtitleSourceConfig } from '../global-state';
-import type { TokenStatusInfo } from '../dictionary-db';
-import type { PitchAccentPosition } from '../yomitan';
+import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings/settings';
+import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 type Profile = { name: string };
 

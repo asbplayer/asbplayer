@@ -1,5 +1,5 @@
 import { AsbplayerSettings, activeProfileKey, defaultSettings, prefixKey, profilesKey } from '@project/common/settings';
-import { LocalSettingsStorage } from './local-settings-storage';
+import { LocalSettingsStorage } from '@project/client/src/local-settings-storage';
 import { expect, it, beforeEach, jest } from '@jest/globals';
 
 const settingsStorage = new LocalSettingsStorage();

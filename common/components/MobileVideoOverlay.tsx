@@ -9,14 +9,14 @@ import TuneIcon from '@mui/icons-material/Tune';
 import { ControlType, MobileOverlayModel, PlayMode, PostMineAction } from '@project/common';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
-import LogoIcon from './LogoIcon';
+import LogoIcon from '@project/common/components/LogoIcon';
 import SubtitlesIcon from '@mui/icons-material/Subtitles';
-import SubtitlesOffIcon from './SubtitlesOffIcon';
-import HoldableIconButton from './HoldableIconButton';
-import PlaybackModeSelector from './PlaybackModeSelector';
-import ScrollableNumberControls from './ScrollableNumberControls';
-import Tooltip from './Tooltip';
-import { minimumPlaybackRate } from '../playback/controllers/playback-mode-controller';
+import SubtitlesOffIcon from '@project/common/components/SubtitlesOffIcon';
+import HoldableIconButton from '@project/common/components/HoldableIconButton';
+import PlaybackModeSelector from '@project/common/components/PlaybackModeSelector';
+import ScrollableNumberControls from '@project/common/components/ScrollableNumberControls';
+import Tooltip from '@project/common/components/Tooltip';
+import { minimumPlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
 
 type Anchor = 'top' | 'bottom';
 

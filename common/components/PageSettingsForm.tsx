@@ -1,5 +1,5 @@
 import { JSX } from 'react';
-import { MutablePageConfig, Page, PageConfig, PageSettings, YoutubePage } from '../settings';
+import { MutablePageConfig, Page, PageConfig, PageSettings, YoutubePage } from '@project/common/settings';
 import { useTranslation } from 'react-i18next';
 import Dialog from '@mui/material/Dialog';
 import Toolbar from '@mui/material/Toolbar';
@@ -9,14 +9,14 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
-import TextField from './SettingsTextField';
+import TextField from '@project/common/components/SettingsTextField';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Alert from '@mui/material/Alert';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
-import { pageMetadata } from '../pages';
-import ListField from './ListField';
-import SettingsTextField from './SettingsTextField';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
+import { pageMetadata } from '@project/common/pages';
+import ListField from '@project/common/components/ListField';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 
 const maxAdditionalHostsLength = 50;
 const youtubeTargetLanguageLimit = 3;

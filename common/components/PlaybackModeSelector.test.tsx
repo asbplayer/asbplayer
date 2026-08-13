@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { PlayMode } from '@project/common';
-import PlaybackModeSelector from './PlaybackModeSelector';
+import PlaybackModeSelector from '@project/common/components/PlaybackModeSelector';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -17,7 +17,7 @@ type MockSelectorProps = {
     };
 };
 
-jest.mock('./PlayModeSelector', () => {
+jest.mock('@project/common/components/PlayModeSelector', () => {
     return {
         __esModule: true,
         default: ({ open, selectedPlayModes, slotProps }: MockSelectorProps) =>

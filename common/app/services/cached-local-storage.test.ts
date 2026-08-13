@@ -1,4 +1,4 @@
-import { CachedLocalStorage } from './cached-local-storage';
+import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 import { expect, it, beforeEach } from '@jest/globals';
 
 beforeEach(() => {

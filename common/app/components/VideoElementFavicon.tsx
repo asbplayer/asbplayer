@@ -1,4 +1,4 @@
-import { VideoTabModel } from '../..';
+import { VideoTabModel } from '@project/common';
 import { useTheme } from '@mui/material/styles';
 
 const VideoElementFavicon = ({ videoElement }: { videoElement: VideoTabModel }) => {

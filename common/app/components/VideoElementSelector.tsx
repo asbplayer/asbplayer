@@ -1,9 +1,9 @@
 import { useState, FC, useCallback } from 'react';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import { useTranslation } from 'react-i18next';
-import { VideoTabModel } from '../..';
+import { VideoTabModel } from '@project/common';
 import Button, { type ButtonProps } from '@mui/material/Button';
-import VideoElementFavicon from './VideoElementFavicon';
+import VideoElementFavicon from '@project/common/app/components/VideoElementFavicon';
 import Typography from '@mui/material/Typography';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';

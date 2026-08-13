@@ -1,5 +1,5 @@
 import { Command, Message, VideoHeartbeatMessage, VideoToExtensionCommand } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class VideoHeartbeatHandler {
     private readonly tabRegistry: TabRegistry;

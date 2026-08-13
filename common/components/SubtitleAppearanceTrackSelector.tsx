@@ -1,6 +1,6 @@
 import MenuItem from '@mui/material/MenuItem';
 import { useTranslation } from 'react-i18next';
-import SettingsTextField from './SettingsTextField';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 
 const maxTracks = 3;
 

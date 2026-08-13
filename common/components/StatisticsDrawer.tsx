@@ -1,5 +1,5 @@
-import Drawer from './Drawer';
-import Statistics, { type StatisticsProps } from './Statistics';
+import Drawer from '@project/common/components/Drawer';
+import Statistics, { type StatisticsProps } from '@project/common/components/Statistics';
 
 interface Props extends StatisticsProps {
     open: boolean;

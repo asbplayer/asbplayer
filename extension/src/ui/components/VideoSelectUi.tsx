@@ -15,7 +15,7 @@ import TextField from '@mui/material/TextField';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import Bridge from '../bridge';
+import Bridge from '@project/extension/src/ui/bridge';
 import {
     Message,
     UpdateStateMessage,

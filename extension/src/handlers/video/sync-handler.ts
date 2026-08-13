@@ -7,7 +7,7 @@ import {
     PlayerSyncMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class SyncHandler {
     private readonly tabRegistry: TabRegistry;

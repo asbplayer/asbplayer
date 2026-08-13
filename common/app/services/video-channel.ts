@@ -50,7 +50,7 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { VideoProtocol } from './video-protocol';
+import { VideoProtocol } from '@project/common/app/services/video-protocol';
 
 export default class VideoChannel {
     private readonly protocol: VideoProtocol;

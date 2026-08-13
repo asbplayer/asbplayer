@@ -1,12 +1,12 @@
 import { Fetcher } from '@project/common';
 import { AsbplayerSettings, isSaveOnlySettings, SettingsProvider } from '@project/common/settings';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import App from './App';
-import { AppSettingsStorage } from '../services/app-settings-storage';
-import { useSettingsProfileContext } from '../../hooks/use-settings-profile-context';
-import ChromeExtension from '../services/chrome-extension';
-import { GlobalState, GlobalStateProvider } from '../../global-state';
-import { DictionaryProvider, DictionaryStorage } from '../../dictionary-db';
+import App from '@project/common/app/components/App';
+import { AppSettingsStorage } from '@project/common/app/services/app-settings-storage';
+import { useSettingsProfileContext } from '@project/common/hooks/use-settings-profile-context';
+import ChromeExtension from '@project/common/app/services/chrome-extension';
+import { GlobalState, GlobalStateProvider } from '@project/common/global-state';
+import { DictionaryProvider, DictionaryStorage } from '@project/common/dictionary-db';
 
 interface Props {
     origin: string;

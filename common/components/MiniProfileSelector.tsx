@@ -5,7 +5,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Profile } from '../settings';
+import { Profile } from '@project/common/settings';
 
 interface Props {
     profiles: Profile[];

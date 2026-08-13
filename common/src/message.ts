@@ -8,9 +8,9 @@ import type {
     SubtitleSettings,
     TokenState,
     TokenStatus,
-} from '../settings/settings';
-import type { GlobalState, OnlineSubtitleSourceConfig } from '../global-state';
-import type { DictionaryStatisticsSnapshot } from '../dictionary-statistics';
+} from '@project/common/settings/settings';
+import type { GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import {
     RectModel,
     SubtitleModel,
@@ -29,14 +29,14 @@ import {
     AnkiExportMode,
     BrowserFeatures,
     IndexedSubtitleModel,
-} from './model';
-import { AsbPlayerToVideoCommandV2 } from './command';
+} from '@project/common/src/model';
+import { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,
     DictionaryRecordUpdateInput,
-} from '../dictionary-db/dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 
 export interface Message {
     readonly command: string;

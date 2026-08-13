@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import ImageCapturer from '../../services/image-capturer';
+import ImageCapturer from '@project/extension/src/services/image-capturer';
 import {
     Command,
     Message,
@@ -11,7 +11,7 @@ import {
     ImageModel,
     ImageErrorCode,
 } from '@project/common';
-import { CardPublisher } from '../../services/card-publisher';
+import { CardPublisher } from '@project/extension/src/services/card-publisher';
 
 export default class TakeScreenshotHandler {
     private readonly _imageCapturer: ImageCapturer;

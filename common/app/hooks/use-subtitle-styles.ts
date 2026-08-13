@@ -8,8 +8,8 @@ import {
     textSubtitleSettingsForTrack,
     TokenAnnotationConfigTarget,
     tokenAnnotationStyleValues,
-} from '../../settings';
-import { computeStyleString, computeStyles } from '../../util';
+} from '@project/common/settings';
+import { computeStyleString, computeStyles } from '@project/common/util';
 
 interface TrackStyles {
     styles: { [key: string]: any };

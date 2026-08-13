@@ -12,8 +12,8 @@ import {
     TableVirtuoso,
     TableVirtuosoHandle,
 } from 'react-virtuoso';
-import { useResize } from '../hooks/use-resize';
-import { ScreenLocation, useDragging } from '../hooks/use-dragging';
+import { useResize } from '@project/common/app/hooks/use-resize';
+import { ScreenLocation, useDragging } from '@project/common/app/hooks/use-dragging';
 import { useTranslation } from 'react-i18next';
 import {
     PostMineAction,
@@ -58,18 +58,18 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Clock from '@project/common/playback/timing/clock';
-import { useAppBarHeight } from '../../hooks/use-app-bar-height';
-import { MineSubtitleParams } from '../hooks/use-app-web-socket-client';
-import { useSubtitleFind } from '../hooks/use-subtitle-find';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
+import { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-client';
+import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
-import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension';
-import { MineSubtitleCommand, WebSocketClient } from '../../web-socket-client';
-import { clampSubtitlePlayerWidth } from './video-subtitle-split';
-import './subtitles.css';
+import ChromeExtension, { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
+import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
+import '@project/common/app/components/subtitles.css';
 
 let lastKnownWidth: number | undefined;
 export const minSubtitlePlayerWidth = 200;

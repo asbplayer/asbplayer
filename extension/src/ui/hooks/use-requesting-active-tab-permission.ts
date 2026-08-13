@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getTabRequestingActiveTabPermission } from '../../services/active-tab-permission-request';
+import { getTabRequestingActiveTabPermission } from '@project/extension/src/services/active-tab-permission-request';
 
 interface Tab {
     tabId: number;

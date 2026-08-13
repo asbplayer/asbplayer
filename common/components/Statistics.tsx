@@ -59,7 +59,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import Link from '@mui/material/Link';
 import { WaniKani, type WaniKaniUser } from '@project/common/wanikani';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 
 export interface MediaInfo {
     sourceString: string;

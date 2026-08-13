@@ -1,5 +1,5 @@
 import { Command, Message, PublishCardMessage } from '@project/common';
-import { CardPublisher } from '../../services/card-publisher';
+import { CardPublisher } from '@project/extension/src/services/card-publisher';
 
 export default class PublishCardHandler {
     private readonly _cardPublisher: CardPublisher;

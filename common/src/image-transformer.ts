@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import { RectModel } from './model';
+import { RectModel } from '@project/common/src/model';
 
 export const resizeCanvas = (
     canvas: HTMLCanvasElement,

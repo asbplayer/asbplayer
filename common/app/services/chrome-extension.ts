@@ -89,7 +89,7 @@ import { GlobalState } from '@project/common/global-state';
 import { v4 as uuidv4 } from 'uuid';
 import gte from 'semver/functions/gte';
 import gt from 'semver/functions/gt';
-import { isFirefox } from '../../browser-detection';
+import { isFirefox } from '@project/common/browser-detection';
 import { isMobile } from 'react-device-detect';
 
 export interface ExtensionMessage {

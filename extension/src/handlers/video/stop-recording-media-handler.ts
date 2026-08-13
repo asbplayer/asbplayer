@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import ImageCapturer from '../../services/image-capturer';
+import ImageCapturer from '@project/extension/src/services/image-capturer';
 import {
     AudioModel,
     Command,
@@ -13,11 +13,11 @@ import {
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 import { mockSurroundingSubtitles } from '@project/common/util';
-import { CardPublisher } from '../../services/card-publisher';
+import { CardPublisher } from '@project/extension/src/services/card-publisher';
 import AudioRecorderService, {
     TimedRecordingInProgressError,
     NoRecordingInProgressServiceError,
-} from '../../services/audio-recorder-service';
+} from '@project/extension/src/services/audio-recorder-service';
 
 export default class StopRecordingMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;

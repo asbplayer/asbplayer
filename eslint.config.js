@@ -25,6 +25,17 @@ module.exports = [
             'react/jsx-uses-react': 'off',
             'react/react-in-jsx-scope': 'off',
             'react/prop-types': 'off',
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        {
+                            group: ['./*', '../*'],
+                            message: 'Use @project imports instead of relative imports.',
+                        },
+                    ],
+                },
+            ],
         },
         plugins: {
             ...reactRecommended.plugins,

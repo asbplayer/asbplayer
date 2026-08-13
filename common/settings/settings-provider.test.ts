@@ -10,7 +10,7 @@ import {
 } from '@project/common/settings';
 import { expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
-import { MockSettingsStorage } from './mock-settings-storage';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 
 it('starts at default settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());

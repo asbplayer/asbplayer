@@ -9,7 +9,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
-import { Profile } from '../settings';
+import { Profile } from '@project/common/settings';
 import type { TFunction } from 'i18next';
 
 const maxProfileNameLength = 16;

@@ -1,5 +1,5 @@
 import { CardModel } from '..';
-import { urlToBase64 } from '../base64';
+import { urlToBase64 } from '@project/common/base64';
 
 export const testCard: (urls: { imageUrl: string; audioUrl: string }) => Promise<CardModel> = async ({
     imageUrl,

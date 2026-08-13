@@ -1,4 +1,4 @@
-import { resizeCanvas } from './image-transformer';
+import { resizeCanvas } from '@project/common/src/image-transformer';
 import {
     CancelledMediaFragmentDataRenderingError,
     createVideoElement,
@@ -6,8 +6,8 @@ import {
     makeMediaFragmentFileName,
     type MediaFragmentData,
     mediaFragmentErrorForFile,
-} from './media-fragment';
-import { FileModel, MediaFragmentErrorCode } from './model';
+} from '@project/common/src/media-fragment';
+import { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
 
 export const defaultJpegCompressionQuality = 0.85;
 

@@ -13,7 +13,7 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Toolbar from '@mui/material/Toolbar';
 import type { TooltipProps } from '@mui/material/Tooltip';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useState } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
@@ -26,7 +26,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import ErrorIcon from '@mui/icons-material/Error';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import { FileWithId } from '../../file-selector';
+import { FileWithId } from '@project/common/file-selector';
 
 interface BarProps {
     drawerWidth: number;

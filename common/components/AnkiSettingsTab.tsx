@@ -1,20 +1,20 @@
 import { asbError } from '@project/common/util';
 import FormHelperText from '@mui/material/FormHelperText';
-import AnkiConnectTutorialBubble from './AnkiConnectTutorialBubble';
-import DeckFieldTutorialBubble from './DeckFieldTutorialBubble';
-import SettingsTextField from './SettingsTextField';
+import AnkiConnectTutorialBubble from '@project/common/components/AnkiConnectTutorialBubble';
+import DeckFieldTutorialBubble from '@project/common/components/DeckFieldTutorialBubble';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 import { Trans, useTranslation } from 'react-i18next';
-import AnkiSelect from './AnkiSelect';
+import AnkiSelect from '@project/common/components/AnkiSelect';
 import React, { useCallback, useEffect, useState } from 'react';
-import TutorialBubble from './TutorialBubble';
+import TutorialBubble from '@project/common/components/TutorialBubble';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import NoteTypeTutorialBubble from './NoteTypeTutorialBubble';
-import ListField from './ListField';
+import NoteTypeTutorialBubble from '@project/common/components/NoteTypeTutorialBubble';
+import ListField from '@project/common/components/ListField';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import Tooltip from '@mui/material/Tooltip';
@@ -24,10 +24,10 @@ import {
     AsbplayerSettings,
     CustomAnkiFieldSettings,
     sortedAnkiFieldModels,
-} from '../settings';
-import { CardModel } from '../src/model';
-import { Direction, TutorialStep } from './settings-model';
-import { Anki, exportCard } from '../anki';
+} from '@project/common/settings';
+import { CardModel } from '@project/common/src/model';
+import { Direction, TutorialStep } from '@project/common/components/settings-model';
+import { Anki, exportCard } from '@project/common/anki';
 import Stack from '@mui/material/Stack';
 
 const defaultDeckName = 'Sentences';

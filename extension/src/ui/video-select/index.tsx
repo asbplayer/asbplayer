@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
-import Bridge from '../bridge';
-import VideoSelectUi from '../components/VideoSelectUi';
-import { i18nInit } from '../i18n';
+import Bridge from '@project/extension/src/ui/bridge';
+import VideoSelectUi from '@project/extension/src/ui/components/VideoSelectUi';
+import { i18nInit } from '@project/extension/src/ui/i18n';
 
 export function renderVideoSelectModeUi(element: Element, language: string, locStrings: any) {
     const bridge = new Bridge();

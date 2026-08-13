@@ -7,7 +7,7 @@ import {
     SubtitleCue,
     WebSocketClient,
 } from '@project/common/web-socket-client';
-import TabRegistry from './tab-registry';
+import TabRegistry from '@project/extension/src/services/tab-registry';
 import {
     AsbplayerInstance,
     CardTextFieldValues,

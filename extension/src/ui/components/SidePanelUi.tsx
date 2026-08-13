@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import SidePanel from './SidePanel';
+import SidePanel from '@project/extension/src/ui/components/SidePanel';
 import { createTheme } from '@project/common/theme';
 import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
-import { ExtensionSettingsStorage } from '../../services/extension-settings-storage';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { ExtensionMessage, useChromeExtension } from '@project/common/app';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';

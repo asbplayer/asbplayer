@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util';
 import { CardExportedMessage, CopySubtitleMessage, Message, PostMineAction } from '@project/common';
 import { surroundingSubtitlesAroundInterval } from '@project/common/util';
-import Binding from '../services/binding';
+import Binding from '@project/extension/src/services/binding';
 
 export interface BulkExportStartedPayload extends Message {
     command: 'bulk-export-started';

@@ -8,9 +8,9 @@ import {
     type MediaFragmentData,
     preferredWebmMediaFragmentMimeType,
     mediaFragmentErrorForFile,
-} from './media-fragment';
-import { FileModel, MediaFragmentErrorCode } from './model';
-import { clamp } from '../util';
+} from '@project/common/src/media-fragment';
+import { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
+import { clamp } from '@project/common/util';
 
 const videoSeekEpsilonSeconds = 0.001;
 const defaultCaptureFrameRate = 24;

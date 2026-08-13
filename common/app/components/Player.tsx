@@ -40,24 +40,27 @@ import {
     surroundingSubtitles,
     timeDurationDisplay,
 } from '@project/common/util';
-import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
-import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
+import BroadcastChannelVideoProtocol from '@project/common/app/services/broadcast-channel-video-protocol';
+import ChromeTabVideoProtocol from '@project/common/app/services/chrome-tab-video-protocol';
 import Clock from '@project/common/playback/timing/clock';
-import Controls, { Point } from './Controls';
+import Controls, { Point } from '@project/common/app/components/Controls';
 import Grid from '@mui/material/Grid';
-import MediaAdapter from '../services/media-adapter';
-import SubtitlePlayer, { minSubtitlePlayerWidth } from './SubtitlePlayer';
-import VideoChannel from '../services/video-channel';
-import ChromeExtension from '../services/chrome-extension';
+import MediaAdapter from '@project/common/app/services/media-adapter';
+import SubtitlePlayer, { minSubtitlePlayerWidth } from '@project/common/app/components/SubtitlePlayer';
+import VideoChannel from '@project/common/app/services/video-channel';
+import ChromeExtension from '@project/common/app/services/chrome-extension';
 import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
-import { useWindowSize } from '../hooks/use-window-size';
-import { useAppBarHeight } from '../../hooks/use-app-bar-height';
-import { createBlobUrl } from '../../blob-url';
-import { MiningContext } from '../services/mining-context';
-import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
-import { ensureStoragePersisted } from '../../util';
-import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
-import { FileWithId } from '../../file-selector';
+import { useWindowSize } from '@project/common/app/hooks/use-window-size';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
+import { createBlobUrl } from '@project/common/blob-url';
+import { MiningContext } from '@project/common/app/services/mining-context';
+import { SeekTimestampCommand, WebSocketClient } from '@project/common/web-socket-client';
+import { ensureStoragePersisted } from '@project/common/util';
+import {
+    resolveVideoSubtitleSplitLayout,
+    useVideoAspectRatio,
+} from '@project/common/app/components/video-subtitle-split';
+import { FileWithId } from '@project/common/file-selector';
 import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
@@ -68,9 +71,9 @@ import {
     playbackTimelineSettingsSummary,
     playbackTimelineToHtml,
 } from '@project/common/playback/timeline/playback-timeline-html';
-import { createTheme } from '../../theme/theme';
-import Alert, { type AlertNotification } from './Alert';
-import useSnackbar from '../../hooks/use-snackbar';
+import { createTheme } from '@project/common/theme/theme';
+import Alert, { type AlertNotification } from '@project/common/app/components/Alert';
+import useSnackbar from '@project/common/hooks/use-snackbar';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };

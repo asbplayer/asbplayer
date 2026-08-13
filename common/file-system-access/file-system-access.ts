@@ -4,8 +4,8 @@
  * and utilities to re-acquire permissions and resolve handles back to File objects on revisit.
  */
 
-import { FileWithId } from '../file-selector';
-import { FileSystemFileHandleWithId } from './file-system-access-repository';
+import { FileWithId } from '@project/common/file-selector';
+import { FileSystemFileHandleWithId } from '@project/common/file-system-access/file-system-access-repository';
 import { v4 as uuidv4 } from 'uuid';
 
 export function supportsFileSystemAccess(): boolean {

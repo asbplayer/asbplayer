@@ -1,5 +1,5 @@
 import { Message } from '@project/common';
-import { VideoProtocol, VideoProtocolMessage } from './video-protocol';
+import { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 
 export default class BroadcastChannelVideoProtocol implements VideoProtocol {
     private channel?: BroadcastChannel;

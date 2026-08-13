@@ -87,34 +87,34 @@ import {
     surroundingSubtitlesAroundInterval,
     timeDurationDisplay,
 } from '@project/common/util';
-import AnkiUiController from '../controllers/anki-ui-controller';
-import ControlsController from '../controllers/controls-controller';
-import DragController from '../controllers/drag-controller';
-import { MobileGestureController } from '../controllers/mobile-gesture-controller';
-import { MobileVideoOverlayController } from '../controllers/mobile-video-overlay-controller';
-import NotificationController from '../controllers/notification-controller';
-import SubtitleController from '../controllers/subtitle-controller';
-import BulkExportController from '../controllers/bulk-export-controller';
-import VideoDataSyncController from '../controllers/video-data-sync-controller';
-import AudioRecorder, { TimedRecordingInProgressError } from './audio-recorder';
+import AnkiUiController from '@project/extension/src/controllers/anki-ui-controller';
+import ControlsController from '@project/extension/src/controllers/controls-controller';
+import DragController from '@project/extension/src/controllers/drag-controller';
+import { MobileGestureController } from '@project/extension/src/controllers/mobile-gesture-controller';
+import { MobileVideoOverlayController } from '@project/extension/src/controllers/mobile-video-overlay-controller';
+import NotificationController from '@project/extension/src/controllers/notification-controller';
+import SubtitleController from '@project/extension/src/controllers/subtitle-controller';
+import BulkExportController from '@project/extension/src/controllers/bulk-export-controller';
+import VideoDataSyncController from '@project/extension/src/controllers/video-data-sync-controller';
+import AudioRecorder, { TimedRecordingInProgressError } from '@project/extension/src/services/audio-recorder';
 import { isMobile } from '@project/common/device-detection/mobile';
-import { OffsetAnchor } from './element-overlay';
-import { ExtensionSettingsStorage } from './extension-settings-storage';
-import { i18nInit } from './i18n';
+import { OffsetAnchor } from '@project/extension/src/services/element-overlay';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
+import { i18nInit } from '@project/extension/src/services/i18n';
 import i18n from 'i18next';
-import KeyBindings from './key-bindings';
-import { shouldShowUpdateAlert } from './update-alert';
+import KeyBindings from '@project/extension/src/services/key-bindings';
+import { shouldShowUpdateAlert } from '@project/extension/src/services/update-alert';
 import { bufferToBase64 } from '@project/common/base64';
-import { pgsParserWorkerFactory } from './pgs-parser-worker-factory';
+import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
 import { DictionaryProvider } from '@project/common/dictionary-db/dictionary-provider';
-import { ExtensionDictionaryStorage } from './extension-dictionary-storage';
+import { ExtensionDictionaryStorage } from '@project/extension/src/services/extension-dictionary-storage';
 import { HoveredToken } from '@project/common/annotations';
 import { v4 as uuidv4 } from 'uuid';
-import { debounced } from './debounced';
+import { debounced } from '@project/extension/src/services/debounced';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import type { SubtitleOffsetOptions } from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
-import InterpolatedContentClock from './interpolated-content-clock';
+import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {

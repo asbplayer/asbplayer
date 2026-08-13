@@ -1,6 +1,6 @@
-import { Fetcher } from '../..';
-import { Anki } from '../../anki';
-import { AnkiSettings } from '../../settings';
+import { Fetcher } from '@project/common';
+import { Anki } from '@project/common/anki';
+import { AnkiSettings } from '@project/common/settings';
 import { useMemo } from 'react';
 
 class SettingsAccessor {

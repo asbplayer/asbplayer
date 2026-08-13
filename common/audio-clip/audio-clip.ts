@@ -1,11 +1,11 @@
 import { asbError } from '@project/common/util';
-import Mp3Encoder from './mp3-encoder';
+import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
 import { AudioErrorCode, CardModel, FileModel } from '@project/common';
 import { download } from '@project/common/util';
-import { isActiveBlobUrl } from '../blob-url';
-import { base64ToBlob, blobToBase64 } from '../base64';
-import { isFirefox } from '../browser-detection';
+import { isActiveBlobUrl } from '@project/common/blob-url';
+import { base64ToBlob, blobToBase64 } from '@project/common/base64';
+import { isFirefox } from '@project/common/browser-detection';
 
 const maxPrefixLength = 24;
 

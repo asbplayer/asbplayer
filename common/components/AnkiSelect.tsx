@@ -1,7 +1,7 @@
 import { makeStyles } from '@mui/styles';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SettingsTextField from './SettingsTextField';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -20,7 +20,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Popover from '@mui/material/Popover';
-import { Direction } from './settings-model';
+import { Direction } from '@project/common/components/settings-model';
 
 const useSelectableSettingStyles = makeStyles<Theme>((theme) => ({
     formControl: {

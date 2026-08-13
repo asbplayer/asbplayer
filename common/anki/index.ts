@@ -1,1 +1,1 @@
-export * from './anki';
+export * from '@project/common/anki/anki';

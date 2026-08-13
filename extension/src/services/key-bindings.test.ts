@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
-import type Binding from './binding';
-import KeyBindings from './key-bindings';
+import type Binding from '@project/extension/src/services/binding';
+import KeyBindings from '@project/extension/src/services/key-bindings';
 
 describe('KeyBindings playback modes', () => {
     const bindings: KeyBindings[] = [];

@@ -14,7 +14,7 @@ import {
 } from '@project/common/settings';
 import { Anki } from '@project/common/anki';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
-import { needsReset, SubtitleAnnotations, TrackState } from './subtitle-annotations';
+import { needsReset, SubtitleAnnotations, TrackState } from '@project/common/annotations/subtitle-annotations';
 import {
     makeDictionaryTrack,
     makeDictionaryTracks,
@@ -22,7 +22,7 @@ import {
     makeSubtitle,
     makeSubtitleAnnotations,
     makeToken,
-} from './annotations-test-utils';
+} from '@project/common/annotations/annotations-test-utils';
 
 const privateAnnotations = (subtitleAnnotations: SubtitleAnnotations) => subtitleAnnotations as any;
 

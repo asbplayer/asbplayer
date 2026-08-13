@@ -1,1 +1,1 @@
-export * from './wanikani';
+export * from '@project/common/wanikani/wanikani';

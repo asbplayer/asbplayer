@@ -5,7 +5,7 @@ import {
     ExtensionToVideoCommand,
     Message,
 } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class CopySubtitleHandler {
     private readonly _tabRegistry: TabRegistry;

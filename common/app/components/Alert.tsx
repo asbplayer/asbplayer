@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { makeStyles } from '@mui/styles';
 import MuiAlert, { type AlertColor } from '@mui/material/Alert';
 import Grow from '@mui/material/Grow';
-import { remove, update, type Stack } from './notification-stack';
-import LogoIcon from '../../components/LogoIcon';
+import { remove, update, type Stack } from '@project/common/app/components/notification-stack';
+import LogoIcon from '@project/common/components/LogoIcon';
 import { useTranslation } from 'react-i18next';
 import { type TFunction } from 'i18next';
 

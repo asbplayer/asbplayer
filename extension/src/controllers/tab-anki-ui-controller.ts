@@ -16,9 +16,9 @@ import {
 } from '@project/common';
 import { AnkiSettings, SettingsProvider, ankiSettingsKeys } from '@project/common/settings';
 import { sourceString } from '@project/common/util';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
-import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
+import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 

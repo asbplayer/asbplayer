@@ -1,7 +1,7 @@
 import { makeStyles } from '@mui/styles';
-import PlaybackRateInput from './PlaybackRateInput';
-import SubtitleOffsetInput from './SubtitleOffsetInput';
-import TimeDisplay from './TimeDisplay';
+import PlaybackRateInput from '@project/common/components/PlaybackRateInput';
+import SubtitleOffsetInput from '@project/common/components/SubtitleOffsetInput';
+import TimeDisplay from '@project/common/components/TimeDisplay';
 import { MutableRefObject, useCallback, useRef, useState } from 'react';
 import { ControlType } from '..';
 

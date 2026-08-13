@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
-import Binding, { type BindingOptions } from './binding';
-import { MockStorageArea } from './mock-storage-area';
+import Binding, { type BindingOptions } from '@project/extension/src/services/binding';
+import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 
 const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo: boolean): BindingOptions => ({
     hasPageScript,
@@ -11,42 +11,42 @@ const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo:
 jest.mock('@project/common/subtitle-reader', () => ({
     SubtitleReader: class SubtitleReader {},
 }));
-jest.mock('./localization-fetcher', () => ({
+jest.mock('@project/extension/src/services/localization-fetcher', () => ({
     fetchLocalization: jest.fn(async () => ({})),
 }));
-jest.mock('./i18n', () => ({
+jest.mock('@project/extension/src/services/i18n', () => ({
     i18nInit: jest.fn(async () => undefined),
 }));
 jest.mock('i18next', () => ({
     t: (key: string) => key,
 }));
-jest.mock('./build-flags', () => ({
+jest.mock('@project/extension/src/services/build-flags', () => ({
     isFirefoxBuild: false,
 }));
-jest.mock('../controllers/anki-ui-controller', () => ({
+jest.mock('@project/extension/src/controllers/anki-ui-controller', () => ({
     __esModule: true,
     default: class AnkiUiController {
         updateSettings() {}
     },
 }));
-jest.mock('../controllers/controls-controller', () => ({
+jest.mock('@project/extension/src/controllers/controls-controller', () => ({
     __esModule: true,
     default: class ControlsController {},
 }));
-jest.mock('../controllers/drag-controller', () => ({
+jest.mock('@project/extension/src/controllers/drag-controller', () => ({
     __esModule: true,
     default: class DragController {
         bind() {}
         unbind() {}
     },
 }));
-jest.mock('../controllers/mobile-gesture-controller', () => ({
+jest.mock('@project/extension/src/controllers/mobile-gesture-controller', () => ({
     MobileGestureController: class MobileGestureController {
         bind() {}
         unbind() {}
     },
 }));
-jest.mock('../controllers/mobile-video-overlay-controller', () => ({
+jest.mock('@project/extension/src/controllers/mobile-video-overlay-controller', () => ({
     MobileVideoOverlayController: class MobileVideoOverlayController {
         bind() {}
         unbind() {}
@@ -56,20 +56,20 @@ jest.mock('../controllers/mobile-video-overlay-controller', () => ({
         async updateModel() {}
     },
 }));
-jest.mock('../controllers/notification-controller', () => ({
+jest.mock('@project/extension/src/controllers/notification-controller', () => ({
     __esModule: true,
     default: class NotificationController {
         unbind() {}
     },
 }));
-jest.mock('../controllers/bulk-export-controller', () => ({
+jest.mock('@project/extension/src/controllers/bulk-export-controller', () => ({
     __esModule: true,
     default: class BulkExportController {
         bind() {}
         unbind() {}
     },
 }));
-jest.mock('../controllers/video-data-sync-controller', () => ({
+jest.mock('@project/extension/src/controllers/video-data-sync-controller', () => ({
     __esModule: true,
     default: class VideoDataSyncController {
         pickerVisible = false;
@@ -79,7 +79,7 @@ jest.mock('../controllers/video-data-sync-controller', () => ({
         unbind() {}
     },
 }));
-jest.mock('./key-bindings', () => ({
+jest.mock('@project/extension/src/services/key-bindings', () => ({
     __esModule: true,
     default: class KeyBindings {
         setKeyBindSet() {}

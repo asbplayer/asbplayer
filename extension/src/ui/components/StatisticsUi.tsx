@@ -6,14 +6,14 @@ import Statistics from '@project/common/components/Statistics';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { createTheme } from '@project/common/theme';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import Paper from '@mui/material/Paper';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useEffect, useCallback, useMemo } from 'react';
-import { uiTabRegistry, useLastMediaId, useMediaId } from '../hooks/use-media-id';
+import { uiTabRegistry, useLastMediaId, useMediaId } from '@project/extension/src/ui/hooks/use-media-id';
 import { Command, OpenStatisticsOverlayMessage } from '@project/common';
-import { useCurrentTabId } from '../hooks/use-current-tab-id';
+import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
 
 const dictionaryProvider = new DictionaryProvider(new ExtensionDictionaryStorage());
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());

@@ -1,5 +1,5 @@
 import { HttpPostMessage } from '@project/common';
-import Bridge from './bridge';
+import Bridge from '@project/extension/src/ui/bridge';
 import { v4 as uuidv4 } from 'uuid';
 
 export class BridgeFetcher {

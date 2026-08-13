@@ -2,7 +2,7 @@ import { asbError } from '@project/common/util';
 import { CopySubtitleMessage, PostMineAction, SubtitleModel } from '@project/common';
 import { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';
 import { SeekableTracks, TokenStatus } from '@project/common/settings';
-import ChromeExtension, { ExtensionMessage } from './chrome-extension';
+import ChromeExtension, { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 
 export default class AppKeyBinder implements KeyBinder {
     private readonly defaultKeyBinder: DefaultKeyBinder;

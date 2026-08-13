@@ -12,7 +12,7 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
-import { SubtitleAnnotations } from './subtitle-annotations';
+import { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
 
 export const cloneAnnotationConfig = (track: DictionaryTrack) => ({
     ...track.dictionaryTokenAnnotationConfig,

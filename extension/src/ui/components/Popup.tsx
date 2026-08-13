@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { Fetcher } from '@project/common/src/fetcher';
 import { useLocalFontFamilies } from '@project/common/hooks';
 import { Anki } from '@project/common/anki';
-import { useSupportedLanguages } from '../hooks/use-supported-languages';
-import { useI18n } from '../hooks/use-i18n';
+import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-supported-languages';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { isMobile } from 'react-device-detect';
 import { useTheme } from '@mui/material/styles';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
@@ -30,13 +30,13 @@ import Paper from '@mui/material/Paper';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
-import { uiTabRegistry, useMediaId } from '../hooks/use-media-id';
+import { uiTabRegistry, useMediaId } from '@project/extension/src/ui/hooks/use-media-id';
 import Statistics from '@project/common/components/Statistics';
 import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
-import { useCurrentTabId } from '../hooks/use-current-tab-id';
-import { useLastMediaIdOnce } from '../hooks/use-media-id';
+import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
+import { useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 

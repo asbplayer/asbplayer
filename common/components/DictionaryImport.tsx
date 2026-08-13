@@ -22,11 +22,11 @@ import {
     ApplyStrategy,
     Profile,
 } from '@project/common/settings';
-import { Yomitan } from '../yomitan';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import SettingsTextField from './SettingsTextField';
-import { DictionaryLocalTokenInput, DictionaryProvider, DictionaryTokenRecord } from '../dictionary-db';
-import { ensureStoragePersisted, HAS_LETTER_REGEX, humanReadableTime, localizedDate } from '../util';
+import { Yomitan } from '@project/common/yomitan';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import { DictionaryLocalTokenInput, DictionaryProvider, DictionaryTokenRecord } from '@project/common/dictionary-db';
+import { ensureStoragePersisted, HAS_LETTER_REGEX, humanReadableTime, localizedDate } from '@project/common/util';
 import Typography from '@mui/material/Typography';
 
 interface ImportClipboardToken {

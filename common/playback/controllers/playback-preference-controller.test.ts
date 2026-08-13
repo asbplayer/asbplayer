@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from '@jest/globals';
-import PlaybackPreferenceController from './playback-preference-controller';
+import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 
 beforeEach(() => {
     localStorage.clear();

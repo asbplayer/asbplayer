@@ -19,7 +19,7 @@ import {
     DictionaryWaniKaniAssignmentRecord,
     DictionaryWaniKaniSubjectRecord,
     LOCAL_TOKEN_TRACK,
-} from './dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 import { WaniKaniSpacedRepetitionSystem } from '@project/common/wanikani';
 
 export const profile = 'Profile';

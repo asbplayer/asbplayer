@@ -45,14 +45,14 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CloseIcon from '@mui/icons-material/Close';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { alpha, useTheme } from '@mui/material/styles';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import { useTranslation } from 'react-i18next';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import SortIcon from '@mui/icons-material/Sort';
 import Toolbar from '@mui/material/Toolbar';
 import { DictionaryTrack, TokenAnnotationConfig, tokenAnnotationStyleValues } from '@project/common/settings';
-import '../app/components/subtitles.css';
+import '@project/common/app/components/subtitles.css';
 
 interface Props {
     open: boolean;

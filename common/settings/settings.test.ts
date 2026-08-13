@@ -6,7 +6,7 @@ import {
     updateSeekableTracksValue,
 } from '.';
 import { describe, expect, it } from '@jest/globals';
-import { AutoPausePreference } from '../src/model';
+import { AutoPausePreference } from '@project/common/src/model';
 
 describe('autoPausePreferenceForCheckboxChange', () => {
     it.each<{

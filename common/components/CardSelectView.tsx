@@ -12,7 +12,7 @@ import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { Anki, NoteInfo } from '@project/common/anki';
-import { AnkiSettings } from '../settings';
+import { AnkiSettings } from '@project/common/settings';
 import Dialog from '@mui/material/Dialog';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';

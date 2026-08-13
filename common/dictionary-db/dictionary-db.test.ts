@@ -16,7 +16,7 @@ import {
     _gatherModifiedTokens,
     _getFromSourceBulk,
     _saveRecordBulk,
-} from './dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
@@ -29,7 +29,7 @@ import {
     profile,
     tokenKey,
     track,
-} from './dictionary-db-test-utils';
+} from '@project/common/dictionary-db/dictionary-db-test-utils';
 
 describe('DictionaryDB', () => {
     let dictionaryDB: DictionaryDB;

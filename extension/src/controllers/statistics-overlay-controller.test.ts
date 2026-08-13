@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-jest.mock('../services/ui-frame', () => ({
+jest.mock('@project/extension/src/services/ui-frame', () => ({
     __esModule: true,
     default: class UiFrame {},
     uiFrameForSrc: jest.fn(),
 }));
 
-import { StatisticsOverlayController } from './statistics-overlay-controller';
+import { StatisticsOverlayController } from '@project/extension/src/controllers/statistics-overlay-controller';
 
 describe('StatisticsOverlayController mobile overlay positioning', () => {
     const runtimeListeners = new Set<(message: any, sender: any, sendResponse: (response?: any) => void) => void>();

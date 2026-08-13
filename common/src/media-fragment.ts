@@ -1,9 +1,9 @@
 import { asbWarn } from '@project/common/util';
-import { CardModel, FileModel, MediaFragmentErrorCode } from './model';
-import { isActiveBlobUrl } from '../blob-url';
-import { download } from '../util/util';
-import { JpegFileMediaFragmentData } from './jpeg-file-media-fragment-data';
-import { WebmFileMediaFragmentData } from './webm-file-media-fragment-data';
+import { CardModel, FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
+import { isActiveBlobUrl } from '@project/common/blob-url';
+import { download } from '@project/common/util/util';
+import { JpegFileMediaFragmentData } from '@project/common/src/jpeg-file-media-fragment-data';
+import { WebmFileMediaFragmentData } from '@project/common/src/webm-file-media-fragment-data';
 
 const maxPrefixLength = 24;
 const videoReadyTimeoutMs = 5_000;

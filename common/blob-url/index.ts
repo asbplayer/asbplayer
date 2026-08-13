@@ -1,1 +1,1 @@
-export * from './blob-url';
+export * from '@project/common/blob-url/blob-url';

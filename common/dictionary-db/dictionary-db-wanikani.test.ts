@@ -66,7 +66,7 @@ import {
     _gatherModifiedTokensForTrack,
     _getFromSourceBulk,
     _saveRecordBulk,
-} from './dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 import {
     _buildWaniKaniTokensForTrack,
     _deleteWaniKaniResourcesForTracks,
@@ -77,7 +77,7 @@ import {
     _updateBuildWaniKaniCacheProgress,
     _waniKaniAssignmentRecord,
     _waniKaniSubjectRecord,
-} from './dictionary-db-wanikani';
+} from '@project/common/dictionary-db/dictionary-db-wanikani';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
@@ -93,7 +93,7 @@ import {
     profile,
     tokenKey,
     track,
-} from './dictionary-db-test-utils';
+} from '@project/common/dictionary-db/dictionary-db-test-utils';
 
 const collection = <T>(data: T[], dataUpdatedAt = '2024-01-01T00:00:00.000000Z') => ({
     data,

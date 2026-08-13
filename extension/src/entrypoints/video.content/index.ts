@@ -18,7 +18,7 @@ import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
 import { isFirefoxBuild } from '@/services/build-flags';
 
-import './video.css';
+import '@project/extension/src/entrypoints/video.content/video.css';
 
 const excludeGlobs = ['*://app.asbplayer.dev/*'];
 

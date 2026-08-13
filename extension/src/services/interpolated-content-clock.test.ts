@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import InterpolatedContentClock from './interpolated-content-clock';
+import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
 
 describe('InterpolatedContentClock', () => {
     it('reports whether content time has been anchored and supports reset', () => {

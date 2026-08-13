@@ -17,12 +17,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import { type Theme } from '@mui/material';
-import { CopyHistoryItem } from '../..';
-import { AudioClip } from '../../audio-clip';
-import { MediaFragment } from '../..';
+import { CopyHistoryItem } from '@project/common';
+import { AudioClip } from '@project/common/audio-clip';
+import { MediaFragment } from '@project/common';
 
 interface CopyHistoryListProps {
     open: boolean;

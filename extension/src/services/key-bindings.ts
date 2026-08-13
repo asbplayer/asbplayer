@@ -9,7 +9,7 @@ import {
 } from '@project/common';
 import { ApplyStrategy, KeyBindSet, TokenState } from '@project/common/settings';
 import { DefaultKeyBinder } from '@project/common/key-binder';
-import Binding from './binding';
+import Binding from '@project/extension/src/services/binding';
 import { ensureStoragePersisted } from '@project/common/util';
 
 type Unbinder = (() => void) | false;

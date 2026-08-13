@@ -9,19 +9,19 @@ import { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/c
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import { Anki } from '../anki';
+import { Anki } from '@project/common/anki';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import About from './About';
-import { TutorialStep } from './settings-model';
-import AnkiSettingsTab from './AnkiSettingsTab';
-import MiningSettingsTab from './MiningSettingsTab';
-import DictionarySettingsTab from './DictionarySettingsTab';
-import SubtitleAppearanceSettingsTab from './SubtitleAppearanceSettingsTab';
-import KeyboardShortcutsSettingsTab from './KeyboardShortcutsSettingsTab';
-import StreamingVideoSettingsTab from './StreamingVideoSettingsTab';
-import MiscSettingsTab from './MiscSettingsTab';
-import { DictionaryProvider } from '../dictionary-db';
-import TutorialBubble, { type TutorialBubbleProps } from './TutorialBubble';
+import About from '@project/common/components/About';
+import { TutorialStep } from '@project/common/components/settings-model';
+import AnkiSettingsTab from '@project/common/components/AnkiSettingsTab';
+import MiningSettingsTab from '@project/common/components/MiningSettingsTab';
+import DictionarySettingsTab from '@project/common/components/DictionarySettingsTab';
+import SubtitleAppearanceSettingsTab from '@project/common/components/SubtitleAppearanceSettingsTab';
+import KeyboardShortcutsSettingsTab from '@project/common/components/KeyboardShortcutsSettingsTab';
+import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
+import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
+import { DictionaryProvider } from '@project/common/dictionary-db';
+import TutorialBubble, { type TutorialBubbleProps } from '@project/common/components/TutorialBubble';
 
 interface AnnotationTutorialPosition {
     left: number;

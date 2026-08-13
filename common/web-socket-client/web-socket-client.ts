@@ -1,5 +1,5 @@
 import { asbError, asbInfo, asbLog } from '@project/common/util';
-import type { SubtitleTrack } from '../src/model';
+import type { SubtitleTrack } from '@project/common/src/model';
 
 export type { SubtitleTrack };
 

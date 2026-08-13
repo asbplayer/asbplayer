@@ -7,7 +7,7 @@ import VideoDataSyncDialog, {
     useVideoDataSyncDialogState,
     emptySubtitleTrack,
 } from '@project/common/components/VideoDataSyncDialog';
-import Bridge from '../bridge';
+import Bridge from '@project/extension/src/ui/bridge';
 import {
     ConfirmedVideoDataSubtitleTrack,
     Message,

@@ -1,5 +1,5 @@
 import { AckMessage, Command, ExtensionToAsbPlayerCommand, Message } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class AckMessageHandler {
     private readonly _tabRegistry: TabRegistry;

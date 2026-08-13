@@ -4,7 +4,7 @@ import {
     FileSystemFileHandleWithId,
     IndexedDBFileSessionRepository,
     supportsFileSystemAccess,
-} from '../../file-system-access';
+} from '@project/common/file-system-access';
 
 let _repository: IndexedDBFileSessionRepository | undefined;
 const getRepository = () => {

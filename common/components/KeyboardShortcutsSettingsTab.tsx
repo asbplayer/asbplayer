@@ -1,4 +1,4 @@
-import { AsbplayerSettings, KeyBindName } from '../settings';
+import { AsbplayerSettings, KeyBindName } from '@project/common/settings';
 import { useTranslation } from 'react-i18next';
 import { isMacOs } from 'react-device-detect';
 import { makeStyles, useTheme } from '@mui/styles';
@@ -12,11 +12,11 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
 import EditIcon from '@mui/icons-material/Edit';
-import SettingsTextField from './SettingsTextField';
-import NumericSettingInput from './NumericSettingInput';
-import { isFirefox } from '../browser-detection';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import { isFirefox } from '@project/common/browser-detection';
 import React, { useMemo, useEffect, useCallback, useState, useRef } from 'react';
-import KeyBindRelatedSetting from './KeyBindRelatedSetting';
+import KeyBindRelatedSetting from '@project/common/components/KeyBindRelatedSetting';
 
 type AllKeyNames = KeyBindName | 'selectSubtitleTrack';
 

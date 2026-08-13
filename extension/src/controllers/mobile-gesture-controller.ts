@@ -1,4 +1,4 @@
-import Binding from '../services/binding';
+import Binding from '@project/extension/src/services/binding';
 
 interface Touch {
     x: number;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { HoveredToken } from './dom-annotations';
+import { HoveredToken } from '@project/common/annotations/dom-annotations';
 
 describe('HoveredToken', () => {
     it('extracts visible token text and track while ignoring ruby text', () => {

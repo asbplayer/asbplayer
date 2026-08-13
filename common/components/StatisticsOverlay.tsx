@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { DictionaryProvider } from '../dictionary-db';
+import { DictionaryProvider } from '@project/common/dictionary-db';
 import {
     DictionarySimplifiedStatisticsTrackSnapshot,
     dictionaryStatisticsComprehensionBandForPercent,
@@ -7,7 +7,7 @@ import {
     DictionaryStatisticsSnapshot,
     percentDisplay,
     processSimplifiedDictionaryStatistics,
-} from '../dictionary-statistics';
+} from '@project/common/dictionary-statistics';
 import Box from '@mui/material/Box';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
@@ -17,7 +17,7 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import CloseIcon from '@mui/icons-material/Close';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import LogoIcon from './LogoIcon';
+import LogoIcon from '@project/common/components/LogoIcon';
 import LinearProgress from '@mui/material/LinearProgress';
 
 interface StatisticProps {

@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util';
 import { SettingsProvider } from '@project/common/settings';
-import { ExtensionSettingsStorage } from './extension-settings-storage';
-import { isFirefoxBuild } from './build-flags';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 
 export interface ExtensionConfig {
     latest: {

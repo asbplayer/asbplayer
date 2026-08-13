@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -51,13 +51,13 @@ import {
     tokenAnnotationStyleValues,
     dictionaryTrackEnabled,
 } from '@project/common/settings';
-import { Anki } from '../anki';
-import { WaniKani, WaniKaniUser } from '../wanikani';
-import { Yomitan } from '../yomitan';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import SettingsTextField from './SettingsTextField';
-import NumericSettingInput from './NumericSettingInput';
-import SettingsSection, { SettingsSubSection } from './SettingsSection';
+import { Anki } from '@project/common/anki';
+import { WaniKani, WaniKaniUser } from '@project/common/wanikani';
+import { Yomitan } from '@project/common/yomitan';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
 import {
     DictionaryBuildAnkiCacheProgress,
     DictionaryBuildAnkiCacheState,
@@ -73,8 +73,8 @@ import {
     DictionaryBuildWaniKaniCacheStateErrorCode,
     DictionaryBuildWaniKaniCacheStateType,
     DictionaryBuildWaniKaniCacheStats,
-} from '../src/message';
-import { DictionaryProvider } from '../dictionary-db';
+} from '@project/common/src/message';
+import { DictionaryProvider } from '@project/common/dictionary-db';
 import {
     computeStyles,
     ensureStoragePersisted,
@@ -82,17 +82,17 @@ import {
     humanReadableTime,
     localizedDate,
     percentToHex2,
-} from '../util';
-import DictionaryImport from './DictionaryImport';
+} from '@project/common/util';
+import DictionaryImport from '@project/common/components/DictionaryImport';
 import {
     computeRichText,
     getAnnotationsForRender,
     getAnnotationsHtml,
     InternalToken,
 } from '@project/common/annotations';
-import WordBrowserDialog from './WordBrowserDialog';
-import '../app/components/subtitles.css';
-import SettingsGroups from './SettingsGroups';
+import WordBrowserDialog from '@project/common/components/WordBrowserDialog';
+import '@project/common/app/components/subtitles.css';
+import SettingsGroups from '@project/common/components/SettingsGroups';
 import Fade from '@mui/material/Fade';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';

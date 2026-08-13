@@ -1,5 +1,5 @@
 import { GlobalState, GlobalStateProvider, initialGlobalState } from '@project/common/global-state';
-import { StorageArea } from './extension-settings-storage';
+import { StorageArea } from '@project/extension/src/services/extension-settings-storage';
 
 export class ExtensionGlobalStateProvider implements GlobalStateProvider {
     private readonly _storage;

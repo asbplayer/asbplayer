@@ -1,8 +1,8 @@
 import { defaultSettings } from '@project/common/settings';
-import pagesConfig from '../pages.json';
+import pagesConfig from '@project/extension/src/pages.json';
 import { afterEach, beforeAll, expect, it } from '@jest/globals';
 
-let PageDelegate: typeof import('./pages').PageDelegate;
+let PageDelegate: typeof import('@project/extension/src/services/pages').PageDelegate;
 
 beforeAll(async () => {
     const storage = {
@@ -19,7 +19,7 @@ beforeAll(async () => {
         configurable: true,
         value: { runtime: { getURL: (path: string) => path } },
     });
-    PageDelegate = (await import('./pages')).PageDelegate;
+    PageDelegate = (await import('@project/extension/src/services/pages')).PageDelegate;
 });
 
 afterEach(() => {

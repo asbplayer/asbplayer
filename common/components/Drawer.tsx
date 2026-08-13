@@ -5,7 +5,7 @@ import IconButton from '@mui/material/IconButton';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
-import { useAppBarHeight } from '../hooks/use-app-bar-height';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 
 interface Props extends DrawerProps {
     children: React.ReactNode;

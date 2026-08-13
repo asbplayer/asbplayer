@@ -1,5 +1,5 @@
 import { AudioBase64Message, Command, Message } from '@project/common';
-import AudioRecorderService from '../../services/audio-recorder-service';
+import AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
 
 export default class AudioBase64Handler {
     private readonly _audioRecorder: AudioRecorderService;

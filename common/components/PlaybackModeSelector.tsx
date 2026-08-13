@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayMode } from '@project/common';
-import PlayModeSelector from './PlayModeSelector';
+import PlayModeSelector from '@project/common/components/PlayModeSelector';
 
 const playbackModeOverlayAutoHideDurationMouseLeave = 1000;
 

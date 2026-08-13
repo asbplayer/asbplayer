@@ -6,9 +6,9 @@ import {
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     VideoSubtitleSplitBehavior,
-} from './settings';
-import { validateSettings } from './settings-import-export';
-import { defaultSettings } from './settings-provider';
+} from '@project/common/settings/settings';
+import { validateSettings } from '@project/common/settings/settings-import-export';
+import { defaultSettings } from '@project/common/settings/settings-provider';
 import { expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 

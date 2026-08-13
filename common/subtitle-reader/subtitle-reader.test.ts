@@ -6,7 +6,7 @@ jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} 
 jest.mock('ass-compiler', () => ({ compile: () => ({ dialogues: [] }) }));
 jest.mock('videojs-vtt.js', () => ({ WebVTT: {} }));
 
-import SubtitleReader from './subtitle-reader';
+import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
 
 const createReader = (convertNetflixRuby = false) =>

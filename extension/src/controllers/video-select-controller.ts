@@ -8,11 +8,11 @@ import {
     VideoSelectModeConfirmMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
-import { VideoElement } from '../ui/components/VideoSelectUi';
-import Binding from '../services/binding';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
-import { ExtensionSettingsStorage } from '../services/extension-settings-storage';
+import { VideoElement } from '@project/extension/src/ui/components/VideoSelectUi';
+import Binding from '@project/extension/src/services/binding';
+import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 interface VideoSelectControllerOptions {

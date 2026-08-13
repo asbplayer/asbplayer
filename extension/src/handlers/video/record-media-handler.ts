@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import ImageCapturer from '../../services/image-capturer';
+import ImageCapturer from '@project/extension/src/services/image-capturer';
 import {
     AudioModel,
     Command,
@@ -15,8 +15,8 @@ import {
     PostMineAction,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
-import { CardPublisher } from '../../services/card-publisher';
-import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
+import { CardPublisher } from '@project/extension/src/services/card-publisher';
+import AudioRecorderService, { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;

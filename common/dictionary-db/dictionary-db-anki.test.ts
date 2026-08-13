@@ -81,7 +81,7 @@ import {
     _clearBuildIds,
     _ensureBuildId,
     _gatherModifiedTokens,
-} from './dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 import {
     _buildAnkiCardStatuses,
     _buildTokensForTracks,
@@ -94,7 +94,7 @@ import {
     _saveTokensForDB,
     _syncTrackStatesWithAnki,
     _updateBuildAnkiCacheProgress,
-} from './dictionary-db-anki';
+} from '@project/common/dictionary-db/dictionary-db-anki';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
@@ -109,7 +109,7 @@ import {
     profile,
     tokenKey,
     track,
-} from './dictionary-db-test-utils';
+} from '@project/common/dictionary-db/dictionary-db-test-utils';
 
 describe('DictionaryDB Anki cache', () => {
     let dictionaryDB: DictionaryDB;

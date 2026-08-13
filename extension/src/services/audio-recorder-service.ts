@@ -9,8 +9,8 @@ import {
     StartRecordingResponse,
     StopRecordingErrorCode,
 } from '@project/common';
-import TabRegistry from './tab-registry';
-import { AudioRecorderDelegate } from './audio-recorder-delegate';
+import TabRegistry from '@project/extension/src/services/tab-registry';
+import { AudioRecorderDelegate } from '@project/extension/src/services/audio-recorder-delegate';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Requester {

@@ -24,10 +24,10 @@ import {
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 import { sourceString } from '@project/common/util';
-import Binding from '../services/binding';
-import { fetchLocalization } from '../services/localization-fetcher';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
+import Binding from '@project/extension/src/services/binding';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 

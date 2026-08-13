@@ -1,7 +1,7 @@
 import type { InputProps } from '@mui/material/Input';
 import React, { MutableRefObject } from 'react';
 import { formatAsSigned } from '@project/common/util';
-import VideoControlInput from './VideoControlInput';
+import VideoControlInput from '@project/common/components/VideoControlInput';
 
 interface Props extends InputProps {
     inputRef: MutableRefObject<HTMLInputElement | undefined>;

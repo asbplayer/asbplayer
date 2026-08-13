@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util';
-import { WebSocketClientSettings } from '../../settings';
-import { CardTextFieldValues, PostMineAction } from '../../src/model';
-import { WebSocketClient } from '../../web-socket-client';
+import { WebSocketClientSettings } from '@project/common/settings';
+import { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
+import { WebSocketClient } from '@project/common/web-socket-client';
 import { useEffect, useState } from 'react';
 
 export interface MineSubtitleParams extends CardTextFieldValues {

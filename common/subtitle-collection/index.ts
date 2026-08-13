@@ -1,1 +1,1 @@
-export * from './subtitle-collection';
+export * from '@project/common/subtitle-collection/subtitle-collection';

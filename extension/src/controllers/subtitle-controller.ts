@@ -38,7 +38,7 @@ import {
     ElementOverlayParams,
     KeyedHtml,
     OffsetAnchor,
-} from '../services/element-overlay';
+} from '@project/extension/src/services/element-overlay';
 import { v4 as uuidv4 } from 'uuid';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import Binding from '@/services/binding';

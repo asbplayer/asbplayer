@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util';
-import { LocalizationConfig, fetchExtensionConfig } from './extension-config';
+import { LocalizationConfig, fetchExtensionConfig } from '@project/extension/src/services/extension-config';
 import { SettingsProvider, supportedLanguages as defaultSupportedLanguages } from '@project/common/settings';
-import { ExtensionSettingsStorage } from './extension-settings-storage';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import type { PublicPath } from 'wxt/browser';
 
 const stringsKeyForLang = (lang: string) => `locStrings-${lang}`;

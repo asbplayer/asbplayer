@@ -3,11 +3,11 @@ import makeStyles from '@mui/styles/makeStyles';
 import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
 import { MediaFragment } from '@project/common';
-import { useImageData } from '../hooks/use-image-data';
+import { useImageData } from '@project/common/hooks/use-image-data';
 import Slider from '@mui/material/Slider';
 import Modal from '@mui/material/Modal';
-import { humanReadableTime } from '../util';
-import Tooltip from './Tooltip';
+import { humanReadableTime } from '@project/common/util';
+import Tooltip from '@project/common/components/Tooltip';
 
 interface ImageDimensions {
     width: number;

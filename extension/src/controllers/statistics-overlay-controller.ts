@@ -1,8 +1,8 @@
-import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
-import { frameColorScheme, frameColorSchemeClass } from '../services/frame-color-scheme';
-import UiFrame, { uiFrameForSrc } from '../services/ui-frame';
-import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '../ui/components/StatisticsOverlayUi';
-import { type UiState } from '../ui/components/StatisticsOverlayOneUncollectedUi';
+import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
+import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
+import UiFrame, { uiFrameForSrc } from '@project/extension/src/services/ui-frame';
+import { type OpenStatisticsOverlayOneUncollectedDialogMessage } from '@project/extension/src/ui/components/StatisticsOverlayUi';
+import { type UiState } from '@project/extension/src/ui/components/StatisticsOverlayOneUncollectedUi';
 import {
     CloseStatisticsOverlayMessage,
     Command,

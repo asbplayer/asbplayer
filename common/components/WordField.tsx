@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import { useTranslation, Trans } from 'react-i18next';
-import { Anki } from '../anki';
+import { Anki } from '@project/common/anki';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import SearchIcon from '@mui/icons-material/Search';
-import Tooltip from './Tooltip';
-import TutorialBubble from './TutorialBubble';
+import Tooltip from '@project/common/components/Tooltip';
+import TutorialBubble from '@project/common/components/TutorialBubble';
 
 interface Props {
     anki: Anki;

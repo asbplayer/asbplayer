@@ -22,8 +22,8 @@ import MiniProfileSelector from '@project/common/components/MiniProfileSelector'
 import type { Profile } from '@project/common/settings';
 import Alert from '@mui/material/Alert';
 import { type ButtonBaseActions } from '@mui/material';
-import { OnlineSubtitleSourceConfig } from '../global-state';
-import OnlineSubtitleSourceDialog from './OnlineSubtitleSourceDialog';
+import { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
 import { TFunction } from 'i18next';
 import { FileSelector, FileWithId } from '@project/common/file-selector';
 
