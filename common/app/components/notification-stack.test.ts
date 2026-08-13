@@ -1,5 +1,6 @@
 import { expect, it } from '@jest/globals';
-import { prepend, remove, Stack } from '@project/common/app/components/notification-stack';
+import type { Stack } from '@project/common/app/components/notification-stack';
+import { prepend, remove } from '@project/common/app/components/notification-stack';
 
 const item = (id: number, value: string): Stack<string> => ({ id, value });
 

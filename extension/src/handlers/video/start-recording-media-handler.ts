@@ -1,22 +1,21 @@
 import { asbError } from '@project/common/util';
-import ImageCapturer from '@project/extension/src/services/image-capturer';
-import {
-    AudioErrorCode,
+import type ImageCapturer from '@project/extension/src/services/image-capturer';
+import type {
     AudioModel,
     Command,
     ExtensionToVideoCommand,
-    ImageErrorCode,
     ImageModel,
     Message,
-    PostMineAction,
     ScreenshotTakenMessage,
     StartRecordingMediaMessage,
     SubtitleModel,
     VideoToExtensionCommand,
 } from '@project/common';
-import { CardPublisher } from '@project/extension/src/services/card-publisher';
-import AudioRecorderService, { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
-import { SettingsProvider } from '@project/common/settings';
+import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
+import type { SettingsProvider } from '@project/common/settings';
 
 export default class StartRecordingMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;

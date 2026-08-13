@@ -1,17 +1,18 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     CardExportedMessage,
     CardModel,
     CardSavedMessage,
     CardUpdatedMessage,
     ExtensionToVideoCommand,
     NotifyErrorMessage,
-    PostMineAction,
     ShowAnkiUiMessage,
     ShowCardSelectUiMessage,
 } from '@project/common';
+import { PostMineAction } from '@project/common';
 import { humanReadableTime } from '@project/common/util';
-import { AnkiSettings, ankiSettingsKeys, SettingsProvider } from '@project/common/settings';
+import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
+import { ankiSettingsKeys } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 import { exportCard, DuplicateNoteError } from '@project/common/anki';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';

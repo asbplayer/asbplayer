@@ -1,5 +1,5 @@
 import { asbLog } from '@project/common/util';
-import {
+import type {
     MobileOverlayToVideoCommand,
     MobileOverlayModel,
     RequestMobileOverlayModelMessage,

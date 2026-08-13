@@ -8,7 +8,7 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import DownloadIcon from '@mui/icons-material/Download';
-import { AudioClip } from '@project/common/audio-clip';
+import type { AudioClip } from '@project/common/audio-clip';
 import { useTranslation } from 'react-i18next';
 import Badge from '@mui/material/Badge';
 

@@ -1,6 +1,6 @@
-import { Fetcher } from '@project/common';
+import type { Fetcher } from '@project/common';
 import { Anki } from '@project/common/anki';
-import { AnkiSettings } from '@project/common/settings';
+import type { AnkiSettings } from '@project/common/settings';
 import { useMemo } from 'react';
 
 class SettingsAccessor {

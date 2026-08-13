@@ -3,7 +3,8 @@ import 'fake-indexeddb/auto';
 import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DictionaryBuildWaniKaniCacheStateErrorCode, DictionaryBuildWaniKaniCacheStateType } from '@project/common';
-import { AsbplayerSettings, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
 
 const mockWaniKaniInstances: any[] = [];
 const mockWaniKaniOverrides: any[] = [];

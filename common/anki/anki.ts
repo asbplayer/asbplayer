@@ -1,8 +1,10 @@
 import { asbInfo } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
-import { AnkiExportMode, CardModel, MediaFragment, Progress } from '@project/common';
-import { HttpFetcher, Fetcher } from '@project/common';
-import { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
+import type { AnkiExportMode, CardModel, Progress } from '@project/common';
+import { MediaFragment } from '@project/common';
+import type { Fetcher } from '@project/common';
+import { HttpFetcher } from '@project/common';
+import type { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
 import sanitize from 'sanitize-filename';
 import { extractText, fromBatches, sourceString } from '@project/common/util';
 

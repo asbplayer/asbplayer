@@ -1,6 +1,7 @@
 import { asbError } from '@project/common/util';
-import { GlobalState, GlobalStateProvider, initialGlobalState } from '@project/common/global-state';
-import ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { GlobalState, GlobalStateProvider } from '@project/common/global-state';
+import { initialGlobalState } from '@project/common/global-state';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 
 export class AppExtensionGlobalStateProvider implements GlobalStateProvider {
     private readonly _extension: ChromeExtension;

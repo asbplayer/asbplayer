@@ -1,5 +1,5 @@
 import Drawer from '@project/common/components/Drawer';
-import { CopyHistoryItem } from '@project/common';
+import type { CopyHistoryItem } from '@project/common';
 import { useTranslation } from 'react-i18next';
 import CopyHistoryList from '@project/common/app/components/CopyHistoryList';
 

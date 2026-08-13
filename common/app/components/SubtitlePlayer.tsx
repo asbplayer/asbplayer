@@ -1,7 +1,8 @@
-import React, { ForwardedRef, useCallback, useEffect, useMemo, useState, useRef, ReactNode } from 'react';
+import type { ForwardedRef, ReactNode } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
-import {
+import type {
     ContextProp,
     ItemProps,
     ListRange,
@@ -9,14 +10,14 @@ import {
     TableBodyProps,
     TableComponents,
     TableProps,
-    TableVirtuoso,
     TableVirtuosoHandle,
 } from 'react-virtuoso';
+import { TableVirtuoso } from 'react-virtuoso';
 import { useResize } from '@project/common/app/hooks/use-resize';
-import { ScreenLocation, useDragging } from '@project/common/app/hooks/use-dragging';
+import type { ScreenLocation } from '@project/common/app/hooks/use-dragging';
+import { useDragging } from '@project/common/app/hooks/use-dragging';
 import { useTranslation } from 'react-i18next';
-import {
-    PostMineAction,
+import type {
     DisplaySubtitleModel,
     SubtitleModel,
     CopySubtitleWithAdditionalFieldsMessage,
@@ -24,29 +25,24 @@ import {
     IndexedSubtitleModel,
     PlaybackState,
 } from '@project/common';
-import {
-    AsbplayerSettings,
-    DictionaryTrack,
-    TokenAnnotationConfig,
-    tokenAnnotationStyleValues,
-} from '@project/common/settings';
+import { PostMineAction } from '@project/common';
+import type { AsbplayerSettings, DictionaryTrack, TokenAnnotationConfig } from '@project/common/settings';
+import { tokenAnnotationStyleValues } from '@project/common/settings';
 import {
     surroundingSubtitles,
     mockSurroundingSubtitles,
     surroundingSubtitlesAroundInterval,
     extractText,
 } from '@project/common/util';
-import { SubtitleCollection } from '@project/common/subtitle-collection';
+import type { SubtitleCollection } from '@project/common/subtitle-collection';
+import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
 import {
     getAnnotationsHtml,
     renderRichTextWindow,
     emptyRichTextWindow,
-    RichTextWindow,
-    RenderedRichText,
-    SubtitleAnnotations,
     renderRichTextForSubtitle,
 } from '@project/common/annotations';
-import { KeyBinder } from '@project/common/key-binder';
+import type { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import CloseIcon from '@mui/icons-material/Close';
@@ -61,13 +57,14 @@ import TableRow from '@mui/material/TableRow';
 import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
-import Clock from '@project/common/playback/timing/clock';
+import type Clock from '@project/common/playback/timing/clock';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
-import { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-client';
+import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-client';
 import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
-import ChromeExtension, { ExtensionMessage } from '@project/common/app/services/chrome-extension';
-import { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
+import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
 import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
 import '@project/common/app/components/subtitles.css';
 

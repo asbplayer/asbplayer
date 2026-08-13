@@ -15,17 +15,18 @@ import Typography from '@mui/material/Typography';
 import makeStyles from '@mui/styles/makeStyles';
 import Switch from '@mui/material/Switch';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
-import { ConfirmedVideoDataSubtitleTrack, VideoDataSubtitleTrack, VideoDataUiOpenReason } from '@project/common';
+import type { ConfirmedVideoDataSubtitleTrack, VideoDataSubtitleTrack } from '@project/common';
+import { VideoDataUiOpenReason } from '@project/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import MiniProfileSelector from '@project/common/components/MiniProfileSelector';
 import type { Profile } from '@project/common/settings';
 import Alert from '@mui/material/Alert';
 import { type ButtonBaseActions } from '@mui/material';
-import { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
-import { TFunction } from 'i18next';
-import { FileSelector, FileWithId } from '@project/common/file-selector';
+import type { TFunction } from 'i18next';
+import type { FileSelector, FileWithId } from '@project/common/file-selector';
 
 const createClasses = makeStyles(() => ({
     relative: {

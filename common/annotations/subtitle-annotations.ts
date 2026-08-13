@@ -1,13 +1,9 @@
 import { asbError, asbWarn } from '@project/common/util';
-import {
+import type {
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateError,
-    DictionaryBuildAnkiCacheStateErrorCode,
-    DictionaryBuildAnkiCacheStateType,
     DictionaryBuildWaniKaniCacheState,
     DictionaryBuildWaniKaniCacheStateError,
-    DictionaryBuildWaniKaniCacheStateErrorCode,
-    DictionaryBuildWaniKaniCacheStateType,
     Fetcher,
     IndexedSubtitleModel,
     Token,
@@ -15,30 +11,38 @@ import {
     TokenizedSubtitleModel,
     TokenReading,
 } from '@project/common';
-import { Anki } from '@project/common/anki';
 import {
+    DictionaryBuildAnkiCacheStateErrorCode,
+    DictionaryBuildAnkiCacheStateType,
+    DictionaryBuildWaniKaniCacheStateErrorCode,
+    DictionaryBuildWaniKaniCacheStateType,
+} from '@project/common';
+import { Anki } from '@project/common/anki';
+import type {
     ApplyStrategy,
-    areDictionaryTracksEqual,
     AsbplayerSettings,
-    dictionaryStatusCollectionEnabled,
-    DictionaryTokenSource,
     DictionaryTrack,
-    dictionaryTrackEnabled,
-    getFullyKnownTokenStatus,
     SettingsProvider,
-    TokenMatchStrategy,
-    TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
 import {
-    DictionaryStatistics,
+    areDictionaryTracksEqual,
+    dictionaryStatusCollectionEnabled,
+    DictionaryTokenSource,
+    dictionaryTrackEnabled,
+    getFullyKnownTokenStatus,
+    TokenMatchStrategy,
+    TokenState,
+} from '@project/common/settings';
+import type { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
+import type {
     DictionaryStatisticsAnkiDueCardsSnapshot,
     DictionaryStatisticsAnkiSnapshot,
     DictionaryStatisticsWaniKaniSnapshot,
-    REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
-import { SubtitleCollection, SubtitleCollectionOptions } from '@project/common/subtitle-collection';
+import { DictionaryStatistics, REVIEW_DUES } from '@project/common/dictionary-statistics';
+import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
+import { SubtitleCollection } from '@project/common/subtitle-collection';
 import {
     arrayEquals,
     HAS_LETTER_REGEX,
@@ -49,7 +53,8 @@ import {
     normalizeToken,
 } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
-import { InternalToken, resolveTokenStatus, TokenCollection, TokenCollectionArray } from '@project/common/annotations';
+import type { InternalToken } from '@project/common/annotations';
+import { resolveTokenStatus, TokenCollection, TokenCollectionArray } from '@project/common/annotations';
 
 const TOKEN_CACHE_BUILD_AHEAD_INIT = 10;
 const TOKEN_CACHE_BUILD_AHEAD = 100;

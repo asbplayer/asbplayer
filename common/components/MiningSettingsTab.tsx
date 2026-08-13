@@ -8,7 +8,7 @@ import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffec
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import Radio from '@mui/material/Radio';
 import { isWebmMediaFragmentSupported, PostMineAction, PostMinePlayback } from '@project/common';
-import { AsbplayerSettings } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';

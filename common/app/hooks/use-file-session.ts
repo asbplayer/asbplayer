@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-    FileSessionRecord,
-    FileSystemFileHandleWithId,
-    IndexedDBFileSessionRepository,
-    supportsFileSystemAccess,
-} from '@project/common/file-system-access';
+import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
+import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '@project/common/file-system-access';
 
 let _repository: IndexedDBFileSessionRepository | undefined;
 const getRepository = () => {

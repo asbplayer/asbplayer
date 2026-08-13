@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { ensureOffscreenAudioServiceDocument } from '@/services/offscreen-document';
-import {
+import type {
     Command,
     EncodeMp3InServiceWorkerMessage,
     ExtensionToOffscreenDocumentCommand,

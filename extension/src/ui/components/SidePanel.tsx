@@ -1,8 +1,12 @@
 import { asbError } from '@project/common/util';
-import {
+import { MediaFragment } from '@project/common';
+import type {
+    AsbplayerInstance,
+    Command,
+    Message,
+    OpenStatisticsOverlayMessage,
     AsbPlayerToTabCommand,
     AsbPlayerToVideoCommandV2,
-    MediaFragment,
     CopyHistoryItem,
     ExtensionToVideoCommand,
     LoadSubtitlesMessage,
@@ -18,18 +22,19 @@ import {
     DownloadAudioMessage,
     CardExportedMessage,
 } from '@project/common';
-import type { AsbplayerInstance, Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
 import type { BulkExportStartedPayload } from '@project/extension/src/controllers/bulk-export-controller';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { AudioClip } from '@project/common/audio-clip';
-import { ChromeExtension, useCopyHistory } from '@project/common/app';
+import type { ChromeExtension } from '@project/common/app';
+import { useCopyHistory } from '@project/common/app';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Player, { PlayerRef } from '@project/common/app/components/Player';
-import { DisplaySubtitleModel } from '@project/common';
+import type { PlayerRef } from '@project/common/app/components/Player';
+import Player from '@project/common/app/components/Player';
+import type { DisplaySubtitleModel } from '@project/common';
 import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
-import { AlertColor } from '@mui/material/Alert';
+import type { AlertColor } from '@mui/material/Alert';
 import Alert from '@project/common/app/components/Alert';
 import { LocalizedError } from '@project/common/app';
 import { useTranslation } from 'react-i18next';
@@ -50,7 +55,7 @@ import BulkExportModal from '@project/common/app/components/BulkExportModal';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import { mp3WorkerFactory } from '@project/extension/src/services/mp3-worker-factory';
 import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import { useSidePanelRequestedLocation } from '@project/extension/src/ui/hooks/use-side-panel-requested-location';
 import { clearExtensionRequestedLocation } from '@/services/side-panel';

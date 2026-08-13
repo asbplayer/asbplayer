@@ -1,5 +1,6 @@
 import type { InputProps } from '@mui/material/Input';
-import React, { MutableRefObject, useCallback } from 'react';
+import type { MutableRefObject } from 'react';
+import React, { useCallback } from 'react';
 import VideoControlInput from '@project/common/components/VideoControlInput';
 import {
     minimumPlaybackRate,

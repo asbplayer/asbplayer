@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material';
-import { SubtitleSettings, TextSubtitleSettings, textSubtitleSettingsForTrack } from '@project/common/settings';
+import type { SubtitleSettings, TextSubtitleSettings } from '@project/common/settings';
+import { textSubtitleSettingsForTrack } from '@project/common/settings';
 import { computeStyles } from '@project/common/util';
 
 interface Props {

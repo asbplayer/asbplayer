@@ -1,6 +1,6 @@
 import { JpegFileMediaFragmentData } from '@project/common/src/jpeg-file-media-fragment-data';
 import { CancelledMediaFragmentDataRenderingError, createVideoElement } from '@project/common/src/media-fragment';
-import { FileModel } from '@project/common/src/model';
+import type { FileModel } from '@project/common/src/model';
 import { afterEach, expect, it, jest } from '@jest/globals';
 
 jest.mock('@project/common/src/media-fragment', () => {

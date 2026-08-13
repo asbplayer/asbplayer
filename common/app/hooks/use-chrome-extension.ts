@@ -1,4 +1,4 @@
-import { ExtensionVersionMessage } from '@project/common';
+import type { ExtensionVersionMessage } from '@project/common';
 import { chromeCommandBindsToKeyBinds } from '@project/common/settings';
 import ChromeExtension from '@project/common/app/services/chrome-extension';
 import { useEffect, useState } from 'react';

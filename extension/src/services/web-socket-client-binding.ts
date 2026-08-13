@@ -1,14 +1,15 @@
-import { SettingsProvider, ankiSettingsKeys } from '@project/common/settings';
-import {
+import type { SettingsProvider } from '@project/common/settings';
+import { ankiSettingsKeys } from '@project/common/settings';
+import type {
     BoundMedia,
     LoadSubtitlesCommand,
     MineSubtitleCommand,
     SeekTimestampCommand,
     SubtitleCue,
-    WebSocketClient,
 } from '@project/common/web-socket-client';
-import TabRegistry from '@project/extension/src/services/tab-registry';
-import {
+import { WebSocketClient } from '@project/common/web-socket-client';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
+import type {
     AsbplayerInstance,
     CardTextFieldValues,
     CopySubtitleMessage,
@@ -16,7 +17,6 @@ import {
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
     Message,
-    PostMineAction,
     LocalSubtitlesResponseMessage,
     RequestLocalSubtitlesMessage,
     RequestSubtitlesMessage,
@@ -25,6 +25,7 @@ import {
     ToggleVideoSelectMessage,
     VideoTabModel,
 } from '@project/common';
+import { PostMineAction } from '@project/common';
 
 let client: WebSocketClient | undefined;
 

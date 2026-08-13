@@ -1,4 +1,5 @@
-import { MutableRefObject, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MutableRefObject, RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type ListRange, type TableVirtuosoHandle } from 'react-virtuoso';
 import { type DisplaySubtitleModel } from '@project/common';
 import { type DictionaryTrack, dictionaryTrackEnabled } from '@project/common/settings';

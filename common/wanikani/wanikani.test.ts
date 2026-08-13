@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import type { Fetcher } from '@project/common';
-import { WaniKani, WaniKaniApiError, WaniKaniAssignment, WaniKaniSubject } from '@project/common/wanikani/wanikani';
+import type { WaniKaniApiError, WaniKaniAssignment, WaniKaniSubject } from '@project/common/wanikani/wanikani';
+import { WaniKani } from '@project/common/wanikani/wanikani';
 
 const collection = <T>(
     data: T[],

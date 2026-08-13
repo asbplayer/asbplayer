@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     CaptureVisibleTabMessage,
     ForegroundToExtensionCommand,
     OpenAsbplayerSettingsMessage,
@@ -8,9 +8,10 @@ import {
     VideoSelectModeConfirmMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
-import { VideoElement } from '@project/extension/src/ui/components/VideoSelectUi';
-import Binding from '@project/extension/src/services/binding';
-import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import type { VideoElement } from '@project/extension/src/ui/components/VideoSelectUi';
+import type Binding from '@project/extension/src/services/binding';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';

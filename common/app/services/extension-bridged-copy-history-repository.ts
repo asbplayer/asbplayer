@@ -1,6 +1,6 @@
-import { CopyHistoryItem } from '@project/common';
-import { CopyHistoryRepository } from '@project/common/copy-history';
-import ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { CopyHistoryItem } from '@project/common';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 
 export class ExtensionBridgedCopyHistoryRepository implements CopyHistoryRepository {
     private readonly _extension: ChromeExtension;

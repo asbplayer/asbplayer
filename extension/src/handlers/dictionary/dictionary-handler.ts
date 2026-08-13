@@ -1,4 +1,4 @@
-import {
+import type {
     Command,
     DictionaryBuildAnkiCacheMessage,
     DictionaryBuildAnkiCacheState,
@@ -20,9 +20,10 @@ import {
     DictionaryRequestStatisticsSeekMessage,
     DictionaryRequestStatisticsMineSentencesMessage,
 } from '@project/common';
-import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
-import TabRegistry, { Asbplayer, VideoElement } from '@/services/tab-registry';
-import {
+import type { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
+import type { Asbplayer, VideoElement } from '@/services/tab-registry';
+import type TabRegistry from '@/services/tab-registry';
+import type {
     DictionaryGetBulkMessage,
     DictionaryGetByLemmaBulkMessage,
     DictionarySaveRecordLocalBulkMessage,

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import Bridge from '@project/extension/src/ui/bridge';
-import { Message } from '@project/common';
+import type Bridge from '@project/extension/src/ui/bridge';
+import type { Message } from '@project/common';
 
 export default class FrameBridgeServer {
     private readonly _bridge: Bridge;

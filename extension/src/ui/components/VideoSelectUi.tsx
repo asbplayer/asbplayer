@@ -15,15 +15,15 @@ import TextField from '@mui/material/TextField';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import Bridge from '@project/extension/src/ui/bridge';
-import {
+import type Bridge from '@project/extension/src/ui/bridge';
+import type {
     Message,
     UpdateStateMessage,
     VideoSelectModeCancelMessage,
     VideoSelectModeConfirmMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
-import { PaletteMode } from '@mui/material/styles';
+import type { PaletteMode } from '@mui/material/styles';
 
 interface Props {
     bridge: Bridge;

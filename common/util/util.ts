@@ -1,6 +1,6 @@
 import { asbWarn } from '@project/common/util/log';
 import sanitize from 'sanitize-filename';
-import {
+import type {
     DimensionsModel,
     Rgb,
     SubtitleModel,
@@ -10,10 +10,11 @@ import {
     Tokenization,
     TokenReading,
 } from '@project/common/src/model';
-import { TextSubtitleSettings, TokenStatus } from '@project/common/settings/settings';
-import { Progress } from '..';
-import { TokenStatusInfo } from '@project/common/dictionary-db';
-import { PitchAccentPosition } from '@project/common/yomitan';
+import type { TextSubtitleSettings } from '@project/common/settings/settings';
+import { TokenStatus } from '@project/common/settings/settings';
+import type { Progress } from '..';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 // Cues on the same track can share a start time (e.g. Netflix splitting one line into
 // multiple cues), and SubtitleCollection does not guarantee source order in that case, so

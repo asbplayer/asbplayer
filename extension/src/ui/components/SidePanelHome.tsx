@@ -2,7 +2,7 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import { ChromeExtension } from '@project/common/app';
+import type { ChromeExtension } from '@project/common/app';
 import { useTranslation } from 'react-i18next';
 import CenteredGridItem from '@project/extension/src/ui/components/CenteredGridItem';
 import CenteredGridContainer from '@project/extension/src/ui/components/CenteredGridContainer';

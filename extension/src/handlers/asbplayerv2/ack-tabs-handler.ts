@@ -1,5 +1,5 @@
-import { AckTabsMessage, Command, Message } from '@project/common';
-import TabRegistry from '@project/extension/src/services/tab-registry';
+import type { AckTabsMessage, Command, Message } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class AsbplayerHeartbeatHandler {
     private readonly tabRegistry: TabRegistry;

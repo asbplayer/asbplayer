@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { extractExtension, poll, trackFromDef } from '@/pages/util';
 
 export default defineUnlistedScript(() => {

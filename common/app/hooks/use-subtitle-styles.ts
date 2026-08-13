@@ -1,12 +1,14 @@
 import { useMemo, useRef } from 'react';
-import {
-    areDictionaryTracksEqual,
-    areSubtitleSettingsEqual,
+import type {
     DictionaryTrack,
     SubtitleSettings,
     TextSubtitleSettings,
-    textSubtitleSettingsForTrack,
     TokenAnnotationConfigTarget,
+} from '@project/common/settings';
+import {
+    areDictionaryTracksEqual,
+    areSubtitleSettingsEqual,
+    textSubtitleSettingsForTrack,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import { computeStyleString, computeStyles } from '@project/common/util';

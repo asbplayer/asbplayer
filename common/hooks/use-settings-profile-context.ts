@@ -1,5 +1,5 @@
-import { DictionaryProvider } from '@project/common/dictionary-db';
-import { Profile, SettingsProvider } from '@project/common/settings';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { Profile, SettingsProvider } from '@project/common/settings';
 import { useEffect, useState, useCallback } from 'react';
 
 interface Params {

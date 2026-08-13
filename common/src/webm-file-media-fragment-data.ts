@@ -9,7 +9,7 @@ import {
     preferredWebmMediaFragmentMimeType,
     mediaFragmentErrorForFile,
 } from '@project/common/src/media-fragment';
-import { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
+import type { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
 import { clamp } from '@project/common/util';
 
 const videoSeekEpsilonSeconds = 0.001;

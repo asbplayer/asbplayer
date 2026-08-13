@@ -1,4 +1,4 @@
-import { SidePanelLocation } from '@project/common';
+import type { SidePanelLocation } from '@project/common';
 
 const appRequestedLocationKey = 'sidePanelAppRequestedLocation';
 const extensionRequestedLocationKey = 'sidePanelExtensionRequestedLocation';

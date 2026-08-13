@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];

@@ -1,27 +1,29 @@
 import { asbError, asbWarn } from '@project/common/util';
-import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
-import {
-    ApplyStrategy,
+import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
+import type {
     AsbplayerSettings,
-    DictionaryTokenSource,
     DictionaryTrack,
     ExternalWordSource,
+    SettingsProvider,
+    TokenState,
+} from '@project/common/settings';
+import {
+    ApplyStrategy,
+    DictionaryTokenSource,
     externalWordSourcePriority,
     getFullyKnownTokenStatus,
     isAnkiSource,
     isExternalWordSource,
     isWaniKaniSource,
-    SettingsProvider,
-    TokenState,
     TokenStatus,
 } from '@project/common/settings';
 import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
-import { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
-import { Yomitan } from '@project/common/yomitan';
+import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
+import type { Yomitan } from '@project/common/yomitan';
 import Dexie from 'dexie';
 import { buildAnkiCachePipeline } from '@project/common/dictionary-db';
 import { buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
-import { CardInfo } from '@project/common/anki';
+import type { CardInfo } from '@project/common/anki';
 
 /**
  * This file only contains the public interface functions and types.

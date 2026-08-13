@@ -1,6 +1,6 @@
 import { asbError } from '@project/common/util';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
+import type {
     MediaFragmentModel,
     AudioModel,
     SubtitleModel,
@@ -25,15 +25,17 @@ import {
 import { createTheme } from '@project/common/theme';
 import type { Profile } from '@project/common/settings';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import Alert, { AlertColor } from '@mui/material/Alert';
+import type { AlertColor } from '@mui/material/Alert';
+import Alert from '@mui/material/Alert';
 import CssBaseline from '@mui/material/CssBaseline';
 import AnkiDialog from '@project/common/components/AnkiDialog';
 import Snackbar from '@mui/material/Snackbar';
-import Bridge from '@project/extension/src/ui/bridge';
+import type Bridge from '@project/extension/src/ui/bridge';
 import type { PaletteMode } from '@mui/material/styles';
-import { AnkiDialogState } from '@project/common/components/AnkiDialog';
+import type { AnkiDialogState } from '@project/common/components/AnkiDialog';
 import { BridgeFetcher } from '@project/extension/src/ui/bridge-fetcher';
-import { Anki, ExportParams } from '@project/common/anki';
+import type { ExportParams } from '@project/common/anki';
+import { Anki } from '@project/common/anki';
 import { v4 as uuidv4 } from 'uuid';
 import { base64ToBlob, blobToBase64 } from '@project/common/base64';
 import { isMobile } from '@project/common/device-detection/mobile';

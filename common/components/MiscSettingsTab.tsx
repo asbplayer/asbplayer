@@ -15,8 +15,8 @@ import Typography from '@mui/material/Typography';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
+import type { AsbplayerSettings } from '@project/common/settings';
 import {
-    AsbplayerSettings,
     autoPausePreferenceForCheckboxChange,
     exportSettings,
     isTrackAutoCopyable,

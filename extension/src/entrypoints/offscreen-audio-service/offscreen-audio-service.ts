@@ -1,16 +1,15 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     StartRecordingAudioWithTimeoutMessage,
     StopRecordingAudioMessage,
     AudioBase64Message,
     StartRecordingAudioMessage,
     OffscreenDocumentToExtensionCommand,
     StartRecordingResponse,
-    StartRecordingErrorCode,
-    StopRecordingErrorCode,
     StopRecordingResponse,
     EncodeMp3InServiceWorkerMessage,
 } from '@project/common';
+import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import AudioRecorder, { TimedRecordingInProgressError, NoRecordingInProgressError } from '@/services/audio-recorder';
 import { Mp3Encoder } from '@project/common/audio-clip';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';

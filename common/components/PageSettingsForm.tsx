@@ -1,5 +1,5 @@
-import { JSX } from 'react';
-import { MutablePageConfig, Page, PageConfig, PageSettings, YoutubePage } from '@project/common/settings';
+import type { JSX } from 'react';
+import type { MutablePageConfig, Page, PageConfig, PageSettings, YoutubePage } from '@project/common/settings';
 import { useTranslation } from 'react-i18next';
 import Dialog from '@mui/material/Dialog';
 import Toolbar from '@mui/material/Toolbar';

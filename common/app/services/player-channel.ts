@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -38,7 +38,7 @@ import {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import {
+import type {
     AnkiSettings,
     ApplyStrategy,
     MiscSettings,

@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
     OpenAsbplayerSettingsMessage,
@@ -11,14 +11,15 @@ import {
     VideoDataUiBridgeOpenFileMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
     VideoDataUiModel,
-    VideoDataUiOpenReason,
     VideoToExtensionCommand,
 } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import { VideoDataUiOpenReason } from '@project/common';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
-import Binding from '@project/extension/src/services/binding';
+import type Binding from '@project/extension/src/services/binding';
 import { currentPageDelegate } from '@project/extension/src/services/pages';
-import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';

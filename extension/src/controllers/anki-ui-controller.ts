@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     ActiveProfileMessage,
     AnkiDialogSettings,
     AnkiDialogSettingsMessage,
@@ -16,17 +16,18 @@ import {
     EncodeMp3InServiceWorkerMessage,
     EncodeMp3Message,
     OpenAsbplayerSettingsMessage,
-    PostMinePlayback,
     SettingsUpdatedMessage,
     ShowAnkiUiMessage,
     ShowCardSelectUiMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
+import { PostMinePlayback } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
 import { sourceString } from '@project/common/util';
-import Binding from '@project/extension/src/services/binding';
+import type Binding from '@project/extension/src/services/binding';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
-import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';

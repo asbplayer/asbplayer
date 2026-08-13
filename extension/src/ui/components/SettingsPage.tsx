@@ -1,4 +1,5 @@
-import { CardModel, HttpFetcher } from '@project/common';
+import type { CardModel } from '@project/common';
+import { HttpFetcher } from '@project/common';
 import { useCallback, useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
@@ -14,10 +15,11 @@ import Paper from '@mui/material/Paper';
 import { Anki } from '@project/common/anki';
 import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-supported-languages';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
-import { AsbplayerSettings, Profile, testCard } from '@project/common/settings';
+import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import { testCard } from '@project/common/settings';
 import { useTheme, type Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
 
 const useStyles = makeStyles<Theme>((theme) => ({

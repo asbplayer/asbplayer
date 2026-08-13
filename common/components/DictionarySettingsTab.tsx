@@ -27,8 +27,17 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import MuiAlert, { type AlertProps } from '@mui/material/Alert';
-import {
+import type {
     AsbplayerSettings,
+    Profile,
+    TokenStatusConfig,
+    TextSubtitleSettings,
+    DictionaryTrack,
+    TokenAnnotationTriggerOptions,
+    EnabledAnnotations,
+    TokenAnnotationConfigTarget,
+} from '@project/common/settings';
+import {
     TokenMatchStrategy,
     TokenMatchStrategyPriority,
     TokenStyling,
@@ -37,44 +46,40 @@ import {
     NUM_TOKEN_STATUSES,
     NUM_TOKEN_STATES,
     compareDTField,
-    Profile,
     dictionaryStatusCollectionEnabled,
-    TokenStatusConfig,
     textSubtitleSettingsForTrack,
-    TextSubtitleSettings,
     TokenStatus,
     TokenState,
-    DictionaryTrack,
-    TokenAnnotationTriggerOptions,
-    EnabledAnnotations,
-    TokenAnnotationConfigTarget,
     tokenAnnotationStyleValues,
     dictionaryTrackEnabled,
 } from '@project/common/settings';
-import { Anki } from '@project/common/anki';
-import { WaniKani, WaniKaniUser } from '@project/common/wanikani';
+import type { Anki } from '@project/common/anki';
+import type { WaniKaniUser } from '@project/common/wanikani';
+import { WaniKani } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
-import {
+import type {
     DictionaryBuildAnkiCacheProgress,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateError,
     DictionaryBuildAnkiCacheStateErrorBuildExpirationData,
-    DictionaryBuildAnkiCacheStateErrorCode,
     DictionaryBuildAnkiCacheStateErrorTrackNumberData,
-    DictionaryBuildAnkiCacheStateType,
     DictionaryBuildAnkiCacheStats,
     DictionaryBuildWaniKaniCacheProgress,
     DictionaryBuildWaniKaniCacheState,
     DictionaryBuildWaniKaniCacheStateError,
-    DictionaryBuildWaniKaniCacheStateErrorCode,
-    DictionaryBuildWaniKaniCacheStateType,
     DictionaryBuildWaniKaniCacheStats,
 } from '@project/common/src/message';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import {
+    DictionaryBuildAnkiCacheStateErrorCode,
+    DictionaryBuildAnkiCacheStateType,
+    DictionaryBuildWaniKaniCacheStateErrorCode,
+    DictionaryBuildWaniKaniCacheStateType,
+} from '@project/common/src/message';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import {
     computeStyles,
     ensureStoragePersisted,
@@ -84,12 +89,8 @@ import {
     percentToHex2,
 } from '@project/common/util';
 import DictionaryImport from '@project/common/components/DictionaryImport';
-import {
-    computeRichText,
-    getAnnotationsForRender,
-    getAnnotationsHtml,
-    InternalToken,
-} from '@project/common/annotations';
+import type { InternalToken } from '@project/common/annotations';
+import { computeRichText, getAnnotationsForRender, getAnnotationsHtml } from '@project/common/annotations';
 import WordBrowserDialog from '@project/common/components/WordBrowserDialog';
 import '@project/common/app/components/subtitles.css';
 import SettingsGroups from '@project/common/components/SettingsGroups';

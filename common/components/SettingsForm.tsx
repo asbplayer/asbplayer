@@ -4,12 +4,12 @@ import { type CreateCSSProperties, makeStyles } from '@mui/styles';
 import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import { type Theme } from '@mui/material';
-import { CardModel } from '@project/common';
-import { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
+import type { CardModel } from '@project/common';
+import type { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import { Anki } from '@project/common/anki';
+import type { Anki } from '@project/common/anki';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import About from '@project/common/components/About';
 import { TutorialStep } from '@project/common/components/settings-model';
@@ -20,7 +20,7 @@ import SubtitleAppearanceSettingsTab from '@project/common/components/SubtitleAp
 import KeyboardShortcutsSettingsTab from '@project/common/components/KeyboardShortcutsSettingsTab';
 import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
 import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import TutorialBubble, { type TutorialBubbleProps } from '@project/common/components/TutorialBubble';
 
 interface AnnotationTutorialPosition {

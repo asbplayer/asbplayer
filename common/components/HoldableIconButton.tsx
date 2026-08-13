@@ -1,4 +1,5 @@
-import IconButton, { IconButtonProps } from '@mui/material/IconButton';
+import type { IconButtonProps } from '@mui/material/IconButton';
+import IconButton from '@mui/material/IconButton';
 import React, { useEffect, useCallback, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 

@@ -1,6 +1,6 @@
-import { ExtensionToAsbPlayerCommand, ExtensionToVideoCommand, SettingsUpdatedMessage } from '@project/common';
-import TabRegistry from '@project/extension/src/services/tab-registry';
-import { SettingsProvider } from '@project/common/settings';
+import type { ExtensionToAsbPlayerCommand, ExtensionToVideoCommand, SettingsUpdatedMessage } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
+import type { SettingsProvider } from '@project/common/settings';
 import { primeLocalization } from '@project/extension/src/services/localization-fetcher';
 import { bindWebSocketClient, unbindWebSocketClient } from '@project/extension/src/services/web-socket-client-binding';
 

@@ -1,5 +1,6 @@
 import { asbWarn } from '@project/common/util';
-import { CardModel, FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
+import type { CardModel, FileModel } from '@project/common/src/model';
+import { MediaFragmentErrorCode } from '@project/common/src/model';
 import { isActiveBlobUrl } from '@project/common/blob-url';
 import { download } from '@project/common/util/util';
 import { JpegFileMediaFragmentData } from '@project/common/src/jpeg-file-media-fragment-data';

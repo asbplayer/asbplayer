@@ -1,5 +1,5 @@
 import { isFirefoxBuild } from '@/services/build-flags';
-import { Command, Message } from '@project/common';
+import type { Command, Message } from '@project/common';
 
 export default class BrowserFeaturesHandler {
     get sender() {

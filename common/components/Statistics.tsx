@@ -1,12 +1,7 @@
-import { DictionaryProvider } from '@project/common/dictionary-db';
-import {
-    averageDisplay,
-    clampPercent,
-    countPercentOccurrencesDisplay,
-    dictionaryStatisticsComprehensionBandForPercent,
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type {
     DictionaryStatisticsAnkiTrackSnapshot,
     DictionaryStatisticsFrequencyBucketStatusCounts,
-    dictionaryStatisticsComprehensionBands,
     DictionaryStatisticsWaniKaniTrackSnapshot,
     DictionaryStatisticsSentenceDialogBucket,
     DictionaryStatisticsTrackSnapshot,
@@ -14,13 +9,20 @@ import {
     DictionaryStatisticsSentenceBucketEntry,
     DictionaryStatisticsSentenceBuckets,
     DictionaryStatisticsSentenceComprehensionPoint,
-    percent,
-    percentDisplay,
     DictionaryStatisticsSnapshot,
     DictionaryStatisticsRewatchProjection,
     DictionaryStatisticsRewatchProjectionsByTrack,
     DictionaryStatisticsRewatchSnapshot,
     DictionaryStatisticsAnkiUnknownCardsByDeck,
+} from '@project/common/dictionary-statistics';
+import {
+    averageDisplay,
+    clampPercent,
+    countPercentOccurrencesDisplay,
+    dictionaryStatisticsComprehensionBandForPercent,
+    dictionaryStatisticsComprehensionBands,
+    percent,
+    percentDisplay,
     processDictionaryStatisticsAnkiTrackSnapshot,
     processDictionaryStatisticsSnapshot,
     processDictionaryStatisticsWaniKaniTrackSnapshot,
@@ -30,7 +32,8 @@ import {
     sentenceDialogBucketData,
     statusSentenceBucketLabel,
 } from '@project/common/dictionary-statistics';
-import { AsbplayerSettings, dictionaryTrackEnabled, TokenStatus } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { dictionaryTrackEnabled, TokenStatus } from '@project/common/settings';
 import StatisticsSentenceDetailsDialog from '@project/common/components/StatisticsSentenceDetailsDialog';
 import { Trans, useTranslation } from 'react-i18next';
 import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -52,7 +55,8 @@ import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import Tooltip from '@mui/material/Tooltip';
 import { asbError } from '@project/common/util';
 import { timeDurationDisplay } from '@project/common/util/util';
-import { SxProps, type Theme } from '@mui/material/styles';
+import type { SxProps } from '@mui/material/styles';
+import { type Theme } from '@mui/material/styles';
 import Stack from '@mui/material/Stack';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';

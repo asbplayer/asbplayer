@@ -13,15 +13,14 @@ import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffec
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Radio from '@mui/material/Radio';
+import type { AsbplayerSettings, TextSubtitleSettings } from '@project/common/settings';
 import {
-    AsbplayerSettings,
-    TextSubtitleSettings,
     changeForTextSubtitleSetting,
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
 import { isNumeric } from '@project/common/util';
-import { CustomStyle } from '@project/common/settings';
+import type { CustomStyle } from '@project/common/settings';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';

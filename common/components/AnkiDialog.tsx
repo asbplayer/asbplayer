@@ -1,9 +1,12 @@
 import { asbInfo } from '@project/common/util';
-import React, { useCallback, useState, useEffect, useMemo, useRef, RefObject } from 'react';
+import type { RefObject } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import makeStyles from '@mui/styles/makeStyles';
-import { MediaFragment, SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
-import { AnkiSettings, Profile, sortedAnkiFieldModels } from '@project/common/settings';
+import type { SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
+import { MediaFragment } from '@project/common';
+import type { AnkiSettings, Profile } from '@project/common/settings';
+import { sortedAnkiFieldModels } from '@project/common/settings';
 import {
     humanReadableTime,
     surroundingSubtitlesAroundInterval,
@@ -32,7 +35,7 @@ import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import DoneIcon from '@mui/icons-material/Done';
 import ListField from '@project/common/components/ListField';
-import { Anki, ExportParams } from '@project/common/anki';
+import type { Anki, ExportParams } from '@project/common/anki';
 import { isFirefox } from '@project/common/browser-detection';
 import SentenceField from '@project/common/components/SentenceField';
 import DefinitionField from '@project/common/components/DefinitionField';

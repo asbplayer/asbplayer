@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { DictionaryProvider } from '@project/common/dictionary-db';
-import {
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type {
     DictionarySimplifiedStatisticsTrackSnapshot,
-    dictionaryStatisticsComprehensionBandForPercent,
     DictionaryStatisticsSentenceBucketEntry,
     DictionaryStatisticsSnapshot,
+} from '@project/common/dictionary-statistics';
+import {
+    dictionaryStatisticsComprehensionBandForPercent,
     percentDisplay,
     processSimplifiedDictionaryStatistics,
 } from '@project/common/dictionary-statistics';
 import Box from '@mui/material/Box';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
-import { alpha, SxProps, Theme } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import CloseIcon from '@mui/icons-material/Close';

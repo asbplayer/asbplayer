@@ -1,50 +1,42 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     DictionaryBuildWaniKaniCacheProgress,
     DictionaryBuildWaniKaniCacheStart,
     DictionaryBuildWaniKaniCacheState,
     DictionaryBuildWaniKaniCacheStateError as DictionaryBuildWaniKaniCacheError,
-    DictionaryBuildWaniKaniCacheStateErrorCode,
-    DictionaryBuildWaniKaniCacheStateType,
     DictionaryBuildWaniKaniCacheStats,
     Progress,
 } from '@project/common';
-import {
-    AsbplayerSettings,
-    dictionaryStatusCollectionEnabled,
-    DictionaryTokenSource,
-    isWaniKaniSource,
-} from '@project/common/settings';
+import { DictionaryBuildWaniKaniCacheStateErrorCode, DictionaryBuildWaniKaniCacheStateType } from '@project/common';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { dictionaryStatusCollectionEnabled, DictionaryTokenSource, isWaniKaniSource } from '@project/common/settings';
 import { HAS_LETTER_REGEX, inBatches } from '@project/common/util';
-import {
-    WaniKani,
-    WaniKaniApiError,
-    WaniKaniAssignment,
-    WaniKaniSpacedRepetitionSystem,
-    WaniKaniSubject,
-} from '@project/common/wanikani';
+import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
+import { WaniKani, WaniKaniApiError } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
     _DictionaryDatabase,
-    BUILD_MIN_EXPIRATION_MS,
-    _buildIdExpiration,
-    _buildIdHealthCheck,
-    _clearBuildIds,
     DictionaryMetaKey,
     DictionaryTokenRecord,
     DictionaryWaniKaniAssignmentKey,
     DictionaryWaniKaniAssignmentRecord,
     DictionaryWaniKaniSubjectKey,
     DictionaryWaniKaniSubjectRecord,
+    TrackStateForDB,
+    WaniKaniDataUpdatedAt,
+    WaniKaniMetaBuildChanges,
+} from '@project/common/dictionary-db';
+import {
+    BUILD_MIN_EXPIRATION_MS,
+    _buildIdExpiration,
+    _buildIdHealthCheck,
+    _clearBuildIds,
     _ensureBuildId,
     _gatherModifiedTokensForTrack,
     _getFromSourceBulk,
     _newWaniKaniMeta,
     _saveRecordBulk,
-    TrackStateForDB,
-    WaniKaniDataUpdatedAt,
-    WaniKaniMetaBuildChanges,
 } from '@project/common/dictionary-db';
 
 /**

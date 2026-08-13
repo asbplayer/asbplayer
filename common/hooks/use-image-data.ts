@@ -1,5 +1,6 @@
 import { asbError } from '@project/common/util';
-import { CancelledMediaFragmentDataRenderingError, MediaFragment } from '@project/common';
+import type { MediaFragment } from '@project/common';
+import { CancelledMediaFragmentDataRenderingError } from '@project/common';
 import { useEffect, useState } from 'react';
 
 const mediaFragmentDimensionsLoader = (

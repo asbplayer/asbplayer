@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     AckMessage,
     AnkiUiSavedState,
     AudioBase64Message,
@@ -7,7 +7,6 @@ import {
     CardSavedMessage,
     CardUpdatedMessage,
     CopySubtitleMessage,
-    cropAndResize,
     CurrentTimeFromVideoMessage,
     CurrentTimeToVideoMessage,
     EncodeMp3InServiceWorkerMessage,
@@ -26,8 +25,6 @@ import {
     PlayMode,
     PlayModeMessage,
     PlayModesMessage,
-    PostMineAction,
-    PostMinePlayback,
     ReadyFromVideoMessage,
     ReadyStateFromVideoMessage,
     RecordMediaAndForwardSubtitleMessage,
@@ -40,17 +37,14 @@ import {
     ShowCardSelectUiMessage,
     StartRecordingAudioViaCaptureStreamMessage,
     StartRecordingAudioWithTimeoutViaCaptureStreamMessage,
-    StartRecordingErrorCode,
     StartRecordingMediaMessage,
     StartRecordingResponse,
     StopRecordingAudioMessage,
-    StopRecordingErrorCode,
     StopRecordingMediaMessage,
     StopRecordingResponse,
     SubtitleModel,
     SubtitlesToVideoMessage,
     TakeScreenshotFromExtensionMessage,
-    VideoDataUiOpenReason,
     VideoDisappearedMessage,
     VideoHeartbeatMessage,
     VideoToExtensionCommand,
@@ -59,12 +53,20 @@ import {
     DictionaryBuildAnkiCacheStateMessage,
     DictionaryBuildWaniKaniCacheStateMessage,
 } from '@project/common';
+import {
+    cropAndResize,
+    PostMineAction,
+    PostMinePlayback,
+    StartRecordingErrorCode,
+    StopRecordingErrorCode,
+    VideoDataUiOpenReason,
+} from '@project/common';
 import { adjacentSubtitle } from '@project/common/key-binder';
+import type { SeekableTracks } from '@project/common/settings';
 import {
     calculateSeekableTracksValue,
     extractAnkiSettings,
     PauseOnHoverMode,
-    SeekableTracks,
     SettingsProvider,
     SubtitleListPreference,
     isSaveOnlySettings,

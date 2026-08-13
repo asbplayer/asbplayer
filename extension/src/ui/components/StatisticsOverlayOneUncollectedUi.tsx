@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyledEngineProvider, ThemeProvider, type PaletteMode } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Bridge from '@project/extension/src/ui/bridge';
+import type Bridge from '@project/extension/src/ui/bridge';
 import { createTheme } from '@project/common/theme';
-import { Message, UpdateStateMessage } from '@project/common';
+import type { Message, UpdateStateMessage } from '@project/common';
 import OneUncollectedSentenceDetailsDialog from '@project/common/components/OneUncollectedSentenceDetailsDialog';
 import { type DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { DictionaryTrack, SettingsProvider } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 
 interface Props {
     bridge: Bridge;

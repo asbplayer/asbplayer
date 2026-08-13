@@ -2,7 +2,7 @@ import React, { useState, useLayoutEffect } from 'react';
 import makeStyles from '@mui/styles/makeStyles';
 import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
-import { MediaFragment } from '@project/common';
+import type { MediaFragment } from '@project/common';
 import { useImageData } from '@project/common/hooks/use-image-data';
 import Slider from '@mui/material/Slider';
 import Modal from '@mui/material/Modal';

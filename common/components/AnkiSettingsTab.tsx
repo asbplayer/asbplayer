@@ -18,14 +18,14 @@ import ListField from '@project/common/components/ListField';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import Tooltip from '@mui/material/Tooltip';
-import {
+import type {
     AnkiFieldSettings,
     AnkiFieldUiModel,
     AsbplayerSettings,
     CustomAnkiFieldSettings,
-    sortedAnkiFieldModels,
 } from '@project/common/settings';
-import { CardModel } from '@project/common/src/model';
+import { sortedAnkiFieldModels } from '@project/common/settings';
+import type { CardModel } from '@project/common/src/model';
 import { Direction, TutorialStep } from '@project/common/components/settings-model';
 import { Anki, exportCard } from '@project/common/anki';
 import Stack from '@mui/material/Stack';

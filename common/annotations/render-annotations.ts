@@ -1,16 +1,15 @@
-import { Token, Tokenization, TokenReading } from '@project/common';
+import type { Token, Tokenization, TokenReading } from '@project/common';
+import type { DictionaryTrack, EnabledAnnotations, TokenAnnotationConfigTarget } from '@project/common/settings';
 import {
     areDictionaryTracksEqual,
-    DictionaryTrack,
     dictionaryTrackEnabled,
     TokenStyling,
     getEnabledAnnotations,
     getEnabledAnnotationsForHover,
-    EnabledAnnotations,
     defaultSettings,
     shouldUseAnnotation,
-    TokenAnnotationConfigTarget,
 } from '@project/common/settings';
+import type { PitchAccentContext } from '@project/common/util';
 import {
     HAS_LETTER_REGEX,
     iterateOverStringInBlocks,
@@ -20,7 +19,6 @@ import {
     getKanaMoras,
     isKanaMoraPitchHigh,
     isAttachedParticlePitchHigh,
-    PitchAccentContext,
     clearPitchAccentContext,
 } from '@project/common/util';
 import {

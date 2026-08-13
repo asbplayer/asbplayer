@@ -13,19 +13,16 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Switch from '@mui/material/Switch';
 import MuiAlert from '@mui/material/Alert';
-import {
-    DictionaryTrack,
-    TokenStatus,
-    getFullyKnownTokenStatus,
-    NUM_TOKEN_STATUSES,
-    TokenState,
-    ApplyStrategy,
-    Profile,
-} from '@project/common/settings';
+import type { DictionaryTrack, TokenStatus, Profile } from '@project/common/settings';
+import { getFullyKnownTokenStatus, NUM_TOKEN_STATUSES, TokenState, ApplyStrategy } from '@project/common/settings';
 import { Yomitan } from '@project/common/yomitan';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsTextField from '@project/common/components/SettingsTextField';
-import { DictionaryLocalTokenInput, DictionaryProvider, DictionaryTokenRecord } from '@project/common/dictionary-db';
+import type {
+    DictionaryLocalTokenInput,
+    DictionaryProvider,
+    DictionaryTokenRecord,
+} from '@project/common/dictionary-db';
 import { ensureStoragePersisted, HAS_LETTER_REGEX, humanReadableTime, localizedDate } from '@project/common/util';
 import Typography from '@mui/material/Typography';
 

@@ -7,7 +7,7 @@ import {
     type MediaFragmentData,
     mediaFragmentErrorForFile,
 } from '@project/common/src/media-fragment';
-import { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
+import type { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
 
 export const defaultJpegCompressionQuality = 0.85;
 

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import { useTranslation, Trans } from 'react-i18next';
-import { Anki } from '@project/common/anki';
+import type { Anki } from '@project/common/anki';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import SearchIcon from '@mui/icons-material/Search';

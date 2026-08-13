@@ -1,4 +1,4 @@
-import { Command, HttpPostMessage, Message } from '@project/common';
+import type { Command, HttpPostMessage, Message } from '@project/common';
 import { asbError } from '@project/common/util';
 
 const allowedKeys = ['version', 'action', 'params', 'key', 'text', 'scanLength', 'parser', 'term'];

@@ -1,6 +1,6 @@
 import { asbError } from '@project/common/util';
-import { WebSocketClientSettings } from '@project/common/settings';
-import { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
+import type { WebSocketClientSettings } from '@project/common/settings';
+import type { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
 import { WebSocketClient } from '@project/common/web-socket-client';
 import { useEffect, useState } from 'react';
 

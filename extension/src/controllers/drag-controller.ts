@@ -1,5 +1,5 @@
 import ImageElement from '@project/extension/src/services/image-element';
-import Binding from '@project/extension/src/services/binding';
+import type Binding from '@project/extension/src/services/binding';
 
 export default class DragController {
     private readonly video: HTMLMediaElement;

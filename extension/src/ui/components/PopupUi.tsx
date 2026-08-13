@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import {
+import type {
     ExtensionToVideoCommand,
     GrantedActiveTabPermissionMessage,
     PopupToExtensionCommand,
     SettingsUpdatedMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';

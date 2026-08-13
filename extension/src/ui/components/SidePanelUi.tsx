@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import SidePanel from '@project/extension/src/ui/components/SidePanel';
 import { createTheme } from '@project/common/theme';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
-import { ExtensionMessage, useChromeExtension } from '@project/common/app';
+import type { ExtensionMessage } from '@project/common/app';
+import { useChromeExtension } from '@project/common/app';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import Paper from '@mui/material/Paper';

@@ -14,7 +14,8 @@ import {
 } from '@project/common/settings';
 import { Anki } from '@project/common/anki';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
-import { needsReset, SubtitleAnnotations, TrackState } from '@project/common/annotations/subtitle-annotations';
+import type { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
+import { needsReset, TrackState } from '@project/common/annotations/subtitle-annotations';
 import {
     makeDictionaryTrack,
     makeDictionaryTracks,

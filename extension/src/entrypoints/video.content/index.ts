@@ -1,8 +1,9 @@
 import { asbError, asbInfo } from '@project/common/util';
 import Binding from '@/services/binding';
-import { PageDelegate, currentPageDelegate } from '@/services/pages';
+import type { PageDelegate } from '@/services/pages';
+import { currentPageDelegate } from '@/services/pages';
 import VideoSelectController from '@/controllers/video-select-controller';
-import {
+import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
     TabToExtensionCommand,

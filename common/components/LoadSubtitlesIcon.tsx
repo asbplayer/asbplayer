@@ -1,4 +1,5 @@
-import SvgIcon, { SvgIconProps } from '@mui/material/SvgIcon';
+import type { SvgIconProps } from '@mui/material/SvgIcon';
+import SvgIcon from '@mui/material/SvgIcon';
 
 // This icon is a derivative of Material Icons: https://github.com/mui/material-ui/tree/master/packages/mui-icons-material
 

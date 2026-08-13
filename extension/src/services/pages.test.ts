@@ -1,8 +1,9 @@
 import { defaultSettings } from '@project/common/settings';
 import pagesConfig from '@project/extension/src/pages.json';
 import { afterEach, beforeAll, expect, it } from '@jest/globals';
+import type { PageDelegate as PageDelegateClass } from '@project/extension/src/services/pages';
 
-let PageDelegate: typeof import('@project/extension/src/services/pages').PageDelegate;
+let PageDelegate: typeof PageDelegateClass;
 
 beforeAll(async () => {
     const storage = {

@@ -1,5 +1,6 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import PlaybackTimeline, {
+import type PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import {
     type PlaybackTimelineEvent,
     type PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';

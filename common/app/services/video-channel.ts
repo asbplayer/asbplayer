@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -24,10 +24,8 @@ import {
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
-    PlayMode,
     PlayModeMessage,
     PlayModesMessage,
-    PostMineAction,
     ReadyFromVideoMessage,
     ReadyStateFromVideoMessage,
     ReadyToVideoMessage,
@@ -42,7 +40,8 @@ import {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import {
+import { PlayMode, PostMineAction } from '@project/common';
+import type {
     AnkiSettings,
     ApplyStrategy,
     MiscSettings,
@@ -50,7 +49,7 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { VideoProtocol } from '@project/common/app/services/video-protocol';
+import type { VideoProtocol } from '@project/common/app/services/video-protocol';
 
 export default class VideoChannel {
     private readonly protocol: VideoProtocol;

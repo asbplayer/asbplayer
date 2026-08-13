@@ -1,15 +1,16 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     OpenStatisticsMessage,
-    PlayMode,
     SettingsUpdatedMessage,
     ToggleSubtitlesInListFromVideoMessage,
     ToggleSubtitlesMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import { ApplyStrategy, KeyBindSet, TokenState } from '@project/common/settings';
+import { PlayMode } from '@project/common';
+import type { KeyBindSet } from '@project/common/settings';
+import { ApplyStrategy, TokenState } from '@project/common/settings';
 import { DefaultKeyBinder } from '@project/common/key-binder';
-import Binding from '@project/extension/src/services/binding';
+import type Binding from '@project/extension/src/services/binding';
 import { ensureStoragePersisted } from '@project/common/util';
 
 type Unbinder = (() => void) | false;

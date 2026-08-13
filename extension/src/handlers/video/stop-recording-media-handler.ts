@@ -1,20 +1,20 @@
 import { asbError } from '@project/common/util';
-import ImageCapturer from '@project/extension/src/services/image-capturer';
-import {
+import type ImageCapturer from '@project/extension/src/services/image-capturer';
+import type {
     AudioModel,
     Command,
-    ImageErrorCode,
     ImageModel,
     Message,
-    PostMineAction,
     StopRecordingMediaMessage,
     SubtitleModel,
     VideoToExtensionCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
+import { ImageErrorCode, PostMineAction } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
 import { mockSurroundingSubtitles } from '@project/common/util';
-import { CardPublisher } from '@project/extension/src/services/card-publisher';
-import AudioRecorderService, {
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import {
     TimedRecordingInProgressError,
     NoRecordingInProgressServiceError,
 } from '@project/extension/src/services/audio-recorder-service';

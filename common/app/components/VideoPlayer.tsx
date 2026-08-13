@@ -1,33 +1,34 @@
-import React, { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import { makeStyles } from '@mui/styles';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
-import {
+import type {
     SubtitleModel,
     AudioTrackModel,
-    PostMineAction,
-    PlayMode,
     OffscreenDomCache,
     CardTextFieldValues,
-    PostMinePlayback,
     ControlType,
     IndexedSubtitleModel,
     PlaybackState,
 } from '@project/common';
-import {
+import { PostMineAction, PlayMode, PostMinePlayback } from '@project/common';
+import type {
     MiscSettings,
     SubtitleSettings,
     AnkiSettings,
     AsbplayerSettings,
     SubtitleAlignment,
+    DictionaryTrack,
+    SettingsProvider,
+} from '@project/common/settings';
+import {
     changeForTextSubtitleSetting,
     textSubtitleSettingsForTrack,
     PauseOnHoverMode,
     allTextSubtitleSettings,
     TokenState,
     ApplyStrategy,
-    DictionaryTrack,
-    SettingsProvider,
 } from '@project/common/settings';
 import {
     arrayEquals,
@@ -52,20 +53,22 @@ import {
 } from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
-import Controls, { Point } from '@project/common/app/components/Controls';
+import type { Point } from '@project/common/app/components/Controls';
+import Controls from '@project/common/app/components/Controls';
 import PlayerChannel from '@project/common/app/services/player-channel';
-import ChromeExtension from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import Alert, { type AlertNotification } from '@project/common/app/components/Alert';
 import Button from '@mui/material/Button';
 import { useSubtitleDomCache } from '@project/common/app/hooks/use-subtitle-dom-cache';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
-import { Direction, useSwipe } from '@project/common/app/hooks/use-swipe';
+import type { Direction } from '@project/common/app/hooks/use-swipe';
+import { useSwipe } from '@project/common/app/hooks/use-swipe';
 import '@project/common/app/components/subtitles.css';
 import i18n, { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { adjacentSubtitle } from '@project/common/key-binder';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
-import { MiningContext } from '@project/common/app/services/mining-context';
+import type { MiningContext } from '@project/common/app/services/mining-context';
 import useSnackbar from '@project/common/hooks/use-snackbar';
 import { useStableDictionaryTracks, useSubtitleStyles } from '@project/common/app/hooks/use-subtitle-styles';
 import { useFullscreen } from '@project/common/app/hooks/use-fullscreen';

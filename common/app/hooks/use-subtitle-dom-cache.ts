@@ -1,4 +1,5 @@
-import { IndexedSubtitleModel, OffscreenDomCache } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
+import { OffscreenDomCache } from '@project/common';
 import { needsReset } from '@project/common/annotations';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

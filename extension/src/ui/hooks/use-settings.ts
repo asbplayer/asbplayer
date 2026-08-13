@@ -1,5 +1,6 @@
-import { Command, SettingsUpdatedMessage } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { Command, SettingsUpdatedMessage } from '@project/common';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSettingsProfileContext } from '@project/common/hooks/use-settings-profile-context';

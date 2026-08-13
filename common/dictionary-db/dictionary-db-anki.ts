@@ -1,41 +1,42 @@
 import { asbError } from '@project/common/util';
-import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery, NoteInfo } from '@project/common/anki';
-import {
+import type { NoteInfo } from '@project/common/anki';
+import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery } from '@project/common/anki';
+import type {
     DictionaryBuildAnkiCacheStart,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateError as DictionaryBuildAnkiCacheError,
-    DictionaryBuildAnkiCacheStateErrorCode,
-    DictionaryBuildAnkiCacheStateType,
     DictionaryBuildAnkiCacheStats,
     DictionaryBuildAnkiCacheProgress,
     Progress,
 } from '@project/common';
+import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
+import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
 import {
-    AsbplayerSettings,
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
-    DictionaryTrack,
     isAnkiSource,
     TokenStatus,
 } from '@project/common/settings';
 import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
     _DictionaryDatabase,
-    BUILD_MIN_EXPIRATION_MS,
-    _buildIdHealthCheck,
-    _clearBuildIds,
     DictionaryAnkiCardKey,
     _DictionaryAnkiCardRecord,
     DictionaryMetaKey,
     DictionaryTokenRecord,
+    TrackStateForDB,
+    CardInfoForDB,
+} from '@project/common/dictionary-db';
+import {
+    BUILD_MIN_EXPIRATION_MS,
+    _buildIdHealthCheck,
+    _clearBuildIds,
     _ensureBuildId,
     _gatherModifiedTokens,
     _getFromSourceBulk,
     _saveRecordBulk,
-    TrackStateForDB,
-    CardInfoForDB,
 } from '@project/common/dictionary-db';
 
 /**

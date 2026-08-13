@@ -1,5 +1,6 @@
 import { asbError } from '@project/common/util';
-import i18n, { ReadCallback } from 'i18next';
+import type { ReadCallback } from 'i18next';
+import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import resourcesToBackend from 'i18next-resources-to-backend';
 import { useEffect, useState } from 'react';

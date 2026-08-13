@@ -11,7 +11,7 @@ import type {
 } from '@project/common/settings/settings';
 import type { GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import {
+import type {
     RectModel,
     SubtitleModel,
     SubtitleTrack,
@@ -30,8 +30,8 @@ import {
     BrowserFeatures,
     IndexedSubtitleModel,
 } from '@project/common/src/model';
-import { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
-import {
+import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
+import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,

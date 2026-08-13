@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerToVideoCommandV2,
     ControlType,
     CopySubtitleMessage,

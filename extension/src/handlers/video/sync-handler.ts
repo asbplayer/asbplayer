@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     Command,
     ExtensionSyncMessage,
     ExtensionToAsbPlayerCommand,
@@ -7,7 +7,7 @@ import {
     PlayerSyncMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import TabRegistry from '@project/extension/src/services/tab-registry';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class SyncHandler {
     private readonly tabRegistry: TabRegistry;

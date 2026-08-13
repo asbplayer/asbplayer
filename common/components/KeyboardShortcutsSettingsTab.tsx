@@ -1,4 +1,4 @@
-import { AsbplayerSettings, KeyBindName } from '@project/common/settings';
+import type { AsbplayerSettings, KeyBindName } from '@project/common/settings';
 import { useTranslation } from 'react-i18next';
 import { isMacOs } from 'react-device-detect';
 import { makeStyles, useTheme } from '@mui/styles';

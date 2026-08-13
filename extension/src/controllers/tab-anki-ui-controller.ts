@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import {
+import type {
     AnkiUiInitialState,
     OpenAsbplayerSettingsMessage,
     CopyToClipboardMessage,
@@ -14,9 +14,11 @@ import {
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
 } from '@project/common';
-import { AnkiSettings, SettingsProvider, ankiSettingsKeys } from '@project/common/settings';
+import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
+import { ankiSettingsKeys } from '@project/common/settings';
 import { sourceString } from '@project/common/util';
-import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';

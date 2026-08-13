@@ -1,5 +1,5 @@
-import { VideoDataSubtitleTrack } from '@project/common';
-import { VideoData } from '@project/common';
+import type { VideoDataSubtitleTrack } from '@project/common';
+import type { VideoData } from '@project/common';
 import { trackFromDef } from '@/pages/util';
 import { v4 as uuidv4 } from 'uuid';
 import { asbError } from '@project/common/util';

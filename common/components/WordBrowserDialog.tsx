@@ -1,4 +1,5 @@
-import React, { memo, MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Alert from '@mui/material/Alert';
 import Badge from '@mui/material/Badge';
@@ -37,20 +38,20 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-import {
+import type {
     DictionaryAnkiCardRecord,
     DictionaryProvider,
     DictionaryRecordsResult,
     DictionaryTokenKey,
     DictionaryWaniKaniAssignmentRecordWithStatus,
-    LOCAL_TOKEN_TRACK,
     DictionaryRecordUpdateInput,
     TokenStatusInfo,
 } from '@project/common/dictionary-db';
+import { LOCAL_TOKEN_TRACK } from '@project/common/dictionary-db';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     ApplyStrategy,
     DictionaryTokenSource,
-    DictionaryTrack,
     getFullyKnownTokenStatus,
     isAnkiSource,
     isWaniKaniSource,

@@ -1,4 +1,5 @@
-import i18n, { TFunction } from 'i18next';
+import type { TFunction } from 'i18next';
+import i18n from 'i18next';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 
 let initializedPromise: Promise<void> | undefined;

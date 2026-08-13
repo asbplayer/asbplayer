@@ -1,5 +1,5 @@
 import { asbError } from '@project/common/util';
-import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { poll, trackFromDef, trackId } from '@/pages/util';
 import { decodePoToken, fetchPlayerContextForPage } from '@/services/youtube';
 

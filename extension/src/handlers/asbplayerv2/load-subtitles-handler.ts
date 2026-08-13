@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerToTabCommand,
     AsbPlayerToVideoCommandV2,
     Command,
@@ -7,7 +7,7 @@ import {
     Message,
     ToggleVideoSelectMessage,
 } from '@project/common';
-import TabRegistry from '@project/extension/src/services/tab-registry';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class LoadSubtitlesHandler {
     private readonly _tabRegistry: TabRegistry;

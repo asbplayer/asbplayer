@@ -1,11 +1,11 @@
-import {
+import type {
     AsbPlayerToVideoCommand,
     Command,
     CopySubtitleMessage,
     ExtensionToVideoCommand,
     Message,
 } from '@project/common';
-import TabRegistry from '@project/extension/src/services/tab-registry';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class CopySubtitleHandler {
     private readonly _tabRegistry: TabRegistry;

@@ -20,7 +20,7 @@ import SaveAltIcon from '@mui/icons-material/SaveAlt';
 import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import { type Theme } from '@mui/material';
-import { CopyHistoryItem } from '@project/common';
+import type { CopyHistoryItem } from '@project/common';
 import { AudioClip } from '@project/common/audio-clip';
 import { MediaFragment } from '@project/common';
 

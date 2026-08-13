@@ -2,7 +2,8 @@ import { makeStyles } from '@mui/styles';
 import PlaybackRateInput from '@project/common/components/PlaybackRateInput';
 import SubtitleOffsetInput from '@project/common/components/SubtitleOffsetInput';
 import TimeDisplay from '@project/common/components/TimeDisplay';
-import { MutableRefObject, useCallback, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ControlType } from '..';
 
 const containerHeight = 40;

@@ -1,6 +1,7 @@
 import { asbError, asbLog, asbWarn } from '@project/common/util';
-import { Fetcher, HttpFetcher, Progress } from '@project/common';
-import { DictionaryTrack } from '@project/common/settings';
+import type { Fetcher, Progress } from '@project/common';
+import { HttpFetcher } from '@project/common';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     AsyncSemaphore,
     fromBatches,

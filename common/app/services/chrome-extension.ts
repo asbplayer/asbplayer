@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerCommand,
     AsbPlayerToVideoCommandV2,
     AsbplayerInstance,
@@ -58,8 +58,8 @@ import {
     BrowserFeatures,
 } from '@project/common';
 import { buildSubtitleTracks } from '@project/common/util';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import {
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,
@@ -75,17 +75,17 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import {
+import type {
     ApplyStrategy,
     AsbplayerSettings,
-    isSaveOnlySettings,
     PageSettings,
     Profile,
     SettingsFormPageConfig,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { GlobalState } from '@project/common/global-state';
+import { isSaveOnlySettings } from '@project/common/settings';
+import type { GlobalState } from '@project/common/global-state';
 import { v4 as uuidv4 } from 'uuid';
 import gte from 'semver/functions/gte';
 import gt from 'semver/functions/gt';

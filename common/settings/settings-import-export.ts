@@ -1,5 +1,5 @@
 import { Validator } from 'jsonschema';
-import { AsbplayerSettings } from '@project/common/settings/settings';
+import type { AsbplayerSettings } from '@project/common/settings/settings';
 import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
 import { download, getCurrentTimeString } from '@project/common/util';
 

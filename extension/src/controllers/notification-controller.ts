@@ -1,6 +1,7 @@
-import Binding from '@project/extension/src/services/binding';
-import UiFrame, { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
-import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
+import type Binding from '@project/extension/src/services/binding';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import type FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 

@@ -3,7 +3,7 @@ import type { PublicPath } from 'wxt/browser';
 import { isOnTutorialPage } from '@project/extension/src/services/tutorial';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { SettingsProvider } from '@project/common/settings';
-import { SettingsFormPageConfig, PageSettings } from '@project/common/settings';
+import type { SettingsFormPageConfig, PageSettings } from '@project/common/settings';
 
 interface PageConfigFile {
     pages: PageConfig[];

@@ -1,5 +1,5 @@
 import { WebmFileMediaFragmentData } from '@project/common/src/webm-file-media-fragment-data';
-import { FileModel } from '@project/common/src/model';
+import type { FileModel } from '@project/common/src/model';
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 
 type Listener = (event: Event) => void;

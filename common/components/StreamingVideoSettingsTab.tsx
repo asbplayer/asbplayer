@@ -8,13 +8,14 @@ import TableRowWithHoverEffect from '@project/common/components/TableRowWithHove
 import TableCell from '@mui/material/TableCell';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import { useTranslation } from 'react-i18next';
-import { AsbplayerSettings, Page, PageSettings, SubtitleListPreference, YoutubePage } from '@project/common/settings';
+import type { AsbplayerSettings, Page, PageSettings, YoutubePage } from '@project/common/settings';
+import { SubtitleListPreference } from '@project/common/settings';
 import Paper from '@mui/material/Paper';
 import { pageMetadata } from '@project/common/pages';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import TuneIcon from '@mui/icons-material/Tune';
-import { PageConfigMap } from '@project/common/components/SettingsForm';
+import type { PageConfigMap } from '@project/common/components/SettingsForm';
 import { useState } from 'react';
 import PageSettingsForm from '@project/common/components/PageSettingsForm';
 import SettingsSection from '@project/common/components/SettingsSection';

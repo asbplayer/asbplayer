@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { KeyBindSet } from '@project/common/settings';
+import type { KeyBindSet } from '@project/common/settings';
 import AppKeyBinder from '@project/common/app/services/app-key-binder';
-import ChromeExtension from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import { DefaultKeyBinder } from '@project/common/key-binder';
 
 export const useAppKeyBinder = (keyBindSet: KeyBindSet, extension: ChromeExtension) => {

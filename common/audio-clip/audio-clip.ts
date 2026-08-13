@@ -1,7 +1,8 @@
 import { asbError } from '@project/common/util';
 import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import { AudioErrorCode, CardModel, FileModel } from '@project/common';
+import type { CardModel, FileModel } from '@project/common';
+import { AudioErrorCode } from '@project/common';
 import { download } from '@project/common/util';
 import { isActiveBlobUrl } from '@project/common/blob-url';
 import { base64ToBlob, blobToBase64 } from '@project/common/base64';

@@ -1,4 +1,4 @@
-import { VideoDataSubtitleTrack } from '@project/common';
+import type { VideoDataSubtitleTrack } from '@project/common';
 import { Parser } from 'm3u8-parser';
 import { extractExtension, inferTracks, trackFromDef } from '@project/extension/src/pages/util';
 

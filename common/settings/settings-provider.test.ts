@@ -1,6 +1,6 @@
+import type { SubtitleAlignment } from '@project/common/settings';
 import {
     SettingsProvider,
-    SubtitleAlignment,
     VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,

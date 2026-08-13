@@ -1,12 +1,14 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import Grid, { GridProps } from '@mui/material/Grid';
+import type { GridProps } from '@mui/material/Grid';
+import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import TuneIcon from '@mui/icons-material/Tune';
-import { ControlType, MobileOverlayModel, PlayMode, PostMineAction } from '@project/common';
+import type { MobileOverlayModel, PlayMode } from '@project/common';
+import { ControlType, PostMineAction } from '@project/common';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
 import LogoIcon from '@project/common/components/LogoIcon';

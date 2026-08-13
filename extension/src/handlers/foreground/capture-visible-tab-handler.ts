@@ -1,4 +1,4 @@
-import { Command, Message } from '@project/common';
+import type { Command, Message } from '@project/common';
 import { captureVisibleTab } from '@project/extension/src/services/capture-visible-tab';
 
 export default class CaptureVisibleTabHandler {

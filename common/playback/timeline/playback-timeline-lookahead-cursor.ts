@@ -1,8 +1,6 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import PlaybackTimeline, {
-    advanceTimestampIndex,
-    firstTimestampIndex,
-} from '@project/common/playback/timeline/playback-timeline';
+import type PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import { advanceTimestampIndex, firstTimestampIndex } from '@project/common/playback/timeline/playback-timeline';
 
 export interface PlaybackTimelineLookaheadOptions {
     readonly lookaheadTimestampMs?: number;

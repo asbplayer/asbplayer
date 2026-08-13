@@ -69,6 +69,7 @@ module.exports = [
             '@typescript-eslint': tseslint.plugin,
         },
         rules: {
+            '@typescript-eslint/consistent-type-imports': 'error',
             '@typescript-eslint/no-unnecessary-type-assertion': 'error',
             '@typescript-eslint/return-await': 'error',
             '@typescript-eslint/await-thenable': 'error',

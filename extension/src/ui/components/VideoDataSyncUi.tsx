@@ -7,8 +7,8 @@ import VideoDataSyncDialog, {
     useVideoDataSyncDialogState,
     emptySubtitleTrack,
 } from '@project/common/components/VideoDataSyncDialog';
-import Bridge from '@project/extension/src/ui/bridge';
-import {
+import type Bridge from '@project/extension/src/ui/bridge';
+import type {
     ConfirmedVideoDataSubtitleTrack,
     Message,
     SerializedSubtitleFile,
@@ -17,9 +17,9 @@ import {
     VideoDataUiBridgeOpenFileMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
     VideoDataUiModel,
-    VideoDataUiOpenReason,
     ActiveProfileMessage,
 } from '@project/common';
+import { VideoDataUiOpenReason } from '@project/common';
 import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import { createTheme } from '@project/common/theme';
 import { type PaletteMode } from '@mui/material/styles';
@@ -27,7 +27,8 @@ import { bufferToBase64 } from '@project/common/base64';
 import { useTranslation } from 'react-i18next';
 import type { Profile } from '@project/common/settings';
 import { StyledEngineProvider } from '@mui/material/styles';
-import { DefaultFileSelector, FileWithId } from '@project/common/file-selector';
+import type { FileWithId } from '@project/common/file-selector';
+import { DefaultFileSelector } from '@project/common/file-selector';
 
 interface Props {
     bridge: Bridge;

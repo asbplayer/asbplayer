@@ -1,4 +1,4 @@
-import { Fetcher } from '@project/common';
+import type { Fetcher } from '@project/common';
 import { useChromeExtension } from '@project/common/app';
 import RootApp from '@project/common/app/components/RootApp';
 import { useEffect, useMemo } from 'react';

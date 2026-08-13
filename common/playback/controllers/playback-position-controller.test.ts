@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import type { IndexedSubtitleModel } from '@project/common';
-import { defaultSettings, SettingsProvider, type AsbplayerSettings } from '@project/common/settings';
+import type { SettingsProvider } from '@project/common/settings';
+import { defaultSettings, type AsbplayerSettings } from '@project/common/settings';
 import PlaybackPositionController, {
     maxPlaybackPositions,
     minimumPlaybackPositionMs,

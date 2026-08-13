@@ -1,5 +1,5 @@
-import { CropAndResizeMessage, ExtensionToVideoCommand, ImageCaptureParams, RectModel } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
+import type { CropAndResizeMessage, ExtensionToVideoCommand, ImageCaptureParams, RectModel } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
 import { captureVisibleTab } from '@project/extension/src/services/capture-visible-tab';
 
 export interface CaptureOptions {

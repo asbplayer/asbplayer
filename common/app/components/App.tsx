@@ -1,12 +1,12 @@
 import { asbError, asbWarn } from '@project/common/util';
-import React, { useCallback, useEffect, useState, useMemo, useRef, ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { makeStyles } from '@mui/styles';
 import { type Theme } from '@mui/material/styles';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
-import {
-    MediaFragment,
+import type {
     OpenStatisticsOverlayMessage,
     RequestLocalSubtitlesMessage,
     SubtitleModel,
@@ -14,7 +14,6 @@ import {
     VideoTabModel,
     LegacyPlayerSyncMessage,
     PlayerSyncMessage,
-    PostMineAction,
     CopyHistoryItem,
     Fetcher,
     CardModel,
@@ -23,16 +22,15 @@ import {
     DownloadImageMessage,
     DownloadAudioMessage,
     CardTextFieldValues,
-    MediaFragmentErrorCode,
     RequestSubtitlesResponse,
-    VideoDataUiOpenReason,
     ConfirmedVideoDataSubtitleTrack,
 } from '@project/common';
+import { MediaFragment, PostMineAction, MediaFragmentErrorCode, VideoDataUiOpenReason } from '@project/common';
 import { createTheme } from '@project/common/theme';
-import { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings, DictionaryTrack, Profile, SettingsProvider } from '@project/common/settings';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import { AudioClip, Mp3Encoder } from '@project/common/audio-clip';
-import { ExportParams } from '@project/common/anki';
+import type { ExportParams } from '@project/common/anki';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import { v4 as uuidv4 } from 'uuid';
 import clsx from 'clsx';
@@ -41,15 +39,18 @@ import AnkiDialog from '@project/common/components/AnkiDialog';
 import Paper from '@mui/material/Paper';
 import DragOverlay from '@project/common/app/components/DragOverlay';
 import Bar from '@project/common/app/components/Bar';
-import ChromeExtension, { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import CopyHistory from '@project/common/app/components/CopyHistory';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
 import LandingPage from '@project/common/app/components/LandingPage';
-import Player, { MediaSources, PlayerRef } from '@project/common/app/components/Player';
+import type { MediaSources, PlayerRef } from '@project/common/app/components/Player';
+import Player from '@project/common/app/components/Player';
 import SettingsDialog from '@project/common/app/components/SettingsDialog';
-import VideoPlayer, { SeekRequest } from '@project/common/app/components/VideoPlayer';
+import type { SeekRequest } from '@project/common/app/components/VideoPlayer';
+import VideoPlayer from '@project/common/app/components/VideoPlayer';
 import { type AlertColor } from '@mui/material/Alert';
-import VideoChannel from '@project/common/app/services/video-channel';
+import type VideoChannel from '@project/common/app/services/video-channel';
 import { addBlobUrl, createBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 import { useTranslation } from 'react-i18next';
 import { LocalizedError } from '@project/common/app/components/localized-error';
@@ -61,30 +62,32 @@ import { useAnki } from '@project/common/app/hooks/use-anki';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
 import { MiningContext } from '@project/common/app/services/mining-context';
 import { useAppWebSocketClient } from '@project/common/app/hooks/use-app-web-socket-client';
-import { LoadSubtitlesCommand } from '@project/common/web-socket-client';
+import type { LoadSubtitlesCommand } from '@project/common/web-socket-client';
 import { ExtensionBridgedCopyHistoryRepository } from '@project/common/app/services/extension-bridged-copy-history-repository';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
+import type { FileSystemFileHandleWithId } from '@project/common/file-system-access';
 import {
     supportsFileSystemAccess,
     showFilePicker,
     requestPermissions,
     resolveFiles,
-    FileSystemFileHandleWithId,
 } from '@project/common/file-system-access';
 import { isMobile } from 'react-device-detect';
-import { GlobalState } from '@project/common/global-state';
+import type { GlobalState } from '@project/common/global-state';
 import mp3WorkerFactory from '@project/common/audio-clip/mp3-encoder-worker.ts?worker';
 import pgsParserWorkerFactory from '@project/common/subtitle-reader/pgs-parser-worker.ts?worker';
 import CssBaseline from '@mui/material/CssBaseline';
 import { StyledEngineProvider } from '@mui/material/styles';
 import { useServiceWorker } from '@project/common/app/hooks/use-service-worker';
 import NeedRefreshDialog from '@project/common/app/components/NeedRefreshDialog';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { isFirefox } from '@project/common/browser-detection';
-import StatisticsOverlay, { StatisticsOverlayProps } from '@project/common/components/StatisticsOverlay';
+import type { StatisticsOverlayProps } from '@project/common/components/StatisticsOverlay';
+import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
 import OneUncollectedSentenceDetailsDialog from '@project/common/components/OneUncollectedSentenceDetailsDialog';
 import VideoDataSyncDialog, { useVideoDataSyncDialogState } from '@project/common/components/VideoDataSyncDialog';
-import { DefaultFileSelector, FileWithId } from '@project/common/file-selector';
+import type { FileWithId } from '@project/common/file-selector';
+import { DefaultFileSelector } from '@project/common/file-selector';
 
 const latestExtensionVersion = '1.16.0';
 const extensionUrl =

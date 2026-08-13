@@ -3,13 +3,8 @@ import 'fake-indexeddb/auto';
 import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
-import {
-    AsbplayerSettings,
-    defaultSettings,
-    DictionaryTokenSource,
-    TokenState,
-    TokenStatus,
-} from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { defaultSettings, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
 
 const mockAnkiInstances: any[] = [];
 const mockAnkiOverrides: any[] = [];
