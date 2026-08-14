@@ -1,2 +1,2 @@
-export * from '@project/common/util/util';
-export * from '@project/common/util/log';
+export * from './util';
+export * from './log';

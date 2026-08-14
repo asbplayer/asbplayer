@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
-import Bridge from '@project/extension/src/ui/bridge';
-import AnkiUi from '@project/extension/src/ui/components/AnkiUi';
-import { i18nInit } from '@project/extension/src/ui/i18n';
+import Bridge from '../bridge';
+import AnkiUi from '../components/AnkiUi';
+import { i18nInit } from '../i18n';
 
 export function renderAnkiUi(element: Element, lang: string, locStrings: any) {
     const bridge = new Bridge();

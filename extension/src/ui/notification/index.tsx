@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
-import Bridge from '@project/extension/src/ui/bridge';
-import { i18nInit } from '@project/extension/src/ui/i18n';
-import NotificationUi from '@project/extension/src/ui/components/NotificationUi';
+import Bridge from '../bridge';
+import { i18nInit } from '../i18n';
+import NotificationUi from '../components/NotificationUi';
 
 export function renderNotificationUi(element: Element, lang: string, locStrings: any) {
     const bridge = new Bridge();

@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import FtueUi from '@project/extension/src/ui/components/FtueUi';
+import FtueUi from '../components/FtueUi';
 
 export function renderFtueUi(element: Element) {
     createRoot(element).render(<FtueUi />);

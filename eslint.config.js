@@ -77,6 +77,12 @@ module.exports = [
         },
     },
     {
+        files: ['**/index.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}'],
+        rules: {
+            'no-restricted-imports': 'off',
+        },
+    },
+    {
         files: ['**/*.{ts,tsx,mtsx}'],
         plugins: {
             '@typescript-eslint': tseslint.plugin,

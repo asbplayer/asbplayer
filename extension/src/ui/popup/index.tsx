@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { PopupUi } from '@project/extension/src/ui/components/PopupUi';
+import { PopupUi } from '../components/PopupUi';
 import type { AsbplayerSettings } from '@project/common/settings';
 
 export interface PopupUiParameters {

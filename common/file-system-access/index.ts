@@ -1,2 +1,2 @@
-export * from '@project/common/file-system-access/file-system-access-repository';
-export * from '@project/common/file-system-access/file-system-access';
+export * from './file-system-access-repository';
+export * from './file-system-access';

@@ -1,1 +1,1 @@
-export * from '@project/common/yomitan/yomitan';
+export * from './yomitan';

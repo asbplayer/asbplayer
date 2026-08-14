@@ -4,7 +4,7 @@ import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 import { createRoot } from 'react-dom/client';
 import { HttpFetcher } from '@project/common';
-import WebsiteApp from '@project/client/src/components/WebsiteApp';
+import WebsiteApp from './components/WebsiteApp';
 
 const fetcher = new HttpFetcher();
 

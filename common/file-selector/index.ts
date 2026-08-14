@@ -1,1 +1,1 @@
-export * from '@project/common/file-selector/file-selector';
+export * from './file-selector';

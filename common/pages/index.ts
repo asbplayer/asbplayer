@@ -1,4 +1,4 @@
-import type { PageSettings } from '@project/common/settings';
+import type { PageSettings } from '../settings';
 
 export interface PageMetadata {
     title: string;

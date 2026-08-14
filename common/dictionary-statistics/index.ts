@@ -1,2 +1,2 @@
-export * from '@project/common/dictionary-statistics/dictionary-statistics';
-export * from '@project/common/dictionary-statistics/dictionary-statistics-view';
+export * from './dictionary-statistics';
+export * from './dictionary-statistics-view';

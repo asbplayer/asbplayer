@@ -1,1 +1,1 @@
-export * from '@project/common/theme/theme';
+export * from './theme';
