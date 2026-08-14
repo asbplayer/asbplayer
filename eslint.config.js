@@ -27,6 +27,16 @@ module.exports = [
             'react/react-in-jsx-scope': 'off',
             'react/prop-types': 'off',
             'import/no-duplicates': 'error',
+            'no-restricted-properties': [
+                'error',
+                { object: 'console', property: 'log', message: 'Use asbLog.' },
+                { object: 'console', property: 'info', message: 'Use asbInfo.' },
+                { object: 'console', property: 'warn', message: 'Use asbWarn.' },
+                { object: 'console', property: 'error', message: 'Use asbError.' },
+                { object: 'console', property: 'debug', message: 'Use the asbplayer logging functions.' },
+                { object: 'console', property: 'trace', message: 'Use the asbplayer logging functions.' },
+                { object: 'console', property: 'assert', message: 'Use the asbplayer logging functions.' },
+            ],
             'no-restricted-imports': [
                 'error',
                 {
