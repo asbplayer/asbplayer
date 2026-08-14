@@ -162,9 +162,10 @@ it('restores omitted credentials when importing a redacted export', () => {
         'wanikani-secret-1',
         'wanikani-secret-2',
     ]);
+    expect(importedSettings.streamingPages).toEqual(currentSettings.streamingPages);
 });
 
-it('does not restore credentials that are explicitly present in an import', () => {
+it('preserves current ignored values when they are explicitly present in an import', () => {
     const currentSettings = {
         ...defaultSettings,
         ankiConnectApiKey: 'existing-anki-secret',
@@ -180,12 +181,21 @@ it('does not restore credentials that are explicitly present in an import', () =
             ...track,
             dictionaryWaniKaniApiToken: '',
         })),
+        streamingPages: {
+            ...currentSettings.streamingPages,
+            netflix: { overrides: { autoSyncEnabled: true } },
+        },
     };
 
     const mergedSettings = mergeImportedSettings(importedSettings, currentSettings);
 
-    expect(mergedSettings.ankiConnectApiKey).toBe('');
-    expect(mergedSettings.dictionaryTracks?.map((track) => track.dictionaryWaniKaniApiToken)).toEqual(['', '', '']);
+    expect(mergedSettings.ankiConnectApiKey).toBe('existing-anki-secret');
+    expect(mergedSettings.dictionaryTracks?.map((track) => track.dictionaryWaniKaniApiToken)).toEqual([
+        'existing-wanikani-secret',
+        'existing-wanikani-secret',
+        'existing-wanikani-secret',
+    ]);
+    expect(mergedSettings.streamingPages?.netflix).toEqual(currentSettings.streamingPages.netflix);
 });
 
 it('validates exported settings', () => {

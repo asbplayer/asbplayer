@@ -762,40 +762,42 @@ export const settingsForExport = (settings: AsbplayerSettings): Partial<Asbplaye
     return omitPaths(settings, ignorePaths);
 };
 
+const mergeIgnoredPath = (importedValue: any, currentValue: any, path: IgnorePath): any => {
+    if (importedValue === null || typeof importedValue !== 'object' || !path.length) return importedValue;
+
+    const [segment, ...remainingPath] = path;
+    if (segment === '*') {
+        if (Array.isArray(importedValue)) {
+            return importedValue.map((item, index) => mergeIgnoredPath(item, currentValue?.[index], remainingPath));
+        }
+        return Object.fromEntries(
+            Object.entries(importedValue).map(([key, value]) => [
+                key,
+                mergeIgnoredPath(value, currentValue?.[key], remainingPath),
+            ])
+        );
+    }
+
+    const mergedValue = Array.isArray(importedValue) ? [...importedValue] : { ...importedValue };
+    if (remainingPath.length && segment in importedValue) {
+        mergedValue[segment] = mergeIgnoredPath(importedValue[segment], currentValue?.[segment], remainingPath);
+    } else if (currentValue !== null && typeof currentValue === 'object' && segment in currentValue) {
+        mergedValue[segment] = currentValue[segment];
+    }
+    return mergedValue;
+};
+
 /**
- * Redacted exports omit credentials. Restore those values from the current settings before validation so
- * ensureConsistencyOnRead does not replace omitted values with their empty default.
+ * Restore ignored values from the current settings, regardless of whether they are present in an import.
  */
 export const mergeImportedSettings = (
     importedSettings: Partial<AsbplayerSettings>,
     currentSettings: AsbplayerSettings
-): Partial<AsbplayerSettings> => {
-    const mergedSettings = { ...importedSettings };
-
-    if (!('ankiConnectApiKey' in importedSettings)) {
-        mergedSettings.ankiConnectApiKey = currentSettings.ankiConnectApiKey;
-    }
-
-    if (Array.isArray(importedSettings.dictionaryTracks)) {
-        mergedSettings.dictionaryTracks = importedSettings.dictionaryTracks.map((track, index) => {
-            const currentTrack = currentSettings.dictionaryTracks[index];
-            if (
-                track === null ||
-                typeof track !== 'object' ||
-                'dictionaryWaniKaniApiToken' in track ||
-                currentTrack === undefined
-            ) {
-                return track;
-            }
-            return {
-                ...(track as Record<string, unknown>),
-                dictionaryWaniKaniApiToken: currentTrack.dictionaryWaniKaniApiToken,
-            };
-        }) as AsbplayerSettings['dictionaryTracks'];
-    }
-
-    return mergedSettings;
-};
+): Partial<AsbplayerSettings> =>
+    ignorePaths.reduce(
+        (mergedSettings, ignorePath) => mergeIgnoredPath(mergedSettings, currentSettings, ignorePath),
+        importedSettings
+    );
 
 export const exportSettings = (settings: AsbplayerSettings) => {
     download(
