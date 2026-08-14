@@ -66,12 +66,15 @@ interface LocalizableMessage {
 }
 
 export interface AlertNotification {
+    key?: string;
     message: React.ReactNode | LocalizableMessage;
     severity: AlertColor | undefined;
     autoHideDuration?: number;
 }
 
 interface AlertNotificationValue {
+    notificationKey?: string;
+    autoHideResetKey: number;
     children: React.ReactNode | LocalizableMessage;
     severity: AlertColor | undefined;
     autoHideDuration?: number;
@@ -81,9 +84,12 @@ interface AlertNotificationValue {
 
 function toAlertNotification(
     notification: AlertNotification,
-    disableAutoHide: boolean | undefined
+    disableAutoHide: boolean | undefined,
+    autoHideResetKey: number
 ): AlertNotificationValue {
     return {
+        notificationKey: notification.key,
+        autoHideResetKey,
         children: notification.message,
         severity: notification.severity,
         autoHideDuration: notification.autoHideDuration,
@@ -115,6 +121,7 @@ function AlertItem({
     open,
     autoHideDuration,
     useAppLogo,
+    autoHideResetKey,
     onClose,
     onExitedAnimation,
     onMouseEnter,
@@ -133,7 +140,7 @@ function AlertItem({
 
         const timeout = setTimeout(() => onClose(id), autoHideDuration);
         return () => clearTimeout(timeout);
-    }, [id, open, autoHideDuration, disableAutoHide, onClose]);
+    }, [id, autoHideResetKey, open, autoHideDuration, disableAutoHide, onClose]);
 
     return (
         <div className={classes.root}>
@@ -157,6 +164,7 @@ function alertNotificationsEqual(first: readonly AlertNotification[], second: re
         first.length === second.length &&
         first.every(
             (notification, index) =>
+                notification.key === second[index].key &&
                 Object.is(notification.message, second[index].message) &&
                 notification.severity === second[index].severity &&
                 notification.autoHideDuration === second[index].autoHideDuration
@@ -164,14 +172,75 @@ function alertNotificationsEqual(first: readonly AlertNotification[], second: re
     );
 }
 
+/** Keeps unkeyed notifications and retains only the latest occurrence of each keyed notification. */
+function deduplicateAlertNotifications(notifications: readonly AlertNotification[]): AlertNotification[] {
+    const deduplicated: AlertNotification[] = [];
+    const indexesByKey = new Map<string, number>();
+
+    for (const notification of notifications) {
+        if (notification.key === undefined) {
+            deduplicated.push(notification);
+            continue;
+        }
+
+        const existingIndex = indexesByKey.get(notification.key);
+        if (existingIndex === undefined) {
+            indexesByKey.set(notification.key, deduplicated.length);
+            deduplicated.push(notification);
+        } else {
+            deduplicated[existingIndex] = notification;
+        }
+    }
+
+    return deduplicated;
+}
+
+/**
+ * Adds new notifications while removing older entries with matching keys. A keyed notification that remains at the
+ * same position updates that stack entry in place so its position and exit animation are preserved.
+ */
+function updateAlertNotificationStack(
+    current: readonly Stack<AlertNotificationValue>[],
+    newNotifications: readonly Stack<AlertNotificationValue>[]
+): Stack<AlertNotificationValue>[] {
+    const keys = new Set(
+        newNotifications
+            .map((notification) => notification.value.notificationKey)
+            .filter((key): key is string => key !== undefined)
+    );
+    const updatedNotificationIds = new Set<number>();
+    const notificationsToAdd = newNotifications.map((notification, index) => {
+        const currentNotification = current[index];
+        const notificationKey = notification.value.notificationKey;
+        if (
+            currentNotification !== undefined &&
+            notificationKey !== undefined &&
+            currentNotification.value.notificationKey === notificationKey
+        ) {
+            updatedNotificationIds.add(currentNotification.id);
+            return { id: currentNotification.id, value: notification.value };
+        }
+        return notification;
+    });
+
+    return [
+        ...notificationsToAdd,
+        ...current.filter(
+            (notification) =>
+                !updatedNotificationIds.has(notification.id) &&
+                (notification.value.notificationKey === undefined || !keys.has(notification.value.notificationKey))
+        ),
+    ];
+}
+
 export default function Alert(props: Props) {
     const defaultDuration = props.autoHideDuration ?? defaultAutoHideDuration;
     const initialRequestedNotifications = props.open
-        ? (props.notifications ?? [{ message: props.children, severity: props.severity }])
+        ? deduplicateAlertNotifications(props.notifications ?? [{ message: props.children, severity: props.severity }])
         : [];
     const initialNotifications = initialRequestedNotifications.map((notification, index) => ({
         id: index,
-        value: toAlertNotification(notification, props.disableAutoHide),
+        value: toAlertNotification(notification, props.disableAutoHide, index),
     }));
     const [notifications, setNotifications] = useState<Stack<AlertNotificationValue>[]>(initialNotifications);
     const nextNotificationIdRef = useRef(initialNotifications.length);
@@ -202,7 +271,9 @@ export default function Alert(props: Props) {
             return;
         }
 
-        const currentNotifications = props.notifications ?? [{ message: props.children, severity: props.severity }];
+        const currentNotifications = deduplicateAlertNotifications(
+            props.notifications ?? [{ message: props.children, severity: props.severity }]
+        );
         const previousNotifications = previousPropsRef.current;
         const changed =
             previousNotifications === undefined ||
@@ -211,11 +282,11 @@ export default function Alert(props: Props) {
 
         if (changed && currentNotifications.length > 0) {
             hadNotificationsRef.current = true;
-            const newNotifications = currentNotifications.map((notification) => ({
-                id: nextNotificationIdRef.current++,
-                value: toAlertNotification(notification, props.disableAutoHide),
-            }));
-            setNotifications((current) => [...newNotifications, ...current]);
+            const newNotifications = currentNotifications.map((notification) => {
+                const id = nextNotificationIdRef.current++;
+                return { id, value: toAlertNotification(notification, props.disableAutoHide, id) };
+            });
+            setNotifications((current) => updateAlertNotificationStack(current, newNotifications));
         }
         previousPropsRef.current = currentNotifications;
     }, [props.open, props.notifications, props.children, props.severity, props.disableAutoHide, notifications]);

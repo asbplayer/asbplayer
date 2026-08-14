@@ -895,10 +895,12 @@ describe('Binding playback mode integration', () => {
         video.dispatchEvent(new Event('ratechange'));
 
         expect(notification).toHaveBeenCalledTimes(1);
-        expect(notification).toHaveBeenCalledWith({
-            locKey: 'info.playbackRate',
-            replacements: { rate: '1.05' },
-        });
+        expect(notification).toHaveBeenCalledWith(
+            expect.objectContaining({
+                locKey: 'info.playbackRate',
+                replacements: { rate: '1.05' },
+            })
+        );
         binding.unbind();
     });
 
@@ -919,10 +921,12 @@ describe('Binding playback mode integration', () => {
         await flushPlaybackTiming();
         binding.adjustPlaybackRate(0.1);
 
-        expect(notification).toHaveBeenCalledWith({
-            locKey: 'info.fastForwardPlaybackRate',
-            replacements: { rate: '2.8' },
-        });
+        expect(notification).toHaveBeenCalledWith(
+            expect.objectContaining({
+                locKey: 'info.fastForwardPlaybackRate',
+                replacements: { rate: '2.8' },
+            })
+        );
         binding.unbind();
     });
 

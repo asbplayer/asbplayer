@@ -483,6 +483,7 @@ export default function VideoPlayer({
                 open: true,
                 notifications: [
                     {
+                        key: options.notification.key,
                         message: {
                             locKey: options.notification.locKey,
                             replacements: options.notification.replacements,
@@ -576,14 +577,14 @@ export default function VideoPlayer({
         [clock, playerChannel]
     );
 
-    const updateSubtitlesWithOffset = useCallback((offset: number, notifyPlayer: boolean) => {
+    const updateSubtitlesWithOffset = useCallback((offset: number, notifyPlayer: boolean, notificationKey: string) => {
         const previousOffset = offsetRef.current;
         offsetRef.current = offset;
         setOffset(offset);
         if (notifyPlayer) {
             setAlert({
                 open: true,
-                notifications: [{ message: formatAsSignedMs(offset), severity: 'info' }],
+                notifications: [{ key: notificationKey, message: formatAsSignedMs(offset), severity: 'info' }],
             });
         }
         if (offset === previousOffset) return;
@@ -664,7 +665,8 @@ export default function VideoPlayer({
                 setPlaybackRate: (playbackRate) => {
                     if (video.playbackRate !== playbackRate) video.playbackRate = playbackRate;
                 },
-                setSubtitleOffset: (offset, options) => updateSubtitlesWithOffset(offset, options.notifyPlayer),
+                setSubtitleOffset: (offset, options, notificationKey) =>
+                    updateSubtitlesWithOffset(offset, options.notifyPlayer, notificationKey),
                 playbackStateChanged: (state) => {
                     playbackStateChangedRef.current(state);
                     playerChannel.playbackState(state.timestampMs, state.showingSubtitleIndexes, state.paused);
@@ -883,7 +885,10 @@ export default function VideoPlayer({
         });
         playerChannel.onPlaybackRate((playbackRate) => updatePlaybackRate(playbackRate, false));
         playerChannel.onAlert((message, severity) => {
-            setAlert({ open: true, notifications: [{ message, severity: severity as AlertNotification['severity'] }] });
+            setAlert({
+                open: true,
+                notifications: [{ message, severity: severity as AlertNotification['severity'] }],
+            });
         });
 
         window.onbeforeunload = () => {
