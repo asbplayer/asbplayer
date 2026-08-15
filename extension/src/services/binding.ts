@@ -70,7 +70,9 @@ import {
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import {
-    playbackModeNotifications,
+    formatPlaybackModeNotifications,
+    PlaybackModeNotificationFormatOptions,
+    playbackModeNotificationJoin,
     type PlayModeTransition,
 } from '@project/common/playback/controllers/playback-mode-controller';
 import {
@@ -358,14 +360,17 @@ export default class Binding {
 
     private _handlePlaybackModesChanged(
         transition: PlayModeTransition,
-        modeNotifications = playbackModeNotifications(transition)
+        options: Omit<PlaybackModeNotificationFormatOptions, 'summarySeparator'> = {}
     ): string | undefined {
         this._notifyPlaybackModes(transition.modes);
         if (!transition.added.size && !transition.removed.size) return;
-        const { notifications, join } = modeNotifications;
         this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
-        if (!notifications.length) return;
-        return notifications.map((notification) => i18n.t(notification)).join(join);
+        return formatPlaybackModeNotifications(transition, (locKey) => i18n.t(locKey) ?? locKey, {
+            ...options,
+            summarySeparator: ':\n',
+        })
+            .map((notification) => notification.text)
+            .join('\n');
     }
 
     subtitleFileName(track: number = 0) {
@@ -518,14 +523,13 @@ export default class Binding {
                             ? notification.message
                             : i18n.t(notification.notification.locKey, notification.notification.replacements)
                     );
-                    const playbackMode = this._handlePlaybackModesChanged(
-                        settings.playbackModeTransition,
-                        settings.notifications.playbackMode
-                    );
+                    const playbackMode = this._handlePlaybackModesChanged(settings.playbackModeTransition, {
+                        includeTransition: false,
+                    });
                     if (playbackMode) notifications.push(playbackMode);
                     if (notifications.length) {
                         this.subtitleController.notification({
-                            text: notifications.join(settings.notifications.playbackMode.join),
+                            text: notifications.join(playbackModeNotificationJoin),
                             autoHideDuration: settings.autoHideDuration,
                         });
                     }

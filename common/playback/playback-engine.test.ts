@@ -395,7 +395,6 @@ describe('PlaybackEngine', () => {
                             },
                         },
                     ],
-                    playbackMode: { notifications: [], join: ' | ' },
                 },
             },
         ]);

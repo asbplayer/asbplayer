@@ -264,6 +264,29 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('shows active playback modes above the transition notification', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        binding.togglePlayMode(PlayMode.fastForward);
+
+        expect(notification).toHaveBeenCalledWith({
+            text: 'settings.playbackModes:\ncontrols.fastForwardMode\ninfo.enabledFastForwardPlayback',
+        });
+
+        notification.mockClear();
+        binding.togglePlayMode(PlayMode.normal);
+
+        expect(notification).toHaveBeenCalledWith({
+            text: 'settings.playbackModes:\ncontrols.normalMode\ninfo.disabledFastForwardPlayback',
+        });
+        binding.unbind();
+    });
+
     it('publishes the audio timestamp and showing indexes when timeupdate and pause occur', async () => {
         const video = createVideo({ width: 0, height: 0 });
         const binding = new Binding(video, bindingOptions(false, false));
@@ -759,6 +782,44 @@ describe('Binding playback mode integration', () => {
         expect(video.playbackRate).toBe(1);
 
         await Promise.resolve();
+        binding.unbind();
+    });
+
+    it('shows only the playback mode summary when loading remembered modes', async () => {
+        await storage.set({ rememberPlaybackModes: true, lastPlaybackModes: [PlayMode.fastForward] });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        expect(notification).toHaveBeenCalledWith({
+            text: 'settings.playbackModes:\ncontrols.fastForwardMode',
+            autoHideDuration: 6000,
+        });
+        binding.unbind();
+    });
+
+    it('separates initial playback mode summary from offset and rate notifications', async () => {
+        await storage.set({
+            rememberPlaybackModes: true,
+            lastPlaybackModes: [PlayMode.fastForward],
+            lastSubtitleOffset: 375,
+            playbackRate: 1.4,
+        });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        expect(notification).toHaveBeenCalledTimes(1);
+        expect(notification.mock.calls[0][0]).toMatchObject({ autoHideDuration: 6000 });
+        expect(notification.mock.calls[0][0].text).toMatch(
+            /^\+375 ms \| .* \| settings\.playbackModes:\ncontrols\.fastForwardMode$/
+        );
         binding.unbind();
     });
 

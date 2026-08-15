@@ -19,7 +19,6 @@ import PlaybackPlanExecutor, {
 import PlaybackModeController, {
     minimumPlaybackRate,
     normalizePlaybackRate,
-    playbackModeNotifications,
     playbackModesFromSettings,
     type PlayModeTransition,
 } from '@project/common/playback/controllers/playback-mode-controller';
@@ -68,7 +67,6 @@ export type InitialPlaybackNotification =
 
 export interface InitialPlaybackSettingsNotifications {
     readonly offsetAndRate: InitialPlaybackNotification[];
-    readonly playbackMode: ReturnType<typeof playbackModeNotifications>;
 }
 
 export interface PlaybackEngineCallbacks {
@@ -308,12 +306,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         playbackRate,
         fastForwarding,
         subtitleOffset,
-        playbackModeTransition,
     }: {
         readonly playbackRate: number;
         readonly fastForwarding: boolean;
         readonly subtitleOffset: number;
-        readonly playbackModeTransition: PlayModeTransition;
     }): InitialPlaybackSettingsNotifications {
         const offsetAndRate: InitialPlaybackNotification[] = [];
         if (subtitleOffset !== 0) offsetAndRate.push({ type: 'message', message: formatAsSignedMs(subtitleOffset) });
@@ -328,7 +324,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
         return {
             offsetAndRate,
-            playbackMode: playbackModeNotifications(playbackModeTransition),
         };
     }
 
@@ -356,7 +351,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             playbackRate,
             fastForwarding,
             subtitleOffset,
-            playbackModeTransition,
         });
         this.callbacks.initialPlaybackSettingsChanged({
             autoHideDuration: initialPlaybackSettingsAutoHideDurationMs,

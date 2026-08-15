@@ -45,7 +45,9 @@ import {
 import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
 import Clock from '@project/common/playback/timing/clock';
 import {
-    playbackModeNotifications,
+    formatPlaybackModeNotifications,
+    PlaybackModeNotificationFormatOptions,
+    playbackModeNotificationJoin,
     type PlayModeTransition,
 } from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
@@ -513,15 +515,14 @@ export default function VideoPlayer({
     synchronizePlaybackModesRef.current = synchronizePlaybackModes;
 
     const handlePlaybackModesChanged = useCallback(
-        (
-            transition: PlayModeTransition,
-            modeNotifications = playbackModeNotifications(transition)
-        ): string | undefined => {
+        (transition: PlayModeTransition, options: PlaybackModeNotificationFormatOptions = {}): AlertNotification[] => {
             synchronizePlaybackModesRef.current(transition.modes);
-            if (!transition.added.size && !transition.removed.size) return;
-            const { notifications, join } = modeNotifications;
-            if (!notifications.length) return;
-            return notifications.map((notification) => t(notification)).join(join);
+            if (!transition.added.size && !transition.removed.size) return [];
+            return formatPlaybackModeNotifications(transition, t, options).map(({ key, text }) => ({
+                key,
+                message: text,
+                severity: 'info',
+            }));
         },
         [t]
     );
@@ -674,8 +675,8 @@ export default function VideoPlayer({
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => onSettingsChangedRef.current(settings),
                 playbackModesChanged: (transition) => {
-                    const message = handlePlaybackModesChanged(transition);
-                    if (message) setAlert({ open: true, notifications: [{ message, severity: 'info' }] });
+                    const notifications = handlePlaybackModesChanged(transition);
+                    if (notifications.length) setAlert({ open: true, notifications });
                 },
                 initialPlaybackSettingsChanged: (settings) => {
                     playerChannel.offset(settings.subtitleOffset);
@@ -687,25 +688,23 @@ export default function VideoPlayer({
                             ? notification.message
                             : t(notification.notification.locKey, notification.notification.replacements)
                     );
-                    const playbackMode = handlePlaybackModesChanged(
-                        settings.playbackModeTransition,
-                        settings.notifications.playbackMode
-                    );
+                    const playbackModeNotifications = handlePlaybackModesChanged(settings.playbackModeTransition, {
+                        includeTransition: false,
+                    });
                     const notifications: AlertNotification[] = [];
                     if (offsetAndRate.length) {
                         notifications.push({
-                            message: offsetAndRate.join(settings.notifications.playbackMode.join),
+                            message: offsetAndRate.join(playbackModeNotificationJoin),
                             severity: 'info',
                             autoHideDuration: settings.autoHideDuration,
                         });
                     }
-                    if (playbackMode) {
-                        notifications.push({
-                            message: playbackMode,
-                            severity: 'info',
+                    notifications.push(
+                        ...playbackModeNotifications.map((notification) => ({
+                            ...notification,
                             autoHideDuration: settings.autoHideDuration,
-                        });
-                    }
+                        }))
+                    );
                     if (notifications.length) setAlert({ open: true, notifications });
                 },
                 onError: (error) => onErrorRef.current?.(String(error)),

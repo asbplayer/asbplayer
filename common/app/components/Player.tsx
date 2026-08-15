@@ -60,6 +60,7 @@ import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-su
 import { FileWithId } from '../../file-selector';
 import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
 import PlaybackEngine from '@project/common/playback/playback-engine';
+import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildPlaybackTimelineExportPlan,
     type PlaybackTimelineModeLabels,
@@ -513,7 +514,7 @@ function PlayerComponent(
                         open: true,
                         notifications: [
                             {
-                                message: notifications.join(settings.notifications.playbackMode.join),
+                                message: notifications.join(playbackModeNotificationJoin),
                                 severity: 'info',
                                 autoHideDuration: settings.autoHideDuration,
                             },

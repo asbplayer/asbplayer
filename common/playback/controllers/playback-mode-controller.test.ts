@@ -1,7 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import PlaybackModeController, {
-    playbackModeNotifications,
+    formatPlaybackModeNotifications,
+    playbackModesSummaryNotificationKey,
+    playbackModeTransitionNotificationKey,
     playbackModesFromSettings,
 } from '@project/common/playback/controllers/playback-mode-controller';
 
@@ -157,9 +159,77 @@ describe('playback mode selection', () => {
     it('does not report normal mode being disabled when enabling fast-forward', () => {
         const controller = controllerWithModes(PlayMode.normal);
 
-        expect(playbackModeNotifications(controller.transition(PlayMode.fastForward)).notifications).toEqual([
-            'info.enabledFastForwardPlayback',
+        const transition = controller.transition(PlayMode.fastForward);
+
+        expect(transition).toMatchObject({
+            added: new Set([PlayMode.fastForward]),
+            removed: new Set([PlayMode.normal]),
+        });
+
+        expect(
+            formatPlaybackModeNotifications(
+                transition,
+                (locKey) =>
+                    ({
+                        'settings.playbackModes': 'Playback Modes',
+                        'controls.normalMode': 'Normal',
+                        'controls.condensedMode': 'Condensed',
+                        'controls.autoPauseMode': 'Auto-pause',
+                        'controls.fastForwardMode': 'Fast-forward',
+                        'controls.repeatMode': 'Repeat',
+                    })[locKey] ?? locKey
+            )
+        ).toEqual([
+            {
+                key: playbackModesSummaryNotificationKey,
+                text: 'Playback Modes: Fast-forward',
+            },
+            {
+                key: playbackModeTransitionNotificationKey,
+                text: 'info.enabledFastForwardPlayback',
+            },
         ]);
+
+        expect(
+            formatPlaybackModeNotifications(
+                transition,
+                (locKey) =>
+                    ({
+                        'settings.playbackModes': 'Playback Modes',
+                        'controls.normalMode': 'Normal',
+                        'controls.fastForwardMode': 'Fast-forward',
+                    })[locKey] ?? locKey,
+                { includeTransition: false }
+            )
+        ).toEqual([{ key: playbackModesSummaryNotificationKey, text: 'Playback Modes: Fast-forward' }]);
+    });
+
+    it('shows active modes and falls back to normal', () => {
+        const localize = (locKey: string) =>
+            ({
+                'settings.playbackModes': 'Playback Modes',
+                'controls.normalMode': 'Normal',
+                'controls.condensedMode': 'Condensed',
+                'controls.autoPauseMode': 'Auto-pause',
+                'controls.fastForwardMode': 'Fast-forward',
+                'controls.repeatMode': 'Repeat',
+            })[locKey] ?? locKey;
+
+        const activeModes = {
+            modes: new Set([PlayMode.condensed, PlayMode.repeat]),
+            added: new Set<PlayMode>(),
+            removed: new Set<PlayMode>(),
+        };
+        const normalModes = {
+            modes: new Set([PlayMode.normal]),
+            added: new Set<PlayMode>(),
+            removed: new Set<PlayMode>(),
+        };
+
+        expect(formatPlaybackModeNotifications(activeModes, localize)[0].text).toBe(
+            'Playback Modes: Condensed + Repeat'
+        );
+        expect(formatPlaybackModeNotifications(normalModes, localize)[0].text).toBe('Playback Modes: Normal');
     });
 
     it('preserves non-conflicting modes over multiple toggles', () => {
@@ -207,7 +277,26 @@ describe('playback mode selection', () => {
             added: new Set([PlayMode.normal]),
             removed: new Set([PlayMode.fastForward, PlayMode.repeat]),
         });
-        expect(playbackModeNotifications(transition).notifications).toEqual(['info.disabledAllPlayModes']);
+        expect(
+            formatPlaybackModeNotifications(
+                transition,
+                (locKey) =>
+                    ({
+                        'settings.playbackModes': 'Playback Modes',
+                        'controls.normalMode': 'Normal',
+                        'controls.fastForwardMode': 'Fast-forward',
+                        'controls.repeatMode': 'Repeat',
+                        'info.disabledFastForwardPlayback': 'Fast-forward playback: Off',
+                        'info.disabledRepeatPlayback': 'Repeat playback: Off',
+                    })[locKey] ?? locKey
+            )
+        ).toEqual([
+            { key: playbackModesSummaryNotificationKey, text: 'Playback Modes: Normal' },
+            {
+                key: playbackModeTransitionNotificationKey,
+                text: 'Fast-forward playback: Off | Repeat playback: Off',
+            },
+        ]);
     });
 
     it('replaces a single non-normal mode when normal is selected', () => {
