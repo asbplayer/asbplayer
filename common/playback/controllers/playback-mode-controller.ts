@@ -25,9 +25,11 @@ export const playbackModeTransitionNotificationKey = 'playback-mode-transition';
 export const playbackModeNotificationJoin = ' | ';
 const playbackModesSummaryJoin = ' + ';
 
+type LazyLocalizableString = (localize: Localizer) => string;
+
 export interface PlaybackModeNotificationText {
     readonly key: string;
-    readonly text: string;
+    readonly text: string | LazyLocalizableString;
 }
 
 export interface PlaybackModeNotificationFormatOptions {
@@ -72,33 +74,36 @@ const playbackModesForSummary: readonly PlayMode[] = [
     PlayMode.repeat,
 ];
 
+type Localizer = (locKey: string) => string;
+
 export const formatPlaybackModeNotifications = (
     transition: PlayModeTransition,
-    localize: (locKey: string) => string,
     { includeTransition = true, summarySeparator = ': ' }: PlaybackModeNotificationFormatOptions = {}
 ): PlaybackModeNotificationText[] => {
-    const enabledModes = playbackModesForSummary
-        .filter((mode) => transition.modes.has(mode))
-        .map((mode) => localize(playbackModeLabelLocKey(mode)));
+    const enabledModes = playbackModesForSummary.filter((mode) => transition.modes.has(mode));
     const notifications: PlaybackModeNotificationText[] = [
         {
             key: playbackModesSummaryNotificationKey,
-            text: `${localize('settings.playbackModes')}${summarySeparator}${
-                enabledModes.length > 0
-                    ? enabledModes.join(playbackModesSummaryJoin)
-                    : localize(playbackModeLabelLocKey(PlayMode.normal))
-            }`,
+            text: (localize: Localizer) =>
+                `${localize('settings.playbackModes')}${summarySeparator}${
+                    enabledModes.length > 0
+                        ? enabledModes
+                              .map((mode) => localize(playbackModeLabelLocKey(mode)))
+                              .join(playbackModesSummaryJoin)
+                        : localize(playbackModeLabelLocKey(PlayMode.normal))
+                }`,
         },
     ];
     if (!includeTransition) return notifications;
 
-    const transitionText = [
-        ...[...transition.removed].map((mode) => playbackModeTransitionLocKey(mode, false)),
-        ...[...transition.added].map((mode) => playbackModeTransitionLocKey(mode, true)),
-    ]
-        .filter((locKey): locKey is string => locKey !== undefined)
-        .map(localize)
-        .join(playbackModeNotificationJoin);
+    const transitionText = (localize: Localizer) =>
+        [
+            ...[...transition.removed].map((mode) => playbackModeTransitionLocKey(mode, false)),
+            ...[...transition.added].map((mode) => playbackModeTransitionLocKey(mode, true)),
+        ]
+            .filter((locKey): locKey is string => locKey !== undefined)
+            .map(localize)
+            .join(playbackModeNotificationJoin);
     if (transitionText) {
         notifications.push({
             key: playbackModeTransitionNotificationKey,

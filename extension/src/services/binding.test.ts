@@ -17,6 +17,9 @@ jest.mock('./localization-fetcher', () => ({
 jest.mock('./i18n', () => ({
     i18nInit: jest.fn(async () => undefined),
 }));
+jest.mock('i18next', () => ({
+    t: (key: string) => key,
+}));
 jest.mock('./build-flags', () => ({
     isFirefoxBuild: false,
 }));

@@ -61,7 +61,7 @@ import { useSubtitleDomCache } from '../hooks/use-subtitle-dom-cache';
 import { useAppKeyBinder } from '../hooks/use-app-key-binder';
 import { Direction, useSwipe } from '../hooks/use-swipe';
 import './subtitles.css';
-import i18n from 'i18next';
+import i18n, { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { adjacentSubtitle } from '../../key-binder';
 import { usePlaybackPreferences } from '../hooks/use-playback-preferences';
@@ -518,13 +518,13 @@ export default function VideoPlayer({
         (transition: PlayModeTransition, options: PlaybackModeNotificationFormatOptions = {}): AlertNotification[] => {
             synchronizePlaybackModesRef.current(transition.modes);
             if (!transition.added.size && !transition.removed.size) return [];
-            return formatPlaybackModeNotifications(transition, t, options).map(({ key, text }) => ({
+            return formatPlaybackModeNotifications(transition, options).map(({ key, text }) => ({
                 key,
                 message: text,
                 severity: 'info',
             }));
         },
-        [t]
+        []
     );
 
     const handlePlaybackRateChanged = useCallback(
@@ -683,18 +683,21 @@ export default function VideoPlayer({
                     clock.rate = settings.playbackRate;
                     playerChannel.playbackRate(settings.playbackRate, false);
 
-                    const offsetAndRate = settings.notifications.offsetAndRate.map((notification) =>
-                        notification.type === 'message'
-                            ? notification.message
-                            : t(notification.notification.locKey, notification.notification.replacements)
-                    );
+                    const offsetAndRate = (_t: TFunction) =>
+                        settings.notifications.offsetAndRate
+                            .map((notification) =>
+                                notification.type === 'message'
+                                    ? notification.message
+                                    : _t(notification.notification.locKey, notification.notification.replacements)
+                            )
+                            .join(playbackModeNotificationJoin);
                     const playbackModeNotifications = handlePlaybackModesChanged(settings.playbackModeTransition, {
                         includeTransition: false,
                     });
                     const notifications: AlertNotification[] = [];
                     if (offsetAndRate.length) {
                         notifications.push({
-                            message: offsetAndRate.join(playbackModeNotificationJoin),
+                            message: offsetAndRate,
                             severity: 'info',
                             autoHideDuration: settings.autoHideDuration,
                         });
@@ -728,7 +731,6 @@ export default function VideoPlayer({
         handlePlaybackModesChanged,
         playerChannel,
         settingsProvider,
-        t,
         updatePlayerState,
         updateSubtitlesWithOffset,
         video,

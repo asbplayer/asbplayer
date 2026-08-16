@@ -366,11 +366,13 @@ export default class Binding {
         if (!transition.added.size && !transition.removed.size) return;
         this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
         void this.mobileVideoOverlayController.updateModel();
-        return formatPlaybackModeNotifications(transition, (locKey) => i18n.t(locKey) ?? locKey, {
+        return formatPlaybackModeNotifications(transition, {
             ...options,
             summarySeparator: ':\n',
         })
-            .map((notification) => notification.text)
+            .map((notification) =>
+                typeof notification.text === 'string' ? notification.text : notification.text(i18n.t)
+            )
             .join('\n');
     }
 
