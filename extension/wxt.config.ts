@@ -104,7 +104,7 @@ export default defineConfig({
                         'plex-page.js',
                         'areena-yle-page.js',
                         'hbo-max-page.js',
-                        'cijapanese-page.js',
+                        'nijapanese-page.js',
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'hulu-jp-page.js',
