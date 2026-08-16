@@ -279,22 +279,27 @@ export default defineUnlistedScript(() => {
         }
     };
 
-    // Addon-agnostic safety net: observe the actual subtitle download (streaming-
-    // server proxy, direct .srt/.vtt, or subs*.strem.io), deduped against
-    // reconstructed tracks by normalized source URL.
+    // Addon-agnostic safety net: observe the actual subtitle download and dedupe it
+    // against reconstructed tracks by normalized source URL. Restricted to the two
+    // real subtitle forms — the streaming-server proxy (which wraps the source in
+    // ?from=) and subs*.strem.io file URLs. A broad ".srt/.vtt" match is avoided on
+    // purpose: the streaming server also serves the embedded track as per-segment
+    // HLS WebVTT chunks (.../hlsv2/.../subtitleN/segmentN.vtt) that are tiny
+    // fragments, not standalone subtitle files, and would otherwise show up as
+    // bogus, near-empty "Stremio N" tracks.
     const streamingServerProxyPattern = /^https?:\/\/[^/]+\/subtitles\.(srt|vtt)\b/i;
-    const directSubtitlePattern = /\.(srt|vtt)\/?(?:[?#].*)?$/i;
     const stremioFilePattern = /^https?:\/\/subs\d+\.strem\.io\/.+\/file\/\d+/i;
+    // Streaming-server internal media paths that must never be treated as subtitles.
+    const hlsSegmentPattern = /\/hlsv2\/|\/subtitle\d+\/segment\d+\.(?:srt|vtt)\b/i;
 
     const considerFallbackUrl = (url: string | null | undefined) => {
-        if (!url || seenFallbackUrls.has(url)) {
+        if (!url || seenFallbackUrls.has(url) || hlsSegmentPattern.test(url)) {
             return;
         }
 
         const proxyMatch = url.match(streamingServerProxyPattern);
-        const directMatch = proxyMatch ? null : url.match(directSubtitlePattern);
-        const isStremioFile = !proxyMatch && !directMatch && stremioFilePattern.test(url);
-        if (!proxyMatch && !directMatch && !isStremioFile) {
+        const isStremioFile = !proxyMatch && stremioFilePattern.test(url);
+        if (!proxyMatch && !isStremioFile) {
             return;
         }
 
@@ -313,8 +318,6 @@ export default defineUnlistedScript(() => {
             } catch {
                 // treat the proxy URL itself as the source
             }
-        } else if (directMatch) {
-            extension = directMatch[1].toLowerCase();
         } else {
             extension = 'srt';
         }
