@@ -83,8 +83,14 @@ import {
     isSaveOnlySettings,
 } from '@project/common/settings';
 import { SubtitleReader } from '@project/common/subtitle-reader';
-import { formatPlaybackModeNotifications, playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
-import type { PlaybackModeNotificationFormatOptions, PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
+import {
+    formatPlaybackModeNotifications,
+    playbackModeNotificationJoin,
+} from '@project/common/playback/controllers/playback-mode-controller';
+import type {
+    PlaybackModeNotificationFormatOptions,
+    PlayModeTransition,
+} from '@project/common/playback/controllers/playback-mode-controller';
 import AnkiUiController from '@project/extension/src/controllers/anki-ui-controller';
 import ControlsController from '@project/extension/src/controllers/controls-controller';
 import DragController from '@project/extension/src/controllers/drag-controller';
@@ -148,7 +154,7 @@ const startAudioRecordingErrorResponse: (e: any) => StartRecordingResponse = (e:
     if (e.name === 'NS_ERROR_FAILURE') {
         errorCode = StartRecordingErrorCode.drmProtected;
     } else {
-        asbError('video/binding', e);
+        asbError('recording/audio', e);
         errorCode = StartRecordingErrorCode.other;
     }
 
@@ -1174,7 +1180,7 @@ export default class Binding {
                                 if (e instanceof TimedRecordingInProgressError) {
                                     errorCode = StopRecordingErrorCode.timedAudioRecordingInProgress;
                                 } else {
-                                    asbError('video/binding', e);
+                                    asbError('recording/audio', e);
                                     errorCode = StopRecordingErrorCode.other;
                                 }
 

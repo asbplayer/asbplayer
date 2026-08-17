@@ -57,7 +57,7 @@ export default function WordField({
                     setDuplicateNotes(await anki.findNotesWithWord(trimmedWord));
                     setLastSearchedWord(trimmedWord);
                 } catch (e) {
-                    asbError('dictionary', e);
+                    asbError('anki/connect', e);
                 }
             })();
         }, 500);

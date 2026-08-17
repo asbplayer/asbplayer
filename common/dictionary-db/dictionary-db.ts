@@ -1187,6 +1187,10 @@ function buildIdLabel(buildIdSlot: DictionaryBuildIdSlot): string {
     return buildIdSlot === 'waniKani' ? 'WaniKani buildId' : 'Anki buildId';
 }
 
+function buildIdLogLabel(buildIdSlot: DictionaryBuildIdSlot): string {
+    return `dictionary/${buildIdSlot === 'waniKani' ? 'wanikani' : 'anki'}`;
+}
+
 function setBuildIdChanges(
     trackMeta: DictionaryMetaRecord,
     buildIdSlot: DictionaryBuildIdSlot,
@@ -1269,7 +1273,7 @@ export async function _ensureBuildId(
             const existingBuildExpiration = _buildIdExpiration(trackMeta, buildIdSlot);
             if (buildTs < existingBuildExpiration) return false;
             asbWarn(
-                'dictionary',
+                buildIdLogLabel(buildIdSlot),
                 `Stale ${buildIdLabel(buildIdSlot)} ${existingBuildId} which expired at ${new Date(existingBuildExpiration).toISOString()} detected for track ${key[1] + 1}, ignoring.`
             );
         }
@@ -1328,7 +1332,10 @@ export async function _clearBuildIds(
         try {
             await clearBuildId(db, key, nextBuildId, buildIdSlot);
         } catch (e) {
-            asbError('dictionary', `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`);
+            asbError(
+                buildIdLogLabel(buildIdSlot),
+                `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`
+            );
         }
     }
 }

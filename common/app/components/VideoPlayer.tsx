@@ -45,8 +45,14 @@ import {
 } from '@project/common/util';
 import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
 import Clock from '@project/common/playback/timing/clock';
-import { formatPlaybackModeNotifications, playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
-import type { PlaybackModeNotificationFormatOptions, PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
+import {
+    formatPlaybackModeNotifications,
+    playbackModeNotificationJoin,
+} from '@project/common/playback/controllers/playback-mode-controller';
+import type {
+    PlaybackModeNotificationFormatOptions,
+    PlayModeTransition,
+} from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import type { Point } from '@project/common/app/components/Controls';
@@ -61,7 +67,8 @@ import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
 import type { Direction } from '@project/common/app/hooks/use-swipe';
 import { useSwipe } from '@project/common/app/hooks/use-swipe';
 import '@project/common/app/components/subtitles.css';
-import i18n, { TFunction } from 'i18next';
+import i18n from 'i18next';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { adjacentSubtitle } from '@project/common/key-binder';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';

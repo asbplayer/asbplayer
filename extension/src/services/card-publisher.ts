@@ -221,7 +221,7 @@ export class CardPublisher {
             });
             return true;
         } catch (e) {
-            asbError('anki/export', e);
+            asbError('copy-history', e);
             return false;
         }
     }

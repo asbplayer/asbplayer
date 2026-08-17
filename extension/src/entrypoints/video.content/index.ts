@@ -230,17 +230,17 @@ export default defineContentScript({
                                     if (blob.type.startsWith('text/plain')) {
                                         blob.text()
                                             .then((text) => navigator.clipboard.writeText(text))
-                                            .catch((error) => asbInfo('video', error));
+                                            .catch((error) => asbInfo('video/clipboard', error));
                                     } else {
                                         asbError(
-                                            'video',
+                                            'video/clipboard',
                                             `Cannot write blob type ${blob.type} to clipboard on Firefox`
                                         );
                                     }
                                 } else {
                                     navigator.clipboard
                                         .write([new ClipboardItem({ [blob.type]: blob })])
-                                        .catch((error) => asbError('video', error));
+                                        .catch((error) => asbError('video/clipboard', error));
                                 }
                             });
                         break;

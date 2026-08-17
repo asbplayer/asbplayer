@@ -140,7 +140,7 @@ export default class RecordMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                asbError('recording/video', e);
+                asbError('recording/screenshot', e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',
