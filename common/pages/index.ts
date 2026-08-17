@@ -31,4 +31,5 @@ export const pageMetadata: { [K in keyof PageSettings]: PageMetadata } = {
     urplay: { title: 'UR Play', disableCspRuleId: 23 },
     archive: { title: 'Internet Archive', disableCspRuleId: 24 },
     huluJp: { title: 'Hulu Japan', disableCspRuleId: 25 },
+    dreaming: { title: 'Dreaming', disableCspRuleId: 26 },
 };

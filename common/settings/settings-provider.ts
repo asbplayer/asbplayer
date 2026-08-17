@@ -277,6 +277,7 @@ export const defaultSettings: AsbplayerSettings = {
         svtplay: {},
         urplay: {},
         archive: {},
+        dreaming: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
