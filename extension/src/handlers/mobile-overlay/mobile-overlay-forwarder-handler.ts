@@ -14,7 +14,21 @@ export default class MobileOverlayForwarderHandler {
             return;
         }
 
-        void browser.tabs.sendMessage(sender.tab.id, command);
+        const tabId = sender.tab.id;
+        browser.tabs
+            .get(tabId)
+            .then((tab) => {
+                if (tab.url?.startsWith(browser.runtime.getURL(''))) {
+                    // runtime.sendMessage already goes directly to extension page content scripts
+                    return;
+                }
+
+                // Non-extension page, need to send message via tabs API
+                void browser.tabs.sendMessage(tabId, command);
+            })
+            .catch(() => {
+                // Tab may have been closed
+            });
         return false;
     }
 }

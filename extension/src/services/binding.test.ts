@@ -17,6 +17,9 @@ jest.mock('./localization-fetcher', () => ({
 jest.mock('./i18n', () => ({
     i18nInit: jest.fn(async () => undefined),
 }));
+jest.mock('i18next', () => ({
+    t: (key: string) => key,
+}));
 jest.mock('./build-flags', () => ({
     isFirefoxBuild: false,
 }));
@@ -261,6 +264,29 @@ describe('Binding playback mode integration', () => {
         await flushPlaybackTiming();
 
         expect(binding.subtitleController.currentSubtitle()[0]?.text).toBe('subtitle');
+        binding.unbind();
+    });
+
+    it('shows active playback modes above the transition notification', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        binding.togglePlayMode(PlayMode.fastForward);
+
+        expect(notification).toHaveBeenCalledWith({
+            text: 'settings.playbackModes:\ncontrols.fastForwardMode\ninfo.enabledFastForwardPlayback',
+        });
+
+        notification.mockClear();
+        binding.togglePlayMode(PlayMode.normal);
+
+        expect(notification).toHaveBeenCalledWith({
+            text: 'settings.playbackModes:\ncontrols.normalMode\ninfo.disabledFastForwardPlayback',
+        });
         binding.unbind();
     });
 
@@ -762,6 +788,44 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('shows only the playback mode summary when loading remembered modes', async () => {
+        await storage.set({ rememberPlaybackModes: true, lastPlaybackModes: [PlayMode.fastForward] });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        expect(notification).toHaveBeenCalledWith({
+            text: 'settings.playbackModes:\ncontrols.fastForwardMode',
+            autoHideDuration: 6000,
+        });
+        binding.unbind();
+    });
+
+    it('separates initial playback mode summary from offset and rate notifications', async () => {
+        await storage.set({
+            rememberPlaybackModes: true,
+            lastPlaybackModes: [PlayMode.fastForward],
+            lastSubtitleOffset: 375,
+            playbackRate: 1.4,
+        });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        expect(notification).toHaveBeenCalledTimes(1);
+        expect(notification.mock.calls[0][0]).toMatchObject({ autoHideDuration: 6000 });
+        expect(notification.mock.calls[0][0].text).toMatch(
+            /^\+375 ms \| .* \| settings\.playbackModes:\ncontrols\.fastForwardMode$/
+        );
+        binding.unbind();
+    });
+
     it('shows remembered offset and playback rate notifications on the first subtitle load', async () => {
         await storage.set({ lastSubtitleOffset: 375, playbackRate: 1.4 });
         const binding = new Binding(createVideo(), bindingOptions(false, false));
@@ -895,10 +959,12 @@ describe('Binding playback mode integration', () => {
         video.dispatchEvent(new Event('ratechange'));
 
         expect(notification).toHaveBeenCalledTimes(1);
-        expect(notification).toHaveBeenCalledWith({
-            locKey: 'info.playbackRate',
-            replacements: { rate: '1.05' },
-        });
+        expect(notification).toHaveBeenCalledWith(
+            expect.objectContaining({
+                locKey: 'info.playbackRate',
+                replacements: { rate: '1.05' },
+            })
+        );
         binding.unbind();
     });
 
@@ -919,10 +985,12 @@ describe('Binding playback mode integration', () => {
         await flushPlaybackTiming();
         binding.adjustPlaybackRate(0.1);
 
-        expect(notification).toHaveBeenCalledWith({
-            locKey: 'info.fastForwardPlaybackRate',
-            replacements: { rate: '2.8' },
-        });
+        expect(notification).toHaveBeenCalledWith(
+            expect.objectContaining({
+                locKey: 'info.fastForwardPlaybackRate',
+                replacements: { rate: '2.8' },
+            })
+        );
         binding.unbind();
     });
 

@@ -29,10 +29,15 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
         }
 
         const requestModel = async () => {
+            if (!overlayInstanceId) {
+                return;
+            }
+
             const command: MobileOverlayToVideoCommand<RequestMobileOverlayModelMessage> = {
                 sender: 'asbplayer-mobile-overlay-to-video',
                 message: {
                     command: 'request-mobile-overlay-model',
+                    overlayInstanceId,
                 },
                 src: location.src,
             };

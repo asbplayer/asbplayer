@@ -60,6 +60,7 @@ import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-su
 import { FileWithId } from '../../file-selector';
 import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
 import PlaybackEngine from '@project/common/playback/playback-engine';
+import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildPlaybackTimelineExportPlan,
     type PlaybackTimelineModeLabels,
@@ -395,8 +396,11 @@ function PlayerComponent(
         [clock, mediaAdapter]
     );
 
-    const notifyOffset = useCallback((offset: number) => {
-        setAlert({ open: true, notifications: [{ message: formatAsSignedMs(offset), severity: 'info' }] });
+    const notifyOffset = useCallback((offset: number, key: string) => {
+        setAlert({
+            open: true,
+            notifications: [{ key, message: formatAsSignedMs(offset), severity: 'info' }],
+        });
     }, []);
 
     const notifyPlaybackRate = useCallback(
@@ -406,6 +410,7 @@ function PlayerComponent(
                 open: true,
                 notifications: [
                     {
+                        key: options.notification.key,
                         message: {
                             locKey: options.notification.locKey,
                             replacements: options.notification.replacements,
@@ -486,9 +491,9 @@ function PlayerComponent(
                     clock.setTime(timestampMs, { paused: !clock.running });
                 },
                 setPlaybackRate: (rate) => updatePlaybackRate(rate, false),
-                setSubtitleOffset: (offset, options) => {
+                setSubtitleOffset: (offset, options, notificationKey) => {
                     applyOffsetRef.current?.(offset, false);
-                    if (options.notifyPlayer) notifyOffset(offset);
+                    if (options.notifyPlayer) notifyOffset(offset, notificationKey);
                 },
                 playbackStateChanged: setPlaybackState,
                 playbackPositionChanged: setPendingPlaybackPosition,
@@ -509,7 +514,7 @@ function PlayerComponent(
                         open: true,
                         notifications: [
                             {
-                                message: notifications.join(settings.notifications.playbackMode.join),
+                                message: notifications.join(playbackModeNotificationJoin),
                                 severity: 'info',
                                 autoHideDuration: settings.autoHideDuration,
                             },

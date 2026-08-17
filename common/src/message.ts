@@ -803,6 +803,7 @@ export interface NotifyErrorMessage extends Message {
 
 export interface RequestMobileOverlayModelMessage extends Message {
     readonly command: 'request-mobile-overlay-model';
+    readonly overlayInstanceId: string;
 }
 
 export interface UpdateMobileOverlayModelMessage extends Message {

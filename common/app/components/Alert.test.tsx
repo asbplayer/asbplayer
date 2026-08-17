@@ -28,19 +28,25 @@ describe('Alert', () => {
         jest.useRealTimers();
     });
 
-    const renderAlert = (message: string, open = true) => {
+    const renderAlert = (message: string, open = true, key?: string) => {
         act(() => {
             root.render(
-                <Alert useAppLogo={true} open={open} onClose={() => {}} severity="info">
-                    {message}
-                </Alert>
+                <Alert
+                    useAppLogo={true}
+                    open={open}
+                    onClose={() => {}}
+                    notifications={[{ key, message, severity: 'info' }]}
+                />
             );
         });
     };
 
-    const renderNotifications = (notifications: { message: string; severity: 'info' | 'warning' }[]) => {
+    const renderNotifications = (
+        notifications: { key?: string; message: string; severity: 'info' | 'warning'; autoHideDuration?: number }[],
+        onClose = () => {}
+    ) => {
         act(() => {
-            root.render(<Alert useAppLogo={true} open={true} onClose={() => {}} notifications={notifications} />);
+            root.render(<Alert useAppLogo={true} open={true} onClose={onClose} notifications={notifications} />);
         });
     };
 
@@ -74,6 +80,102 @@ describe('Alert', () => {
         expect(alerts[1].classList.contains('MuiAlert-standardWarning')).toBe(true);
     });
 
+    it('updates the top keyed notification without removing unrelated notifications', () => {
+        renderNotifications([
+            { key: 'playback-rate', message: 'Playback rate: 2.0', severity: 'info' },
+            { message: 'Repeat enabled', severity: 'info' },
+        ]);
+        renderNotifications([{ key: 'playback-rate', message: 'Playback rate: 1.0', severity: 'info' }]);
+
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        expect(alerts).toHaveLength(2);
+        expect(alerts.map((alert) => alert.textContent)).toEqual(['Playback rate: 1.0', 'Repeat enabled']);
+    });
+
+    it('updates every keyed notification that remains in the same position', () => {
+        renderNotifications([
+            { key: 'playback-rate', message: 'Playback rate: 2.0', severity: 'info' },
+            { key: 'subtitle-offset', message: 'Offset: +100ms', severity: 'info' },
+            { message: 'Repeat enabled', severity: 'info' },
+        ]);
+        const previousAlerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        renderNotifications([
+            { key: 'playback-rate', message: 'Playback rate: 1.0', severity: 'info' },
+            { key: 'subtitle-offset', message: 'Offset: +200ms', severity: 'info' },
+        ]);
+
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        expect(alerts.map((alert) => alert.textContent)).toEqual([
+            'Playback rate: 1.0',
+            'Offset: +200ms',
+            'Repeat enabled',
+        ]);
+        expect(alerts[0]).toBe(previousAlerts[0]);
+        expect(alerts[1]).toBe(previousAlerts[1]);
+        expect(alerts[2]).toBe(previousAlerts[2]);
+    });
+
+    it('moves a keyed notification to the top when it is not already at the top', () => {
+        renderNotifications([
+            { message: 'Repeat enabled', severity: 'info' },
+            { key: 'playback-rate', message: 'Playback rate: 2.0', severity: 'info' },
+        ]);
+        const previousAlerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        renderNotifications([{ key: 'playback-rate', message: 'Playback rate: 1.0', severity: 'info' }]);
+
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        expect(alerts.map((alert) => alert.textContent)).toEqual(['Playback rate: 1.0', 'Repeat enabled']);
+        expect(alerts[0]).not.toBe(previousAlerts[1]);
+        expect(alerts[1]).toBe(previousAlerts[0]);
+    });
+
+    it('resets the auto-hide timer when the top keyed notification is updated', () => {
+        const onClose = jest.fn();
+        const notification = (message: string) => ({
+            key: 'playback-rate',
+            message,
+            severity: 'info' as const,
+            autoHideDuration: 3000,
+        });
+
+        renderNotifications([notification('Playback rate: 2.0')], onClose);
+        act(() => jest.advanceTimersByTime(2000));
+        renderNotifications([notification('Playback rate: 1.0')], onClose);
+
+        act(() => jest.advanceTimersByTime(1000));
+        expect(onClose).not.toHaveBeenCalled();
+
+        act(() => jest.advanceTimersByTime(2001));
+        act(() => jest.advanceTimersByTime(1000));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not add a duplicate notification when the same keyed request is rendered again', () => {
+        const notification = { key: 'playback-rate', message: 'Playback rate: 2.0', severity: 'info' as const };
+
+        renderNotifications([notification]);
+        renderNotifications([{ ...notification }]);
+
+        expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    });
+
+    it('renders only the latest notification when a request contains duplicate keys', () => {
+        renderNotifications([
+            { key: 'playback-rate', message: 'Playback rate: 2.0', severity: 'info' },
+            { key: 'playback-rate', message: 'Playback rate: 1.0', severity: 'info' },
+        ]);
+
+        const alerts = Array.from(container.querySelectorAll('[role="alert"]'));
+
+        expect(alerts).toHaveLength(1);
+        expect(alerts[0].textContent).toBe('Playback rate: 1.0');
+    });
+
     it('localizes notification messages when given a loc key', () => {
         act(() => {
             root.render(
@@ -82,7 +184,10 @@ describe('Alert', () => {
                     open={true}
                     onClose={() => {}}
                     notifications={[
-                        { message: { locKey: 'info.playbackRate', replacements: { rate: '1.4' } }, severity: 'info' },
+                        {
+                            message: { locKey: 'info.playbackRate', replacements: { rate: '1.4' } },
+                            severity: 'info',
+                        },
                     ]}
                 />
             );
@@ -100,7 +205,13 @@ describe('Alert', () => {
                     useAppLogo={true}
                     open={true}
                     onClose={onClose}
-                    notifications={[{ message: 'Initial settings', severity: 'info', autoHideDuration: 6000 }]}
+                    notifications={[
+                        {
+                            message: 'Initial settings',
+                            severity: 'info',
+                            autoHideDuration: 6000,
+                        },
+                    ]}
                 />
             );
         });
