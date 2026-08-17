@@ -28,6 +28,7 @@ import { fetchLocalization } from '../services/localization-fetcher';
 import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 // We need to write the HTML into the iframe manually so that the iframe keeps it's about:blank URL.
 // Otherwise, Chrome won't insert content scripts into the iframe (e.g. Yomichan won't work).
@@ -40,6 +41,7 @@ async function html(language: string) {
                     <title>asbplayer - Anki</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                     </style>
                 </head>
                 <body>

@@ -203,7 +203,7 @@
             "hideRememberTrackPreferenceToggle": true
         },
         {
-            "key": "nijapanese",
+            "key": "cijapanese",
             "host": "nijapanese\\.com",
             "pageScript": "nijapanese-page.js",
             "syncAllowedAtPath": "video",

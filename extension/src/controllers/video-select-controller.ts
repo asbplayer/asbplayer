@@ -12,6 +12,7 @@ import Binding from '../services/binding';
 import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { fetchLocalization } from '../services/localization-fetcher';
 import { ExtensionSettingsStorage } from '../services/extension-settings-storage';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 interface VideoSelectControllerOptions {
     readonly isBindingsSorted: boolean;
@@ -42,6 +43,7 @@ export default class VideoSelectController {
                     <title>asbplayer - Video Select</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                     </style>
                 </head>
                 <body>

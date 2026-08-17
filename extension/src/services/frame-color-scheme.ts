@@ -39,3 +39,12 @@ export const frameColorSchemeClass = () => {
             return 'asbplayer-color-scheme-normal';
     }
 };
+
+export const frameColorSchemeStyleBlock = () => {
+    return `
+:root {
+    color-scheme: ${frameColorScheme()} !important;
+    background-color: transparent !important;
+}
+    `;
+};

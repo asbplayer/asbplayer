@@ -19,6 +19,7 @@ import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import { fetchLocalization } from '../services/localization-fetcher';
 import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
@@ -33,6 +34,7 @@ async function html(language: string) {
                     <title>asbplayer - Anki</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                     </style>
                 </head>
                 <body>

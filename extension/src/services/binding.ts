@@ -365,6 +365,7 @@ export default class Binding {
         this._notifyPlaybackModes(transition.modes);
         if (!transition.added.size && !transition.removed.size) return;
         this.mobileVideoOverlayController.setPlaybackModes(transition.modes);
+        void this.mobileVideoOverlayController.updateModel();
         return formatPlaybackModeNotifications(transition, (locKey) => i18n.t(locKey) ?? locKey, {
             ...options,
             summarySeparator: ':\n',

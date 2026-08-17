@@ -2,6 +2,7 @@ import Binding from '../services/binding';
 import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
 import FrameBridgeClient from '../services/frame-bridge-client';
 import { fetchLocalization } from '../services/localization-fetcher';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 export default class NotificationController {
     public onClose?: () => void;
@@ -23,6 +24,7 @@ export default class NotificationController {
                         <title>asbplayer</title>
                         <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                         </style>
                     </head>
                     <body>

@@ -23,6 +23,7 @@ import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 import { extractExtension } from '@/pages/util';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 declare global {
     function cloneInto(obj: any, targetScope: any, options?: any): any;
@@ -37,6 +38,7 @@ async function html(lang: string) {
                 <title>asbplayer - Video Data Sync</title>
                 <style>
                     @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                    ${frameColorSchemeStyleBlock()}
                 </style>
             </head>
             <body>

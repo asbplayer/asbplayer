@@ -123,7 +123,7 @@ export class MobileVideoOverlayController {
             }
         };
         this._playListener = () => {
-            if (!this._playModeSelectorOpen) this._hide();
+            this._hide();
         };
         this._seekedListener = () => {
             void this.updateModel();
