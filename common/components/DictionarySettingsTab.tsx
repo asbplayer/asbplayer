@@ -1045,10 +1045,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     <div>
                         <SettingsSubSection>
                             {t('settings.dictionaryLocalWordDatabase')}
-                            <KeyboardShortcutLink
-                                onClick={onViewKeyboardShortcuts}
-                                sectionTitle={t('settings.annotation')}
-                            />
+                            <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} />
                         </SettingsSubSection>
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Button
@@ -1244,31 +1241,31 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 label={t('settings.dictionaryColorizeSubtitles')}
                                 labelPlacement="start"
                             />
-                            <SwitchLabelWithHoverEffect
-                                control={
-                                    <Switch
-                                        checked={selectedDictionary.dictionaryAutoGenerateStatistics}
-                                        onChange={(e) => {
-                                            const newTracks = [...dictionaryTracks];
-                                            newTracks[selectedDictionaryTrack] = {
-                                                ...newTracks[selectedDictionaryTrack],
-                                                dictionaryAutoGenerateStatistics: e.target.checked,
-                                            };
-                                            void onSettingChanged('dictionaryTracks', newTracks);
-                                        }}
-                                    />
-                                }
-                                label={
-                                    <>
-                                        {t('settings.dictionaryAutoGenerateStatistics')}
-                                        <KeyboardShortcutLink
-                                            onClick={onViewKeyboardShortcuts}
-                                            sectionTitle={t('settings.annotation')}
+                            <Box sx={{ display: 'flex', width: '100%' }}>
+                                <KeyboardShortcutLink
+                                    onClick={onViewKeyboardShortcuts}
+                                    sx={{ display: 'inline-block', ml: -1 }}
+                                />
+                                <SwitchLabelWithHoverEffect
+                                    sx={{ flexGrow: 1 }}
+                                    control={
+                                        <Switch
+                                            checked={selectedDictionary.dictionaryAutoGenerateStatistics}
+                                            onChange={(e) => {
+                                                const newTracks = [...dictionaryTracks];
+                                                newTracks[selectedDictionaryTrack] = {
+                                                    ...newTracks[selectedDictionaryTrack],
+                                                    dictionaryAutoGenerateStatistics: e.target.checked,
+                                                };
+                                                void onSettingChanged('dictionaryTracks', newTracks);
+                                            }}
                                         />
-                                    </>
-                                }
-                                labelPlacement="start"
-                            />
+                                    }
+                                    label={t('settings.dictionaryAutoGenerateStatistics')}
+                                    labelPlacement="start"
+                                />
+                            </Box>
+
                             {tokenAnnotationTriggerOptions.map(({ annotation, labelKey }) => {
                                 const value = tokenAnnotationSelectionOptionValues(
                                     tokenAnnotationSelection(

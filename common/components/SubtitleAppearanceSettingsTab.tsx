@@ -493,10 +493,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                         label={
                             <>
                                 {t('settings.subtitlePositionOffset')}
-                                <KeyboardShortcutLink
-                                    onClick={onViewKeyboardShortcuts}
-                                    sectionTitle={t('settings.subtitles')}
-                                />
+                                <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} preset="numericalInputLabel" />
                             </>
                         }
                         value={subtitlePositionOffset}
@@ -514,10 +511,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                         label={
                             <>
                                 {t('settings.topSubtitlePositionOffset')}
-                                <KeyboardShortcutLink
-                                    onClick={onViewKeyboardShortcuts}
-                                    sectionTitle={t('settings.subtitles')}
-                                />
+                                <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} preset="numericalInputLabel" />
                             </>
                         }
                         value={topSubtitlePositionOffset}

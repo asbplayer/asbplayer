@@ -302,12 +302,9 @@ const MiscSettingTab: React.FC<Props> = ({
                 )}
                 {(!extensionInstalled || extensionSupportsSeekableTrackSetting) && (
                     <FormControl>
-                        <FormLabel component="legend">
+                        <FormLabel component="legend" sx={{ display: 'flex' }}>
                             {t('settings.seekableTracks')}
-                            <KeyboardShortcutLink
-                                onClick={onViewSubtitleKeyboardShortcuts}
-                                sectionTitle={t('settings.subtitles')}
-                            />
+                            <KeyboardShortcutLink onClick={onViewSubtitleKeyboardShortcuts} preset="formLabel" />
                         </FormLabel>
                         <FormGroup>
                             {[0, 1, 2].map((trackIndex) => {
@@ -466,10 +463,7 @@ const MiscSettingTab: React.FC<Props> = ({
                 )}
                 <SettingsSection>
                     {t('settings.playbackModes')}
-                    <KeyboardShortcutLink
-                        onClick={onViewPlaybackModeKeyboardShortcuts}
-                        sectionTitle={t('extension.settings.playback')}
-                    />
+                    <KeyboardShortcutLink onClick={onViewPlaybackModeKeyboardShortcuts} />
                 </SettingsSection>
                 {supportsPlaybackEngine && (
                     <>
@@ -480,7 +474,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                     {t('settings.playbackRate')}
                                     <KeyboardShortcutLink
                                         onClick={onViewPlaybackRateKeyboardShortcuts}
-                                        sectionTitle={t('settings.playbackRate')}
+                                        preset="numericalInputLabel"
                                     />
                                 </>
                             }
