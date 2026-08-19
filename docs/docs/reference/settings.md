@@ -54,13 +54,13 @@ Default tags to supply with each card.
 
 "Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
 
-| Setting          | Behavior                                                                                                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Show Anki dialog | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
-| Update last card | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
-| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context |
-| Export card      | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
-| None             | Record target subtitle in mining history                                                                                                                                                               |
+| Setting                 | Behavior                                                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
+| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
+| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
+| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
+| None                    | Record target subtitle in mining history                                                                                                                                                               |
 
 ### Post-mining playback state
 
@@ -126,34 +126,56 @@ Preview and edit the subtitle text used to show the effect of the appearance set
 
 ### Styling
 
-| Setting                           | Description                                                                          | CSS property          |
-| --------------------------------- | ------------------------------------------------------------------------------------ | --------------------- |
-| Subtitle color                    | Color                                                                                | `color`               |
-| Subtitle size                     | Size in `px`                                                                         | `font-size`           |
-| Subtitle font thickness           | Font thickness                                                                       | `font-weight`         |
+| Setting                           | Description                                                                          | CSS property                |
+| --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
+| Subtitle color                    | Color                                                                                | `color`                     |
+| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
+| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
 | Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
-| Subtitle outline thickness       | Thickness of the stroke                                                             | `-webkit-text-stroke-width` |
-| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`         |
-| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`         |
-| Subtitle background color         | Background color                                                                     | `background-color`    |
-| Subtitle background opacity       | Background opacity                                                                   | `background`          |
-| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`         |
-| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property       |
-| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`    |
-| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                     |
+| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
+| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
+| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
+| Subtitle background color         | Background color                                                                     | `background-color`          |
+| Subtitle background opacity       | Background opacity                                                                   | `background`                |
+| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
+| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
+| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
+| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
 
 ### Layout
 
-| Setting                           | Description                                                                       |
-| --------------------------------- | --------------------------------------------------------------------------------- |
-| Subtitle alignment               | Whether to place subtitles at the top or bottom of the video element.            |
-| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks.   |
-| Subtitle position offset from top | Distance from the top of the video element of all top subtitle tracks.           |
-| Subtitles width                  | Width of subtitle container as percentage of video element width.                |
+| Setting                              | Description                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
+| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
+| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
+| Subtitles width                      | Width of subtitle container as percentage of video element width.            |
 
 ## [Keyboard shortcuts](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts)
 
 Keyboard shortcuts can be used to access most of asbplayer's features.
+
+### [Subtitles](https://app.asbplayer.dev/?view=settings#subtitle-appearance) keyboard shortcuts
+
+| Behavior                             | Website shortcut? | Extension shortcut? |
+| ------------------------------------ | :---------------: | :-----------------: |
+| Select subtitle tracks to load.      |                   |          ✓          |
+| Toggle subtitles                     |         ✓         |          ✓          |
+| Toggle subtitle track 1 in video     |         ✓         |          ✓          |
+| Toggle subtitle track 2 in video     |         ✓         |          ✓          |
+| Toggle subtitle track 3 in video     |         ✓         |          ✓          |
+| Toggle subtitle track 1 in asbplayer |         ✓         |          ✓          |
+| Toggle subtitle track 2 in asbplayer |         ✓         |          ✓          |
+| Toggle subtitle track 3 in asbplayer |         ✓         |          ✓          |
+| Unblur subtitle track 1 in asbplayer |         ✓         |          ✓          |
+| Unblur subtitle track 2 in asbplayer |         ✓         |          ✓          |
+| Unblur subtitle track 3 in asbplayer |         ✓         |          ✓          |
+| Move bottom subtitles up             |         ✓         |          ✓          |
+| Move bottom subtitles down           |         ✓         |          ✓          |
+| Move top subtitles up                |         ✓         |          ✓          |
+| Move top subtitles down              |         ✓         |          ✓          |
+
+### [Mining](https://app.asbplayer.dev/?view=settings#mining-settings) keyboard shortcuts
 
 | Behavior                                                                             | Website shortcut? | Extension shortcut? |
 | ------------------------------------------------------------------------------------ | :---------------: | :-----------------: |
@@ -163,59 +185,69 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Export card to Anki, bypassing dialog.                                               |         ✓         |          ✓          |
 | Manually take screenshot, overriding the one that is automatically taken when mining |         ✓         |          ✓          |
 | Manually start/stop audio recording, even when a subtitle file is loaded.            |         ✓         |          ✓          |
-| Select subtitle tracks to load.                                                      |                   |          ✓          |
-| Toggle side panel                                                                    |         ✓         |          ✓          |
-| Play/pause                                                                           |         ✓         |          ✓          |
-| Toggle auto-pause                                                                    |         ✓         |          ✓          |
-| Toggle condensed playback                                                            |         ✓         |          ✓          |
-| Toggle fast forward playback                                                         |         ✓         |          ✓          |
-| Toggle repeat mode                                                                   |         ✓         |          ✓          |
-| Toggle subtitles                                                                     |         ✓         |          ✓          |
-| Toggle subtitle track 1 in video                                                     |         ✓         |          ✓          |
-| Toggle subtitle track 2 in video                                                     |         ✓         |          ✓          |
-| Toggle subtitle track 3 in video                                                     |         ✓         |          ✓          |
-| Toggle subtitle track 1 in asbplayer                                                 |         ✓         |          ✓          |
-| Toggle subtitle track 2 in asbplayer                                                 |         ✓         |          ✓          |
-| Toggle subtitle track 3 in asbplayer                                                 |         ✓         |          ✓          |
-| Unblur subtitle track 1 in asbplayer                                                 |         ✓         |          ✓          |
-| Unblur subtitle track 2 in asbplayer                                                 |         ✓         |          ✓          |
-| Unblur subtitle track 3 in asbplayer                                                 |         ✓         |          ✓          |
-| Seek backward 10 seconds                                                             |         ✓         |          ✓          |
-| Seek forward 10 seconds                                                              |         ✓         |          ✓          |
-| Seek to previous subtitle                                                            |         ✓         |          ✓          |
-| Seek to next subtitle                                                                |         ✓         |          ✓          |
-| Seek to beginning of current/previous subtitle                                       |         ✓         |          ✓          |
-| Adjust subtitle offset so that previous subtitle is at current timestamp             |         ✓         |          ✓          |
-| Adjust subtitle offset so that next subtitle is at current timestamp                 |         ✓         |          ✓          |
-| Adjust subtitle offset by +100ms                                                     |         ✓         |          ✓          |
-| Adjust subtitle offset by -100ms                                                     |         ✓         |          ✓          |
-| Reset subtitle offset                                                                |         ✓         |          ✓          |
-| Increase playback rate                                                               |         ✓         |          ✓          |
-| Decrease playback rate                                                               |         ✓         |          ✓          |
-| Move bottom subtitles up                                                             |         ✓         |          ✓          |
-| Move bottom subtitles down                                                           |         ✓         |          ✓          |
-| Move top subtitles up                                                                |         ✓         |          ✓          |
-| Move top subtitles down                                                              |         ✓         |          ✓          |
-| Mark hovered word as Mature                                                          |         ✓         |          ✓          |
-| Mark hovered word as Young                                                           |         ✓         |          ✓          |
-| Mark hovered word as Graduated                                                       |         ✓         |          ✓          |
-| Mark hovered word as Learning                                                        |         ✓         |          ✓          |
-| Mark hovered word as Unknown                                                         |         ✓         |          ✓          |
-| Mark hovered word as Uncollected                                                     |         ✓         |          ✓          |
-| Toggle hovered word as ignored                                                       |         ✓         |          ✓          |
-| Open statistics                                                                      |         ✓         |          ✓          |
+
+### [Playback](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior                     | Website shortcut? | Extension shortcut? |
+| ---------------------------- | :---------------: | :-----------------: |
+| Toggle side panel            |         ✓         |          ✓          |
+| Play/pause                   |         ✓         |          ✓          |
+| Toggle auto-pause            |         ✓         |          ✓          |
+| Toggle condensed playback    |         ✓         |          ✓          |
+| Toggle fast forward playback |         ✓         |          ✓          |
+| Toggle repeat mode           |         ✓         |          ✓          |
+
+### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior                                       | Website shortcut? | Extension shortcut? |
+| ---------------------------------------------- | :---------------: | :-----------------: |
+| Seek backward 10 seconds                       |         ✓         |          ✓          |
+| Seek forward 10 seconds                        |         ✓         |          ✓          |
+| Seek to previous subtitle                      |         ✓         |          ✓          |
+| Seek to next subtitle                          |         ✓         |          ✓          |
+| Seek to beginning of current/previous subtitle |         ✓         |          ✓          |
+
+### [Playback rate](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior               | Website shortcut? | Extension shortcut? |
+| ---------------------- | :---------------: | :-----------------: |
+| Increase playback rate |         ✓         |          ✓          |
+| Decrease playback rate |         ✓         |          ✓          |
+
+### [Subtitle offset](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior                                                                 | Website shortcut? | Extension shortcut? |
+| ------------------------------------------------------------------------ | :---------------: | :-----------------: |
+| Adjust subtitle offset so that previous subtitle is at current timestamp |         ✓         |          ✓          |
+| Adjust subtitle offset so that next subtitle is at current timestamp     |         ✓         |          ✓          |
+| Adjust subtitle offset by +100ms                                         |         ✓         |          ✓          |
+| Adjust subtitle offset by -100ms                                         |         ✓         |          ✓          |
+| Reset subtitle offset                                                    |         ✓         |          ✓          |
+
+### [Annotation](https://app.asbplayer.dev/?view=settings#annotation) keyboard shortcuts
+
+| Behavior                         | Website shortcut? | Extension shortcut? |
+| -------------------------------- | :---------------: | :-----------------: |
+| Mark hovered word as Mature      |         ✓         |          ✓          |
+| Mark hovered word as Young       |         ✓         |          ✓          |
+| Mark hovered word as Graduated   |         ✓         |          ✓          |
+| Mark hovered word as Learning    |         ✓         |          ✓          |
+| Mark hovered word as Unknown     |         ✓         |          ✓          |
+| Mark hovered word as Uncollected |         ✓         |          ✓          |
+| Toggle hovered word as ignored   |         ✓         |          ✓          |
+| Open statistics                  |         ✓         |          ✓          |
 
 ### Seek interval (seconds)
 
-Controls the interval used by the seek backward and seek forward shortcuts.
+Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
 
 ### Always play after invoking 'Seek to beginning of current/previous subtitle'
 
-Instead of retaining the current playback state, always play when using the keyboard shortcut that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
 
 ### Playback speed adjust step
 
-Time increment to use when using the "increase/decrease playback rate" keyboard shortcuts.
+Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
 
 ### Extension shortcuts
 
@@ -249,7 +281,7 @@ Imported words are considered local and take priority over the external sources 
 The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
 
 :::tip
-You can hover over words and use [**Keyboard Shortcuts**](#keyboard-shortcuts) to change their status locally.
+You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
 :::
 
 ### Export Words
@@ -290,7 +322,7 @@ Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses th
 
 ### Generate statistics automatically
 
-Automatically generate statistics for the current media upon load. This will also enable the statistics overlay.
+Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
 
 ### Display word readings
 
@@ -631,7 +663,7 @@ Specifies which tracks will be auto-copied when the `Auto-copy current subtitle 
 
 ### Subtitle tracks affected by playback modes and keyboard shortcuts
 
-Specifies which tracks will be considered when using keyboard shorcuts to seek between subtitles, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
 
 ### Show preview thumbnails
 
@@ -663,9 +695,11 @@ Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" mean
 
 ### Playback modes
 
+Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+
 ### Playback rate
 
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate.
+Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
 
 ### Show playback rate notification
 

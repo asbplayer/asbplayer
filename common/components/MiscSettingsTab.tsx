@@ -10,7 +10,6 @@ import Stack from '@mui/material/Stack';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
-import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
@@ -27,7 +26,7 @@ import {
     validateSettings,
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AutoPausePreference, SubtitleHtml } from '..';
 import { WebSocketClient } from '@project/common/web-socket-client';
@@ -38,6 +37,7 @@ import SettingsSection, { SettingsSubSection } from '@project/common/components/
 import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
 import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 function regexIsValid(regex: string) {
     try {
@@ -60,6 +60,8 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting?: boolean;
     supportsPlaybackEngine: boolean;
     onViewPlaybackModeKeyboardShortcuts: () => void;
+    onViewPlaybackRateKeyboardShortcuts: () => void;
+    onViewSubtitleKeyboardShortcuts: () => void;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
@@ -74,6 +76,8 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsAutoCopyableTrackSetting,
     supportsPlaybackEngine,
     onViewPlaybackModeKeyboardShortcuts,
+    onViewPlaybackRateKeyboardShortcuts,
+    onViewSubtitleKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -298,7 +302,13 @@ const MiscSettingTab: React.FC<Props> = ({
                 )}
                 {(!extensionInstalled || extensionSupportsSeekableTrackSetting) && (
                     <FormControl>
-                        <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
+                        <FormLabel component="legend">
+                            {t('settings.seekableTracks')}
+                            <KeyboardShortcutLink
+                                onClick={onViewSubtitleKeyboardShortcuts}
+                                sectionTitle={t('settings.subtitles')}
+                            />
+                        </FormLabel>
                         <FormGroup>
                             {[0, 1, 2].map((trackIndex) => {
                                 return (
@@ -454,20 +464,26 @@ const MiscSettingTab: React.FC<Props> = ({
                         </RadioGroup>
                     </FormControl>
                 )}
-                <SettingsSection>{t('settings.playbackModes')}</SettingsSection>
-                <Typography variant="caption" color="textSecondary">
-                    <Trans
-                        i18nKey="settings.playbackModesHelperText"
-                        components={[
-                            <Link key={0} onClick={onViewPlaybackModeKeyboardShortcuts} sx={{ cursor: 'pointer' }} />,
-                        ]}
+                <SettingsSection>
+                    {t('settings.playbackModes')}
+                    <KeyboardShortcutLink
+                        onClick={onViewPlaybackModeKeyboardShortcuts}
+                        sectionTitle={t('extension.settings.playback')}
                     />
-                </Typography>
+                </SettingsSection>
                 {supportsPlaybackEngine && (
                     <>
                         <NumericSettingInput
                             fullWidth
-                            label={t('settings.playbackRate')}
+                            label={
+                                <>
+                                    {t('settings.playbackRate')}
+                                    <KeyboardShortcutLink
+                                        onClick={onViewPlaybackRateKeyboardShortcuts}
+                                        sectionTitle={t('settings.playbackRate')}
+                                    />
+                                </>
+                            }
                             value={playbackRate}
                             color="primary"
                             normalizeValue={normalizePlaybackRate}

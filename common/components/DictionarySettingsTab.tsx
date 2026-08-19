@@ -96,6 +96,7 @@ import WordBrowserDialog from '@project/common/components/WordBrowserDialog';
 import '@project/common/app/components/subtitles.css';
 import SettingsGroups from '@project/common/components/SettingsGroups';
 import Fade from '@mui/material/Fade';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
@@ -1042,7 +1043,13 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Button>
                     )}
                     <div>
-                        <SettingsSubSection>{t('settings.dictionaryLocalWordDatabase')}</SettingsSubSection>
+                        <SettingsSubSection>
+                            {t('settings.dictionaryLocalWordDatabase')}
+                            <KeyboardShortcutLink
+                                onClick={onViewKeyboardShortcuts}
+                                sectionTitle={t('settings.annotation')}
+                            />
+                        </SettingsSubSection>
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Button
                                 variant="contained"
@@ -1251,7 +1258,15 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         }}
                                     />
                                 }
-                                label={t('settings.dictionaryAutoGenerateStatistics')}
+                                label={
+                                    <>
+                                        {t('settings.dictionaryAutoGenerateStatistics')}
+                                        <KeyboardShortcutLink
+                                            onClick={onViewKeyboardShortcuts}
+                                            sectionTitle={t('settings.annotation')}
+                                        />
+                                    </>
+                                }
                                 labelPlacement="start"
                             />
                             {tokenAnnotationTriggerOptions.map(({ annotation, labelKey }) => {

@@ -34,6 +34,7 @@ import SettingsTextField from '@project/common/components/SettingsTextField';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsSection from '@project/common/components/SettingsSection';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 // Filter out keys that look like '0', '1', ... as those are invalid
 const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
@@ -129,6 +130,7 @@ interface Props {
     localFontsPermission?: PermissionState;
     localFontFamilies: string[];
     onUnlockLocalFonts: () => void;
+    onViewKeyboardShortcuts: () => void;
 }
 
 const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
@@ -142,6 +144,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     localFontsPermission,
     localFontFamilies,
     onUnlockLocalFonts,
+    onViewKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -487,7 +490,15 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     <NumericSettingInput
                         color="primary"
                         fullWidth
-                        label={t('settings.subtitlePositionOffset')}
+                        label={
+                            <>
+                                {t('settings.subtitlePositionOffset')}
+                                <KeyboardShortcutLink
+                                    onClick={onViewKeyboardShortcuts}
+                                    sectionTitle={t('settings.subtitles')}
+                                />
+                            </>
+                        }
                         value={subtitlePositionOffset}
                         slotProps={{
                             htmlInput: {
@@ -500,7 +511,15 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     <NumericSettingInput
                         color="primary"
                         fullWidth
-                        label={t('settings.topSubtitlePositionOffset')}
+                        label={
+                            <>
+                                {t('settings.topSubtitlePositionOffset')}
+                                <KeyboardShortcutLink
+                                    onClick={onViewKeyboardShortcuts}
+                                    sectionTitle={t('settings.subtitles')}
+                                />
+                            </>
+                        }
                         value={topSubtitlePositionOffset}
                         slotProps={{
                             htmlInput: {

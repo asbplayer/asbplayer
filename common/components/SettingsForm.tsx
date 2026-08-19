@@ -18,7 +18,10 @@ import AnkiSettingsTab from '@project/common/components/AnkiSettingsTab';
 import MiningSettingsTab from '@project/common/components/MiningSettingsTab';
 import DictionarySettingsTab from '@project/common/components/DictionarySettingsTab';
 import SubtitleAppearanceSettingsTab from '@project/common/components/SubtitleAppearanceSettingsTab';
-import KeyboardShortcutsSettingsTab from '@project/common/components/KeyboardShortcutsSettingsTab';
+import KeyboardShortcutsSettingsTab, {
+    keyboardShortcutSectionId,
+} from '@project/common/components/KeyboardShortcutsSettingsTab';
+import type { KeyboardShortcutSection } from '@project/common/components/KeyboardShortcutsSettingsTab';
 import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
 import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
@@ -341,6 +344,20 @@ export default function SettingsForm({
     const ankiPanelRef = useRef<HTMLDivElement>(null);
     const keyboardShortcutsPanelRef = useRef<HTMLDivElement>(null);
 
+    const viewKeyboardShortcutSection = useCallback(
+        (section: KeyboardShortcutSection) => {
+            setTabIndex(tabIndicesById['keyboard-shortcuts']);
+            setTimeout(
+                () =>
+                    keyboardShortcutsPanelRef.current
+                        ?.querySelector(`#${keyboardShortcutSectionId(section)}`)
+                        ?.scrollIntoView({ behavior: 'smooth' }),
+                0
+            );
+        },
+        [tabIndicesById]
+    );
+
     useEffect(() => {
         if (tutorialStep === TutorialStep.testCard) {
             ankiPanelRef.current?.scrollBy({ behavior: 'smooth', top: 100000 });
@@ -507,13 +524,7 @@ export default function SettingsForm({
                         supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                         supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
                         onSettingChanged={handleSettingChanged}
-                        onViewKeyboardShortcuts={() => {
-                            setTabIndex(tabIndicesById['keyboard-shortcuts']);
-                            setTimeout(
-                                () => keyboardShortcutsPanelRef.current?.scrollBy({ top: 10000, behavior: 'smooth' }),
-                                0
-                            );
-                        }}
+                        onViewKeyboardShortcuts={() => viewKeyboardShortcutSection('annotation')}
                     />
                 </TabPanel>
                 <TabPanel
@@ -532,6 +543,7 @@ export default function SettingsForm({
                         localFontsPermission={localFontsPermission}
                         localFontFamilies={localFontFamilies}
                         onUnlockLocalFonts={onUnlockLocalFonts}
+                        onViewKeyboardShortcuts={() => viewKeyboardShortcutSection('subtitles')}
                     />
                 </TabPanel>
                 <TabPanel
@@ -574,16 +586,9 @@ export default function SettingsForm({
                         extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
                         supportsPlaybackEngine={supportsPlaybackEngine}
-                        onViewPlaybackModeKeyboardShortcuts={() => {
-                            setTabIndex(tabIndicesById['keyboard-shortcuts']);
-                            setTimeout(
-                                () =>
-                                    keyboardShortcutsPanelRef.current
-                                        ?.querySelector('#playback-mode-key-bindings')
-                                        ?.scrollIntoView({ behavior: 'smooth' }),
-                                0
-                            );
-                        }}
+                        onViewPlaybackModeKeyboardShortcuts={() => viewKeyboardShortcutSection('playback')}
+                        onViewPlaybackRateKeyboardShortcuts={() => viewKeyboardShortcutSection('playbackRate')}
+                        onViewSubtitleKeyboardShortcuts={() => viewKeyboardShortcutSection('subtitles')}
                     />
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>
