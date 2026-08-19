@@ -1,6 +1,8 @@
 import KeyboardIcon from '@mui/icons-material/Keyboard';
-import Box, { type BoxProps } from '@mui/material/Box';
-import IconButton, { type IconButtonProps } from '@mui/material/IconButton';
+import Box from '@mui/material/Box';
+import type { BoxProps } from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import type { IconButtonProps } from '@mui/material/IconButton';
 import type { SxProps, Theme } from '@mui/material/styles';
 import Tooltip from '@mui/material/Tooltip';
 import { useTranslation } from 'react-i18next';
