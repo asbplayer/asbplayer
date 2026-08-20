@@ -1,4 +1,4 @@
-import {
+import type {
     CardExportedDialogMessage,
     CardUpdatedDialogMessage,
     DictionaryRequestStatisticsSnapshotMessage,
@@ -15,9 +15,8 @@ import {
     ExtensionToVideoCommand,
     Message,
 } from '@project/common';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import {
-    DictionaryDB,
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     DictionaryLocalTokenInput,
     DictionaryStorage,
     DictionaryTokenKey,
@@ -27,7 +26,8 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy, SettingsProvider } from '@project/common/settings';
+import { DictionaryDB } from '@project/common/dictionary-db';
+import type { ApplyStrategy, SettingsProvider } from '@project/common/settings';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
     | ExtensionToAsbPlayerCommand<T>

@@ -1,4 +1,4 @@
-import AudioClip from './audio-clip';
+import AudioClip from '@project/common/audio-clip/audio-clip';
 import { AudioErrorCode } from '@project/common';
 import { expect, it, jest } from '@jest/globals';
 

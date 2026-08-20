@@ -2,21 +2,16 @@ import 'core-js/stable/structured-clone';
 import 'fake-indexeddb/auto';
 import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import {
-    ApplyStrategy,
-    AsbplayerSettings,
-    DictionaryTokenSource,
-    TokenState,
-    TokenStatus,
-} from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { ApplyStrategy, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
+import type { DictionaryTokenRecord } from '@project/common/dictionary-db/dictionary-db';
 import {
     DictionaryDB,
-    DictionaryTokenRecord,
     LOCAL_TOKEN_TRACK,
     _gatherModifiedTokens,
     _getFromSourceBulk,
     _saveRecordBulk,
-} from './dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
@@ -29,7 +24,7 @@ import {
     profile,
     tokenKey,
     track,
-} from './dictionary-db-test-utils';
+} from '@project/common/dictionary-db/dictionary-db-test-utils';
 
 describe('DictionaryDB', () => {
     let dictionaryDB: DictionaryDB;

@@ -1,15 +1,16 @@
-import {
+import { asbError, ensureStoragePersisted } from '@project/common/util';
+import type {
     OpenStatisticsMessage,
-    PlayMode,
     SettingsUpdatedMessage,
     ToggleSubtitlesInListFromVideoMessage,
     ToggleSubtitlesMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import { ApplyStrategy, KeyBindSet, TokenState } from '@project/common/settings';
+import { PlayMode } from '@project/common';
+import type { KeyBindSet } from '@project/common/settings';
+import { ApplyStrategy, TokenState } from '@project/common/settings';
 import { DefaultKeyBinder } from '@project/common/key-binder';
-import Binding from './binding';
-import { ensureStoragePersisted } from '@project/common/util';
+import type Binding from '@project/extension/src/services/binding';
 
 type Unbinder = (() => void) | false;
 
@@ -337,7 +338,7 @@ export default class KeyBindings {
                         };
                         void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
-                    .catch(console.error);
+                    .catch((error) => asbError('key-bindings', error));
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -364,7 +365,7 @@ export default class KeyBindings {
                         };
                         void browser.runtime.sendMessage(settingsUpdatedCommand);
                     })
-                    .catch(console.error);
+                    .catch((error) => asbError('key-bindings', error));
             },
             () => context.subtitleController.subtitles.length === 0,
             true

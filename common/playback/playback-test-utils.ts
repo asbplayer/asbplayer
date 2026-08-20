@@ -1,10 +1,9 @@
-import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import type { PlaybackPlanInput } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
-import {
-    compilePlaybackTimelineSubtitles,
-    type PlaybackTimelineOptions,
-} from '@project/common/playback/timeline/playback-timeline-compiler';
+import { compilePlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
+import type { PlaybackTimelineOptions } from '@project/common/playback/timeline/playback-timeline-compiler';
 import type { TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
 
 export const emptyTimingDriverCallbacks: TimingDriverCallbacks = {

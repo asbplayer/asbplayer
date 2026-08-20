@@ -1,5 +1,5 @@
-import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
-import { inferTracks, trackId } from './util';
+import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import { inferTracks, trackId } from '@project/extension/src/pages/util';
 import { parse } from 'mpd-parser';
 
 export interface Segment {

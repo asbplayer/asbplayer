@@ -1,5 +1,5 @@
-import TabRegistry from '@/services/tab-registry';
-import { Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
+import type TabRegistry from '@/services/tab-registry';
+import type { Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
 
 export default class OpenStatisticsOverlayHandler {
     private readonly _tabRegistry: TabRegistry;

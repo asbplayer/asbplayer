@@ -1,4 +1,5 @@
-import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import { asbError } from '@project/common/util';
+import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { poll, trackFromDef } from '@/pages/util';
 
 declare const netflix: any | undefined;
@@ -24,7 +25,7 @@ export default defineUnlistedScript(() => {
                 const playerSessionIds = netflixVideo.getAllPlayerSessionIds?.() || [];
 
                 if (0 === playerSessionIds.length) {
-                    console.error('No Netflix player session IDs');
+                    asbError('netflix', 'No Netflix player session IDs');
                     return undefined;
                 }
 
@@ -32,7 +33,7 @@ export default defineUnlistedScript(() => {
                 return netflixVideo.getVideoPlayerBySessionId?.(playerSessionId);
             }
 
-            console.error('Missing netflix global');
+            asbError('netflix', 'Missing netflix global');
             return undefined;
         }
 
@@ -226,6 +227,7 @@ export default defineUnlistedScript(() => {
                         })
                     );
                 })().catch((e) => {
+                    asbError('netflix', e);
                     const error = e instanceof Error ? e.message : String(e);
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-synced-data', {
@@ -322,11 +324,13 @@ export default defineUnlistedScript(() => {
                     .then(() => fetchDataForLanguage(e));
                 currentFetchForLanguagePromise = nextFetchForLanguagePromise;
 
-                void nextFetchForLanguagePromise.catch(console.error).finally(() => {
-                    if (currentFetchForLanguagePromise === nextFetchForLanguagePromise) {
-                        currentFetchForLanguagePromise = undefined;
-                    }
-                });
+                void nextFetchForLanguagePromise
+                    .catch((error) => asbError('netflix', error))
+                    .finally(() => {
+                        if (currentFetchForLanguagePromise === nextFetchForLanguagePromise) {
+                            currentFetchForLanguagePromise = undefined;
+                        }
+                    });
             },
             false
         );
@@ -358,7 +362,7 @@ export default defineUnlistedScript(() => {
                         detail: apiAvailable,
                     })
                 );
-            })().catch(console.error);
+            })().catch((error) => asbError('netflix', error));
         });
     }, 0);
 });

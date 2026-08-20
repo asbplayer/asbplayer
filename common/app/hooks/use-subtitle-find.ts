@@ -1,7 +1,9 @@
-import { MutableRefObject, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type ListRange, type TableVirtuosoHandle } from 'react-virtuoso';
-import { type DisplaySubtitleModel } from '@project/common';
-import { type DictionaryTrack, dictionaryTrackEnabled } from '@project/common/settings';
+import type { MutableRefObject, RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ListRange, TableVirtuosoHandle } from 'react-virtuoso';
+import type { DisplaySubtitleModel } from '@project/common';
+import { dictionaryTrackEnabled } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
 import { normalizedLookupTerms, normalizeSearchText } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 

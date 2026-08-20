@@ -1,5 +1,5 @@
-import { Command, Message, RequestingActiveTabPermissionMessage, VideoToExtensionCommand } from '@project/common';
-import { setRequestingActiveTabPermission } from '../../services/active-tab-permission-request';
+import type { Command, Message, RequestingActiveTabPermissionMessage, VideoToExtensionCommand } from '@project/common';
+import { setRequestingActiveTabPermission } from '@project/extension/src/services/active-tab-permission-request';
 
 export class RequestingActiveTabPermissionHandler {
     get sender() {

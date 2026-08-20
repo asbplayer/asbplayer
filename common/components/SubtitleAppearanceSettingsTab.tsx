@@ -9,33 +9,32 @@ import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Radio from '@mui/material/Radio';
+import type { AsbplayerSettings, TextSubtitleSettings, CustomStyle } from '@project/common/settings';
 import {
-    AsbplayerSettings,
-    TextSubtitleSettings,
     changeForTextSubtitleSetting,
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
 import { isNumeric } from '@project/common/util';
-import { CustomStyle } from '@project/common/settings';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Autocomplete from '@mui/material/Autocomplete';
 import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
-import SubtitleAppearanceTrackSelector from './SubtitleAppearanceTrackSelector';
-import SubtitlePreview from './SubtitlePreview';
+import SubtitleAppearanceTrackSelector from '@project/common/components/SubtitleAppearanceTrackSelector';
+import SubtitlePreview from '@project/common/components/SubtitlePreview';
 import Stack from '@mui/material/Stack';
-import SettingsTextField from './SettingsTextField';
-import NumericSettingInput from './NumericSettingInput';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import SettingsSection from './SettingsSection';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import SettingsSection from '@project/common/components/SettingsSection';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 // Filter out keys that look like '0', '1', ... as those are invalid
 const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
@@ -131,6 +130,7 @@ interface Props {
     localFontsPermission?: PermissionState;
     localFontFamilies: string[];
     onUnlockLocalFonts: () => void;
+    onViewKeyboardShortcuts: () => void;
 }
 
 const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
@@ -144,6 +144,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     localFontsPermission,
     localFontFamilies,
     onUnlockLocalFonts,
+    onViewKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -489,7 +490,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     <NumericSettingInput
                         color="primary"
                         fullWidth
-                        label={t('settings.subtitlePositionOffset')}
+                        label={
+                            <>
+                                {t('settings.subtitlePositionOffset')}
+                                <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} preset="numericalInputLabel" />
+                            </>
+                        }
                         value={subtitlePositionOffset}
                         slotProps={{
                             htmlInput: {
@@ -502,7 +508,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     <NumericSettingInput
                         color="primary"
                         fullWidth
-                        label={t('settings.topSubtitlePositionOffset')}
+                        label={
+                            <>
+                                {t('settings.topSubtitlePositionOffset')}
+                                <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} preset="numericalInputLabel" />
+                            </>
+                        }
                         value={topSubtitlePositionOffset}
                         slotProps={{
                             htmlInput: {

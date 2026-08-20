@@ -1,44 +1,6 @@
 import {
-    DictionaryBuildAnkiCacheState,
-    DictionaryBuildAnkiCacheStateError,
-    DictionaryBuildAnkiCacheStateErrorCode,
-    DictionaryBuildAnkiCacheStateType,
-    DictionaryBuildWaniKaniCacheState,
-    DictionaryBuildWaniKaniCacheStateError,
-    DictionaryBuildWaniKaniCacheStateErrorCode,
-    DictionaryBuildWaniKaniCacheStateType,
-    Fetcher,
-    IndexedSubtitleModel,
-    Token,
-    Tokenization,
-    TokenizedSubtitleModel,
-    TokenReading,
-} from '@project/common';
-import { Anki } from '@project/common/anki';
-import {
-    ApplyStrategy,
-    areDictionaryTracksEqual,
-    AsbplayerSettings,
-    dictionaryStatusCollectionEnabled,
-    DictionaryTokenSource,
-    DictionaryTrack,
-    dictionaryTrackEnabled,
-    getFullyKnownTokenStatus,
-    SettingsProvider,
-    TokenMatchStrategy,
-    TokenState,
-    TokenStatus,
-} from '@project/common/settings';
-import { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
-import {
-    DictionaryStatistics,
-    DictionaryStatisticsAnkiDueCardsSnapshot,
-    DictionaryStatisticsAnkiSnapshot,
-    DictionaryStatisticsWaniKaniSnapshot,
-    REVIEW_DUES,
-} from '@project/common/dictionary-statistics';
-import { SubtitleCollection, SubtitleCollectionOptions } from '@project/common/subtitle-collection';
-import {
+    asbError,
+    asbWarn,
     arrayEquals,
     HAS_LETTER_REGEX,
     inBatches,
@@ -47,8 +9,53 @@ import {
     isKanaOnly,
     normalizeToken,
 } from '@project/common/util';
+import type {
+    DictionaryBuildAnkiCacheState,
+    DictionaryBuildAnkiCacheStateError,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateError,
+    Fetcher,
+    IndexedSubtitleModel,
+    Token,
+    Tokenization,
+    TokenizedSubtitleModel,
+    TokenReading,
+} from '@project/common';
+import {
+    DictionaryBuildAnkiCacheStateErrorCode,
+    DictionaryBuildAnkiCacheStateType,
+    DictionaryBuildWaniKaniCacheStateErrorCode,
+    DictionaryBuildWaniKaniCacheStateType,
+} from '@project/common';
+import { Anki } from '@project/common/anki';
+import type {
+    ApplyStrategy,
+    AsbplayerSettings,
+    DictionaryTrack,
+    SettingsProvider,
+    TokenStatus,
+} from '@project/common/settings';
+import {
+    areDictionaryTracksEqual,
+    dictionaryStatusCollectionEnabled,
+    DictionaryTokenSource,
+    dictionaryTrackEnabled,
+    getFullyKnownTokenStatus,
+    TokenMatchStrategy,
+    TokenState,
+} from '@project/common/settings';
+import type { DictionaryProvider, TokenResults } from '@project/common/dictionary-db';
+import type {
+    DictionaryStatisticsAnkiDueCardsSnapshot,
+    DictionaryStatisticsAnkiSnapshot,
+    DictionaryStatisticsWaniKaniSnapshot,
+} from '@project/common/dictionary-statistics';
+import { DictionaryStatistics, REVIEW_DUES } from '@project/common/dictionary-statistics';
+import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
+import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { Yomitan } from '@project/common/yomitan';
-import { InternalToken, resolveTokenStatus, TokenCollection, TokenCollectionArray } from '@project/common/annotations';
+import type { InternalToken } from '@project/common/annotations';
+import { resolveTokenStatus, TokenCollection, TokenCollectionArray } from '@project/common/annotations';
 
 const TOKEN_CACHE_BUILD_AHEAD_INIT = 10;
 const TOKEN_CACHE_BUILD_AHEAD = 100;
@@ -474,11 +481,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 this.ankiState.statisticsRefreshed = false;
             }
             if (body) {
-                console.error(
+                asbError(
+                    'annotations/anki',
                     `Dictionary Anki cache build error (${body.code} - ${body.msg}): ${JSON.stringify(body.data ?? {})}`
                 );
             } else {
-                console.error(`Dictionary Anki cache build error: Unknown error`);
+                asbError('annotations/anki', `Dictionary Anki cache build error: Unknown error`);
             }
             if (body?.code !== DictionaryBuildAnkiCacheStateErrorCode.concurrentBuild) {
                 this.ankiState.recentlyModifiedCardIds.clear();
@@ -499,7 +507,8 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             ) {
                 this.waniKaniState.statisticsRefreshed = false;
             }
-            console.error(
+            asbError(
+                'annotations/wanikani',
                 `Dictionary WaniKani cache build error (${body.code} - ${body.msg}): ${JSON.stringify(body.data ?? {})}`
             );
         } else if (state.type === DictionaryBuildWaniKaniCacheStateType.stats) {
@@ -557,7 +566,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.ankiState.statisticsRefreshed = false;
         } catch (e) {
             if (!this.ankiConnectionError) {
-                console.error(`Error checking Anki recently modified cards:`, e);
+                asbError('annotations/anki', `Error checking Anki recently modified cards:`, e);
                 this.ankiConnectionError = true;
             }
             this.anki = undefined;
@@ -582,7 +591,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     this.ankiConnectionError = false;
                 } catch (e) {
                     if (!this.ankiConnectionError) {
-                        console.warn('Anki permission request failed:', e);
+                        asbWarn('annotations/anki', 'Anki permission request failed:', e);
                         this.ankiConnectionError = true;
                     }
                     this.anki = undefined;
@@ -616,7 +625,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             await this._refreshAnkiStatistics(profile, fields, decks);
         } catch (e) {
             if (!this.ankiConnectionError) {
-                console.warn('Anki refresh failed:', e);
+                asbWarn('annotations/anki', 'Anki refresh failed:', e);
                 this.ankiConnectionError = true;
             }
             this.ankiState.refreshed = false;
@@ -672,7 +681,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.ankiConnectionError = false;
         } catch (e) {
             if (!this.ankiConnectionError) {
-                console.error('Error refreshing Anki for statistics:', e);
+                asbError('annotations/anki', 'Error refreshing Anki for statistics:', e);
                 this.ankiConnectionError = true;
             }
             this.anki = undefined;
@@ -708,7 +717,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             await this._refreshWaniKaniStatistics(profile);
         } catch (e) {
             this.waniKaniState.refreshed = false;
-            console.warn('WaniKani refresh failed:', e);
+            asbWarn('annotations/wanikani', 'WaniKani refresh failed:', e);
         } finally {
             this.waniKaniState.refreshing = false;
         }
@@ -730,7 +739,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     subjects: records.waniKaniSubjectRecords?.[ts.track] ?? {},
                 };
             } catch (e) {
-                console.error(`Error refreshing WaniKani for Track${ts.track + 1} statistics:`, e);
+                asbError('annotations/wanikani', `Error refreshing WaniKani for Track${ts.track + 1} statistics:`, e);
                 waniKaniSnapshots[ts.track] = { available: false, assignments: [], subjects: {} };
             }
         }
@@ -911,7 +920,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     await yt.version();
                     ts.updateYomitan(yt);
                 } catch (e) {
-                    console.error(`YomitanTrack${ts.track + 1} version request failed:`, e);
+                    asbError('annotations/yomitan', `YomitanTrack${ts.track + 1} version request failed:`, e);
                     ts.resetYomitan();
                 }
             }
@@ -1040,7 +1049,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                                     this.trackStates.map((ts) => ts.dt)
                                 );
                             } catch (e) {
-                                console.error(`Error building annotations for subtitle index ${index}:`, e);
+                                asbError(
+                                    'annotations/tokenization',
+                                    `Error building annotations for subtitle index ${index}:`,
+                                    e
+                                );
                                 if (deletedFromRefreshCache) this.refreshCache.add(index);
                                 else this.erroredCache.add(index);
                             } finally {
@@ -1226,7 +1239,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     }
                 }
             } catch (e) {
-                console.error(`Error building token and lemma map for track ${track}:`, e);
+                asbError('annotations/yomitan', `Error building token and lemma map for track ${track}:`, e);
                 ts.resetYomitan();
             }
         }
@@ -1245,7 +1258,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     ): Promise<{ reconstructedText: string; tokenization: Tokenization } | undefined> {
         if (!ts.yt) {
             this.tokenRequestFailedForTracks.add(ts.track);
-            console.error(`Yomitan not initialized`);
+            asbError('annotations/yomitan', `Yomitan not initialized`);
             existingTokenization.error = true;
             return { reconstructedText: fullText, tokenization: existingTokenization };
         }
@@ -1340,7 +1353,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             await promise;
         } catch (e) {
             this.tokenRequestFailedForTracks.add(ts.track);
-            console.error(`Tokenization request failed for index ${index}:`, e);
+            asbError('annotations/tokenization', `Tokenization request failed for index ${index}:`, e);
             this.erroredCache.add(index);
             existingTokenization.error = true;
             return { reconstructedText: fullText, tokenization: existingTokenization };
@@ -1437,7 +1450,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             return { reconstructedText: reconstructedTextParts.join(''), tokenization: { tokens } };
         } catch (error) {
             this.tokenRequestFailedForTracks.add(ts.track);
-            console.error(`Error annotating subtitle text for Track${ts.track + 1}:`, error);
+            asbError('annotations/tokenization', `Error annotating subtitle text for Track${ts.track + 1}:`, error);
             this.erroredCache.add(index);
             return { reconstructedText: fullText, tokenization: { tokens: [], error: true } };
         }

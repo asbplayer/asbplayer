@@ -1,5 +1,6 @@
-import ImageCapturer from '../../services/image-capturer';
-import {
+import { asbError } from '@project/common/util';
+import type ImageCapturer from '@project/extension/src/services/image-capturer';
+import type {
     AudioModel,
     Command,
     ImageModel,
@@ -9,13 +10,12 @@ import {
     ExtensionToVideoCommand,
     ScreenshotTakenMessage,
     CardModel,
-    AudioErrorCode,
-    ImageErrorCode,
-    PostMineAction,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { CardPublisher } from '../../services/card-publisher';
-import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
+import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -140,7 +140,7 @@ export default class RecordMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                console.error(e);
+                asbError('recording/screenshot', e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',

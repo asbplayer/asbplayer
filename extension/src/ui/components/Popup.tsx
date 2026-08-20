@@ -1,24 +1,21 @@
 import Grid from '@mui/material/Grid';
-import { Command, HttpPostMessage, OpenStatisticsOverlayMessage, PopupToExtensionCommand } from '@project/common';
-import {
-    AsbplayerSettings,
-    Profile,
-    chromeCommandBindsToKeyBinds,
-    dictionaryTrackEnabled,
-} from '@project/common/settings';
+import type { Command, HttpPostMessage, OpenStatisticsOverlayMessage, PopupToExtensionCommand } from '@project/common';
+import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import { chromeCommandBindsToKeyBinds, dictionaryTrackEnabled } from '@project/common/settings';
 import SettingsForm from '@project/common/components/SettingsForm';
 import PanelIcon from '@project/common/components/PanelIcon';
 import LaunchIcon from '@mui/icons-material/Launch';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useCallback, useMemo } from 'react';
-import Button, { type ButtonProps } from '@mui/material/Button';
+import Button from '@mui/material/Button';
+import type { ButtonProps } from '@mui/material/Button';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import { useTranslation } from 'react-i18next';
-import { Fetcher } from '@project/common/src/fetcher';
+import type { Fetcher } from '@project/common/src/fetcher';
 import { useLocalFontFamilies } from '@project/common/hooks';
 import { Anki } from '@project/common/anki';
-import { useSupportedLanguages } from '../hooks/use-supported-languages';
-import { useI18n } from '../hooks/use-i18n';
+import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-supported-languages';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { isMobile } from 'react-device-detect';
 import { useTheme } from '@mui/material/styles';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
@@ -27,16 +24,15 @@ import Stack from '@mui/material/Stack';
 import TutorialIcon from '@project/common/components/TutorialIcon';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import Paper from '@mui/material/Paper';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
-import { uiTabRegistry, useMediaId } from '../hooks/use-media-id';
+import { uiTabRegistry, useMediaId, useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
 import Statistics from '@project/common/components/Statistics';
 import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
-import { useCurrentTabId } from '../hooks/use-current-tab-id';
-import { useLastMediaIdOnce } from '../hooks/use-media-id';
+import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 

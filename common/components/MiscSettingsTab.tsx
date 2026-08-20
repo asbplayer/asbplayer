@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
@@ -9,13 +10,12 @@ import Stack from '@mui/material/Stack';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
-import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
-import SettingsTextField from './SettingsTextField';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
+import type { AsbplayerSettings } from '@project/common/settings';
 import {
-    AsbplayerSettings,
     autoPausePreferenceForCheckboxChange,
     exportSettings,
     isTrackAutoCopyable,
@@ -24,19 +24,20 @@ import {
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
     validateSettings,
-} from '../settings';
-import { Trans, useTranslation } from 'react-i18next';
+    VideoSubtitleSplitBehavior,
+} from '@project/common/settings';
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AutoPausePreference, SubtitleHtml } from '..';
-import { WebSocketClient } from '../web-socket-client';
+import { WebSocketClient } from '@project/common/web-socket-client';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SettingsSection, { SettingsSubSection } from './SettingsSection';
-import ResponsiveSettingsStack from './ResponsiveSettingsStack';
-import { VideoSubtitleSplitBehavior } from '../settings';
-import { normalizePlaybackRate } from '../playback/controllers/playback-mode-controller';
-import NumericSettingInput from './NumericSettingInput';
+import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
+import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
+import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 function regexIsValid(regex: string) {
     try {
@@ -59,6 +60,8 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting?: boolean;
     supportsPlaybackEngine: boolean;
     onViewPlaybackModeKeyboardShortcuts: () => void;
+    onViewPlaybackRateKeyboardShortcuts: () => void;
+    onViewSubtitleKeyboardShortcuts: () => void;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
@@ -73,6 +76,8 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsAutoCopyableTrackSetting,
     supportsPlaybackEngine,
     onViewPlaybackModeKeyboardShortcuts,
+    onViewPlaybackRateKeyboardShortcuts,
+    onViewSubtitleKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -128,7 +133,7 @@ const MiscSettingTab: React.FC<Props> = ({
             .then(() => client.ping())
             .then(() => setWebSocketConnectionSucceeded(true))
             .catch((e) => {
-                console.error(e);
+                asbError('settings/web-socket', e);
                 setWebSocketConnectionSucceeded(false);
             })
             .finally(() => client.unbind());
@@ -162,7 +167,7 @@ const MiscSettingTab: React.FC<Props> = ({
             const validatedSettings = validateSettings(importedSettings);
             onSettingsChanged(validatedSettings);
         } catch (e) {
-            console.error(e);
+            asbError('settings/import', e);
         }
     }, [onSettingsChanged]);
 
@@ -297,7 +302,10 @@ const MiscSettingTab: React.FC<Props> = ({
                 )}
                 {(!extensionInstalled || extensionSupportsSeekableTrackSetting) && (
                     <FormControl>
-                        <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
+                        <FormLabel component="legend" sx={{ display: 'flex' }}>
+                            {t('settings.seekableTracks')}
+                            <KeyboardShortcutLink onClick={onViewSubtitleKeyboardShortcuts} preset="formLabel" />
+                        </FormLabel>
                         <FormGroup>
                             {[0, 1, 2].map((trackIndex) => {
                                 return (
@@ -453,20 +461,23 @@ const MiscSettingTab: React.FC<Props> = ({
                         </RadioGroup>
                     </FormControl>
                 )}
-                <SettingsSection>{t('settings.playbackModes')}</SettingsSection>
-                <Typography variant="caption" color="textSecondary">
-                    <Trans
-                        i18nKey="settings.playbackModesHelperText"
-                        components={[
-                            <Link key={0} onClick={onViewPlaybackModeKeyboardShortcuts} sx={{ cursor: 'pointer' }} />,
-                        ]}
-                    />
-                </Typography>
+                <SettingsSection>
+                    {t('settings.playbackModes')}
+                    <KeyboardShortcutLink onClick={onViewPlaybackModeKeyboardShortcuts} />
+                </SettingsSection>
                 {supportsPlaybackEngine && (
                     <>
                         <NumericSettingInput
                             fullWidth
-                            label={t('settings.playbackRate')}
+                            label={
+                                <>
+                                    {t('settings.playbackRate')}
+                                    <KeyboardShortcutLink
+                                        onClick={onViewPlaybackRateKeyboardShortcuts}
+                                        preset="numericalInputLabel"
+                                    />
+                                </>
+                            }
                             value={playbackRate}
                             color="primary"
                             normalizeValue={normalizePlaybackRate}

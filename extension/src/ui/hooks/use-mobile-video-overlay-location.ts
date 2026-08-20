@@ -1,4 +1,4 @@
-import { CurrentTabMessage, MobileOverlayCommand } from '@project/common';
+import type { CurrentTabMessage, MobileOverlayCommand } from '@project/common';
 import { useEffect, useState } from 'react';
 
 export interface Location {

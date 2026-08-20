@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     CaptureVisibleTabMessage,
     ForegroundToExtensionCommand,
     OpenAsbplayerSettingsMessage,
@@ -7,11 +8,12 @@ import {
     VideoSelectModeConfirmMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
-import { VideoElement } from '../ui/components/VideoSelectUi';
-import Binding from '../services/binding';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
-import { ExtensionSettingsStorage } from '../services/extension-settings-storage';
+import type { VideoElement } from '@project/extension/src/ui/components/VideoSelectUi';
+import type Binding from '@project/extension/src/services/binding';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 interface VideoSelectControllerOptions {
@@ -201,7 +203,7 @@ export default class VideoSelectController {
                         this._frame.hide();
                         this._subtitleFiles = undefined;
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError('video/select', error));
             });
         }
 

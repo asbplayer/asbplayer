@@ -1,14 +1,14 @@
-import {
+import type {
     MobileOverlayToVideoCommand,
     MobileOverlayModel,
     UpdateMobileOverlayModelMessage,
     VideoToExtensionCommand,
     PlayModeMessage,
 } from '@project/common';
-import type Binding from '../services/binding';
-import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
+import type Binding from '@project/extension/src/services/binding';
+import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
 import { adjacentSubtitle } from '@project/common/key-binder';
-import { frameColorScheme, frameColorSchemeClass } from '../services/frame-color-scheme';
+import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 import { v4 as uuidv4 } from 'uuid';
 import { PlayMode } from '@project/common';
 

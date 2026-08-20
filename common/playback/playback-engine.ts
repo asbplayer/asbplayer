@@ -1,27 +1,22 @@
-import {
-    defaultSettings,
-    isTrackSeekable,
-    type AsbplayerSettings,
-    type SettingsProvider,
-} from '@project/common/settings';
+import { defaultSettings, isTrackSeekable } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { PlayMode } from '@project/common';
-import { formatAsSignedMs } from '@project/common/util';
+import { asbWarn, formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
     playbackPlansEqual,
-    type PlaybackPlan,
     playbackPlanCorrectionToleranceMs,
 } from '@project/common/playback/plan/playback-plan';
-import PlaybackPlanExecutor, {
-    type PlaybackPlanExecutorCallbacks,
-} from '@project/common/playback/plan/playback-plan-executor';
+import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
+import type { PlaybackPlanExecutorCallbacks } from '@project/common/playback/plan/playback-plan-executor';
 import PlaybackModeController, {
     minimumPlaybackRate,
     normalizePlaybackRate,
     playbackModesFromSettings,
-    type PlayModeTransition,
 } from '@project/common/playback/controllers/playback-mode-controller';
+import type { PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
@@ -184,7 +179,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     (!Number.isFinite(actualPlaybackRate) ||
                         Math.abs(actualPlaybackRate - playbackRate) > minimumPlaybackRate)
                 ) {
-                    console.warn('[asbplayer/playback] Playback rate command was not respected', {
+                    asbWarn('playback/rate', 'Playback rate command was not respected', {
                         requestedPlaybackRate: playbackRate,
                         actualPlaybackRate,
                     });
@@ -653,7 +648,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         let watchdogHandle: ReturnType<typeof setTimeout> | undefined;
         const watchdog = new Promise<'cancelled'>((resolve) => {
             watchdogHandle = setTimeout(() => {
-                console.warn('[asbplayer/playback] Internal seek did not complete before the watchdog timeout', {
+                asbWarn('playback/seek', 'Internal seek did not complete before the watchdog timeout', {
                     targetTimestampMs,
                     timeoutMs: internalSeekWatchdogMs,
                 });
@@ -678,7 +673,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const actualTimestampMs = this.timingDriver.currentTimeMs();
         const frameTimeMs = this.timingDriver.frameTimeMs();
         if (frameTimeMs <= 0 || Math.abs(actualTimestampMs - targetTimestampMs) <= frameTimeMs / 2) return;
-        console.warn(`[asbplayer/playback] ${command} command has a timestamp mismatch`, {
+        asbWarn('playback/seek', `${command} command has a timestamp mismatch`, {
             targetTimestampMs,
             actualTimestampMs,
             frameTimeMs,

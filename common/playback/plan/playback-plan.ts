@@ -1,14 +1,13 @@
-import { AutoPausePreference, PlayMode, type IndexedSubtitleModel } from '@project/common';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import type {
     PlaybackTimelineBlock,
     PlaybackTimelineEndAction,
     PlaybackTimelineRepeatAction,
     PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';
-import {
-    compilePlaybackTimelineSubtitles,
-    type PlaybackTimelineSubtitles,
-} from '@project/common/playback/timeline/playback-timeline-compiler';
+import { compilePlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
+import type { PlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
 import {
     areSubtitleModelsEqual,
     arrayEquals,

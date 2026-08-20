@@ -1,28 +1,30 @@
-import {
+import type {
     CopyToClipboardMessage,
     OffsetFromVideoMessage,
     SubtitlesUpdatedFromVideoMessage,
     SubtitleModel,
-    SubtitleHtml,
     VideoToExtensionCommand,
     Fetcher,
     HttpPostMessage,
     IndexedSubtitleModel,
     PlaybackState,
 } from '@project/common';
-import {
+import { SubtitleHtml } from '@project/common';
+import type {
     AutoCopyableTracks,
     DictionaryTrack,
     SettingsProvider,
     SubtitleAlignment,
     SubtitleSettings,
     TextSubtitleSettings,
+} from '@project/common/settings';
+import {
     allTextSubtitleSettings,
     calculateAutoCopyableTracksValue,
     isTrackAutoCopyable,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
-import { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
+import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
 import { renderRichTextOntoSubtitles, getAnnotationsHtml, SubtitleAnnotations } from '@project/common/annotations';
 import {
     arrayEquals,
@@ -32,16 +34,11 @@ import {
     surroundingSubtitles,
 } from '@project/common/util';
 import i18n from 'i18next';
-import {
-    CachingElementOverlay,
-    ElementOverlay,
-    ElementOverlayParams,
-    KeyedHtml,
-    OffsetAnchor,
-} from '../services/element-overlay';
+import type { ElementOverlay, ElementOverlayParams, KeyedHtml } from '@project/extension/src/services/element-overlay';
+import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
 import { v4 as uuidv4 } from 'uuid';
-import { DictionaryProvider } from '@project/common/dictionary-db';
-import Binding from '@/services/binding';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type Binding from '@/services/binding';
 
 const BOUNDING_BOX_PADDING = 25;
 

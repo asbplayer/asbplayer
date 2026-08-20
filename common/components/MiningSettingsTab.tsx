@@ -1,20 +1,20 @@
-import TextField from './SettingsTextField';
+import TextField from '@project/common/components/SettingsTextField';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import FormLabel from '@mui/material/FormLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import Radio from '@mui/material/Radio';
 import { isWebmMediaFragmentSupported, PostMineAction, PostMinePlayback } from '@project/common';
-import { AsbplayerSettings } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import FormControl from '@mui/material/FormControl';
-import SettingsSection from './SettingsSection';
-import NumericSettingInput from './NumericSettingInput';
+import SettingsSection from '@project/common/components/SettingsSection';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
 
 interface Props {
     settings: AsbplayerSettings;

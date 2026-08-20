@@ -1,6 +1,6 @@
 import type { Command, Message } from '@project/common';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
-import { SettingsProvider } from '@project/common/settings';
+import type { SettingsProvider } from '@project/common/settings';
 
 export default class ClearCopyHistoryHandler {
     private readonly _settings: SettingsProvider;

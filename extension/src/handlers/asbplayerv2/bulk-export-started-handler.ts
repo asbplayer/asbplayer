@@ -1,4 +1,4 @@
-import { CardPublisher } from '../../services/card-publisher';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 
 export default class BulkExportStartedHandler {
     readonly sender = 'asbplayerv2';

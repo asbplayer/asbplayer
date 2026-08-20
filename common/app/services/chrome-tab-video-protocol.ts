@@ -1,6 +1,7 @@
-import { Message } from '@project/common';
-import ChromeExtension, { ExtensionMessage } from './chrome-extension';
-import { VideoProtocol, VideoProtocolMessage } from './video-protocol';
+import type { Message } from '@project/common';
+import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 
 export default class ChromeTabVideoProtocol implements VideoProtocol {
     private readonly tabId: number;

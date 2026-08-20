@@ -1,5 +1,5 @@
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import AppBar from '@mui/material/AppBar';
@@ -13,20 +13,21 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Toolbar from '@mui/material/Toolbar';
 import type { TooltipProps } from '@mui/material/Tooltip';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useState } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
-import MuiLink, { LinkProps as MuiLinkProps } from '@mui/material/Link';
+import type { LinkProps as MuiLinkProps } from '@mui/material/Link';
+import MuiLink from '@mui/material/Link';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import ErrorIcon from '@mui/icons-material/Error';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import { FileWithId } from '../../file-selector';
+import type { FileWithId } from '@project/common/file-selector';
 
 interface BarProps {
     drawerWidth: number;

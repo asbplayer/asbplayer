@@ -1,4 +1,4 @@
-import { PageSettings } from '../settings';
+import type { PageSettings } from '../settings';
 
 export interface PageMetadata {
     title: string;

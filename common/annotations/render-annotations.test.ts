@@ -1,12 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 import {
-    type DictionaryTrack,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenStatus,
     TokenStyling,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     computeRichText,
     emptyRichTextWindow,
@@ -15,8 +15,13 @@ import {
     renderRichTextForSubtitle,
     renderRichTextOntoSubtitles,
     renderRichTextWindow,
-} from './render-annotations';
-import { makeDictionaryTrack, makeDictionaryTracks, makeSubtitle, makeToken } from './annotations-test-utils';
+} from '@project/common/annotations/render-annotations';
+import {
+    makeDictionaryTrack,
+    makeDictionaryTracks,
+    makeSubtitle,
+    makeToken,
+} from '@project/common/annotations/annotations-test-utils';
 
 type AnnotationToggles = {
     color?: boolean;

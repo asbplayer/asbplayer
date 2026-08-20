@@ -1,7 +1,9 @@
+import { asbError, asbInfo } from '@project/common/util';
 import Binding from '@/services/binding';
-import { PageDelegate, currentPageDelegate } from '@/services/pages';
+import type { PageDelegate } from '@/services/pages';
+import { currentPageDelegate } from '@/services/pages';
 import VideoSelectController from '@/controllers/video-select-controller';
-import {
+import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
     TabToExtensionCommand,
@@ -228,14 +230,17 @@ export default defineContentScript({
                                     if (blob.type.startsWith('text/plain')) {
                                         blob.text()
                                             .then((text) => navigator.clipboard.writeText(text))
-                                            .catch(console.info);
+                                            .catch((error) => asbInfo('video/clipboard', error));
                                     } else {
-                                        console.error(`Cannot write blob type ${blob.type} to clipboard on Firefox`);
+                                        asbError(
+                                            'video/clipboard',
+                                            `Cannot write blob type ${blob.type} to clipboard on Firefox`
+                                        );
                                     }
                                 } else {
                                     navigator.clipboard
                                         .write([new ClipboardItem({ [blob.type]: blob })])
-                                        .catch(console.error);
+                                        .catch((error) => asbError('video/clipboard', error));
                                 }
                             });
                         break;
@@ -306,11 +311,11 @@ export default defineContentScript({
         };
 
         if (document.readyState === 'complete') {
-            bind().catch(console.error);
+            bind().catch((error) => asbError('video', error));
         } else {
             document.addEventListener('readystatechange', () => {
                 if (document.readyState === 'complete') {
-                    bind().catch(console.error);
+                    bind().catch((error) => asbError('video', error));
                 }
             });
         }

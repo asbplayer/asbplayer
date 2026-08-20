@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerToVideoCommandV2,
     ControlType,
     CopySubtitleMessage,
@@ -17,12 +17,12 @@ import {
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useMobileVideoOverlayModel } from '../hooks/use-mobile-video-overlay-model';
-import { useMobileVideoOverlayLocation } from '../hooks/use-mobile-video-overlay-location';
+import { useMobileVideoOverlayModel } from '@project/extension/src/ui/hooks/use-mobile-video-overlay-model';
+import { useMobileVideoOverlayLocation } from '@project/extension/src/ui/hooks/use-mobile-video-overlay-location';
 import { SettingsProvider } from '@project/common/settings';
-import { ExtensionSettingsStorage } from '../../services/extension-settings-storage';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { isMobile } from '@project/common/device-detection/mobile';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
 import { createTheme } from '@project/common/theme';

@@ -1,4 +1,5 @@
-import {
+import { asbError, sourceString } from '@project/common/util';
+import type {
     AnkiUiInitialState,
     OpenAsbplayerSettingsMessage,
     CopyToClipboardMessage,
@@ -13,11 +14,12 @@ import {
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
 } from '@project/common';
-import { AnkiSettings, SettingsProvider, ankiSettingsKeys } from '@project/common/settings';
-import { sourceString } from '@project/common/util';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
-import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
+import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
+import { ankiSettingsKeys } from '@project/common/settings';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
@@ -174,7 +176,9 @@ export class TabAnkiUiController {
                             return;
                         }
                         case 'dismissedQuickSelectFtue':
-                            globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                            globalStateProvider
+                                .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
+                                .catch((error) => asbError('anki/ui', error));
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
@@ -206,7 +210,7 @@ export class TabAnkiUiController {
                             return;
                         }
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError('anki/ui', error));
             });
         }
 

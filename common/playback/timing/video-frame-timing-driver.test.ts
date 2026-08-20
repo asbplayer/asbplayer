@@ -2,11 +2,11 @@ import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playba
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
 import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
-import VideoFrameTimingDriver, {
-    type VideoFrameTimingSource,
-} from '@project/common/playback/timing/video-frame-timing-driver';
+import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
+import type { VideoFrameTimingSource } from '@project/common/playback/timing/video-frame-timing-driver';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AutoPausePreference, type IndexedSubtitleModel, PlayMode } from '@project/common';
+import { AutoPausePreference, PlayMode } from '@project/common';
+import type { IndexedSubtitleModel } from '@project/common';
 import type { TimingDriverCallbacks, TimingDriverEventCallbacks } from '@project/common/playback/timing/timing-driver';
 
 class FakeVideo extends EventTarget {

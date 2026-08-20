@@ -5,8 +5,8 @@ import PlaybackModeController, {
     playbackModesSummaryNotificationKey,
     playbackModeTransitionNotificationKey,
     playbackModesFromSettings,
-    PlaybackModeNotificationText,
 } from '@project/common/playback/controllers/playback-mode-controller';
+import type { PlaybackModeNotificationText } from '@project/common/playback/controllers/playback-mode-controller';
 
 const sortedModes = (modes: Set<PlayMode>) => [...modes].sort((left, right) => left - right);
 

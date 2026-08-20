@@ -1,12 +1,12 @@
-import {
+import type {
     AnkiExportMode,
-    AutoPausePreference,
     PlayMode,
     PostMineAction,
     PostMinePlayback,
     SubtitleHtml,
-} from '../src/model';
-import { arrayEquals } from '../util';
+} from '@project/common/src/model';
+import { AutoPausePreference } from '@project/common/src/model';
+import { arrayEquals } from '@project/common/util';
 
 export const activeProfileKey = 'activeSettingsProfile';
 export const profilesKey = 'settingsProfiles';

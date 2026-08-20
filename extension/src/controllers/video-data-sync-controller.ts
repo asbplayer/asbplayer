@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
     OpenAsbplayerSettingsMessage,
@@ -10,15 +11,16 @@ import {
     VideoDataUiBridgeOpenFileMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
     VideoDataUiModel,
-    VideoDataUiOpenReason,
     VideoToExtensionCommand,
 } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import { VideoDataUiOpenReason } from '@project/common';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
-import Binding from '../services/binding';
-import { currentPageDelegate } from '../services/pages';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
+import type Binding from '@project/extension/src/services/binding';
+import { currentPageDelegate } from '@project/extension/src/services/pages';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
@@ -402,7 +404,9 @@ export default class VideoDataSyncController {
                     }
 
                     if ('dismissFtue' === message.command) {
-                        globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
+                        globalStateProvider
+                            .set({ ftueHasSeenSubtitleTrackSelector: true })
+                            .catch((error) => asbError('video/sync', error));
                         return;
                     }
 
@@ -461,7 +465,7 @@ export default class VideoDataSyncController {
                     if (dataWasSynced) {
                         this._hideAndResume();
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError('video/sync', error));
             });
         }
 

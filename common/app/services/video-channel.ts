@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -23,10 +24,8 @@ import {
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
-    PlayMode,
     PlayModeMessage,
     PlayModesMessage,
-    PostMineAction,
     ReadyFromVideoMessage,
     ReadyStateFromVideoMessage,
     ReadyToVideoMessage,
@@ -41,7 +40,8 @@ import {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import {
+import { PlayMode, PostMineAction } from '@project/common';
+import type {
     AnkiSettings,
     ApplyStrategy,
     MiscSettings,
@@ -49,7 +49,7 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { VideoProtocol } from './video-protocol';
+import type { VideoProtocol } from '@project/common/app/services/video-protocol';
 
 export default class VideoChannel {
     private readonly protocol: VideoProtocol;
@@ -340,7 +340,7 @@ export default class VideoChannel {
                     break;
                 }
                 default:
-                    console.error('Unrecognized event ' + event.data.command);
+                    asbError('app/messages', 'Unrecognized event ' + event.data.command);
             }
         };
     }

@@ -1,5 +1,6 @@
+import { asbWarn } from '@project/common/util/log';
 import sanitize from 'sanitize-filename';
-import {
+import type {
     DimensionsModel,
     Rgb,
     SubtitleModel,
@@ -8,11 +9,12 @@ import {
     Token,
     Tokenization,
     TokenReading,
-} from '../src/model';
-import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
-import { Progress } from '..';
-import { TokenStatusInfo } from '../dictionary-db';
-import { PitchAccentPosition } from '../yomitan';
+} from '@project/common/src/model';
+import type { TextSubtitleSettings } from '@project/common/settings/settings';
+import { TokenStatus } from '@project/common/settings/settings';
+import type { Progress } from '..';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 // Cues on the same track can share a start time (e.g. Netflix splitting one line into
 // multiple cues), and SubtitleCollection does not guarantee source order in that case, so
@@ -758,7 +760,7 @@ export async function ensureStoragePersisted(): Promise<boolean | undefined> {
     if (!navigator.storage?.persist) return;
     if (await navigator.storage.persisted()) return true;
     const persisted = await navigator.storage.persist();
-    if (!persisted) console.warn('Storage could not be persisted, data may be cleared by the browser');
+    if (!persisted) asbWarn('storage', 'Storage could not be persisted, data may be cleared by the browser');
     return persisted;
 }
 

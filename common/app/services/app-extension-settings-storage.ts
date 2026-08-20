@@ -1,6 +1,6 @@
-import { AsbplayerSettings, Profile } from '@project/common/settings';
-import { ChromeExtension } from '@project/common/app';
-import { AppSettingsStorage } from '@project/common/app/services/app-settings-storage';
+import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import type { ChromeExtension } from '@project/common/app';
+import type { AppSettingsStorage } from '@project/common/app/services/app-settings-storage';
 
 export class AppExtensionSettingsStorage implements AppSettingsStorage {
     private readonly _extension: ChromeExtension;

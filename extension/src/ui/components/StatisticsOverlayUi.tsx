@@ -1,16 +1,17 @@
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { ExtensionMessage } from '@project/common/app';
+import type { ExtensionMessage } from '@project/common/app';
 import { useChromeExtension } from '@project/common/app/hooks/use-chrome-extension';
 import { DictionaryProvider } from '@project/common/dictionary-db';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import { createTheme } from '@project/common/theme';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
-import {
+import type {
     CloseStatisticsOverlayMessage,
     CurrentTabMessage,
     Message,
@@ -23,8 +24,8 @@ import {
     TabToExtensionCommand,
 } from '@project/common';
 import Box from '@mui/material/Box';
-import { uiTabRegistry } from '../hooks/use-media-id';
-import { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
+import { uiTabRegistry } from '@project/extension/src/ui/hooks/use-media-id';
+import type { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
 
 export interface OpenStatisticsOverlayOneUncollectedDialogMessage extends Message {
     readonly command: 'open-statistics-overlay-one-uncollected-dialog';

@@ -18,7 +18,7 @@ jest.mock('ass-compiler', () => ({
     },
 }));
 jest.mock('videojs-vtt.js', () => ({ WebVTT: {} }));
-import SubtitleReader, { sanitizeSubtitleHtml } from './subtitle-reader';
+import SubtitleReader, { sanitizeSubtitleHtml } from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
 
 const file = (name: string, text: string) => ({ name, text: async () => text }) as unknown as File;

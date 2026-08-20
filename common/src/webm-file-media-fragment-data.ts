@@ -1,15 +1,15 @@
+import { asbInfo, clamp } from '@project/common/util';
 import {
     CancelledMediaFragmentDataRenderingError,
     createVideoElement,
     disposeVideoElement,
     makeMediaFragmentFileName,
     minWebmMediaFragmentDurationMs,
-    type MediaFragmentData,
     preferredWebmMediaFragmentMimeType,
     mediaFragmentErrorForFile,
-} from './media-fragment';
-import { FileModel, MediaFragmentErrorCode } from './model';
-import { clamp } from '../util';
+} from '@project/common/src/media-fragment';
+import type { MediaFragmentData } from '@project/common/src/media-fragment';
+import type { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
 
 const videoSeekEpsilonSeconds = 0.001;
 const defaultCaptureFrameRate = 24;
@@ -315,9 +315,9 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
             throw new Error('WebM capture is not supported in this browser');
         }
 
-        console.info(`[MediaFragment] Using WebM codec: ${mimeType}`);
+        asbInfo('media-fragment', `Using WebM codec: ${mimeType}`);
         if (!mimeType.includes('av1')) {
-            console.info(`[MediaFragment] WebM codec fallback triggered: preferred AV1 unavailable, using ${mimeType}`);
+            asbInfo('media-fragment', `WebM codec fallback triggered: preferred AV1 unavailable, using ${mimeType}`);
         }
 
         return mimeType;
@@ -491,8 +491,9 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
             };
         }
 
-        console.info(
-            `[MediaFragment] Capture-stream fallback triggered: requestFrame unavailable, using timed capture at ${captureFrameRate}fps`
+        asbInfo(
+            'media-fragment',
+            `Capture-stream fallback triggered: requestFrame unavailable, using timed capture at ${captureFrameRate}fps`
         );
 
         for (const track of manualCaptureStream?.getTracks() ?? []) {
@@ -591,7 +592,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
         const frameSchedulerMode: FrameSchedulerMode =
             typeof video.requestVideoFrameCallback === 'function' ? 'video-frame-callback' : 'animation-frame';
         if (frameSchedulerMode !== 'video-frame-callback') {
-            console.info('[MediaFragment] Frame-scheduler fallback triggered: using requestAnimationFrame');
+            asbInfo('media-fragment', 'Frame-scheduler fallback triggered: using requestAnimationFrame');
         }
         const done = (mediaTimeSeconds?: number) => {
             const mediaTimeMs = (mediaTimeSeconds ?? video.currentTime) * 1000;
@@ -665,7 +666,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
                     clearScheduledFrame();
                     pauseCapture?.();
                     video.pause();
-                    console.info('[MediaFragment] Pausing WebM render while tab is hidden');
+                    asbInfo('media-fragment', 'Pausing WebM render while tab is hidden');
                 }
                 function resumeAfterHiddenTab() {
                     if (settled || !waitingForVisibleTab || !pageVisible()) {
@@ -673,7 +674,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
                     }
 
                     waitingForVisibleTab = false;
-                    console.info('[MediaFragment] Resuming WebM render after tab became visible');
+                    asbInfo('media-fragment', 'Resuming WebM render after tab became visible');
                     resumeCapture?.();
                     Promise.resolve(video.paused && !video.ended ? video.play() : undefined)
                         .then(() => {
@@ -839,7 +840,7 @@ export class WebmFileMediaFragmentData implements MediaFragmentData {
     }
 
     private _logWebmCaptureSettings(settings: WebmCaptureLogSettings) {
-        console.info('[MediaFragment] WebM capture settings', settings);
+        asbInfo('media-fragment', 'WebM capture settings', settings);
     }
 
     private async _seekVideo(video: HTMLVideoElement, timestamp: number, abortSignal?: AbortSignal): Promise<void> {

@@ -1,40 +1,41 @@
-import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery, NoteInfo } from '@project/common/anki';
-import {
+import { asbError, HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
+import type { NoteInfo } from '@project/common/anki';
+import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery } from '@project/common/anki';
+import type {
     DictionaryBuildAnkiCacheStart,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateError as DictionaryBuildAnkiCacheError,
-    DictionaryBuildAnkiCacheStateErrorCode,
-    DictionaryBuildAnkiCacheStateType,
     DictionaryBuildAnkiCacheStats,
     DictionaryBuildAnkiCacheProgress,
     Progress,
 } from '@project/common';
+import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
+import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
 import {
-    AsbplayerSettings,
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
-    DictionaryTrack,
     isAnkiSource,
     TokenStatus,
 } from '@project/common/settings';
-import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
     _DictionaryDatabase,
-    BUILD_MIN_EXPIRATION_MS,
-    _buildIdHealthCheck,
-    _clearBuildIds,
     DictionaryAnkiCardKey,
     _DictionaryAnkiCardRecord,
     DictionaryMetaKey,
     DictionaryTokenRecord,
+    TrackStateForDB,
+    CardInfoForDB,
+} from '@project/common/dictionary-db';
+import {
+    BUILD_MIN_EXPIRATION_MS,
+    _buildIdHealthCheck,
+    _clearBuildIds,
     _ensureBuildId,
     _gatherModifiedTokens,
     _getFromSourceBulk,
     _saveRecordBulk,
-    TrackStateForDB,
-    CardInfoForDB,
 } from '@project/common/dictionary-db';
 
 /**
@@ -79,7 +80,7 @@ export async function buildAnkiCachePipeline(
         const permission = (await anki.requestPermission()).permission;
         if (permission !== 'granted') throw new Error(`permission ${permission}`);
     } catch (e) {
-        console.error(e);
+        asbError('dictionary/anki', e);
         statusUpdates({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: {
@@ -117,7 +118,10 @@ export async function buildAnkiCachePipeline(
                 return db.meta.where('[profile+track]').equals(key).first();
             });
             if (existingBuild !== undefined) {
-                console.error(`Build already in progress - expires at ${existingBuild.ankiMeta.lastBuildExpiresAt}`);
+                asbError(
+                    'dictionary/anki',
+                    `Build already in progress - expires at ${existingBuild.ankiMeta.lastBuildExpiresAt}`
+                );
                 statusUpdates({
                     type: DictionaryBuildAnkiCacheStateType.error,
                     body: {
@@ -141,7 +145,7 @@ export async function buildAnkiCachePipeline(
             try {
                 await yomitan.version();
             } catch (e) {
-                console.error(e);
+                asbError('dictionary/anki', e);
                 statusUpdates({
                     type: DictionaryBuildAnkiCacheStateType.error,
                     body: {
@@ -232,7 +236,7 @@ export async function buildAnkiCachePipeline(
                 await _buildAnkiCardStatuses(track, ts, modifiedCards, anki);
             }
         } catch (e) {
-            console.error(e);
+            asbError('dictionary/anki', e);
             statusUpdates({
                 type: DictionaryBuildAnkiCacheStateType.error,
                 body: {
@@ -271,7 +275,7 @@ export async function buildAnkiCachePipeline(
             } as DictionaryBuildAnkiCacheStats,
         });
     } catch (e) {
-        console.error(e);
+        asbError('dictionary/anki', e);
         statusUpdates({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: {
@@ -725,14 +729,14 @@ export async function _processTracks(
         );
     } catch (e) {
         error = e;
-        console.error(e);
+        asbError('dictionary/anki', e);
     } finally {
         await _clearBuildIds(db, activeTracks, buildId, 'anki');
         if (modifiedTokens.size || numUpdatedCards || numCardsFromOrphanedTracks || error) {
             try {
                 await _gatherModifiedTokens(db, profile, modifiedTokens); // Delay publishing deleted modified tokens so tokens aren't flashed uncollected during build
             } catch (e) {
-                console.error(e);
+                asbError('dictionary/anki', e);
                 if (!error) error = e;
             }
         }

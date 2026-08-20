@@ -2,13 +2,17 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import Checkbox from '@mui/material/Checkbox';
 import List from '@mui/material/List';
-import MuiListItem, { type ListItemProps } from '@mui/material/ListItem';
-import MuiListItemButton, { type ListItemButtonProps } from '@mui/material/ListItemButton';
-import MuiListItemIcon, { type ListItemIconProps } from '@mui/material/ListItemIcon';
+import MuiListItem from '@mui/material/ListItem';
+import type { ListItemProps } from '@mui/material/ListItem';
+import MuiListItemButton from '@mui/material/ListItemButton';
+import type { ListItemButtonProps } from '@mui/material/ListItemButton';
+import MuiListItemIcon from '@mui/material/ListItemIcon';
+import type { ListItemIconProps } from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import type { PopoverProps } from '@mui/material/Popover';
 import { PlayMode } from '@project/common';
-import MuiListItemText, { type ListItemTextProps } from '@mui/material/ListItemText';
+import MuiListItemText from '@mui/material/ListItemText';
+import type { ListItemTextProps } from '@mui/material/ListItemText';
 
 interface Props extends PopoverProps {
     open: boolean;

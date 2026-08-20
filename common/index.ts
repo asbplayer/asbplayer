@@ -1,7 +1,7 @@
 export { default as MediaFragment, CancelledMediaFragmentDataRenderingError } from './src/media-fragment';
 export * from './src/image-transformer';
 export * from './src/media-fragment';
-export * from './src/command';
+export type * from './src/command';
 export * from './src/model';
 export * from './src/message';
 export * from './src/fetcher';

@@ -1,4 +1,4 @@
-import { JimakuClient } from './subtitle-sources';
+import { JimakuClient } from '@project/common/subtitle-sources/subtitle-sources';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
 const originalFetch = globalThis.fetch;

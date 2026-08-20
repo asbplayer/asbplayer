@@ -1,4 +1,4 @@
-import { SubtitleModel } from '..';
+import type { SubtitleModel } from '..';
 
 interface Props {
     subtitle: SubtitleModel;

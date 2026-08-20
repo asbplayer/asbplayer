@@ -1,7 +1,7 @@
 import { Validator } from 'jsonschema';
-import { AsbplayerSettings } from './settings';
-import { ensureConsistencyOnRead } from './settings-provider';
-import { download, getCurrentTimeString } from '../util';
+import type { AsbplayerSettings } from '@project/common/settings/settings';
+import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
+import { download, getCurrentTimeString } from '@project/common/util';
 
 const keyBindSchema = {
     id: '/KeyBind',

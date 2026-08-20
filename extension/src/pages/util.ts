@@ -1,4 +1,5 @@
-import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import { asbError } from '@project/common/util';
+import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];
@@ -155,7 +156,7 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
                                     );
                                 }
                             }
-                        ).catch(console.error);
+                        ).catch((error) => asbError('subtitle/source', error));
                     }
 
                     const ready = () => {
@@ -180,7 +181,7 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
 
                     garbageCollect();
                     trackDataRequestHandled = true;
-                })().catch(console.error);
+                })().catch((error) => asbError('subtitle/source', error));
             },
             false
         );

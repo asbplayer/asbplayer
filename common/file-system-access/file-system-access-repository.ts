@@ -1,6 +1,6 @@
 import Dexie from 'dexie';
 import { v4 as uuidv4 } from 'uuid';
-import { AsyncSemaphore } from '../util';
+import { AsyncSemaphore } from '@project/common/util';
 
 export interface FileSessionRecord {
     id: number;

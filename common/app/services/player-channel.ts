@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -37,7 +38,7 @@ import {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import {
+import type {
     AnkiSettings,
     ApplyStrategy,
     MiscSettings,
@@ -280,7 +281,7 @@ export default class PlayerChannel {
                     break;
                 }
                 default:
-                    console.error('Unrecognized event ' + event.data.command);
+                    asbError('app/messages', 'Unrecognized event ' + event.data.command);
             }
         };
     }

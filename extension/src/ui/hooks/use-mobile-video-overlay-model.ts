@@ -1,4 +1,5 @@
-import {
+import { asbLog } from '@project/common/util';
+import type {
     MobileOverlayToVideoCommand,
     MobileOverlayModel,
     RequestMobileOverlayModelMessage,
@@ -64,7 +65,8 @@ export const useMobileVideoOverlayModel = ({ location }: Params) => {
 
                 await requestModel();
             } catch (e) {
-                console.log(
+                asbLog(
+                    'mobile-overlay',
                     'Failed to request overlay model, retrying in 1s. Message: ' +
                         (e instanceof Error ? e.message : String(e))
                 );

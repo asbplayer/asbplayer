@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState, useRef, MutableRefObject } from 'react';
+import type { MutableRefObject } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { makeStyles, withStyles } from '@mui/styles';
 import { useTheme } from '@mui/material/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlurOnIcon from '@mui/icons-material/BlurOn';
 import BlurOffIcon from '@mui/icons-material/BlurOff';
@@ -32,29 +33,29 @@ import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
-import { SubtitleAlignment } from '@project/common/settings';
-import Clock from '@project/common/playback/timing/clock';
-import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
-import Tooltip from '../../components/Tooltip';
+import type { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
+import type { SubtitleAlignment } from '@project/common/settings';
+import type Clock from '@project/common/playback/timing/clock';
+import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
+import Tooltip from '@project/common/components/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { isMobile } from 'react-device-detect';
-import SubtitleOffsetInput from '../../components/SubtitleOffsetInput';
-import PlaybackRateInput from '../../components/PlaybackRateInput';
-import VideoElementFavicon from './VideoElementFavicon';
-import PlayModeSelector from '../../components/PlayModeSelector';
-import TimeDisplay from '../../components/TimeDisplay';
+import SubtitleOffsetInput from '@project/common/components/SubtitleOffsetInput';
+import PlaybackRateInput from '@project/common/components/PlaybackRateInput';
+import VideoElementFavicon from '@project/common/app/components/VideoElementFavicon';
+import PlayModeSelector from '@project/common/components/PlayModeSelector';
+import TimeDisplay from '@project/common/components/TimeDisplay';
 import {
     centeredProgressBarPreviewLeft,
     clampProgressBarPreviewLeft,
     formatProgressTimestamp,
     progressBarProgress,
     progressBarTrackWidth,
-} from './progress-bar';
-import LoadSubtitlesIcon from '../../components/LoadSubtitlesIcon';
+} from '@project/common/app/components/progress-bar';
+import LoadSubtitlesIcon from '@project/common/components/LoadSubtitlesIcon';
 
 const useControlStyles = makeStyles<Theme>((theme) => ({
     container: {

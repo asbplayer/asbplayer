@@ -1,4 +1,5 @@
-import { DisplaySet, parseDisplaySets } from 'pgs-parser';
+import type { DisplaySet } from 'pgs-parser';
+import { parseDisplaySets } from 'pgs-parser';
 
 function parse(fileStream: ReadableStream, canvas: OffscreenCanvas) {
     let currentImageDisplaySet: DisplaySet | undefined;

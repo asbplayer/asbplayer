@@ -47,8 +47,8 @@ import {
     timeDurationDisplay,
     clampMediaTimestamp,
 } from '@project/common/util';
-import { TextSubtitleSettings } from '@project/common/settings';
-import { Progress } from '@project/common';
+import type { TextSubtitleSettings } from '@project/common/settings';
+import type { Progress } from '@project/common';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 function subtitle(text: string, start: number, end: number, track = 0, index = 0) {
@@ -820,7 +820,10 @@ describe('ensureStoragePersisted', () => {
         });
 
         await expect(ensureStoragePersisted()).resolves.toBe(false);
-        expect(warn).toHaveBeenCalledWith('Storage could not be persisted, data may be cleared by the browser');
+        expect(warn).toHaveBeenCalledWith(
+            '[asbplayer][storage]',
+            'Storage could not be persisted, data may be cleared by the browser'
+        );
     });
 });
 

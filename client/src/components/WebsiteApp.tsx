@@ -1,4 +1,4 @@
-import { Fetcher } from '@project/common';
+import type { Fetcher } from '@project/common';
 import { useChromeExtension } from '@project/common/app';
 import RootApp from '@project/common/app/components/RootApp';
 import { useEffect, useMemo } from 'react';
@@ -6,8 +6,8 @@ import { AppExtensionDictionaryStorage } from '@project/common/app/services/app-
 import { AppExtensionSettingsStorage } from '@project/common/app/services/app-extension-settings-storage';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 import { SettingsProvider } from '@project/common/settings';
-import { LocalDictionaryStorage } from '../local-dictionary-storage';
-import { LocalSettingsStorage } from '../local-settings-storage';
+import { LocalDictionaryStorage } from '@project/client/src/local-dictionary-storage';
+import { LocalSettingsStorage } from '@project/client/src/local-settings-storage';
 
 interface Props {
     origin: string;

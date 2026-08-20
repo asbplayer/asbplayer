@@ -15,8 +15,8 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Popover from '@mui/material/Popover';
-import { ForwardedRef, useEffect, useState } from 'react';
-import React from 'react';
+import type { ForwardedRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import Tooltip from '@project/common/components/Tooltip';
 import { useTranslation } from 'react-i18next';
 

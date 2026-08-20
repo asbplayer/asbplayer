@@ -1,6 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
-import type { PlaybackPosition } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider, PlaybackPosition } from '@project/common/settings';
 
 export const minimumPlaybackPositionMs = 30_000;
 export const playbackPositionSaveIntervalMs = 10_000;

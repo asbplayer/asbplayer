@@ -1,15 +1,14 @@
+import type { CardInfo, NoteInfo } from '@project/common/anki';
 import {
     Anki,
-    CardInfo,
     DuplicateNoteError,
     escapeAnkiDeckQuery,
     escapeAnkiQuery,
     exportCard,
     inheritHtmlMarkup,
-    NoteInfo,
 } from '@project/common/anki';
-import { AnkiSettings } from '@project/common/settings';
-import { CardModel, Fetcher } from '@project/common';
+import type { AnkiSettings } from '@project/common/settings';
+import type { CardModel, Fetcher } from '@project/common';
 import { extractText, sourceString } from '@project/common/util';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 

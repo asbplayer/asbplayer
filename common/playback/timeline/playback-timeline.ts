@@ -1,9 +1,9 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import {
-    compilePlaybackTimeline,
-    type PlaybackTimelineActionIndex,
-    type PlaybackTimelineCompilation,
-    type PlaybackTimelineSubtitles,
+import { compilePlaybackTimeline } from '@project/common/playback/timeline/playback-timeline-compiler';
+import type {
+    PlaybackTimelineActionIndex,
+    PlaybackTimelineCompilation,
+    PlaybackTimelineSubtitles,
 } from '@project/common/playback/timeline/playback-timeline-compiler';
 
 export type PlaybackTimelineEdge = 'start' | 'end';

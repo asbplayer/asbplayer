@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import TabRegistry, { Asbplayer } from '@/services/tab-registry';
+import type { Asbplayer } from '@/services/tab-registry';
+import TabRegistry from '@/services/tab-registry';
 import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { AsbplayerInstance, VideoTabModel } from '@project/common';
+import type { AsbplayerInstance, VideoTabModel } from '@project/common';
 
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
 export const uiTabRegistry = new TabRegistry(settingsProvider);

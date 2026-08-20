@@ -1,76 +1,76 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle, MutableRefObject } from 'react';
+import type { MutableRefObject } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
     AudioTrackModel,
     CardModel,
     CardTextFieldValues,
-    AutoPausePreference,
     IndexedSubtitleModel,
     PlaybackState,
-    PlayMode,
     PostMineAction,
-    PostMinePlayback,
     RequestSubtitlesResponse,
     SubtitleModel,
     DisplaySubtitleModel,
     TokenizedSubtitleModel,
     VideoTabModel,
 } from '@project/common';
-import {
-    ApplyStrategy,
-    AsbplayerSettings,
-    isTrackAutoCopyable,
-    SettingsProvider,
-    TokenState,
-    VideoSubtitleSplitBehavior,
-} from '@project/common/settings';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import { AutoPausePreference, PlayMode, PostMinePlayback } from '@project/common';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import { ApplyStrategy, isTrackAutoCopyable, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
-import { SubtitleReader } from '@project/common/subtitle-reader';
-import { KeyBinder } from '@project/common/key-binder';
+import type { SubtitleReader } from '@project/common/subtitle-reader';
+import type { KeyBinder } from '@project/common/key-binder';
 import {
     clampMediaTimestamp,
     download,
     formatAsSignedMs,
     surroundingSubtitles,
     timeDurationDisplay,
+    ensureStoragePersisted,
 } from '@project/common/util';
-import BroadcastChannelVideoProtocol from '../services/broadcast-channel-video-protocol';
-import ChromeTabVideoProtocol from '../services/chrome-tab-video-protocol';
+import BroadcastChannelVideoProtocol from '@project/common/app/services/broadcast-channel-video-protocol';
+import ChromeTabVideoProtocol from '@project/common/app/services/chrome-tab-video-protocol';
 import Clock from '@project/common/playback/timing/clock';
-import Controls, { Point } from './Controls';
+import type { Point } from '@project/common/app/components/Controls';
+import Controls from '@project/common/app/components/Controls';
 import Grid from '@mui/material/Grid';
-import MediaAdapter from '../services/media-adapter';
-import SubtitlePlayer, { minSubtitlePlayerWidth } from './SubtitlePlayer';
-import VideoChannel from '../services/video-channel';
-import ChromeExtension from '../services/chrome-extension';
-import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
-import { useWindowSize } from '../hooks/use-window-size';
-import { useAppBarHeight } from '../../hooks/use-app-bar-height';
-import { createBlobUrl } from '../../blob-url';
-import { MiningContext } from '../services/mining-context';
-import { SeekTimestampCommand, WebSocketClient } from '../../web-socket-client';
-import { ensureStoragePersisted } from '../../util';
-import { resolveVideoSubtitleSplitLayout, useVideoAspectRatio } from './video-subtitle-split';
-import { FileWithId } from '../../file-selector';
+import MediaAdapter from '@project/common/app/services/media-adapter';
+import SubtitlePlayer, { minSubtitlePlayerWidth } from '@project/common/app/components/SubtitlePlayer';
+import VideoChannel from '@project/common/app/services/video-channel';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
+import { useWindowSize } from '@project/common/app/hooks/use-window-size';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
+import { createBlobUrl } from '@project/common/blob-url';
+import type { MiningContext } from '@project/common/app/services/mining-context';
+import type { SeekTimestampCommand, WebSocketClient } from '@project/common/web-socket-client';
+import {
+    resolveVideoSubtitleSplitLayout,
+    useVideoAspectRatio,
+} from '@project/common/app/components/video-subtitle-split';
+import type { FileWithId } from '@project/common/file-selector';
 import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
 import PlaybackEngine from '@project/common/playback/playback-engine';
 import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
 import {
     buildPlaybackTimelineExportPlan,
-    type PlaybackTimelineModeLabels,
-    type PlaybackTimelineOptionLabels,
     playbackTimelineSettingsSummary,
     playbackTimelineToHtml,
 } from '@project/common/playback/timeline/playback-timeline-html';
-import { createTheme } from '../../theme/theme';
-import Alert, { type AlertNotification } from './Alert';
-import useSnackbar from '../../hooks/use-snackbar';
+import type {
+    PlaybackTimelineModeLabels,
+    PlaybackTimelineOptionLabels,
+} from '@project/common/playback/timeline/playback-timeline-html';
+import { createTheme } from '@project/common/theme/theme';
+import Alert from '@project/common/app/components/Alert';
+import type { AlertNotification } from '@project/common/app/components/Alert';
+import useSnackbar from '@project/common/hooks/use-snackbar';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };

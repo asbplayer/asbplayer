@@ -1,14 +1,15 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import PlaybackTimeline, {
-    type PlaybackTimelineBlock,
-    type PlaybackTimelineEvent,
-    type PlaybackTimelineState,
+import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import type {
+    PlaybackTimelineBlock,
+    PlaybackTimelineEvent,
+    PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';
 import {
-    type PlaybackPlan,
     fastForwardingForPlanState,
     timestampComparisonToleranceMs,
 } from '@project/common/playback/plan/playback-plan';
+import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
 import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/playback-timeline-lookahead-cursor';
 

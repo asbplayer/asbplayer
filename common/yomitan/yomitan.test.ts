@@ -1,6 +1,6 @@
-import { Fetcher, Progress } from '@project/common';
+import type { Fetcher, Progress } from '@project/common';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
-    DictionaryTrack,
     defaultSettings,
     TokenFrequencyAnnotation,
     TokenMatchStrategy,
@@ -9,16 +9,14 @@ import {
     TokenStyling,
 } from '@project/common/settings';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import {
+import type {
     TermDictionaryEntry,
     TermEntriesResult,
     TermHeadword,
     TermSource,
     TokenPartResult,
-    Yomitan,
-    filterYomitanDictionaries,
-    splitTextForTokenization,
 } from '@project/common/yomitan';
+import { Yomitan, filterYomitanDictionaries, splitTextForTokenization } from '@project/common/yomitan';
 
 const testDictionaryTrack = (overrides: Partial<DictionaryTrack> = {}): DictionaryTrack => ({
     ...defaultSettings.dictionaryTracks[0],

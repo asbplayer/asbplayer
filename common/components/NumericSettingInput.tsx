@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { TextFieldProps } from '@mui/material/TextField';
 import { normalizeFinite } from '@project/common/util';
-import SettingsTextField from './SettingsTextField';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 
 const integerValueRegex = /^-?\d+$/;
 

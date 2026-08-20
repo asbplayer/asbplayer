@@ -1,6 +1,7 @@
-import { isFirefoxBuild } from './build-flags';
-import FrameBridgeClient, { FetchOptions } from './frame-bridge-client';
-import { frameColorSchemeClass } from './frame-color-scheme';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
+import type { FetchOptions } from '@project/extension/src/services/frame-bridge-client';
+import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
+import { frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 
 export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
     return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {

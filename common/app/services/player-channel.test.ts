@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { type Message, PlayMode } from '@project/common';
-import PlayerChannel from './player-channel';
+import { PlayMode } from '@project/common';
+import type { Message } from '@project/common';
+import PlayerChannel from '@project/common/app/services/player-channel';
 
 class TestBroadcastChannel {
     static instance?: TestBroadcastChannel;
