@@ -641,6 +641,7 @@ export default class VideoChannel {
         const {
             ankiConnectUrl,
             ankiConnectApiKey,
+            ankiRefreshBrowserAfterUpdate,
             deck,
             noteType,
             sentenceField,
@@ -675,6 +676,7 @@ export default class VideoChannel {
             value: {
                 ankiConnectUrl,
                 ankiConnectApiKey,
+                ankiRefreshBrowserAfterUpdate,
                 deck,
                 noteType,
                 sentenceField,

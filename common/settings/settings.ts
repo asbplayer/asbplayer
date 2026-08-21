@@ -637,6 +637,7 @@ export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
 export interface AnkiSettings {
     readonly ankiConnectUrl: string;
     readonly ankiConnectApiKey: string;
+    readonly ankiRefreshBrowserAfterUpdate: boolean;
     readonly deck: string;
     readonly noteType: string;
     readonly sentenceField: string;
@@ -690,6 +691,7 @@ export type CustomAnkiFieldSettings = { [key: string]: AnkiField };
 const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     ankiConnectUrl: true,
     ankiConnectApiKey: true,
+    ankiRefreshBrowserAfterUpdate: true,
     deck: true,
     noteType: true,
     sentenceField: true,
