@@ -54,6 +54,7 @@ const testAnkiSettings: AnkiSettings = {
         track3: { order: 9, display: true },
     },
     customAnkiFieldSettings: {},
+    ankiRefreshBrowserAfterUpdate: false,
 };
 
 const makeCardInfo = (overrides: Partial<CardInfo> = {}): CardInfo => ({
@@ -1522,14 +1523,22 @@ describe('Anki', () => {
 describe('refreshing the Anki card browser after an update', () => {
     const refreshSettings: AnkiSettings = { ...testAnkiSettings, ankiRefreshBrowserAfterUpdate: true };
 
-    const exportArguments = (mode: ExportArguments['mode'], noteId?: number): ExportArguments =>
-        ({
-            text: 'updated sentence',
-            customFieldValues: {},
-            tags: [],
-            mode,
-            noteId,
-        }) as ExportArguments;
+    const exportArguments = (mode: ExportArguments['mode'], noteId?: number): ExportArguments => ({
+        text: 'updated sentence',
+        track1: undefined,
+        track2: undefined,
+        track3: undefined,
+        definition: undefined,
+        audioClip: undefined,
+        image: undefined,
+        word: undefined,
+        source: undefined,
+        url: undefined,
+        customFieldValues: {},
+        tags: [],
+        mode,
+        noteId,
+    });
 
     const ankiConnectFetcher = (onAction?: (body: any) => any) => {
         const fetcher = new MockFetcher();
