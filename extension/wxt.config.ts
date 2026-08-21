@@ -192,7 +192,7 @@ export default defineConfig({
         }
 
         if (browser === 'firefox') {
-            permissions = [...permissions, 'contextMenus', 'webRequest', 'webRequestBlocking', 'clipboardWrite'];
+            permissions = [...permissions, 'contextMenus', 'clipboardWrite'];
 
             commands = {
                 _execute_sidebar_action: {
@@ -223,7 +223,7 @@ export default defineConfig({
         }
 
         if (browser === 'firefox-android') {
-            permissions = [...permissions, 'webRequest', 'webRequestBlocking', 'clipboardWrite'];
+            permissions = [...permissions, 'clipboardWrite'];
 
             const geckoId = isDev
                 ? `${extName}-android-dev-${version}@example.com`
