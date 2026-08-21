@@ -57,7 +57,7 @@ class FakeVideo extends EventTarget {
         const callbacks = [...this.callbacks.values()];
         this.callbacks.clear();
         for (const callback of callbacks) {
-            callback(0, {
+            callback(expectedDisplayTimeMs, {
                 presentationTime: 0,
                 expectedDisplayTime: expectedDisplayTimeMs,
                 width: 0,
@@ -506,6 +506,104 @@ describe('VideoFrameTimingDriver', () => {
             await flush();
             expect(updates).toHaveLength(updateCountWhilePaused);
 
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('falls back to polling while an unresponsive video frame callback remains pending', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            const updates: number[] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+            expect(video.requestVideoFrameCallbackCalls).toBe(1);
+
+            video.currentTime = 1;
+            jest.advanceTimersByTime(1000);
+            jest.advanceTimersByTime(50);
+            await flush();
+
+            expect(updates).toEqual([1000]);
+            expect(video.requestVideoFrameCallbackCalls).toBe(1);
+
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('stops fallback polling when frame callbacks recover and restarts it after an unhealthy check window', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            const updates: number[] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+            jest.advanceTimersByTime(1000);
+            video.currentTime = 1;
+            jest.advanceTimersByTime(50);
+            await flush();
+            expect(updates).toEqual([1000]);
+
+            video.present(1100);
+            await flush();
+            expect(updates).toEqual([1000, 1100]);
+            expect(video.requestVideoFrameCallbackCalls).toBe(2);
+
+            video.currentTime = 1.2;
+            jest.advanceTimersByTime(1949);
+            await flush();
+            expect(updates).toEqual([1000, 1100]);
+
+            jest.advanceTimersByTime(1);
+            video.currentTime = 3;
+            jest.advanceTimersByTime(50);
+            await flush();
+            expect(updates).toEqual([1000, 1100, 3000]);
+
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('does not activate the frame callback watchdog while paused', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            const updates: number[] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+            video.pause();
+            video.currentTime = 1;
+            jest.advanceTimersByTime(2000);
+            await flush();
+
+            expect(updates).toEqual([]);
             driver.unbind();
         } finally {
             jest.useRealTimers();
@@ -1027,20 +1125,21 @@ describe('VideoFrameTimingDriver', () => {
 
         setDocumentHidden(false);
         document.dispatchEvent(new Event('visibilitychange'));
-        expect(timeupdateRemoves).toBe(1);
+        expect(timeupdateRemoves).toBe(0);
         video.currentTime = 0.5;
         video.dispatchEvent(new Event('timeupdate'));
         await flush();
 
-        expect(updates).toEqual([250]);
-        video.present(250);
+        expect(updates).toEqual([250, 500]);
+        video.present(750);
         await flush();
 
-        expect(updates).toEqual([250, 250]);
+        expect(updates).toEqual([250, 500, 750]);
+        expect(timeupdateRemoves).toBe(1);
         driver.unbind();
     });
 
-    it('uses timeupdate for audio-only media and switches to video frame callbacks after metadata changes', async () => {
+    it('keeps timeupdate active while probing for video frames after metadata changes', async () => {
         const video = new FakeVideo();
         video.hasVideoTrack = false;
         const updates: number[] = [];
@@ -1066,12 +1165,16 @@ describe('VideoFrameTimingDriver', () => {
         video.dispatchEvent(new Event('timeupdate'));
         await flush();
 
-        expect(updates).toEqual([250]);
+        expect(updates).toEqual([250, 500]);
         video.present(500);
         await flush();
 
-        expect(updates).toEqual([250, 500]);
+        expect(updates).toEqual([250, 500, 500]);
         expect(video.requestVideoFrameCallbackCalls).toBeGreaterThan(0);
+        video.currentTime = 0.75;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+        expect(updates).toEqual([250, 500, 500]);
         driver.unbind();
     });
 
