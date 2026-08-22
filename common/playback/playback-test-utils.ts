@@ -1,4 +1,5 @@
 import { AutoPausePreference, PlayMode } from '@project/common';
+import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 import type { IndexedSubtitleModel } from '@project/common';
 import type { PlaybackPlanInput } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
@@ -97,5 +98,12 @@ export const makePlaybackPlanInput = <T extends IndexedSubtitleModel>(
     playbackRate: 1.25,
     fastForwardModePlaybackRate: 2.5,
     fastForwardPlaybackMinimumSkipIntervalMs: 250,
+    autoPauseResumeMode: AutoPauseResumeMode.manual,
+    autoPauseResumeDelayMs: 300,
+    autoPauseFixedDurationMs: 2000,
+    autoPauseMinimumDurationMs: 500,
+    autoPauseMaximumDurationMs: 2000,
+    autoPauseTimePerCharacterMs: 100,
+    subtitleVisibility: SubtitleVisibility.always,
     ...options,
 });

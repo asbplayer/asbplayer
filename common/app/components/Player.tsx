@@ -423,6 +423,23 @@ function PlayerComponent(
         []
     );
 
+    const notifyPrimedListening = useCallback(
+        (result: ReturnType<PlaybackEngine<DisplaySubtitleModel>['togglePrimedListening']>) => {
+            if (result === undefined) return;
+            setAlert({
+                open: true,
+                notifications: [
+                    {
+                        key: result.notification.key,
+                        message: { locKey: result.notification.locKey },
+                        severity: 'info',
+                    },
+                ],
+            });
+        },
+        []
+    );
+
     const synchronizePlaybackModes = useCallback((modes: ReadonlySet<PlayMode>) => {
         const synchronizedModes = new Set(modes);
         playModesRef.current = synchronizedModes;
@@ -1341,6 +1358,13 @@ function PlayerComponent(
             () => disableKeyEvents
         );
     }, [togglePlayMode, keyBinder, disableKeyEvents]);
+
+    useEffect(() => {
+        return keyBinder.bindTogglePrimedListening(
+            () => notifyPrimedListening(syntheticPlaybackEngineRef.current?.togglePrimedListening()),
+            () => disableKeyEvents
+        );
+    }, [keyBinder, disableKeyEvents, notifyPrimedListening]);
 
     useEffect(() => {
         return keyBinder.bindToggleRepeat(

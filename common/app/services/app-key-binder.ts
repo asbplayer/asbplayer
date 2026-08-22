@@ -383,6 +383,14 @@ export default class AppKeyBinder implements KeyBinder {
         return this.defaultKeyBinder.bindToggleRepeat(onToggleRepeat, disabledGetter, useCapture);
     }
 
+    bindTogglePrimedListening(
+        onTogglePrimedListening: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        return this.defaultKeyBinder.bindTogglePrimedListening(onTogglePrimedListening, disabledGetter, useCapture);
+    }
+
     bindAdjustSubtitlePositionOffset(
         onAdjustSubtitlePositionOffset: (event: KeyboardEvent, increase: boolean) => void,
         disabledGetter: () => boolean,

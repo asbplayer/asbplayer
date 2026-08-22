@@ -1,3 +1,4 @@
+import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
@@ -721,6 +722,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.always,
         });
         const repeatSeeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};
@@ -794,6 +802,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.always,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -884,6 +899,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.always,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -960,6 +982,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.always,
         });
         const repeatSeeks: number[] = [];
         const discontinuities: number[] = [];
@@ -1047,6 +1076,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.always,
         });
         const seeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};

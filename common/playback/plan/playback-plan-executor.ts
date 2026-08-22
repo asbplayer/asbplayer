@@ -13,7 +13,7 @@ import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
 import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/playback-timeline-lookahead-cursor';
 
-type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
+export type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
 
 export interface PlaybackPlanExecutorCallbacks {
     readonly play: () => Promise<void>;
@@ -192,19 +192,21 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         if (!options.preserveExpectedDiscontinuity) this.expectedDiscontinuity = undefined;
     }
 
-    handleDiscontinuity(timestampMs: number): void {
+    /** Returns the cause so callers can tell a user seek from one playback issued itself. */
+    handleDiscontinuity(timestampMs: number): { readonly cause: PlaybackTimelineTransitionCause } {
         const discontinuity = this.consumeDiscontinuity();
         if (discontinuity.cause === 'user-seek') {
             this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
         }
         if (this.updateInProgress) {
             this.deferredDiscontinuity = { timestampMs, ...discontinuity };
-            return;
+            return { cause: discontinuity.cause };
         }
         this.reset(timestampMs, {
             includeAtTimestamp: discontinuity.includeAtTimestamp,
             cause: discontinuity.cause,
         });
+        return { cause: discontinuity.cause };
     }
 
     private consumeDiscontinuity(): {
