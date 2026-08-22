@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { AutoPauseResumeMode } from '@project/common/settings';
 import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 import type { PlaybackPlanAutoPauseResume } from '@project/common/playback/plan/playback-plan';
-import AutoPauseController, { autoPauseDurationMs } from '@project/common/playback/controllers/auto-pause-controller';
+import AutoPauseController, {
+    autoPauseDurationMs,
+    readableCharacterCount,
+} from '@project/common/playback/controllers/auto-pause-controller';
 
 const subtitleLengthResume: PlaybackPlanAutoPauseResume = {
     mode: AutoPauseResumeMode.subtitleLength,
@@ -30,6 +33,27 @@ const harness = (policy: { resume?: PlaybackPlanAutoPauseResume; subtitlesWhileP
     return { controller, events };
 };
 
+describe('readableCharacterCount', () => {
+    it('counts plain text as written', () => {
+        expect(readableCharacterCount('Hello there')).toBe(11);
+    });
+
+    it('ignores markup kept in the text when subtitles are rendered rather than stripped', () => {
+        expect(readableCharacterCount('<i>Hello there</i>')).toBe(11);
+        expect(readableCharacterCount('<b>Hi</b><br>there')).toBe(8);
+    });
+
+    it('ignores ruby readings, which annotate rather than add reading', () => {
+        expect(readableCharacterCount('<ruby>\u6f22\u5b57<rt>\u304b\u3093\u3058</rt></ruby>\u3092\u8aad\u3080')).toBe(
+            5
+        );
+    });
+
+    it('collapses runs of whitespace and trims', () => {
+        expect(readableCharacterCount('  Hello   there  ')).toBe(11);
+    });
+});
+
 describe('autoPauseDurationMs', () => {
     it('uses the fixed duration regardless of subtitle length', () => {
         expect(autoPauseDurationMs(fixedResume, [subtitleOfLength(1)])).toBe(2000);
@@ -46,6 +70,13 @@ describe('autoPauseDurationMs', () => {
         const unbounded = { ...subtitleLengthResume, maximumDurationMs: 0 };
 
         expect(autoPauseDurationMs(unbounded, [subtitleOfLength(100)])).toBe(10_000);
+    });
+
+    it('measures the readable text rather than the markup around it', () => {
+        const ruby = makeSubtitle({ text: '<ruby>\u6f22\u5b57<rt>\u304b\u3093\u3058</rt></ruby>' });
+
+        // Two readable characters, so the minimum applies instead of the raw 30-character length.
+        expect(autoPauseDurationMs(subtitleLengthResume, [ruby])).toBe(500);
     });
 
     it('sums every subtitle it is given', () => {

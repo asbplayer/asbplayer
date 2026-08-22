@@ -744,7 +744,7 @@ Offsets the subtitle gap triggers used by fast-forward and condensed playback. T
 
 ### When a pause ends
 
-Controls how an automatic pause finishes. **Wait for me** is the original behavior: playback stays paused until you resume it. **After a set time** pauses every subtitle for the same length. **After time to read the line** sizes each pause to the subtitle, from its character count multiplied by the reading time per character, clamped between the minimum and maximum (a maximum of `0` means no limit). Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
+Controls how an automatic pause finishes. **Wait for me** is the original behavior: playback stays paused until you resume it. **After a set time** pauses every subtitle for the same length. **After time to read the line** sizes each pause to the subtitle, from its character count multiplied by the reading time per character, clamped between the minimum and maximum (a maximum of `0` means no limit). Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause, and only text that is actually shown counts — markup and ruby readings do not.
 
 ### Silence before resuming
 
