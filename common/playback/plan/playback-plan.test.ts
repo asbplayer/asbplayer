@@ -170,6 +170,41 @@ describe('buildPlaybackPlan', () => {
         });
     });
 
+    it('pauses at every subtitle start for primed listening regardless of the auto-pause preference', () => {
+        const plan = makePlan([PlayMode.primedListening], { autoPausePreference: AutoPausePreference.atEnd });
+
+        expect(plan.timelineSubtitles.blocks[0].startAction).toBe(true);
+        expect(plan.timelineSubtitles.blocks[0].endAction).toBeUndefined();
+        expect(plan.primedListening).toEqual({
+            readingTimePerCharacterMs: 100,
+            minimumReadingTimeMs: 500,
+            maximumReadingTimeMs: 2000,
+            resumeDelayMs: 300,
+        });
+    });
+
+    it('pauses at condensed starts for primed listening without auto-pause', () => {
+        const plan = makePlan([PlayMode.primedListening, PlayMode.condensed]);
+
+        expect(plan.condensed?.pauseAtStart).toBe(true);
+    });
+
+    it('normalizes invalid primed listening timings and keeps the reading bounds ordered', () => {
+        const plan = makePlan([PlayMode.primedListening], {
+            primedListeningReadingTimePerCharacterMs: Number.NaN,
+            primedListeningMinimumReadingTimeMs: 3000,
+            primedListeningMaximumReadingTimeMs: 1000,
+            primedListeningResumeDelayMs: -300,
+        });
+
+        expect(plan.primedListening).toEqual({
+            readingTimePerCharacterMs: 0,
+            minimumReadingTimeMs: 3000,
+            maximumReadingTimeMs: 3000,
+            resumeDelayMs: 0,
+        });
+    });
+
     it('normalizes a negative repeat count to unlimited playback', () => {
         const plan = makePlan([PlayMode.repeat], { repeatCountPreference: -1 });
 

@@ -721,6 +721,10 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            primedListeningReadingTimePerCharacterMs: 100,
+            primedListeningMinimumReadingTimeMs: 500,
+            primedListeningMaximumReadingTimeMs: 2000,
+            primedListeningResumeDelayMs: 300,
         });
         const repeatSeeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};
@@ -794,6 +798,10 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            primedListeningReadingTimePerCharacterMs: 100,
+            primedListeningMinimumReadingTimeMs: 500,
+            primedListeningMaximumReadingTimeMs: 2000,
+            primedListeningResumeDelayMs: 300,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -884,6 +892,10 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            primedListeningReadingTimePerCharacterMs: 100,
+            primedListeningMinimumReadingTimeMs: 500,
+            primedListeningMaximumReadingTimeMs: 2000,
+            primedListeningResumeDelayMs: 300,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -960,6 +972,10 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            primedListeningReadingTimePerCharacterMs: 100,
+            primedListeningMinimumReadingTimeMs: 500,
+            primedListeningMaximumReadingTimeMs: 2000,
+            primedListeningResumeDelayMs: 300,
         });
         const repeatSeeks: number[] = [];
         const discontinuities: number[] = [];
@@ -1047,6 +1063,10 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            primedListeningReadingTimePerCharacterMs: 100,
+            primedListeningMinimumReadingTimeMs: 500,
+            primedListeningMaximumReadingTimeMs: 2000,
+            primedListeningResumeDelayMs: 300,
         });
         const seeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};

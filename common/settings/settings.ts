@@ -65,6 +65,10 @@ export interface MiscSettings {
     readonly fastForwardPlaybackMinimumSkipIntervalMs: number;
     readonly streamingCondensedPlaybackMinimumSkipIntervalMs: number;
     readonly repeatCountPreference: number;
+    readonly primedListeningReadingTimePerCharacterMs: number;
+    readonly primedListeningMinimumReadingTimeMs: number;
+    readonly primedListeningMaximumReadingTimeMs: number;
+    readonly primedListeningResumeDelayMs: number;
     readonly rememberPlaybackModes: boolean;
     readonly lastPlaybackModes: PlayMode[];
     readonly lastPlaybackPositions: PlaybackPosition[];
@@ -912,6 +916,7 @@ export interface KeyBindSet {
     readonly increasePlaybackRate: KeyBind;
     readonly toggleSidePanel: KeyBind;
     readonly toggleRepeat: KeyBind;
+    readonly togglePrimedListening: KeyBind;
     readonly moveBottomSubtitlesUp: KeyBind;
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;

@@ -490,6 +490,18 @@ const settingsSchema = {
         repeatCountPreference: {
             type: 'number',
         },
+        primedListeningReadingTimePerCharacterMs: {
+            type: 'number',
+        },
+        primedListeningMinimumReadingTimeMs: {
+            type: 'number',
+        },
+        primedListeningMaximumReadingTimeMs: {
+            type: 'number',
+        },
+        primedListeningResumeDelayMs: {
+            type: 'number',
+        },
         rememberPlaybackModes: {
             type: 'boolean',
         },
@@ -549,6 +561,7 @@ const settingsSchema = {
                 increasePlaybackRate: { $ref: '/KeyBind' },
                 toggleSidePanel: { $ref: '/KeyBind' },
                 toggleRepeat: { $ref: '/KeyBind' },
+                togglePrimedListening: { $ref: '/KeyBind' },
                 moveBottomSubtitlesUp: { $ref: '/KeyBind' },
                 moveBottomSubtitlesDown: { $ref: '/KeyBind' },
                 moveTopSubtitlesUp: { $ref: '/KeyBind' },

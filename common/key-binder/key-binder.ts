@@ -178,6 +178,11 @@ export interface KeyBinder {
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
+    bindTogglePrimedListening(
+        onTogglePrimedListening: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture?: boolean
+    ): () => void;
     bindToggleRecording(
         onToggleRecording: (event: KeyboardEvent) => void,
         disabledGetter: () => boolean,
@@ -1016,6 +1021,25 @@ export class DefaultKeyBinder implements KeyBinder {
             }
 
             onToggleRepeat(event);
+            return true;
+        };
+
+        return this._bind(shortcut, capture, handler);
+    }
+
+    bindTogglePrimedListening(
+        onTogglePrimedListening: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture = false
+    ) {
+        const shortcut = this.keyBindSet.togglePrimedListening.keys;
+
+        const handler = (event: KeyboardEvent) => {
+            if (disabledGetter()) {
+                return false;
+            }
+
+            onTogglePrimedListening(event);
             return true;
         };
 

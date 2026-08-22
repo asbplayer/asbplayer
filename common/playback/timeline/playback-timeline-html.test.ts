@@ -74,6 +74,10 @@ const plan = (subtitles: IndexedSubtitleModel[], playModes: PlayMode[] = [PlayMo
         playbackRate: 1,
         fastForwardModePlaybackRate: 2,
         fastForwardPlaybackMinimumSkipIntervalMs: 500,
+        primedListeningReadingTimePerCharacterMs: 100,
+        primedListeningMinimumReadingTimeMs: 500,
+        primedListeningMaximumReadingTimeMs: 2000,
+        primedListeningResumeDelayMs: 300,
     });
 
 describe('playbackTimelineToHtml', () => {
@@ -396,6 +400,10 @@ describe('playbackTimelineToHtml', () => {
                 playbackRate: 1,
                 fastForwardModePlaybackRate: 2,
                 fastForwardPlaybackMinimumSkipIntervalMs: paritySettings.fastForwardMinimumSkipIntervalMs,
+                primedListeningReadingTimePerCharacterMs: 100,
+                primedListeningMinimumReadingTimeMs: 500,
+                primedListeningMaximumReadingTimeMs: 2000,
+                primedListeningResumeDelayMs: 300,
             });
             return {
                 ...parityPlan,
@@ -512,6 +520,10 @@ describe('playbackTimelineToHtml', () => {
                 playbackRate: 1.25,
                 fastForwardModePlaybackRate: 2.5,
                 fastForwardPlaybackMinimumSkipIntervalMs: effectiveSettings.fastForwardMinimumSkipIntervalMs,
+                primedListeningReadingTimePerCharacterMs: 100,
+                primedListeningMinimumReadingTimeMs: 500,
+                primedListeningMaximumReadingTimeMs: 2000,
+                primedListeningResumeDelayMs: 300,
             });
 
             // The production export intentionally shows condensed and repeat layers together.

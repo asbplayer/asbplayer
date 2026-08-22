@@ -34,6 +34,11 @@ export const buildPlaybackTimelineExportPlan = <T extends IndexedSubtitleModel>(
         playbackRate,
         fastForwardModePlaybackRate: settings.fastForwardModePlaybackRate,
         fastForwardPlaybackMinimumSkipIntervalMs: settings.fastForwardPlaybackMinimumSkipIntervalMs,
+        // Primed listening pauses at subtitle starts exactly like auto-pause, so it needs no layer of its own.
+        primedListeningReadingTimePerCharacterMs: settings.primedListeningReadingTimePerCharacterMs,
+        primedListeningMinimumReadingTimeMs: settings.primedListeningMinimumReadingTimeMs,
+        primedListeningMaximumReadingTimeMs: settings.primedListeningMaximumReadingTimeMs,
+        primedListeningResumeDelayMs: settings.primedListeningResumeDelayMs,
     });
 
     return plan;

@@ -47,6 +47,8 @@ const playbackModeTransitionLocKey = (mode: PlayMode, enabled: boolean): string 
             return enabled ? 'info.enabledFastForwardPlayback' : 'info.disabledFastForwardPlayback';
         case PlayMode.repeat:
             return enabled ? 'info.enabledRepeatPlayback' : 'info.disabledRepeatPlayback';
+        case PlayMode.primedListening:
+            return enabled ? 'info.enabledPrimedListening' : 'info.disabledPrimedListening';
         default:
             return;
     }
@@ -64,6 +66,8 @@ export const playbackModeLabelLocKey = (mode: PlayMode): string => {
             return 'controls.fastForwardMode';
         case PlayMode.repeat:
             return 'controls.repeatMode';
+        case PlayMode.primedListening:
+            return 'controls.primedListeningMode';
     }
 };
 
@@ -72,6 +76,7 @@ const playbackModesForSummary: readonly PlayMode[] = [
     PlayMode.fastForward,
     PlayMode.autoPause,
     PlayMode.repeat,
+    PlayMode.primedListening,
 ];
 
 type Localizer = (locKey: string) => string;

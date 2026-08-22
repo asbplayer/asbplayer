@@ -97,5 +97,9 @@ export const makePlaybackPlanInput = <T extends IndexedSubtitleModel>(
     playbackRate: 1.25,
     fastForwardModePlaybackRate: 2.5,
     fastForwardPlaybackMinimumSkipIntervalMs: 250,
+    primedListeningReadingTimePerCharacterMs: 100,
+    primedListeningMinimumReadingTimeMs: 500,
+    primedListeningMaximumReadingTimeMs: 2000,
+    primedListeningResumeDelayMs: 300,
     ...options,
 });

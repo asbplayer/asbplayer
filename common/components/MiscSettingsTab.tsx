@@ -111,6 +111,10 @@ const MiscSettingTab: React.FC<Props> = ({
         fastForwardModePlaybackRate,
         fastForwardPlaybackMinimumSkipIntervalMs,
         repeatCountPreference,
+        primedListeningReadingTimePerCharacterMs,
+        primedListeningMinimumReadingTimeMs,
+        primedListeningMaximumReadingTimeMs,
+        primedListeningResumeDelayMs,
         rememberPlaybackModes,
         streamingCondensedPlaybackMinimumSkipIntervalMs,
     } = settings;
@@ -742,6 +746,84 @@ const MiscSettingTab: React.FC<Props> = ({
                         </ResponsiveSettingsStack>
                         <Typography variant="caption" color="textSecondary">
                             {t('settings.subtitleTriggerGapOffsetHelperText')}
+                        </Typography>
+                        <SettingsSubSection>{t('settings.primedListening')}</SettingsSubSection>
+                        <ResponsiveSettingsStack>
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.primedListeningMinimumReadingTime')}
+                                value={primedListeningMinimumReadingTimeMs}
+                                onValueChange={(value) =>
+                                    void onSettingChanged('primedListeningMinimumReadingTimeMs', value)
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.primedListeningMaximumReadingTime')}
+                                value={primedListeningMaximumReadingTimeMs}
+                                onValueChange={(value) =>
+                                    void onSettingChanged('primedListeningMaximumReadingTimeMs', value)
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                        </ResponsiveSettingsStack>
+                        <ResponsiveSettingsStack>
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.primedListeningReadingTimePerCharacter')}
+                                value={primedListeningReadingTimePerCharacterMs}
+                                onValueChange={(value) =>
+                                    void onSettingChanged('primedListeningReadingTimePerCharacterMs', value)
+                                }
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.primedListeningResumeDelay')}
+                                value={primedListeningResumeDelayMs}
+                                onValueChange={(value) => void onSettingChanged('primedListeningResumeDelayMs', value)}
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                        </ResponsiveSettingsStack>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.primedListeningHelperText')}
                         </Typography>
                     </>
                 )}

@@ -28,12 +28,20 @@ export interface PlaybackPlanCondensed {
     readonly pauseAtStart: boolean;
 }
 
+export interface PlaybackPlanPrimedListening {
+    readonly readingTimePerCharacterMs: number;
+    readonly minimumReadingTimeMs: number;
+    readonly maximumReadingTimeMs: number;
+    readonly resumeDelayMs: number;
+}
+
 /** Playback policy compiled and applied beside its owning media element. */
 export interface PlaybackPlan<T extends IndexedSubtitleModel> {
     readonly timelineSubtitles: PlaybackTimelineSubtitles<T>;
     readonly playbackRate: number;
     readonly condensed?: PlaybackPlanCondensed;
     readonly fastForward?: PlaybackPlanFastForward;
+    readonly primedListening?: PlaybackPlanPrimedListening;
 }
 
 export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
@@ -53,6 +61,10 @@ export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
     readonly playbackRate: number;
     readonly fastForwardModePlaybackRate: number;
     readonly fastForwardPlaybackMinimumSkipIntervalMs: number;
+    readonly primedListeningReadingTimePerCharacterMs: number;
+    readonly primedListeningMinimumReadingTimeMs: number;
+    readonly primedListeningMaximumReadingTimeMs: number;
+    readonly primedListeningResumeDelayMs: number;
 }
 
 const autoPausePreferenceIncludes = (
@@ -77,11 +89,19 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
     playbackRate,
     fastForwardModePlaybackRate,
     fastForwardPlaybackMinimumSkipIntervalMs,
+    primedListeningReadingTimePerCharacterMs,
+    primedListeningMinimumReadingTimeMs,
+    primedListeningMaximumReadingTimeMs,
+    primedListeningResumeDelayMs,
 }: PlaybackPlanInput<T>): PlaybackPlan<T> => {
     const autoPause = playModes.has(PlayMode.autoPause);
-    const autoPauseAtStart = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
+    const primedListening = playModes.has(PlayMode.primedListening);
+    // Primed listening always pauses at the start of a subtitle so that its translation can be read.
+    const pauseAtStart =
+        primedListening || (autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart));
     const autoPauseAtEnd = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atEnd);
     const repeat = playModes.has(PlayMode.repeat);
+    const minimumReadingTimeMs = normalizeNonNegative(primedListeningMinimumReadingTimeMs);
     const startOffset = normalizeFinite(subtitleTriggerStartOffset);
     const gapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffset);
     const condensedMinimumSkipIntervalMs = normalizeNonNegative(condensedPlaybackMinimumSkipIntervalMs);
@@ -98,7 +118,7 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
 
     const blocks = timeline.blocks.map<PlaybackTimelineBlock>((block) => ({
         ...block,
-        ...(autoPauseAtStart ? { startAction: true as const } : {}),
+        ...(pauseAtStart ? { startAction: true as const } : {}),
         ...(autoPauseAtEnd || repeat
             ? {
                   endAction: {
@@ -125,8 +145,20 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
             ? {
                   condensed: {
                       minimumSkipIntervalMs: condensedMinimumSkipIntervalMs,
-                      pauseAtStart:
-                          autoPauseAtStart && startOffset <= 0 && Math.abs(gapEndOffset) <= Math.abs(startOffset),
+                      pauseAtStart: pauseAtStart && startOffset <= 0 && Math.abs(gapEndOffset) <= Math.abs(startOffset),
+                  },
+              }
+            : {}),
+        ...(primedListening
+            ? {
+                  primedListening: {
+                      readingTimePerCharacterMs: normalizeNonNegative(primedListeningReadingTimePerCharacterMs),
+                      minimumReadingTimeMs,
+                      maximumReadingTimeMs: Math.max(
+                          minimumReadingTimeMs,
+                          normalizeNonNegative(primedListeningMaximumReadingTimeMs)
+                      ),
+                      resumeDelayMs: normalizeNonNegative(primedListeningResumeDelayMs),
                   },
               }
             : {}),
@@ -242,6 +274,27 @@ function arePlaybackPlanCondensedEqual(
     return true;
 }
 
+const playbackPlanPrimedListeningComparators: ObjectComparators<PlaybackPlanPrimedListening> = {
+    readingTimePerCharacterMs: (left, right) => left.readingTimePerCharacterMs === right.readingTimePerCharacterMs,
+    minimumReadingTimeMs: (left, right) => left.minimumReadingTimeMs === right.minimumReadingTimeMs,
+    maximumReadingTimeMs: (left, right) => left.maximumReadingTimeMs === right.maximumReadingTimeMs,
+    resumeDelayMs: (left, right) => left.resumeDelayMs === right.resumeDelayMs,
+};
+
+function arePlaybackPlanPrimedListeningsEqual(
+    left: PlaybackPlanPrimedListening | undefined,
+    right: PlaybackPlanPrimedListening | undefined
+): boolean {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    for (const key in playbackPlanPrimedListeningComparators) {
+        if (!playbackPlanPrimedListeningComparators[key as keyof PlaybackPlanPrimedListening](left, right))
+            return false;
+    }
+    return true;
+}
+
 const playbackPlanFastForwardComparators: ObjectComparators<PlaybackPlanFastForward> = {
     playbackRate: (left, right) => left.playbackRate === right.playbackRate,
     minimumSkipIntervalMs: (left, right) => left.minimumSkipIntervalMs === right.minimumSkipIntervalMs,
@@ -295,6 +348,7 @@ const playbackPlanComparators: PlaybackPlanComparators = {
     playbackRate: (left, right) => left === right,
     condensed: (left, right) => arePlaybackPlanCondensedEqual(left, right),
     fastForward: (left, right) => arePlaybackPlanFastForwardsEqual(left, right),
+    primedListening: (left, right) => arePlaybackPlanPrimedListeningsEqual(left, right),
 };
 
 export const playbackPlansEqual = <T extends IndexedSubtitleModel>(
@@ -305,4 +359,5 @@ export const playbackPlansEqual = <T extends IndexedSubtitleModel>(
     (playbackPlanComparators.timelineSubtitles(left.timelineSubtitles, right.timelineSubtitles) &&
         playbackPlanComparators.playbackRate(left.playbackRate, right.playbackRate) &&
         playbackPlanComparators.condensed(left.condensed, right.condensed) &&
-        playbackPlanComparators.fastForward(left.fastForward, right.fastForward));
+        playbackPlanComparators.fastForward(left.fastForward, right.fastForward) &&
+        playbackPlanComparators.primedListening(left.primedListening, right.primedListening));

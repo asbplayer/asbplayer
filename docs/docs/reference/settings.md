@@ -196,6 +196,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Toggle condensed playback    |         ✓         |          ✓          |
 | Toggle fast forward playback |         ✓         |          ✓          |
 | Toggle repeat mode           |         ✓         |          ✓          |
+| Toggle primed listening mode |         ✓         |          ✓          |
 
 ### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
@@ -740,6 +741,12 @@ When condensed playback is enabled, skip to the next subtitle only if the next s
 ### Subtitle gap trigger start and end offsets
 
 Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+
+### Primed listening
+
+Primed listening pauses at the start of every subtitle and shows it for just as long as it takes to read, hides it, and then resumes playback after a short silence, so that the target-language audio is heard with its meaning already in mind. Subtitles stay hidden while playback is running in this mode.
+
+The reading time is the subtitle's character count multiplied by the reading time per character, clamped between the minimum and maximum reading time. The resume delay is the silence between hiding the subtitle and resuming playback.
 
 ### Enable WebSocket client
 

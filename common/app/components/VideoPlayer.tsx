@@ -1721,6 +1721,16 @@ export default function VideoPlayer({
         );
     }, [keyBinder, togglePlaybackMode]);
 
+    useEffect(() => {
+        return keyBinder.bindTogglePrimedListening(
+            (event) => {
+                event.preventDefault();
+                togglePlaybackMode(PlayMode.primedListening);
+            },
+            () => false
+        );
+    }, [keyBinder, togglePlaybackMode]);
+
     const handleSubtitlesToggle = useCallback(() => {
         setDisplaySubtitles(!displaySubtitles);
         playbackPreferences.displaySubtitles = !displaySubtitles;

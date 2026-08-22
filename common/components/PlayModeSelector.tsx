@@ -158,6 +158,19 @@ export default function PlayModeSelector({
                         <ListItemText>{t('controls.repeatMode')}</ListItemText>
                     </ListItemButton>
                 </ListItem>
+                <ListItem onClick={() => onPlayMode(PlayMode.primedListening)}>
+                    <ListItemButton>
+                        <ListItemIcon>
+                            <Checkbox
+                                edge="start"
+                                checked={selectedPlayModes.has(PlayMode.primedListening)}
+                                disableRipple
+                                tabIndex={-1}
+                            />
+                        </ListItemIcon>
+                        <ListItemText>{t('controls.primedListeningMode')}</ListItemText>
+                    </ListItemButton>
+                </ListItem>
             </List>
         </Popover>
     );
