@@ -252,6 +252,10 @@ export interface VideoDataUiModel {
     settings: VideoDataUiSettings;
     hasSeenFtue: boolean;
     hideRememberTrackPreferenceToggle: boolean;
+    isGenericPage: boolean;
+    showGenericPageOption: boolean;
+    genericSubtitleParserEnabled: boolean;
+    aggressiveGenericSubtitleParserEnabled: boolean;
 }
 
 export interface SubtitleTrack {

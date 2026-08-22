@@ -1,11 +1,17 @@
 import type { VideoDataSubtitleTrack } from '@project/common';
 import { Parser } from 'm3u8-parser';
-import { extractExtension, inferTracks, trackFromDef } from '@project/extension/src/pages/util';
+import {
+    extractExtension,
+    inferTracks,
+    normalizeSubtitleExtension,
+    trackFromDef,
+} from '@project/extension/src/pages/util';
 
-function baseUrlForUrl(url: string) {
-    const parsedUrl = new URL(url);
-    const originAndPath = `${parsedUrl.origin}${parsedUrl.pathname}`;
-    return originAndPath.substring(0, originAndPath.lastIndexOf('/'));
+export function parseM3U8(text: string): any {
+    const parser = new Parser();
+    parser.push(text);
+    parser.end();
+    return parser.manifest;
 }
 
 export function fetchM3U8(url: string): Promise<any> {
@@ -15,10 +21,7 @@ export function fetchM3U8(url: string): Promise<any> {
             fetch(url, { cache: 'no-store' })
                 .then((response) => response.text())
                 .then((text) => {
-                    const parser = new Parser();
-                    parser.push(text);
-                    parser.end();
-                    resolve(parser.manifest);
+                    resolve(parseM3U8(text));
                 })
                 .catch(reject);
         }, 0);
@@ -26,10 +29,25 @@ export function fetchM3U8(url: string): Promise<any> {
 }
 
 export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSubtitleTrack[]> {
+    return fetchM3U8(url).then((manifest) => subtitleTrackSegmentsFromM3U8Manifest(url, manifest));
+}
+
+export interface LoadedM3U8Manifest {
+    manifest: any;
+    url: string;
+}
+
+export async function subtitleTrackSegmentsFromM3U8Manifest(
+    url: string,
+    manifest: any,
+    manifestLoader: (url: string) => Promise<LoadedM3U8Manifest> = async (manifestUrl) => ({
+        manifest: await fetchM3U8(manifestUrl),
+        url: manifestUrl,
+    })
+): Promise<VideoDataSubtitleTrack[]> {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
             void (async () => {
-                const manifest = await fetchM3U8(url);
                 const subtitleGroups = manifest.mediaGroups?.SUBTITLES;
 
                 if (typeof subtitleGroups !== 'object' || !subtitleGroups) {
@@ -37,7 +55,6 @@ export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSub
                     return;
                 }
 
-                const baseUrl = baseUrlForUrl(url);
                 const promises: Promise<VideoDataSubtitleTrack | undefined>[] = [];
 
                 for (const group of Object.values(subtitleGroups)) {
@@ -46,40 +63,38 @@ export function subtitleTrackSegmentsFromM3U8(url: string): Promise<VideoDataSub
                     }
 
                     for (const label of Object.keys(group)) {
-                        if (label.includes('--forced--')) {
-                            // These tracks are not for the main content and duplicate the language code
-                            // so let's exclude them
-                            // Unfortunately could not find a better way to distinguish them from the real subtitle content
-                            continue;
-                        }
-
                         const track = (group as any)[label];
 
                         if (track && typeof track.language === 'string' && typeof track.uri === 'string') {
                             const fetchTrack = async (): Promise<VideoDataSubtitleTrack | undefined> => {
-                                const subtitleM3U8Url = `${baseUrl}/${track.uri}`;
-                                const subManifest = await fetchM3U8(subtitleM3U8Url);
-                                if (!subManifest.segments?.length) {
-                                    return undefined;
-                                }
-                                const subtitleBaseUrl = baseUrlForUrl(subtitleM3U8Url);
-                                const urls = subManifest.segments
-                                    .filter((s: any) => !s.discontinuity && s.uri)
-                                    .map((s: any) => `${subtitleBaseUrl}/${s.uri}`);
+                                const subtitleM3U8Url = new URL(track.uri, url).href;
+                                const loadedManifest = await manifestLoader(subtitleM3U8Url);
+                                const subManifest = loadedManifest.manifest;
+                                const segments = (subManifest.segments ?? []).filter(
+                                    (segment: any) => !segment.discontinuity && typeof segment.uri === 'string'
+                                );
+                                if (!segments.length) return;
+                                const urls = segments.map(
+                                    (segment: any) => new URL(segment.uri, loadedManifest.url).href
+                                );
+                                const rawExtension = extractExtension(urls[0], 'vtt').toLowerCase();
                                 return trackFromDef({
                                     label: label,
                                     language: track.language,
                                     url: urls,
-                                    extension: extractExtension(subManifest.segments[0].uri, 'vtt'),
+                                    extension:
+                                        rawExtension === 'xml'
+                                            ? 'ttml2'
+                                            : (normalizeSubtitleExtension(rawExtension) ?? rawExtension),
                                 });
                             };
-                            promises.push(fetchTrack());
+                            if (!label.includes('--forced--')) promises.push(fetchTrack());
                         }
                     }
                 }
 
                 const tracks = (await Promise.all(promises)).filter(
-                    (t): t is VideoDataSubtitleTrack => t !== undefined
+                    (track): track is VideoDataSubtitleTrack => track !== undefined
                 );
                 resolve(tracks);
             })().catch(reject);
