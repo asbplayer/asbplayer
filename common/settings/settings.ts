@@ -1006,6 +1006,7 @@ export interface PageSettings {
     svtplay: Page;
     urplay: Page;
     archive: Page;
+    dreaming: Page;
 }
 
 export interface StreamingVideoSettings {

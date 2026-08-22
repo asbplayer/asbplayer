@@ -51,3 +51,4 @@ sidebar_position: 7
 | Natural Japanese        |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |
+| Dreaming (Spanish)      |                                                                                            ✓                                                                                             |
