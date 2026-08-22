@@ -752,13 +752,13 @@ When a pause ends by itself it runs in two phases: the subtitle is shown for the
 
 ### Show subtitles
 
-**Always** is the usual behavior. **Only while paused for them** keeps subtitles off screen during playback, so they appear only for the length of a pause.
+**Always** is the usual behavior. **Only while paused for them** keeps subtitles off screen while the video plays: they appear whenever playback pauses, including when you pause it yourself, and a pause that ends by itself hides them again as soon as its reading time is up. This applies with or without auto-pause enabled.
 
 ### Primed listening
 
-Primed listening is not a separate playback mode. It is auto-pause with **After time to read the line**, **Only while paused for them**, and a resume delay — read the native-language line, watch it disappear, then hear the target-language audio on its own.
+Primed listening is not a separate playback mode. It is auto-pause at the start of a line, with **After time to read the line**, **Only while paused for them**, and a resume delay — read the native-language line, watch it disappear, then hear the target-language audio on its own.
 
-The **Toggle primed listening** shortcut switches those settings together, along with moving auto-pause to the start of the line, and puts back whatever they were on the second press, so it can be turned on and off without visiting the settings. Pausing at the start is what puts reading before the audio; if you already pause at both edges, both are kept. Each part remains usable on its own: auto-resume without hiding subtitles, or hidden subtitles without auto-resume.
+The **Toggle primed listening** shortcut turns auto-pause on and switches its pause edge, resume mode and subtitle visibility together, then puts all of them back on the second press, so it can be turned on and off without visiting the settings. Pausing at the start is what puts reading before the audio; if you already pause at both edges, both are kept. Each part remains usable on its own: auto-resume without hiding subtitles, or hidden subtitles without auto-resume.
 
 ### Enable WebSocket client
 
