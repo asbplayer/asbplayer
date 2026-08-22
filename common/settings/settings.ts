@@ -29,6 +29,19 @@ export enum PauseOnHoverMode {
     inNotOut = 2,
 }
 
+/** How an auto-pause ends. `manual` keeps today's behavior of waiting for the user. */
+export enum AutoPauseResumeMode {
+    manual = 'manual',
+    fixed = 'fixed',
+    subtitleLength = 'subtitleLength',
+}
+
+/** When subtitles are allowed on screen. `whilePaused` hides them during playback. */
+export enum SubtitleVisibility {
+    always = 'always',
+    whilePaused = 'whilePaused',
+}
+
 export enum VideoSubtitleSplitBehavior {
     rememberSplitPosition = 'rememberSplitPosition',
     autoMaximizeVideo = 'autoMaximizeVideo',
@@ -50,6 +63,14 @@ export interface MiscSettings {
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
+    readonly autoPauseResumeMode: AutoPauseResumeMode;
+    readonly autoPauseResumeDelayMs: number;
+    readonly autoPauseFixedDurationMs: number;
+    readonly autoPauseMinimumDurationMs: number;
+    /** Zero means no upper bound. */
+    readonly autoPauseMaximumDurationMs: number;
+    readonly autoPauseTimePerCharacterMs: number;
+    readonly subtitleVisibility: SubtitleVisibility;
     readonly subtitleTriggerStartOffset: number;
     readonly subtitleTriggerEndOffset: number;
     readonly subtitleTriggerGapEndOffset: number;
@@ -912,6 +933,7 @@ export interface KeyBindSet {
     readonly increasePlaybackRate: KeyBind;
     readonly toggleSidePanel: KeyBind;
     readonly toggleRepeat: KeyBind;
+    readonly togglePrimedListening: KeyBind;
     readonly moveBottomSubtitlesUp: KeyBind;
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;

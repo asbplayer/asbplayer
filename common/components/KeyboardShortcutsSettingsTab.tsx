@@ -384,6 +384,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             toggleCondensedPlayback: { label: t('binds.toggleCondensedPlayback'), boundViaBrowser: false },
             toggleFastForwardPlayback: { label: t('binds.toggleFastForwardPlayback'), boundViaBrowser: false },
             toggleRepeat: { label: t('binds.toggleRepeat'), boundViaBrowser: false },
+            togglePrimedListening: { label: t('binds.togglePrimedListening'), boundViaBrowser: false },
             toggleSubtitles: { label: t('binds.toggleSubtitles'), boundViaBrowser: false },
             toggleVideoSubtitleTrack1: { label: t('binds.toggleVideoSubtitleTrack1'), boundViaBrowser: false },
             toggleVideoSubtitleTrack2: { label: t('binds.toggleVideoSubtitleTrack2'), boundViaBrowser: false },

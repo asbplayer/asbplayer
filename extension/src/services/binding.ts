@@ -350,6 +350,12 @@ export default class Binding {
         this.playbackEngine.togglePlaybackMode(targetMode);
     }
 
+    togglePrimedListening(): void {
+        const result = this.playbackEngine.togglePrimedListening();
+        if (result === undefined) return;
+        this.subtitleController.notification(result.notification);
+    }
+
     adjustPlaybackRate(delta: number): void {
         this.notifyPlaybackRate(this.playbackEngine.adjustPlaybackRate(delta));
     }

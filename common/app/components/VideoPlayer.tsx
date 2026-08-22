@@ -505,6 +505,23 @@ export default function VideoPlayer({
         []
     );
 
+    const notifyPrimedListening = useCallback(
+        (result: ReturnType<PlaybackEngine<IndexedSubtitleModel>['togglePrimedListening']>) => {
+            if (result === undefined) return;
+            setAlert({
+                open: true,
+                notifications: [
+                    {
+                        key: result.notification.key,
+                        message: { locKey: result.notification.locKey },
+                        severity: 'info',
+                    },
+                ],
+            });
+        },
+        []
+    );
+
     const updatePlaybackRate = useCallback(
         (playbackRate: number, forwardToPlayer: boolean) => {
             if (forwardToPlayer) playerChannel.playbackRate(playbackRate);
@@ -1710,6 +1727,18 @@ export default function VideoPlayer({
             () => false
         );
     }, [keyBinder, togglePlaybackMode]);
+
+    useEffect(() => {
+        return keyBinder.bindTogglePrimedListening(
+            (event) => {
+                event.preventDefault();
+                const playbackEngine = playbackEngineRef.current;
+                if (!playbackEngine) return;
+                notifyPrimedListening(playbackEngine.togglePrimedListening());
+            },
+            () => false
+        );
+    }, [keyBinder, notifyPrimedListening]);
 
     useEffect(() => {
         return keyBinder.bindToggleRepeat(

@@ -6,6 +6,7 @@ import type {
     PlaybackTimelineRepeatAction,
     PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';
+import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 import { compilePlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
 import type { PlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
 import {
@@ -28,12 +29,30 @@ export interface PlaybackPlanCondensed {
     readonly pauseAtStart: boolean;
 }
 
+/**
+ * How an automatic pause ends on its own. Which edges pause is already encoded in the timeline
+ * blocks, so only the policy that the blocks cannot express lives here.
+ */
+export interface PlaybackPlanAutoPauseResume {
+    readonly mode: AutoPauseResumeMode.fixed | AutoPauseResumeMode.subtitleLength;
+    readonly fixedDurationMs: number;
+    readonly minimumDurationMs: number;
+    /** Zero means no upper bound. */
+    readonly maximumDurationMs: number;
+    readonly timePerCharacterMs: number;
+    /** Silence between hiding the subtitle and resuming, so the audio is heard on its own. */
+    readonly delayMs: number;
+}
+
 /** Playback policy compiled and applied beside its owning media element. */
 export interface PlaybackPlan<T extends IndexedSubtitleModel> {
     readonly timelineSubtitles: PlaybackTimelineSubtitles<T>;
     readonly playbackRate: number;
     readonly condensed?: PlaybackPlanCondensed;
     readonly fastForward?: PlaybackPlanFastForward;
+    readonly autoPauseResume?: PlaybackPlanAutoPauseResume;
+    /** Subtitles are only allowed on screen while playback is paused for them. */
+    readonly subtitlesWhilePausedOnly: boolean;
 }
 
 export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
@@ -53,6 +72,13 @@ export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
     readonly playbackRate: number;
     readonly fastForwardModePlaybackRate: number;
     readonly fastForwardPlaybackMinimumSkipIntervalMs: number;
+    readonly autoPauseResumeMode: AutoPauseResumeMode;
+    readonly autoPauseResumeDelayMs: number;
+    readonly autoPauseFixedDurationMs: number;
+    readonly autoPauseMinimumDurationMs: number;
+    readonly autoPauseMaximumDurationMs: number;
+    readonly autoPauseTimePerCharacterMs: number;
+    readonly subtitleVisibility: SubtitleVisibility;
 }
 
 const autoPausePreferenceIncludes = (
@@ -77,6 +103,13 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
     playbackRate,
     fastForwardModePlaybackRate,
     fastForwardPlaybackMinimumSkipIntervalMs,
+    autoPauseResumeMode,
+    autoPauseResumeDelayMs,
+    autoPauseFixedDurationMs,
+    autoPauseMinimumDurationMs,
+    autoPauseMaximumDurationMs,
+    autoPauseTimePerCharacterMs,
+    subtitleVisibility,
 }: PlaybackPlanInput<T>): PlaybackPlan<T> => {
     const autoPause = playModes.has(PlayMode.autoPause);
     const autoPauseAtStart = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
@@ -86,6 +119,20 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
     const gapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffset);
     const condensedMinimumSkipIntervalMs = normalizeNonNegative(condensedPlaybackMinimumSkipIntervalMs);
     const fastForwardMinimumSkipIntervalMs = normalizeNonNegative(fastForwardPlaybackMinimumSkipIntervalMs);
+    const minimumDurationMs = normalizeNonNegative(autoPauseMinimumDurationMs);
+    const maximumDurationMs = normalizeNonNegative(autoPauseMaximumDurationMs);
+    const autoPauseResume =
+        autoPause && autoPauseResumeMode !== AutoPauseResumeMode.manual
+            ? {
+                  mode: autoPauseResumeMode,
+                  fixedDurationMs: normalizeNonNegative(autoPauseFixedDurationMs),
+                  minimumDurationMs,
+                  // Zero keeps its "no upper bound" meaning instead of clamping every pause away.
+                  maximumDurationMs: maximumDurationMs === 0 ? 0 : Math.max(minimumDurationMs, maximumDurationMs),
+                  timePerCharacterMs: normalizeNonNegative(autoPauseTimePerCharacterMs),
+                  delayMs: normalizeNonNegative(autoPauseResumeDelayMs),
+              }
+            : undefined;
     const timeline = compilePlaybackTimelineSubtitles({
         subtitles,
         displaySubtitles,
@@ -121,6 +168,8 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
             blocks,
         },
         playbackRate,
+        subtitlesWhilePausedOnly: subtitleVisibility === SubtitleVisibility.whilePaused,
+        ...(autoPauseResume === undefined ? {} : { autoPauseResume }),
         ...(playModes.has(PlayMode.condensed)
             ? {
                   condensed: {
@@ -242,6 +291,30 @@ function arePlaybackPlanCondensedEqual(
     return true;
 }
 
+const playbackPlanAutoPauseResumeComparators: ObjectComparators<PlaybackPlanAutoPauseResume> = {
+    mode: (left, right) => left.mode === right.mode,
+    fixedDurationMs: (left, right) => left.fixedDurationMs === right.fixedDurationMs,
+    minimumDurationMs: (left, right) => left.minimumDurationMs === right.minimumDurationMs,
+    maximumDurationMs: (left, right) => left.maximumDurationMs === right.maximumDurationMs,
+    timePerCharacterMs: (left, right) => left.timePerCharacterMs === right.timePerCharacterMs,
+    delayMs: (left, right) => left.delayMs === right.delayMs,
+};
+
+function arePlaybackPlanAutoPauseResumesEqual(
+    left: PlaybackPlanAutoPauseResume | undefined,
+    right: PlaybackPlanAutoPauseResume | undefined
+): boolean {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    for (const key in playbackPlanAutoPauseResumeComparators) {
+        if (!playbackPlanAutoPauseResumeComparators[key as keyof PlaybackPlanAutoPauseResume](left, right)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 const playbackPlanFastForwardComparators: ObjectComparators<PlaybackPlanFastForward> = {
     playbackRate: (left, right) => left.playbackRate === right.playbackRate,
     minimumSkipIntervalMs: (left, right) => left.minimumSkipIntervalMs === right.minimumSkipIntervalMs,
@@ -295,6 +368,8 @@ const playbackPlanComparators: PlaybackPlanComparators = {
     playbackRate: (left, right) => left === right,
     condensed: (left, right) => arePlaybackPlanCondensedEqual(left, right),
     fastForward: (left, right) => arePlaybackPlanFastForwardsEqual(left, right),
+    autoPauseResume: (left, right) => arePlaybackPlanAutoPauseResumesEqual(left, right),
+    subtitlesWhilePausedOnly: (left, right) => left === right,
 };
 
 export const playbackPlansEqual = <T extends IndexedSubtitleModel>(
@@ -305,4 +380,9 @@ export const playbackPlansEqual = <T extends IndexedSubtitleModel>(
     (playbackPlanComparators.timelineSubtitles(left.timelineSubtitles, right.timelineSubtitles) &&
         playbackPlanComparators.playbackRate(left.playbackRate, right.playbackRate) &&
         playbackPlanComparators.condensed(left.condensed, right.condensed) &&
-        playbackPlanComparators.fastForward(left.fastForward, right.fastForward));
+        playbackPlanComparators.fastForward(left.fastForward, right.fastForward) &&
+        playbackPlanComparators.autoPauseResume(left.autoPauseResume, right.autoPauseResume) &&
+        playbackPlanComparators.subtitlesWhilePausedOnly(
+            left.subtitlesWhilePausedOnly,
+            right.subtitlesWhilePausedOnly
+        ));
