@@ -20,10 +20,22 @@ export interface OnlineSubtitleSourceConfig {
     jimakuRecentWorks?: JimakuCachedWork[];
 }
 
+export interface GenericSubtitleParserState {
+    pages: {
+        [host: string]: {
+            enabled: boolean;
+            aggressiveEnabled: boolean;
+        };
+    };
+}
+
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
     ftueHasSeenSubtitleTrackSelector: false,
     ftueAnnotation: AnnotationTutorialState.hasNotSeen,
+    genericSubtitleParser: {
+        pages: {},
+    },
     onlineSubtitleSourceConfig: {
         jimakuApiKey: '',
         jimakuSearchCategory: 'anime',
@@ -35,6 +47,7 @@ export interface GlobalState {
     ftueHasSeenAnkiDialogQuickSelectV2: boolean;
     ftueHasSeenSubtitleTrackSelector: boolean;
     ftueAnnotation: AnnotationTutorialState;
+    genericSubtitleParser: GenericSubtitleParserState;
     onlineSubtitleSourceConfig: OnlineSubtitleSourceConfig;
 }
 

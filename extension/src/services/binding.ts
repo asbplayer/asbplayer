@@ -119,6 +119,7 @@ import PlaybackEngine from '@project/common/playback/playback-engine';
 import type { SubtitleOffsetOptions } from '@project/common/playback/playback-engine';
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
+import { mediaSourceIdentity } from '@project/extension/src/pages/util';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -182,7 +183,7 @@ export default class Binding {
     private _synced: boolean;
     private _syncedTimestamp?: number;
     private _lastSyncedLocation?: string;
-    private _lastLoadedMetadataVideoSrc: string;
+    private _lastLoadedMetadataMediaIdentity: unknown;
     private readonly _videoSrcChangesIndicateNewVideo: boolean;
 
     private _recordingState: RecordingState = RecordingState.notRecording;
@@ -261,7 +262,7 @@ export default class Binding {
     constructor(video: HTMLMediaElement, options: BindingOptions) {
         this.video = video;
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
-        this._lastLoadedMetadataVideoSrc = this._registeredVideoSrc;
+        this._lastLoadedMetadataMediaIdentity = mediaSourceIdentity(video);
         this.hasPageScript = options.hasPageScript;
         this._videoSrcChangesIndicateNewVideo = options.videoSrcChangesIndicateNewVideo;
         this.dictionary = new DictionaryProvider(new ExtensionDictionaryStorage());
@@ -786,9 +787,10 @@ export default class Binding {
                 disneyPlus ? 1000 : 0
             );
             this.videoChangeListener = () => {
+                const mediaIdentity = mediaSourceIdentity(this.video);
+                const sourceChanged = !Object.is(mediaIdentity, this._lastLoadedMetadataMediaIdentity);
+                this._lastLoadedMetadataMediaIdentity = mediaIdentity;
                 const videoSrc = this.video.src || this._fallbackVideoSrc;
-                const sourceChanged = videoSrc !== this._lastLoadedMetadataVideoSrc;
-                this._lastLoadedMetadataVideoSrc = videoSrc;
                 this._updateRegisteredVideoSrc(videoSrc);
                 const sameLocationVideoChanged = this._videoSrcChangesIndicateNewVideo && sourceChanged;
 
