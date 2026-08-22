@@ -562,6 +562,12 @@ export interface VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage extends M
     readonly state: Partial<OnlineSubtitleSourceConfig>;
 }
 
+export interface VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage extends Message {
+    readonly command: 'setGenericSubtitleParserEnabled';
+    readonly enabled: boolean;
+    readonly aggressiveEnabled: boolean;
+}
+
 export interface CropAndResizeMessage extends Message, ImageCaptureParams {
     readonly command: 'crop-and-resize';
     readonly dataUrl: string;

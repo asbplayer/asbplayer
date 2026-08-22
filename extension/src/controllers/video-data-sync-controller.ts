@@ -9,6 +9,7 @@ import type {
     VideoDataSubtitleTrack,
     VideoDataUiBridgeConfirmMessage,
     VideoDataUiBridgeOpenFileMessage,
+    VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
     VideoDataUiModel,
     VideoToExtensionCommand,
@@ -24,8 +25,9 @@ import { fetchLocalization } from '@project/extension/src/services/localization-
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
-import { extractExtension } from '@/pages/util';
+import { subtitleFileExtensionForUrl } from '@/pages/util';
 import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
+import { setGenericSubtitleParserOptionsForHost } from '@/services/generic-subtitle-parser';
 
 declare global {
     function cloneInto(obj: any, targetScope: any, options?: any): any;
@@ -91,6 +93,7 @@ export default class VideoDataSyncController {
     private _activeElement?: Element;
     private _autoSyncAttempted: boolean = false;
     private _dataReceivedListener?: (event: Event) => void;
+    private _dataReceivedEventTarget?: EventTarget;
     private _isTutorial: boolean;
 
     constructor(context: Binding, settings: SettingsProvider) {
@@ -120,10 +123,15 @@ export default class VideoDataSyncController {
 
     unbind() {
         if (this._dataReceivedListener) {
-            document.removeEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
+            this._dataReceivedEventTarget?.removeEventListener(
+                'asbplayer-synced-data',
+                this._dataReceivedListener,
+                false
+            );
         }
 
         this._dataReceivedListener = undefined;
+        this._dataReceivedEventTarget = undefined;
         this._syncedData = undefined;
         this._cleanupPlayBlocker();
         this._openedLocation = undefined;
@@ -178,19 +186,28 @@ export default class VideoDataSyncController {
 
         const pageDelegate = await currentPageDelegate();
 
-        if (!pageDelegate?.isVideoPage()) {
+        if (!pageDelegate.isVideoPage()) {
             return;
         }
 
         this._syncedData = undefined;
         this._autoSyncAttempted = false;
 
-        if (!this._dataReceivedListener) {
+        const eventTarget = pageDelegate.config.generic ? this._context.video : document;
+        if (!this._dataReceivedListener || this._dataReceivedEventTarget !== eventTarget) {
+            if (this._dataReceivedListener) {
+                this._dataReceivedEventTarget?.removeEventListener(
+                    'asbplayer-synced-data',
+                    this._dataReceivedListener,
+                    false
+                );
+            }
             this._dataReceivedListener = (event: Event) => {
                 const data = (event as CustomEvent).detail as VideoData;
                 void this._setSyncedData(data);
             };
-            document.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
+            this._dataReceivedEventTarget = eventTarget;
+            eventTarget.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
         }
 
         if (pageDelegate.config.key === 'youtube') {
@@ -202,7 +219,12 @@ export default class VideoDataSyncController {
             }
             document.dispatchEvent(new CustomEvent('asbplayer-get-synced-data', { detail: payload }));
         } else {
-            document.dispatchEvent(new CustomEvent('asbplayer-get-synced-data'));
+            eventTarget.dispatchEvent(
+                new CustomEvent('asbplayer-get-synced-data', {
+                    bubbles: pageDelegate.config.generic,
+                    composed: pageDelegate.config.generic,
+                })
+            );
         }
     }
 
@@ -237,11 +259,21 @@ export default class VideoDataSyncController {
         const activeProfilePromise = this._context.settings.activeProfile();
         const globalState = await globalStateProvider.get([
             'ftueHasSeenSubtitleTrackSelector',
+            'genericSubtitleParser',
             'onlineSubtitleSourceConfig',
         ]);
         const hasSeenFtue = globalState.ftueHasSeenSubtitleTrackSelector;
         const onlineSubtitleSourceConfig = globalState.onlineSubtitleSourceConfig;
-        const hideRememberTrackPreferenceToggle = this._isTutorial || (await this._pageHidesTrackPrefToggle());
+        const pageDelegate = await currentPageDelegate();
+        const hideRememberTrackPreferenceToggle =
+            this._isTutorial || pageDelegate.config.hideRememberTrackPreferenceToggle === true;
+        const isGenericPage = pageDelegate.config.generic === true;
+        const showGenericPageOption =
+            !this._isTutorial && (isGenericPage || pageDelegate.config.pageScript === undefined);
+        const genericSubtitleParserEnabled =
+            globalState.genericSubtitleParser.pages[window.location.host]?.enabled === true;
+        const aggressiveGenericSubtitleParserEnabled =
+            globalState.genericSubtitleParser.pages[window.location.host]?.aggressiveEnabled === true;
         return this._syncedData
             ? {
                   isLoading: this._syncedData.subtitles === undefined,
@@ -258,6 +290,10 @@ export default class VideoDataSyncController {
                   },
                   hasSeenFtue,
                   hideRememberTrackPreferenceToggle,
+                  isGenericPage,
+                  showGenericPageOption,
+                  genericSubtitleParserEnabled,
+                  aggressiveGenericSubtitleParserEnabled,
                   onlineSubtitleSourceConfig,
                   ...additionalFields,
               }
@@ -276,6 +312,10 @@ export default class VideoDataSyncController {
                   },
                   hasSeenFtue,
                   hideRememberTrackPreferenceToggle,
+                  isGenericPage,
+                  showGenericPageOption,
+                  genericSubtitleParserEnabled,
+                  aggressiveGenericSubtitleParserEnabled,
                   onlineSubtitleSourceConfig,
                   ...additionalFields,
               };
@@ -357,16 +397,7 @@ export default class VideoDataSyncController {
 
     private async _canAutoSync(): Promise<boolean> {
         const page = await currentPageDelegate();
-
-        if (page === undefined) {
-            return this._autoSync ?? false;
-        }
-
         return this._autoSync === true && page.canAutoSync(this._context.video);
-    }
-
-    private async _pageHidesTrackPrefToggle() {
-        return (await currentPageDelegate())?.config?.hideRememberTrackPreferenceToggle ?? false;
     }
 
     private async _client() {
@@ -423,6 +454,18 @@ export default class VideoDataSyncController {
                                 ...setOnlineSubtitleSourceConfigMessage.state,
                             },
                         });
+                        return;
+                    }
+
+                    if ('setGenericSubtitleParserEnabled' === message.command) {
+                        const setGenericSubtitleParserEnabledMessage =
+                            message as VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage;
+                        await setGenericSubtitleParserOptionsForHost(
+                            globalStateProvider,
+                            window.location.host,
+                            setGenericSubtitleParserEnabledMessage.enabled,
+                            setGenericSubtitleParserEnabledMessage.aggressiveEnabled
+                        );
                         return;
                     }
 
@@ -681,7 +724,7 @@ export default class VideoDataSyncController {
         // `url` is an array
 
         const firstUri = url[0];
-        const partExtension = extractExtension(firstUri, extension);
+        const partExtension = subtitleFileExtensionForUrl(firstUri, extension);
         const fileName = `${name}.${partExtension}`;
         const promises = url.map((u) => fetch(u));
         const tracks = [];

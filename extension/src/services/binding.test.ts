@@ -379,6 +379,29 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('refreshes subtitles when a configured page changes a child source without changing location', async () => {
+        const video = createVideo();
+        video.removeAttribute('src');
+        const source = document.createElement('source');
+        source.src = 'https://example.com/episode-1.m3u8';
+        video.append(source);
+        const binding = new Binding(video, bindingOptions(true, true));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        const requestSubtitles = jest.spyOn(binding.videoDataSyncController, 'requestSubtitles');
+        const resetSubtitles = jest.spyOn(binding as any, '_resetSubtitles');
+
+        source.src = 'https://example.com/episode-2.m3u8';
+        video.dispatchEvent(new Event('loadedmetadata'));
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(requestSubtitles).toHaveBeenCalledWith({ videoChanged: true });
+        expect(resetSubtitles).toHaveBeenCalledTimes(1);
+        binding.unbind();
+    });
+
     it('keeps same-location source changes suppressed for pages without the opt-in', async () => {
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(true, false));

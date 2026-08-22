@@ -259,6 +259,10 @@
             "selectSubtitles": "字幕を選択",
             "subtitleTrack": "字幕トラック",
             "videoName": "動画ファイル名",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection for this site then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be selected on the site and the page refreshed to be usable.",
             "ftue": "自動検出された字幕トラックはここで選択できます。asbplayerはすべてのサイトで字幕トラックを検出できるわけではありません。自分の字幕ファイルはいつでもロードすることができます。"
         },
         "videoSelect": {

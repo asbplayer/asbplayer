@@ -160,6 +160,10 @@ interface Props {
     hasSeenFtue?: boolean;
     hideRememberTrackPreferenceToggle?: boolean;
     hideVideoNameTextField?: boolean;
+    isGenericPage?: boolean;
+    showGenericPageOption?: boolean;
+    genericSubtitleParserEnabled?: boolean;
+    aggressiveGenericSubtitleParserEnabled?: boolean;
     fileSelector: FileSelector;
     onCancel: () => void;
     onOpenSettings: () => void;
@@ -167,6 +171,8 @@ interface Props {
     onSetActiveProfile: (profile: string | undefined) => void;
     onOnlineSourceConfigChanged: (state: Partial<OnlineSubtitleSourceConfig>) => void;
     onDismissFtue: () => void;
+    onGenericSubtitleParserEnabledChange?: (enabled: boolean) => void;
+    onAggressiveGenericSubtitleParserEnabledChange?: (enabled: boolean) => void;
     onOpenFiles: (files: FileWithId[]) => void;
     onSubtitleTracks: (tracks: VideoDataSubtitleTrack[]) => void;
     onSelectedSubtitleTrackIds: (trackIds: string[]) => void;
@@ -188,6 +194,10 @@ export default function VideoDataSyncDialog({
     hasSeenFtue,
     hideRememberTrackPreferenceToggle,
     hideVideoNameTextField,
+    isGenericPage,
+    showGenericPageOption,
+    genericSubtitleParserEnabled,
+    aggressiveGenericSubtitleParserEnabled,
     fileSelector,
     onCancel,
     onOpenSettings,
@@ -195,6 +205,8 @@ export default function VideoDataSyncDialog({
     onSetActiveProfile,
     onOnlineSourceConfigChanged,
     onDismissFtue,
+    onGenericSubtitleParserEnabledChange,
+    onAggressiveGenericSubtitleParserEnabledChange,
     onOpenFiles,
     onSubtitleTracks,
     onSelectedSubtitleTrackIds,
@@ -506,6 +518,66 @@ export default function VideoDataSyncDialog({
                                         }}
                                     />
                                 </Grid>
+                            )}
+                            {showGenericPageOption && (
+                                <>
+                                    <Grid item>
+                                        <LabelWithHoverEffect
+                                            control={
+                                                <Switch
+                                                    checked={genericSubtitleParserEnabled === true}
+                                                    disabled={aggressiveGenericSubtitleParserEnabled === true}
+                                                    onChange={(event) =>
+                                                        onGenericSubtitleParserEnabledChange?.(event.target.checked)
+                                                    }
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={t('extension.videoDataSync.genericPage')}
+                                            labelPlacement="start"
+                                            style={{
+                                                display: 'flex',
+                                                marginLeft: 'auto',
+                                                marginRight: '-13px',
+                                                width: 'fit-content',
+                                            }}
+                                        />
+                                    </Grid>
+                                    {(genericSubtitleParserEnabled || aggressiveGenericSubtitleParserEnabled) && (
+                                        <Grid item>
+                                            <LabelWithHoverEffect
+                                                control={
+                                                    <Switch
+                                                        checked={aggressiveGenericSubtitleParserEnabled === true}
+                                                        onChange={(event) =>
+                                                            onAggressiveGenericSubtitleParserEnabledChange?.(
+                                                                event.target.checked
+                                                            )
+                                                        }
+                                                        color="primary"
+                                                    />
+                                                }
+                                                label={t('extension.videoDataSync.aggressiveGenericPage')}
+                                                labelPlacement="start"
+                                                style={{
+                                                    display: 'flex',
+                                                    marginLeft: 'auto',
+                                                    marginRight: '-13px',
+                                                    width: 'fit-content',
+                                                }}
+                                            />
+                                        </Grid>
+                                    )}
+                                    <Grid item>
+                                        <Alert severity={isGenericPage ? 'warning' : 'info'}>
+                                            {t(
+                                                isGenericPage
+                                                    ? 'extension.videoDataSync.genericPageWarning'
+                                                    : 'extension.videoDataSync.genericPageInfo'
+                                            )}
+                                        </Alert>
+                                    </Grid>
+                                </>
                             )}
                         </Grid>
                     </form>
