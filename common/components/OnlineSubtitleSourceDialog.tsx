@@ -22,7 +22,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next';
 import { JimakuClient } from '@project/common/subtitle-sources';
 import type { JimakuEntry, JimakuFile } from '@project/common/subtitle-sources';
-import { EPISODE_PATTERNS } from '@project/common/subtitle-sources/jimaku-episode-patterns';
+import { prepareHint } from '@project/common/subtitle-sources/jimaku-episode-patterns';
 import type { JimakuCachedWork } from '@project/common/global-state';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -53,35 +53,6 @@ const MAX_RECENT_WORKS = 10;
 
 const isSupportedSubtitleFile = (name: string) =>
     SUPPORTED_JIMAKU_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext));
-
-// Detect episode and strip the matched marker from the title in one pass, so the
-// search query stays clean for every supported format (SxxExx, EP, CJK episode markers).
-const prepareHint = (hint?: string): { episode: number | undefined; cleaned: string } => {
-    const trimmed = hint?.trim() ?? '';
-    if (trimmed.length === 0) {
-        return { episode: undefined, cleaned: '' };
-    }
-
-    let episode: number | undefined;
-    let stripped = trimmed;
-    for (const { regex, parse } of EPISODE_PATTERNS) {
-        const match = regex.exec(stripped);
-        if (match?.[1] === undefined) {
-            continue;
-        }
-        const parsed = parse(match[1]);
-        if (parsed === undefined) {
-            continue;
-        }
-        episode = parsed;
-        stripped = stripped.replace(match[0], ' ').replace(/\s+/g, ' ').trim();
-        break;
-    }
-
-    const suffixSplit = stripped.split(' - ');
-    const cleaned = suffixSplit.length > 1 ? suffixSplit[0].trim() : stripped;
-    return { episode, cleaned };
-};
 
 const FilterTextField: React.FC<{ filterString: string; onChange: (s: string) => void }> = ({
     filterString,

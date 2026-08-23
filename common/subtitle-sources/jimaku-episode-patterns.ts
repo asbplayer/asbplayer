@@ -64,22 +64,31 @@ export const EPISODE_PATTERNS: EpisodePattern[] = [
     { regex: /第([一二三四五六七八九十]+)[话集話]/, parse: parseKanji },
 ];
 
-export const extractEpisode = (hint?: string): number | undefined => {
+// Detect episode and strip the matched marker from the title in one pass, so the
+// search query stays clean for every supported format (SxxExx, EP, CJK episode markers).
+export const prepareHint = (hint?: string): { episode: number | undefined; cleaned: string } => {
     const trimmed = hint?.trim() ?? '';
     if (trimmed.length === 0) {
-        return undefined;
+        return { episode: undefined, cleaned: '' };
     }
 
+    let episode: number | undefined;
+    let stripped = trimmed;
     for (const { regex, parse } of EPISODE_PATTERNS) {
-        const match = regex.exec(trimmed);
+        const match = regex.exec(stripped);
         if (match?.[1] === undefined) {
             continue;
         }
-        const episode = parse(match[1]);
-        if (episode !== undefined) {
-            return episode;
+        const parsed = parse(match[1]);
+        if (parsed === undefined) {
+            continue;
         }
+        episode = parsed;
+        stripped = stripped.replace(match[0], ' ').replace(/\s+/g, ' ').trim();
+        break;
     }
 
-    return undefined;
+    const suffixSplit = stripped.split(' - ');
+    const cleaned = suffixSplit.length > 1 ? suffixSplit[0].trim() : stripped;
+    return { episode, cleaned };
 };
