@@ -1,4 +1,4 @@
-import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { extractExtension, trackFromDef } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
