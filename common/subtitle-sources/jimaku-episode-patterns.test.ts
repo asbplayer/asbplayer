@@ -1,4 +1,5 @@
-import { extractEpisode } from './jimaku-episode-patterns';
+import { extractEpisode } from '@project/common/subtitle-sources/jimaku-episode-patterns';
+import { describe, expect, it } from '@jest/globals';
 
 describe('extractEpisode', () => {
     it('returns undefined for empty or whitespace input', () => {

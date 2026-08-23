@@ -1,6 +1,6 @@
-import { Fetcher, Progress } from '@project/common';
+import type { Fetcher, Progress } from '@project/common';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
-    DictionaryTrack,
     defaultSettings,
     TokenFrequencyAnnotation,
     TokenMatchStrategy,
@@ -9,16 +9,14 @@ import {
     TokenStyling,
 } from '@project/common/settings';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import {
+import type {
     TermDictionaryEntry,
     TermEntriesResult,
     TermHeadword,
     TermSource,
     TokenPartResult,
-    Yomitan,
-    filterYomitanDictionaries,
-    splitTextForTokenization,
 } from '@project/common/yomitan';
+import { Yomitan, filterYomitanDictionaries, splitTextForTokenization } from '@project/common/yomitan';
 
 const testDictionaryTrack = (overrides: Partial<DictionaryTrack> = {}): DictionaryTrack => ({
     ...defaultSettings.dictionaryTracks[0],
@@ -231,13 +229,13 @@ describe('Yomitan', () => {
 
     it('reports bulk pitch accent support after negotiating parser-specific capabilities', async () => {
         const scanningFetcher = new MockFetcher();
-        scanningFetcher.fetch.mockResolvedValue({ version: '26.7.1' });
+        scanningFetcher.fetch.mockResolvedValue({ version: '26.7.21' });
         const scanning = new Yomitan(testDictionaryTrack(), scanningFetcher);
         await scanning.version();
 
         const mecabFetcher = new MockFetcher();
         mecabFetcher.fetch
-            .mockResolvedValueOnce({ version: '26.7.1' })
+            .mockResolvedValueOnce({ version: '26.7.21' })
             .mockResolvedValueOnce([makeMecabSupportResult()]);
         const mecab = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), mecabFetcher);
         await mecab.version();
@@ -708,7 +706,7 @@ describe('Yomitan', () => {
 
     it('caches pitch accents from tokenize headword pronunciations when supported', async () => {
         const fetcher = new MockFetcher();
-        fetcher.fetch.mockResolvedValueOnce({ version: '26.7.1' }).mockResolvedValueOnce([
+        fetcher.fetch.mockResolvedValueOnce({ version: '26.7.21' }).mockResolvedValueOnce([
             makeTokenizeResult({
                 content: [
                     [

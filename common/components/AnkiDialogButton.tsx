@@ -1,6 +1,8 @@
 import type { ButtonBaseActions } from '@mui/material';
-import Button, { ButtonProps } from '@mui/material/Button';
-import React, { ForwardedRef, useCallback, useEffect, useRef, useState } from 'react';
+import type { ButtonProps } from '@mui/material/Button';
+import Button from '@mui/material/Button';
+import type { ForwardedRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props extends ButtonProps {
     focusVisible: boolean;

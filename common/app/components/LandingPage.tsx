@@ -8,13 +8,14 @@ import Paper from '@mui/material/Paper';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
-import ChromeExtension from '../services/chrome-extension';
-import { useTheme, type Theme } from '@mui/material/styles';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import { useTheme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useAppBarHeight } from '../../hooks/use-app-bar-height';
-import { VideoTabModel } from '../..';
-import VideoElementSelector from './VideoElementSelector';
-import LoadSubtitlesIcon from '../../components/LoadSubtitlesIcon';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
+import type { VideoTabModel } from '@project/common';
+import VideoElementSelector from '@project/common/app/components/VideoElementSelector';
+import LoadSubtitlesIcon from '@project/common/components/LoadSubtitlesIcon';
 import RestoreIcon from '@mui/icons-material/Restore';
 
 interface StylesProps {

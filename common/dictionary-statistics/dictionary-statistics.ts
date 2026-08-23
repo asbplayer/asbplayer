@@ -1,4 +1,4 @@
-import { Progress, Tokenization } from '@project/common';
+import type { Progress, Tokenization } from '@project/common';
 import type {
     CardInfoForDB,
     DictionaryProvider,
@@ -6,15 +6,8 @@ import type {
     DictionaryWaniKaniSubjectRecord,
     TokenResults,
 } from '@project/common/dictionary-db';
-import {
-    defaultSettings,
-    dictionaryTrackEnabled,
-    DictionarySettings,
-    NUM_TOKEN_STATUSES,
-    SettingsProvider,
-    TokenStatusConfig,
-    TokenStatus,
-} from '@project/common/settings';
+import type { DictionarySettings, SettingsProvider, TokenStatusConfig, TokenStatus } from '@project/common/settings';
+import { defaultSettings, dictionaryTrackEnabled, NUM_TOKEN_STATUSES } from '@project/common/settings';
 
 export const REVIEW_DUES = [0, 1, 7] as const; // 0 = due today, 1 = due within a day, 7 = due within a week
 

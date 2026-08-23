@@ -1,7 +1,8 @@
-import React, { ForwardedRef, useCallback, useEffect, useMemo, useState, useRef, ReactNode } from 'react';
+import type { ForwardedRef, ReactNode } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
-import {
+import type { Theme } from '@mui/material';
+import type {
     ContextProp,
     ItemProps,
     ListRange,
@@ -9,44 +10,39 @@ import {
     TableBodyProps,
     TableComponents,
     TableProps,
-    TableVirtuoso,
     TableVirtuosoHandle,
 } from 'react-virtuoso';
-import { keysAreEqual } from '../services/util';
-import { useResize } from '../hooks/use-resize';
-import { ScreenLocation, useDragging } from '../hooks/use-dragging';
+import { TableVirtuoso } from 'react-virtuoso';
+import { useResize } from '@project/common/app/hooks/use-resize';
+import type { ScreenLocation } from '@project/common/app/hooks/use-dragging';
+import { useDragging } from '@project/common/app/hooks/use-dragging';
 import { useTranslation } from 'react-i18next';
-import {
-    PostMineAction,
+import type {
+    DisplaySubtitleModel,
     SubtitleModel,
-    AutoPauseContext,
     CopySubtitleWithAdditionalFieldsMessage,
     CardTextFieldValues,
     IndexedSubtitleModel,
+    PlaybackState,
 } from '@project/common';
-import {
-    AsbplayerSettings,
-    DictionaryTrack,
-    TokenAnnotationConfig,
-    tokenAnnotationStyleValues,
-} from '@project/common/settings';
+import { PostMineAction } from '@project/common';
+import type { AsbplayerSettings, DictionaryTrack, TokenAnnotationConfig } from '@project/common/settings';
+import { tokenAnnotationStyleValues } from '@project/common/settings';
 import {
     surroundingSubtitles,
     mockSurroundingSubtitles,
     surroundingSubtitlesAroundInterval,
     extractText,
 } from '@project/common/util';
-import { SubtitleCollection } from '@project/common/subtitle-collection';
+import type { SubtitleCollection } from '@project/common/subtitle-collection';
+import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
 import {
     getAnnotationsHtml,
     renderRichTextWindow,
     emptyRichTextWindow,
-    RichTextWindow,
-    RenderedRichText,
-    SubtitleAnnotations,
     renderRichTextForSubtitle,
 } from '@project/common/annotations';
-import { KeyBinder } from '@project/common/key-binder';
+import type { KeyBinder } from '@project/common/key-binder';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import CloseIcon from '@mui/icons-material/Close';
@@ -58,18 +54,19 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
-import Clock from '../services/clock';
-import { useAppBarHeight } from '../../hooks/use-app-bar-height';
-import { MineSubtitleParams } from '../hooks/use-app-web-socket-client';
-import { useSubtitleFind } from '../hooks/use-subtitle-find';
+import type Clock from '@project/common/playback/timing/clock';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
+import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-client';
+import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
-import ChromeExtension, { ExtensionMessage } from '../services/chrome-extension';
-import { MineSubtitleCommand, WebSocketClient } from '../../web-socket-client';
-import { clampSubtitlePlayerWidth } from './video-subtitle-split';
-import './subtitles.css';
+import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
+import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
+import '@project/common/app/components/subtitles.css';
 
 let lastKnownWidth: number | undefined;
 export const minSubtitlePlayerWidth = 200;
@@ -204,10 +201,6 @@ const useSubtitleRowStyles = makeStyles<Theme>((theme) => ({
     },
 }));
 
-export interface DisplaySubtitleModel extends IndexedSubtitleModel {
-    displayTime: string;
-}
-
 enum SelectionState {
     insideSelection = 1,
     outsideSelection = 2,
@@ -221,12 +214,13 @@ interface SubtitleRowContext {
     richTextWindowRef: React.RefObject<RichTextWindow>;
     selectedSubtitleIndexes?: boolean[];
     highlightedJumpToSubtitleIndex?: number;
-    currentSubtitleIndexes: { [index: number]: boolean };
+    currentSubtitleIndexes: ReadonlySet<number>;
     onClickSubtitle: (index: number) => void;
     onCopySubtitle: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, index: number) => void;
     onMouseOver: (e: React.MouseEvent) => void;
     onMouseOut: (e: React.MouseEvent) => void;
     lastScrollTimestampRef: React.MutableRefObject<number>;
+    userScrollActiveRef: React.MutableRefObject<boolean>;
 }
 
 const selectionStateForIndex = (
@@ -247,20 +241,96 @@ const selectionStateForIndex = (
     return selectionState;
 };
 
-const SubtitleScroller = React.forwardRef<HTMLDivElement, ScrollerProps & ContextProp<SubtitleRowContext>>(
+const scrollKeys = new Set([
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'PageUp',
+    'PageDown',
+    'Home',
+    'End',
+    ' ',
+]);
+
+interface SubtitleScrollerContext {
+    lastScrollTimestampRef: React.MutableRefObject<number>;
+    userScrollActiveRef: React.MutableRefObject<boolean>;
+}
+
+const SubtitleScroller = React.forwardRef<HTMLDivElement, ScrollerProps & ContextProp<SubtitleScrollerContext>>(
     function SubtitleScroller({ style, context, ...rest }, ref) {
+        const markUserScroll = () => {
+            context.lastScrollTimestampRef.current = Date.now();
+        };
+        const startUserScroll = () => {
+            context.userScrollActiveRef.current = true;
+            markUserScroll();
+        };
+        const endUserScroll = () => {
+            context.userScrollActiveRef.current = false;
+            markUserScroll();
+        };
+
+        const contextRef = useRef(context);
+        contextRef.current = context;
+
+        useEffect(() => {
+            const releasePointer = () => {
+                if (!contextRef.current.userScrollActiveRef.current) return;
+                contextRef.current.userScrollActiveRef.current = false;
+                contextRef.current.lastScrollTimestampRef.current = Date.now();
+            };
+            const releaseKey = (event: KeyboardEvent) => {
+                if (scrollKeys.has(event.key)) releasePointer();
+            };
+
+            window.addEventListener('pointerup', releasePointer);
+            window.addEventListener('pointercancel', releasePointer);
+            window.addEventListener('keyup', releaseKey);
+
+            return () => {
+                window.removeEventListener('pointerup', releasePointer);
+                window.removeEventListener('pointercancel', releasePointer);
+                window.removeEventListener('keyup', releaseKey);
+            };
+        }, []);
+
         return (
             <div
                 {...rest}
                 ref={ref}
                 style={{ ...style, overflowX: 'auto' }}
-                onWheel={() => {
-                    context.lastScrollTimestampRef.current = Date.now();
+                onWheel={markUserScroll}
+                onTouchStart={startUserScroll}
+                onTouchEnd={endUserScroll}
+                onTouchMove={startUserScroll}
+                onTouchCancel={endUserScroll}
+                onPointerDown={startUserScroll}
+                onPointerUp={endUserScroll}
+                onPointerMove={(event) => {
+                    if (event.buttons !== 0) startUserScroll();
+                }}
+                onPointerCancel={endUserScroll}
+                onKeyDown={(event) => {
+                    if (scrollKeys.has(event.key)) startUserScroll();
+                }}
+                onKeyUp={(event) => {
+                    if (scrollKeys.has(event.key)) endUserScroll();
                 }}
             />
         );
     }
 );
+interface SubtitleScrollDecision {
+    hidden: boolean;
+    lastScrollTimestamp: number;
+    userScrollActive: boolean;
+    now: number;
+}
+
+const shouldAutoScroll = ({ hidden, lastScrollTimestamp, userScrollActive, now }: SubtitleScrollDecision): boolean =>
+    !hidden && !userScrollActive && now - lastScrollTimestamp > 5000;
 
 const SubtitleTable = ({ context, children, ...rest }: TableProps & ContextProp<SubtitleRowContext>) => {
     void context;
@@ -311,7 +381,7 @@ const SubtitleTableRow = ({
         <TableRow
             {...props}
             className={rowClassName}
-            selected={!!context.currentSubtitleIndexes[index]}
+            selected={context.currentSubtitleIndexes.has(index)}
             onClick={(event) => {
                 const selection = document.getSelection();
                 const row = event.currentTarget;
@@ -574,9 +644,9 @@ interface SubtitlePlayerProps {
     onMouseOut: (e: React.MouseEvent) => void;
     onResizeStart?: () => void;
     onResizeEnd?: (width: number) => void;
-    autoPauseContext: AutoPauseContext;
-    subtitles?: DisplaySubtitleModel[];
+    subtitles: DisplaySubtitleModel[];
     subtitleCollection: SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>;
+    playbackState?: PlaybackState;
     length: number;
     jumpToSubtitle?: SubtitleModel;
     onJumpToSubtitleHandled?: () => void;
@@ -611,9 +681,9 @@ export default function SubtitlePlayer({
     onMouseOut,
     onResizeStart,
     onResizeEnd,
-    autoPauseContext,
     subtitles,
     subtitleCollection,
+    playbackState,
     length,
     jumpToSubtitle,
     onJumpToSubtitleHandled,
@@ -638,7 +708,7 @@ export default function SubtitlePlayer({
     const { t } = useTranslation();
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
-    const subtitleListRef = useRef<DisplaySubtitleModel[]>(undefined);
+    const subtitleListRef = useRef<DisplaySubtitleModel[]>([]);
     subtitleListRef.current = subtitles;
 
     const virtuosoRef = useRef<TableVirtuosoHandle>(null);
@@ -687,8 +757,8 @@ export default function SubtitlePlayer({
     );
     subtitleCollectionRef.current = subtitleCollection;
 
-    const highlightedSubtitleIndexesRef = useRef<{ [index: number]: boolean }>({});
-    const [currentSubtitleIndexes, setCurrentSubtitleIndexes] = useState<{ [index: number]: boolean }>({});
+    const highlightedSubtitleIndexesRef = useRef<ReadonlySet<number>>(new Set());
+    const [currentSubtitleIndexes, setCurrentSubtitleIndexes] = useState<ReadonlySet<number>>(new Set());
     const [selectedSubtitleIndexes, setSelectedSubtitleIndexes] = useState<boolean[]>();
     const [highlightedJumpToSubtitleIndex, setHighlightedJumpToSubtitleIndex] = useState<number>();
     const disableKeyEventsRef = useRef<boolean>(disableKeyEvents);
@@ -698,13 +768,12 @@ export default function SubtitlePlayer({
     const hiddenRef = useRef<boolean>(false);
     hiddenRef.current = hidden;
     const lastScrollTimestampRef = useRef<number>(0);
+    const userScrollActiveRef = useRef<boolean>(false);
     const requestAnimationRef = useRef<number>(undefined);
     const drawerOpenRef = useRef<boolean>(undefined);
     drawerOpenRef.current = drawerOpen;
     const appBarHeight = useAppBarHeight();
     const classes = useSubtitlePlayerStyles({ resizable, appBarHidden, appBarHeight });
-    const autoPauseContextRef = useRef<AutoPauseContext>(undefined);
-    autoPauseContextRef.current = autoPauseContext;
     const onSubtitlesHighlightedRef = useRef<(subtitles: SubtitleModel[]) => void>(undefined);
     onSubtitlesHighlightedRef.current = onSubtitlesHighlighted;
     const find = useSubtitleFind({
@@ -719,52 +788,64 @@ export default function SubtitlePlayer({
         setHighlightedJumpToSubtitleIndex,
     });
 
-    // This effect should be scheduled only once as re-scheduling seems to cause performance issues.
-    // Therefore all of the state it operates on is contained in refs.
+    const updateShowingSubtitles = useCallback((showing: readonly IndexedSubtitleModel[]) => {
+        const currentSubtitleIndexes = new Set<number>();
+        let smallestIndex: number | undefined;
+
+        for (const subtitle of showing) {
+            currentSubtitleIndexes.add(subtitle.index);
+
+            if (smallestIndex === undefined || subtitle.index < smallestIndex) {
+                smallestIndex = subtitle.index;
+            }
+        }
+
+        const indexesChanged =
+            currentSubtitleIndexes.size !== highlightedSubtitleIndexesRef.current.size ||
+            [...currentSubtitleIndexes].some((index) => !highlightedSubtitleIndexesRef.current.has(index));
+        if (indexesChanged) {
+            highlightedSubtitleIndexesRef.current = currentSubtitleIndexes;
+            setCurrentSubtitleIndexes(currentSubtitleIndexes);
+            onSubtitlesHighlightedRef.current?.([...showing]);
+
+            if (smallestIndex !== undefined) {
+                const allowScroll = shouldAutoScroll({
+                    hidden: hiddenRef.current,
+                    lastScrollTimestamp: lastScrollTimestampRef.current,
+                    userScrollActive: userScrollActiveRef.current,
+                    now: Date.now(),
+                });
+
+                if (allowScroll) {
+                    virtuosoRef.current?.scrollToIndex({
+                        index: smallestIndex,
+                        align: 'center',
+                        behavior: 'smooth',
+                    });
+                }
+            }
+        }
+    }, []);
+
     useEffect(() => {
+        if (playbackState === undefined) return;
+
+        let showingSubtitles: IndexedSubtitleModel[] = playbackState.showingSubtitleIndexes
+            .map((index) => subtitleListRef.current[index])
+            .filter((subtitle): subtitle is DisplaySubtitleModel => subtitle !== undefined);
+        if (!showingSubtitles.length) {
+            showingSubtitles = subtitleCollectionRef.current.subtitlesAt(playbackState.timestampMs).lastShown ?? [];
+        }
+        updateShowingSubtitles(showingSubtitles);
+    }, [playbackState, subtitles, updateShowingSubtitles]);
+
+    useEffect(() => {
+        if (playbackState !== undefined) return;
+
         const update = () => {
-            const clock = clockRef.current;
-            const currentSubtitleIndexes: { [index: number]: boolean } = {};
-            const timestamp = clock.time(lengthRef.current);
-
+            const timestamp = clockRef.current.time({ maxMs: lengthRef.current });
             const slice = subtitleCollectionRef.current.subtitlesAt(timestamp);
-            const showing = slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing;
-            let smallestIndex: number | undefined;
-
-            for (const s of showing) {
-                currentSubtitleIndexes[s.index] = true;
-
-                if (smallestIndex === undefined || s.index < smallestIndex) {
-                    smallestIndex = s.index;
-                }
-            }
-
-            if (!keysAreEqual(currentSubtitleIndexes, highlightedSubtitleIndexesRef.current)) {
-                highlightedSubtitleIndexesRef.current = currentSubtitleIndexes;
-                setCurrentSubtitleIndexes(currentSubtitleIndexes);
-                onSubtitlesHighlightedRef.current?.(showing);
-
-                if (smallestIndex !== undefined) {
-                    const allowScroll = !hiddenRef.current && Date.now() - lastScrollTimestampRef.current > 5000;
-
-                    if (allowScroll) {
-                        virtuosoRef.current?.scrollToIndex({
-                            index: smallestIndex,
-                            align: 'center',
-                            behavior: 'smooth',
-                        });
-                    }
-                }
-            }
-
-            if (slice.startedShowing !== undefined) {
-                autoPauseContextRef.current?.startedShowing(slice.startedShowing);
-            }
-
-            if (slice.willStopShowing !== undefined) {
-                void autoPauseContextRef.current?.willStopShowing(slice.willStopShowing);
-            }
-
+            updateShowingSubtitles(slice.showing.length === 0 ? (slice.lastShown ?? []) : slice.showing);
             requestAnimationRef.current = requestAnimationFrame(update);
         };
 
@@ -775,13 +856,23 @@ export default function SubtitlePlayer({
                 cancelAnimationFrame(requestAnimationRef.current);
             }
         };
-    }, []);
+    }, [playbackState, updateShowingSubtitles]);
 
     const scrollToCurrentSubtitle = useCallback(() => {
-        const indexes = Object.keys(highlightedSubtitleIndexesRef.current);
-        if (indexes.length === 0) return;
+        const indexes = highlightedSubtitleIndexesRef.current;
+        if (indexes.size === 0) return;
         virtuosoRef.current?.scrollToIndex({
-            index: Number(indexes[0]),
+            index: Math.min(...indexes),
+            align: 'center',
+            behavior: 'smooth',
+        });
+    }, []);
+
+    const scrollToSubtitle = useCallback((subtitle: SubtitleModel) => {
+        if (hiddenRef.current || subtitle.index === undefined) return;
+        lastScrollTimestampRef.current = Date.now();
+        virtuosoRef.current?.scrollToIndex({
+            index: subtitle.index,
             align: 'center',
             behavior: 'smooth',
         });
@@ -811,6 +902,7 @@ export default function SubtitlePlayer({
 
     useEffect(() => {
         if (hiddenRef.current || !subtitleListRef.current?.length) return;
+        lastScrollTimestampRef.current = Date.now();
         virtuosoRef.current?.scrollToIndex({
             index: 0,
             align: 'center',
@@ -849,7 +941,7 @@ export default function SubtitlePlayer({
                 onOffsetChange(offset);
             },
             () => disableKeyEvents,
-            () => clock.time(length),
+            () => clock.time({ maxMs: length }),
             () => subtitles,
             () => settings.seekableTracks
         );
@@ -861,13 +953,14 @@ export default function SubtitlePlayer({
                 event.preventDefault();
                 event.stopPropagation();
                 onSeek(subtitle.start, clock.running ?? false);
+                scrollToSubtitle(subtitle);
             },
             () => disableKeyEvents,
-            () => clock.time(length),
+            () => clock.time({ maxMs: length }),
             () => subtitles,
             () => settingsRef.current.seekableTracks
         );
-    }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length]);
+    }, [keyBinder, onSeek, subtitles, disableKeyEvents, clock, length, scrollToSubtitle]);
 
     useEffect(() => {
         return keyBinder.bindSeekToBeginningOfCurrentSubtitle(
@@ -877,7 +970,7 @@ export default function SubtitlePlayer({
                 onSeek(subtitle.start, settings.alwaysPlayOnSubtitleRepeat || clock.running);
             },
             () => disableKeyEvents,
-            () => clock.time(length),
+            () => clock.time({ maxMs: length }),
             () => subtitles,
             () => settingsRef.current.seekableTracks
         );
@@ -889,9 +982,12 @@ export default function SubtitlePlayer({
                 event.stopPropagation();
                 event.preventDefault();
                 if (forward) {
-                    onSeek(Math.min(length, clock.time(length) + settings.seekDuration * 1000), clock.running);
+                    onSeek(
+                        Math.min(length, clock.time({ maxMs: length }) + settings.seekDuration * 1000),
+                        clock.running
+                    );
                 } else {
-                    onSeek(Math.max(0, clock.time(length) - settings.seekDuration * 1000), clock.running);
+                    onSeek(Math.max(0, clock.time({ maxMs: length }) - settings.seekDuration * 1000), clock.running);
                 }
             },
             () => disableKeyEvents
@@ -918,6 +1014,7 @@ export default function SubtitlePlayer({
         onJumpToSubtitleHandled?.();
 
         if (!hiddenRef.current && jumpToIndex !== -1) {
+            lastScrollTimestampRef.current = Date.now();
             virtuosoRef.current?.scrollToIndex({
                 index: jumpToIndex,
                 align: 'center',
@@ -929,7 +1026,7 @@ export default function SubtitlePlayer({
     }, [jumpToSubtitle, subtitles, onSeek, onJumpToSubtitleHandled, clock]);
 
     const currentMockSubtitle = useCallback(() => {
-        const timestamp = clock.time(length);
+        const timestamp = clock.time({ maxMs: length });
         const end = Math.min(timestamp + 5000, length);
         return {
             text: '',
@@ -964,17 +1061,17 @@ export default function SubtitlePlayer({
     );
 
     const calculateSurroundingSubtitles = useCallback(() => {
-        if (!highlightedSubtitleIndexesRef.current) {
+        if (highlightedSubtitleIndexesRef.current.size === 0) {
             return [];
         }
 
-        const index = Math.min(...Object.keys(highlightedSubtitleIndexesRef.current).map((i) => Number(i)));
+        const index = Math.min(...highlightedSubtitleIndexesRef.current);
         return calculateSurroundingSubtitlesForIndex(index);
     }, [calculateSurroundingSubtitlesForIndex]);
 
     const calculateCurrentSubtitle = useCallback(() => {
         if (!subtitles || subtitles.length === 0) {
-            const timestamp = clock.time(length);
+            const timestamp = clock.time({ maxMs: length });
             const end = Math.min(timestamp + 5000, length);
             return {
                 text: '',
@@ -986,13 +1083,8 @@ export default function SubtitlePlayer({
             };
         }
 
-        if (!highlightedSubtitleIndexesRef.current) {
-            return undefined;
-        }
-
-        const subtitleIndexes = Object.keys(highlightedSubtitleIndexesRef.current).map((i) => Number(i));
-
-        if (subtitleIndexes.length === 0) {
+        const subtitleIndexes = highlightedSubtitleIndexesRef.current;
+        if (subtitleIndexes.size === 0) {
             return undefined;
         }
 
@@ -1100,12 +1192,11 @@ export default function SubtitlePlayer({
     useEffect(() => {
         if (extension.installed) {
             return extension.subscribe((message: ExtensionMessage) => {
-                if (!document.hasFocus() || message.data.command !== 'copy-subtitle-with-additional-fields') {
+                if (message.data.command !== 'copy-subtitle-with-additional-fields') {
                     return;
                 }
 
-                const copySubtitleMessage = message.data as CopySubtitleWithAdditionalFieldsMessage;
-                copyFromWebSocketClient(copySubtitleMessage);
+                copyFromWebSocketClient(message.data as CopySubtitleWithAdditionalFieldsMessage);
             });
         }
     }, [extension, copyFromWebSocketClient]);
@@ -1161,10 +1252,9 @@ export default function SubtitlePlayer({
             return;
         }
 
-        const highlightedSubtitleIndexes = highlightedSubtitleIndexesRef.current || {};
         onSeekRef.current(
             currentSubtitles[index].start,
-            !clockRef.current.running && index in highlightedSubtitleIndexes
+            !clockRef.current.running && highlightedSubtitleIndexesRef.current.has(index)
         );
     }, []);
 
@@ -1317,6 +1407,7 @@ export default function SubtitlePlayer({
             onMouseOver,
             onMouseOut,
             lastScrollTimestampRef,
+            userScrollActiveRef,
         }),
         [
             compressed,

@@ -4,7 +4,7 @@ import {
     onAppRequestedAppLocationChanged,
     onExtensionRequestedAppLocationChanged,
 } from '@/services/side-panel';
-import { SidePanelLocation } from '@project/common';
+import type { SidePanelLocation } from '@project/common';
 import { useEffect, useState } from 'react';
 
 export const useSidePanelRequestedLocation = () => {

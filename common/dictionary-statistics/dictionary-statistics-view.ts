@@ -1,4 +1,4 @@
-import { Progress } from '@project/common';
+import type { Progress } from '@project/common';
 import {
     getFullyKnownTokenStatus,
     isTokenStatusKnown,
@@ -6,15 +6,15 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import {
+import type {
     DictionaryStatisticsRawTrackSnapshot,
     DictionaryStatisticsSentence,
     DictionaryStatisticsSentences,
     DictionaryStatisticsSnapshot,
     DictionaryStatisticsWaniKaniSnapshot,
-    REVIEW_DUES,
 } from '@project/common/dictionary-statistics';
-import { TokenStatusInfo, WaniKaniTokenStatusInfo } from '@project/common/dictionary-db';
+import { REVIEW_DUES } from '@project/common/dictionary-statistics';
+import type { TokenStatusInfo, WaniKaniTokenStatusInfo } from '@project/common/dictionary-db';
 import {
     dedupeTokenStatusInfos,
     getTokenStatus,

@@ -1,7 +1,12 @@
-import {
+import { asbError, download, timeDurationDisplay } from '@project/common/util';
+import { MediaFragment } from '@project/common';
+import type {
+    AsbplayerInstance,
+    Command,
+    Message,
+    OpenStatisticsOverlayMessage,
     AsbPlayerToTabCommand,
     AsbPlayerToVideoCommandV2,
-    MediaFragment,
     CopyHistoryItem,
     ExtensionToVideoCommand,
     LoadSubtitlesMessage,
@@ -16,44 +21,43 @@ import {
     DownloadImageMessage,
     DownloadAudioMessage,
     CardExportedMessage,
+    DisplaySubtitleModel,
 } from '@project/common';
-import type { AsbplayerInstance, Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
-import type { BulkExportStartedPayload } from '../../controllers/bulk-export-controller';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { BulkExportStartedPayload } from '@project/extension/src/controllers/bulk-export-controller';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { AudioClip } from '@project/common/audio-clip';
-import { ChromeExtension, useCopyHistory } from '@project/common/app';
-import { useI18n } from '../hooks/use-i18n';
+import type { ChromeExtension } from '@project/common/app';
+import { useCopyHistory, LocalizedError } from '@project/common/app';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { SubtitleReader } from '@project/common/subtitle-reader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { PlayerRef } from '@project/common/app/components/Player';
 import Player from '@project/common/app/components/Player';
-import { PlaybackPreferences } from '@project/common/app';
-import { AlertColor } from '@mui/material/Alert';
+import PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
+import type { AlertColor } from '@mui/material/Alert';
 import Alert from '@project/common/app/components/Alert';
-import { LocalizedError } from '@project/common/app';
 import { useTranslation } from 'react-i18next';
-import SidePanelHome from './SidePanelHome';
-import { DisplaySubtitleModel } from '@project/common/app/components/SubtitlePlayer';
-import { useCurrentTabId } from '../hooks/use-current-tab-id';
-import { useVideoElementCount } from '../hooks/use-video-element-count';
-import CenteredGridContainer from './CenteredGridContainer';
-import CenteredGridItem from './CenteredGridItem';
+import SidePanelHome from '@project/extension/src/ui/components/SidePanelHome';
+import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
+import { useVideoElementCount } from '@project/extension/src/ui/hooks/use-video-element-count';
+import CenteredGridContainer from '@project/extension/src/ui/components/CenteredGridContainer';
+import CenteredGridItem from '@project/extension/src/ui/components/CenteredGridItem';
 import CircularProgress from '@mui/material/CircularProgress';
-import SidePanelBottomControls from './SidePanelBottomControls';
-import SidePanelRecordingOverlay from './SidePanelRecordingOverlay';
-import SidePanelTopControls from './SidePanelTopControls';
+import SidePanelBottomControls from '@project/extension/src/ui/components/SidePanelBottomControls';
+import SidePanelRecordingOverlay from '@project/extension/src/ui/components/SidePanelRecordingOverlay';
+import SidePanelTopControls from '@project/extension/src/ui/components/SidePanelTopControls';
 import CopyHistory from '@project/common/app/components/CopyHistory';
 import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
-import { download, timeDurationDisplay } from '@project/common/util';
 import { MiningContext } from '@project/common/app/services/mining-context';
 import BulkExportModal from '@project/common/app/components/BulkExportModal';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
-import { mp3WorkerFactory } from '../../services/mp3-worker-factory';
-import { pgsParserWorkerFactory } from '../../services/pgs-parser-worker-factory';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import { mp3WorkerFactory } from '@project/extension/src/services/mp3-worker-factory';
+import { pgsParserWorkerFactory } from '@project/extension/src/services/pgs-parser-worker-factory';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import StatisticsDrawer from '@project/common/components/StatisticsDrawer';
-import { useSidePanelRequestedLocation } from '../hooks/use-side-panel-requested-location';
+import { useSidePanelRequestedLocation } from '@project/extension/src/ui/hooks/use-side-panel-requested-location';
 import { clearExtensionRequestedLocation } from '@/services/side-panel';
-import { uiTabRegistry } from '../hooks/use-media-id';
+import { uiTabRegistry } from '@project/extension/src/ui/hooks/use-media-id';
 import { createStatisticsPopup } from '@/services/statistics-util';
 
 interface Props {
@@ -97,7 +101,7 @@ const miningContext = new MiningContext();
 
 export default function SidePanel({ dictionaryProvider, settingsProvider, settings, extension }: Props) {
     const { t } = useTranslation();
-    const playbackPreferences = useMemo(() => new PlaybackPreferences(settings, extension), [settings, extension]);
+    const playbackPreferences = useMemo(() => new PlaybackPreferenceController(), []);
     const subtitleReader = useMemo(
         () =>
             new SubtitleReader({
@@ -122,6 +126,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     const [alertSeverity, setAlertSeverity] = useState<AlertColor>();
     const [initializing, setInitializing] = useState<boolean>(true);
     const [syncedVideoTab, setSyncedVideoElement] = useState<VideoTabModel>();
+    const playerRef = useRef<PlayerRef>(null);
     const [recordingAudio, setRecordingAudio] = useState<boolean>(false);
     const [viewingAsbplayer, setViewingAsbplayer] = useState<AsbplayerInstance>();
 
@@ -196,7 +201,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                 }
 
                 setInitializing(false);
-            })().catch(console.error);
+            })().catch((error) => asbError('side-panel', error));
         });
     }, [extension, subtitles, initializing, currentTabId, syncedVideoTab]);
 
@@ -275,7 +280,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
 
     const handleError = useCallback(
         (message: any) => {
-            console.error(message);
+            asbError('side-panel', message);
 
             setAlertSeverity('error');
 
@@ -332,6 +337,10 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             download(new Blob([subtitleReader.subtitlesToSrt(subtitles)], { type: 'text/plain' }), fileName);
         }
     }, [subtitles, subtitleFileNames, subtitleReader]);
+
+    const handleDownloadSubtitleTimeline = useCallback(() => {
+        playerRef.current?.downloadSubtitleTimeline();
+    }, []);
 
     const handleBulkExportSubtitles = useCallback(async () => {
         if (!syncedVideoTab) return;
@@ -621,7 +630,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
 
     return (
         <div style={{ width: '100%', height: '100%' }} onMouseMove={handleMouseMove}>
-            <Alert open={alertOpen} onClose={handleAlertClosed} autoHideDuration={3000} severity={alertSeverity}>
+            <Alert open={alertOpen} useAppLogo={false} onClose={handleAlertClosed} severity={alertSeverity}>
                 {alert}
             </Alert>
             {viewingAsbplayer && (appRequestedLocation === 'mining-history' || appRequestedLocation === undefined) && (
@@ -679,6 +688,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                         <>
                             <SidePanelRecordingOverlay show={recordingAudio} />
                             <Player
+                                ref={playerRef}
                                 origin={browser.runtime.getURL('/sidepanel.html')}
                                 subtitles={subtitles}
                                 hideControls={true}
@@ -699,8 +709,30 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onAppBarToggle={noOp}
                                 onHideSubtitlePlayer={noOp}
                                 onVideoPopOut={noOp}
-                                onPlayModeChangedViaBind={noOp}
                                 onSubtitles={setSubtitles}
+                                playbackTimelineFileName={subtitleFileNames?.[0]}
+                                playbackTimelineModeLabels={{
+                                    normal: t('controls.normalMode'),
+                                    fastForward: t('controls.fastForwardMode'),
+                                    condensed: t('controls.condensedMode'),
+                                    autoPauseAtStart: t('settings.autoPauseAtSubtitleStart'),
+                                    autoPauseAtEnd: t('settings.autoPauseAtSubtitleEnd'),
+                                    repeat: t('controls.repeatMode'),
+                                }}
+                                playbackTimelineOptionLabels={{
+                                    title: t('settings.playbackModes'),
+                                    subtitleTrack: (trackNumber) => t('settings.subtitleTrackChoice', { trackNumber }),
+                                    subtitleTriggerStartOffset: t('settings.subtitleTriggerStartOffset'),
+                                    subtitleTriggerEndOffset: t('settings.subtitleTriggerEndOffset'),
+                                    subtitleTriggerGapEndOffset: t('settings.subtitleTriggerGapEndOffset'),
+                                    subtitleTriggerGapStartOffset: t('settings.subtitleTriggerGapStartOffset'),
+                                    condensedPlaybackMinimumSkipInterval: t(
+                                        'settings.condensedPlaybackMinimumSkipInterval'
+                                    ),
+                                    fastForwardPlaybackMinimumSkipInterval: t(
+                                        'settings.fastForwardPlaybackMinimumSkipInterval'
+                                    ),
+                                }}
                                 tab={syncedVideoTab}
                                 availableTabs={emptyArray}
                                 extension={extension}
@@ -733,6 +765,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                 onLoadSubtitles={handleLoadSubtitles}
                                 canDownloadSubtitles={canDownloadSubtitles}
                                 onDownloadSubtitles={handleDownloadSubtitles}
+                                onDownloadSubtitleTimeline={handleDownloadSubtitleTimeline}
                                 onBulkExportSubtitles={handleBulkExportSubtitles}
                                 disableBulkExport={recordingAudio}
                                 onShowMiningHistory={handleShowCopyHistory}

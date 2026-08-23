@@ -1,7 +1,7 @@
-import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
-import type { OnlineSubtitleSourceConfig } from '../global-state';
-import type { TokenStatusInfo } from '../dictionary-db';
-import type { PitchAccentPosition } from '../yomitan';
+import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings/settings';
+import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 type Profile = { name: string };
 
@@ -47,11 +47,13 @@ export interface Tokenization {
 
 export interface SubtitleModel {
     readonly text: string;
+    readonly originalText?: string;
     readonly textImage?: SubtitleTextImage;
     readonly start: number;
     readonly end: number;
     readonly originalStart: number;
     readonly originalEnd: number;
+    readonly displayTime?: string;
     readonly track: number;
     readonly index?: number;
     readonly tokenization?: Tokenization;
@@ -59,6 +61,16 @@ export interface SubtitleModel {
 
 export interface IndexedSubtitleModel extends SubtitleModel {
     readonly index: number;
+}
+
+export interface PlaybackState {
+    readonly timestampMs: number;
+    readonly showingSubtitleIndexes: readonly number[];
+    readonly paused: boolean;
+}
+
+export interface DisplaySubtitleModel extends IndexedSubtitleModel {
+    readonly displayTime: string;
 }
 
 export interface TokenizedSubtitleModel extends IndexedSubtitleModel {
@@ -288,6 +300,7 @@ export enum PostMinePlayback {
 export enum AutoPausePreference {
     atStart = 1,
     atEnd = 2,
+    atStartAndEnd = 3,
 }
 
 export enum SubtitleHtml {
@@ -318,6 +331,7 @@ export interface MobileOverlayModel {
     subtitlesAreVisible: boolean;
     themeType: 'dark' | 'light';
     playModes: PlayMode[];
+    overlayInstanceId?: string;
 }
 
 export enum ControlType {

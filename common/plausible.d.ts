@@ -1,3 +1,7 @@
-interface Window {
-    plausible?: (eventName: string, options?: import('@plausible-analytics/tracker').PlausibleEventOptions) => void;
+import type { PlausibleEventOptions } from '@plausible-analytics/tracker';
+
+declare global {
+    interface Window {
+        plausible?: (eventName: string, options?: PlausibleEventOptions) => void;
+    }
 }

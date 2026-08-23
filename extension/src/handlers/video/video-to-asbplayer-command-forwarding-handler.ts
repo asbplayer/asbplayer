@@ -1,5 +1,5 @@
-import { Command, ExtensionToAsbPlayerCommand, Message, VideoToExtensionCommand } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import type { Command, ExtensionToAsbPlayerCommand, Message, VideoToExtensionCommand } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class VideoToAsbplayerCommandForwardingHandler {
     private readonly tabRegistry: TabRegistry;

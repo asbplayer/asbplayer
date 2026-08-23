@@ -20,13 +20,15 @@ import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { JimakuClient, JimakuEntry, JimakuFile } from '@project/common/subtitle-sources';
+import { JimakuClient } from '@project/common/subtitle-sources';
+import type { JimakuEntry, JimakuFile } from '@project/common/subtitle-sources';
 import { EPISODE_PATTERNS } from '@project/common/subtitle-sources/jimaku-episode-patterns';
 import type { JimakuCachedWork } from '@project/common/global-state';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Toolbar from '@mui/material/Toolbar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import { asbError, asbWarn } from '@project/common/util';
 
 interface OnlineSubtitleImportCandidate {
     name: string;
@@ -232,6 +234,7 @@ export default function OnlineSubtitleSourceDialog({
             setJimakuFiles(undefined);
             selectedEntryIdRef.current = undefined;
         } catch (e) {
+            asbError('subtitle/source', e);
             setError((e as Error).message);
         } finally {
             setSearching(false);
@@ -272,8 +275,9 @@ export default function OnlineSubtitleSourceDialog({
                 // (wrong episode, or only unsupported formats); fall back to all
                 // files so the user never faces an empty "no subtitles" list.
                 if (episode !== undefined && files.length === 0) {
-                    console.warn(
-                        `[asbplayer] Jimaku returned no playable files for episode ${episode} on entry ${entry.id}, falling back to all files.`
+                    asbWarn(
+                        'subtitle/source',
+                        `Jimaku returned no playable files for episode ${episode} on entry ${entry.id}, falling back to all files.`
                     );
                     files = toCandidates((await client.getFiles(entry.id)).data);
                     appliedEpisode = undefined;
@@ -285,6 +289,7 @@ export default function OnlineSubtitleSourceDialog({
                     upsertRecentWork({ id: entry.id, name: entry.name });
                 }
             } catch (e) {
+                asbError('subtitle/source', e);
                 if (fileLoadRequestIdRef.current === requestId && selectedEntryIdRef.current === entry.id) {
                     setError((e as Error).message);
                     setJimakuSelectedEntry(undefined);
@@ -321,6 +326,7 @@ export default function OnlineSubtitleSourceDialog({
                 await onImport(file);
                 onClose();
             } catch (e) {
+                asbError('subtitle/source', e);
                 setError((e as Error).message);
             } finally {
                 setLoadingFiles(false);

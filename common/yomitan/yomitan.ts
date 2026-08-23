@@ -1,6 +1,7 @@
-import { Fetcher, HttpFetcher, Progress } from '@project/common';
-import { DictionaryTrack } from '@project/common/settings';
 import {
+    asbError,
+    asbLog,
+    asbWarn,
     AsyncSemaphore,
     fromBatches,
     HAS_LETTER_REGEX,
@@ -9,6 +10,9 @@ import {
     NEWLINES_REGEX,
     STERM_AND_NEWLINES_REGEX,
 } from '@project/common/util';
+import type { Fetcher, Progress } from '@project/common';
+import { HttpFetcher } from '@project/common';
+import type { DictionaryTrack } from '@project/common/settings';
 import { coerce, lt, gte } from 'semver';
 
 const TOKENIZE_BATCH_SIZE = 100; // 1k can cause 1.5GB memory on Yomitan for subtitles, Anki cards may be larger too
@@ -353,7 +357,8 @@ export class Yomitan {
             ++this.tokenizeBatchFailCount;
             if (this.tokenizeBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.tokenizeBatchSize / 2);
-                console.warn(
+                asbWarn(
+                    'yomitan/tokenize',
                     `Yomitan tokenize failed due to batch size too many times, reducing batch size from ${this.tokenizeBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.tokenizeBatchSize = newDefaultBatchSize;
@@ -865,7 +870,8 @@ export class Yomitan {
             ++this.termEntriesBatchFailCount;
             if (this.termEntriesBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.termEntriesBatchSize / 2);
-                console.warn(
+                asbWarn(
+                    'yomitan/term-entries',
                     `Yomitan termEntries failed due to batch size too many times, reducing batch size from ${this.termEntriesBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.termEntriesBatchSize = newDefaultBatchSize;
@@ -918,7 +924,8 @@ export class Yomitan {
                 rankBasedMatches >= FREQUENCY_MODE_INFERENCE_RANK_BASED_MATCHES ? 'rank-based' : 'occurrence-based';
 
             if (previousFrequencyMode === frequencyMode) continue;
-            console.log(
+            asbLog(
+                'yomitan/frequency',
                 `Inferred '${frequencyMode}' for the '${dictionary}' frequency dictionary (previously ${previousFrequencyMode}) based on:`,
                 {
                     mostOccurringWords,
@@ -978,8 +985,7 @@ export class Yomitan {
             this.supportsTokenizeFrequency = false;
             this.supportsTermEntriesBulk = false;
         }
-        // TODO: Use actual released version
-        if (gte(semver, '26.7.1')) {
+        if (gte(semver, '26.7.21')) {
             this.supportsTokenizePronunciations = true;
         } else {
             this.supportsTokenizePronunciations = false;
@@ -1003,7 +1009,8 @@ export class Yomitan {
                 'mecab'
             );
             if (tokenizeResults[0].source !== 'mecab') {
-                console.error(
+                asbError(
+                    'yomitan/mecab',
                     `Yomitan did not return MeCab results as expected for '${text}': ${JSON.stringify(tokenizeResults)}`
                 );
                 this.supportsMecab = false;
@@ -1012,7 +1019,8 @@ export class Yomitan {
             }
             const tokenParts = tokenizeResults[0].content[0];
             if (tokenParts.map((p) => p.text).join('') !== '思い出せなく') {
-                console.error(
+                asbError(
+                    'yomitan/mecab',
                     `Yomitan MeCab tokenization unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`
                 );
                 this.supportsMecab = false;
@@ -1021,13 +1029,16 @@ export class Yomitan {
             }
             this.supportsMecab = true;
             if (tokenParts[0].lemma !== '思い出す' || tokenParts[0].lemmaReading !== 'おもいだす') {
-                console.error(`Yomitan MeCab lemma unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`);
+                asbError(
+                    'yomitan/mecab',
+                    `Yomitan MeCab lemma unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`
+                );
                 this.supportsMecabLemma = false;
                 return;
             }
             this.supportsMecabLemma = true;
         } catch (e) {
-            console.error(`Yomitan MeCab support check failed for '${text}':`, e);
+            asbError('yomitan/mecab', `Yomitan MeCab support check failed for '${text}':`, e);
             this.supportsMecab = false;
             this.supportsMecabLemma = false;
         }

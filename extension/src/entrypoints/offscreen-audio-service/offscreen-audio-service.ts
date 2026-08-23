@@ -1,15 +1,15 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     StartRecordingAudioWithTimeoutMessage,
     StopRecordingAudioMessage,
     AudioBase64Message,
     StartRecordingAudioMessage,
     OffscreenDocumentToExtensionCommand,
     StartRecordingResponse,
-    StartRecordingErrorCode,
-    StopRecordingErrorCode,
     StopRecordingResponse,
     EncodeMp3InServiceWorkerMessage,
 } from '@project/common';
+import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import AudioRecorder, { TimedRecordingInProgressError, NoRecordingInProgressError } from '@/services/audio-recorder';
 import { Mp3Encoder } from '@project/common/audio-clip';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
@@ -93,7 +93,7 @@ window.onload = async () => {
                             )
                         )
                         .catch((e) => {
-                            console.error(e);
+                            asbError('recording/audio', e);
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
@@ -105,7 +105,7 @@ window.onload = async () => {
                         .then((stream) => audioRecorder.stopSafely().then(() => audioRecorder.start(stream)))
                         .then(() => sendResponse({ started: true }))
                         .catch((e) => {
-                            console.error(e);
+                            asbError('recording/audio', e);
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
@@ -135,7 +135,7 @@ window.onload = async () => {
                                 // Just no-op if nothing is recording--this can happen in bulk export.
                                 errorCode = StopRecordingErrorCode.other;
                             } else {
-                                console.error(e);
+                                asbError('recording/audio', e);
                                 errorCode = StopRecordingErrorCode.other;
                             }
 
@@ -158,7 +158,7 @@ window.onload = async () => {
                     Mp3Encoder.encode(base64ToBlob(base64, `audio/${extension}`), mp3WorkerFactory)
                         .then((blob) => blob.arrayBuffer())
                         .then((buffer) => sendResponse(bufferToBase64(buffer)))
-                        .catch(console.error);
+                        .catch((error) => asbError('recording/encoding', error));
                     return true;
                 }
             }

@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
@@ -9,28 +10,35 @@ import Stack from '@mui/material/Stack';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
-import SettingsTextField from './SettingsTextField';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
+import Typography from '@mui/material/Typography';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
+import type { AsbplayerSettings } from '@project/common/settings';
 import {
-    AsbplayerSettings,
+    autoPausePreferenceForCheckboxChange,
     exportSettings,
     isTrackAutoCopyable,
     isTrackSeekable,
+    mergeImportedSettings,
     PauseOnHoverMode,
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
     validateSettings,
-} from '../settings';
+    VideoSubtitleSplitBehavior,
+} from '@project/common/settings';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SubtitleHtml } from '..';
-import { WebSocketClient } from '../web-socket-client';
+import { AutoPausePreference, SubtitleHtml } from '..';
+import { WebSocketClient } from '@project/common/web-socket-client';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SettingsSection from './SettingsSection';
-import { VideoSubtitleSplitBehavior } from '../settings';
+import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
+import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
+import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 function regexIsValid(regex: string) {
     try {
@@ -51,6 +59,10 @@ interface Props {
     extensionSupportsPauseOnHover?: boolean;
     extensionSupportsSeekableTrackSetting?: boolean;
     extensionSupportsAutoCopyableTrackSetting?: boolean;
+    supportsPlaybackEngine: boolean;
+    onViewPlaybackModeKeyboardShortcuts: () => void;
+    onViewPlaybackRateKeyboardShortcuts: () => void;
+    onViewSubtitleKeyboardShortcuts: () => void;
 }
 
 const MiscSettingTab: React.FC<Props> = ({
@@ -63,6 +75,10 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsPauseOnHover,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
+    supportsPlaybackEngine,
+    onViewPlaybackModeKeyboardShortcuts,
+    onViewPlaybackRateKeyboardShortcuts,
+    onViewSubtitleKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -84,7 +100,31 @@ const MiscSettingTab: React.FC<Props> = ({
         webSocketServerUrl,
         subtitleAboveThumbnail,
         thumbnailPreview,
+        autoPausePreference,
+        subtitleTriggerStartOffset,
+        subtitleTriggerEndOffset,
+        subtitleTriggerGapEndOffset,
+        subtitleTriggerGapStartOffset,
+        playbackRate,
+        playbackRateNotificationEnabled,
+        rememberPlaybackRate,
+        fastForwardModePlaybackRate,
+        fastForwardPlaybackMinimumSkipIntervalMs,
+        repeatCountPreference,
+        rememberPlaybackModes,
+        streamingCondensedPlaybackMinimumSkipIntervalMs,
     } = settings;
+    const autoPauseAtStart = autoPausePreference !== AutoPausePreference.atEnd;
+    const autoPauseAtEnd = autoPausePreference !== AutoPausePreference.atStart;
+    const handleAutoPausePreferenceChanged = useCallback(
+        (edge: AutoPausePreference.atStart | AutoPausePreference.atEnd, checked: boolean) => {
+            void onSettingChanged(
+                'autoPausePreference',
+                autoPausePreferenceForCheckboxChange(autoPausePreference, edge, checked)
+            );
+        },
+        [autoPausePreference, onSettingChanged]
+    );
     const validRegex = useMemo(() => regexIsValid(subtitleRegexFilter), [subtitleRegexFilter]);
     const [webSocketConnectionSucceeded, setWebSocketConnectionSucceeded] = useState<boolean>();
     const pingWebSocketServer = useCallback(() => {
@@ -94,7 +134,7 @@ const MiscSettingTab: React.FC<Props> = ({
             .then(() => client.ping())
             .then(() => setWebSocketConnectionSucceeded(true))
             .catch((e) => {
-                console.error(e);
+                asbError('settings/web-socket', e);
                 setWebSocketConnectionSucceeded(false);
             })
             .finally(() => client.unbind());
@@ -125,12 +165,12 @@ const MiscSettingTab: React.FC<Props> = ({
             }
 
             const importedSettings = JSON.parse(await file.text());
-            const validatedSettings = validateSettings(importedSettings);
+            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings));
             onSettingsChanged(validatedSettings);
         } catch (e) {
-            console.error(e);
+            asbError('settings/import', e);
         }
-    }, [onSettingsChanged]);
+    }, [onSettingsChanged, settings]);
 
     const handleImportSettings = useCallback(() => {
         settingsFileInputRef.current?.click();
@@ -142,6 +182,14 @@ const MiscSettingTab: React.FC<Props> = ({
     return (
         <>
             <Stack spacing={1}>
+                <Stack direction="row" spacing={1}>
+                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleImportSettings}>
+                        {t('action.importSettings')}
+                    </Button>
+                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleExportSettings}>
+                        {t('action.exportSettings')}
+                    </Button>
+                </Stack>
                 <SettingsSection>{t('settings.ui')}</SettingsSection>
                 <FormControl>
                     <FormLabel>{t('settings.theme')}</FormLabel>
@@ -255,7 +303,10 @@ const MiscSettingTab: React.FC<Props> = ({
                 )}
                 {(!extensionInstalled || extensionSupportsSeekableTrackSetting) && (
                     <FormControl>
-                        <FormLabel component="legend">{t('settings.seekableTracks')}</FormLabel>
+                        <FormLabel component="legend" sx={{ display: 'flex' }}>
+                            {t('settings.seekableTracks')}
+                            <KeyboardShortcutLink onClick={onViewSubtitleKeyboardShortcuts} preset="formLabel" />
+                        </FormLabel>
                         <FormGroup>
                             {[0, 1, 2].map((trackIndex) => {
                                 return (
@@ -411,6 +462,289 @@ const MiscSettingTab: React.FC<Props> = ({
                         </RadioGroup>
                     </FormControl>
                 )}
+                <SettingsSection>
+                    {t('settings.playbackModes')}
+                    <KeyboardShortcutLink onClick={onViewPlaybackModeKeyboardShortcuts} />
+                </SettingsSection>
+                {supportsPlaybackEngine && (
+                    <>
+                        <NumericSettingInput
+                            fullWidth
+                            label={
+                                <>
+                                    {t('settings.playbackRate')}
+                                    <KeyboardShortcutLink
+                                        onClick={onViewPlaybackRateKeyboardShortcuts}
+                                        preset="numericalInputLabel"
+                                    />
+                                </>
+                            }
+                            value={playbackRate}
+                            color="primary"
+                            normalizeValue={normalizePlaybackRate}
+                            onValueChange={(value) => void onSettingChanged('playbackRate', value)}
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0,
+                                    step: 0.05,
+                                },
+                            }}
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={playbackRateNotificationEnabled}
+                                    onChange={(event) =>
+                                        onSettingChanged('playbackRateNotificationEnabled', event.target.checked)
+                                    }
+                                />
+                            }
+                            label={t('settings.playbackRateNotificationEnabled')}
+                            labelPlacement="start"
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={rememberPlaybackRate}
+                                    onChange={(event) => onSettingChanged('rememberPlaybackRate', event.target.checked)}
+                                />
+                            }
+                            label={t('settings.rememberPlaybackRate')}
+                            labelPlacement="start"
+                        />
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={rememberPlaybackModes}
+                                    onChange={(event) =>
+                                        onSettingChanged('rememberPlaybackModes', event.target.checked)
+                                    }
+                                />
+                            }
+                            label={t('settings.rememberPlaybackModes')}
+                            labelPlacement="start"
+                        />
+                    </>
+                )}
+                <SettingsSubSection>{t('settings.subtitleTriggers')}</SettingsSubSection>
+                <FormControl>
+                    <FormLabel component="legend">{t('settings.autoPausePreference')}</FormLabel>
+                    {supportsPlaybackEngine ? (
+                        <>
+                            <FormGroup row>
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Checkbox
+                                            checked={autoPauseAtStart}
+                                            onChange={(event) =>
+                                                handleAutoPausePreferenceChanged(
+                                                    AutoPausePreference.atStart,
+                                                    event.target.checked
+                                                )
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseAtSubtitleStart')}
+                                />
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Checkbox
+                                            checked={autoPauseAtEnd}
+                                            onChange={(event) =>
+                                                handleAutoPausePreferenceChanged(
+                                                    AutoPausePreference.atEnd,
+                                                    event.target.checked
+                                                )
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseAtSubtitleEnd')}
+                                />
+                            </FormGroup>
+                            <Typography variant="caption" color="textSecondary">
+                                {t('settings.autoPausePreferenceHelperText')}
+                            </Typography>
+                        </>
+                    ) : (
+                        <RadioGroup row>
+                            <LabelWithHoverEffect
+                                control={
+                                    <Radio
+                                        checked={autoPausePreference === AutoPausePreference.atStart}
+                                        value={AutoPausePreference.atStart}
+                                        onChange={(event) =>
+                                            event.target.checked &&
+                                            void onSettingChanged('autoPausePreference', AutoPausePreference.atStart)
+                                        }
+                                    />
+                                }
+                                label={t('settings.autoPauseAtSubtitleStart')}
+                            />
+                            <LabelWithHoverEffect
+                                control={
+                                    <Radio
+                                        checked={autoPausePreference === AutoPausePreference.atEnd}
+                                        value={AutoPausePreference.atEnd}
+                                        onChange={(event) =>
+                                            event.target.checked &&
+                                            void onSettingChanged('autoPausePreference', AutoPausePreference.atEnd)
+                                        }
+                                    />
+                                }
+                                label={t('settings.autoPauseAtSubtitleEnd')}
+                            />
+                        </RadioGroup>
+                    )}
+                </FormControl>
+                {supportsPlaybackEngine && (
+                    <>
+                        <NumericSettingInput
+                            color="primary"
+                            fullWidth
+                            label={t('settings.repeatCountPreference')}
+                            helperText={t('settings.repeatCountPreferenceHelperText')}
+                            value={repeatCountPreference}
+                            onValueChange={(value) => void onSettingChanged('repeatCountPreference', value)}
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0,
+                                    step: 1,
+                                },
+                            }}
+                        />
+                        <ResponsiveSettingsStack>
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitleTriggerStartOffset')}
+                                value={subtitleTriggerStartOffset}
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerStartOffset', value)}
+                                slotProps={{
+                                    htmlInput: {
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitleTriggerEndOffset')}
+                                value={subtitleTriggerEndOffset}
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerEndOffset', value)}
+                                slotProps={{
+                                    htmlInput: {
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                        </ResponsiveSettingsStack>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.subtitleTriggerOffsetHelperText')}
+                        </Typography>
+                    </>
+                )}
+                <SettingsSubSection>{t('settings.subtitleGapTriggers')}</SettingsSubSection>
+                <ResponsiveSettingsStack>
+                    {supportsPlaybackEngine && (
+                        <NumericSettingInput
+                            color="primary"
+                            fullWidth
+                            label={t('settings.fastForwardPlaybackMinimumSkipInterval')}
+                            value={fastForwardPlaybackMinimumSkipIntervalMs}
+                            onValueChange={(value) =>
+                                void onSettingChanged('fastForwardPlaybackMinimumSkipIntervalMs', value)
+                            }
+                            slotProps={{
+                                htmlInput: {
+                                    min: 0,
+                                    step: 1,
+                                },
+                                input: {
+                                    endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                },
+                            }}
+                        />
+                    )}
+                    <NumericSettingInput
+                        fullWidth
+                        label={t('settings.fastForwardModePlaybackRate')}
+                        value={fastForwardModePlaybackRate}
+                        color="primary"
+                        normalizeValue={normalizePlaybackRate}
+                        onValueChange={(value) => void onSettingChanged('fastForwardModePlaybackRate', value)}
+                        slotProps={{
+                            htmlInput: {
+                                min: 0,
+                                step: 0.05,
+                            },
+                        }}
+                    />
+                </ResponsiveSettingsStack>
+                <NumericSettingInput
+                    color="primary"
+                    fullWidth
+                    label={t('settings.condensedPlaybackMinimumSkipInterval')}
+                    value={streamingCondensedPlaybackMinimumSkipIntervalMs}
+                    onValueChange={(value) =>
+                        void onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', value)
+                    }
+                    slotProps={{
+                        htmlInput: {
+                            min: 0,
+                            step: 1,
+                        },
+                        input: {
+                            endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                        },
+                    }}
+                />
+                {supportsPlaybackEngine && (
+                    <>
+                        <ResponsiveSettingsStack>
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitleTriggerGapStartOffset')}
+                                value={subtitleTriggerGapStartOffset}
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerGapStartOffset', value)}
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitleTriggerGapEndOffset')}
+                                value={subtitleTriggerGapEndOffset}
+                                onValueChange={(value) => void onSettingChanged('subtitleTriggerGapEndOffset', value)}
+                                slotProps={{
+                                    htmlInput: {
+                                        max: 0,
+                                        step: 1,
+                                    },
+                                    input: {
+                                        endAdornment: <InputAdornment position="end">ms</InputAdornment>,
+                                    },
+                                }}
+                            />
+                        </ResponsiveSettingsStack>
+                        <Typography variant="caption" color="textSecondary">
+                            {t('settings.subtitleTriggerGapOffsetHelperText')}
+                        </Typography>
+                    </>
+                )}
                 <SettingsSection>{t('settings.webSocketInterface')}</SettingsSection>
                 <SwitchLabelWithHoverEffect
                     control={
@@ -444,13 +778,12 @@ const MiscSettingTab: React.FC<Props> = ({
                     }}
                 />
                 <SettingsSection>{t('settings.mining')}</SettingsSection>
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.miningHistoryStorageLimit')}
                     fullWidth
                     value={miningHistoryStorageLimit}
                     color="primary"
-                    onChange={(event) => onSettingChanged('miningHistoryStorageLimit', Number(event.target.value))}
+                    onValueChange={(value) => void onSettingChanged('miningHistoryStorageLimit', value)}
                     slotProps={{
                         htmlInput: {
                             min: 0,
@@ -467,15 +800,6 @@ const MiscSettingTab: React.FC<Props> = ({
                         onChange={(event) => onSettingChanged('tabName', event.target.value)}
                     />
                 )}
-                <SettingsSection>{t('settings.title')}</SettingsSection>
-                <Stack direction="row" spacing={1}>
-                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleImportSettings}>
-                        {t('action.importSettings')}
-                    </Button>
-                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleExportSettings}>
-                        {t('action.exportSettings')}
-                    </Button>
-                </Stack>
             </Stack>
             <input
                 ref={settingsFileInputRef}

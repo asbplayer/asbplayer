@@ -1,24 +1,24 @@
-import SettingsTextField from './SettingsTextField';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TableContainer from '@mui/material/TableContainer';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableRowWithHoverEffect from './TableRowWithHoverEffect';
+import TableRowWithHoverEffect from '@project/common/components/TableRowWithHoverEffect';
 import TableCell from '@mui/material/TableCell';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import { useTranslation } from 'react-i18next';
-import { AsbplayerSettings, Page, PageSettings, SubtitleListPreference, YoutubePage } from '../settings';
-import InputAdornment from '@mui/material/InputAdornment';
+import type { AsbplayerSettings, Page, PageSettings, YoutubePage } from '@project/common/settings';
+import { SubtitleListPreference } from '@project/common/settings';
 import Paper from '@mui/material/Paper';
-import { pageMetadata } from '../pages';
+import { pageMetadata } from '@project/common/pages';
 import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import TuneIcon from '@mui/icons-material/Tune';
-import { PageConfigMap } from './SettingsForm';
+import type { PageConfigMap } from '@project/common/components/SettingsForm';
 import { useState } from 'react';
-import PageSettingsForm from './PageSettingsForm';
-import SettingsSection from './SettingsSection';
+import PageSettingsForm from '@project/common/components/PageSettingsForm';
+import SettingsSection from '@project/common/components/SettingsSection';
 
 const pageSettingsHasModifications = (page: Page) => {
     return (
@@ -59,7 +59,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
         streamingSubsDragAndDrop,
         streamingAutoSync,
         streamingAutoSyncPromptOnFailure,
-        streamingCondensedPlaybackMinimumSkipIntervalMs,
         streamingAppUrl,
         streamingPages,
     } = settings;
@@ -202,26 +201,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                     }
                     label={t('extension.settings.autoLoadDetectedSubsFailure')}
                     labelPlacement="start"
-                />
-                <SettingsSection>{t('settings.misc')}</SettingsSection>
-                <SettingsTextField
-                    type="number"
-                    color="primary"
-                    fullWidth
-                    label={t('extension.settings.condensedPlaybackMinSkipInterval')}
-                    value={streamingCondensedPlaybackMinimumSkipIntervalMs}
-                    onChange={(e) =>
-                        onSettingChanged('streamingCondensedPlaybackMinimumSkipIntervalMs', Number(e.target.value))
-                    }
-                    slotProps={{
-                        htmlInput: {
-                            min: 0,
-                            step: 1,
-                        },
-                        input: {
-                            endAdornment: <InputAdornment position="end">ms</InputAdornment>,
-                        },
-                    }}
                 />
                 {pageConfigs && (
                     <>

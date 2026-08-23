@@ -1,7 +1,7 @@
 import { Validator } from 'jsonschema';
-import { AsbplayerSettings } from './settings';
-import { ensureConsistencyOnRead } from './settings-provider';
-import { download, getCurrentTimeString } from '../util';
+import type { AsbplayerSettings } from '@project/common/settings/settings';
+import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
+import { download, getCurrentTimeString } from '@project/common/util';
 
 const keyBindSchema = {
     id: '/KeyBind',
@@ -445,6 +445,18 @@ const settingsSchema = {
         autoPausePreference: {
             type: 'number',
         },
+        subtitleTriggerStartOffset: {
+            type: 'number',
+        },
+        subtitleTriggerEndOffset: {
+            type: 'number',
+        },
+        subtitleTriggerGapEndOffset: {
+            type: 'number',
+        },
+        subtitleTriggerGapStartOffset: {
+            type: 'number',
+        },
         seekableTracks: {
             type: 'number',
         },
@@ -460,8 +472,43 @@ const settingsSchema = {
         speedChangeStep: {
             type: 'number',
         },
+        playbackRate: {
+            type: 'number',
+        },
+        playbackRateNotificationEnabled: {
+            type: 'boolean',
+        },
+        rememberPlaybackRate: {
+            type: 'boolean',
+        },
         fastForwardModePlaybackRate: {
             type: 'number',
+        },
+        fastForwardPlaybackMinimumSkipIntervalMs: {
+            type: 'number',
+        },
+        repeatCountPreference: {
+            type: 'number',
+        },
+        rememberPlaybackModes: {
+            type: 'boolean',
+        },
+        lastPlaybackModes: {
+            type: 'array',
+            items: {
+                type: 'number',
+            },
+        },
+        lastPlaybackPositions: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    fileName: { type: 'string' },
+                    position: { type: 'number' },
+                },
+                required: ['fileName', 'position'],
+            },
         },
         keyBindSet: {
             type: 'object',
@@ -680,27 +727,87 @@ const settingsSchema = {
     },
 };
 
-const ignoreKeys: (keyof AsbplayerSettings)[] = [
-    'streamingPages', // Ignored due to security risk (e.g. disable CSP)
-];
+export type IgnorePathSegment = string | '*';
+export type IgnorePath = readonly IgnorePathSegment[];
 
-const withIgnoredKeysRemoved = (settings: any) => {
-    const copy = { ...settings };
-    for (const ignoreKey of ignoreKeys) {
-        delete copy[ignoreKey];
+const ignorePaths: readonly IgnorePath[] = [
+    ['ankiConnectApiKey'],
+    ['dictionaryTracks', '*', 'dictionaryWaniKaniApiToken'],
+    ['streamingPages'], // Ignored due to security risk (e.g. disable CSP)
+];
+const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
+
+export const omitPath = (value: any, path: IgnorePath): any => {
+    if (value === null || typeof value !== 'object' || !path.length) return value;
+
+    const [segment, ...remainingPath] = path;
+    if (segment === '*') {
+        if (Array.isArray(value)) return value.map((item) => omitPath(item, remainingPath));
+        return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, omitPath(child, remainingPath)]));
+    }
+
+    const copy = Array.isArray(value) ? [...value] : { ...value };
+    if (!remainingPath.length) {
+        delete copy[segment];
+    } else if (segment in copy) {
+        copy[segment] = omitPath(copy[segment], remainingPath);
     }
     return copy;
 };
 
+const omitPaths = (settings: any, paths: readonly IgnorePath[]) =>
+    paths.reduce((settingsCopy, ignorePath) => omitPath(settingsCopy, ignorePath), settings);
+
+export const settingsForExport = (settings: AsbplayerSettings): Partial<AsbplayerSettings> => {
+    return omitPaths(settings, ignorePaths);
+};
+
+const mergeIgnoredPath = (importedValue: any, currentValue: any, path: IgnorePath): any => {
+    if (importedValue === null || typeof importedValue !== 'object' || !path.length) return importedValue;
+
+    const [segment, ...remainingPath] = path;
+    if (segment === '*') {
+        if (Array.isArray(importedValue)) {
+            return importedValue.map((item, index) => mergeIgnoredPath(item, currentValue?.[index], remainingPath));
+        }
+        return Object.fromEntries(
+            Object.entries(importedValue).map(([key, value]) => [
+                key,
+                mergeIgnoredPath(value, currentValue?.[key], remainingPath),
+            ])
+        );
+    }
+
+    const mergedValue = Array.isArray(importedValue) ? [...importedValue] : { ...importedValue };
+    if (remainingPath.length && segment in importedValue) {
+        mergedValue[segment] = mergeIgnoredPath(importedValue[segment], currentValue?.[segment], remainingPath);
+    } else if (currentValue !== null && typeof currentValue === 'object' && segment in currentValue) {
+        mergedValue[segment] = currentValue[segment];
+    }
+    return mergedValue;
+};
+
+/**
+ * Restore ignored values from the current settings, regardless of whether they are present in an import.
+ */
+export const mergeImportedSettings = (
+    importedSettings: Partial<AsbplayerSettings>,
+    currentSettings: AsbplayerSettings
+): Partial<AsbplayerSettings> =>
+    ignorePaths.reduce(
+        (mergedSettings, ignorePath) => mergeIgnoredPath(mergedSettings, currentSettings, ignorePath),
+        importedSettings
+    );
+
 export const exportSettings = (settings: AsbplayerSettings) => {
     download(
-        new Blob([JSON.stringify(withIgnoredKeysRemoved(settings))], { type: 'application/json' }),
+        new Blob([JSON.stringify(settingsForExport(settings))], { type: 'application/json' }),
         `asbplayer-settings-${getCurrentTimeString()}.json`
     );
 };
 
 export const validateSettings = (settings: any) => {
-    const copy = withIgnoredKeysRemoved(settings);
+    const copy = omitPaths(settings, validationIgnorePaths);
     const validator = new Validator();
     validator.addSchema(keyBindSchema);
     validator.addSchema(ankiFieldSchema);

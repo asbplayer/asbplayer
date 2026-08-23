@@ -1,4 +1,4 @@
-import {
+import type {
     CardExportedDialogMessage,
     CardUpdatedDialogMessage,
     DictionaryBuildAnkiCacheMessage,
@@ -28,8 +28,8 @@ import {
     ExtensionToVideoCommand,
     Message,
 } from '@project/common';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import {
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     DictionaryLocalTokenInput,
     DictionaryStorage,
     DictionaryTokenKey,
@@ -39,7 +39,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy } from '@project/common/settings';
+import type { ApplyStrategy } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =

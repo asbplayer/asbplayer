@@ -1,8 +1,7 @@
+import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
 import {
-    AsbplayerSettings,
     defaultSettings,
     DictionaryTokenSource,
-    DictionaryTrack,
     TokenFrequencyAnnotation,
     TokenMatchStrategy,
     TokenMatchStrategyPriority,
@@ -11,16 +10,16 @@ import {
     TokenStatus,
     TokenStyling,
 } from '@project/common/settings';
-import {
+import type {
     DictionaryAnkiCardRecord,
     DictionaryDB,
     DictionaryTokenKey,
     DictionaryTokenRecord,
     DictionaryWaniKaniAssignmentRecord,
     DictionaryWaniKaniSubjectRecord,
-    LOCAL_TOKEN_TRACK,
-} from './dictionary-db';
-import { WaniKaniSpacedRepetitionSystem } from '@project/common/wanikani';
+} from '@project/common/dictionary-db/dictionary-db';
+import { LOCAL_TOKEN_TRACK } from '@project/common/dictionary-db/dictionary-db';
+import type { WaniKaniSpacedRepetitionSystem } from '@project/common/wanikani';
 
 export const profile = 'Profile';
 export const otherProfile = 'Other Profile';

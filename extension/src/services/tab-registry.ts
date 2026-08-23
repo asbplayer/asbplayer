@@ -1,4 +1,4 @@
-import {
+import type {
     AckTabsMessage,
     AsbplayerHeartbeatMessage,
     AsbplayerInstance,
@@ -12,7 +12,7 @@ import {
     VideoTabModel,
     SubtitleTrack,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
+import type { SettingsProvider } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
 interface SlimTab {

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     defaultSettings,
     DictionaryTokenSource,
-    DictionaryTrack,
     SettingsProvider,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
@@ -11,6 +11,12 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
+import type {
+    DictionaryStatisticsSentence,
+    DictionaryStatisticsSentenceBucketEntry,
+    DictionaryStatisticsSentenceBuckets,
+    DictionaryStatisticsSnapshot,
+} from '@project/common/dictionary-statistics';
 import {
     averageDisplay,
     clampPercent,
@@ -18,10 +24,6 @@ import {
     defaultDictionaryStatisticsSentenceSortDirection,
     defaultDictionaryStatisticsSentenceSortState,
     DictionaryStatistics,
-    DictionaryStatisticsSentence,
-    DictionaryStatisticsSentenceBucketEntry,
-    DictionaryStatisticsSentenceBuckets,
-    DictionaryStatisticsSnapshot,
     dictionaryStatisticsComprehensionBandForPercent,
     nextDictionaryStatisticsSentenceSortCategory,
     nextDictionaryStatisticsSentenceSortDirection,

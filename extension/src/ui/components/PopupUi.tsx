@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import {
+import type {
     ExtensionToVideoCommand,
     GrantedActiveTabPermissionMessage,
     PopupToExtensionCommand,
     SettingsUpdatedMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
-import { ExtensionSettingsStorage } from '../../services/extension-settings-storage';
-import Popup from './Popup';
-import { useRequestingActiveTabPermission } from '../hooks/use-requesting-active-tab-permission';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
+import Popup from '@project/extension/src/ui/components/Popup';
+import { useRequestingActiveTabPermission } from '@project/extension/src/ui/hooks/use-requesting-active-tab-permission';
 import { isMobile } from 'react-device-detect';
 import { useSettingsProfileContext } from '@project/common/hooks/use-settings-profile-context';
 import { StyledEngineProvider } from '@mui/material/styles';

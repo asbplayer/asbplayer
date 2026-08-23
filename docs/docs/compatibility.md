@@ -32,7 +32,7 @@ sidebar_position: 7
 | ----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 | Netflix                 |                                                                                            ✓                                                                                             |
 | YouTube                 |                                                                                            ✓                                                                                             |
-| Disney Plus             |                                             Seeking/timing is completely broken ([issue](https://github.com/asbplayer/asbplayer/issues/576))                                             |
+| Disney Plus             |                                                                                            ✓                                                                                             |
 | Hulu                    |                                                                                            ✓                                                                                             |
 | Hulu JP                 |                                                                                            ✓                                                                                             |
 | TVer                    |                                                                                            ✓                                                                                             |
@@ -47,7 +47,7 @@ sidebar_position: 7
 | HBO Max                 |                                                             See [issue](https://github.com/asbplayer/asbplayer/issues/1006)                                                              |
 | Yle Areena              |                                                                                            ✓                                                                                             |
 | iWantTFC                |                                                                                            ✓                                                                                             |
-| Stemio                  |                                                              See [issue](https://github.com/asbplayer/asbplayer/issues/800)                                                              |
-| Comprehensible Japanese |                                                                                            ✓                                                                                             |
+| Stremio                 |                                                                                            ✓                                                                                             |
+| Natural Japanese        |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |

@@ -1,6 +1,7 @@
-import { CardExportedMessage, CopySubtitleMessage, Message, PostMineAction } from '@project/common';
-import { surroundingSubtitlesAroundInterval } from '@project/common/util';
-import Binding from '../services/binding';
+import { asbError, surroundingSubtitlesAroundInterval } from '@project/common/util';
+import type { CardExportedMessage, CopySubtitleMessage, Message } from '@project/common';
+import { PostMineAction } from '@project/common';
+import type Binding from '@project/extension/src/services/binding';
 
 export interface BulkExportStartedPayload extends Message {
     command: 'bulk-export-started';
@@ -50,7 +51,7 @@ export default class BulkExportController {
                 this._currentIndex++;
 
                 if (exported.exportError) {
-                    console.error('Bulk export error:', exported.exportError);
+                    asbError('anki/export', 'Bulk export error:', exported.exportError);
                 } else if (exported.skippedDuplicate) {
                     this._context.subtitleController.notification({
                         locKey: 'info.cardNotExported',
@@ -124,7 +125,7 @@ export default class BulkExportController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(startedMessage).catch(console.error);
+        browser.runtime.sendMessage(startedMessage).catch((error) => asbError('anki/export', error));
 
         // Kick off first item
         this._sendNext();

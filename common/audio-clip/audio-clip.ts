@@ -1,10 +1,11 @@
-import Mp3Encoder from './mp3-encoder';
+import { asbError, download } from '@project/common/util';
+import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import { AudioErrorCode, CardModel, FileModel } from '@project/common';
-import { download } from '@project/common/util';
-import { isActiveBlobUrl } from '../blob-url';
-import { base64ToBlob, blobToBase64 } from '../base64';
-import { isFirefox } from '../browser-detection';
+import type { CardModel, FileModel } from '@project/common';
+import { AudioErrorCode } from '@project/common';
+import { isActiveBlobUrl } from '@project/common/blob-url';
+import { base64ToBlob, blobToBase64 } from '@project/common/base64';
+import { isFirefox } from '@project/common/browser-detection';
 
 const maxPrefixLength = 24;
 
@@ -161,7 +162,7 @@ class Base64AudioData implements AudioData {
         }
 
         this.stopAudio(this.playingAudio);
-        clearTimeout(this.stopAudioTimeout!);
+        clearTimeout(this.stopAudioTimeout);
         this.playingAudio = undefined;
         this.stopAudioTimeout = undefined;
         invokeCallbacks('pause', this._callbacks);
@@ -207,6 +208,7 @@ class FileAudioClipper {
     private readonly _recorderMimeType: string;
     private readonly _trackId?: string;
     private _clippingAudioElement?: HTMLAudioElement;
+    private _clippingAudioContext?: AudioContext;
     private _clippingAudibly?: boolean;
     private _clippingAudioReject?: (error: Error) => void;
     private _stopClippingTimeout?: ReturnType<typeof setTimeout>;
@@ -240,7 +242,7 @@ class FileAudioClipper {
 
     get isPlayingAudibly(): boolean {
         return (
-            (!isFirefox && this._clippingAudioElement !== undefined && this._clippingAudibly === true) ||
+            (this._clippingAudioElement !== undefined && this._clippingAudibly === true) ||
             this._playingAudioElement !== undefined
         );
     }
@@ -303,9 +305,16 @@ class FileAudioClipper {
                         if (!audible) {
                             // Direct audio to destination other than speakers
                             const audioContext = new AudioContext();
+                            this._clippingAudioContext = audioContext;
                             const destination = audioContext.createMediaStreamDestination();
                             const source = audioContext.createMediaElementSource(audio);
                             source.connect(destination);
+                        } else if (isFirefox) {
+                            // In Firefox, captureStream() mutes the media element audio to speakers unless connected to AudioContext destination
+                            const audioContext = new AudioContext();
+                            this._clippingAudioContext = audioContext;
+                            const source = audioContext.createMediaElementSource(audio);
+                            source.connect(audioContext.destination);
                         }
 
                         await audio.play();
@@ -338,6 +347,8 @@ class FileAudioClipper {
                         this._stopClippingTimeout = setTimeout(
                             () => {
                                 this._stopAudio(audio, false);
+                                void this._clippingAudioContext?.close();
+                                this._clippingAudioContext = undefined;
                                 this._clippingAudioElement = undefined;
                                 this._stopClippingTimeout = undefined;
                                 this._clippingAudioReject = undefined;
@@ -374,7 +385,9 @@ class FileAudioClipper {
         }
 
         this._stopAudio(this._clippingAudioElement, false);
-        clearTimeout(this._stopClippingTimeout!);
+        void this._clippingAudioContext?.close();
+        this._clippingAudioContext = undefined;
+        clearTimeout(this._stopClippingTimeout);
         this._clippingAudioReject?.(new ClippingCancelledError());
         this._clippingAudioElement = undefined;
         this._stopClippingTimeout = undefined;
@@ -388,7 +401,7 @@ class FileAudioClipper {
         }
 
         this._stopAudio(this._playingAudioElement, true);
-        clearTimeout(this._stopAudioTimeout!);
+        clearTimeout(this._stopAudioTimeout);
         this._playingAudioElement = undefined;
         this._stopAudioTimeout = undefined;
     }
@@ -530,7 +543,7 @@ class FileAudioData implements AudioData {
     }
 
     get playing() {
-        return this._playClipper?.isPlayingAudibly ?? false;
+        return this._blobClipper.isPlayingAudibly || (this._playClipper?.isPlayingAudibly ?? false);
     }
 
     onEvent(event: AudioClipEvent, callback: () => void) {
@@ -573,7 +586,7 @@ class FileAudioData implements AudioData {
                 })
                 .catch((e) => {
                     if (!(e instanceof ClippingCancelledError)) {
-                        console.error(e);
+                        asbError('audio-clip', e);
                     }
                 });
             invokeCallbacks('play', this._callbacks);

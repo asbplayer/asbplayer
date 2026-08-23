@@ -3,7 +3,8 @@ import 'fake-indexeddb/auto';
 import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DictionaryBuildWaniKaniCacheStateErrorCode, DictionaryBuildWaniKaniCacheStateType } from '@project/common';
-import { AsbplayerSettings, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
 
 const mockWaniKaniInstances: any[] = [];
 const mockWaniKaniOverrides: any[] = [];
@@ -57,7 +58,8 @@ jest.mock('@project/common/yomitan/yomitan', () => ({
     }),
 }));
 
-import { WaniKaniApiError, type WaniKaniAssignment, type WaniKaniSubject } from '@project/common/wanikani';
+import { WaniKaniApiError } from '@project/common/wanikani';
+import type { WaniKaniAssignment, WaniKaniSubject } from '@project/common/wanikani';
 import {
     DictionaryDB,
     _buildIdHealthCheck,
@@ -66,7 +68,7 @@ import {
     _gatherModifiedTokensForTrack,
     _getFromSourceBulk,
     _saveRecordBulk,
-} from './dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 import {
     _buildWaniKaniTokensForTrack,
     _deleteWaniKaniResourcesForTracks,
@@ -77,7 +79,7 @@ import {
     _updateBuildWaniKaniCacheProgress,
     _waniKaniAssignmentRecord,
     _waniKaniSubjectRecord,
-} from './dictionary-db-wanikani';
+} from '@project/common/dictionary-db/dictionary-db-wanikani';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
@@ -93,7 +95,7 @@ import {
     profile,
     tokenKey,
     track,
-} from './dictionary-db-test-utils';
+} from '@project/common/dictionary-db/dictionary-db-test-utils';
 
 const collection = <T>(data: T[], dataUpdatedAt = '2024-01-01T00:00:00.000000Z') => ({
     data,

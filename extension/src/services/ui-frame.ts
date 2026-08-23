@@ -1,13 +1,12 @@
-import { isFirefoxBuild } from './build-flags';
-import FrameBridgeClient, { FetchOptions } from './frame-bridge-client';
-import { frameColorSchemeClass } from './frame-color-scheme';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
+import type { FetchOptions } from '@project/extension/src/services/frame-bridge-client';
+import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
+import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 
 export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
     return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {
         if (isFirefoxBuild) {
             // Firefox does not allow document.write() into the about:blank iframe.
-            // CSP headers are modified using the webRequest API to allow extension scripts to
-            // be loaded.
             frame.srcdoc = await html(lang);
         } else {
             // On Chromium, use document.write() since it allows the loading of extension scripts
@@ -22,7 +21,8 @@ export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
 
 export const uiFrameForSrc = (src: string) => {
     return new UiFrame(async (frame: HTMLIFrameElement) => {
-        frame.src = src;
+        const colorScheme = frameColorScheme();
+        frame.src = `${src}?colorScheme=${encodeURIComponent(colorScheme)}`;
     });
 };
 

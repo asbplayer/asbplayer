@@ -1,18 +1,17 @@
-import { type IndexedSubtitleModel, type Token } from '@project/common';
+import type { IndexedSubtitleModel, Token } from '@project/common';
 import { jest } from '@jest/globals';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import {
-    type AsbplayerSettings,
     defaultSettings,
-    type DictionaryTrack,
     SettingsProvider,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
+import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
-import { SubtitleAnnotations } from './subtitle-annotations';
+import { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
 
 export const cloneAnnotationConfig = (track: DictionaryTrack) => ({
     ...track.dictionaryTokenAnnotationConfig,
@@ -80,18 +79,17 @@ export const makeSettings = (dictionaryTracks = makeDictionaryTracks()): Asbplay
     dictionaryTracks,
 });
 
-export const makeSubtitle = (overrides: Record<string, unknown> = {}): IndexedSubtitleModel =>
-    ({
-        text: 'word',
-        originalText: 'word',
-        start: 0,
-        originalStart: 0,
-        end: 1000,
-        originalEnd: 1000,
-        track: 0,
-        index: 0,
-        ...overrides,
-    }) as IndexedSubtitleModel;
+export const makeSubtitle = (overrides: Record<string, unknown> = {}): IndexedSubtitleModel => ({
+    text: 'word',
+    originalText: 'word',
+    start: 0,
+    originalStart: 0,
+    end: 1000,
+    originalEnd: 1000,
+    track: 0,
+    index: 0,
+    ...overrides,
+});
 
 export const makeToken = (overrides: Partial<Token> = {}): Token => ({
     pos: [0, 4],

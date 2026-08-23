@@ -1,4 +1,4 @@
-import { Command, Message } from '@project/common';
+import type { Command, Message } from '@project/common';
 
 export default class RequestModelHandler {
     get sender() {
@@ -14,7 +14,20 @@ export default class RequestModelHandler {
             return;
         }
 
-        void browser.tabs.sendMessage(sender.tab.id, command).then((model) => sendResponse(model));
+        const tabId = sender.tab.id;
+        browser.tabs
+            .get(tabId)
+            .then((tab) => {
+                if (tab.url?.startsWith(browser.runtime.getURL(''))) {
+                    // runtime.sendMessage already goes directly to extension page content scripts
+                    return;
+                }
+
+                void browser.tabs.sendMessage(tabId, command).then((model) => sendResponse(model));
+            })
+            .catch(() => {
+                // Tab may have been closed
+            });
         return true;
     }
 }

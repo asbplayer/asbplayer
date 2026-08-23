@@ -1,4 +1,4 @@
-import { CopyHistoryItem, FileModel, SubtitleModel } from '@project/common';
+import type { CopyHistoryItem, FileModel, SubtitleModel } from '@project/common';
 import Dexie, { liveQuery } from 'dexie';
 
 class CopyHistoryDatabase extends Dexie {

@@ -1,15 +1,19 @@
-import React, { useCallback, useState, useEffect, useMemo, useRef, RefObject } from 'react';
-import { useTranslation } from 'react-i18next';
-import makeStyles from '@mui/styles/makeStyles';
-import { MediaFragment, SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
-import { AnkiSettings, Profile, sortedAnkiFieldModels } from '@project/common/settings';
 import {
+    asbInfo,
     humanReadableTime,
     surroundingSubtitlesAroundInterval,
     subtitleIntersectsTimeInterval,
     joinSubtitles,
     extractText,
 } from '@project/common/util';
+import type { RefObject } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import makeStyles from '@mui/styles/makeStyles';
+import type { SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
+import { MediaFragment } from '@project/common';
+import type { AnkiSettings, Profile } from '@project/common/settings';
+import { sortedAnkiFieldModels } from '@project/common/settings';
 import { AudioClip } from '@project/common/audio-clip';
 import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
@@ -25,29 +29,29 @@ import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import Slider from '@mui/material/Slider';
 import Toolbar from '@mui/material/Toolbar';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import DoneIcon from '@mui/icons-material/Done';
-import ListField from './ListField';
-import { Anki, ExportParams } from '../anki';
-import { isFirefox } from '../browser-detection';
-import SentenceField from './SentenceField';
-import DefinitionField from './DefinitionField';
-import WordField from './WordField';
-import CustomField from './CustomField';
-import AudioField from './AudioField';
-import ImageField from './ImageField';
-import ImageDialog from './ImageDialog';
-import MiniProfileSelector from './MiniProfileSelector';
+import ListField from '@project/common/components/ListField';
+import type { Anki, ExportParams } from '@project/common/anki';
+import { isFirefox } from '@project/common/browser-detection';
+import SentenceField from '@project/common/components/SentenceField';
+import DefinitionField from '@project/common/components/DefinitionField';
+import WordField from '@project/common/components/WordField';
+import CustomField from '@project/common/components/CustomField';
+import AudioField from '@project/common/components/AudioField';
+import ImageField from '@project/common/components/ImageField';
+import ImageDialog from '@project/common/components/ImageDialog';
+import MiniProfileSelector from '@project/common/components/MiniProfileSelector';
 import Alert from '@mui/material/Alert';
-import { isMacOs } from '../device-detection/mac';
-import AnkiDialogButton from './AnkiDialogButton';
-import { type Theme } from '@mui/material';
-import TutorialBubble from './TutorialBubble';
-import AnkiDialogTutorialBubble from './AnkiDialogTutorialBubble';
-import CardSelectView from './CardSelectView';
+import { isMacOs } from '@project/common/device-detection/mac';
+import AnkiDialogButton from '@project/common/components/AnkiDialogButton';
+import type { Theme } from '@mui/material';
+import TutorialBubble from '@project/common/components/TutorialBubble';
+import AnkiDialogTutorialBubble from '@project/common/components/AnkiDialogTutorialBubble';
+import CardSelectView from '@project/common/components/CardSelectView';
 
 const quickSelectShortcut = isMacOs ? '⌘+⇧+Enter' : 'Alt+Shift+Enter';
 
@@ -450,7 +454,7 @@ const AnkiDialog = ({
 
             e.preventDefault();
             e.stopPropagation();
-            audioClip!.play().catch(console.info);
+            audioClip!.play().catch((error) => asbInfo('anki/ui', error));
         },
         [audioClip]
     );

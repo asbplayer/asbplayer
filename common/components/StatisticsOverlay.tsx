@@ -1,23 +1,26 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { DictionaryProvider } from '../dictionary-db';
-import {
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type {
     DictionarySimplifiedStatisticsTrackSnapshot,
-    dictionaryStatisticsComprehensionBandForPercent,
     DictionaryStatisticsSentenceBucketEntry,
     DictionaryStatisticsSnapshot,
+} from '@project/common/dictionary-statistics';
+import {
+    dictionaryStatisticsComprehensionBandForPercent,
     percentDisplay,
     processSimplifiedDictionaryStatistics,
-} from '../dictionary-statistics';
+} from '@project/common/dictionary-statistics';
 import Box from '@mui/material/Box';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
-import { alpha, SxProps, Theme } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import CloseIcon from '@mui/icons-material/Close';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import LogoIcon from './LogoIcon';
+import LogoIcon from '@project/common/components/LogoIcon';
 import LinearProgress from '@mui/material/LinearProgress';
 
 interface StatisticProps {
@@ -47,6 +50,7 @@ const Statistic: React.FC<StatisticProps> = ({ label, value, onClick, valueSx })
                 pr: 0.75,
                 borderRadius: 1,
                 '&:hover': hoverProps,
+                whiteSpace: 'nowrap',
             }}
             onClick={onClick}
         >
