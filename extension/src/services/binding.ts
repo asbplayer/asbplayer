@@ -1084,9 +1084,9 @@ export default class Binding {
                         break;
                     case 'screenshot-taken': {
                         const screenshotTakenMessage = request.message as ScreenshotTakenMessage;
+                        this.controlsController.show();
                         this.subtitleController.forceHideSubtitles = false;
                         this.mobileVideoOverlayController.forceHide = false;
-                        this.controlsController.show();
 
                         if (!this.recordingMedia && screenshotTakenMessage.ankiUiState) {
                             void this.ankiUiController.showAfterRetakingScreenshot(
