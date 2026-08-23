@@ -1,7 +1,7 @@
 import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 import type { FetchOptions } from '@project/extension/src/services/frame-bridge-client';
 import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
-import { frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
+import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 
 export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
     return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {
@@ -21,7 +21,8 @@ export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
 
 export const uiFrameForSrc = (src: string) => {
     return new UiFrame(async (frame: HTMLIFrameElement) => {
-        frame.src = src;
+        const colorScheme = frameColorScheme();
+        frame.src = `${src}?colorScheme=${encodeURIComponent(colorScheme)}`;
     });
 };
 

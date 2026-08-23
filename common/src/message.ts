@@ -1146,3 +1146,8 @@ export interface CloseStatisticsOverlayMessage extends Message {
     readonly command: 'close-statistics-overlay';
     readonly mediaId: string;
 }
+
+export interface ElementExistsStatisticsOverlayMessage extends Message {
+    readonly command: 'element-exists';
+    readonly mediaId: string;
+}

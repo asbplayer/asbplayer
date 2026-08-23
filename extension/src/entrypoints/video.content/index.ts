@@ -202,7 +202,7 @@ export default defineContentScript({
 
             if (isParentDocument) {
                 bindToggleSidePanel();
-                statisticsOverlayController = new StatisticsOverlayController();
+                statisticsOverlayController = new StatisticsOverlayController(bindings);
                 statisticsOverlayController.bind();
             }
 
