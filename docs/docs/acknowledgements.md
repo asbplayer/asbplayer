@@ -58,7 +58,8 @@ We epecially acknowledge the wonderful humans below.
 [@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
 [@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
 [@aramrw](https://github.com/aramrw),
-[@steckums](https://github.com/steckums)
+[@steckums](https://github.com/steckums),
+[@eXaminator](https://github.com/eXaminator)
 
 ## Translators
 
