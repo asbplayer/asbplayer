@@ -25,7 +25,7 @@ export default defineUnlistedScript(() => {
 
         const response: VideoData = {
             error: '',
-            basename: document.title.replace(' | Comprehensible Japanese', ''),
+            basename: document.title.replace(' | Natural Japanese', ''),
             subtitles,
         };
         document.dispatchEvent(new CustomEvent('asbplayer-synced-data', { detail: response }));

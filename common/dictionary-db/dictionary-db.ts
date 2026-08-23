@@ -1,24 +1,27 @@
-import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
-import {
-    ApplyStrategy,
+import { asbError, asbWarn, getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
+import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
+import type {
     AsbplayerSettings,
-    DictionaryTokenSource,
     DictionaryTrack,
     ExternalWordSource,
-    externalWordSourcePriority,
-    getFullyKnownTokenStatus,
-    isExternalWordSource,
     SettingsProvider,
     TokenState,
+} from '@project/common/settings';
+import {
+    ApplyStrategy,
+    DictionaryTokenSource,
+    externalWordSourcePriority,
+    getFullyKnownTokenStatus,
+    isAnkiSource,
+    isExternalWordSource,
+    isWaniKaniSource,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
-import { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
-import { Yomitan } from '@project/common/yomitan';
+import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
+import type { Yomitan } from '@project/common/yomitan';
 import Dexie from 'dexie';
-import { buildAnkiCachePipeline } from '@project/common/dictionary-db';
-import { buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
-import { CardInfo } from '@project/common/anki';
+import { buildAnkiCachePipeline, buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
+import type { CardInfo } from '@project/common/anki';
 
 /**
  * This file only contains the public interface functions and types.
@@ -304,7 +307,7 @@ export class DictionaryDB {
     private async _cardStatusMap(
         profile: string,
         track: number,
-        cardIds: Iterable<number>
+        cardIds: number[]
     ): Promise<Map<number, TokenStatusInfo>> {
         const uniqueCardIds = Array.from(new Set(cardIds));
         if (!uniqueCardIds.length) return new Map();
@@ -329,7 +332,7 @@ export class DictionaryDB {
     private async _waniKaniSubjectStatusMap(
         profile: string,
         track: number,
-        subjectIds: Iterable<number>
+        subjectIds: number[]
     ): Promise<Map<number, TokenStatusInfo>> {
         const uniqueSubjectIds = Array.from(new Set(subjectIds));
         if (!uniqueSubjectIds.length) return new Map();
@@ -385,16 +388,19 @@ export class DictionaryDB {
         cardStatusMap: Map<number, TokenStatusInfo>,
         waniKaniSubjectStatusMap: Map<number, TokenStatusInfo>
     ): TokenStatusInfo[] {
-        if (record.source === DictionaryTokenSource.WANIKANI) {
+        if (isAnkiSource(record.source)) {
+            return record.cardIds.flatMap((cardId) => {
+                const status = cardStatusMap.get(cardId);
+                return status ? [status] : [];
+            });
+        }
+        if (isWaniKaniSource(record.source)) {
             return record.cardIds.flatMap((subjectId) => {
                 const status = waniKaniSubjectStatusMap.get(subjectId);
                 return status ? [status] : [];
             });
         }
-        return record.cardIds.flatMap((cardId) => {
-            const status = cardStatusMap.get(cardId);
-            return status ? [status] : [];
-        });
+        return [];
     }
 
     private _externalStatusesFromRecords(
@@ -461,16 +467,12 @@ export class DictionaryDB {
             this._cardStatusMap(
                 profile,
                 track,
-                flattenedRecords.flatMap((record) =>
-                    record.source === DictionaryTokenSource.WANIKANI ? [] : record.cardIds
-                )
+                flattenedRecords.flatMap((record) => (isAnkiSource(record.source) ? record.cardIds : []))
             ),
             this._waniKaniSubjectStatusMap(
                 profile,
                 track,
-                flattenedRecords.flatMap((record) =>
-                    record.source === DictionaryTokenSource.WANIKANI ? record.cardIds : []
-                )
+                flattenedRecords.flatMap((record) => (isWaniKaniSource(record.source) ? record.cardIds : []))
             ),
         ]);
 
@@ -545,15 +547,20 @@ export class DictionaryDB {
         if (!tokens.length) return {};
         const profile = this._getProfile(inputProfile);
         const settings = await this.settingsProvider.getAll();
+        const normalizedTokens = new Set(tokens.map(normalizeToken));
 
         return this.db.transaction(
             'r',
             [this.db.tokens, this.db.ankiCards, this.db.waniKaniAssignments, this.db.waniKaniSubjects, this.db.meta],
             async () => {
                 const records = await this.db.tokens
-                    .where('token')
-                    .anyOfIgnoreCase(tokens)
-                    .filter((r) => (r.track === track || r.track === LOCAL_TOKEN_TRACK) && r.profile === profile)
+                    .where('profile')
+                    .equals(profile)
+                    .filter(
+                        (r) =>
+                            normalizedTokens.has(normalizeToken(r.token)) &&
+                            (r.track === track || r.track === LOCAL_TOKEN_TRACK)
+                    )
                     .toArray();
                 return this._tokenResultsFromRecords(profile, track, records, settings);
             }
@@ -620,14 +627,14 @@ export class DictionaryDB {
                                 profile,
                                 track,
                                 flattenedRecords.flatMap((record) =>
-                                    record.source === DictionaryTokenSource.WANIKANI ? [] : record.cardIds
+                                    isAnkiSource(record.source) ? record.cardIds : []
                                 )
                             ),
                             this._waniKaniSubjectStatusMap(
                                 profile,
                                 track,
                                 flattenedRecords.flatMap((record) =>
-                                    record.source === DictionaryTokenSource.WANIKANI ? record.cardIds : []
+                                    isWaniKaniSource(record.source) ? record.cardIds : []
                                 )
                             ),
                         ]);
@@ -669,9 +676,7 @@ export class DictionaryDB {
                             const ankiWordRecords = records.filter(
                                 (record) => record.source === DictionaryTokenSource.ANKI_WORD
                             );
-                            const waniKaniRecords = records.filter(
-                                (record) => record.source === DictionaryTokenSource.WANIKANI
-                            );
+                            const waniKaniRecords = records.filter((record) => isWaniKaniSource(record.source));
                             const bestAnkiWordStatus = this._getBestKnownExternalWordToken(
                                 ankiWordRecords,
                                 cardStatusMap,
@@ -777,7 +782,10 @@ export class DictionaryDB {
             const tokensToDelete: string[] = [];
             for (const localTokenInput of localTokenInputs) {
                 if (!HAS_LETTER_REGEX.test(localTokenInput.token)) {
-                    console.error(`Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`);
+                    asbError(
+                        'dictionary',
+                        `Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`
+                    );
                     continue;
                 }
                 const existingRecord = tokenRecordMap.get(localTokenInput.token); // Ignore existing lemmas as they should be re-calculated
@@ -791,9 +799,13 @@ export class DictionaryDB {
                 } else if (localTokenInput.status == null) {
                     localTokenInput.status = TokenStatus.UNCOLLECTED;
                 }
+                localTokenInput.states = Array.from(new Set(localTokenInput.states)).sort((lhs, rhs) => lhs - rhs);
                 localTokenInput.lemmas = localTokenInput.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
                 if (!localTokenInput.lemmas.length) {
-                    console.error(`Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`);
+                    asbError(
+                        'dictionary',
+                        `Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`
+                    );
                     continue;
                 }
                 if (localTokenInput.status === TokenStatus.UNCOLLECTED && !localTokenInput.states.length) {
@@ -801,7 +813,8 @@ export class DictionaryDB {
                         tokensToDelete.push(localTokenInput.token);
                         continue;
                     } else {
-                        console.error(
+                        asbError(
+                            'dictionary',
                             `Cannot save local token with uncollected status and no states: ${JSON.stringify(localTokenInput)}`
                         );
                         continue;
@@ -865,6 +878,7 @@ export class DictionaryDB {
         items: Partial<DictionaryTokenRecord>[],
         profiles: string[]
     ): Promise<DictionaryImportRecordLocalResult> {
+        if (!items.length) return { importedTokens: [] };
         const defaultProfile = this._getProfile(undefined);
         if (!profiles.includes(defaultProfile)) profiles.unshift(defaultProfile);
         const fullyKnownStatus = getFullyKnownTokenStatus();
@@ -900,6 +914,7 @@ export class DictionaryDB {
                     item.states = existingToken.states; // Treat the existing states as authoritative, TODO: expose ApplyStrategy for imports?
                 }
                 item.lemmas = item.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
+                item.states = Array.from(new Set(item.states)).sort((lhs, rhs) => lhs - rhs);
                 if (!item.lemmas.length) continue; // Cannot import tokens with no lemmas, require a different method where a tokenizer is available
                 let status = item.status;
                 if (item.status == null || item.status < TokenStatus.UNKNOWN) {
@@ -1172,6 +1187,10 @@ function buildIdLabel(buildIdSlot: DictionaryBuildIdSlot): string {
     return buildIdSlot === 'waniKani' ? 'WaniKani buildId' : 'Anki buildId';
 }
 
+function buildIdLogLabel(buildIdSlot: DictionaryBuildIdSlot): string {
+    return `dictionary/${buildIdSlot === 'waniKani' ? 'wanikani' : 'anki'}`;
+}
+
 function setBuildIdChanges(
     trackMeta: DictionaryMetaRecord,
     buildIdSlot: DictionaryBuildIdSlot,
@@ -1253,7 +1272,8 @@ export async function _ensureBuildId(
         if (existingBuildId && existingBuildId !== nextBuildId) {
             const existingBuildExpiration = _buildIdExpiration(trackMeta, buildIdSlot);
             if (buildTs < existingBuildExpiration) return false;
-            console.warn(
+            asbWarn(
+                buildIdLogLabel(buildIdSlot),
                 `Stale ${buildIdLabel(buildIdSlot)} ${existingBuildId} which expired at ${new Date(existingBuildExpiration).toISOString()} detected for track ${key[1] + 1}, ignoring.`
             );
         }
@@ -1312,7 +1332,10 @@ export async function _clearBuildIds(
         try {
             await clearBuildId(db, key, nextBuildId, buildIdSlot);
         } catch (e) {
-            console.error(`Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`);
+            asbError(
+                buildIdLogLabel(buildIdSlot),
+                `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`
+            );
         }
     }
 }

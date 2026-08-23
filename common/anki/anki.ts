@@ -1,9 +1,9 @@
+import { asbInfo, extractText, fromBatches, sourceString } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
-import { AnkiExportMode, CardModel, MediaFragment, Progress } from '@project/common';
-import { HttpFetcher, Fetcher } from '@project/common';
-import { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
+import type { AnkiExportMode, CardModel, Progress, Fetcher } from '@project/common';
+import { MediaFragment, HttpFetcher } from '@project/common';
+import type { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
 import sanitize from 'sanitize-filename';
-import { extractText, fromBatches, sourceString } from '@project/common/util';
 
 const ANKI_CARDS_INFO_BATCH_SIZE = 10;
 const ANKI_NOTES_INFO_BATCH_SIZE = 100;
@@ -16,7 +16,7 @@ const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
 
 const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {
-    console.info(`[asbplayer] ${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
+    asbInfo('anki/media', `${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
 };
 
 const timedMediaBase64 = async (
@@ -88,7 +88,7 @@ const makeUniqueFileName = (fileName: string) => {
     return `${baseName}_${randomString()}.${exension}`;
 };
 
-const htmlTagRegexString = '<([^/ >])*[^>]*>(.*?)</\\1>';
+const htmlTagRegexString = '<([^/ >]+)[^>]*>(.*?)</\\1>';
 const anyHtmlTagRegex = /<[^>]+>/;
 
 // Given <a><b>content</b></a> return ['<a><b>content</b></a>', '<b>content</b>', 'content']
@@ -177,9 +177,11 @@ interface Base64Exportable {
 export async function exportCard(
     card: CardModel,
     ankiSettings: AnkiSettings,
-    exportMode: AnkiExportMode = 'default'
+    exportMode: AnkiExportMode = 'default',
+    fetcher?: Fetcher,
+    noteId?: number
 ): Promise<string> {
-    const anki = new Anki(ankiSettings);
+    const anki = new Anki(ankiSettings, fetcher);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
     const audioClip =
         card.audio === undefined
@@ -217,6 +219,7 @@ export async function exportCard(
         customFieldValues: card.customFieldValues ?? {},
         tags: ankiSettings.tags,
         mode: exportMode,
+        noteId,
     });
 }
 
@@ -572,7 +575,7 @@ export class Anki {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
             case 'updateLast': {
-                const lastNoteId = [...recentNotes].sort()[recentNotes.length - 1];
+                const lastNoteId = [...recentNotes].sort((a, b) => a - b)[recentNotes.length - 1];
 
                 if (recentNotes.length === 0) {
                     throw new Error('Could not find note to update');

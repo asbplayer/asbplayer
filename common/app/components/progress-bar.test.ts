@@ -4,7 +4,8 @@ import {
     formatProgressTimestamp,
     progressBarProgress,
     progressBarTrackWidth,
-} from './progress-bar';
+} from '@project/common/app/components/progress-bar';
+import { expect, it } from '@jest/globals';
 
 const bounds = { left: 100, right: 300 };
 

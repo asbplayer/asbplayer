@@ -1,5 +1,5 @@
-import { AsbplayerHeartbeatMessage, Command, Message } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import type { AsbplayerHeartbeatMessage, Command, Message } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class AsbplayerHeartbeatHandler {
     private readonly tabRegistry: TabRegistry;

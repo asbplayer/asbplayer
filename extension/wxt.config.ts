@@ -61,7 +61,7 @@ export default defineConfig({
         },
     },
     manifest: ({ browser, mode }) => {
-        const version = '1.19.0';
+        const version = '1.20.2';
         const isDev = mode === 'development';
         const devLabel = isDev ? ' (Dev)' : '';
         const title = `${extName}${devLabel}`;
@@ -104,7 +104,7 @@ export default defineConfig({
                         'plex-page.js',
                         'areena-yle-page.js',
                         'hbo-max-page.js',
-                        'cijapanese-page.js',
+                        'nijapanese-page.js',
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'hulu-jp-page.js',
@@ -120,6 +120,7 @@ export default defineConfig({
                         'statistics-overlay-one-uncollected-ui.js',
                         'page-favicons/*',
                         'content-scripts/video.css',
+                        'js/ui-frame-head.js',
                     ],
                     matches: ['<all_urls>'],
                 },
@@ -192,7 +193,7 @@ export default defineConfig({
         }
 
         if (browser === 'firefox') {
-            permissions = [...permissions, 'contextMenus', 'webRequest', 'webRequestBlocking', 'clipboardWrite'];
+            permissions = [...permissions, 'contextMenus', 'clipboardWrite'];
 
             commands = {
                 _execute_sidebar_action: {
@@ -223,7 +224,7 @@ export default defineConfig({
         }
 
         if (browser === 'firefox-android') {
-            permissions = [...permissions, 'webRequest', 'webRequestBlocking', 'clipboardWrite'];
+            permissions = [...permissions, 'clipboardWrite'];
 
             const geckoId = isDev
                 ? `${extName}-android-dev-${version}@example.com`

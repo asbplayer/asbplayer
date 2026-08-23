@@ -1,41 +1,41 @@
-import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery, NoteInfo } from '@project/common/anki';
-import {
+import { asbError, HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
+import type { NoteInfo } from '@project/common/anki';
+import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery } from '@project/common/anki';
+import type {
     DictionaryBuildAnkiCacheStart,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateError as DictionaryBuildAnkiCacheError,
-    DictionaryBuildAnkiCacheStateErrorCode,
-    DictionaryBuildAnkiCacheStateType,
     DictionaryBuildAnkiCacheStats,
     DictionaryBuildAnkiCacheProgress,
     Progress,
 } from '@project/common';
+import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
+import type { AsbplayerSettings, DictionaryTrack } from '@project/common/settings';
 import {
-    AsbplayerSettings,
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
-    DictionaryTrack,
     isAnkiSource,
-    TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
     _DictionaryDatabase,
-    BUILD_MIN_EXPIRATION_MS,
-    _buildIdHealthCheck,
-    _clearBuildIds,
     DictionaryAnkiCardKey,
     _DictionaryAnkiCardRecord,
     DictionaryMetaKey,
     DictionaryTokenRecord,
+    TrackStateForDB,
+    CardInfoForDB,
+} from '@project/common/dictionary-db';
+import {
+    BUILD_MIN_EXPIRATION_MS,
+    _buildIdHealthCheck,
+    _clearBuildIds,
     _ensureBuildId,
     _gatherModifiedTokens,
     _getFromSourceBulk,
     _saveRecordBulk,
-    TrackStateForDB,
-    CardInfoForDB,
 } from '@project/common/dictionary-db';
 
 /**
@@ -80,7 +80,7 @@ export async function buildAnkiCachePipeline(
         const permission = (await anki.requestPermission()).permission;
         if (permission !== 'granted') throw new Error(`permission ${permission}`);
     } catch (e) {
-        console.error(e);
+        asbError('dictionary/anki', e);
         statusUpdates({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: {
@@ -118,7 +118,10 @@ export async function buildAnkiCachePipeline(
                 return db.meta.where('[profile+track]').equals(key).first();
             });
             if (existingBuild !== undefined) {
-                console.error(`Build already in progress - expires at ${existingBuild.ankiMeta.lastBuildExpiresAt}`);
+                asbError(
+                    'dictionary/anki',
+                    `Build already in progress - expires at ${existingBuild.ankiMeta.lastBuildExpiresAt}`
+                );
                 statusUpdates({
                     type: DictionaryBuildAnkiCacheStateType.error,
                     body: {
@@ -142,7 +145,7 @@ export async function buildAnkiCachePipeline(
             try {
                 await yomitan.version();
             } catch (e) {
-                console.error(e);
+                asbError('dictionary/anki', e);
                 statusUpdates({
                     type: DictionaryBuildAnkiCacheStateType.error,
                     body: {
@@ -233,7 +236,7 @@ export async function buildAnkiCachePipeline(
                 await _buildAnkiCardStatuses(track, ts, modifiedCards, anki);
             }
         } catch (e) {
-            console.error(e);
+            asbError('dictionary/anki', e);
             statusUpdates({
                 type: DictionaryBuildAnkiCacheStateType.error,
                 body: {
@@ -272,7 +275,7 @@ export async function buildAnkiCachePipeline(
             } as DictionaryBuildAnkiCacheStats,
         });
     } catch (e) {
-        console.error(e);
+        asbError('dictionary/anki', e);
         statusUpdates({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: {
@@ -289,11 +292,11 @@ export async function buildAnkiCachePipeline(
 /**
  * primaryKeys() and keys() are faster than toArray(), we don't need all fields
  */
-async function _getAnkiCardKeys(db: _DictionaryDatabase, profile: string): Promise<DictionaryAnkiCardKey[]> {
+export async function _getAnkiCardKeys(db: _DictionaryDatabase, profile: string): Promise<DictionaryAnkiCardKey[]> {
     return db.ankiCards.where('profile').equals(profile).primaryKeys();
 }
 
-async function _getAnkiCardsByNoteIdBulk(
+export async function _getAnkiCardsByNoteIdBulk(
     db: _DictionaryDatabase,
     profile: string,
     noteIds: number[]
@@ -323,7 +326,7 @@ async function _getAnkiCardsByNoteIdBulk(
  * 4. The card field value no longer produce the same tokens (handled by _saveTokensForDB())
  * 5. Based on track settings such as no Anki fields (handled by tracksToClear)
  */
-async function _deleteCardBulk(
+export async function _deleteCardBulk(
     db: _DictionaryDatabase,
     profile: string,
     orphanedTrackCardIds: Map<number, number[]>,
@@ -365,7 +368,7 @@ async function _deleteCardBulk(
     });
 }
 
-async function _orphanAllCardIds(
+export async function _orphanAllCardIds(
     db: _DictionaryDatabase,
     profile: string,
     tracks: number[]
@@ -394,7 +397,7 @@ async function _orphanAllCardIds(
  * @param statusUpdates The status update callback.
  * @returns The number of modified cards.
  */
-async function _syncTrackStatesWithAnki(
+export async function _syncTrackStatesWithAnki(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: AnkiTrackStatesForDB,
@@ -551,18 +554,18 @@ async function _syncTrackStatesWithAnki(
     return numUpdatedCards;
 }
 
-function _hasDeck(dt: DictionaryTrack, cardDeck: string): boolean {
+export function _hasDeck(dt: DictionaryTrack, cardDeck: string): boolean {
     if (!dt.dictionaryAnkiDecks.length) return true;
     return dt.dictionaryAnkiDecks.some((deck) => deck === cardDeck || cardDeck.startsWith(`${deck}::`));
 }
 
-function _hasField(dt: DictionaryTrack, fields: string[]): boolean {
+export function _hasField(dt: DictionaryTrack, fields: string[]): boolean {
     return fields.some(
         (field) => dt.dictionaryAnkiWordFields.includes(field) || dt.dictionaryAnkiSentenceFields.includes(field)
     );
 }
 
-async function _buildAnkiCardStatuses(
+export async function _buildAnkiCardStatuses(
     track: number,
     ts: TrackStateForDB,
     modifiedCards: CardsForDB,
@@ -633,7 +636,7 @@ async function _buildAnkiCardStatuses(
     }
 }
 
-function _processAnkiCardStatuses(
+export function _processAnkiCardStatuses(
     track: number,
     cardIds: number[],
     modifiedCards: CardsForDB,
@@ -649,7 +652,7 @@ function _processAnkiCardStatuses(
     return numRemaining;
 }
 
-async function _updateBuildAnkiCacheProgress(
+export async function _updateBuildAnkiCacheProgress(
     db: _DictionaryDatabase,
     buildId: string,
     activeTracks: DictionaryMetaKey[],
@@ -686,7 +689,7 @@ async function _updateBuildAnkiCacheProgress(
     });
 }
 
-async function _processTracks(
+export async function _processTracks(
     db: _DictionaryDatabase,
     profile: string,
     buildId: string,
@@ -726,14 +729,14 @@ async function _processTracks(
         );
     } catch (e) {
         error = e;
-        console.error(e);
+        asbError('dictionary/anki', e);
     } finally {
         await _clearBuildIds(db, activeTracks, buildId, 'anki');
         if (modifiedTokens.size || numUpdatedCards || numCardsFromOrphanedTracks || error) {
             try {
                 await _gatherModifiedTokens(db, profile, modifiedTokens); // Delay publishing deleted modified tokens so tokens aren't flashed uncollected during build
             } catch (e) {
-                console.error(e);
+                asbError('dictionary/anki', e);
                 if (!error) error = e;
             }
         }
@@ -763,7 +766,7 @@ async function _processTracks(
     }
 }
 
-async function _buildTokensForTracks(
+export async function _buildTokensForTracks(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: Map<number, TrackStateForDB>,
@@ -862,13 +865,9 @@ async function _buildTokensForTracks(
                     );
                     for (const [token, val] of tokenCardsMap.entries()) {
                         const existingRecord = tokenRecordMap.get(token); // Merge with existing record
-                        const states: TokenState[] = [];
                         if (existingRecord) {
                             for (const cardId of existingRecord.cardIds) {
                                 if (!modifiedCardsBatch.has(cardId)) val.cardIds.add(cardId); // If card was updated, it may no longer apply to this token. Should already be in cardIds if it's still valid.
-                            }
-                            for (const state of existingRecord.states) {
-                                if (!states.includes(state)) states.push(state);
                             }
                         }
                         records.push({
@@ -878,7 +877,7 @@ async function _buildTokensForTracks(
                             token,
                             status: ankiTokenStatus,
                             lemmas: val.lemmas,
-                            states,
+                            states: [],
                             cardIds: Array.from(val.cardIds).sort((lhs, rhs) => lhs - rhs),
                         });
                     }
@@ -929,7 +928,7 @@ async function _buildTokensForTracks(
     );
 }
 
-async function _saveTokensForDB(
+export async function _saveTokensForDB(
     db: _DictionaryDatabase,
     profile: string,
     trackStates: Map<number, TrackStateForDB>,
@@ -942,10 +941,21 @@ async function _saveTokensForDB(
     >,
     modifiedTokens: Set<string>
 ): Promise<void> {
-    for (const record of records) {
+    for (let i = records.length - 1; i >= 0; i--) {
+        const record = records[i];
+
         modifiedTokens.add(record.token);
         for (const lemma of record.lemmas) modifiedTokens.add(lemma);
+
+        if (!isAnkiSource(record.source)) continue;
+        if (!record.cardIds.length) {
+            records.splice(i, 1); // Anki tokens must have at least one card
+            continue;
+        }
+        record.status = null; // Anki status is derived from cards
+        record.states = []; // Anki tokens cannot have states (could change in the future)
     }
+
     return db.transaction('rw', db.tokens, db.ankiCards, async () => {
         await Promise.all([_saveRecordBulk(db, records), db.ankiCards.bulkPut(ankiCards)]);
         await db.tokens
@@ -963,6 +973,8 @@ async function _saveTokensForDB(
                 for (const lemma of record.lemmas) modifiedTokens.add(lemma);
                 if (validCardIds.length) {
                     record.cardIds = validCardIds;
+                    record.status = null;
+                    record.states = [];
                 } else {
                     delete (ref as any).value;
                 }

@@ -1,5 +1,4 @@
-import {
-    AudioErrorCode,
+import type {
     AudioModel,
     Command,
     ExtensionToVideoCommand,
@@ -8,9 +7,11 @@ import {
     ShowAnkiUiAfterRerecordMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import { CardPublisher } from '../../services/card-publisher';
-import { SettingsProvider } from '@project/common/settings';
-import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
+import { AudioErrorCode } from '@project/common';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type { SettingsProvider } from '@project/common/settings';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
 
 export default class RerecordMediaHandler {
     private readonly _settingsProvider: SettingsProvider;

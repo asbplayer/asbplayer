@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
     OpenAsbplayerSettingsMessage,
@@ -10,19 +11,21 @@ import {
     VideoDataUiBridgeOpenFileMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
     VideoDataUiModel,
-    VideoDataUiOpenReason,
     VideoToExtensionCommand,
 } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import { VideoDataUiOpenReason } from '@project/common';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
-import Binding from '../services/binding';
-import { currentPageDelegate } from '../services/pages';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
+import type Binding from '@project/extension/src/services/binding';
+import { currentPageDelegate } from '@project/extension/src/services/pages';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import i18n from 'i18next';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
 import { extractExtension } from '@/pages/util';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 declare global {
     function cloneInto(obj: any, targetScope: any, options?: any): any;
@@ -37,6 +40,7 @@ async function html(lang: string) {
                 <title>asbplayer - Video Data Sync</title>
                 <style>
                     @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                    ${frameColorSchemeStyleBlock()}
                 </style>
             </head>
             <body>
@@ -50,6 +54,10 @@ async function html(lang: string) {
 interface ShowOptions {
     reason: VideoDataUiOpenReason;
     fromAsbplayerId?: string;
+}
+
+interface RequestSubtitlesOptions {
+    readonly videoChanged: boolean;
 }
 
 const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
@@ -150,16 +158,18 @@ export default class VideoDataSyncController {
         return this._openedLocation;
     }
 
-    async requestSubtitles() {
+    async requestSubtitles({ videoChanged }: RequestSubtitlesOptions) {
         if (!this._context.hasPageScript) {
             return;
         }
 
         // While the picker is open on the same location, skip refresh so
         // player events do not clobber an in-progress user selection. On a
-        // true soft-navigation, dismiss the stale picker and continue.
+        // true soft-navigation or an explicitly reported video change,
+        // dismiss the stale picker and continue.
         if (this.pickerVisible) {
-            if (this.openedLocation !== undefined && window.location.href !== this.openedLocation) {
+            const locationChanged = this.openedLocation !== undefined && window.location.href !== this.openedLocation;
+            if (locationChanged || videoChanged) {
                 this._hideAndResume();
             } else {
                 return;
@@ -256,7 +266,6 @@ export default class VideoDataSyncController {
                   suggestedName: document.title,
                   selectedSubtitle: autoSelectedTrackIds,
                   error: '',
-                  showSubSelect: true,
                   subtitles: subtitleTrackChoices,
                   defaultCheckboxState: defaultCheckboxState,
                   openedFromAsbplayerId: '',
@@ -395,7 +404,9 @@ export default class VideoDataSyncController {
                     }
 
                     if ('dismissFtue' === message.command) {
-                        globalStateProvider.set({ ftueHasSeenSubtitleTrackSelector: true }).catch(console.error);
+                        globalStateProvider
+                            .set({ ftueHasSeenSubtitleTrackSelector: true })
+                            .catch((error) => asbError('video/sync', error));
                         return;
                     }
 
@@ -454,7 +465,7 @@ export default class VideoDataSyncController {
                     if (dataWasSynced) {
                         this._hideAndResume();
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError('video/sync', error));
             });
         }
 
@@ -522,7 +533,12 @@ export default class VideoDataSyncController {
         }
 
         if (!this._wasPaused) {
-            void this._context.play();
+            // This can trigger a loop of pause/play when loading subtitles from subtitle picker
+            // while the video is playing due to _playBlocker(). To avoid this, we disable mouseover pause
+            // temporarily until the play() promise resolves. This became an issue with the addition of
+            // PlaybackEngine which moved away from setIntervals() for playback semantics which exposed the core issue.
+            const enablePauseOnHover = this._context.disablePauseOnHover();
+            void this._context.play().finally(enablePauseOnHover);
         }
 
         this._wasPaused = undefined;
@@ -533,13 +549,13 @@ export default class VideoDataSyncController {
             const subtitles: SerializedSubtitleFile[] = [];
 
             for (let i = 0; i < data.length; i++) {
-                const { extension, url, language, localFile } = data[i];
+                const { extension, url, language, file } = data[i];
                 const subtitleFiles = await this._subtitlesForUrl(
                     this._defaultVideoName(this._syncedData?.basename, data[i]),
                     language,
                     extension,
-                    url,
-                    localFile
+                    url!,
+                    file !== undefined
                 );
                 if (subtitleFiles !== undefined) {
                     subtitles.push(...subtitleFiles);
@@ -565,8 +581,8 @@ export default class VideoDataSyncController {
             const subtitles: SerializedSubtitleFile[] = [];
 
             for (let i = 0; i < data.length; i++) {
-                const { name, language, extension, url, localFile } = data[i];
-                const subtitleFiles = await this._subtitlesForUrl(name, language, extension, url, localFile);
+                const { name, language, extension, url, file } = data[i];
+                const subtitleFiles = await this._subtitlesForUrl(name, language, extension, url!, file !== undefined);
                 if (subtitleFiles !== undefined) {
                     subtitles.push(...subtitleFiles);
                 }
@@ -702,7 +718,6 @@ export default class VideoDataSyncController {
         return client.updateState({
             open: true,
             isLoading: false,
-            showSubSelect: true,
             error,
             themeType: themeType,
         });

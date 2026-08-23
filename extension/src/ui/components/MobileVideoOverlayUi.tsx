@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerToVideoCommandV2,
     ControlType,
     CopySubtitleMessage,
@@ -7,6 +7,8 @@ import {
     LoadSubtitlesMessage,
     MobileOverlayToVideoCommand,
     OffsetToVideoMessage,
+    PlaybackModeSelectorClosedMessage,
+    PlaybackModeSelectorOpenedMessage,
     PlaybackRateToVideoMessage,
     PlayMode,
     PlayModeMessage,
@@ -15,12 +17,12 @@ import {
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useMobileVideoOverlayModel } from '../hooks/use-mobile-video-overlay-model';
-import { useMobileVideoOverlayLocation } from '../hooks/use-mobile-video-overlay-location';
+import { useMobileVideoOverlayModel } from '@project/extension/src/ui/hooks/use-mobile-video-overlay-model';
+import { useMobileVideoOverlayLocation } from '@project/extension/src/ui/hooks/use-mobile-video-overlay-location';
 import { SettingsProvider } from '@project/common/settings';
-import { ExtensionSettingsStorage } from '../../services/extension-settings-storage';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { isMobile } from '@project/common/device-detection/mobile';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
 import { createTheme } from '@project/common/theme';
@@ -129,7 +131,33 @@ const MobileVideoOverlayUi = () => {
         [location]
     );
 
-    const model = useMobileVideoOverlayModel({ location });
+    const { model, isActive } = useMobileVideoOverlayModel({ location });
+
+    const handlePlayModeSelectorOpened = useCallback(() => {
+        if (!location || !isActive) return;
+
+        const command: MobileOverlayToVideoCommand<PlaybackModeSelectorOpenedMessage> = {
+            sender: 'asbplayer-mobile-overlay-to-video',
+            message: {
+                command: 'playback-mode-selector-opened',
+            },
+            src: location.src,
+        };
+        void browser.runtime.sendMessage(command);
+    }, [isActive, location]);
+
+    const handlePlayModeSelectorClosed = useCallback(() => {
+        if (!location || !isActive) return;
+
+        const command: MobileOverlayToVideoCommand<PlaybackModeSelectorClosedMessage> = {
+            sender: 'asbplayer-mobile-overlay-to-video',
+            message: {
+                command: 'playback-mode-selector-closed',
+            },
+            src: location.src,
+        };
+        void browser.runtime.sendMessage(command);
+    }, [isActive, location]);
 
     const handlePlayModeSelected = useCallback(
         (playMode: PlayMode) => {
@@ -229,6 +257,7 @@ const MobileVideoOverlayUi = () => {
                     anchor={anchor}
                     tooltipsEnabled={tooltipsEnabled}
                     initialControlType={lastControlType}
+                    flexDirection="row"
                     onScrollToControlType={setLastControlType}
                     onMineSubtitle={handleMineSubtitle}
                     onLoadSubtitles={handleLoadSubtitles}
@@ -237,6 +266,8 @@ const MobileVideoOverlayUi = () => {
                     onPlaybackRate={handlePlaybackRate}
                     onPlayModeSelected={handlePlayModeSelected}
                     onToggleSubtitles={handleToggleSubtitles}
+                    onPlayModeSelectorOpened={handlePlayModeSelectorOpened}
+                    onPlayModeSelectorClosed={handlePlayModeSelectorClosed}
                 />
             </ThemeProvider>
         </StyledEngineProvider>

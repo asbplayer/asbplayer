@@ -1,5 +1,5 @@
-import { ChromeExtension } from '@project/common/app';
-import {
+import type { ChromeExtension } from '@project/common/app';
+import type {
     DictionaryLocalTokenInput,
     DictionaryStorage,
     DictionaryTokenKey,
@@ -9,8 +9,8 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
-import {
+import type { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import type {
     CardExportedDialogMessage,
     CardUpdatedDialogMessage,
     DictionaryRequestStatisticsSnapshotMessage,
@@ -27,7 +27,7 @@ import {
     Message,
     ExtensionToVideoCommand,
 } from '@project/common';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
     | ExtensionToAsbPlayerCommand<T>

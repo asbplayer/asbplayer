@@ -1,4 +1,6 @@
-import TabRegistry, { Asbplayer } from '@/services/tab-registry';
+import { asbError } from '@project/common/util';
+import type { Asbplayer } from '@/services/tab-registry';
+import TabRegistry from '@/services/tab-registry';
 import ImageCapturer from '@/services/image-capturer';
 import VideoHeartbeatHandler from '@/handlers/video/video-heartbeat-handler';
 import RecordMediaHandler from '@/handlers/video/record-media-handler';
@@ -13,7 +15,7 @@ import AsbplayerToVideoCommandForwardingHandler from '@/handlers/asbplayer/asbpl
 import AsbplayerV2ToVideoCommandForwardingHandler from '@/handlers/asbplayerv2/asbplayer-v2-to-video-command-forwarding-handler';
 import AsbplayerHeartbeatHandler from '@/handlers/asbplayerv2/asbplayer-heartbeat-handler';
 import RefreshSettingsHandler from '@/handlers/popup/refresh-settings-handler';
-import { CommandHandler } from '@/handlers/command-handler';
+import type { CommandHandler } from '@/handlers/command-handler';
 import TakeScreenshotHandler from '@/handlers/video/take-screenshot-handler';
 import AudioRecorderService from '@/services/audio-recorder-service';
 import AudioBase64Handler from '@/handlers/offscreen-document/audio-base-64-handler';
@@ -24,17 +26,17 @@ import OpenAsbplayerSettingsHandler from '@/handlers/video/open-asbplayer-settin
 import CaptureVisibleTabHandler from '@/handlers/foreground/capture-visible-tab-handler';
 import CopyToClipboardHandler from '@/handlers/video/copy-to-clipboard-handler';
 import SettingsUpdatedHandler from '@/handlers/asbplayerv2/settings-updated-handler';
-import {
+import type {
     Command,
     CopySubtitleMessage,
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
     Message,
-    PostMineAction,
     TakeScreenshotMessage,
     ToggleRecordingMessage,
     ToggleVideoSelectMessage,
 } from '@project/common';
+import { PostMineAction } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 import { fetchSupportedLanguages, primeLocalization } from '@/services/localization-fetcher';
 import VideoDisappearedHandler from '@/handlers/video/video-disappeared-handler';
@@ -366,6 +368,22 @@ export default defineBackground(() => {
                             void browser.tabs.sendMessage(tab.id, extensionToVideoCommand);
                         }
                     }
+                    void tabRegistry.publishCommandToAsbplayers({
+                        commandFactory: (asbplayer) => {
+                            if (!validAsbplayer(asbplayer)) {
+                                return undefined;
+                            }
+
+                            const extensionToPlayerCommand: ExtensionToAsbPlayerCommand<ToggleVideoSelectMessage> = {
+                                sender: 'asbplayer-extension-to-player',
+                                message: {
+                                    command: 'toggle-video-select',
+                                },
+                                asbplayerId: asbplayer.id,
+                            };
+                            return extensionToPlayerCommand;
+                        },
+                    });
                     break;
                 case 'take-screenshot':
                     void tabRegistry.publishCommandToVideoElements((videoElement) => {
@@ -519,10 +537,10 @@ export default defineBackground(() => {
                             browser.runtime.reload();
                         }
                     } catch (e) {
-                        console.error(e);
+                        asbError('background', e);
                     }
                 }
-            })().catch(console.error);
+            })().catch((error) => asbError('background', error));
         });
     } else {
         if (!isMobile) {
@@ -532,32 +550,5 @@ export default defineBackground(() => {
         }
 
         action.onClicked.addListener(defaultAction);
-    }
-
-    if (isFirefoxBuild) {
-        // Firefox requires the use of iframe.srcdoc in order to load UI into an about:blank iframe
-        // (which is required for UI to be scannable by other extensions like Yomitan).
-        // However, such an iframe inherits the content security directives of the parent document,
-        // which may prevent loading of extension scripts into the iframe.
-        // Because of this, we modify CSP headers below to explicitly allow access to extension-packaged resources.
-        browser.webRequest.onHeadersReceived.addListener(
-            (details) => {
-                const responseHeaders = details.responseHeaders;
-
-                if (!responseHeaders) {
-                    return;
-                }
-
-                for (const header of responseHeaders) {
-                    if (header.name.toLowerCase() === 'content-security-policy') {
-                        header.value += ` ; script-src moz-extension://${browser.runtime.id}`;
-                    }
-                }
-
-                return { responseHeaders };
-            },
-            { urls: ['<all_urls>'] },
-            ['blocking', 'responseHeaders']
-        );
     }
 });

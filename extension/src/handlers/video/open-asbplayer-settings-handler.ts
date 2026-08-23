@@ -1,4 +1,4 @@
-import { Command, Message, OpenAsbplayerSettingsMessage } from '@project/common';
+import type { Command, Message, OpenAsbplayerSettingsMessage } from '@project/common';
 
 export default class OpenAsbplayerSettingsHandler {
     get sender() {

@@ -1,7 +1,8 @@
 import React from 'react';
 import Box from '@mui/material/Box';
-import MuiLink, { type LinkProps } from '@mui/material/Link';
-import LogoIcon from './LogoIcon';
+import MuiLink from '@mui/material/Link';
+import type { LinkProps } from '@mui/material/Link';
+import LogoIcon from '@project/common/components/LogoIcon';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -11,9 +12,9 @@ import MuiTableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import Typography from '@mui/material/Typography';
 import { useTheme, withStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import SettingsSection from './SettingsSection';
+import SettingsSection from '@project/common/components/SettingsSection';
 
 interface Props {
     appVersion?: string;

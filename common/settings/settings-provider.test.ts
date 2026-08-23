@@ -1,89 +1,39 @@
+import type { SubtitleAlignment } from '@project/common/settings';
 import {
-    AsbplayerSettings,
-    AsbplayerSettingsProfile,
-    Profile,
     SettingsProvider,
-    SettingsStorage,
-    SubtitleAlignment,
     VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
-    prefixedSettings,
+    isSaveOnlySettings,
+    saveOnlySettings,
     textSubtitleSettingsForTrack,
-    unprefixedSettings,
 } from '@project/common/settings';
-
-export class MockSettingsStorage implements SettingsStorage {
-    private _activeProfile?: string;
-    private _profiles: Profile[] = [];
-    private _data: any = {};
-
-    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
-        const settings: any = {};
-
-        const actualKeysAndDefaults =
-            this._activeProfile === undefined
-                ? keysAndDefaults
-                : prefixedSettings(keysAndDefaults, this._activeProfile);
-
-        for (const [key, defaultValue] of Object.entries(actualKeysAndDefaults)) {
-            // Simulate retrieval from actual storage - object references should change
-            settings[key] = JSON.parse(JSON.stringify(this._data[key] ?? defaultValue));
-        }
-
-        return this._activeProfile === undefined
-            ? (settings as Partial<AsbplayerSettings>)
-            : unprefixedSettings(settings as Partial<AsbplayerSettingsProfile<string>>, this._activeProfile);
-    }
-
-    async set(settings: Partial<AsbplayerSettings>) {
-        const actualSettings =
-            this._activeProfile === undefined ? settings : prefixedSettings(settings, this._activeProfile);
-
-        for (const [key, value] of Object.entries(actualSettings)) {
-            this._data[key] = value;
-        }
-    }
-
-    async activeProfile(): Promise<Profile | undefined> {
-        return this._activeProfile === undefined
-            ? undefined
-            : this._profiles.find((p) => p.name === this._activeProfile);
-    }
-
-    async setActiveProfile(name: string | undefined): Promise<void> {
-        this._activeProfile = name;
-    }
-
-    async profiles(): Promise<Profile[]> {
-        return this._profiles;
-    }
-
-    async addProfile(name: string): Promise<void> {
-        const existing = this._profiles.find((p) => p.name === name);
-
-        if (existing === undefined) {
-            this._profiles.push({ name });
-        }
-    }
-
-    async removeProfile(name: string): Promise<void> {
-        if (this._activeProfile === name) {
-            throw new Error('Cannot remove active profile');
-        }
-
-        this._profiles = this._profiles.filter((p) => p.name !== name);
-    }
-
-    setData(data: any) {
-        this._data = data;
-    }
-}
+import { expect, it } from '@jest/globals';
+import { PlayMode } from '@project/common';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 
 it('starts at default settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());
     const initialSettings = await provider.getAll();
     expect(initialSettings).toEqual(defaultSettings);
+    expect(initialSettings.playbackRate).toBe(1);
+    expect(initialSettings.playbackRateNotificationEnabled).toBe(true);
+    expect(initialSettings.rememberPlaybackRate).toBe(false);
+    expect(initialSettings.fastForwardPlaybackMinimumSkipIntervalMs).toBe(500);
+    expect(initialSettings.repeatCountPreference).toBe(0);
+    expect(initialSettings.rememberPlaybackModes).toBe(false);
+    expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
+    expect(initialSettings.lastPlaybackPositions).toEqual([]);
+});
+
+it('keeps playback-owned settings separate from UI settings', () => {
+    expect(saveOnlySettings).toEqual(['lastSubtitleOffset', 'lastPlaybackModes', 'lastPlaybackPositions']);
+    expect(saveOnlySettings).not.toContain('playbackRate');
+    expect(saveOnlySettings).not.toContain('fastForwardModePlaybackRate');
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100 })).toBe(true);
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100, lastPlaybackModes: [PlayMode.normal] })).toBe(true);
+    expect(isSaveOnlySettings({ playbackRate: 1 })).toBe(false);
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100, language: 'ja' })).toBe(false);
 });
 
 it('can change the value of object-typed settings', async () => {

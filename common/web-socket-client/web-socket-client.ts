@@ -1,4 +1,5 @@
-import type { SubtitleTrack } from '../src/model';
+import { asbError, asbInfo, asbLog } from '@project/common/util';
+import type { SubtitleTrack } from '@project/common/src/model';
 
 export type { SubtitleTrack };
 
@@ -8,6 +9,8 @@ export interface MineSubtitleCommand {
     body: {
         fields: { [key: string]: string };
         postMineAction: number;
+        mediaId?: string;
+        noteId?: number;
     };
 }
 
@@ -41,6 +44,7 @@ export interface SeekTimestampCommand {
     messageId: string;
     body: {
         timestamp: number;
+        mediaId?: string;
     };
 }
 
@@ -110,7 +114,7 @@ export class WebSocketClient {
                 (this._lastPingTimestampMs !== undefined && !this._pongReceived) ||
                 (this._socket && this._socket.readyState !== this._socket?.OPEN)
             ) {
-                console.log('Did not receive pong - reconnecting');
+                asbLog('web-socket', 'Did not receive pong - reconnecting');
 
                 for (const r of this._pingPromises) {
                     r.reject('Timed out');
@@ -119,7 +123,7 @@ export class WebSocketClient {
                 this._pingPromises = [];
                 void this._connect(url);
             } else {
-                this.ping().catch(console.info);
+                this.ping().catch((error) => asbInfo('web-socket', error));
             }
         }, 10000);
 
@@ -204,17 +208,17 @@ export class WebSocketClient {
                 }
             };
             socket.onclose = (event) => {
-                console.log(`Socket closed - reason: ${event.reason}`);
+                asbLog('web-socket', `Socket closed - reason: ${event.reason}`);
                 this._connectPromise?.reject('Socket closed');
                 this._connectPromise = undefined;
             };
             socket.onerror = () => {
-                console.log('Socket error');
+                asbLog('web-socket', 'Socket error');
                 this._connectPromise?.reject('Socket error');
                 this._connectPromise = undefined;
             };
             socket.onopen = () => {
-                this.ping().catch(console.error);
+                this.ping().catch((error) => asbError('web-socket', error));
                 this._connectPromise?.resolve(undefined);
                 this._connectPromise = undefined;
             };

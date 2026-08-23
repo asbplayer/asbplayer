@@ -38,7 +38,7 @@ If you rely on the **local word database**, installing the asbplayer browser ext
     - Click `Generate token` and copy the generated token into [`WaniKani API token`](../reference/settings.md#wanikani-api-token).
     - To populate the database, use [`Re-build WaniKani word database`](../reference/settings.md#re-build-wanikani-word-database) after configuring the API token.
 7. Enable your desired annotation features (styling, reading, frequency, pitch accent, etc.) for that track. Customize other settings as desired.
-8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference.
+8. For detailed explanations of each option, see the [Annotation](../reference/settings.md#annotation) section of the settings reference. Keyboard actions are listed in the [Annotation keyboard shortcuts](../reference/settings.md#annotation-keyboard-shortcuts) group.
 
 ## Troubleshooting
 

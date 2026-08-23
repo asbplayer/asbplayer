@@ -1,4 +1,5 @@
-import {
+import { asbError, sourceString } from '@project/common/util';
+import type {
     ActiveProfileMessage,
     AnkiDialogSettings,
     AnkiDialogSettingsMessage,
@@ -15,19 +16,20 @@ import {
     EncodeMp3InServiceWorkerMessage,
     EncodeMp3Message,
     OpenAsbplayerSettingsMessage,
-    PostMinePlayback,
     SettingsUpdatedMessage,
     ShowAnkiUiMessage,
     ShowCardSelectUiMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { sourceString } from '@project/common/util';
-import Binding from '../services/binding';
-import { fetchLocalization } from '../services/localization-fetcher';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
+import { PostMinePlayback } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
+import type Binding from '@project/extension/src/services/binding';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 // We need to write the HTML into the iframe manually so that the iframe keeps it's about:blank URL.
 // Otherwise, Chrome won't insert content scripts into the iframe (e.g. Yomichan won't work).
@@ -40,6 +42,7 @@ async function html(language: string) {
                     <title>asbplayer - Anki</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                     </style>
                 </head>
                 <body>
@@ -117,7 +120,7 @@ export default class AnkiUiController {
             surroundingSubtitles: surroundingSubtitles,
             image: image,
             audio: audio,
-            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            dialogRequestedTimestamp: context.currentTimeMs,
             text,
             word,
             definition,
@@ -159,7 +162,7 @@ export default class AnkiUiController {
             surroundingSubtitles,
             image,
             audio,
-            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            dialogRequestedTimestamp: context.currentTimeMs,
             text,
             word,
             definition,
@@ -183,7 +186,7 @@ export default class AnkiUiController {
             open: true,
             canRerecord: true,
             settings: this._settings,
-            dialogRequestedTimestamp: context.video.currentTime * 1000,
+            dialogRequestedTimestamp: context.currentTimeMs,
             inTutorial: this._inTutorial,
             ...(await this._additionalUiState(context)),
         };
@@ -313,7 +316,9 @@ export default class AnkiUiController {
                             return;
                         }
                         case 'dismissedQuickSelectFtue':
-                            globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
+                            globalStateProvider
+                                .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
+                                .catch((error) => asbError('anki/ui', error));
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
@@ -377,10 +382,10 @@ export default class AnkiUiController {
                             context.ankiUiSavedState = resumeMessage.uiState;
 
                             if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
-                                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp / 1000;
+                                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp;
 
-                                if (context.video.currentTime !== seekTo) {
-                                    context.seek(seekTo);
+                                if (context.currentTimeMs !== seekTo) {
+                                    void context.seek(seekTo);
                                 }
                             }
 
@@ -403,7 +408,7 @@ export default class AnkiUiController {
                             const rewindMessage = message as AnkiUiBridgeRewindMessage;
                             context.ankiUiSavedState = rewindMessage.uiState;
                             context.pause();
-                            context.seek(rewindMessage.uiState.subtitle.start / 1000);
+                            void context.seek(rewindMessage.uiState.subtitle.start);
                             break;
                         }
                         case 'rerecord': {
@@ -416,9 +421,9 @@ export default class AnkiUiController {
                             break;
                         }
                         default:
-                            console.error('Unknown message received from bridge: ' + message.command);
+                            asbError('anki/ui', 'Unknown message received from bridge: ' + message.command);
                     }
-                })().catch(console.error);
+                })().catch((error) => asbError('anki/ui', error));
             });
         }
 

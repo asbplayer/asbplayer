@@ -1,30 +1,28 @@
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { ExtensionMessage } from '@project/common/app';
+import type { ExtensionMessage } from '@project/common/app';
 import { useChromeExtension } from '@project/common/app/hooks/use-chrome-extension';
 import { DictionaryProvider } from '@project/common/dictionary-db';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import { createTheme } from '@project/common/theme';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
-import {
+import type {
     CloseStatisticsOverlayMessage,
-    CurrentTabMessage,
     Message,
     MoveStatisticsOverlayMessage,
     OpenStatisticsMessage,
     OpenStatisticsOverlayMessage,
     ResizeStatisticsOverlayMessage,
-    StatisticsOverlayCommand,
     StatisticsOverlayToTabCommand,
     TabToExtensionCommand,
 } from '@project/common';
 import Box from '@mui/material/Box';
-import { uiTabRegistry } from '../hooks/use-media-id';
-import { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
+import type { DictionaryStatisticsSentenceBucketEntry } from '@project/common/dictionary-statistics';
 
 export interface OpenStatisticsOverlayOneUncollectedDialogMessage extends Message {
     readonly command: 'open-statistics-overlay-one-uncollected-dialog';
@@ -35,20 +33,6 @@ export interface OpenStatisticsOverlayOneUncollectedDialogMessage extends Messag
 
 const dictionaryProvider = new DictionaryProvider(new ExtensionDictionaryStorage());
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
-
-const useThisTabId = () => {
-    const [tabId, setTabId] = useState<number>();
-    useEffect(() => {
-        const command: StatisticsOverlayCommand<CurrentTabMessage> = {
-            sender: 'asbplayer-statistics-overlay',
-            message: {
-                command: 'current-tab',
-            },
-        };
-        void browser.runtime.sendMessage(command).then(setTabId);
-    }, []);
-    return tabId;
-};
 
 const StatisticsOverlayUi = () => {
     const [settings, setSettings] = useState<AsbplayerSettings>();
@@ -80,9 +64,6 @@ const StatisticsOverlayUi = () => {
         };
         void browser.runtime.sendMessage(command);
     }, []);
-    const sendToTab = useCallback((command: StatisticsOverlayToTabCommand<Message>) => {
-        window.parent.postMessage(command, '*');
-    }, []);
 
     const overlayRef = useRef<HTMLDivElement | null>(null);
     const publishOverlaySize = useCallback(() => {
@@ -97,8 +78,8 @@ const StatisticsOverlayUi = () => {
                 height: overlayRef.current.getBoundingClientRect().height,
             },
         };
-        sendToTab(command);
-    }, [sendToTab]);
+        void browser.runtime.sendMessage(command);
+    }, []);
     const resizeObserver = useMemo(() => {
         return new ResizeObserver(() => publishOverlaySize());
     }, [publishOverlaySize]);
@@ -119,19 +100,24 @@ const StatisticsOverlayUi = () => {
         [publishOverlaySize, resizeObserver]
     );
 
-    const thisTabId = useThisTabId();
-
     const handleReceivedSnapshot = useCallback(
         async (mediaId: string, trackIndex: number) => {
-            if (thisTabId === undefined || settings === undefined) {
+            if (settings === undefined) {
                 return;
             }
-            // Only open the overlay if the video element is on this tab
-            const videoElement = (await uiTabRegistry.activeVideoElements()).find((v) => v.src === mediaId);
-            if (thisTabId !== videoElement?.id) {
+            const videoElementExists = await browser.runtime.sendMessage({
+                sender: 'asbplayer-statistics-overlay-to-tab',
+                message: {
+                    command: 'element-exists',
+                    mediaId,
+                },
+            });
+
+            if (!videoElementExists) {
                 return;
             }
             setMediaId(mediaId);
+
             if (settings.dictionaryTracks[trackIndex].dictionaryAutoGenerateStatistics) {
                 const command: StatisticsOverlayToTabCommand<OpenStatisticsOverlayMessage> = {
                     sender: 'asbplayer-statistics-overlay-to-tab',
@@ -141,29 +127,26 @@ const StatisticsOverlayUi = () => {
                         force: false,
                     },
                 };
-                sendToTab(command);
+                void browser.runtime.sendMessage(command);
             }
         },
-        [sendToTab, thisTabId, settings]
+        [settings]
     );
-    const handleCloseStatisticsOverlay = useCallback(
-        (targetMediaId?: string) => {
-            const nextMediaId = targetMediaId ?? mediaIdRef.current;
+    const handleCloseStatisticsOverlay = useCallback((targetMediaId?: string) => {
+        const nextMediaId = targetMediaId ?? mediaIdRef.current;
 
-            if (nextMediaId === undefined) {
-                return;
-            }
-            const command: StatisticsOverlayToTabCommand<CloseStatisticsOverlayMessage> = {
-                sender: 'asbplayer-statistics-overlay-to-tab',
-                message: {
-                    command: 'close-statistics-overlay',
-                    mediaId: nextMediaId,
-                },
-            };
-            sendToTab(command);
-        },
-        [sendToTab]
-    );
+        if (nextMediaId === undefined) {
+            return;
+        }
+        const command: StatisticsOverlayToTabCommand<CloseStatisticsOverlayMessage> = {
+            sender: 'asbplayer-statistics-overlay-to-tab',
+            message: {
+                command: 'close-statistics-overlay',
+                mediaId: nextMediaId,
+            },
+        };
+        void browser.runtime.sendMessage(command);
+    }, []);
     const handleStatisticsSnapshotCleared = useCallback(() => {
         handleCloseStatisticsOverlay(mediaIdRef.current);
         setMediaId(undefined);
@@ -182,24 +165,21 @@ const StatisticsOverlayUi = () => {
                     totalSentences,
                 },
             };
-            sendToTab(command);
+            void browser.runtime.sendMessage(command);
         },
-        [mediaId, sendToTab]
+        [mediaId]
     );
-    const handleMoveOverlayBy = useCallback(
-        (deltaX: number, deltaY: number) => {
-            const command: StatisticsOverlayToTabCommand<MoveStatisticsOverlayMessage> = {
-                sender: 'asbplayer-statistics-overlay-to-tab',
-                message: {
-                    command: 'move-statistics-overlay',
-                    deltaX,
-                    deltaY,
-                },
-            };
-            sendToTab(command);
-        },
-        [sendToTab]
-    );
+    const handleMoveOverlayBy = useCallback((deltaX: number, deltaY: number) => {
+        const command: StatisticsOverlayToTabCommand<MoveStatisticsOverlayMessage> = {
+            sender: 'asbplayer-statistics-overlay-to-tab',
+            message: {
+                command: 'move-statistics-overlay',
+                deltaX,
+                deltaY,
+            },
+        };
+        void browser.runtime.sendMessage(command);
+    }, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
 

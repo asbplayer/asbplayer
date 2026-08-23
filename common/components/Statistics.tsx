@@ -1,12 +1,7 @@
-import { DictionaryProvider } from '@project/common/dictionary-db';
-import {
-    averageDisplay,
-    clampPercent,
-    countPercentOccurrencesDisplay,
-    dictionaryStatisticsComprehensionBandForPercent,
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type {
     DictionaryStatisticsAnkiTrackSnapshot,
     DictionaryStatisticsFrequencyBucketStatusCounts,
-    dictionaryStatisticsComprehensionBands,
     DictionaryStatisticsWaniKaniTrackSnapshot,
     DictionaryStatisticsSentenceDialogBucket,
     DictionaryStatisticsTrackSnapshot,
@@ -14,13 +9,20 @@ import {
     DictionaryStatisticsSentenceBucketEntry,
     DictionaryStatisticsSentenceBuckets,
     DictionaryStatisticsSentenceComprehensionPoint,
-    percent,
-    percentDisplay,
     DictionaryStatisticsSnapshot,
     DictionaryStatisticsRewatchProjection,
     DictionaryStatisticsRewatchProjectionsByTrack,
     DictionaryStatisticsRewatchSnapshot,
     DictionaryStatisticsAnkiUnknownCardsByDeck,
+} from '@project/common/dictionary-statistics';
+import {
+    averageDisplay,
+    clampPercent,
+    countPercentOccurrencesDisplay,
+    dictionaryStatisticsComprehensionBandForPercent,
+    dictionaryStatisticsComprehensionBands,
+    percent,
+    percentDisplay,
     processDictionaryStatisticsAnkiTrackSnapshot,
     processDictionaryStatisticsSnapshot,
     processDictionaryStatisticsWaniKaniTrackSnapshot,
@@ -30,10 +32,12 @@ import {
     sentenceDialogBucketData,
     statusSentenceBucketLabel,
 } from '@project/common/dictionary-statistics';
-import { AsbplayerSettings, dictionaryTrackEnabled, TokenStatus } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { dictionaryTrackEnabled, TokenStatus } from '@project/common/settings';
 import StatisticsSentenceDetailsDialog from '@project/common/components/StatisticsSentenceDetailsDialog';
 import { Trans, useTranslation } from 'react-i18next';
-import { type MouseEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Button from '@mui/material/Button';
@@ -45,20 +49,23 @@ import Paper from '@mui/material/Paper';
 import Popover from '@mui/material/Popover';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
-import Typography, { type TypographyProps } from '@mui/material/Typography';
+import Typography from '@mui/material/Typography';
+import type { TypographyProps } from '@mui/material/Typography';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import Tooltip from '@mui/material/Tooltip';
+import { asbError } from '@project/common/util';
 import { timeDurationDisplay } from '@project/common/util/util';
-import { SxProps, type Theme } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Stack from '@mui/material/Stack';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import Link from '@mui/material/Link';
-import { WaniKani, type WaniKaniUser } from '@project/common/wanikani';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
+import { WaniKani } from '@project/common/wanikani';
+import type { WaniKaniUser } from '@project/common/wanikani';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 
 export interface MediaInfo {
     sourceString: string;
@@ -572,7 +579,10 @@ function useWaniKaniUserInfo(apiToken: string) {
         void new WaniKani(trimmedApiToken)
             .user()
             .then((user) => setUserInfo(user))
-            .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+            .catch((e) => {
+                asbError('dictionary/wanikani', e);
+                setError(e instanceof Error ? e.message : String(e));
+            });
     }, [apiToken]);
 
     return { userInfo, error };

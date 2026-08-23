@@ -1,6 +1,7 @@
-import { Fetcher, HttpFetcher, Progress } from '@project/common';
-import { DictionaryTrack } from '@project/common/settings';
 import {
+    asbError,
+    asbLog,
+    asbWarn,
     AsyncSemaphore,
     fromBatches,
     HAS_LETTER_REGEX,
@@ -9,6 +10,9 @@ import {
     NEWLINES_REGEX,
     STERM_AND_NEWLINES_REGEX,
 } from '@project/common/util';
+import type { Fetcher, Progress } from '@project/common';
+import { HttpFetcher } from '@project/common';
+import type { DictionaryTrack } from '@project/common/settings';
 import { coerce, lt, gte } from 'semver';
 
 const TOKENIZE_BATCH_SIZE = 100; // 1k can cause 1.5GB memory on Yomitan for subtitles, Anki cards may be larger too
@@ -25,13 +29,13 @@ export interface TokenPart {
     reading: string;
 }
 
-interface TokenPartResult extends TokenPart {
+export interface TokenPartResult extends TokenPart {
     lemma?: string;
     lemmaReading?: string;
     headwords?: TermHeadword[][];
 }
 
-interface TermHeadword {
+export interface TermHeadword {
     index: number;
     headwordIndex?: number;
     term: string;
@@ -41,7 +45,7 @@ interface TermHeadword {
     pronunciations?: TermPronunciation[];
 }
 
-interface TermSource {
+export interface TermSource {
     originalText: string;
     transformedText: string;
     deinflectedText: string;
@@ -93,7 +97,7 @@ interface TermPronunciation {
     pronunciations: (PitchAccent | PhoneticTranscription)[];
 }
 
-interface TokenizeResult {
+export interface TokenizeResult {
     id: string;
     source: string;
     dictionary: string;
@@ -101,13 +105,59 @@ interface TokenizeResult {
     content: TokenPartResult[][];
 }
 
-interface TermEntriesResult {
+export const splitTextForTokenization = (text: string) =>
+    text
+        .split(STERM_AND_NEWLINES_REGEX)
+        .map((part) => part.trim())
+        .filter((part) => HAS_LETTER_REGEX.test(part));
+
+export function filterYomitanDictionaries(
+    tokenizeResults: TokenizeResult[],
+    parser: DictionaryTrack['dictionaryYomitanParser']
+): TokenizeResult[] {
+    if (parser !== 'mecab') return tokenizeResults;
+
+    const preferenceMap = new Map<string, { year: number; month: number }>();
+    const preference = (dictionary: string): { year: number; month: number } => {
+        const lower = dictionary.toLowerCase();
+        if (preferenceMap.has(lower)) return preferenceMap.get(lower)!;
+        let year = 1;
+        let month = 0;
+        if (lower.includes('unidic')) {
+            const match = dictionary.match(YEAR_MONTH_REGEX);
+            year = match?.groups?.year ? parseInt(match.groups.year) : 2;
+            month = match?.groups?.month ? parseInt(match.groups.month) : 0;
+        } else if (lower === 'ipadic-neologd') {
+            year = 0;
+        }
+        preferenceMap.set(lower, { year, month });
+        return preferenceMap.get(lower)!;
+    };
+
+    const indexDictMap = new Map<number, { res: TokenizeResult; year: number; month: number }>();
+    for (const result of tokenizeResults) {
+        const current = indexDictMap.get(result.index);
+        const preferred = preference(result.dictionary);
+        if (
+            !current ||
+            preferred.year > current.year ||
+            (preferred.year === current.year && preferred.month > current.month)
+        ) {
+            indexDictMap.set(result.index, { res: result, ...preferred });
+        }
+    }
+    const results: TokenizeResult[] = [];
+    for (const [index, value] of indexDictMap.entries()) results[index] = value.res;
+    return results;
+}
+
+export interface TermEntriesResult {
     dictionaryEntries: TermDictionaryEntry[];
     originalTextLength: number;
     index: number;
 }
 
-interface TermDictionaryEntry {
+export interface TermDictionaryEntry {
     headwords: TermHeadword[];
     frequencies: TermFrequency[];
     pronunciations: TermPronunciation[];
@@ -201,14 +251,7 @@ export class Yomitan {
         statusUpdates?: (progress: Progress) => Promise<void>,
         yomitanUrl?: string
     ): Promise<TokenPart[][]> {
-        return this.tokenizeBulk(
-            text
-                .split(STERM_AND_NEWLINES_REGEX)
-                .map((p) => p.trim())
-                .filter((p) => HAS_LETTER_REGEX.test(p)),
-            statusUpdates,
-            yomitanUrl
-        );
+        return this.tokenizeBulk(splitTextForTokenization(text), statusUpdates, yomitanUrl);
     }
 
     async tokenize(text: string, yomitanUrl?: string): Promise<TokenPart[][]> {
@@ -225,12 +268,12 @@ export class Yomitan {
             yomitanUrl
         );
         if (!Array.isArray(res)) throw new Error(`Unexpected Yomitan tokenize response: ${JSON.stringify(res)}`);
-        const tokenizeResults = this.filterDictionaries(res, this.dt.dictionaryYomitanParser);
+        const tokenizeResults = filterYomitanDictionaries(res, this.dt.dictionaryYomitanParser);
 
         const newlines: { text: string; index: number }[] = [];
         for (const m of text.matchAll(NEWLINES_REGEX)) newlines.push({ text: m[0], index: m.index });
 
-        for (const tokenizeResult of tokenizeResults) this.cacheFromTokenize(tokenizeResult, tokens, newlines); // Requires this.filterDictionaries to ensure one tokenizeResult per index
+        for (const tokenizeResult of tokenizeResults) this.cacheFromTokenize(tokenizeResult, tokens, newlines);
         this.tokenizeCache.set(text, tokens);
         return tokens;
     }
@@ -280,9 +323,8 @@ export class Yomitan {
                         if (typeof res === 'string' && res.includes('exceed')) batchError = true; // {"message":"Message exceeded maximum allowed size of 64MiB."}
                         throw new Error(`Unexpected Yomitan tokenize response: ${JSON.stringify(res)}`);
                     }
-                    const tokenizeResults = this.filterDictionaries(res, this.dt.dictionaryYomitanParser);
+                    const tokenizeResults = filterYomitanDictionaries(res, this.dt.dictionaryYomitanParser);
 
-                    // Requires this.filterDictionaries to ensure one tokenizeResult per index
                     for (const tokenizeResult of tokenizeResults) {
                         const tokensForText: TokenPart[][] = [];
                         this.cacheFromTokenize(tokenizeResult, tokensForText, newlinesByText[tokenizeResult.index]);
@@ -315,7 +357,8 @@ export class Yomitan {
             ++this.tokenizeBatchFailCount;
             if (this.tokenizeBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.tokenizeBatchSize / 2);
-                console.warn(
+                asbWarn(
+                    'yomitan/tokenize',
                     `Yomitan tokenize failed due to batch size too many times, reducing batch size from ${this.tokenizeBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.tokenizeBatchSize = newDefaultBatchSize;
@@ -323,50 +366,6 @@ export class Yomitan {
             }
             return this.tokenizeBulk(allTexts, statusUpdates, yomitanUrl, Math.ceil(batchSize / 2));
         }
-    }
-
-    /**
-     * Filter MeCab tokenize results to prefer the newest UniDic dictionary when multiple dictionaries are returned.
-     * Ensures one TokenizeResult per text index.
-     * @param tokenizeRes The array of TokenizeResult from Yomitan's tokenize API.
-     * @param parser The parser used (only 'mecab' requires filtering).
-     * @returns The filtered array of TokenizeResult.
-     */
-    private filterDictionaries(
-        tokenizeRes: TokenizeResult[],
-        parser: typeof this.dt.dictionaryYomitanParser
-    ): TokenizeResult[] {
-        if (parser !== 'mecab') return tokenizeRes;
-
-        const preferenceMap = new Map<string, { year: number; month: number }>();
-        const preference = (dictionary: string): { year: number; month: number } => {
-            const lower = dictionary.toLowerCase();
-            if (preferenceMap.has(lower)) return preferenceMap.get(lower)!;
-            let year = 1;
-            let month = 0;
-            if (lower.includes('unidic')) {
-                const match = dictionary.match(YEAR_MONTH_REGEX);
-                year = match?.groups?.year ? parseInt(match.groups.year) : 2;
-                month = match?.groups?.month ? parseInt(match.groups.month) : 0;
-            } else if (lower === 'ipadic-neologd') {
-                year = 0;
-                month = 0;
-            }
-            preferenceMap.set(lower, { year, month });
-            return preferenceMap.get(lower)!;
-        };
-
-        const indexDictMap = new Map<number, { res: TokenizeResult; year: number; month: number }>();
-        for (const res of tokenizeRes) {
-            const curr = indexDictMap.get(res.index);
-            const pref = preference(res.dictionary);
-            if (!curr || pref.year > curr.year || (pref.year === curr.year && pref.month > curr.month)) {
-                indexDictMap.set(res.index, { res, ...pref });
-            }
-        }
-        const results: TokenizeResult[] = [];
-        for (const [index, val] of indexDictMap.entries()) results[index] = val.res;
-        return results;
     }
 
     private cacheFromTokenize(
@@ -871,7 +870,8 @@ export class Yomitan {
             ++this.termEntriesBatchFailCount;
             if (this.termEntriesBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.termEntriesBatchSize / 2);
-                console.warn(
+                asbWarn(
+                    'yomitan/term-entries',
                     `Yomitan termEntries failed due to batch size too many times, reducing batch size from ${this.termEntriesBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.termEntriesBatchSize = newDefaultBatchSize;
@@ -924,7 +924,8 @@ export class Yomitan {
                 rankBasedMatches >= FREQUENCY_MODE_INFERENCE_RANK_BASED_MATCHES ? 'rank-based' : 'occurrence-based';
 
             if (previousFrequencyMode === frequencyMode) continue;
-            console.log(
+            asbLog(
+                'yomitan/frequency',
                 `Inferred '${frequencyMode}' for the '${dictionary}' frequency dictionary (previously ${previousFrequencyMode}) based on:`,
                 {
                     mostOccurringWords,
@@ -984,8 +985,7 @@ export class Yomitan {
             this.supportsTokenizeFrequency = false;
             this.supportsTermEntriesBulk = false;
         }
-        // TODO: Use actual released version
-        if (gte(semver, '26.7.1')) {
+        if (gte(semver, '26.7.21')) {
             this.supportsTokenizePronunciations = true;
         } else {
             this.supportsTokenizePronunciations = false;
@@ -996,7 +996,7 @@ export class Yomitan {
     private async verifyMecabSupport(yomitanUrl?: string) {
         const text = '思い出せなくなった';
         try {
-            const tokenizeResults = this.filterDictionaries(
+            const tokenizeResults = filterYomitanDictionaries(
                 await this._executeAction(
                     'tokenize',
                     {
@@ -1009,7 +1009,8 @@ export class Yomitan {
                 'mecab'
             );
             if (tokenizeResults[0].source !== 'mecab') {
-                console.error(
+                asbError(
+                    'yomitan/mecab',
                     `Yomitan did not return MeCab results as expected for '${text}': ${JSON.stringify(tokenizeResults)}`
                 );
                 this.supportsMecab = false;
@@ -1018,7 +1019,8 @@ export class Yomitan {
             }
             const tokenParts = tokenizeResults[0].content[0];
             if (tokenParts.map((p) => p.text).join('') !== '思い出せなく') {
-                console.error(
+                asbError(
+                    'yomitan/mecab',
                     `Yomitan MeCab tokenization unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`
                 );
                 this.supportsMecab = false;
@@ -1027,13 +1029,16 @@ export class Yomitan {
             }
             this.supportsMecab = true;
             if (tokenParts[0].lemma !== '思い出す' || tokenParts[0].lemmaReading !== 'おもいだす') {
-                console.error(`Yomitan MeCab lemma unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`);
+                asbError(
+                    'yomitan/mecab',
+                    `Yomitan MeCab lemma unexpected for '${text}': ${JSON.stringify(tokenizeResults)}`
+                );
                 this.supportsMecabLemma = false;
                 return;
             }
             this.supportsMecabLemma = true;
         } catch (e) {
-            console.error(`Yomitan MeCab support check failed for '${text}':`, e);
+            asbError('yomitan/mecab', `Yomitan MeCab support check failed for '${text}':`, e);
             this.supportsMecab = false;
             this.supportsMecabLemma = false;
         }

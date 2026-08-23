@@ -1,5 +1,6 @@
-import { WebmFileMediaFragmentData } from './webm-file-media-fragment-data';
-import { FileModel } from './model';
+import { WebmFileMediaFragmentData } from '@project/common/src/webm-file-media-fragment-data';
+import type { FileModel } from '@project/common/src/model';
+import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 
 type Listener = (event: Event) => void;
 type VideoFrameCallback = (now: number, metadata: { mediaTime: number }) => void;

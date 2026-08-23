@@ -1,5 +1,5 @@
 import { WavHeader, Mp3Encoder } from 'lamejs';
-import { SerializableAudioBuffer } from './mp3-encoder';
+import type { SerializableAudioBuffer } from '@project/common/audio-clip/mp3-encoder';
 
 const samplesPerFrame = 1152;
 const bitRate = 192;

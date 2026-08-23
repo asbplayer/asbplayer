@@ -1,27 +1,31 @@
-import { SettingsProvider, ankiSettingsKeys } from '@project/common/settings';
-import {
+import type { SettingsProvider } from '@project/common/settings';
+import { ankiSettingsKeys } from '@project/common/settings';
+import type {
     BoundMedia,
     LoadSubtitlesCommand,
     MineSubtitleCommand,
     SeekTimestampCommand,
     SubtitleCue,
-    WebSocketClient,
 } from '@project/common/web-socket-client';
-import TabRegistry from './tab-registry';
-import {
+import { WebSocketClient } from '@project/common/web-socket-client';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
+import type {
+    AsbplayerInstance,
+    CardTextFieldValues,
     CopySubtitleMessage,
     CopySubtitleWithAdditionalFieldsMessage,
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
     Message,
-    PostMineAction,
     LocalSubtitlesResponseMessage,
     RequestLocalSubtitlesMessage,
     RequestSubtitlesMessage,
     RequestSubtitlesResponse,
     SubtitleModel,
     ToggleVideoSelectMessage,
+    VideoTabModel,
 } from '@project/common';
+import { PostMineAction } from '@project/common';
 
 let client: WebSocketClient | undefined;
 
@@ -47,7 +51,8 @@ const cyrb53 = (str: string) => {
     return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 };
 
-const boundMediaId = (key: string) => cyrb53(key);
+const streamingMediaId = (tabId: number, src: string) => cyrb53(`streaming:${tabId}:${src}`);
+const localMediaId = (asbplayerId: string) => cyrb53(`local:${asbplayerId}`);
 
 // Filters subtitles to the requested tracks, or returns all of them when none are specified.
 const filterByTracks = (subtitles: SubtitleModel[], trackNumbers: number[] | undefined) => {
@@ -82,6 +87,101 @@ const requestSubtitlesFromAsbplayer = async (
     return response?.response.subtitles;
 };
 
+type MediaTarget = { videoElement: VideoTabModel } | { asbplayer: AsbplayerInstance };
+
+const isVideoElementTarget = (target: MediaTarget): target is { videoElement: VideoTabModel } =>
+    'videoElement' in target;
+
+const isAsbplayerTarget = (target: MediaTarget): target is { asbplayer: AsbplayerInstance } => 'asbplayer' in target;
+
+const videoElementKey = (tabId: number, src: string) => `${tabId}:${src}`;
+
+const activeTabId = async () => (await browser.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+
+const resolveMediaTargets = async (tabRegistry: TabRegistry, mediaId: string | undefined): Promise<MediaTarget[]> => {
+    const videoElements = await tabRegistry.activeVideoElements();
+    const asbplayers = (await tabRegistry.asbplayerInstances()).filter(
+        (asbplayer) => !asbplayer.sidePanel && !asbplayer.videoPlayer
+    );
+
+    if (mediaId !== undefined) {
+        const videoElement = videoElements.find((v) => streamingMediaId(v.id, v.src) === mediaId);
+
+        if (videoElement !== undefined) {
+            return [{ videoElement }];
+        }
+
+        const asbplayer = asbplayers.find((a) => localMediaId(a.id) === mediaId);
+        return asbplayer === undefined ? [] : [{ asbplayer }];
+    }
+
+    const tabId = await activeTabId();
+
+    if (tabId === undefined) {
+        return [];
+    }
+
+    return [
+        ...videoElements.filter((v) => v.id === tabId).map((videoElement) => ({ videoElement })),
+        ...asbplayers.filter((a) => a.tabId === tabId).map((asbplayer) => ({ asbplayer })),
+    ];
+};
+
+const publishToVideoElements = async <T extends Message>(
+    tabRegistry: TabRegistry,
+    targets: MediaTarget[],
+    commandFactory: (src: string) => ExtensionToVideoCommand<T>
+) => {
+    const keys = new Set(
+        targets
+            .filter(isVideoElementTarget)
+            .map(({ videoElement }) => videoElementKey(videoElement.id, videoElement.src))
+    );
+
+    if (keys.size === 0) {
+        return;
+    }
+
+    await tabRegistry.publishCommandToVideoElements((videoElement) =>
+        keys.has(videoElementKey(videoElement.tab.id, videoElement.src)) ? commandFactory(videoElement.src) : undefined
+    );
+};
+
+const publishToAsbplayers = async <T extends Message>(
+    tabRegistry: TabRegistry,
+    targets: MediaTarget[],
+    commandFactory: (asbplayerId: string) => ExtensionToAsbPlayerCommand<T>
+) => {
+    const ids = new Set(targets.filter(isAsbplayerTarget).map(({ asbplayer }) => asbplayer.id));
+
+    if (ids.size === 0) {
+        return;
+    }
+
+    await tabRegistry.publishCommandToAsbplayers({
+        commandFactory: (asbplayer) => (ids.has(asbplayer.id) ? commandFactory(asbplayer.id) : undefined),
+    });
+};
+
+const requestSubtitlesFromVideoElement = async (tabId: number, src: string): Promise<SubtitleModel[] | undefined> => {
+    const requestSubtitlesCommand: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
+        sender: 'asbplayer-extension-to-video',
+        src,
+        message: { command: 'request-subtitles' },
+    };
+
+    try {
+        const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+            tabId,
+            requestSubtitlesCommand
+        );
+        return response?.subtitles;
+    } catch {
+        // Targeting a non-active/discarded tab can fail
+        return undefined;
+    }
+};
+
 export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistry: TabRegistry) => {
     client?.unbind();
     const url = await settings.getSingle('webSocketServerUrl');
@@ -92,87 +192,66 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
 
     client = new WebSocketClient();
     void client.bind(url);
+
+    const ankiFieldValues = async (receivedFields: { [key: string]: string }): Promise<CardTextFieldValues> => {
+        const ankiSettings = await settings.get(ankiSettingsKeys);
+        const fields = receivedFields ?? {};
+        const word = fields[ankiSettings.wordField] || undefined;
+        const definition = fields[ankiSettings.definitionField] || undefined;
+        const text = fields[ankiSettings.sentenceField] || undefined;
+        const customFieldValues = Object.fromEntries(
+            Object.entries(ankiSettings.customAnkiFields)
+                .map(([asbplayerFieldName, ankiFieldName]) => {
+                    const fieldValue = fields[ankiFieldName];
+
+                    if (fieldValue === undefined) {
+                        return undefined;
+                    }
+
+                    return [asbplayerFieldName, fieldValue];
+                })
+                .filter((entry) => entry !== undefined)
+        );
+        return { word, definition, text, customFieldValues };
+    };
+
     client.onMineSubtitle = async ({
-        body: { fields: receivedFields, postMineAction: receivedPostMineAction },
+        body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId, noteId },
     }: MineSubtitleCommand) => {
-        return new Promise((resolve, reject) => {
-            browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                void (async () => {
-                    const ankiSettings = await settings.get(ankiSettingsKeys);
-                    const fields = receivedFields ?? {};
-                    const word = fields[ankiSettings.wordField] || undefined;
-                    const definition = fields[ankiSettings.definitionField] || undefined;
-                    const text = fields[ankiSettings.sentenceField] || undefined;
-                    const customFieldValues = Object.fromEntries(
-                        Object.entries(ankiSettings.customAnkiFields)
-                            .map(([asbplayerFieldName, ankiFieldName]) => {
-                                const fieldValue = fields[ankiFieldName];
+        const targets = (await resolveMediaTargets(tabRegistry, mediaId)).filter((target) =>
+            isVideoElementTarget(target) ? target.videoElement.loadedSubtitles : target.asbplayer.loadedSubtitles
+        );
 
-                                if (fieldValue === undefined) {
-                                    return undefined;
-                                }
+        if (targets.length === 0) {
+            return false;
+        }
 
-                                return [asbplayerFieldName, fieldValue];
-                            })
-                            .filter((entry) => entry !== undefined)
-                    );
-                    const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
-                    let published = false;
+        const cardTextFieldValues = await ankiFieldValues(receivedFields);
+        const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
 
-                    const publishToVideoElements = tabRegistry.publishCommandToVideoElements((videoElement) => {
-                        if (!videoElement.loadedSubtitles) {
-                            return undefined;
-                        }
+        await Promise.all([
+            publishToVideoElements<CopySubtitleMessage>(tabRegistry, targets, (src) => ({
+                sender: 'asbplayer-extension-to-video',
+                message: {
+                    command: 'copy-subtitle',
+                    ...cardTextFieldValues,
+                    postMineAction,
+                    noteId,
+                },
+                src,
+            })),
+            publishToAsbplayers<CopySubtitleWithAdditionalFieldsMessage>(tabRegistry, targets, (asbplayerId) => ({
+                sender: 'asbplayer-extension-to-player',
+                message: {
+                    command: 'copy-subtitle-with-additional-fields',
+                    ...cardTextFieldValues,
+                    postMineAction,
+                },
+                asbplayerId,
+            })),
+        ]);
 
-                        if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
-                            return undefined;
-                        }
-
-                        published = true;
-                        const extensionToVideoCommand: ExtensionToVideoCommand<CopySubtitleMessage> = {
-                            sender: 'asbplayer-extension-to-video',
-                            message: {
-                                command: 'copy-subtitle',
-                                word,
-                                definition,
-                                text,
-                                postMineAction,
-                                customFieldValues,
-                            },
-                            src: videoElement.src,
-                        };
-                        return extensionToVideoCommand;
-                    });
-
-                    await tabRegistry.publishCommandToAsbplayers({
-                        commandFactory: (asbplayer) => {
-                            if (asbplayer.sidePanel || !asbplayer.loadedSubtitles) {
-                                return undefined;
-                            }
-
-                            published = true;
-                            const extensionToPlayerCommand: ExtensionToAsbPlayerCommand<CopySubtitleWithAdditionalFieldsMessage> =
-                                {
-                                    sender: 'asbplayer-extension-to-player',
-                                    message: {
-                                        command: 'copy-subtitle-with-additional-fields',
-                                        word,
-                                        definition,
-                                        text,
-                                        postMineAction,
-                                        customFieldValues,
-                                    },
-                                    asbplayerId: asbplayer.id,
-                                };
-                            return extensionToPlayerCommand;
-                        },
-                    });
-
-                    await publishToVideoElements;
-                    resolve(published);
-                })().catch(reject);
-            });
-        });
+        return true;
     };
     client.onLoadSubtitles = async (command: LoadSubtitlesCommand) => {
         const { files: subtitleFiles } = command.body;
@@ -187,28 +266,18 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
             return toggleVideoSelectCommand;
         });
     };
-    client.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
-        return new Promise<void>((resolve) => {
-            // Publish the command to the active tab video element
-            browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                void tabRegistry.publishCommandToVideoElements((videoElement) => {
-                    if (tabs.find((t) => t.id === videoElement.tab.id) === undefined) {
-                        return undefined;
-                    }
+    client.onSeekTimestamp = async ({ body: { timestamp, mediaId } }: SeekTimestampCommand) => {
+        // Local media cannot be seeked, so only video element targets are published to
+        const targets = await resolveMediaTargets(tabRegistry, mediaId);
 
-                    return {
-                        sender: 'asbplayer-extension-to-video',
-                        message: {
-                            command: 'currentTime',
-                            value: timestamp,
-                        },
-                        src: videoElement.src,
-                    };
-                });
-
-                resolve();
-            });
-        });
+        await publishToVideoElements(tabRegistry, targets, (src) => ({
+            sender: 'asbplayer-extension-to-video',
+            message: {
+                command: 'currentTime',
+                value: timestamp,
+            },
+            src,
+        }));
     };
     client.onGetBoundMedia = async (): Promise<BoundMedia[]> => {
         const videoElements = await tabRegistry.activeVideoElements();
@@ -223,7 +292,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
         }
 
         const streamingMedia: BoundMedia[] = videoElements.map((videoElement) => ({
-            id: boundMediaId(`streaming:${videoElement.id}:${videoElement.src}`),
+            id: streamingMediaId(videoElement.id, videoElement.src),
             type: 'streaming',
             title: videoElement.title,
             faviconUrl: videoElement.faviconUrl,
@@ -244,7 +313,7 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
                 const loadedSubtitles = asbplayer.subtitleTracks ?? [];
                 const [firstTrack] = loadedSubtitles;
                 return {
-                    id: boundMediaId(`local:${asbplayer.id}`),
+                    id: localMediaId(asbplayer.id),
                     type: 'local',
                     title: firstTrack === undefined ? undefined : withoutExtension(firstTrack.fileName),
                     loadedSubtitles,
@@ -258,48 +327,13 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
         mediaId: string | undefined,
         trackNumbers: number[] | undefined
     ): Promise<SubtitleCue[]> => {
-        const videoElements = await tabRegistry.activeVideoElements();
-        let match: (typeof videoElements)[number] | undefined;
-
-        if (mediaId !== undefined) {
-            match = videoElements.find(
-                (videoElement) => boundMediaId(`streaming:${videoElement.id}:${videoElement.src}`) === mediaId
-            );
-        } else {
-            // Default to the active tab's video element
-            const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
-            match = videoElements.find((videoElement) => videoElement.id === activeTab?.id);
-        }
-
-        const target = match && { tabId: match.id, src: match.src };
-
         let subtitles: SubtitleModel[] | undefined;
+        const [target] = await resolveMediaTargets(tabRegistry, mediaId);
 
         if (target !== undefined) {
-            const requestSubtitlesCommand: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
-                sender: 'asbplayer-extension-to-video',
-                src: target.src,
-                message: { command: 'request-subtitles' },
-            };
-
-            try {
-                const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
-                    target.tabId,
-                    requestSubtitlesCommand
-                );
-                subtitles = response?.subtitles;
-            } catch {
-                // Targeting a non-active/discarded tab can fail
-                subtitles = undefined;
-            }
-        } else if (mediaId !== undefined) {
-            // Fall back to a local asbplayer app instance (only resolvable by explicit mediaId)
-            const asbplayerInstances = await tabRegistry.asbplayerInstances();
-            const asbplayer = asbplayerInstances.find((instance) => boundMediaId(`local:${instance.id}`) === mediaId);
-
-            if (asbplayer !== undefined) {
-                subtitles = await requestSubtitlesFromAsbplayer(tabRegistry, asbplayer.id);
-            }
+            subtitles = isVideoElementTarget(target)
+                ? await requestSubtitlesFromVideoElement(target.videoElement.id, target.videoElement.src)
+                : await requestSubtitlesFromAsbplayer(tabRegistry, target.asbplayer.id);
         }
 
         return toSubtitleCues(filterByTracks(subtitles ?? [], trackNumbers));

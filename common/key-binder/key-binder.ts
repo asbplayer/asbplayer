@@ -1,6 +1,7 @@
-import { SubtitleModel } from '../src/model';
+import type { SubtitleModel } from '@project/common/src/model';
 import hotkeys from 'hotkeys-js';
-import { isTrackSeekable, KeyBindSet, SeekableTracks, TokenStatus } from '../settings/settings';
+import type { KeyBindSet, SeekableTracks, TokenStatus } from '@project/common/settings/settings';
+import { isTrackSeekable } from '@project/common/settings/settings';
 
 export function adjacentSubtitle(
     forward: boolean,
@@ -179,6 +180,11 @@ export interface KeyBinder {
     ): () => void;
     bindToggleRecording(
         onToggleRecording: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture?: boolean
+    ): () => void;
+    bindSelectSubtitleTrack(
+        onSelectSubtitleTrack: (event: KeyboardEvent) => void,
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
@@ -370,6 +376,32 @@ export class DefaultKeyBinder implements KeyBinder {
             }
 
             onToggleRecording(event);
+            return true;
+        };
+    }
+
+    bindSelectSubtitleTrack(
+        onSelectSubtitleTrack: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture = false
+    ) {
+        const shortcut = this.keyBindSet.selectSubtitleTrack.keys;
+
+        if (!shortcut) {
+            return () => {};
+        }
+
+        const handler = this.selectSubtitleTrackHandler(onSelectSubtitleTrack, disabledGetter);
+        return this._bind(shortcut, capture, handler);
+    }
+
+    selectSubtitleTrackHandler(onSelectSubtitleTrack: (event: KeyboardEvent) => void, disabledGetter: () => boolean) {
+        return (event: KeyboardEvent) => {
+            if (disabledGetter()) {
+                return false;
+            }
+
+            onSelectSubtitleTrack(event);
             return true;
         };
     }

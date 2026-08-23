@@ -1,22 +1,22 @@
-import ImageCapturer from '../../services/image-capturer';
-import {
+import { asbError, mockSurroundingSubtitles } from '@project/common/util';
+import type ImageCapturer from '@project/extension/src/services/image-capturer';
+import type {
     AudioModel,
     Command,
-    ImageErrorCode,
     ImageModel,
     Message,
-    PostMineAction,
     StopRecordingMediaMessage,
     SubtitleModel,
     VideoToExtensionCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { mockSurroundingSubtitles } from '@project/common/util';
-import { CardPublisher } from '../../services/card-publisher';
-import AudioRecorderService, {
+import { ImageErrorCode, PostMineAction } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import {
     TimedRecordingInProgressError,
     NoRecordingInProgressServiceError,
-} from '../../services/audio-recorder-service';
+} from '@project/extension/src/services/audio-recorder-service';
 
 export default class StopRecordingMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -82,7 +82,7 @@ export default class StopRecordingMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                console.error(e);
+                asbError('recording/screenshot', e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
-import { AnnotationTutorialState, GlobalStateProvider } from '@project/common/global-state';
+import type { GlobalStateProvider } from '@project/common/global-state';
+import { AnnotationTutorialState } from '@project/common/global-state';
 
 export const useAnnotationTutorial = ({ globalStateProvider }: { globalStateProvider: GlobalStateProvider }) => {
     const handleAnnotationTutorialSeen = useCallback(() => {

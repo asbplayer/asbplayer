@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState, useRef, MutableRefObject } from 'react';
+import type { MutableRefObject } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { makeStyles, withStyles } from '@mui/styles';
 import { useTheme } from '@mui/material/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlurOnIcon from '@mui/icons-material/BlurOn';
 import BlurOffIcon from '@mui/icons-material/BlurOff';
@@ -32,28 +33,29 @@ import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
-import { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
-import { SubtitleAlignment } from '@project/common/settings';
-import Clock from '../services/clock';
-import PlaybackPreferences from '../services/playback-preferences';
-import Tooltip from '../../components/Tooltip';
+import type { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
+import type { SubtitleAlignment } from '@project/common/settings';
+import type Clock from '@project/common/playback/timing/clock';
+import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
+import Tooltip from '@project/common/components/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { isMobile } from 'react-device-detect';
-import SubtitleOffsetInput from '../../components/SubtitleOffsetInput';
-import PlaybackRateInput from '../../components/PlaybackRateInput';
-import VideoElementFavicon from './VideoElementFavicon';
-import PlayModeSelector from '../../components/PlayModeSelector';
-import TimeDisplay from '../../components/TimeDisplay';
+import SubtitleOffsetInput from '@project/common/components/SubtitleOffsetInput';
+import PlaybackRateInput from '@project/common/components/PlaybackRateInput';
+import VideoElementFavicon from '@project/common/app/components/VideoElementFavicon';
+import PlayModeSelector from '@project/common/components/PlayModeSelector';
+import TimeDisplay from '@project/common/components/TimeDisplay';
 import {
     centeredProgressBarPreviewLeft,
     clampProgressBarPreviewLeft,
     formatProgressTimestamp,
     progressBarProgress,
     progressBarTrackWidth,
-} from './progress-bar';
+} from '@project/common/app/components/progress-bar';
+import LoadSubtitlesIcon from '@project/common/components/LoadSubtitlesIcon';
 
 const useControlStyles = makeStyles<Theme>((theme) => ({
     container: {
@@ -605,7 +607,7 @@ interface ControlsProps {
     onPlaybackRateChange: (playbackRate: number) => void;
     onVolumeChange?: (volume: number) => void;
     disableKeyEvents?: boolean;
-    playbackPreferences: PlaybackPreferences;
+    playbackPreferences: PlaybackPreferenceController;
     closeEnabled?: boolean;
     onClose?: () => void;
     volumeEnabled?: boolean;
@@ -638,6 +640,7 @@ interface ControlsProps {
     onSubtitleAlignment?: (alignment: SubtitleAlignment) => void;
     hideToolbar?: boolean;
     onLoadFiles?: () => void;
+    onLoadSubtitles?: () => void;
     blurOverlayEnabled?: boolean;
     onBlurOverlayToggle?: () => void;
     videoWidth?: number | undefined;
@@ -697,6 +700,7 @@ export default function Controls({
     onSubtitleAlignment,
     hideToolbar,
     onLoadFiles,
+    onLoadSubtitles,
     blurOverlayEnabled,
     onBlurOverlayToggle,
     videoWidth,
@@ -756,12 +760,14 @@ export default function Controls({
 
     const [playing, setPlaying] = useState<boolean>(clock.running);
     useEffect(() => {
-        clock.onEvent('start', () => setPlaying(true));
+        const remove = clock.onEvent('start', () => setPlaying(true));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
     useEffect(() => {
-        clock.onEvent('stop', () => setPlaying(false));
+        const remove = clock.onEvent('stop', () => setPlaying(false));
         setPlaying(clock.running);
+        return remove;
     }, [clock]);
 
     useEffect(() => {
@@ -824,7 +830,8 @@ export default function Controls({
     );
 
     useEffect(() => {
-        clock.onEvent('settime', () => forceUpdate());
+        const remove = clock.onEvent('settime', () => forceUpdate());
+        return remove;
     }, [clock, forceUpdate]);
 
     useEffect(() => {
@@ -879,7 +886,7 @@ export default function Controls({
         setPlayModeSelectorOpen(false);
     }, []);
 
-    const handlePlayModeSelectorOpened = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    const handlePlayModeSelectorClicked = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         setPlayModeSelectorAnchorEl(e.currentTarget);
         setPlayModeSelectorOpen(true);
     }, []);
@@ -938,7 +945,7 @@ export default function Controls({
         onSubtitleAlignment(newAlignment);
     }, [subtitleAlignment, subtitleAlignmentEnabled, onSubtitleAlignment]);
 
-    const progress = clock.progress(length);
+    const progress = clock.progress({ durationMs: length });
 
     return (
         <React.Fragment>
@@ -1154,6 +1161,18 @@ export default function Controls({
                                             </IconButton>
                                         </Tooltip>
                                     )}
+                                    {onLoadSubtitles && (
+                                        <Tooltip title={t('action.loadSubtitles')}>
+                                            <IconButton
+                                                color="inherit"
+                                                onClick={onLoadSubtitles}
+                                                onMouseOver={handleMouseOver}
+                                                onMouseOut={handleMouseOut}
+                                            >
+                                                <LoadSubtitlesIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
                                     {tabs && tabs.length > 0 && (
                                         <Tooltip title={t('controls.selectVideoElement')}>
                                             <IconButton color="inherit" onClick={handleTabSelectorOpened}>
@@ -1167,7 +1186,7 @@ export default function Controls({
                                     )}
                                     {playModeEnabled && (
                                         <Tooltip title={t('controls.playbackMode')}>
-                                            <IconButton color="inherit" onClick={handlePlayModeSelectorOpened}>
+                                            <IconButton color="inherit" onClick={handlePlayModeSelectorClicked}>
                                                 <TuneIcon
                                                     className={
                                                         playModeEnabled ? classes.button : classes.inactiveButton
@@ -1230,6 +1249,7 @@ export default function Controls({
                     selectedPlayModes={playModes || new Set()}
                     onClose={handlePlayModeSelectorClosed}
                     onPlayMode={handlePlayModeSelected}
+                    listStyle={{ flexDirection: 'column' }}
                 />
             </div>
         </React.Fragment>

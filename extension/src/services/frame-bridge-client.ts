@@ -1,4 +1,5 @@
-import { HttpPostMessage, Message, TabToExtensionCommand, VideoToExtensionCommand } from '@project/common';
+import { asbError } from '@project/common/util';
+import type { HttpPostMessage, Message, TabToExtensionCommand, VideoToExtensionCommand } from '@project/common';
 
 export interface FetchOptions {
     videoSrc?: string;
@@ -12,7 +13,7 @@ export default class FrameBridgeClient {
     private frameId?: string;
     private windowMessageListener?: (event: MessageEvent) => void;
     private bindPromise?: Promise<void>;
-    private serverMessageListener?: (message: any) => void | Promise<void>;
+    private serverMessageListener?: (message: any) => Promise<void>;
 
     constructor(frame: HTMLIFrameElement, fetchOptions?: FetchOptions) {
         this.frame = frame;
@@ -66,7 +67,7 @@ export default class FrameBridgeClient {
     }
 
     onMessage(listener: (message: Message) => void) {
-        this.serverMessageListener = listener;
+        this.serverMessageListener = async (message) => listener(message);
     }
 
     unbind() {
@@ -100,11 +101,9 @@ export default class FrameBridgeClient {
                             this._resolveHttpPost(message.message as HttpPostMessage);
                         } else {
                             if (this.serverMessageListener) {
-                                const result = this.serverMessageListener(message.message);
-
-                                if (result instanceof Promise) {
-                                    result.catch(console.error);
-                                }
+                                void this.serverMessageListener(message.message).catch((error) =>
+                                    asbError('bridge', error)
+                                );
                             }
                         }
                         break;

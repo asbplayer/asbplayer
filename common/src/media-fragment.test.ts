@@ -4,8 +4,9 @@ import {
     minWebmMediaFragmentDurationMs,
     preferredWebmMediaFragmentMimeType,
     resolveWebmMediaFragmentRange,
-} from './media-fragment';
-import { CardModel } from './model';
+} from '@project/common/src/media-fragment';
+import type { CardModel } from '@project/common/src/model';
+import { afterEach, expect, it } from '@jest/globals';
 
 const originalMediaRecorder = (globalThis as any).MediaRecorder;
 const originalCaptureStream = (HTMLCanvasElement.prototype as any).captureStream;

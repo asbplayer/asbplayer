@@ -1,16 +1,14 @@
+import type { DictionaryTokenSource, TokenState, DictionaryTrack } from '@project/common/settings';
 import {
-    DictionaryTokenSource,
     dictionaryTokenSourcePriority,
     externalWordSourcePriority,
     isExternalWordSource,
     TokenMatchStrategy,
-    TokenState,
     TokenStatus,
     isWordSource,
     TokenMatchStrategyPriority,
-    DictionaryTrack,
 } from '@project/common/settings';
-import { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import { getTokenStatus, dedupeTokenStatusInfos, isKanaOnly, normalizeToken } from '@project/common/util';
 import type { TrackState } from '@project/common/annotations';
 

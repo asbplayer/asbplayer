@@ -1,7 +1,254 @@
 import { inferTracks } from '@/pages/util';
 import { subtitleTrackSegmentsFromM3U8 } from '@/pages/m3u8-util';
 
+type DisneySeekRequest = {
+    requestId: string;
+    timestampMs: number;
+    cancelled: boolean;
+};
+
 export default defineUnlistedScript(() => {
+    // --- Disney+ player API access (reverse-engineered) ---
+    // The Disney+ web player attaches a media player object to the React fiber tree
+    // above the <video> element. It exposes seek(ms)/play()/pause() and
+    // timeline.info.playheadPositionMs (true content time in ms). On Disney+,
+    // video.currentTime is per-MediaSource relative time and direct writes to it are
+    // ignored by the player, so we drive the player API directly (Netflix-style).
+    const seekEventName = 'asbplayer-disney-plus-seek';
+    const playEventName = 'asbplayer-disney-plus-play';
+    const pauseEventName = 'asbplayer-disney-plus-pause';
+    const timeEventName = 'asbplayer-disney-plus-time';
+    const seekStartedEventName = 'asbplayer-disney-plus-seek-started';
+    const seekedEventName = 'asbplayer-disney-plus-seeked';
+    const seekCancelledEventName = 'asbplayer-disney-plus-seek-cancelled';
+
+    const isDisneyPlusPlayer = (value: any) =>
+        value &&
+        typeof value === 'object' &&
+        typeof value.seek === 'function' &&
+        typeof value.scrub === 'function' &&
+        typeof value.play === 'function' &&
+        typeof value.pause === 'function';
+
+    const playerFromObject = (value: any): any => {
+        if (!value || typeof value !== 'object') {
+            return undefined;
+        }
+
+        let keys: string[];
+
+        try {
+            keys = Object.keys(value);
+        } catch {
+            return undefined;
+        }
+
+        for (const key of keys.slice(0, 60)) {
+            let candidate: any;
+
+            try {
+                candidate = value[key];
+            } catch {
+                continue;
+            }
+
+            if (isDisneyPlusPlayer(candidate)) {
+                return candidate;
+            }
+        }
+
+        return undefined;
+    };
+
+    const findDisneyPlusPlayer = (): any => {
+        for (const video of document.querySelectorAll('video')) {
+            let element: Element | null = video;
+            let fiberKey: string | undefined;
+            let host: any;
+
+            while (element) {
+                fiberKey = Object.keys(element).find(
+                    (key) => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$')
+                );
+
+                if (fiberKey) {
+                    host = element;
+                    break;
+                }
+
+                element = element.parentElement;
+            }
+
+            if (!fiberKey) {
+                continue;
+            }
+
+            let fiber = host[fiberKey];
+            let steps = 0;
+
+            while (fiber && steps < 400) {
+                steps++;
+                let found = playerFromObject(fiber.memoizedProps);
+
+                if (!found) {
+                    let hook = fiber.memoizedState;
+                    let hookSteps = 0;
+
+                    while (hook && hookSteps < 20 && !found) {
+                        found = playerFromObject(hook.memoizedState);
+                        hook = hook.next;
+                        hookSteps++;
+                    }
+                }
+
+                if (!found && fiber.stateNode && typeof fiber.stateNode === 'object') {
+                    found = playerFromObject(fiber.stateNode);
+                }
+
+                if (found) {
+                    return found;
+                }
+
+                fiber = fiber.return;
+            }
+        }
+
+        return undefined;
+    };
+
+    const contentTime = (player: any): number | undefined => {
+        const ms = player?.timeline?.info?.playheadPositionMs;
+        return typeof ms === 'number' && isFinite(ms) ? ms : undefined;
+    };
+
+    let cachedPlayer: any;
+    let advancing = false;
+    let advancingBeforeSeek = false;
+    let activeSeekRequest: DisneySeekRequest | undefined;
+    let queuedSeekRequest: DisneySeekRequest | undefined;
+
+    const startSeek = (request: DisneySeekRequest): void => {
+        const player = disneyPlusPlayer();
+        if (!player) {
+            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
+            return;
+        }
+
+        activeSeekRequest = request;
+        try {
+            void Promise.resolve(player.seek(request.timestampMs)).catch(() => {
+                if (activeSeekRequest?.requestId !== request.requestId) return;
+                document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
+            });
+        } catch {
+            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: request.requestId }));
+        }
+    };
+
+    const startQueuedSeek = (): void => {
+        activeSeekRequest = undefined;
+        const nextSeekRequest = queuedSeekRequest;
+        queuedSeekRequest = undefined;
+        if (nextSeekRequest !== undefined) startSeek(nextSeekRequest);
+    };
+
+    const dispatchTimeEvent = (player: any, eventAdvancing?: boolean) => {
+        const timestampMs = contentTime(player);
+        if (timestampMs === undefined) return;
+        document.dispatchEvent(
+            new CustomEvent(timeEventName, {
+                detail: { timestampMs, advancing: eventAdvancing },
+            })
+        );
+    };
+
+    const disneyPlusPlayer = (): any => {
+        if (isDisneyPlusPlayer(cachedPlayer)) return cachedPlayer;
+
+        cachedPlayer = findDisneyPlusPlayer();
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_SEEK_COMPLETE', () => {
+            const timestampMs = contentTime(cachedPlayer);
+            if (timestampMs === undefined) return;
+            const completedSeekRequest = activeSeekRequest;
+            activeSeekRequest = undefined;
+
+            if (completedSeekRequest === undefined || !completedSeekRequest.cancelled) {
+                dispatchTimeEvent(cachedPlayer, advancingBeforeSeek);
+                document.dispatchEvent(
+                    new CustomEvent(seekedEventName, {
+                        detail: { timestampMs, requestId: completedSeekRequest?.requestId },
+                    })
+                );
+            }
+
+            startQueuedSeek();
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/TIMECODE', () => {
+            dispatchTimeEvent(cachedPlayer, advancing);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_PAUSED', () => {
+            advancing = false;
+            dispatchTimeEvent(cachedPlayer, false);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_SEEKING', () => {
+            advancingBeforeSeek = advancing;
+            dispatchTimeEvent(cachedPlayer, false);
+            document.dispatchEvent(
+                new CustomEvent(seekStartedEventName, {
+                    detail: { timestampMs: contentTime(cachedPlayer) ?? 0, requestId: activeSeekRequest?.requestId },
+                })
+            );
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_RESUMED', () => {
+            advancing = true;
+            dispatchTimeEvent(cachedPlayer, true);
+        });
+        cachedPlayer?.on('@EVENT/PLAYER/PLAYBACK/MEDIA_STARTED', () => {
+            advancing = true;
+            dispatchTimeEvent(cachedPlayer, true);
+        });
+        dispatchTimeEvent(cachedPlayer, advancing);
+        return cachedPlayer;
+    };
+
+    document.addEventListener(seekEventName, (e) => {
+        // detail is absolute content time in milliseconds
+        const detail = (e as CustomEvent<{ requestId: string; timestampMs: number }>).detail;
+        if (detail?.requestId === undefined) return;
+        if (!Number.isFinite(detail?.timestampMs)) {
+            if (detail?.requestId !== undefined) {
+                document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: detail.requestId }));
+            }
+            return;
+        }
+
+        const request: DisneySeekRequest = { ...detail, cancelled: false };
+        if (activeSeekRequest !== undefined) {
+            if (queuedSeekRequest !== undefined) {
+                document.dispatchEvent(
+                    new CustomEvent(seekCancelledEventName, { detail: queuedSeekRequest.requestId })
+                );
+            }
+            queuedSeekRequest = request;
+            activeSeekRequest.cancelled = true;
+            document.dispatchEvent(new CustomEvent(seekCancelledEventName, { detail: activeSeekRequest.requestId }));
+            return;
+        }
+
+        startSeek(request);
+    });
+    document.addEventListener(seekCancelledEventName, (e) => {
+        const requestId = (e as CustomEvent<string>).detail;
+        if (activeSeekRequest?.requestId === requestId) {
+            activeSeekRequest.cancelled = true;
+            startQueuedSeek();
+            return;
+        }
+        if (queuedSeekRequest?.requestId === requestId) queuedSeekRequest = undefined;
+    });
+    document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());
+    document.addEventListener(pauseEventName, () => disneyPlusPlayer()?.pause());
+
     setTimeout(() => {
         let lastM3U8Url: string | undefined = undefined;
         let lastBasename: string | undefined = undefined;

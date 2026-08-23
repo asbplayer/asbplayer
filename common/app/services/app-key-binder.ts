@@ -1,7 +1,10 @@
-import { CopySubtitleMessage, PostMineAction, SubtitleModel } from '@project/common';
-import { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';
-import { SeekableTracks, TokenStatus } from '@project/common/settings';
-import ChromeExtension, { ExtensionMessage } from './chrome-extension';
+import { asbError } from '@project/common/util';
+import type { CopySubtitleMessage, SubtitleModel } from '@project/common';
+import { PostMineAction } from '@project/common';
+import type { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';
+import type { SeekableTracks, TokenStatus } from '@project/common/settings';
+import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 
 export default class AppKeyBinder implements KeyBinder {
     private readonly defaultKeyBinder: DefaultKeyBinder;
@@ -12,6 +15,7 @@ export default class AppKeyBinder implements KeyBinder {
     private readonly exportCardHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly takeScreenshotHandlers: ((event: KeyboardEvent) => void)[] = [];
     private readonly toggleRecordingHandlers: ((event: KeyboardEvent) => void)[] = [];
+    private readonly selectSubtitleTrackHandlers: ((event: KeyboardEvent) => void)[] = [];
     private _unsubscribeExtension?: () => void;
 
     constructor(keyBinder: DefaultKeyBinder, extension: ChromeExtension) {
@@ -38,12 +42,14 @@ export default class AppKeyBinder implements KeyBinder {
                             handlers = this.exportCardHandlers;
                             break;
                         default:
-                            console.error('Unknown post mine action ' + command.postMineAction);
+                            asbError('app/messages', 'Unknown post mine action ' + command.postMineAction);
                     }
                 } else if (message.data.command === 'take-screenshot') {
                     handlers = this.takeScreenshotHandlers;
                 } else if (message.data.command === 'toggle-recording') {
                     handlers = this.toggleRecordingHandlers;
+                } else if (message.data.command === 'toggle-video-select') {
+                    handlers = this.selectSubtitleTrackHandlers;
                 }
 
                 if (handlers !== undefined) {
@@ -151,6 +157,22 @@ export default class AppKeyBinder implements KeyBinder {
         }
 
         return this.defaultKeyBinder.bindToggleRecording(onToggleRecording, disabledGetter, useCapture);
+    }
+
+    bindSelectSubtitleTrack(
+        onSelectSubtitleTrack: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        if (this.extension.installed) {
+            const handler = this.defaultKeyBinder.selectSubtitleTrackHandler(onSelectSubtitleTrack, disabledGetter);
+            this.selectSubtitleTrackHandlers.push(handler);
+            return () => {
+                this._remove(handler, this.selectSubtitleTrackHandlers);
+            };
+        }
+
+        return this.defaultKeyBinder.bindSelectSubtitleTrack(onSelectSubtitleTrack, disabledGetter, useCapture);
     }
 
     private _remove(callback: (event: KeyboardEvent) => void, list: ((event: KeyboardEvent) => void)[]) {
