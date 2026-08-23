@@ -120,6 +120,7 @@ export default defineConfig({
                         'statistics-overlay-one-uncollected-ui.js',
                         'page-favicons/*',
                         'content-scripts/video.css',
+                        'js/ui-frame-head.js',
                     ],
                     matches: ['<all_urls>'],
                 },

@@ -1,13 +1,6 @@
 import { renderMobileVideoOverlay } from '@/ui/mobile-video-overlay';
 
 const params = new URLSearchParams(location.search);
-const colorScheme = params.get('colorScheme');
-
-if (colorScheme === 'normal' || colorScheme === 'light' || colorScheme === 'dark') {
-    document.documentElement.style.colorScheme = colorScheme;
-} else if (colorScheme === 'none') {
-    document.documentElement.style.colorScheme = 'light dark';
-}
 
 window.addEventListener('load', () => {
     const root = document.getElementById('root')!;
