@@ -261,7 +261,7 @@
             "videoName": "영상 이름",
             "genericPage": "Use generic subtitle detection for this site",
             "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
-            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection for this site then refresh the page to possibly detect subtitles.",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
             "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be selected on the site and the page refreshed to be usable.",
             "ftue": "자동으로 감지된 자막 트랙은 여기에서 선택할 수 있습니다.\nasbplayer가 모든 사이트에서 자막을 감지할 수 있는 것은 아닙니다.\n언제든지 직접 자막 파일을 불러올 수 있습니다."
         },

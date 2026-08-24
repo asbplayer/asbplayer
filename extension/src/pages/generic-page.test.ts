@@ -262,7 +262,7 @@ it('ignores unsupported, structured-data, malformed, and oversized scripts', asy
     await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({ subtitles: [] });
 });
 
-it('does not associate page-level inline metadata with one of several videos', async () => {
+it('associates page-level metadata with the requested video when several videos exist', async () => {
     const requestedVideo = appendVideo();
     requestedVideo.innerHTML = '<track kind="captions" src="/native.vtt" label="Native">';
     appendVideo();
@@ -273,7 +273,11 @@ it('does not associate page-level inline metadata with one of several videos', a
 
     try {
         await expect(new GenericPageDiscovery().videoData(requestedVideo)).resolves.toMatchObject({
-            subtitles: [{ label: 'Native', url: 'http://localhost/native.vtt' }],
+            subtitles: [
+                { label: 'Native', url: 'http://localhost/native.vtt' },
+                { label: 'Detected subtitle', url: 'https://cdn.example/page-level.srt' },
+                { label: 'Page level', url: 'http://localhost/page-level.vtt' },
+            ],
         });
     } finally {
         restorePerformanceEntries();

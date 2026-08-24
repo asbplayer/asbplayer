@@ -1,6 +1,6 @@
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { inferTracks, trackId } from '@project/extension/src/pages/util';
-import { parse } from 'mpd-parser';
+import { inheritAttributes, stringToMpdXml, toM3u8, toPlaylists } from 'mpd-parser';
 
 export interface Segment {
     resolvedUri: string;
@@ -16,19 +16,23 @@ export interface MpdTrackMetadata {
     mimeType?: string;
 }
 
-function subtitleMetadataByRepresentationId(manifest: string) {
+function parseMpdManifest(manifest: string, manifestUri: string) {
+    const parsedManifestInfo = inheritAttributes(stringToMpdXml(manifest), { manifestUri });
+    const dashPlaylists = toPlaylists(parsedManifestInfo.representationInfo);
     const metadata = new Map<string, MpdTrackMetadata>();
-    const document = new DOMParser().parseFromString(manifest, 'application/xml');
-    for (const representation of Array.from(document.getElementsByTagNameNS('*', 'Representation'))) {
-        const id = representation.getAttribute('id');
-        if (!id) continue;
-        let parent = representation.parentElement;
-        while (parent !== null && parent.localName !== 'AdaptationSet') parent = parent.parentElement;
-        metadata.set(id, {
-            mimeType: representation.getAttribute('mimeType') ?? parent?.getAttribute('mimeType') ?? undefined,
-        });
+    for (const playlist of dashPlaylists) {
+        const { id, mimeType } = playlist.attributes;
+        if (typeof id === 'string') metadata.set(id, { mimeType });
     }
-    return metadata;
+    return {
+        manifest: toM3u8({
+            dashPlaylists,
+            locations: parsedManifestInfo.locations,
+            contentSteering: parsedManifestInfo.contentSteeringInfo,
+            eventStream: parsedManifestInfo.eventStream,
+        }),
+        metadata,
+    };
 }
 
 export const subtitleTracksFromMpdManifest = (
@@ -40,8 +44,7 @@ export const subtitleTracksFromMpdManifest = (
         metadata?: MpdTrackMetadata
     ) => VideoDataSubtitleTrackDef | undefined
 ): VideoDataSubtitleTrack[] => {
-    const parsedManifest = parse(manifest, { manifestUri: mpdUrl });
-    const metadataByRepresentationId = subtitleMetadataByRepresentationId(manifest);
+    const { manifest: parsedManifest, metadata: metadataByRepresentationId } = parseMpdManifest(manifest, mpdUrl);
     const subGroups = parsedManifest.mediaGroups?.SUBTITLES?.subs ?? {};
     const tracks: VideoDataSubtitleTrack[] = [];
 

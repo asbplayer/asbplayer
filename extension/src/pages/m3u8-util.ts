@@ -63,6 +63,13 @@ export async function subtitleTrackSegmentsFromM3U8Manifest(
                     }
 
                     for (const label of Object.keys(group)) {
+                        if (label.includes('--forced--')) {
+                            // These tracks are not for the main content and duplicate the language code
+                            // so let's exclude them
+                            // Unfortunately could not find a better way to distinguish them from the real subtitle content
+                            continue;
+                        }
+
                         const track = (group as any)[label];
 
                         if (track && typeof track.language === 'string' && typeof track.uri === 'string') {
@@ -88,7 +95,7 @@ export async function subtitleTrackSegmentsFromM3U8Manifest(
                                             : (normalizeSubtitleExtension(rawExtension) ?? rawExtension),
                                 });
                             };
-                            if (!label.includes('--forced--')) promises.push(fetchTrack());
+                            promises.push(fetchTrack());
                         }
                     }
                 }

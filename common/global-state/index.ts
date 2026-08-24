@@ -20,11 +20,12 @@ export interface OnlineSubtitleSourceConfig {
     jimakuRecentWorks?: JimakuCachedWork[];
 }
 
+export type GenericParseType = 'off' | 'base' | 'aggressive';
+
 export interface GenericSubtitleParserState {
     pages: {
         [host: string]: {
-            enabled: boolean;
-            aggressiveEnabled: boolean;
+            parse: GenericParseType;
         };
     };
 }

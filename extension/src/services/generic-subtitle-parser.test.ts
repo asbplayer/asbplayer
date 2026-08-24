@@ -6,50 +6,46 @@ import {
     setGenericSubtitleParserOptionsForHost,
 } from '@project/extension/src/services/generic-subtitle-parser';
 
-it('returns both options disabled for an absent host', async () => {
+it('returns off for an absent host', async () => {
     const globalState = new ExtensionGlobalStateProvider(new MockStorageArea());
 
     expect(await genericSubtitleParserOptionsForHost(globalState, 'example.com')).toEqual({
-        enabled: false,
-        aggressiveEnabled: false,
+        parse: 'off',
     });
 });
 
-it('stores both options atomically for each host', async () => {
+it('stores the parse type for each host', async () => {
     const globalState = new ExtensionGlobalStateProvider(new MockStorageArea());
     await globalState.set({
         genericSubtitleParser: {
-            pages: { 'second.example': { enabled: true, aggressiveEnabled: false } },
+            pages: { 'second.example': { parse: 'base' } },
         },
     });
 
-    await setGenericSubtitleParserOptionsForHost(globalState, 'first.example', true, true);
-    await setGenericSubtitleParserOptionsForHost(globalState, 'first.example', true, true);
+    await setGenericSubtitleParserOptionsForHost(globalState, 'first.example', 'aggressive');
+    await setGenericSubtitleParserOptionsForHost(globalState, 'first.example', 'aggressive');
 
     expect(await genericSubtitleParserOptionsForHost(globalState, 'first.example')).toEqual({
-        enabled: true,
-        aggressiveEnabled: true,
+        parse: 'aggressive',
     });
     expect((await globalState.get(['genericSubtitleParser'])).genericSubtitleParser).toEqual({
         pages: {
-            'first.example': { enabled: true, aggressiveEnabled: true },
-            'second.example': { enabled: true, aggressiveEnabled: false },
+            'first.example': { parse: 'aggressive' },
+            'second.example': { parse: 'base' },
         },
     });
 });
 
-it('keeps aggressive mode independent when regular detection is disabled', async () => {
+it('replaces the previous parse type', async () => {
     const globalState = new ExtensionGlobalStateProvider(new MockStorageArea());
 
-    await setGenericSubtitleParserOptionsForHost(globalState, 'example.com', true, true);
-    await setGenericSubtitleParserOptionsForHost(globalState, 'example.com', false, true);
+    await setGenericSubtitleParserOptionsForHost(globalState, 'example.com', 'aggressive');
+    await setGenericSubtitleParserOptionsForHost(globalState, 'example.com', 'off');
 
     expect(await genericSubtitleParserOptionsForHost(globalState, 'example.com')).toEqual({
-        enabled: false,
-        aggressiveEnabled: true,
+        parse: 'off',
     });
     expect((await globalState.get(['genericSubtitleParser'])).genericSubtitleParser.pages['example.com']).toEqual({
-        enabled: false,
-        aggressiveEnabled: true,
+        parse: 'off',
     });
 });

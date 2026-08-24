@@ -4,6 +4,7 @@ import { isOnTutorialPage } from '@project/extension/src/services/tutorial';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { SettingsProvider } from '@project/common/settings';
 import type { SettingsFormPageConfig, PageSettings } from '@project/common/settings';
+import type { GenericParseType } from '@project/common/global-state';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { genericSubtitleParserOptionsForHost } from '@project/extension/src/services/generic-subtitle-parser';
 
@@ -120,22 +121,21 @@ export async function currentPageDelegate(): Promise<PageDelegate> {
     ]);
     return pageDelegateForUrl(mergedPageConfig.pages, urlObj, {
         tutorial: isOnTutorialPage(),
-        genericSubtitleParserEnabled: genericSubtitleParserOptions.enabled,
-        aggressiveGenericSubtitleParserEnabled: genericSubtitleParserOptions.aggressiveEnabled,
+        genericSubtitleParser: genericSubtitleParserOptions.parse,
     });
 }
 
 interface PageDelegateOptions {
     tutorial: boolean;
-    genericSubtitleParserEnabled: boolean;
-    aggressiveGenericSubtitleParserEnabled: boolean;
+    genericSubtitleParser: GenericParseType;
 }
 
 export function pageDelegateForUrl(
     pages: readonly PageConfig[],
     urlObj: URL,
-    { tutorial, genericSubtitleParserEnabled, aggressiveGenericSubtitleParserEnabled }: PageDelegateOptions
+    { tutorial, genericSubtitleParser }: PageDelegateOptions
 ): PageDelegate {
+    const aggressiveGenericSubtitleParserEnabled = genericSubtitleParser === 'aggressive';
     const genericPageConfig = (page?: PageConfig): PageConfig => ({
         ...page,
         host: page?.host ?? urlObj.host,
@@ -143,7 +143,6 @@ export function pageDelegateForUrl(
         generic: true,
         searchShadowRootsForVideoElements:
             page?.searchShadowRootsForVideoElements ?? aggressiveGenericSubtitleParserEnabled,
-        syncAllowedAtPath: page?.syncAllowedAtPath ?? '.*',
         autoSync: { ...page?.autoSync, enabled: false },
     });
 
@@ -151,7 +150,7 @@ export function pageDelegateForUrl(
         const regex = new RegExp(page.host);
         if (regex.test(urlObj.host) || (page.literalHosts !== undefined && page.literalHosts.includes(urlObj.host))) {
             if (page.pageScript !== undefined) return new PageDelegate(page, urlObj);
-            return new PageDelegate(genericSubtitleParserEnabled ? genericPageConfig(page) : page, urlObj);
+            return new PageDelegate(genericSubtitleParser !== 'off' ? genericPageConfig(page) : page, urlObj);
         }
     }
 
@@ -160,7 +159,6 @@ export function pageDelegateForUrl(
             {
                 host: urlObj.host,
                 pageScript: 'asbplayer-tutorial-page.js',
-                syncAllowedAtPath: '.*',
                 autoSync: {
                     enabled: false,
                 },
@@ -170,11 +168,10 @@ export function pageDelegateForUrl(
     }
 
     return new PageDelegate(
-        genericSubtitleParserEnabled
+        genericSubtitleParser !== 'off'
             ? genericPageConfig()
             : {
                   host: urlObj.host,
-                  syncAllowedAtPath: '.*',
                   autoSync: { enabled: false },
               },
         urlObj

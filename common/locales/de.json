@@ -261,7 +261,7 @@
             "videoName": "Videotitel",
             "genericPage": "Use generic subtitle detection for this site",
             "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
-            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection for this site then refresh the page to possibly detect subtitles.",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
             "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be selected on the site and the page refreshed to be usable.",
             "ftue": "Auto-detected subtitle tracks can be selected here. asbplayer does not know how to detect subtitles on every site. You can always load your own subtitle files."
         },

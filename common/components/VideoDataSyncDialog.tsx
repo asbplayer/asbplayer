@@ -23,7 +23,7 @@ import MiniProfileSelector from '@project/common/components/MiniProfileSelector'
 import type { Profile } from '@project/common/settings';
 import Alert from '@mui/material/Alert';
 import type { ButtonBaseActions } from '@mui/material';
-import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import OnlineSubtitleSourceDialog from '@project/common/components/OnlineSubtitleSourceDialog';
 import type { TFunction } from 'i18next';
 import type { FileSelector, FileWithId } from '@project/common/file-selector';
@@ -162,8 +162,7 @@ interface Props {
     hideVideoNameTextField?: boolean;
     isGenericPage?: boolean;
     showGenericPageOption?: boolean;
-    genericSubtitleParserEnabled?: boolean;
-    aggressiveGenericSubtitleParserEnabled?: boolean;
+    genericSubtitleParser?: GenericParseType;
     fileSelector: FileSelector;
     onCancel: () => void;
     onOpenSettings: () => void;
@@ -171,8 +170,7 @@ interface Props {
     onSetActiveProfile: (profile: string | undefined) => void;
     onOnlineSourceConfigChanged: (state: Partial<OnlineSubtitleSourceConfig>) => void;
     onDismissFtue: () => void;
-    onGenericSubtitleParserEnabledChange?: (enabled: boolean) => void;
-    onAggressiveGenericSubtitleParserEnabledChange?: (enabled: boolean) => void;
+    onGenericSubtitleParserChange?: (parse: GenericParseType) => void;
     onOpenFiles: (files: FileWithId[]) => void;
     onSubtitleTracks: (tracks: VideoDataSubtitleTrack[]) => void;
     onSelectedSubtitleTrackIds: (trackIds: string[]) => void;
@@ -196,8 +194,7 @@ export default function VideoDataSyncDialog({
     hideVideoNameTextField,
     isGenericPage,
     showGenericPageOption,
-    genericSubtitleParserEnabled,
-    aggressiveGenericSubtitleParserEnabled,
+    genericSubtitleParser,
     fileSelector,
     onCancel,
     onOpenSettings,
@@ -205,8 +202,7 @@ export default function VideoDataSyncDialog({
     onSetActiveProfile,
     onOnlineSourceConfigChanged,
     onDismissFtue,
-    onGenericSubtitleParserEnabledChange,
-    onAggressiveGenericSubtitleParserEnabledChange,
+    onGenericSubtitleParserChange,
     onOpenFiles,
     onSubtitleTracks,
     onSelectedSubtitleTrackIds,
@@ -525,10 +521,12 @@ export default function VideoDataSyncDialog({
                                         <LabelWithHoverEffect
                                             control={
                                                 <Switch
-                                                    checked={genericSubtitleParserEnabled === true}
-                                                    disabled={aggressiveGenericSubtitleParserEnabled === true}
+                                                    checked={genericSubtitleParser !== 'off'}
+                                                    disabled={genericSubtitleParser === 'aggressive'}
                                                     onChange={(event) =>
-                                                        onGenericSubtitleParserEnabledChange?.(event.target.checked)
+                                                        onGenericSubtitleParserChange?.(
+                                                            event.target.checked ? 'base' : 'off'
+                                                        )
                                                     }
                                                     color="primary"
                                                 />
@@ -543,15 +541,15 @@ export default function VideoDataSyncDialog({
                                             }}
                                         />
                                     </Grid>
-                                    {(genericSubtitleParserEnabled || aggressiveGenericSubtitleParserEnabled) && (
+                                    {genericSubtitleParser !== 'off' && (
                                         <Grid item>
                                             <LabelWithHoverEffect
                                                 control={
                                                     <Switch
-                                                        checked={aggressiveGenericSubtitleParserEnabled === true}
+                                                        checked={genericSubtitleParser === 'aggressive'}
                                                         onChange={(event) =>
-                                                            onAggressiveGenericSubtitleParserEnabledChange?.(
-                                                                event.target.checked
+                                                            onGenericSubtitleParserChange?.(
+                                                                event.target.checked ? 'aggressive' : 'base'
                                                             )
                                                         }
                                                         color="primary"

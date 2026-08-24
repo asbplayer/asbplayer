@@ -47,8 +47,7 @@ it('uses an explicit integration instead of the generic fallback', () => {
     const youtube = pagesConfig.pages.find((page) => page.key === 'youtube')!;
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://www.youtube.com/watch?v=video'), {
         tutorial: false,
-        genericSubtitleParserEnabled: false,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'off',
     });
 
     expect(page.config).toMatchObject(youtube);
@@ -58,8 +57,7 @@ it('uses an explicit integration instead of the generic fallback', () => {
 it('uses the tutorial integration instead of the generic fallback', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://example.com/tutorial'), {
         tutorial: true,
-        genericSubtitleParserEnabled: false,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'off',
     });
 
     expect(page.config.pageScript).toBe('asbplayer-tutorial-page.js');
@@ -69,8 +67,7 @@ it('uses the tutorial integration instead of the generic fallback', () => {
 it('does not use generic subtitle detection by default on an unsupported page', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://unsupported.example/video'), {
         tutorial: false,
-        genericSubtitleParserEnabled: false,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'off',
     });
     const video = document.createElement('video');
 
@@ -83,13 +80,11 @@ it('does not use generic subtitle detection by default on an unsupported page', 
 it('does not add generic discovery to configured pages by default', () => {
     const twitch = pageDelegateForUrl(pagesConfig.pages, new URL('https://www.twitch.tv/example'), {
         tutorial: false,
-        genericSubtitleParserEnabled: false,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'off',
     });
     const archive = pageDelegateForUrl(pagesConfig.pages, new URL('https://archive.org/details/example'), {
         tutorial: false,
-        genericSubtitleParserEnabled: false,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'off',
     });
 
     expect(twitch.config).toMatchObject({
@@ -109,8 +104,7 @@ it('does not add generic discovery to configured pages by default', () => {
 it('uses non-autosyncing generic discovery when enabled for an unsupported site', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://unsupported.example/video'), {
         tutorial: false,
-        genericSubtitleParserEnabled: true,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'base',
     });
 
     expect(page.config).toMatchObject({
@@ -124,16 +118,14 @@ it('uses non-autosyncing generic discovery when enabled for an unsupported site'
 it('prefers a configured page shadow-root option over the generic discovery mode', () => {
     const archive = pageDelegateForUrl(pagesConfig.pages, new URL('https://archive.org/details/example'), {
         tutorial: false,
-        genericSubtitleParserEnabled: true,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'base',
     });
     const explicitlyDisabled = pageDelegateForUrl(
         [{ host: 'example\\.com', searchShadowRootsForVideoElements: false }],
         new URL('https://example.com/video'),
         {
             tutorial: false,
-            genericSubtitleParserEnabled: true,
-            aggressiveGenericSubtitleParserEnabled: true,
+            genericSubtitleParser: 'aggressive',
         }
     );
 
@@ -151,19 +143,17 @@ it('prefers a configured page shadow-root option over the generic discovery mode
 it('uses an explicit integration even when generic discovery is enabled for its host', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://www.youtube.com/watch?v=video'), {
         tutorial: false,
-        genericSubtitleParserEnabled: true,
-        aggressiveGenericSubtitleParserEnabled: false,
+        genericSubtitleParser: 'base',
     });
 
     expect(page.config).toMatchObject(pagesConfig.pages.find((page) => page.key === 'youtube')!);
     expect(page.config.generic).not.toBe(true);
 });
 
-it('uses aggressive discovery and searches shadow roots only after both opt-ins', () => {
+it('uses aggressive discovery and searches shadow roots in aggressive mode', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://unsupported.example/video'), {
         tutorial: false,
-        genericSubtitleParserEnabled: true,
-        aggressiveGenericSubtitleParserEnabled: true,
+        genericSubtitleParser: 'aggressive',
     });
 
     expect(page.config).toMatchObject({
@@ -174,11 +164,10 @@ it('uses aggressive discovery and searches shadow roots only after both opt-ins'
     });
 });
 
-it('does not activate aggressive discovery unless generic discovery is enabled', () => {
+it('does not activate generic discovery when parsing is off', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://unsupported.example/video'), {
         tutorial: false,
-        genericSubtitleParserEnabled: false,
-        aggressiveGenericSubtitleParserEnabled: true,
+        genericSubtitleParser: 'off',
     });
 
     expect(page.config.pageScript).toBeUndefined();

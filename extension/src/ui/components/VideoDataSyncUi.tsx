@@ -16,12 +16,12 @@ import type {
     VideoDataUiBridgeConfirmMessage,
     VideoDataUiBridgeOpenFileMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
-    VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage,
+    VideoDataUiBridgeSetGenericSubtitleParserMessage,
     VideoDataUiModel,
     ActiveProfileMessage,
 } from '@project/common';
 import { VideoDataUiOpenReason } from '@project/common';
-import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import { createTheme } from '@project/common/theme';
 import type { PaletteMode } from '@mui/material/styles';
 import { bufferToBase64 } from '@project/common/base64';
@@ -50,8 +50,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
     const [hideRememberTrackPreferenceToggle, setHideRememberTrackPreferenceToggle] = useState<boolean>();
     const [isGenericPage, setIsGenericPage] = useState(false);
     const [showGenericPageOption, setShowGenericPageOption] = useState(false);
-    const [genericSubtitleParserEnabled, setGenericSubtitleParserEnabled] = useState(false);
-    const [aggressiveGenericSubtitleParserEnabled, setAggressiveGenericSubtitleParserEnabled] = useState(false);
+    const [genericSubtitleParser, setGenericSubtitleParser] = useState<GenericParseType>('off');
     const [onlineSubtitleSourceConfig, setOnlineSubtitleSourceConfig] = useState<OnlineSubtitleSourceConfig>({
         jimakuApiKey: '',
         jimakuSearchCategory: 'anime',
@@ -199,12 +198,8 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                 setShowGenericPageOption(model.showGenericPageOption);
             }
 
-            if (model.genericSubtitleParserEnabled !== undefined) {
-                setGenericSubtitleParserEnabled(model.genericSubtitleParserEnabled);
-            }
-
-            if (model.aggressiveGenericSubtitleParserEnabled !== undefined) {
-                setAggressiveGenericSubtitleParserEnabled(model.aggressiveGenericSubtitleParserEnabled);
+            if (model.genericSubtitleParser !== undefined) {
+                setGenericSubtitleParser(model.genericSubtitleParser);
             }
 
             if (model.onlineSubtitleSourceConfig !== undefined) {
@@ -302,30 +297,16 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         },
         [bridge]
     );
-    const handleGenericSubtitleParserEnabledChange = useCallback(
-        (enabled: boolean) => {
-            setGenericSubtitleParserEnabled(enabled);
-            const message: VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage = {
-                command: 'setGenericSubtitleParserEnabled',
-                enabled,
-                aggressiveEnabled: aggressiveGenericSubtitleParserEnabled,
+    const handleGenericSubtitleParserChange = useCallback(
+        (parse: GenericParseType) => {
+            setGenericSubtitleParser(parse);
+            const message: VideoDataUiBridgeSetGenericSubtitleParserMessage = {
+                command: 'setGenericSubtitleParser',
+                parse,
             };
             bridge.sendMessageFromServer(message);
         },
-        [aggressiveGenericSubtitleParserEnabled, bridge]
-    );
-
-    const handleAggressiveGenericSubtitleParserEnabledChange = useCallback(
-        (aggressiveEnabled: boolean) => {
-            setAggressiveGenericSubtitleParserEnabled(aggressiveEnabled);
-            const message: VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage = {
-                command: 'setGenericSubtitleParserEnabled',
-                enabled: genericSubtitleParserEnabled,
-                aggressiveEnabled,
-            };
-            bridge.sendMessageFromServer(message);
-        },
-        [bridge, genericSubtitleParserEnabled]
+        [bridge]
     );
 
     return (
@@ -351,8 +332,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     hideRememberTrackPreferenceToggle={hideRememberTrackPreferenceToggle}
                     isGenericPage={isGenericPage}
                     showGenericPageOption={showGenericPageOption}
-                    genericSubtitleParserEnabled={genericSubtitleParserEnabled}
-                    aggressiveGenericSubtitleParserEnabled={aggressiveGenericSubtitleParserEnabled}
+                    genericSubtitleParser={genericSubtitleParser}
                     fileSelector={fileSelector}
                     onCancel={handleCancel}
                     onOpenFiles={handleOpenFiles}
@@ -361,8 +341,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     onConfirm={handleConfirm}
                     onSetActiveProfile={handleSetActiveProfile}
                     onDismissFtue={handleDismissFtue}
-                    onGenericSubtitleParserEnabledChange={handleGenericSubtitleParserEnabledChange}
-                    onAggressiveGenericSubtitleParserEnabledChange={handleAggressiveGenericSubtitleParserEnabledChange}
+                    onGenericSubtitleParserChange={handleGenericSubtitleParserChange}
                 />
                 <input
                     ref={fileInputRef}

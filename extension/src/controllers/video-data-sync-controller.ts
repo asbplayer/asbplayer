@@ -9,7 +9,7 @@ import type {
     VideoDataSubtitleTrack,
     VideoDataUiBridgeConfirmMessage,
     VideoDataUiBridgeOpenFileMessage,
-    VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage,
+    VideoDataUiBridgeSetGenericSubtitleParserMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
     VideoDataUiModel,
     VideoToExtensionCommand,
@@ -270,10 +270,7 @@ export default class VideoDataSyncController {
         const isGenericPage = pageDelegate.config.generic === true;
         const showGenericPageOption =
             !this._isTutorial && (isGenericPage || pageDelegate.config.pageScript === undefined);
-        const genericSubtitleParserEnabled =
-            globalState.genericSubtitleParser.pages[window.location.host]?.enabled === true;
-        const aggressiveGenericSubtitleParserEnabled =
-            globalState.genericSubtitleParser.pages[window.location.host]?.aggressiveEnabled === true;
+        const genericSubtitleParser = globalState.genericSubtitleParser.pages[window.location.host]?.parse ?? 'off';
         return this._syncedData
             ? {
                   isLoading: this._syncedData.subtitles === undefined,
@@ -292,8 +289,7 @@ export default class VideoDataSyncController {
                   hideRememberTrackPreferenceToggle,
                   isGenericPage,
                   showGenericPageOption,
-                  genericSubtitleParserEnabled,
-                  aggressiveGenericSubtitleParserEnabled,
+                  genericSubtitleParser,
                   onlineSubtitleSourceConfig,
                   ...additionalFields,
               }
@@ -314,8 +310,7 @@ export default class VideoDataSyncController {
                   hideRememberTrackPreferenceToggle,
                   isGenericPage,
                   showGenericPageOption,
-                  genericSubtitleParserEnabled,
-                  aggressiveGenericSubtitleParserEnabled,
+                  genericSubtitleParser,
                   onlineSubtitleSourceConfig,
                   ...additionalFields,
               };
@@ -457,14 +452,13 @@ export default class VideoDataSyncController {
                         return;
                     }
 
-                    if ('setGenericSubtitleParserEnabled' === message.command) {
-                        const setGenericSubtitleParserEnabledMessage =
-                            message as VideoDataUiBridgeSetGenericSubtitleParserEnabledMessage;
+                    if ('setGenericSubtitleParser' === message.command) {
+                        const setGenericSubtitleParserMessage =
+                            message as VideoDataUiBridgeSetGenericSubtitleParserMessage;
                         await setGenericSubtitleParserOptionsForHost(
                             globalStateProvider,
                             window.location.host,
-                            setGenericSubtitleParserEnabledMessage.enabled,
-                            setGenericSubtitleParserEnabledMessage.aggressiveEnabled
+                            setGenericSubtitleParserMessage.parse
                         );
                         return;
                     }

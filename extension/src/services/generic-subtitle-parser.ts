@@ -1,28 +1,20 @@
-import type { GlobalStateProvider } from '@project/common/global-state';
+import type { GenericParseType, GlobalStateProvider } from '@project/common/global-state';
 
 export async function genericSubtitleParserOptionsForHost(globalState: GlobalStateProvider, host: string) {
     const { genericSubtitleParser } = await globalState.get(['genericSubtitleParser']);
     const page = genericSubtitleParser.pages[host];
     return {
-        enabled: page?.enabled === true,
-        aggressiveEnabled: page?.aggressiveEnabled === true,
+        parse: page?.parse ?? 'off',
     };
 }
 
 export async function setGenericSubtitleParserOptionsForHost(
     globalState: GlobalStateProvider,
     host: string,
-    enabled: boolean,
-    aggressiveEnabled: boolean
+    parse: GenericParseType
 ) {
     const { genericSubtitleParser } = await globalState.get(['genericSubtitleParser']);
-    if (
-        genericSubtitleParser.pages[host]?.enabled === enabled &&
-        genericSubtitleParser.pages[host]?.aggressiveEnabled === aggressiveEnabled
-    ) {
-        return;
-    }
-
+    if (genericSubtitleParser.pages[host]?.parse === parse) return;
     await globalState.set({
         genericSubtitleParser: {
             ...genericSubtitleParser,
@@ -30,8 +22,7 @@ export async function setGenericSubtitleParserOptionsForHost(
                 ...genericSubtitleParser.pages,
                 [host]: {
                     ...genericSubtitleParser.pages[host],
-                    enabled,
-                    aggressiveEnabled,
+                    parse,
                 },
             },
         },

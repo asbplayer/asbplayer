@@ -284,14 +284,9 @@ function subtitleLanguageFromUrl(url: string) {
 export class GenericPageDiscovery implements VideoDataProvider {
     async videoData(video: HTMLVideoElement): Promise<VideoData> {
         const tracks = nativeSubtitleTracks(video);
-        const videos = Array.from(document.querySelectorAll('video'));
-
-        // Inline metadata is page-scoped. Use it only when its association with the requested video is unambiguous.
-        if (videos.length === 1 && videos[0] === video) {
-            tracks.push(...directSubtitleTracksFromPerformance());
-            const inlineJson = tracksFromInlineJson();
-            tracks.push(...inlineJson.tracks, ...(await tracksFromInlineManifests(inlineJson.manifestUrls)));
-        }
+        tracks.push(...directSubtitleTracksFromPerformance());
+        const inlineJson = tracksFromInlineJson();
+        tracks.push(...inlineJson.tracks, ...(await tracksFromInlineManifests(inlineJson.manifestUrls)));
 
         return {
             error: '',
