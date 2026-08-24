@@ -28,6 +28,10 @@ sidebar_position: 7
 
 ### Streaming services and subtitle detection
 
+:::tip
+For streaming services not listed below, asbplayer can attempt a best-effort generic subtitle detection which works for some websites.
+:::
+
 | Service                 |                                                                                      Compatibility                                                                                       |
 | ----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 | Netflix                 |                                                                                            ✓                                                                                             |

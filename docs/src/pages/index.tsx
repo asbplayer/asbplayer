@@ -88,7 +88,8 @@ export default function Home(): ReactNode {
                         </h1>
                         <p>
                             Add text-selectable subtitles to almost all video sources, including streaming video. Bring
-                            your own subtitles or use auto-detected subtitles on 20+ supported websites.
+                            your own subtitles, use auto-detected subtitles on 20+ supported websites, or try
+                            best-effort generic subtitle detection on other sites.
                         </p>
                     </div>
                     <div className="col col--5">
