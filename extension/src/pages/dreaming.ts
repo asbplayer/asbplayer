@@ -1,6 +1,9 @@
 import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { trackFromDef } from './util';
 
+export const noAccessError = 'This video requires a Dreaming subscription';
+export const notSignedInError = 'Not signed in to Dreaming';
+
 export interface DreamingVideo {
     title?: string;
     language?: string;
@@ -12,6 +15,14 @@ export interface DreamingVideo {
         bunny?: string;
     };
 }
+
+// Failures that can resolve on their own: auth that has not finished hydrating,
+// rate limiting, and server-side errors. Anything else is reported immediately.
+export const isRetryableStatus = (status: number) =>
+    status === 401 || status === 408 || status === 429 || status >= 500;
+
+export const statusError = (status: number) =>
+    status === 401 ? notSignedInError : `Video API returned status ${status}`;
 
 const languageLabel = (code: string) => {
     try {
@@ -27,10 +38,6 @@ const utf8ToBase64 = (text: string) =>
     );
 
 const subtitleTracksFromVideo = (video: DreamingVideo): VideoDataSubtitleTrack[] => {
-    if (video.hasAccess === false) {
-        return [];
-    }
-
     const inlineVtt =
         typeof video.subtitles === 'string' && video.subtitles.trimStart().startsWith('WEBVTT')
             ? video.subtitles
@@ -65,9 +72,13 @@ export const videoDataFromResponse = (value: any, fallbackBasename: string): Vid
         return { error: '', basename: fallbackBasename, subtitles: [] };
     }
 
-    return {
-        error: '',
-        basename: video.title || fallbackBasename,
-        subtitles: subtitleTracksFromVideo(video),
-    };
+    const basename = video.title || fallbackBasename;
+
+    // Locked videos come back without subtitle sources - explain why instead of
+    // reporting an empty track list as if the video simply had no subtitles
+    if (video.hasAccess === false) {
+        return { error: noAccessError, basename, subtitles: [] };
+    }
+
+    return { error: '', basename, subtitles: subtitleTracksFromVideo(video) };
 };

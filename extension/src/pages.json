@@ -239,7 +239,6 @@
             "host": "app\\.dreaming\\.com",
             "pageScript": "dreaming-page.js",
             "syncAllowedAtPath": "watch",
-            "videoSrcChangesIndicateNewVideo": true,
             "autoSync": {
                 "enabled": true
             }

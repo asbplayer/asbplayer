@@ -1,9 +1,16 @@
 import type { VideoData } from '@project/common';
-import { videoDataFromResponse } from '@/pages/dreaming';
+import { isRetryableStatus, statusError, videoDataFromResponse } from '@/pages/dreaming';
+
+const maxAttempts = 3;
+const retryDelayMs = 500;
 
 const inferVideoId = () => new URLSearchParams(window.location.search).get('id') ?? undefined;
 
-const fetchVideoData = async (videoId: string): Promise<VideoData> => {
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+type VideoDataRequestResult = { data: VideoData } | { error: string; retryable: boolean };
+
+const requestVideoData = async (videoId: string): Promise<VideoDataRequestResult> => {
     // The site keeps its API token (also for auto-created anonymous accounts) in localStorage
     const token = localStorage.getItem('token');
     const response = await fetch(
@@ -12,10 +19,44 @@ const fetchVideoData = async (videoId: string): Promise<VideoData> => {
     );
 
     if (!response.ok) {
-        throw new Error(`Video API returned status ${response.status}`);
+        return { error: statusError(response.status), retryable: isRetryableStatus(response.status) };
     }
 
-    return videoDataFromResponse(await response.json(), document.title);
+    return { data: videoDataFromResponse(await response.json(), document.title) };
+};
+
+// A single failed request would otherwise leave subtitles unavailable until the user
+// reloads, since subtitles are only re-requested when the video changes.
+const fetchVideoData = async (videoId: string): Promise<VideoData> => {
+    let lastError = 'Failed to load subtitles';
+
+    for (let attempt = 1; attempt <= maxAttempts; ++attempt) {
+        try {
+            const result = await requestVideoData(videoId);
+
+            if ('data' in result) {
+                return result.data;
+            }
+
+            lastError = result.error;
+
+            if (!result.retryable) {
+                break;
+            }
+        } catch (error) {
+            // Network-level failure - worth another attempt
+            lastError = error instanceof Error ? error.message : String(error);
+        }
+
+        // Give up early once the user has moved on to another video
+        if (attempt === maxAttempts || inferVideoId() !== videoId) {
+            break;
+        }
+
+        await delay(retryDelayMs * attempt);
+    }
+
+    return { error: lastError, basename: document.title, subtitles: [] };
 };
 
 export default defineUnlistedScript(() => {
