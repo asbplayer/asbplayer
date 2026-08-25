@@ -1,9 +1,9 @@
 import { afterEach, expect, it, jest } from '@jest/globals';
 import {
-    GenericPageDiscovery,
-    installGenericPageDiscovery,
+    BaseGenericPageDiscovery,
+    installBaseGenericPageDiscovery,
     nativeSubtitleTracks,
-} from '@project/extension/src/pages/generic-page';
+} from '@project/extension/src/pages/base-generic-page';
 
 function appendVideo(parent: ParentNode = document.body) {
     const video = document.createElement('video');
@@ -134,7 +134,7 @@ it('discovers strict subtitle metadata from small explicitly typed inline JSON',
         },
     });
 
-    await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
         subtitles: [
             { label: 'English', language: 'en', url: 'http://localhost/subs/en.vtt', extension: 'vtt' },
             { label: 'Japanese', language: 'ja', url: 'http://localhost/subs/ja.ass?token=x', extension: 'ass' },
@@ -183,7 +183,7 @@ segment-2.vtt
     Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchSpy });
 
     try {
-        await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+        await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
             subtitles: [
                 {
                     label: 'English',
@@ -212,7 +212,7 @@ it('discovers direct subtitle resources from the bounded performance timeline', 
     ] as unknown as PerformanceEntry[]);
 
     try {
-        await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+        await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
             subtitles: [
                 {
                     label: 'en',
@@ -241,7 +241,7 @@ it('rejects ambiguous JSON URLs and explicit non-subtitle tracks', async () => {
         ],
     });
 
-    await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
         subtitles: [{ label: 'Valid', url: 'http://localhost/valid.srt', extension: 'srt' }],
     });
 });
@@ -259,7 +259,7 @@ it('ignores unsupported, structured-data, malformed, and oversized scripts', asy
         track: { kind: 'captions', src: '/oversized.vtt' },
     });
 
-    await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({ subtitles: [] });
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({ subtitles: [] });
 });
 
 it('associates page-level metadata with the requested video when several videos exist', async () => {
@@ -272,7 +272,7 @@ it('associates page-level metadata with the requested video when several videos 
     ] as unknown as PerformanceEntry[]);
 
     try {
-        await expect(new GenericPageDiscovery().videoData(requestedVideo)).resolves.toMatchObject({
+        await expect(new BaseGenericPageDiscovery().videoData(requestedVideo)).resolves.toMatchObject({
             subtitles: [
                 { label: 'Native', url: 'http://localhost/native.vtt' },
                 { label: 'Detected subtitle', url: 'https://cdn.example/page-level.srt' },
@@ -289,7 +289,7 @@ it('deduplicates the same resource found through native and inline metadata', as
     video.innerHTML = '<track kind="captions" src="/same.vtt" label="Native">';
     appendJson({ tracks: [{ kind: 'captions', file: '/same.vtt', label: 'Inline' }] });
 
-    await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
         subtitles: [{ label: 'Native', url: 'http://localhost/same.vtt' }],
     });
 });
@@ -303,7 +303,7 @@ it('uses video-scoped title metadata before page title metadata', async () => {
     openGraphTitle.content = 'Open Graph title';
     document.head.appendChild(openGraphTitle);
 
-    await expect(new GenericPageDiscovery().videoData(video)).resolves.toMatchObject({ basename: 'Video title' });
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({ basename: 'Video title' });
 });
 
 it('installation leaves host networking and parsing globals untouched', () => {
@@ -312,7 +312,7 @@ it('installation leaves host networking and parsing globals untouched', () => {
     const originalSend = window.XMLHttpRequest.prototype.send;
     const originalParse = JSON.parse;
 
-    const uninstall = installGenericPageDiscovery();
+    const uninstall = installBaseGenericPageDiscovery();
 
     expect(window.fetch).toBe(originalFetch);
     expect(window.XMLHttpRequest.prototype.open).toBe(originalOpen);

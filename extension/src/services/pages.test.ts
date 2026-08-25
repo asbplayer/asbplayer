@@ -108,7 +108,7 @@ it('uses non-autosyncing generic discovery when enabled for an unsupported site'
     });
 
     expect(page.config).toMatchObject({
-        pageScript: 'generic-page.js',
+        pageScript: 'base-generic-page.js',
         generic: true,
         searchShadowRootsForVideoElements: false,
         autoSync: { enabled: false },
@@ -131,7 +131,7 @@ it('prefers a configured page shadow-root option over the generic discovery mode
 
     expect(archive.config).toMatchObject({
         key: 'archive',
-        pageScript: 'generic-page.js',
+        pageScript: 'base-generic-page.js',
         searchShadowRootsForVideoElements: true,
     });
     expect(explicitlyDisabled.config).toMatchObject({

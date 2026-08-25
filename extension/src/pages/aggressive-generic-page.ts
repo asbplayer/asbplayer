@@ -1,5 +1,5 @@
 import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
-import { GenericPageDiscovery } from '@project/extension/src/pages/generic-page';
+import { BaseGenericPageDiscovery } from '@project/extension/src/pages/base-generic-page';
 import type { VideoDataProvider } from '@project/extension/src/pages/subtitle-discovery';
 import {
     absoluteSubtitleUrl,
@@ -144,7 +144,7 @@ function standaloneHlsTrack(manifestUrl: string, manifest: any): VideoDataSubtit
 }
 
 export class AggressiveGenericPageDiscovery implements VideoDataProvider {
-    private readonly baseDiscovery = new GenericPageDiscovery();
+    private readonly baseDiscovery = new BaseGenericPageDiscovery();
     private readonly records: ResourceRecord[] = [];
     private readonly parsedJson: Array<{ tracks: VideoDataSubtitleTrack[]; page: string; observedAt: number }> = [];
     private readonly pending = new Set<Promise<unknown>>();

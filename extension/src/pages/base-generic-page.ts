@@ -281,7 +281,7 @@ function subtitleLanguageFromUrl(url: string) {
     }
 }
 
-export class GenericPageDiscovery implements VideoDataProvider {
+export class BaseGenericPageDiscovery implements VideoDataProvider {
     async videoData(video: HTMLVideoElement): Promise<VideoData> {
         const tracks = nativeSubtitleTracks(video);
         tracks.push(...directSubtitleTracksFromPerformance());
@@ -296,7 +296,7 @@ export class GenericPageDiscovery implements VideoDataProvider {
     }
 }
 
-export function installGenericPageDiscovery(eventTarget: Document = document): () => void {
-    const discovery = new GenericPageDiscovery();
+export function installBaseGenericPageDiscovery(eventTarget: Document = document): () => void {
+    const discovery = new BaseGenericPageDiscovery();
     return bindVideoDataDiscovery(discovery, eventTarget);
 }

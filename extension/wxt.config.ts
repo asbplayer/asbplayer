@@ -105,7 +105,7 @@ export default defineConfig({
                         'areena-yle-page.js',
                         'hbo-max-page.js',
                         'nijapanese-page.js',
-                        'generic-page.js',
+                        'base-generic-page.js',
                         'aggressive-generic-page.js',
                         'svt-play-page.js',
                         'ur-play-page.js',

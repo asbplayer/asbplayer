@@ -12,8 +12,8 @@ interface PageConfigFile {
     pages: PageConfig[];
 }
 
-export const genericPageScript = 'generic-page.js';
-export const aggressiveGenericPageScript = 'aggressive-generic-page.js';
+const baseGenericPageScript = 'base-generic-page.js';
+const aggressiveGenericPageScript = 'aggressive-generic-page.js';
 
 export interface PageConfig {
     // Regex for URLs where script should be loaded
@@ -139,7 +139,7 @@ export function pageDelegateForUrl(
     const genericPageConfig = (page?: PageConfig): PageConfig => ({
         ...page,
         host: page?.host ?? urlObj.host,
-        pageScript: aggressiveGenericSubtitleParserEnabled ? aggressiveGenericPageScript : genericPageScript,
+        pageScript: aggressiveGenericSubtitleParserEnabled ? aggressiveGenericPageScript : baseGenericPageScript,
         generic: true,
         searchShadowRootsForVideoElements:
             page?.searchShadowRootsForVideoElements ?? aggressiveGenericSubtitleParserEnabled,
