@@ -1,4 +1,32 @@
 import { afterEach, expect, it, jest } from '@jest/globals';
+
+// The package ships ESM that this repository's Jest setup does not transform.
+jest.mock('@qgustavor/srt-parser', () => ({
+    __esModule: true,
+    default: class {
+        toSrt(nodes: readonly { id: string; startTime: number; endTime: number; text: string }[]): string {
+            const timestamp = (milliseconds: number) => {
+                const hours = Math.floor(milliseconds / 3_600_000);
+                const minutes = Math.floor(milliseconds / 60_000) % 60;
+                const seconds = Math.floor(milliseconds / 1000) % 60;
+                const remainder = milliseconds % 1000;
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds
+                    .toString()
+                    .padStart(2, '0')},${remainder.toString().padStart(3, '0')}`;
+            };
+            return nodes
+                .map(
+                    (node) =>
+                        `${node.id}\r\n${timestamp(node.startTime)} --> ${timestamp(node.endTime)}\r\n${node.text.replace(
+                            '\n',
+                            '\r\n'
+                        )}\r\n\r\n`
+                )
+                .join('');
+        }
+    },
+}));
+
 import {
     BaseGenericPageDiscovery,
     installBaseGenericPageDiscovery,
@@ -90,10 +118,11 @@ it('serializes a populated programmatic text track without changing its mode', (
     const tracks = nativeSubtitleTracks(video);
 
     expect(tracks).toHaveLength(1);
-    expect(tracks[0]).toMatchObject({ label: 'English', language: 'en-us', extension: 'vtt' });
+    expect(tracks[0]).toMatchObject({ label: 'English', language: 'en-us', extension: 'srt' });
+    expect((tracks[0].url as string).split(',', 1)[0]).toBe('data:application/x-subrip;charset=utf-8');
     expect(decodeURIComponent((tracks[0].url as string).split(',', 2)[1])).toBe(
-        'WEBVTT\n\n00:00:01.250 --> 00:00:03.500\nFirst line\nSecond line\n\n' +
-            '00:00:04.000 --> 00:00:05.000\nThird line\n'
+        '0\r\n00:00:01,250 --> 00:00:03,500\r\nFirst line\r\nSecond line\r\n\r\n' +
+            '1\r\n00:00:04,000 --> 00:00:05,000\r\nThird line\r\n\r\n'
     );
     expect(subtitleTrack.mode).toBe('hidden');
 });

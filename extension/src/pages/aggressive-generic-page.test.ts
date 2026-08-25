@@ -1,4 +1,8 @@
 import { afterEach, expect, it, jest } from '@jest/globals';
+
+// This suite does not exercise TextTrack serialization, and its ESM dependency is not transformed by Jest.
+jest.mock('@project/common/subtitle-reader/subtitles-to-srt', () => ({ subtitlesToSrt: jest.fn() }));
+
 import { AggressiveGenericPageDiscovery } from '@project/extension/src/pages/aggressive-generic-page';
 
 afterEach(() => {

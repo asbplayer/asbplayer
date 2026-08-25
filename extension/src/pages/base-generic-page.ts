@@ -1,4 +1,5 @@
 import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
 import { parseM3U8, subtitleTrackSegmentsFromM3U8Manifest } from '@project/extension/src/pages/m3u8-util';
 import {
     absoluteHttpUrl,
@@ -172,24 +173,12 @@ async function tracksFromInlineManifests(manifestUrls: ReadonlySet<string>) {
     return tracks;
 }
 
-function webVttTimestamp(seconds: number) {
-    const totalMilliseconds = Math.round(seconds * 1000);
-    const milliseconds = totalMilliseconds % 1000;
-    const totalSeconds = Math.floor(totalMilliseconds / 1000);
-    const displaySeconds = totalSeconds % 60;
-    const totalMinutes = Math.floor(totalSeconds / 60);
-    const minutes = totalMinutes % 60;
-    const hours = Math.floor(totalMinutes / 60);
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${displaySeconds
-        .toString()
-        .padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
-}
-
-function webVttFromTextTrack(track: TextTrack): string | undefined {
+function srtFromTextTrack(track: TextTrack): string | undefined {
     try {
         if (track.cues === null || track.cues.length === 0 || track.cues.length > maximumSerializedCues) return;
 
-        let text = 'WEBVTT\n\n';
+        const subtitles: { start: number; end: number; text: string }[] = [];
+        let cueTextLength = 0;
         for (const cue of Array.from(track.cues)) {
             const cueText = (cue as VTTCue).text;
             if (
@@ -202,11 +191,14 @@ function webVttFromTextTrack(track: TextTrack): string | undefined {
                 continue;
             }
 
-            const block = `${webVttTimestamp(cue.startTime)} --> ${webVttTimestamp(cue.endTime)}\n${cueText}\n\n`;
-            if (text.length + block.length > maximumSerializedCueLength) return;
-            text += block;
+            cueTextLength += cueText.length;
+            if (cueTextLength > maximumSerializedCueLength) return;
+            subtitles.push({ start: cue.startTime * 1000, end: cue.endTime * 1000, text: cueText });
         }
-        return text === 'WEBVTT\n\n' ? undefined : `${text.trimEnd()}\n`;
+
+        if (subtitles.length === 0) return;
+        const text = subtitlesToSrt(subtitles);
+        return text.length > maximumSerializedCueLength ? undefined : text;
     } catch {
         return;
     }
@@ -244,15 +236,15 @@ export function nativeSubtitleTracks(video: HTMLVideoElement): VideoDataSubtitle
             const kind = textTrack.kind.toLowerCase();
             if (kind !== 'subtitles' && kind !== 'captions') continue;
 
-            const text = webVttFromTextTrack(textTrack);
+            const text = srtFromTextTrack(textTrack);
             if (text === undefined) continue;
             const language = textTrack.language.trim().toLowerCase() || undefined;
             tracks.push(
                 trackFromDef({
                     label: textTrack.label.trim() || language || `Subtitle ${trackElements.length + index + 1}`,
                     language,
-                    url: `data:text/vtt;charset=utf-8,${encodeURIComponent(text)}`,
-                    extension: 'vtt',
+                    url: `data:application/x-subrip;charset=utf-8,${encodeURIComponent(text)}`,
+                    extension: 'srt',
                 })
             );
         }

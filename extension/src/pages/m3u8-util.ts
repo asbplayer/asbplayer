@@ -90,6 +90,7 @@ export async function subtitleTrackSegmentsFromM3U8Manifest(
                                     language: track.language,
                                     url: urls,
                                     extension:
+                                        // A best-effort heuristic to treat XML subtitle segments in HLS as TTML
                                         rawExtension === 'xml'
                                             ? 'ttml2'
                                             : (normalizeSubtitleExtension(rawExtension) ?? rawExtension),
