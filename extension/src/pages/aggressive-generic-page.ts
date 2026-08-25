@@ -1,6 +1,10 @@
 import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { BaseGenericPageDiscovery } from '@project/extension/src/pages/base-generic-page';
-import type { VideoDataProvider } from '@project/extension/src/pages/subtitle-discovery';
+import type {
+    ExtensionlessSubtitleTrack,
+    JsonDiscovery,
+    VideoDataProvider,
+} from '@project/extension/src/pages/subtitle-discovery';
 import {
     absoluteSubtitleUrl,
     bindVideoDataDiscovery,
@@ -31,7 +35,9 @@ interface ResourceRecord {
 const maximumCapturedBodyLength = 5_000_000;
 const maximumRecords = 100;
 const maximumJsonObjects = 500;
-const maximumJsonDepth = 6;
+const maximumJsonDepth = 12;
+const maximumMetadataBodyLength = 1_000_000;
+const maximumMetadataReferences = 4;
 const responseObservationTimeoutMs = 500;
 const resourceFetchTimeoutMs = 3_000;
 const recentResourceWindowMs = 30_000;
@@ -48,12 +54,16 @@ function pageIdentity() {
 function likelySubtitleUrl(url: string) {
     try {
         const parsed = new URL(url, document.baseURI);
-        return /(?:caption|subtitle|timedtext|transcript|\bsubs?\b)/i.test(
+        return /(?:caption|subtit|timedtext|texttrack|transcript|\bsubs?\b)/i.test(
             `${parsed.pathname} ${parsed.searchParams.toString()}`
         );
     } catch {
         return false;
     }
+}
+
+function jsonDiscoveryOptions(url: string) {
+    return { ...aggressiveJsonDiscoveryOptions, rootSubtitleContext: likelySubtitleUrl(url) } as const;
 }
 
 function subtitleExtensionFromText(text: string) {
@@ -146,7 +156,13 @@ function standaloneHlsTrack(manifestUrl: string, manifest: any): VideoDataSubtit
 export class AggressiveGenericPageDiscovery implements VideoDataProvider {
     private readonly baseDiscovery = new BaseGenericPageDiscovery();
     private readonly records: ResourceRecord[] = [];
-    private readonly parsedJson: Array<{ tracks: VideoDataSubtitleTrack[]; page: string; observedAt: number }> = [];
+    private readonly parsedJson: Array<{
+        tracks: VideoDataSubtitleTrack[];
+        metadataUrls: string[];
+        extensionlessTracks: ExtensionlessSubtitleTrack[];
+        page: string;
+        observedAt: number;
+    }> = [];
     private readonly pending = new Set<Promise<unknown>>();
     private originalFetch?: typeof window.fetch;
 
@@ -286,9 +302,13 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
         const base = await this.baseDiscovery.videoData(video);
         const page = pageIdentity();
         const tracks = [...(base.subtitles ?? [])];
+        const metadataUrls = new Set<string>();
+        const extensionlessTracks = new Map<string, ExtensionlessSubtitleTrack>();
 
         for (const snapshot of this.parsedJson.filter((snapshot) => snapshot.page === page)) {
             tracks.push(...snapshot.tracks);
+            for (const url of snapshot.metadataUrls) metadataUrls.add(url);
+            for (const track of snapshot.extensionlessTracks) extensionlessTracks.set(track.url, track);
         }
 
         const pageRecords = this.records.filter((record) => record.page === page);
@@ -308,7 +328,10 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
             if (kind === 'json' && text !== undefined) {
                 try {
                     const value = JSON.parse(text);
-                    tracks.push(...tracksFromJson(value, record.url, aggressiveJsonDiscoveryOptions).tracks);
+                    const discovery = tracksFromJson(value, record.url, jsonDiscoveryOptions(record.url));
+                    tracks.push(...discovery.tracks);
+                    for (const url of discovery.metadataUrls) metadataUrls.add(url);
+                    for (const track of discovery.extensionlessTracks) extensionlessTracks.set(track.url, track);
                 } catch {
                     // Ignore malformed JSON metadata.
                 }
@@ -354,6 +377,48 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
                 }
             } else if (kind === 'subtitle') {
                 directRecords.push({ record, text });
+            }
+        }
+
+        let speculativeRequests = 0;
+        for (const url of Array.from(metadataUrls).slice(0, maximumMetadataReferences)) {
+            speculativeRequests++;
+            try {
+                const matching = pageRecords.find((record) => record.url === url);
+                const text =
+                    matching === undefined
+                        ? await this.fetchText(url, maximumMetadataBodyLength)
+                        : await this.resourceText(matching);
+                if (text === undefined) continue;
+                const value = JSON.parse(text);
+                if (matching === undefined) this.observe(url, page, 'application/json', text);
+                const discovery = tracksFromJson(value, url, jsonDiscoveryOptions(url));
+                tracks.push(...discovery.tracks);
+            } catch {
+                // Ignore unavailable or malformed speculative subtitle metadata.
+            }
+        }
+
+        for (const candidate of Array.from(extensionlessTracks.values()).slice(
+            0,
+            maximumMetadataReferences - speculativeRequests
+        )) {
+            try {
+                const matching = pageRecords.find((record) => record.url === candidate.url);
+                const text =
+                    matching === undefined
+                        ? await this.fetchText(candidate.url, maximumMetadataBodyLength)
+                        : await this.resourceText(matching);
+                if (text === undefined) continue;
+                const extension =
+                    subtitleExtensionsByContentType[normalizedContentType(matching?.contentType) ?? ''] ??
+                    subtitleExtensionFromText(text);
+                if (extension !== undefined) {
+                    if (matching === undefined) this.observe(candidate.url, page, undefined, text);
+                    tracks.push(trackFromDef({ ...candidate, extension }));
+                }
+            } catch {
+                // Ignore unavailable or unsupported speculative subtitle resources.
             }
         }
 
@@ -420,9 +485,12 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
     }
 
     private rememberJson(value: unknown, page: string, baseUrl: string) {
-        const tracks = deduplicateTracks(tracksFromJson(value, baseUrl, aggressiveJsonDiscoveryOptions).tracks);
-        if (tracks.length === 0) return;
-        this.parsedJson.push({ tracks, page, observedAt: Date.now() });
+        const discovery: JsonDiscovery = tracksFromJson(value, baseUrl, jsonDiscoveryOptions(baseUrl));
+        const tracks = deduplicateTracks(discovery.tracks);
+        const metadataUrls = Array.from(discovery.metadataUrls);
+        const extensionlessTracks = discovery.extensionlessTracks;
+        if (tracks.length === 0 && metadataUrls.length === 0 && extensionlessTracks.length === 0) return;
+        this.parsedJson.push({ tracks, metadataUrls, extensionlessTracks, page, observedAt: Date.now() });
         if (this.parsedJson.length > 20) this.parsedJson.shift();
     }
 
@@ -444,7 +512,7 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
         return record.body === undefined ? this.fetchText(record.url) : record.body;
     }
 
-    private async fetchText(url: string) {
+    private async fetchText(url: string, maximumLength = maximumCapturedBodyLength) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), resourceFetchTimeoutMs);
         try {
@@ -453,7 +521,7 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
                 signal: controller.signal,
             });
             if (!response.ok && response.status !== 304) return;
-            return await responseTextWithinLimit(response, maximumCapturedBodyLength);
+            return await responseTextWithinLimit(response, maximumLength);
         } finally {
             clearTimeout(timeout);
         }

@@ -12,6 +12,19 @@ afterEach(() => {
     history.replaceState(null, '', '/');
 });
 
+function jsonResponse(url: string, value: unknown) {
+    return {
+        ok: true,
+        status: 200,
+        url,
+        headers: { get: () => 'application/json' },
+        clone() {
+            return this;
+        },
+        text: async () => JSON.stringify(value),
+    } as unknown as Response;
+}
+
 it('discovers contextual subtitle metadata observed through JSON.parse', async () => {
     const video = document.createElement('video');
     document.body.append(video);
@@ -49,6 +62,72 @@ it('discovers contextual subtitle metadata observed through JSON.parse', async (
     expect(JSON.parse).toBe(originalParse);
 });
 
+it('follows a subtitle metadata reference once and applies response URL context', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const metadataUrl = 'https://example.com/api/videos/1.json';
+    const subtitlesUrl = 'https://example.com/api/videos/1/subtitulos';
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url === metadataUrl) return jsonResponse(url, { video: { subtitleRef: subtitlesUrl } });
+        return jsonResponse(url, { page: { items: [{ src: '/captions/es.vtt', lang: 'es' }] } });
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch(metadataUrl);
+
+        const expected = {
+            subtitles: [
+                {
+                    label: 'es',
+                    language: 'es',
+                    url: 'https://example.com/captions/es.vtt',
+                    extension: 'vtt',
+                },
+            ],
+        };
+        await expect(discovery.videoData(video)).resolves.toMatchObject(expected);
+        await expect(discovery.videoData(video)).resolves.toMatchObject(expected);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('bounds subtitle metadata reference requests', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const metadataUrl = 'https://example.com/api/videos/1.json';
+    const references = Array.from({ length: 5 }, (_, index) => ({
+        subtitleRef: `https://example.com/api/subtitles/${index}`,
+    }));
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        return jsonResponse(url, url === metadataUrl ? { references } : { page: { items: [] } });
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch(metadataUrl);
+        await discovery.videoData(video);
+
+        expect(fetchMock).toHaveBeenCalledTimes(5);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
 it('sniffs extensionless subtitle responses intercepted through fetch', async () => {
     const video = document.createElement('video');
     document.body.append(video);
@@ -80,6 +159,63 @@ it('sniffs extensionless subtitle responses intercepted through fetch', async ()
                 }),
             ])
         );
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('fetches and sniffs an extensionless source identified by sibling subtitle metadata', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const metadataUrl = 'https://example.com/playback.json';
+    const subtitleUrl = 'https://cdn.example/subtitles/opaque-id';
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        if (url === metadataUrl) {
+            return jsonResponse(url, {
+                subtitles: [
+                    {
+                        product_subtitle_language_id: 3,
+                        name: 'English',
+                        language: 'en',
+                        url: subtitleUrl,
+                    },
+                    { url: 'https://cdn.example/subtitles/insufficient-evidence' },
+                ],
+            });
+        }
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => 'text/plain' },
+            body: null,
+            text: async () => '\uFEFF1\n00:00:00,000 --> 00:00:01,000\nHello\n',
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch(metadataUrl);
+
+        const expected = {
+            subtitles: [
+                {
+                    label: 'English',
+                    language: 'en',
+                    url: subtitleUrl,
+                    extension: 'srt',
+                },
+            ],
+        };
+        await expect(discovery.videoData(video)).resolves.toMatchObject(expected);
+        await expect(discovery.videoData(video)).resolves.toMatchObject(expected);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     } finally {
         uninstall();
         if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;

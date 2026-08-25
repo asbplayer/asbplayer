@@ -75,6 +75,116 @@ it('discovers contextual string tracks but keeps strict discovery unambiguous', 
     ]);
 });
 
+it('inherits subtitle metadata through namespaced JSON-serialized XML', () => {
+    const metadata = {
+        MPD: [
+            {
+                Period: [
+                    {
+                        SupplementalProperty: [
+                            {
+                                'nvod:SubtitleSet': [
+                                    {
+                                        '@type': 'text/vtt',
+                                        'nvod:Subtitle': [
+                                            {
+                                                '@lang': 'ko',
+                                                'nvod:Source': [
+                                                    {
+                                                        '@type': 'string',
+                                                        '#text': 'https://cdn.example.com/captions/korean',
+                                                    },
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    };
+
+    expect(
+        tracksFromJson(metadata, 'https://example.com/watch', {
+            contextual: true,
+            maximumDepth: 12,
+        }).tracks
+    ).toMatchObject([
+        {
+            label: 'ko',
+            language: 'ko',
+            url: 'https://cdn.example.com/captions/korean',
+            extension: 'vtt',
+        },
+    ]);
+});
+
+it('uses response provenance as root subtitle context', () => {
+    const metadata = { page: { items: [{ src: '/resources/spanish.vtt', lang: 'es' }] } };
+
+    expect(tracksFromJson(metadata, 'https://example.com/api/subtitles', { contextual: true }).tracks).toEqual([]);
+    expect(
+        tracksFromJson(metadata, 'https://example.com/api/subtitles', {
+            contextual: true,
+            rootSubtitleContext: true,
+        }).tracks
+    ).toMatchObject([
+        {
+            label: 'es',
+            language: 'es',
+            url: 'https://example.com/resources/spanish.vtt',
+            extension: 'vtt',
+        },
+    ]);
+});
+
+it('returns only strongly identified subtitle metadata references', () => {
+    const discovery = tracksFromJson(
+        {
+            subtitleRef: '/api/video/1/subtitles',
+            imageRef: '/api/video/1/images',
+            hasSubtitles: 'true',
+            captionUrl: 'javascript:alert(1)',
+        },
+        'https://example.com/watch',
+        { contextual: true }
+    );
+
+    expect([...discovery.metadataUrls]).toEqual(['https://example.com/api/video/1/subtitles']);
+});
+
+it('retains extensionless sources only when their own subtitle record has explicit track metadata', () => {
+    const discovery = tracksFromJson(
+        {
+            subtitles: [
+                {
+                    second_subtitle_position: 0,
+                    product_subtitle_language_id: 3,
+                    name: 'English',
+                    language: 'en',
+                    url: 'https://cdn.example/subtitles/opaque-id',
+                },
+                { url: 'https://cdn.example/subtitles/insufficient-evidence' },
+                { subtitle_language_id: 4, url: 'https://cdn.example/video/movie.mp4' },
+                { subtitle_language_id: 5, type: 'video/mp4', url: 'https://cdn.example/video/opaque-id' },
+            ],
+        },
+        'https://example.com/watch',
+        { contextual: true }
+    );
+
+    expect(discovery.extensionlessTracks).toEqual([
+        {
+            label: 'English',
+            language: 'en',
+            url: 'https://cdn.example/subtitles/opaque-id',
+        },
+    ]);
+});
+
 it('bounds both buffered and streaming response bodies', async () => {
     const bufferedResponse = (text: string) => ({ body: null, text: async () => text }) as unknown as Response;
 

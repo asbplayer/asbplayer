@@ -59,7 +59,7 @@ function tracksFromInlineJson(): JsonDiscovery {
         }
     }
 
-    return { tracks, manifestUrls };
+    return { tracks, manifestUrls, metadataUrls: new Set(), extensionlessTracks: [] };
 }
 
 function directSubtitleTracksFromPerformance(): VideoDataSubtitleTrack[] {
