@@ -31,6 +31,9 @@ export interface PageConfig {
     // Whether this is the generic fallback used for otherwise unsupported pages
     generic?: boolean;
 
+    // Whether to refresh available subtitle tracks when the subtitle picker opens
+    refreshSubtitleDataOnPickerOpen?: boolean;
+
     // Whether a changed media source identifies a new video even when the page URL is unchanged
     videoSrcChangesIndicateNewVideo?: boolean;
 
@@ -141,6 +144,7 @@ export function pageDelegateForUrl(
         host: page?.host ?? urlObj.host,
         pageScript: aggressiveGenericSubtitleParserEnabled ? aggressiveGenericPageScript : baseGenericPageScript,
         generic: true,
+        refreshSubtitleDataOnPickerOpen: true,
         searchShadowRootsForVideoElements:
             page?.searchShadowRootsForVideoElements ?? aggressiveGenericSubtitleParserEnabled,
         autoSync: { ...page?.autoSync, enabled: false },

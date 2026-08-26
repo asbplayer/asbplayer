@@ -110,6 +110,7 @@ it('uses non-autosyncing generic discovery when enabled for an unsupported site'
     expect(page.config).toMatchObject({
         pageScript: 'base-generic-page.js',
         generic: true,
+        refreshSubtitleDataOnPickerOpen: true,
         searchShadowRootsForVideoElements: false,
         autoSync: { enabled: false },
     });
@@ -159,6 +160,7 @@ it('uses aggressive discovery and searches shadow roots in aggressive mode', () 
     expect(page.config).toMatchObject({
         pageScript: 'aggressive-generic-page.js',
         generic: true,
+        refreshSubtitleDataOnPickerOpen: true,
         searchShadowRootsForVideoElements: true,
         autoSync: { enabled: false },
     });

@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { arrayEquals, asbError } from '@project/common/util';
 import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
@@ -60,6 +60,7 @@ interface ShowOptions {
 
 interface RequestSubtitlesOptions {
     readonly videoChanged: boolean;
+    readonly refreshOpenPicker?: boolean;
 }
 
 const fetchDataForLanguageOnDemand = (language: string): Promise<VideoData> => {
@@ -166,7 +167,7 @@ export default class VideoDataSyncController {
         return this._openedLocation;
     }
 
-    async requestSubtitles({ videoChanged }: RequestSubtitlesOptions) {
+    async requestSubtitles({ videoChanged, refreshOpenPicker = false }: RequestSubtitlesOptions) {
         if (!this._context.hasPageScript) {
             return;
         }
@@ -175,7 +176,7 @@ export default class VideoDataSyncController {
         // player events do not clobber an in-progress user selection. On a
         // true soft-navigation or an explicitly reported video change,
         // dismiss the stale picker and continue.
-        if (this.pickerVisible) {
+        if (this.pickerVisible && !refreshOpenPicker) {
             const locationChanged = this.openedLocation !== undefined && window.location.href !== this.openedLocation;
             if (locationChanged || videoChanged) {
                 this._hideAndResume();
@@ -190,8 +191,10 @@ export default class VideoDataSyncController {
             return;
         }
 
-        this._syncedData = undefined;
-        this._autoSyncAttempted = false;
+        if (!refreshOpenPicker) {
+            this._syncedData = undefined;
+            this._autoSyncAttempted = false;
+        }
 
         const eventTarget = pageDelegate.config.generic ? this._context.video : document;
         if (!this._dataReceivedListener || this._dataReceivedEventTarget !== eventTarget) {
@@ -242,6 +245,11 @@ export default class VideoDataSyncController {
         const model = await this._buildModel(additionalFields);
         this._prepareShow();
         client.updateState(model);
+
+        const pageDelegate = await currentPageDelegate();
+        if (pageDelegate.config.refreshSubtitleDataOnPickerOpen === true) {
+            void this.requestSubtitles({ videoChanged: false, refreshOpenPicker: true });
+        }
     }
 
     private async _buildModel(additionalFields: Partial<VideoDataUiModel>) {
@@ -363,8 +371,22 @@ export default class VideoDataSyncController {
     }
 
     private async _setSyncedData(data: VideoData) {
+        const previousSubtitleIds = this._syncedData?.subtitles?.map((track) => track.id);
         const wasLoading = this._syncedData?.subtitles === undefined;
         this._syncedData = data;
+
+        if (this.pickerVisible && !wasLoading) {
+            const subtitleIds = data.subtitles?.map((track) => track.id);
+            if (!arrayEquals(previousSubtitleIds, subtitleIds)) {
+                this._frame.clientIfLoaded?.updateState({
+                    subtitles: data.subtitles ?? [],
+                    suggestedName: data.basename,
+                    error: data.error ?? '',
+                    isLoading: false,
+                });
+            }
+            return;
+        }
 
         if (this._syncedData?.subtitles !== undefined && (await this._canAutoSync())) {
             if (!this._autoSyncAttempted) {
