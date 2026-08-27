@@ -210,6 +210,7 @@ export default function VideoDataSyncDialog({
     const { t } = useTranslation();
     const [name, setName] = useState('');
     const [shouldRememberTrackChoices, setShouldRememberTrackChoices] = useState(false);
+    const [genericSubtitleParserChanged, setGenericSubtitleParserChanged] = useState(false);
     const trimmedName = name.trim();
     const classes = createClasses();
 
@@ -218,6 +219,10 @@ export default function VideoDataSyncDialog({
             setShouldRememberTrackChoices(defaultCheckboxState);
         }
     }, [open, defaultCheckboxState]);
+
+    useEffect(() => {
+        if (open) setGenericSubtitleParserChanged(false);
+    }, [open]);
 
     useEffect(() => {
         setName((name) => {
@@ -259,6 +264,11 @@ export default function VideoDataSyncDialog({
 
     function handleRememberTrackChoices() {
         setShouldRememberTrackChoices(!shouldRememberTrackChoices);
+    }
+
+    function handleGenericSubtitleParserChange(parse: GenericParseType) {
+        onGenericSubtitleParserChange?.(parse);
+        setGenericSubtitleParserChanged(true);
     }
 
     function allSelectedSubtitleTracks() {
@@ -524,7 +534,7 @@ export default function VideoDataSyncDialog({
                                                     checked={genericSubtitleParser !== 'off'}
                                                     disabled={genericSubtitleParser === 'aggressive'}
                                                     onChange={(event) =>
-                                                        onGenericSubtitleParserChange?.(
+                                                        handleGenericSubtitleParserChange(
                                                             event.target.checked ? 'base' : 'off'
                                                         )
                                                     }
@@ -548,7 +558,7 @@ export default function VideoDataSyncDialog({
                                                     <Switch
                                                         checked={genericSubtitleParser === 'aggressive'}
                                                         onChange={(event) =>
-                                                            onGenericSubtitleParserChange?.(
+                                                            handleGenericSubtitleParserChange(
                                                                 event.target.checked ? 'aggressive' : 'base'
                                                             )
                                                         }
@@ -567,12 +577,18 @@ export default function VideoDataSyncDialog({
                                         </Grid>
                                     )}
                                     <Grid item>
-                                        <Alert severity={isGenericPage ? 'warning' : 'info'}>
-                                            {t(
-                                                isGenericPage
-                                                    ? 'extension.videoDataSync.genericPageWarning'
-                                                    : 'extension.videoDataSync.genericPageInfo'
-                                            )}
+                                        <Alert
+                                            severity={
+                                                genericSubtitleParserChanged || !isGenericPage ? 'info' : 'warning'
+                                            }
+                                        >
+                                            {genericSubtitleParserChanged
+                                                ? t('info.refreshForChangesToTakeEffect')
+                                                : t(
+                                                      isGenericPage
+                                                          ? 'extension.videoDataSync.genericPageWarning'
+                                                          : 'extension.videoDataSync.genericPageInfo'
+                                                  )}
                                         </Alert>
                                     </Grid>
                                 </>

@@ -335,7 +335,8 @@
         "error": "Errore: {{message}}",
         "errorNoMessage": "Errore",
         "toggleSubtitlesShortcut": "Premi \"{{keys}}\" per mostrare/nascondere i sottotitoli",
-        "manualMiningIntervalPrompt": "Usa di nuovo la scorciatoia di estrazione"
+        "manualMiningIntervalPrompt": "Usa di nuovo la scorciatoia di estrazione",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Trascina e rilascia file di sottotitoli e media, o <1>sfoglia</1>.",

@@ -335,7 +335,8 @@
         "error": "오류: {{message}}",
         "errorNoMessage": "오류",
         "toggleSubtitlesShortcut": "\"{{keys}}\" 키를 눌러 자막 표시를 전환",
-        "manualMiningIntervalPrompt": "자막 추출 단축키를 다시 사용하세요"
+        "manualMiningIntervalPrompt": "자막 추출 단축키를 다시 사용하세요",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "자막 및 미디어 파일을 드래그 앤 드롭 하거나, <1>찾아보기</1>를 클릭하세요.",

@@ -335,7 +335,8 @@
         "error": "Galat: {{message}}",
         "errorNoMessage": "Galat",
         "toggleSubtitlesShortcut": "Tekan \"{{keys}}\" untuk menampilkan/sembunyikan takarir",
-        "manualMiningIntervalPrompt": "Gunakan kembali pintasan penambangan"
+        "manualMiningIntervalPrompt": "Gunakan kembali pintasan penambangan",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Seret dan letakkan berkas takarir dan media, atau <1>jelajahi</1>.",

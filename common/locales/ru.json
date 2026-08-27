@@ -335,7 +335,8 @@
         "error": "Ошибка: {{message}}",
         "errorNoMessage": "Ошибка",
         "toggleSubtitlesShortcut": "Нажмите \"{{keys}}\" для переключения отображения субтитров",
-        "manualMiningIntervalPrompt": "Нажмите горячую клавишу для майнинга ещё раз, чтобы задать временной отрезок"
+        "manualMiningIntervalPrompt": "Нажмите горячую клавишу для майнинга ещё раз, чтобы задать временной отрезок",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Перетащите медиафайлы и файлы субтитров или <1>выберите</1> их.",

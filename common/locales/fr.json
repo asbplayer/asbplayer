@@ -335,7 +335,8 @@
         "error": "Erreur : {{message}}",
         "errorNoMessage": "Erreur",
         "toggleSubtitlesShortcut": "Appuyez sur \"{{keys}}\" pour activer/désactiver l'affichage des sous-titres",
-        "manualMiningIntervalPrompt": "Réutiliser le raccourci de minage"
+        "manualMiningIntervalPrompt": "Réutiliser le raccourci de minage",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Glissez-déposez des fichiers de sous-titres et multimédia, ou <1>parcourir</1>.",

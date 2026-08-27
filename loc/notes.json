@@ -177,6 +177,7 @@
         "ftue.welcomeBody": "Text that is displayed when user installs asbplayer for the first time.",
         "info.connectionFailed": "Helper text in settings dialog indicating WebSocket connection failed.",
         "info.connectionSucceeded": "Helper text in settings dialog indicating WebSocket connection succeeded.",
+        "info.refreshForChangesToTakeEffect": "Information shown after changing a setting that requires the page to be refreshed.",
         "info.copiedSubtitle": "Text that is displayed when asbplayer mines a subtitle.",
         "info.copiedSubtitle2": "Notification displayed when user copies/mines a subtitle.",
         "info.disabledAutoPause": "Displayed when user toggles off auto-pause playback mode.",

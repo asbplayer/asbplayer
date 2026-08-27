@@ -335,7 +335,8 @@
         "error": "Error: {{message}}",
         "errorNoMessage": "Error",
         "toggleSubtitlesShortcut": "Pulsa \"{{keys}}\" para activar/desactivar la visualización de subtítulos",
-        "manualMiningIntervalPrompt": "Volver a usar el acceso directo de minería"
+        "manualMiningIntervalPrompt": "Volver a usar el acceso directo de minería",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Arrastra archivos de medios y subtítulos o <1>explora</1>.",

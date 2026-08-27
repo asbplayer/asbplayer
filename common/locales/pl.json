@@ -335,7 +335,8 @@
         "error": "Błąd: {{message}}",
         "errorNoMessage": "Błąd",
         "toggleSubtitlesShortcut": "Naciśnij \"{{keys}}\", aby przełączyć wyświetlanie napisów",
-        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range"
+        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Przenieś i upuść napisy i pliki medialne, lub <1>przeglądaj</1>.",

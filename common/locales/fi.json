@@ -335,7 +335,8 @@
         "error": "Virhe: {{message}}",
         "errorNoMessage": "Virhe",
         "toggleSubtitlesShortcut": "Valitse tekstityksen näyttö painamalla \"{{keys}}\"",
-        "manualMiningIntervalPrompt": "Käytä louhintapikakuvaketta uudelleen"
+        "manualMiningIntervalPrompt": "Käytä louhintapikakuvaketta uudelleen",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Vedä ja pudota tekstitys ja media tiedostot, tai <1>browse</1>.",

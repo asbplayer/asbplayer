@@ -335,7 +335,8 @@
         "error": "Erro: {{message}}",
         "errorNoMessage": "Erro",
         "toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display",
-        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range"
+        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Arraste e solte arquivos de mídia e legenda, ou <1>procure</1>.",

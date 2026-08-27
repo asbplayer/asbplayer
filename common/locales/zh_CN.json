@@ -335,7 +335,8 @@
         "error": "错误：{{message}}",
         "errorNoMessage": "发生错误",
         "toggleSubtitlesShortcut": "按“{{keys}}”切换字幕显示",
-        "manualMiningIntervalPrompt": "再次使用挖掘快捷键确认时间段"
+        "manualMiningIntervalPrompt": "再次使用挖掘快捷键确认时间段",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "拖放字幕与媒体文件至此，或点击 <1>浏览</1>。",
