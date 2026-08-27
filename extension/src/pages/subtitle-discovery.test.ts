@@ -6,6 +6,7 @@ import {
     basenameForVideo,
     bindVideoDataDiscovery,
     deduplicateTracks,
+    hasSubtitleMetadataHint,
     isJsonContentType,
     normalizedContentType,
     responseTextWithinLimit,
@@ -64,6 +65,73 @@ it('honors JSON traversal depth and object-count limits', () => {
     expect(tracksFromJson(siblings, 'http://localhost/', { maximumObjects: 3 }).tracks).toMatchObject([
         { url: 'http://localhost/later.vtt' },
     ]);
+});
+
+it('requires paired semantic and track evidence before treating JSON as subtitle metadata', () => {
+    expect(
+        hasSubtitleMetadataHint(
+            JSON.stringify({
+                subtitleInfos: [{ Url: 'https://cdn.example/opaque', Format: 'webvtt' }],
+            })
+        )
+    ).toBe(true);
+    expect(hasSubtitleMetadataHint(JSON.stringify({ subtitlesEnabled: true, format: 'webvtt' }))).toBe(false);
+    expect(hasSubtitleMetadataHint(JSON.stringify({ subtitleInfos: [{ enabled: true }] }))).toBe(false);
+});
+
+it('accepts a supported format as strict subtitle evidence', () => {
+    expect(
+        tracksFromJson(
+            {
+                media: {
+                    Url: 'https://cdn.example/opaque',
+                    Format: 'webvtt',
+                    LanguageCodeName: 'eng-US',
+                    display: 'English auto-generated',
+                },
+            },
+            'https://example.com/watch',
+            { maximumDepth: 2 }
+        ).tracks
+    ).toMatchObject([
+        {
+            label: 'English auto-generated',
+            language: 'eng-us',
+            url: 'https://cdn.example/opaque',
+            extension: 'vtt',
+        },
+    ]);
+});
+
+it('uses baseUrl as a source only inside strong subtitle context', () => {
+    const contextual = tracksFromJson(
+        {
+            captionTracks: [
+                {
+                    baseUrl: 'https://cdn.example/timedtext?id=1',
+                    languageCodeName: 'pt-BR',
+                    fileName: 'Portuguese',
+                },
+            ],
+        },
+        'https://example.com/watch',
+        { contextual: true }
+    );
+
+    expect(contextual.extensionlessTracks).toEqual([
+        {
+            label: 'Portuguese',
+            language: 'pt-br',
+            url: 'https://cdn.example/timedtext?id=1',
+        },
+    ]);
+    expect(
+        tracksFromJson(
+            { baseUrl: 'https://cdn.example/timedtext?id=1', fileName: 'Not contextual' },
+            'https://example.com/watch',
+            { contextual: true }
+        ).extensionlessTracks
+    ).toEqual([]);
 });
 
 it('discovers contextual string tracks but keeps strict discovery unambiguous', () => {

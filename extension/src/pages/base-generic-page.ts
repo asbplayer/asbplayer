@@ -1,12 +1,17 @@
 import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
-import { parseM3U8, subtitleTrackSegmentsFromM3U8Manifest } from '@project/extension/src/pages/m3u8-util';
+import {
+    limitM3U8SubtitleRenditions,
+    parseM3U8,
+    subtitleTrackSegmentsFromM3U8Manifest,
+} from '@project/extension/src/pages/m3u8-util';
 import {
     absoluteHttpUrl,
     absoluteSubtitleUrl,
     basenameForVideo,
     bindVideoDataDiscovery,
     deduplicateTracks,
+    detectedSubtitleLabel,
     isJsonContentType,
     nonEmptyString,
     normalizedContentType,
@@ -17,11 +22,12 @@ import {
 import type { JsonDiscovery, VideoDataProvider } from '@project/extension/src/pages/subtitle-discovery';
 import { trackFromDef } from '@project/extension/src/pages/util';
 
-const maximumInlineJsonScripts = 5;
-const maximumInlineJsonLength = 128_000;
+export const maximumInlineJsonScripts = 5;
+export const maximumInlineJsonLength = 128_000;
 const maximumInlineJsonTotalLength = 256_000;
-const maximumSerializedCues = 10_000;
-const maximumSerializedCueLength = 1_000_000;
+export const maximumTextTrackCues = 10_000;
+export const maximumTextTrackTextLength = 1_000_000;
+export const capturedDuringPlaybackLabelSuffix = ' (captured during playback)';
 const maximumInlineManifestUrls = 3;
 const maximumManifestSubtitleRenditions = 10;
 const maximumManifestSegments = 200;
@@ -82,7 +88,7 @@ function directSubtitleTracksFromPerformance(): VideoDataSubtitleTrack[] {
 
             tracks.push(
                 trackFromDef({
-                    label: language ?? 'Detected subtitle',
+                    label: language ?? detectedSubtitleLabel,
                     language,
                     url,
                     extension,
@@ -100,31 +106,27 @@ interface LoadedM3U8Manifest {
     url: string;
 }
 
+export interface SerializableCue {
+    startTime: number;
+    endTime: number;
+    text: string;
+    source?: object;
+}
+
+export interface AccumulatedTextTrackCues {
+    cues: readonly SerializableCue[];
+    capturedOverTime: boolean;
+}
+
+export interface TextTrackCueProvider {
+    cuesFor(video: HTMLVideoElement, track: TextTrack): AccumulatedTextTrackCues;
+}
+
 function boundedM3U8Manifest(manifest: any) {
     if (Array.isArray(manifest?.segments)) {
         return { ...manifest, segments: manifest.segments.slice(0, maximumManifestSegments) };
     }
     return manifest;
-}
-
-function boundedSubtitleManifest(manifest: any) {
-    const subtitleGroups = manifest?.mediaGroups?.SUBTITLES;
-    if (subtitleGroups === null || typeof subtitleGroups !== 'object') return manifest;
-
-    let remaining = maximumManifestSubtitleRenditions;
-    const groups: Record<string, Record<string, unknown>> = {};
-    for (const [groupId, group] of Object.entries(subtitleGroups)) {
-        if (remaining === 0 || group === null || typeof group !== 'object') break;
-        const entries = Object.entries(group).slice(0, remaining);
-        if (entries.length === 0) continue;
-        groups[groupId] = Object.fromEntries(entries);
-        remaining -= entries.length;
-    }
-
-    return {
-        ...manifest,
-        mediaGroups: { ...manifest.mediaGroups, SUBTITLES: groups },
-    };
 }
 
 async function fetchBoundedM3U8(url: string): Promise<LoadedM3U8Manifest> {
@@ -162,7 +164,7 @@ async function tracksFromInlineManifests(manifestUrls: ReadonlySet<string>) {
             const loadedManifest = await fetchBoundedM3U8(url);
             return subtitleTrackSegmentsFromM3U8Manifest(
                 loadedManifest.url,
-                boundedSubtitleManifest(loadedManifest.manifest),
+                limitM3U8SubtitleRenditions(loadedManifest.manifest, maximumManifestSubtitleRenditions),
                 async (subtitleManifestUrl) => fetchBoundedM3U8(subtitleManifestUrl)
             );
         })
@@ -173,12 +175,11 @@ async function tracksFromInlineManifests(manifestUrls: ReadonlySet<string>) {
     return tracks;
 }
 
-function srtFromTextTrack(track: TextTrack): string | undefined {
+export function cuesFromTextTrack(track: TextTrack): SerializableCue[] {
     try {
-        if (track.cues === null || track.cues.length === 0 || track.cues.length > maximumSerializedCues) return;
+        if (track.cues === null || track.cues.length === 0 || track.cues.length > maximumTextTrackCues) return [];
 
-        const subtitles: { start: number; end: number; text: string }[] = [];
-        let cueTextLength = 0;
+        const cues: SerializableCue[] = [];
         for (const cue of Array.from(track.cues)) {
             const cueText = (cue as VTTCue).text;
             if (
@@ -191,20 +192,34 @@ function srtFromTextTrack(track: TextTrack): string | undefined {
                 continue;
             }
 
-            cueTextLength += cueText.length;
-            if (cueTextLength > maximumSerializedCueLength) return;
-            subtitles.push({ start: cue.startTime * 1000, end: cue.endTime * 1000, text: cueText });
+            cues.push({ startTime: cue.startTime, endTime: cue.endTime, text: cueText, source: cue });
         }
+        return cues;
+    } catch {
+        return [];
+    }
+}
 
-        if (subtitles.length === 0) return;
+function srtFromCues(cues: readonly SerializableCue[]): string | undefined {
+    try {
+        if (cues.length === 0 || cues.length > maximumTextTrackCues) return;
+        let cueTextLength = 0;
+        const subtitles = cues.map((cue) => {
+            cueTextLength += cue.text.length;
+            return { start: cue.startTime * 1000, end: cue.endTime * 1000, text: cue.text };
+        });
+        if (cueTextLength > maximumTextTrackTextLength) return;
         const text = subtitlesToSrt(subtitles);
-        return text.length > maximumSerializedCueLength ? undefined : text;
+        return text.length > maximumTextTrackTextLength ? undefined : text;
     } catch {
         return;
     }
 }
 
-export function nativeSubtitleTracks(video: HTMLVideoElement): VideoDataSubtitleTrack[] {
+export function nativeSubtitleTracks(
+    video: HTMLVideoElement,
+    cueProvider?: TextTrackCueProvider
+): VideoDataSubtitleTrack[] {
     const tracks: VideoDataSubtitleTrack[] = [];
     const elementTextTracks = new Set<TextTrack>();
     const trackElements = Array.from(video.querySelectorAll('track'));
@@ -236,12 +251,18 @@ export function nativeSubtitleTracks(video: HTMLVideoElement): VideoDataSubtitle
             const kind = textTrack.kind.toLowerCase();
             if (kind !== 'subtitles' && kind !== 'captions') continue;
 
-            const text = srtFromTextTrack(textTrack);
+            const accumulated = cueProvider?.cuesFor(video, textTrack) ?? {
+                cues: cuesFromTextTrack(textTrack),
+                capturedOverTime: false,
+            };
+            const text = srtFromCues(accumulated.cues);
             if (text === undefined) continue;
             const language = textTrack.language.trim().toLowerCase() || undefined;
             tracks.push(
                 trackFromDef({
-                    label: textTrack.label.trim() || language || `Subtitle ${trackElements.length + index + 1}`,
+                    label: `${textTrack.label.trim() || language || `Subtitle ${trackElements.length + index + 1}`}${
+                        accumulated.capturedOverTime ? capturedDuringPlaybackLabelSuffix : ''
+                    }`,
                     language,
                     url: `data:application/x-subrip;charset=utf-8,${encodeURIComponent(text)}`,
                     extension: 'srt',
@@ -274,8 +295,10 @@ function subtitleLanguageFromUrl(url: string) {
 }
 
 export class BaseGenericPageDiscovery implements VideoDataProvider {
+    constructor(private readonly cueProvider?: TextTrackCueProvider) {}
+
     async videoData(video: HTMLVideoElement): Promise<VideoData> {
-        const tracks = nativeSubtitleTracks(video);
+        const tracks = nativeSubtitleTracks(video, this.cueProvider);
         tracks.push(...directSubtitleTracksFromPerformance());
         const inlineJson = tracksFromInlineJson();
         tracks.push(...inlineJson.tracks, ...(await tracksFromInlineManifests(inlineJson.manifestUrls)));

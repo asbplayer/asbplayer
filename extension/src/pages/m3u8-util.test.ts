@@ -147,6 +147,31 @@ video.m3u8`);
     ]);
 });
 
+it('keeps a URI-bearing subtitle rendition when its optional language is absent', async () => {
+    const loader = async (url: string) => ({
+        manifest: parseM3U8(`#EXTM3U
+#EXTINF:10,
+segment-1.vtt
+#EXT-X-ENDLIST`),
+        url,
+    });
+    const masterManifest = parseM3U8(`#EXTM3U
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",URI="en.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=1280000,SUBTITLES="subs"
+video.m3u8`);
+
+    await expect(
+        subtitleTrackSegmentsFromM3U8Manifest('https://cdn.example/master.m3u8', masterManifest, loader)
+    ).resolves.toMatchObject([
+        {
+            label: 'English',
+            language: undefined,
+            url: ['https://cdn.example/segment-1.vtt'],
+            extension: 'vtt',
+        },
+    ]);
+});
+
 it('resolves segment URIs against the final manifest URL reported by the loader', async () => {
     const loader = async (url: string) => ({
         manifest: parseM3U8(`#EXTM3U

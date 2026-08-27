@@ -1,9 +1,45 @@
 import { afterEach, expect, it, jest } from '@jest/globals';
 
-// This suite does not exercise TextTrack serialization, and its ESM dependency is not transformed by Jest.
-jest.mock('@project/common/subtitle-reader/subtitles-to-srt', () => ({ subtitlesToSrt: jest.fn() }));
+// The package ships ESM that this repository's Jest setup does not transform.
+jest.mock('@project/common/subtitle-reader/subtitles-to-srt', () => ({
+    subtitlesToSrt: (subtitles: readonly { text: string }[]) => subtitles.map(({ text }) => text).join('\n'),
+}));
 
 import { AggressiveGenericPageDiscovery } from '@project/extension/src/pages/aggressive-generic-page';
+
+function appendJson(value: unknown) {
+    const script = document.createElement('script');
+    script.type = 'application/json';
+    script.textContent = JSON.stringify(value);
+    document.body.appendChild(script);
+}
+
+function mockTextTrack(video: HTMLVideoElement, initialCues: readonly object[]) {
+    let cues = initialCues;
+    const track = new EventTarget() as EventTarget & TextTrack;
+    Object.defineProperties(track, {
+        kind: { configurable: true, value: 'captions' },
+        label: { configurable: true, value: 'English' },
+        language: { configurable: true, value: 'en' },
+        mode: { configurable: true, writable: true, value: 'hidden' },
+        cues: {
+            configurable: true,
+            get: () => Object.assign({}, cues, { length: cues.length }),
+        },
+    });
+    const textTracks = new EventTarget() as EventTarget & TextTrackList;
+    Object.defineProperties(textTracks, {
+        0: { configurable: true, value: track },
+        length: { configurable: true, value: 1 },
+    });
+    Object.defineProperty(video, 'textTracks', { configurable: true, value: textTracks });
+    return {
+        track,
+        setCues(value: readonly object[]) {
+            cues = value;
+        },
+    };
+}
 
 afterEach(() => {
     jest.useRealTimers();
@@ -60,6 +96,292 @@ it('discovers contextual subtitle metadata observed through JSON.parse', async (
     expect(window.fetch).toBe(originalFetch);
     expect(window.XMLHttpRequest.prototype.open).toBe(originalOpen);
     expect(JSON.parse).toBe(originalParse);
+});
+
+it('discovers HLS renditions from a manifest URL observed only in a runtime JSON response', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const resources = new Map([
+        [
+            'https://cdn.example/config/playback.json',
+            {
+                contentType: 'application/json',
+                text: JSON.stringify({ playback: { manifestUrl: '../master.m3u8' } }),
+            },
+        ],
+        [
+            'https://cdn.example/master.m3u8',
+            {
+                contentType: 'application/vnd.apple.mpegurl',
+                responseUrl: 'https://media.example/redirected/master.m3u8',
+                text: '#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="en.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=1,SUBTITLES="subs"\nvideo.m3u8',
+            },
+        ],
+        [
+            'https://media.example/redirected/en.m3u8',
+            {
+                contentType: 'application/vnd.apple.mpegurl',
+                text: '#EXTM3U\n#EXTINF:10,\nen-1.vtt\n#EXT-X-ENDLIST',
+            },
+        ],
+    ]);
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        const resource = resources.get(url);
+        if (resource === undefined) throw new Error(`Unexpected URL: ${url}`);
+        return {
+            ok: true,
+            status: 200,
+            url: 'responseUrl' in resource ? resource.responseUrl : url,
+            headers: { get: () => resource.contentType },
+            clone() {
+                return this;
+            },
+            text: async () => resource.text,
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://cdn.example/config/playback.json');
+
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [
+                {
+                    label: 'English',
+                    language: 'en',
+                    url: ['https://media.example/redirected/en-1.vtt'],
+                    extension: 'vtt',
+                },
+            ],
+        });
+        expect(fetchMock.mock.calls.map(([input]) => input.toString())).toEqual([
+            'https://cdn.example/config/playback.json',
+            'https://cdn.example/master.m3u8',
+            'https://media.example/redirected/en.m3u8',
+        ]);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('bounds manifest requests sourced from runtime JSON', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => 'application/vnd.apple.mpegurl' },
+            text: async () => '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nvideo.m3u8',
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        JSON.parse(
+            JSON.stringify({
+                playback: Array.from({ length: 4 }, (_, index) => ({
+                    manifestUrl: `https://cdn.example/master-${index}.m3u8`,
+                })),
+            })
+        );
+
+        await discovery.videoData(video);
+        expect(fetchMock.mock.calls.map(([input]) => input.toString())).toEqual([
+            'https://cdn.example/master-0.m3u8',
+            'https://cdn.example/master-1.m3u8',
+            'https://cdn.example/master-2.m3u8',
+        ]);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('uses a larger bounded traversal only for strongly hinted JSON.parse payloads', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        JSON.parse(
+            JSON.stringify({
+                blockers: Array.from({ length: 700 }, (_, index) => ({ analytics: index })),
+                player: {
+                    state: {
+                        subtitleInfos: [
+                            {
+                                Url: 'https://cdn.example/timedtext?id=1',
+                                Format: 'webvtt',
+                                LanguageCodeName: 'eng-US',
+                            },
+                        ],
+                    },
+                },
+            })
+        );
+
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [
+                {
+                    language: 'eng-us',
+                    url: 'https://cdn.example/timedtext?id=1',
+                    extension: 'vtt',
+                },
+            ],
+        });
+    } finally {
+        uninstall();
+    }
+});
+
+it('uses one bounded aggressive pass for a large late hydration payload', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    for (let index = 0; index < 7; index++) appendJson({ analytics: { index } });
+    appendJson({
+        padding: 'x'.repeat(130_000),
+        blockers: Array.from({ length: 700 }, (_, index) => ({ analytics: index })),
+        __DEFAULT_SCOPE__: {
+            webapp: {
+                videoDetail: {
+                    itemInfo: {
+                        itemStruct: {
+                            video: {
+                                subtitleInfos: [
+                                    {
+                                        Url: 'https://cdn.example/timedtext?id=1',
+                                        Format: 'webvtt',
+                                        LanguageCodeName: 'eng-US',
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [
+                {
+                    label: 'eng-us',
+                    language: 'eng-us',
+                    url: 'https://cdn.example/timedtext?id=1',
+                    extension: 'vtt',
+                },
+            ],
+        });
+    } finally {
+        uninstall();
+    }
+});
+
+it('passively accumulates enabled cues only in aggressive mode', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const firstCue = { startTime: 1, endTime: 2, text: 'First' };
+    const secondCue = { startTime: 3, endTime: 4, text: 'Second' };
+    const textTrack = mockTextTrack(video, [firstCue]);
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await discovery.videoData(video);
+        textTrack.setCues([secondCue]);
+        textTrack.track.dispatchEvent(new Event('cuechange'));
+        textTrack.setCues([]);
+
+        const data = await discovery.videoData(video);
+        expect(data.subtitles).toHaveLength(1);
+        expect(data.subtitles?.[0]).toMatchObject({
+            label: 'English (captured during playback)',
+            language: 'en',
+            extension: 'srt',
+        });
+        const text = decodeURIComponent((data.subtitles?.[0].url as string).split(',', 2)[1]);
+        expect(text).toContain('First');
+        expect(text).toContain('Second');
+        expect(textTrack.track.mode).toBe('hidden');
+    } finally {
+        uninstall();
+    }
+});
+
+it('clears aggressively accumulated cues on navigation and teardown', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const textTrack = mockTextTrack(video, [{ startTime: 1, endTime: 2, text: 'Old page' }]);
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    await discovery.videoData(video);
+    textTrack.setCues([]);
+    history.pushState(null, '', '/new-page');
+    await expect(discovery.videoData(video)).resolves.toMatchObject({ subtitles: [] });
+
+    textTrack.setCues([{ startTime: 3, endTime: 4, text: 'After cleanup' }]);
+    textTrack.track.dispatchEvent(new Event('cuechange'));
+    uninstall();
+    textTrack.setCues([]);
+    await expect(discovery.videoData(video)).resolves.toMatchObject({ subtitles: [] });
+});
+
+it('uses subtitle-service hostnames as context without matching unrelated prefixes', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => 'text/plain' },
+            clone() {
+                return this;
+            },
+            text: async () => 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHello\n',
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://subscription.example/resource');
+        await window.fetch('https://subs.example/resource');
+
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [
+                expect.objectContaining({
+                    url: 'https://subs.example/resource',
+                    extension: 'vtt',
+                }),
+            ],
+        });
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
 });
 
 it('follows a subtitle metadata reference once and applies response URL context', async () => {
@@ -159,6 +481,207 @@ it('sniffs extensionless subtitle responses intercepted through fetch', async ()
                 }),
             ])
         );
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('trusts captured body structure over misleading subtitle URLs and MIME types', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const originalGetEntriesByType = Object.getOwnPropertyDescriptor(performance, 'getEntriesByType');
+    const responses = new Map([
+        ['https://cdn.example/empty.vtt', { contentType: 'text/vtt', text: '' }],
+        ['https://cdn.example/error.vtt', { contentType: 'text/vtt', text: '<!doctype html><title>Error</title>' }],
+        ['https://cdn.example/encrypted.vtt', { contentType: 'text/vtt', text: 'A'.repeat(128) }],
+        [
+            'https://cdn.example/captions.webvtt',
+            {
+                contentType: 'text/vtt',
+                text: JSON.stringify({ subtitles: [{ src: '/real.vtt', language: 'en' }] }),
+            },
+        ],
+    ]);
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        const resource = responses.get(url);
+        if (resource === undefined) throw new Error(`Unexpected URL: ${url}`);
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => resource.contentType },
+            clone() {
+                return this;
+            },
+            text: async () => resource.text,
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    Object.defineProperty(performance, 'getEntriesByType', {
+        configurable: true,
+        value: () =>
+            Array.from(responses.keys(), (name) => ({
+                name,
+                entryType: 'resource',
+                initiatorType: 'fetch',
+            })) as PerformanceResourceTiming[],
+    });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        for (const url of responses.keys()) await window.fetch(url);
+
+        const data = await discovery.videoData(video);
+        expect(data.subtitles).toEqual([
+            expect.objectContaining({
+                language: 'en',
+                url: 'https://cdn.example/real.vtt',
+                extension: 'vtt',
+            }),
+        ]);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+        if (originalGetEntriesByType === undefined) Reflect.deleteProperty(performance, 'getEntriesByType');
+        else Object.defineProperty(performance, 'getEntriesByType', originalGetEntriesByType);
+    }
+});
+
+it('does not mistake a declared ASS subtitle with a late events section for JSON', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const url = 'https://cdn.example/long-styles.ass';
+    const text = `[Script Info]\n${'Comment: style metadata\n'.repeat(1_000)}[Events]\nDialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,Hello`;
+    Object.defineProperty(window, 'fetch', {
+        configurable: true,
+        writable: true,
+        value: jest.fn(async () => {
+            return {
+                ok: true,
+                status: 200,
+                url,
+                headers: { get: () => 'text/x-ass' },
+                clone() {
+                    return this;
+                },
+                text: async () => text,
+            } as unknown as Response;
+        }),
+    });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch(url);
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [expect.objectContaining({ url, extension: 'ass' })],
+        });
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('filters storyboard WebVTT without rejecting mixed dialogue cues', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const storyboard = `WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+sprite.jpg#xywh=0,0,100,100
+
+00:00:01.000 --> 00:00:02.000
+sprite.jpg#xywh=100,0,100,100
+`;
+    const dialogue = `WEBVTT
+
+00:00:00.000 --> 00:00:01.000
+See image.jpg#xywh=0,0,100,100
+
+00:00:01.000 --> 00:00:02.000
+Spoken dialogue
+`;
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => 'text/vtt' },
+            clone() {
+                return this;
+            },
+            text: async () => (url.includes('storyboard') ? storyboard : dialogue),
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://cdn.example/storyboard.vtt');
+        await window.fetch('https://cdn.example/dialogue.vtt');
+
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [expect.objectContaining({ url: 'https://cdn.example/dialogue.vtt' })],
+        });
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('captures a MIME-mislabelled body only after metadata identifies its URL as a subtitle', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const identifiedUrl = 'https://media.example/resource?id=identified';
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => 'image/jpeg' },
+            clone() {
+                return this;
+            },
+            text: async () => 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHello\n',
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://media.example/resource?id=unknown');
+        JSON.parse(
+            JSON.stringify({
+                captionTracks: [{ baseUrl: identifiedUrl, languageCodeName: 'en', fileName: 'English' }],
+            })
+        );
+        await window.fetch(identifiedUrl);
+
+        await expect(discovery.videoData(video)).resolves.toMatchObject({
+            subtitles: [
+                expect.objectContaining({
+                    label: 'English',
+                    language: 'en',
+                    url: identifiedUrl,
+                    extension: 'vtt',
+                }),
+            ],
+        });
     } finally {
         uninstall();
         if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
@@ -506,6 +1029,175 @@ it('discovers HLS renditions without also exposing their segments as tracks', as
     }
 });
 
+it('limits aggressive HLS discovery to ten subtitle renditions', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const renditions = Array.from({ length: 12 }, (_, index) => index);
+    const masterManifest = `#EXTM3U
+${renditions
+    .map(
+        (index) =>
+            `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Language ${index}",LANGUAGE="l${index}",URI="sub-${index}.m3u8"`
+    )
+    .join('\n')}
+#EXT-X-STREAM-INF:BANDWIDTH=1,SUBTITLES="subs"
+video.m3u8`;
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        const match = /sub-(\d+)\.m3u8$/.exec(url);
+        const text =
+            url === 'https://cdn.example/master.m3u8'
+                ? masterManifest
+                : match === null
+                  ? undefined
+                  : `#EXTM3U\n#EXTINF:10,\nsub-${match[1]}.vtt\n#EXT-X-ENDLIST`;
+        if (text === undefined) throw new Error(`Unexpected URL: ${url}`);
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => 'application/vnd.apple.mpegurl' },
+            clone() {
+                return this;
+            },
+            text: async () => text,
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://cdn.example/master.m3u8');
+        const data = await discovery.videoData(video);
+
+        expect(data.subtitles).toHaveLength(10);
+        expect(fetchMock.mock.calls.map(([input]) => input.toString())).toEqual([
+            'https://cdn.example/master.m3u8',
+            ...renditions.slice(0, 10).map((index) => `https://cdn.example/sub-${index}.m3u8`),
+        ]);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('ranks a validated complete sidecar ahead of a segmented rendition', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const resources = new Map([
+        [
+            'https://cdn.example/master.m3u8',
+            {
+                contentType: 'application/vnd.apple.mpegurl',
+                text: '#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="en.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=1,SUBTITLES="subs"\nvideo.m3u8',
+            },
+        ],
+        [
+            'https://cdn.example/en.m3u8',
+            {
+                contentType: 'application/vnd.apple.mpegurl',
+                text: '#EXTM3U\n#EXTINF:10,\nen-1.vtt\n#EXT-X-ENDLIST',
+            },
+        ],
+        [
+            'https://cdn.example/complete.srt',
+            {
+                contentType: 'application/x-subrip',
+                text: '1\n00:00:00,000 --> 00:00:01,000\nHello\n',
+            },
+        ],
+    ]);
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        const resource = resources.get(url);
+        if (resource === undefined) throw new Error(`Unexpected URL: ${url}`);
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => resource.contentType },
+            clone() {
+                return this;
+            },
+            text: async () => resource.text,
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://cdn.example/master.m3u8');
+        await window.fetch('https://cdn.example/en.m3u8');
+        await window.fetch('https://cdn.example/complete.srt');
+
+        const data = await discovery.videoData(video);
+        expect(data.subtitles).toHaveLength(2);
+        expect(data.subtitles?.map((track) => track.url)).toEqual([
+            'https://cdn.example/complete.srt',
+            ['https://cdn.example/en-1.vtt'],
+        ]);
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('keeps HLS segment suppression after the parent manifest leaves the recent window', async () => {
+    let now = 0;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const resources = new Map([
+        [
+            'https://cdn.example/master.m3u8',
+            '#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="en.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=1,SUBTITLES="subs"\nvideo.m3u8',
+        ],
+        ['https://cdn.example/en.m3u8', '#EXTM3U\n#EXTINF:10,\nen-1.vtt\n#EXT-X-ENDLIST'],
+        ['https://cdn.example/en-1.vtt', 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHello\n'],
+    ]);
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        const text = resources.get(url);
+        if (text === undefined) throw new Error(`Unexpected URL: ${url}`);
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => (url.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'text/vtt') },
+            clone() {
+                return this;
+            },
+            text: async () => text,
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch('https://cdn.example/master.m3u8');
+        await window.fetch('https://cdn.example/en.m3u8');
+        await window.fetch('https://cdn.example/en-1.vtt');
+        await discovery.videoData(video);
+
+        now = 31_000;
+        await window.fetch('https://cdn.example/en-1.vtt');
+
+        await expect(discovery.videoData(video)).resolves.toMatchObject({ subtitles: [] });
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
 it('loads an HLS manifest discovered through buffered performance entries', async () => {
     const video = document.createElement('video');
     document.body.append(video);
@@ -604,6 +1296,56 @@ it('discovers extensionless DASH subtitles using representation MIME metadata', 
                     url: ['https://cdn.example/media/captions?id=en'],
                 },
             ],
+        });
+    } finally {
+        uninstall();
+        if (originalFetch === undefined) delete (window as { fetch?: typeof fetch }).fetch;
+        else window.fetch = originalFetch;
+    }
+});
+
+it('does not expose a DASH subtitle segment as a second standalone track', async () => {
+    const video = document.createElement('video');
+    document.body.append(video);
+    const originalFetch = window.fetch;
+    const manifestUrl = 'https://cdn.example/media/manifest.mpd';
+    const segmentUrl = 'https://cdn.example/media/captions.ttml';
+    const manifest = `<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT10S">
+  <Period duration="PT10S">
+    <AdaptationSet contentType="text" mimeType="application/ttml+xml" lang="en">
+      <Representation id="sub-en"><BaseURL>captions.ttml</BaseURL></Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>`;
+    const ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><p begin="0s" end="1s">Hello</p></body></tt>';
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+        const url = input.toString();
+        return {
+            ok: true,
+            status: 200,
+            url,
+            headers: { get: () => (url === manifestUrl ? 'application/dash+xml' : 'application/ttml+xml') },
+            clone() {
+                return this;
+            },
+            text: async () => (url === manifestUrl ? manifest : ttml),
+        } as unknown as Response;
+    });
+    Object.defineProperty(window, 'fetch', { configurable: true, writable: true, value: fetchMock });
+    const discovery = new AggressiveGenericPageDiscovery();
+    const uninstall = discovery.install();
+
+    try {
+        await window.fetch(manifestUrl);
+        await window.fetch(segmentUrl);
+
+        const data = await discovery.videoData(video);
+        expect(data.subtitles).toHaveLength(1);
+        expect(data.subtitles?.[0]).toMatchObject({
+            language: 'en',
+            url: [segmentUrl],
+            extension: 'ttml2',
         });
     } finally {
         uninstall();

@@ -14,6 +14,26 @@ export function parseM3U8(text: string): any {
     return parser.manifest;
 }
 
+export function limitM3U8SubtitleRenditions(manifest: any, maximumRenditions: number) {
+    const subtitleGroups = manifest?.mediaGroups?.SUBTITLES;
+    if (subtitleGroups === null || typeof subtitleGroups !== 'object') return manifest;
+
+    let remaining = maximumRenditions;
+    const groups: Record<string, Record<string, unknown>> = {};
+    for (const [groupId, group] of Object.entries(subtitleGroups)) {
+        if (remaining === 0 || group === null || typeof group !== 'object') break;
+        const entries = Object.entries(group).slice(0, remaining);
+        if (entries.length === 0) continue;
+        groups[groupId] = Object.fromEntries(entries);
+        remaining -= entries.length;
+    }
+
+    return {
+        ...manifest,
+        mediaGroups: { ...manifest.mediaGroups, SUBTITLES: groups },
+    };
+}
+
 export function fetchM3U8(url: string): Promise<any> {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
@@ -72,7 +92,7 @@ export async function subtitleTrackSegmentsFromM3U8Manifest(
 
                         const track = (group as any)[label];
 
-                        if (track && typeof track.language === 'string' && typeof track.uri === 'string') {
+                        if (track && typeof track.uri === 'string') {
                             const fetchTrack = async (): Promise<VideoDataSubtitleTrack | undefined> => {
                                 const subtitleM3U8Url = new URL(track.uri, url).href;
                                 const loadedManifest = await manifestLoader(subtitleM3U8Url);
@@ -87,7 +107,7 @@ export async function subtitleTrackSegmentsFromM3U8Manifest(
                                 const rawExtension = extractExtension(urls[0], 'vtt').toLowerCase();
                                 return trackFromDef({
                                     label: label,
-                                    language: track.language,
+                                    language: typeof track.language === 'string' ? track.language : undefined,
                                     url: urls,
                                     extension:
                                         // A best-effort heuristic to treat XML subtitle segments in HLS as TTML

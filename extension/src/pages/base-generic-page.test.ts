@@ -62,6 +62,33 @@ function mockPerformanceEntries(entries: readonly PerformanceEntry[]) {
     };
 }
 
+function mockTextTrack(video: HTMLVideoElement, initialCues: readonly object[]) {
+    let cues = initialCues;
+    const track = new EventTarget() as EventTarget & TextTrack;
+    Object.defineProperties(track, {
+        kind: { configurable: true, value: 'captions' },
+        label: { configurable: true, value: 'English' },
+        language: { configurable: true, value: 'en' },
+        mode: { configurable: true, writable: true, value: 'hidden' },
+        cues: {
+            configurable: true,
+            get: () => Object.assign({}, cues, { length: cues.length }),
+        },
+    });
+    const textTracks = new EventTarget() as EventTarget & TextTrackList;
+    Object.defineProperties(textTracks, {
+        0: { configurable: true, value: track },
+        length: { configurable: true, value: 1 },
+    });
+    Object.defineProperty(video, 'textTracks', { configurable: true, value: textTracks });
+    return {
+        track,
+        setCues(value: readonly object[]) {
+            cues = value;
+        },
+    };
+}
+
 afterEach(() => {
     jest.restoreAllMocks();
     document.body.replaceChildren();
@@ -127,6 +154,24 @@ it('serializes a populated programmatic text track without changing its mode', (
     expect(subtitleTrack.mode).toBe('hidden');
 });
 
+it('does not retain programmatic cues between base discovery requests', async () => {
+    const video = appendVideo();
+    const firstCue = { startTime: 1, endTime: 2, text: 'First' };
+    const secondCue = { startTime: 3, endTime: 4, text: 'Second' };
+    const textTrack = mockTextTrack(video, [firstCue]);
+    const discovery = new BaseGenericPageDiscovery();
+
+    await discovery.videoData(video);
+    textTrack.setCues([secondCue]);
+
+    const data = await discovery.videoData(video);
+    expect(data.subtitles).toHaveLength(1);
+    expect(data.subtitles?.[0]).toMatchObject({ label: 'English', language: 'en', extension: 'srt' });
+    const text = decodeURIComponent((data.subtitles?.[0].url as string).split(',', 2)[1]);
+    expect(text).not.toContain('First');
+    expect(text).toContain('Second');
+});
+
 it('skips unreadable and unreasonably large cue lists', () => {
     const video = appendVideo();
     const unreadableTrack = {
@@ -170,6 +215,36 @@ it('discovers strict subtitle metadata from small explicitly typed inline JSON',
             { label: 'es', language: 'es', url: 'http://localhost/subs/es', extension: 'vtt' },
         ],
     });
+});
+
+it('does not scan a large late hydration payload in base mode', async () => {
+    const video = appendVideo();
+    for (let index = 0; index < 7; index++) appendJson({ analytics: { index } });
+    appendJson({
+        padding: 'x'.repeat(130_000),
+        blockers: Array.from({ length: 700 }, (_, index) => ({ analytics: index })),
+        __DEFAULT_SCOPE__: {
+            webapp: {
+                videoDetail: {
+                    itemInfo: {
+                        itemStruct: {
+                            video: {
+                                subtitleInfos: [
+                                    {
+                                        Url: 'https://cdn.example/timedtext?id=1',
+                                        Format: 'webvtt',
+                                        LanguageCodeName: 'eng-US',
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({ subtitles: [] });
 });
 
 it('discovers bounded HLS subtitles from an explicit inline manifest URL', async () => {
