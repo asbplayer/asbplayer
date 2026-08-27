@@ -55,3 +55,4 @@ For streaming services not listed below, asbplayer can attempt a best-effort gen
 | Natural Japanese        |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |
+| Dreaming (Spanish)      |                                                                                            ✓                                                                                             |
