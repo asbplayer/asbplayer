@@ -373,7 +373,7 @@ describe('Binding playback mode integration', () => {
         video.dispatchEvent(new Event('loadedmetadata'));
         await jest.advanceTimersByTimeAsync(0);
 
-        expect(requestSubtitles).toHaveBeenCalledWith({ videoChanged: true });
+        expect(requestSubtitles).toHaveBeenCalledWith({ kind: 'reload', videoChanged: true });
         expect(resetSubtitles).toHaveBeenCalledTimes(1);
         expect(displayedSubtitleTexts()).toEqual([]);
         binding.unbind();
@@ -397,7 +397,7 @@ describe('Binding playback mode integration', () => {
         video.dispatchEvent(new Event('loadedmetadata'));
         await jest.advanceTimersByTimeAsync(0);
 
-        expect(requestSubtitles).toHaveBeenCalledWith({ videoChanged: true });
+        expect(requestSubtitles).toHaveBeenCalledWith({ kind: 'reload', videoChanged: true });
         expect(resetSubtitles).toHaveBeenCalledTimes(1);
         binding.unbind();
     });

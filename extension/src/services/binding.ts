@@ -631,7 +631,7 @@ export default class Binding {
         this._notifyReady();
         this._subscribe();
         void this._refreshSettings().then(() => {
-            void this.videoDataSyncController.requestSubtitles({ videoChanged: false });
+            void this.videoDataSyncController.requestSubtitles({ kind: 'reload', videoChanged: false });
         });
         this.subtitleController.bind();
         this.playbackEngine.bind();
@@ -781,7 +781,7 @@ export default class Binding {
         if (this.hasPageScript) {
             const debouncedChangeListener = debounced(
                 (videoChanged: boolean) => {
-                    void this.videoDataSyncController.requestSubtitles({ videoChanged });
+                    void this.videoDataSyncController.requestSubtitles({ kind: 'reload', videoChanged });
                     this._resetSubtitles();
                 },
                 disneyPlus ? 1000 : 0
