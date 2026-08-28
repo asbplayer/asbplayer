@@ -93,6 +93,7 @@ export default class VideoDataSyncController {
     private _fullscreenElement?: Element;
     private _activeElement?: Element;
     private _autoSyncAttempted: boolean = false;
+    private _refreshingOpenPicker: boolean = false;
     private _dataReceivedListener?: (event: Event) => void;
     private _dataReceivedEventTarget?: EventTarget;
     private _isTutorial: boolean;
@@ -134,6 +135,7 @@ export default class VideoDataSyncController {
         this._dataReceivedListener = undefined;
         this._dataReceivedEventTarget = undefined;
         this._syncedData = undefined;
+        this._refreshingOpenPicker = false;
         this._cleanupPlayBlocker();
         this._openedLocation = undefined;
     }
@@ -191,9 +193,12 @@ export default class VideoDataSyncController {
             return;
         }
 
-        if (!refreshOpenPicker) {
+        if (refreshOpenPicker) {
+            this._refreshingOpenPicker = true;
+        } else {
             this._syncedData = undefined;
             this._autoSyncAttempted = false;
+            this._refreshingOpenPicker = false;
         }
 
         const eventTarget = pageDelegate.config.generic ? this._context.video : document;
@@ -375,7 +380,7 @@ export default class VideoDataSyncController {
         const wasLoading = this._syncedData?.subtitles === undefined;
         this._syncedData = data;
 
-        if (this.pickerVisible && !wasLoading && (await currentPageDelegate()).config.refreshSubtitleDataOnPickerOpen) {
+        if (this._refreshingOpenPicker && this.pickerVisible && !wasLoading) {
             const subtitleIds = data.subtitles?.map((track) => track.id);
             if (!arrayEquals(previousSubtitleIds, subtitleIds)) {
                 this._frame.clientIfLoaded?.updateState({
@@ -571,6 +576,7 @@ export default class VideoDataSyncController {
     private _hideAndResume() {
         this._cleanupPlayBlocker();
         this._openedLocation = undefined;
+        this._refreshingOpenPicker = false;
         this._context.keyBindings.bind(this._context);
         this._context.subtitleController.forceHideSubtitles = false;
         this._context.mobileVideoOverlayController.forceHide = false;
