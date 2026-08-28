@@ -375,7 +375,7 @@ export default class VideoDataSyncController {
         const wasLoading = this._syncedData?.subtitles === undefined;
         this._syncedData = data;
 
-        if (this.pickerVisible && !wasLoading) {
+        if (this.pickerVisible && !wasLoading && (await currentPageDelegate()).config.refreshSubtitleDataOnPickerOpen) {
             const subtitleIds = data.subtitles?.map((track) => track.id);
             if (!arrayEquals(previousSubtitleIds, subtitleIds)) {
                 this._frame.clientIfLoaded?.updateState({
