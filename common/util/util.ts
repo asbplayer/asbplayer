@@ -444,6 +444,8 @@ export function computeStyles(
         color: subtitleColor,
         fontSize: `${subtitleSize}px`,
         fontWeight: String(subtitleThickness),
+        WebkitTextStroke: '0 transparent',
+        textShadow: 'none',
     };
 
     if (subtitleOutlineThickness > 0) {

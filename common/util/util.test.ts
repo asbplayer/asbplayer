@@ -521,11 +521,17 @@ describe('extractText', () => {
 
 describe('computeStyles and computeStyleString', () => {
     it('returns base styles when optional decorations are disabled', () => {
-        expect(computeStyles(textSubtitleSettings())).toEqual({
+        const settings = textSubtitleSettings();
+
+        expect(computeStyles(settings)).toEqual({
             color: '#FFFFFF',
             fontSize: '32px',
             fontWeight: '700',
+            WebkitTextStroke: '0 transparent',
+            textShadow: 'none',
         });
+        expect(computeStyleString(settings)).toContain('-webkit-text-stroke: 0 transparent !important');
+        expect(computeStyleString(settings)).toContain('text-shadow: none !important');
     });
 
     it('applies outline, shadow, background, font family, and custom styles while ignoring numeric keys', () => {

@@ -194,12 +194,16 @@ export class CachingElementOverlay implements ElementOverlay {
         const toggle = () => {
             if (document.fullscreenElement) {
                 container.style.setProperty('display', 'none', 'important');
-                this._transferChildren(container, this._fullscreenContainerElement());
+                this._transferChildren(container, this._fullscreenContainerElement(), this.fullscreenContentClassName);
             } else {
                 container.style.display = '';
 
                 if (this.fullscreenContainerElement) {
-                    this._transferChildren(this.fullscreenContainerElement, container);
+                    this._transferChildren(
+                        this.fullscreenContainerElement,
+                        container,
+                        this.nonFullscreenContentClassName
+                    );
                 }
             }
         };
@@ -235,11 +239,19 @@ export class CachingElementOverlay implements ElementOverlay {
                 }
 
                 if (this.nonFullscreenContainerElement) {
-                    this._transferChildren(this.nonFullscreenContainerElement, container);
+                    this._transferChildren(
+                        this.nonFullscreenContainerElement,
+                        container,
+                        this.fullscreenContentClassName
+                    );
                 }
             } else if (!document.fullscreenElement) {
                 container.style.setProperty('display', 'none', 'important');
-                this._transferChildren(container, this._nonFullscreenContainerElement());
+                this._transferChildren(
+                    container,
+                    this._nonFullscreenContainerElement(),
+                    this.nonFullscreenContentClassName
+                );
             }
         };
 
@@ -291,12 +303,12 @@ export class CachingElementOverlay implements ElementOverlay {
         return document.body;
     }
 
-    private _transferChildren(source: HTMLElement, destination: HTMLElement) {
-        if (!source) {
-            return;
-        }
+    private _transferChildren(source: HTMLElement, destination: HTMLElement, contentClassName: string) {
+        if (!source || !destination) return;
+        if (source === destination) return;
 
         while (source.firstChild) {
+            if (source.firstChild instanceof HTMLDivElement) source.firstChild.className = contentClassName;
             destination.appendChild(source.firstChild);
         }
     }

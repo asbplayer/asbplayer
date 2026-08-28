@@ -30,7 +30,9 @@
    size inheriting from the subtitle so the host page's element styles can't
    resize them. */
 .asbplayer-subtitles > span span,
-.asbplayer-subtitles > span ruby {
+.asbplayer-subtitles > span ruby,
+.asbplayer-fullscreen-subtitles > span span,
+.asbplayer-fullscreen-subtitles > span ruby {
     font-size: inherit !important;
 }
 
@@ -101,11 +103,7 @@
 .asbplayer-fullscreen-subtitles {
     text-align: center !important;
     color: white;
-    text-shadow:
-        0 0 2px black,
-        0 0 2px black,
-        0 0 2px black,
-        0 0 2px black;
+    text-shadow: none;
     font-size: 36px;
     padding-left: 10px;
     padding-right: 10px;
