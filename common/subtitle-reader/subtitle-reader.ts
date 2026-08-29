@@ -575,10 +575,24 @@ export default class SubtitleReader {
             return undefined;
         };
 
-        const subtitles: SubtitleNode[] = [];
+        const subtitles: { node: SubtitleNode; regionY?: number; sourceIndex: number }[] = [];
+
+        const regionYById = new Map<string, number>();
+        const percentageOriginRegex = /^\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)%\s+(?<y>[+-]?(?:\d+(?:\.\d*)?|\.\d+))%\s*$/;
+
+        for (const region of Array.from(doc.getElementsByTagNameNS('*', 'region'))) {
+            const id =
+                region.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id') ?? region.getAttribute('xml:id');
+            const origin = region.getAttributeNS(stylingNamespace, 'origin') ?? region.getAttribute('tts:origin');
+            const match = origin === null ? null : percentageOriginRegex.exec(origin);
+            if (id !== null && match !== null) {
+                const regionY = Number(match.groups!.y);
+                if (Number.isFinite(regionY)) regionYById.set(id, regionY);
+            }
+        }
 
         // Collect every <p> regardless of how many <div>s the body splits them across.
-        for (const paragraph of Array.from(doc.getElementsByTagNameNS('*', 'p'))) {
+        for (const [sourceIndex, paragraph] of Array.from(doc.getElementsByTagNameNS('*', 'p')).entries()) {
             const begin = paragraph.getAttribute('begin');
             const end = paragraph.getAttribute('end');
             const dur = paragraph.getAttribute('dur');
@@ -598,15 +612,38 @@ export default class SubtitleReader {
                 continue;
             }
 
+            const regionId = paragraph.getAttribute('region');
             subtitles.push({
-                start,
-                end: stop,
-                text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
-                track,
+                node: {
+                    start,
+                    end: stop,
+                    text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
+                    track,
+                },
+                regionY: regionId === null ? undefined : regionYById.get(regionId),
+                sourceIndex,
             });
         }
 
-        return subtitles;
+        subtitles.sort((a, b) => a.node.start - b.node.start || a.sourceIndex - b.sourceIndex);
+
+        // Netflix sometimes authors simultaneous lines in bottom-to-top XML order. The
+        // region's vertical origin captures their intended visual reading order. Only use
+        // it when every cue in the group has a position; otherwise retain source order.
+        for (let start = 0; start < subtitles.length; ) {
+            let end = start + 1;
+            while (end < subtitles.length && subtitles[end].node.start === subtitles[start].node.start) {
+                ++end;
+            }
+            const group = subtitles.slice(start, end);
+            if (group.length > 1 && group.every((subtitle) => subtitle.regionY !== undefined)) {
+                group.sort((a, b) => a.regionY! - b.regionY! || a.sourceIndex - b.sourceIndex);
+                subtitles.splice(start, group.length, ...group);
+            }
+            start = end;
+        }
+
+        return subtitles.map(({ node }) => node);
     }
 
     // Flattens an IMSC <p> to text. Furigana renders inline as base(reading)
