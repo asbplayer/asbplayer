@@ -64,6 +64,11 @@
         "inNotOut": "Abilita",
         "inAndOut": "Abilita con ripristino automatico"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Massimizzazione automatica del video locale"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "Allineamento sottotitoli",
         "subtitleAlignmentBottom": "In basso",
         "subtitleAlignmentTop": "In alto",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Sfocatura sottotitoli",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "Tutte",
         "subtitleTrackChoice": "Traccia {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Modifica le impostazioni per TUTTE le tracce. Le impostazioni che hanno già valori specifici per traccia sono nascoste.",
-        "subtitleBlurEntryLabel": "Traccia {{trackNumber}}",
         "subtitleBlurDescription": "Nasconde le tracce di sottotitoli selezionate sfocandole. È possibile togliere la sfocatura passando il mouse sopra.",
         "tabName": "Nome della scheda",
         "subtitleRegexFilter": "Filtro regex sottotitoli",

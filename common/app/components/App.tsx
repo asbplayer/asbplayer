@@ -1523,6 +1523,7 @@ function App({
                             subtitles.map((s, i) => ({
                                 ...s,
                                 displayTime: timeDurationDisplay(s.start, length),
+                                displayEndTime: timeDurationDisplay(s.end, length),
                                 index: i,
                             }))
                         );

@@ -64,6 +64,11 @@
         "inNotOut": "Aktif",
         "inAndOut": "Aktif dengan lanjut otomatis"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Perbesar video lokal secara otomatis"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "Perataan Takarir",
         "subtitleAlignmentBottom": "Bawah",
         "subtitleAlignmentTop": "Atas",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Takarir Buram",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "Semua",
         "subtitleTrackChoice": "Trek {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Mengubah pengaturan untuk SEMUA trek. Pengaturan yang sudah punya nilai khusus per-trek disembunyikan.",
-        "subtitleBlurEntryLabel": "Trek {{trackNumber}}",
         "subtitleBlurDescription": "Menyembunyikan trek takarir terpilih dengan membuatnya buram. Bisa dibuka kembali saat kursor diarahkan.",
         "tabName": "Nama Tab",
         "subtitleRegexFilter": "Filter regex takarir",

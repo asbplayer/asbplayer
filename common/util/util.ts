@@ -868,6 +868,7 @@ const subtitleModelComparators: SubtitleModelComparators = {
     originalStart: (a, b) => a === b,
     originalEnd: (a, b) => a === b,
     displayTime: (a, b) => a === b,
+    displayEndTime: (a, b) => a === b,
     track: (a, b) => a === b,
     index: (a, b) => a === b,
     tokenization: (a, b) => areTokenizationsEqual(a, b),

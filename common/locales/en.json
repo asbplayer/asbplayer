@@ -64,6 +64,11 @@
         "inNotOut": "Enabled",
         "inAndOut": "Enabled with auto-resume"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "Subtitle Alignment",
         "subtitleAlignmentBottom": "Bottom",
         "subtitleAlignmentTop": "Top",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Subtitle blur",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "All",
         "subtitleTrackChoice": "Track {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Changes settings for ALL tracks. Settings that already have track-specific values are hidden.",
-        "subtitleBlurEntryLabel": "Track {{trackNumber}}",
         "subtitleBlurDescription": "Hides selected subtitle tracks by blurring them. Can be un-blurred on mouse hover.",
         "tabName": "Name of the tab",
         "subtitleRegexFilter": "Subtitle regex filter",

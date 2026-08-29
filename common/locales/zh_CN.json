@@ -64,6 +64,11 @@
         "inNotOut": "已启用",
         "inAndOut": "已启用（移开后自动恢复播放）"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "字幕对齐方式",
         "subtitleAlignmentBottom": "底部对齐",
         "subtitleAlignmentTop": "顶部对齐",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "字幕模糊处理",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "全部",
         "subtitleTrackChoice": "轨道 {{trackNumber}}",
         "subtitleTrackSelectorHelper": "统一更改所有轨道的设置，覆盖单独轨道的特定值。",
-        "subtitleBlurEntryLabel": "轨道 {{trackNumber}}",
         "subtitleBlurDescription": "通过模糊处理隐藏选定字幕，鼠标悬停时可恢复清晰。",
         "tabName": "选项卡名称",
         "subtitleRegexFilter": "字幕正则过滤器",
