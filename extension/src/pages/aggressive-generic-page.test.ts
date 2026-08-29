@@ -315,6 +315,7 @@ it('passively accumulates enabled cues only in aggressive mode', async () => {
             label: 'English (captured during playback)',
             language: 'en',
             extension: 'srt',
+            capturedDuringPlayback: true,
         });
         const text = decodeURIComponent((data.subtitles?.[0].url as string).split(',', 2)[1]);
         expect(text).toContain('First');

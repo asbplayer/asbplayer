@@ -1,7 +1,6 @@
 import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import {
     BaseGenericPageDiscovery,
-    capturedDuringPlaybackLabelSuffix,
     cuesFromTextTrack,
     maximumInlineJsonLength,
     maximumInlineJsonScripts,
@@ -492,7 +491,7 @@ function standaloneHlsTrack(manifestUrl: string, manifest: any): VideoDataSubtit
 
 function baseTrackScore(track: VideoDataSubtitleTrack) {
     if (Array.isArray(track.url)) return trackCandidateScore.segmentedTrack;
-    if (track.label.endsWith(capturedDuringPlaybackLabelSuffix)) return trackCandidateScore.accumulatedTextTrack;
+    if (track.capturedDuringPlayback === true) return trackCandidateScore.accumulatedTextTrack;
     if (track.url?.startsWith('data:') === true) return trackCandidateScore.currentTextTrack;
     return trackCandidateScore.nativeTrack;
 }

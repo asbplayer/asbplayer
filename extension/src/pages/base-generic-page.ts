@@ -266,6 +266,7 @@ export function nativeSubtitleTracks(
                     language,
                     url: `data:application/x-subrip;charset=utf-8,${encodeURIComponent(text)}`,
                     extension: 'srt',
+                    capturedDuringPlayback: accumulated.capturedOverTime || undefined,
                 })
             );
         }

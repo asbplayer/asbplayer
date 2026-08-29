@@ -210,6 +210,7 @@ export interface VideoDataSubtitleTrackDef {
     url?: string | string[];
     file?: File;
     extension: string;
+    capturedDuringPlayback?: boolean;
 }
 
 export interface VideoDataSubtitleTrack extends VideoDataSubtitleTrackDef {
