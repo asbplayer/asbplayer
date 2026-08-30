@@ -511,7 +511,7 @@ const settingsSchema = {
         },
         subtitleVisibility: {
             type: 'string',
-            enum: ['always', 'whilePaused'],
+            enum: ['whenDue', 'whilePaused'],
         },
         rememberPlaybackModes: {
             type: 'boolean',
@@ -572,8 +572,8 @@ const settingsSchema = {
                 increasePlaybackRate: { $ref: '/KeyBind' },
                 toggleSidePanel: { $ref: '/KeyBind' },
                 toggleRepeat: { $ref: '/KeyBind' },
-                cycleAutoPauseResumeMode: { $ref: '/KeyBind' },
                 toggleSubtitleVisibility: { $ref: '/KeyBind' },
+                cycleAutoPauseResumeMode: { $ref: '/KeyBind' },
                 moveBottomSubtitlesUp: { $ref: '/KeyBind' },
                 moveBottomSubtitlesDown: { $ref: '/KeyBind' },
                 moveTopSubtitlesUp: { $ref: '/KeyBind' },

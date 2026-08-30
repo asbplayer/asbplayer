@@ -1359,6 +1359,7 @@ function PlayerComponent(
                     open: true,
                     notifications: [
                         {
+                            key: notification.key,
                             message: {
                                 locKey: notification.locKey,
                                 replacements: { value: t(notification.valueLocKey) },
@@ -1382,6 +1383,7 @@ function PlayerComponent(
                     open: true,
                     notifications: [
                         {
+                            key: notification.key,
                             message: {
                                 locKey: notification.locKey,
                                 replacements: { value: t(notification.valueLocKey) },

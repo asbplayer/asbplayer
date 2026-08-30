@@ -80,7 +80,7 @@ const plan = (subtitles: IndexedSubtitleModel[], playModes: PlayMode[] = [PlayMo
         autoPauseMinimumDurationMs: 500,
         autoPauseMaximumDurationMs: 2000,
         autoPauseTimePerCharacterMs: 100,
-        subtitleVisibility: SubtitleVisibility.always,
+        subtitleVisibility: SubtitleVisibility.whenDue,
     });
 
 describe('playbackTimelineToHtml', () => {
@@ -409,7 +409,7 @@ describe('playbackTimelineToHtml', () => {
                 autoPauseMinimumDurationMs: 500,
                 autoPauseMaximumDurationMs: 2000,
                 autoPauseTimePerCharacterMs: 100,
-                subtitleVisibility: SubtitleVisibility.always,
+                subtitleVisibility: SubtitleVisibility.whenDue,
             });
             return {
                 ...parityPlan,
@@ -532,7 +532,7 @@ describe('playbackTimelineToHtml', () => {
                 autoPauseMinimumDurationMs: 500,
                 autoPauseMaximumDurationMs: 2000,
                 autoPauseTimePerCharacterMs: 100,
-                subtitleVisibility: SubtitleVisibility.always,
+                subtitleVisibility: SubtitleVisibility.whenDue,
             });
 
             // The production export intentionally shows condensed and repeat layers together.

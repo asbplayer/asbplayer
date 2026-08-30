@@ -36,9 +36,9 @@ export enum AutoPauseResumeMode {
     subtitleLength = 'subtitleLength',
 }
 
-/** When subtitles are allowed on screen. `whilePaused` hides them during playback. */
+/** When due subtitles are allowed on screen. `whilePaused` hides them during playback. */
 export enum SubtitleVisibility {
-    always = 'always',
+    whenDue = 'whenDue',
     whilePaused = 'whilePaused',
 }
 
@@ -933,8 +933,8 @@ export interface KeyBindSet {
     readonly increasePlaybackRate: KeyBind;
     readonly toggleSidePanel: KeyBind;
     readonly toggleRepeat: KeyBind;
-    readonly cycleAutoPauseResumeMode: KeyBind;
     readonly toggleSubtitleVisibility: KeyBind;
+    readonly cycleAutoPauseResumeMode: KeyBind;
     readonly moveBottomSubtitlesUp: KeyBind;
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;

@@ -104,6 +104,6 @@ export const makePlaybackPlanInput = <T extends IndexedSubtitleModel>(
     autoPauseMinimumDurationMs: 500,
     autoPauseMaximumDurationMs: 2000,
     autoPauseTimePerCharacterMs: 100,
-    subtitleVisibility: SubtitleVisibility.always,
+    subtitleVisibility: SubtitleVisibility.whenDue,
     ...options,
 });

@@ -1731,6 +1731,7 @@ export default function VideoPlayer({
                     open: true,
                     notifications: [
                         {
+                            key: notification.key,
                             message: {
                                 locKey: notification.locKey,
                                 replacements: { value: t(notification.valueLocKey) },
@@ -1754,6 +1755,7 @@ export default function VideoPlayer({
                     open: true,
                     notifications: [
                         {
+                            key: notification.key,
                             message: {
                                 locKey: notification.locKey,
                                 replacements: { value: t(notification.valueLocKey) },

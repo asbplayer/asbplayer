@@ -628,38 +628,78 @@ const MiscSettingTab: React.FC<Props> = ({
                 </FormControl>
                 {supportsPlaybackEngine && (
                     <>
-                        <SettingsTextField
-                            select
-                            fullWidth
-                            color="primary"
-                            label={t('settings.autoPauseResumeMode')}
-                            value={autoPauseResumeMode}
-                            onChange={(event) =>
-                                void onSettingChanged('autoPauseResumeMode', event.target.value as AutoPauseResumeMode)
-                            }
-                        >
-                            <MenuItem value={AutoPauseResumeMode.manual}>
-                                {t('settings.autoPauseResumeModeManual')}
-                            </MenuItem>
-                            <MenuItem value={AutoPauseResumeMode.fixed}>
-                                {t('settings.autoPauseResumeModeFixed')}
-                            </MenuItem>
-                            <MenuItem value={AutoPauseResumeMode.subtitleLength}>
-                                {t('settings.autoPauseResumeModeSubtitleLength')}
-                            </MenuItem>
-                        </SettingsTextField>
+                        <FormControl>
+                            <FormLabel component="legend">{t('settings.autoPauseResumeMode')}</FormLabel>
+                            <RadioGroup>
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Radio
+                                            checked={autoPauseResumeMode === AutoPauseResumeMode.manual}
+                                            value={AutoPauseResumeMode.manual}
+                                            onChange={(event) =>
+                                                event.target.checked &&
+                                                void onSettingChanged('autoPauseResumeMode', AutoPauseResumeMode.manual)
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseResumeModeManual')}
+                                />
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Radio
+                                            checked={autoPauseResumeMode === AutoPauseResumeMode.fixed}
+                                            value={AutoPauseResumeMode.fixed}
+                                            onChange={(event) =>
+                                                event.target.checked &&
+                                                void onSettingChanged('autoPauseResumeMode', AutoPauseResumeMode.fixed)
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseResumeModeFixed')}
+                                />
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Radio
+                                            checked={autoPauseResumeMode === AutoPauseResumeMode.subtitleLength}
+                                            value={AutoPauseResumeMode.subtitleLength}
+                                            onChange={(event) =>
+                                                event.target.checked &&
+                                                void onSettingChanged(
+                                                    'autoPauseResumeMode',
+                                                    AutoPauseResumeMode.subtitleLength
+                                                )
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.autoPauseResumeModeSubtitleLength')}
+                                />
+                            </RadioGroup>
+                        </FormControl>
                         {autoPauseResumeMode === AutoPauseResumeMode.fixed && (
-                            <NumericSettingInput
-                                color="primary"
-                                fullWidth
-                                label={t('settings.autoPauseFixedDuration')}
-                                value={autoPauseFixedDurationMs}
-                                onValueChange={(value) => void onSettingChanged('autoPauseFixedDurationMs', value)}
-                                slotProps={{
-                                    htmlInput: { min: 0, step: 1 },
-                                    input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
-                                }}
-                            />
+                            <ResponsiveSettingsStack>
+                                <NumericSettingInput
+                                    color="primary"
+                                    fullWidth
+                                    label={t('settings.autoPauseFixedDuration')}
+                                    value={autoPauseFixedDurationMs}
+                                    onValueChange={(value) => void onSettingChanged('autoPauseFixedDurationMs', value)}
+                                    slotProps={{
+                                        htmlInput: { min: 0, step: 1 },
+                                        input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
+                                    }}
+                                />
+                                <NumericSettingInput
+                                    color="primary"
+                                    fullWidth
+                                    label={t('settings.autoPauseResumeDelay')}
+                                    value={autoPauseResumeDelayMs}
+                                    onValueChange={(value) => void onSettingChanged('autoPauseResumeDelayMs', value)}
+                                    slotProps={{
+                                        htmlInput: { min: 0, step: 1 },
+                                        input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
+                                    }}
+                                />
+                            </ResponsiveSettingsStack>
                         )}
                         {autoPauseResumeMode === AutoPauseResumeMode.subtitleLength && (
                             <>
@@ -688,52 +728,70 @@ const MiscSettingTab: React.FC<Props> = ({
                                         }}
                                     />
                                 </ResponsiveSettingsStack>
-                                <NumericSettingInput
-                                    color="primary"
-                                    fullWidth
-                                    label={t('settings.autoPauseTimePerCharacter')}
-                                    value={autoPauseTimePerCharacterMs}
-                                    onValueChange={(value) =>
-                                        void onSettingChanged('autoPauseTimePerCharacterMs', value)
-                                    }
-                                    slotProps={{
-                                        htmlInput: { min: 0, step: 1 },
-                                        input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
-                                    }}
-                                />
+                                <ResponsiveSettingsStack>
+                                    <NumericSettingInput
+                                        color="primary"
+                                        fullWidth
+                                        label={t('settings.autoPauseTimePerCharacter')}
+                                        value={autoPauseTimePerCharacterMs}
+                                        onValueChange={(value) =>
+                                            void onSettingChanged('autoPauseTimePerCharacterMs', value)
+                                        }
+                                        slotProps={{
+                                            htmlInput: { min: 0, step: 1 },
+                                            input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
+                                        }}
+                                    />
+                                    <NumericSettingInput
+                                        color="primary"
+                                        fullWidth
+                                        label={t('settings.autoPauseResumeDelay')}
+                                        value={autoPauseResumeDelayMs}
+                                        onValueChange={(value) =>
+                                            void onSettingChanged('autoPauseResumeDelayMs', value)
+                                        }
+                                        slotProps={{
+                                            htmlInput: { min: 0, step: 1 },
+                                            input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
+                                        }}
+                                    />
+                                </ResponsiveSettingsStack>
                             </>
                         )}
-                        {autoPauseResumeMode !== AutoPauseResumeMode.manual && (
-                            <NumericSettingInput
-                                color="primary"
-                                fullWidth
-                                label={t('settings.autoPauseResumeDelay')}
-                                helperText={t('settings.autoPauseResumeDelayHelperText')}
-                                value={autoPauseResumeDelayMs}
-                                onValueChange={(value) => void onSettingChanged('autoPauseResumeDelayMs', value)}
-                                slotProps={{
-                                    htmlInput: { min: 0, step: 1 },
-                                    input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
-                                }}
-                            />
-                        )}
-                        <SettingsTextField
-                            select
-                            fullWidth
-                            color="primary"
-                            label={t('settings.subtitleVisibility')}
-                            value={subtitleVisibility}
-                            onChange={(event) =>
-                                void onSettingChanged('subtitleVisibility', event.target.value as SubtitleVisibility)
-                            }
-                        >
-                            <MenuItem value={SubtitleVisibility.always}>
-                                {t('settings.subtitleVisibilityAlways')}
-                            </MenuItem>
-                            <MenuItem value={SubtitleVisibility.whilePaused}>
-                                {t('settings.subtitleVisibilityWhilePaused')}
-                            </MenuItem>
-                        </SettingsTextField>
+                        <FormControl>
+                            <FormLabel component="legend">{t('settings.subtitleVisibility')}</FormLabel>
+                            <RadioGroup row>
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Radio
+                                            checked={subtitleVisibility === SubtitleVisibility.whenDue}
+                                            value={SubtitleVisibility.whenDue}
+                                            onChange={(event) =>
+                                                event.target.checked &&
+                                                void onSettingChanged('subtitleVisibility', SubtitleVisibility.whenDue)
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.subtitleVisibilityWhenDue')}
+                                />
+                                <LabelWithHoverEffect
+                                    control={
+                                        <Radio
+                                            checked={subtitleVisibility === SubtitleVisibility.whilePaused}
+                                            value={SubtitleVisibility.whilePaused}
+                                            onChange={(event) =>
+                                                event.target.checked &&
+                                                void onSettingChanged(
+                                                    'subtitleVisibility',
+                                                    SubtitleVisibility.whilePaused
+                                                )
+                                            }
+                                        />
+                                    }
+                                    label={t('settings.subtitleVisibilityWhilePaused')}
+                                />
+                            </RadioGroup>
+                        </FormControl>
                         <NumericSettingInput
                             color="primary"
                             fullWidth

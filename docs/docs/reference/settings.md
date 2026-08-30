@@ -188,14 +188,16 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 
 ### [Playback](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
-| Behavior                     | Website shortcut? | Extension shortcut? |
-| ---------------------------- | :---------------: | :-----------------: |
-| Toggle side panel            |         ✓         |          ✓          |
-| Play/pause                   |         ✓         |          ✓          |
-| Toggle auto-pause            |         ✓         |          ✓          |
-| Toggle condensed playback    |         ✓         |          ✓          |
-| Toggle fast forward playback |         ✓         |          ✓          |
-| Toggle repeat mode           |         ✓         |          ✓          |
+| Behavior                        | Website shortcut? | Extension shortcut? |
+| ------------------------------- | :---------------: | :-----------------: |
+| Toggle side panel               |         ✓         |          ✓          |
+| Play/pause                      |         ✓         |          ✓          |
+| Toggle auto-pause               |         ✓         |          ✓          |
+| Toggle condensed playback       |         ✓         |          ✓          |
+| Toggle fast forward playback    |         ✓         |          ✓          |
+| Toggle repeat mode              |         ✓         |          ✓          |
+| Toggle when subtitles are shown |         ✓         |          ✓          |
+| Cycle auto-pause resume mode    |         ✓         |          ✓          |
 
 ### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
@@ -741,29 +743,47 @@ When condensed playback is enabled, skip to the next subtitle only if the next s
 
 Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
 
-### When a pause ends
+### Auto-pause resume mode
 
-Controls how an automatic pause finishes. **Wait for me** is the original behavior: playback stays paused until you resume it. **After a set time** pauses every subtitle for the same length. **After time to read the line** sizes each pause to the subtitle, from its character count multiplied by the reading time per character, clamped between the minimum and maximum (a maximum of `0` means no limit). Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
+Controls how an automatic pause finishes.
 
-### Silence before resuming
+- **Manual**: Playback stays paused until you resume it.
 
-When a pause ends by itself it runs in two phases: the subtitle is shown for the pause duration, then hidden while playback stays paused for this long. That silent, subtitle-free gap is what lets the audio be heard with its meaning already in mind.
+- **Fixed**: Every automatic pause lasts for the same configured time.
+    - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
+    - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+### Fixed pause duration
+
+The amount of time an automatic pause lasts in **Fixed** mode.
+
+### Minimum pause duration
+
+The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+
+### Maximum pause duration
+
+The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+
+### Pause time per character
+
+The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+
+### Resume delay after auto-pause
+
+In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
 
 ### Show subtitles
 
-**Always** is the usual behavior. **Only while paused for them** keeps subtitles off screen while the video plays: they appear whenever playback pauses, including when you pause it yourself, and a pause that ends by itself hides them again as soon as its reading time is up. This applies with or without auto-pause enabled.
+- **When due**: Subtitles appear while their timing is active.
+
+- **While paused**: Subtitles appear only when they are due and playback is paused.
 
 ### Primed listening
 
-Primed listening is not a separate playback mode or setting. It is what you get from auto-pause at the start of a line, **After time to read the line**, **Only while paused for them**, and a resume delay — read the native-language line, watch it disappear, then hear the target-language audio on its own.
-
-Set the auto-pause preference to pause at the start of a subtitle once, and the two shortcuts below switch the rest on and off during playback.
-
-### Cycle when a pause ends / Toggle when subtitles are shown
-
-Two keyboard shortcuts that step **When a pause ends** through its options and switch **Show subtitles** between its two. Both are unbound by default; assign them under keyboard shortcuts if you want them.
-
-They are ordinary setting shortcuts rather than a primed listening switch, so they are equally useful on their own — turning subtitles off for a listening pass, for instance, or dropping back to waiting for yourself at a difficult scene.
+Primed listening is a technique for language learning where you read the native-language subtitle, watch it disappear, and then hear the target-language audio without subtitles. This can be achieved by combining [Auto-pause preference](#auto-pause-preference), **Subtitle length** under [Auto-pause resume mode](#auto-pause-resume-mode), **While paused** under [Show subtitles](#show-subtitles), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
 
 ### Enable WebSocket client
 

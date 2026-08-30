@@ -341,7 +341,7 @@ describe('AnimationFrameTimingDriver', () => {
         };
         const plan: PlaybackPlan<IndexedSubtitleModel> = {
             autoPauseResume: { mode: AutoPauseResumeMode.manual },
-            subtitleVisibility: SubtitleVisibility.always,
+            subtitleVisibility: SubtitleVisibility.whenDue,
             timelineSubtitles: {
                 durationMs: 3000,
                 blocks: [],

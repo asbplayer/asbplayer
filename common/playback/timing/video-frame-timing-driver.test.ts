@@ -728,7 +728,7 @@ describe('VideoFrameTimingDriver', () => {
             autoPauseMinimumDurationMs: 500,
             autoPauseMaximumDurationMs: 2000,
             autoPauseTimePerCharacterMs: 100,
-            subtitleVisibility: SubtitleVisibility.always,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const repeatSeeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};
@@ -808,7 +808,7 @@ describe('VideoFrameTimingDriver', () => {
             autoPauseMinimumDurationMs: 500,
             autoPauseMaximumDurationMs: 2000,
             autoPauseTimePerCharacterMs: 100,
-            subtitleVisibility: SubtitleVisibility.always,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -905,7 +905,7 @@ describe('VideoFrameTimingDriver', () => {
             autoPauseMinimumDurationMs: 500,
             autoPauseMaximumDurationMs: 2000,
             autoPauseTimePerCharacterMs: 100,
-            subtitleVisibility: SubtitleVisibility.always,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -988,7 +988,7 @@ describe('VideoFrameTimingDriver', () => {
             autoPauseMinimumDurationMs: 500,
             autoPauseMaximumDurationMs: 2000,
             autoPauseTimePerCharacterMs: 100,
-            subtitleVisibility: SubtitleVisibility.always,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const repeatSeeks: number[] = [];
         const discontinuities: number[] = [];
@@ -1082,7 +1082,7 @@ describe('VideoFrameTimingDriver', () => {
             autoPauseMinimumDurationMs: 500,
             autoPauseMaximumDurationMs: 2000,
             autoPauseTimePerCharacterMs: 100,
-            subtitleVisibility: SubtitleVisibility.always,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};

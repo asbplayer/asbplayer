@@ -9,12 +9,12 @@ export interface SubtitleVisibilityNotification {
 }
 
 export const nextSubtitleVisibility = (visibility: SubtitleVisibility): SubtitleVisibility =>
-    visibility === SubtitleVisibility.always ? SubtitleVisibility.whilePaused : SubtitleVisibility.always;
+    visibility === SubtitleVisibility.whenDue ? SubtitleVisibility.whilePaused : SubtitleVisibility.whenDue;
 
 export const subtitleVisibilityLocKey = (visibility: SubtitleVisibility): string =>
     visibility === SubtitleVisibility.whilePaused
         ? 'settings.subtitleVisibilityWhilePaused'
-        : 'settings.subtitleVisibilityAlways';
+        : 'settings.subtitleVisibilityWhenDue';
 
 export const formatSubtitleVisibilityNotification = (
     visibility: SubtitleVisibility
@@ -34,7 +34,7 @@ export interface SubtitleVisibilityControllerCallbacks {
  */
 export default class SubtitleVisibilityController {
     private readonly callbacks: SubtitleVisibilityControllerCallbacks;
-    private visibility = SubtitleVisibility.always;
+    private visibility = SubtitleVisibility.whenDue;
     private _subtitlesVisible = true;
     private automaticPauseActive = false;
     private planInitialized = false;
@@ -104,7 +104,7 @@ export default class SubtitleVisibilityController {
         if (visibleBefore !== this.subtitlesVisible) this.callbacks.visibilityChanged();
     }
 
-    private visibleWhen(visibleWhilePausedOnly: boolean): boolean {
-        return this.visibility === SubtitleVisibility.always || visibleWhilePausedOnly;
+    private visibleWhen(paused: boolean): boolean {
+        return this.visibility === SubtitleVisibility.whenDue || paused;
     }
 }

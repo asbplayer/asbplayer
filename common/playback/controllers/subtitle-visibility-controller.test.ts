@@ -15,10 +15,10 @@ const harness = (visibility: SubtitleVisibility, paused = false) => {
 
 describe('subtitle visibility mode', () => {
     it('toggles both values and formats its notification', () => {
-        const whilePaused = nextSubtitleVisibility(SubtitleVisibility.always);
-        const always = nextSubtitleVisibility(whilePaused);
+        const whilePaused = nextSubtitleVisibility(SubtitleVisibility.whenDue);
+        const whenDue = nextSubtitleVisibility(whilePaused);
 
-        expect([whilePaused, always]).toEqual([SubtitleVisibility.whilePaused, SubtitleVisibility.always]);
+        expect([whilePaused, whenDue]).toEqual([SubtitleVisibility.whilePaused, SubtitleVisibility.whenDue]);
         expect(formatSubtitleVisibilityNotification(whilePaused)).toEqual({
             key: 'subtitle-visibility',
             locKey: 'info.subtitleVisibility',
@@ -28,8 +28,8 @@ describe('subtitle visibility mode', () => {
 });
 
 describe('SubtitleVisibilityController', () => {
-    it('never suppresses subtitles in always mode', () => {
-        const { controller, visibilityChanged } = harness(SubtitleVisibility.always);
+    it('keeps due subtitles visible in when-due mode', () => {
+        const { controller, visibilityChanged } = harness(SubtitleVisibility.whenDue);
         controller.autoPaused();
         controller.autoPauseReadingPeriodEnded();
         controller.playbackStarted();
@@ -85,11 +85,11 @@ describe('SubtitleVisibilityController', () => {
     });
 
     it('reconciles visibility from current playback state when its plan is replaced', () => {
-        const playingHarness = harness(SubtitleVisibility.always);
+        const playingHarness = harness(SubtitleVisibility.whenDue);
         playingHarness.controller.replacePlan(SubtitleVisibility.whilePaused, false);
         expect(playingHarness.controller.subtitlesVisible).toBe(false);
 
-        const pausedHarness = harness(SubtitleVisibility.always);
+        const pausedHarness = harness(SubtitleVisibility.whenDue);
         pausedHarness.controller.replacePlan(SubtitleVisibility.whilePaused, true);
         expect(pausedHarness.controller.subtitlesVisible).toBe(true);
     });

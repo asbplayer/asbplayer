@@ -355,11 +355,11 @@ describe('PlaybackEngine', () => {
 
         expect(harness.savedSettings).toEqual([
             { subtitleVisibility: SubtitleVisibility.whilePaused },
-            { subtitleVisibility: SubtitleVisibility.always },
+            { subtitleVisibility: SubtitleVisibility.whenDue },
         ]);
         expect([hiddenDuringPlayback?.valueLocKey, alwaysVisible?.valueLocKey]).toEqual([
             'settings.subtitleVisibilityWhilePaused',
-            'settings.subtitleVisibilityAlways',
+            'settings.subtitleVisibilityWhenDue',
         ]);
     });
 
