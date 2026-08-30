@@ -13,23 +13,6 @@ export interface AutoPausePolicy {
     readonly subtitlesWhilePausedOnly: boolean;
 }
 
-// Ruby readings are an annotation above the base text rather than something to read, and markup is
-// only kept in subtitle text when it is rendered rather than stripped at parse time.
-const rubyReadingPattern = /<rt\b[^>]*>[\s\S]*?<\/rt>/gi;
-// Line breaks become whitespace when subtitles are stripped at parse time, so count them the same
-// way here and the length of a line does not depend on how it happens to be stored.
-const lineBreakPattern = /<br\b[^>]*>/gi;
-const markupPattern = /<[^>]*>/g;
-
-/** Characters a reader actually has to get through, ignoring anything not shown as text. */
-export const readableCharacterCount = (text: string): number =>
-    text
-        .replace(rubyReadingPattern, '')
-        .replace(lineBreakPattern, ' ')
-        .replace(markupPattern, '')
-        .replace(/\s+/g, ' ')
-        .trim().length;
-
 /** How long a pause lasts before its subtitle is hidden. */
 export const autoPauseDurationMs = (
     resume: PlaybackPlanAutoPauseResume,
@@ -37,7 +20,7 @@ export const autoPauseDurationMs = (
 ): number => {
     if (resume.mode === AutoPauseResumeMode.fixed) return resume.fixedDurationMs;
 
-    const characters = subtitles.reduce((total, { text }) => total + readableCharacterCount(text), 0);
+    const characters = subtitles.reduce((total, { text }) => total + text.length, 0);
     const durationMs = Math.max(resume.minimumDurationMs, characters * resume.timePerCharacterMs);
     return resume.maximumDurationMs === 0 ? durationMs : Math.min(resume.maximumDurationMs, durationMs);
 };
@@ -103,7 +86,18 @@ export default class AutoPauseController {
     }
 
     playbackStarted(): void {
-        this.cancel();
+        this.clearTimeout();
+        this.hideSubtitles();
+    }
+
+    /**
+     * Reports a seek the viewer made. It ends any pause in progress, but a viewer who seeks while
+     * paused is still looking at a paused frame and should keep its subtitle.
+     */
+    userSeeked(paused: boolean): void {
+        this.clearTimeout();
+        if (paused) this.showSubtitles();
+        else this.hideSubtitles();
     }
 
     cancel(): void {

@@ -1,7 +1,7 @@
-import { AutoPauseResumeMode, defaultSettings, isTrackSeekable, SubtitleVisibility } from '@project/common/settings';
+import { defaultSettings, isTrackSeekable } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
-import { AutoPausePreference, PlayMode } from '@project/common';
+import { PlayMode } from '@project/common';
 import { asbWarn, formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
@@ -27,7 +27,6 @@ const internalSeekWatchdogMs = 10_000;
 const subtitleOffsetStorageKey = 'offset';
 const initialPlaybackSettingsAutoHideDurationMs = 6000;
 const playbackRateNotificationKey = 'playback-rate';
-const primedListeningNotificationKey = 'primed-listening';
 const subtitleOffsetNotificationKey = 'subtitle-offset';
 
 export interface SubtitleOffsetOptions {
@@ -57,26 +56,6 @@ export function formatPlaybackRateNotification(playbackRate: number, locKey: str
         },
     };
 }
-
-export interface PrimedListeningNotification {
-    readonly key: typeof primedListeningNotificationKey;
-    readonly locKey: string;
-}
-
-/** Settings the primed listening shortcut drives together, remembered so it can put them back. */
-interface PrimedListeningSettings {
-    readonly autoPauseEnabled: boolean;
-    readonly autoPausePreference: AutoPausePreference;
-    readonly autoPauseResumeMode: AutoPauseResumeMode;
-    readonly subtitleVisibility: SubtitleVisibility;
-}
-
-const primedListeningDefaults: PrimedListeningSettings = {
-    autoPauseEnabled: false,
-    autoPausePreference: AutoPausePreference.atEnd,
-    autoPauseResumeMode: AutoPauseResumeMode.manual,
-    subtitleVisibility: SubtitleVisibility.always,
-};
 
 export type InitialPlaybackNotification =
     | { readonly type: 'message'; readonly message: string }
@@ -158,7 +137,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private unbindOperationId = 0;
     private settingsChangedOperationId = 0;
     private lastProfile?: string;
-    private primedListeningPrevious?: PrimedListeningSettings;
     private settingsInitialization?: {
         readonly unbindOperationId: number;
         readonly promise: Promise<void>;
@@ -195,14 +173,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
         this.autoPauseController.setPolicy(this.autoPausePolicy());
 
-        const executorCallbacks: PlaybackPlanExecutorCallbacks = {
+        const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
             play: callbacks.play,
             paused: () => this.timingDriver.paused(),
-            pause: () => {
+            pause: (subtitles) => {
                 callbacks.pause();
-                const timestampMs = this.timingDriver.currentTimeMs();
-                void this.playbackPositionController.savePlaybackPosition(timestampMs);
-                this.autoPauseController.autoPaused(this.playbackModeSubtitlesAt(timestampMs));
+                void this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
+                this.autoPauseController.autoPaused(this.playbackModeSubtitles(subtitles));
             },
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
             setPlaybackRate: (playbackRate) => {
@@ -280,8 +257,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
                 // Auto-pause corrects its position by seeking right after pausing, so only a user
-                // seek ends a pause that is still showing its subtitle.
-                if (cause === 'user-seek') this.autoPauseController.cancel();
+                // seek ends a pause. A viewer who seeks while paused keeps the subtitle in front of them.
+                if (cause === 'user-seek') this.autoPauseController.userSeeked(this.timingDriver.paused());
                 this.playbackStateController.notify(currentTimestampMs, { force: true });
             },
             onCancel: (options) => this.executor.cancelPendingOperations(options),
@@ -566,79 +543,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.applyPlaybackModeTransition(transition, { savePlaybackModes: true, rebuildWhenUnchanged: false });
     }
 
-    /**
-     * Primed listening is not a playback mode of its own, only auto-pause configured to resume by
-     * itself with subtitles withheld during playback. The shortcut drives those settings together
-     * and puts back whatever they were before, so it stays a convenience over the open settings.
-     */
-    get primedListeningActive(): boolean {
-        return (
-            this.plan.autoPauseResume !== undefined &&
-            this.plan.subtitlesWhilePausedOnly &&
-            this.settings.autoPausePreference !== AutoPausePreference.atEnd
-        );
-    }
-
-    togglePrimedListening():
-        | { readonly active: boolean; readonly notification: PrimedListeningNotification }
-        | undefined {
-        if (!this.timingDriver.bound) return;
-
-        if (this.primedListeningActive) {
-            const previous = this.primedListeningPrevious ?? primedListeningDefaults;
-            this.primedListeningPrevious = undefined;
-            this.applyPrimedListeningSettings(previous);
-            return {
-                active: false,
-                notification: { key: primedListeningNotificationKey, locKey: 'info.disabledPrimedListening' },
-            };
-        }
-
-        this.primedListeningPrevious = {
-            autoPauseEnabled: this.playbackModeController.playModes.has(PlayMode.autoPause),
-            autoPausePreference: this.settings.autoPausePreference,
-            autoPauseResumeMode: this.settings.autoPauseResumeMode,
-            subtitleVisibility: this.settings.subtitleVisibility,
-        };
-        this.applyPrimedListeningSettings({
-            autoPauseEnabled: true,
-            // Reading has to come before the audio, so the pause belongs at the start of the line.
-            autoPausePreference:
-                this.settings.autoPausePreference === AutoPausePreference.atEnd
-                    ? AutoPausePreference.atStart
-                    : this.settings.autoPausePreference,
-            // Keep a resume mode the user already configured, otherwise use the length-based one.
-            autoPauseResumeMode:
-                this.settings.autoPauseResumeMode === AutoPauseResumeMode.manual
-                    ? AutoPauseResumeMode.subtitleLength
-                    : this.settings.autoPauseResumeMode,
-            subtitleVisibility: SubtitleVisibility.whilePaused,
-        });
-        return {
-            active: true,
-            notification: { key: primedListeningNotificationKey, locKey: 'info.enabledPrimedListening' },
-        };
-    }
-
-    private applyPrimedListeningSettings({
-        autoPauseEnabled,
-        autoPausePreference,
-        autoPauseResumeMode,
-        subtitleVisibility,
-    }: PrimedListeningSettings): void {
-        const changed = { autoPausePreference, autoPauseResumeMode, subtitleVisibility };
-        this.settings = { ...this.settings, ...changed };
-        this.callbacks.saveSettings(changed);
-        if (this.playbackModeController.playModes.has(PlayMode.autoPause) === autoPauseEnabled) {
-            this.rebuildPlan();
-            return;
-        }
-        this.applyPlaybackModeTransition(this.playbackModeController.transition(PlayMode.autoPause), {
-            savePlaybackModes: true,
-            rebuildWhenUnchanged: true,
-        });
-    }
-
     dismissPlaybackPosition(): void {
         this.playbackPositionController.dismissPlaybackPosition();
     }
@@ -677,10 +581,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     /** Subtitles on tracks that drive playback modes, which are the ones a pause is timed against. */
-    private playbackModeSubtitlesAt(timestampMs: number): readonly T[] {
-        return this.executor
-            .showingSubtitlesAt(timestampMs)
-            .filter((subtitle) => isTrackSeekable(this.settings.seekableTracks, subtitle.track));
+    private playbackModeSubtitles(subtitles: readonly T[]): readonly T[] {
+        return subtitles.filter((subtitle) => isTrackSeekable(this.settings.seekableTracks, subtitle.track));
     }
 
     private autoPausePolicy() {

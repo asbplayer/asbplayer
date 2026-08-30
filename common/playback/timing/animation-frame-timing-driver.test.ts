@@ -339,6 +339,7 @@ describe('AnimationFrameTimingDriver', () => {
             index: 0,
         };
         const plan: PlaybackPlan<IndexedSubtitleModel> = {
+            subtitlesWhilePausedOnly: false,
             timelineSubtitles: {
                 durationMs: 3000,
                 blocks: [],

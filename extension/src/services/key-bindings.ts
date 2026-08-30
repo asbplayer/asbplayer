@@ -33,7 +33,8 @@ export default class KeyBindings {
     private _unbindResetOffset?: Unbinder = false;
     private _unbindAdjustPlaybackRate?: Unbinder = false;
     private _unbindToggleRepeat: Unbinder = false;
-    private _unbindTogglePrimedListening: Unbinder = false;
+    private _unbindCycleAutoPauseResumeMode: Unbinder = false;
+    private _unbindToggleSubtitleVisibility: Unbinder = false;
     private _unbindAdjustSubtitlePositionOffset: Unbinder = false;
     private _unbindAdjustTopSubtitlePositionOffset: Unbinder = false;
     private _unbindMarkHoveredToken?: Unbinder = false;
@@ -106,11 +107,21 @@ export default class KeyBindings {
             true
         );
 
-        this._unbindTogglePrimedListening = this._keyBinder.bindTogglePrimedListening(
+        this._unbindCycleAutoPauseResumeMode = this._keyBinder.bindCycleAutoPauseResumeMode(
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                context.togglePrimedListening();
+                void context.cycleAutoPauseResumeMode();
+            },
+            () => context.subtitleController.subtitles.length === 0,
+            true
+        );
+
+        this._unbindToggleSubtitleVisibility = this._keyBinder.bindToggleSubtitleVisibility(
+            (event) => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                void context.toggleSubtitleVisibility();
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -461,9 +472,14 @@ export default class KeyBindings {
             this._unbindToggleRepeat = false;
         }
 
-        if (this._unbindTogglePrimedListening) {
-            this._unbindTogglePrimedListening();
-            this._unbindTogglePrimedListening = false;
+        if (this._unbindCycleAutoPauseResumeMode) {
+            this._unbindCycleAutoPauseResumeMode();
+            this._unbindCycleAutoPauseResumeMode = false;
+        }
+
+        if (this._unbindToggleSubtitleVisibility) {
+            this._unbindToggleSubtitleVisibility();
+            this._unbindToggleSubtitleVisibility = false;
         }
 
         if (this._unbindAdjustPlaybackRate) {

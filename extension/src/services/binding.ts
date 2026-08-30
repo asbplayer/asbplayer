@@ -73,8 +73,12 @@ import {
     VideoDataUiOpenReason,
 } from '@project/common';
 import { adjacentSubtitle } from '@project/common/key-binder';
-import type { SeekableTracks } from '@project/common/settings';
+import type { AsbplayerSettings, SeekableTracks } from '@project/common/settings';
 import {
+    autoPauseResumeModeLocKey,
+    nextAutoPauseResumeMode,
+    nextSubtitleVisibility,
+    subtitleVisibilityLocKey,
     calculateSeekableTracksValue,
     extractAnkiSettings,
     PauseOnHoverMode,
@@ -350,12 +354,6 @@ export default class Binding {
         this.playbackEngine.togglePlaybackMode(targetMode);
     }
 
-    togglePrimedListening(): void {
-        const result = this.playbackEngine.togglePrimedListening();
-        if (result === undefined) return;
-        this.subtitleController.notification(result.notification);
-    }
-
     adjustPlaybackRate(delta: number): void {
         this.notifyPlaybackRate(this.playbackEngine.adjustPlaybackRate(delta));
     }
@@ -367,6 +365,35 @@ export default class Binding {
     private notifyPlaybackRate(options: ReturnType<PlaybackEngine<IndexedSubtitleModel>['playbackRateChanged']>) {
         if (!options?.notify) return;
         this.subtitleController.notification(options.notification);
+    }
+
+    async cycleAutoPauseResumeMode(): Promise<void> {
+        const mode = nextAutoPauseResumeMode(await this.settings.getSingle('autoPauseResumeMode'));
+        await this._applySettingWithNotification({ autoPauseResumeMode: mode }, 'info.autoPauseResumeMode', {
+            value: i18n.t(autoPauseResumeModeLocKey(mode)),
+        });
+    }
+
+    async toggleSubtitleVisibility(): Promise<void> {
+        const visibility = nextSubtitleVisibility(await this.settings.getSingle('subtitleVisibility'));
+        await this._applySettingWithNotification({ subtitleVisibility: visibility }, 'info.subtitleVisibility', {
+            value: i18n.t(subtitleVisibilityLocKey(visibility)),
+        });
+    }
+
+    private async _applySettingWithNotification(
+        settings: Partial<AsbplayerSettings>,
+        locKey: string,
+        replacements: { [key: string]: string }
+    ): Promise<void> {
+        await this.settings.set(settings);
+        const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
+            sender: 'asbplayer-video',
+            message: { command: 'settings-updated' },
+            src: this.registeredVideoSrc,
+        };
+        void browser.runtime.sendMessage(settingsUpdatedCommand);
+        this.subtitleController.notification({ locKey, replacements });
     }
 
     private _handlePlaybackModesChanged(

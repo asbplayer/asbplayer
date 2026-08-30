@@ -1751,7 +1751,7 @@ describe('PlaybackEngine', () => {
         expect(harness.plays).toHaveLength(1);
     });
 
-    const primedListeningSettings = {
+    const resumingAutoPauseSettings = {
         autoPauseResumeMode: AutoPauseResumeMode.subtitleLength,
         subtitleVisibility: SubtitleVisibility.whilePaused,
         autoPauseMinimumDurationMs: 500,
@@ -1766,7 +1766,7 @@ describe('PlaybackEngine', () => {
 
         try {
             const harness = await makePlaybackEngine([PlayMode.autoPause], 500, [subtitle], {
-                settings: primedListeningSettings,
+                settings: resumingAutoPauseSettings,
             });
 
             await harness.driver.time(1000, 1000);
@@ -1792,7 +1792,7 @@ describe('PlaybackEngine', () => {
 
         try {
             const harness = await makePlaybackEngine([PlayMode.autoPause], 500, [subtitle], {
-                settings: primedListeningSettings,
+                settings: resumingAutoPauseSettings,
             });
 
             // Overshooting the block start makes the executor correct the position with an internal
@@ -1828,86 +1828,5 @@ describe('PlaybackEngine', () => {
         } finally {
             jest.useRealTimers();
         }
-    });
-
-    it('turns primed listening on and puts the previous settings back', async () => {
-        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
-            settings: {
-                autoPauseResumeMode: AutoPauseResumeMode.manual,
-                subtitleVisibility: SubtitleVisibility.always,
-            },
-        });
-
-        expect(harness.playbackEngine.primedListeningActive).toBe(false);
-
-        const enabled = harness.playbackEngine.togglePrimedListening();
-
-        expect(enabled?.active).toBe(true);
-        expect(harness.playbackEngine.primedListeningActive).toBe(true);
-        expect(harness.playbackEngine.playbackModes.has(PlayMode.autoPause)).toBe(true);
-        expect(harness.savedSettings).toContainEqual({
-            autoPausePreference: AutoPausePreference.atStart,
-            autoPauseResumeMode: AutoPauseResumeMode.subtitleLength,
-            subtitleVisibility: SubtitleVisibility.whilePaused,
-        });
-
-        const disabled = harness.playbackEngine.togglePrimedListening();
-
-        expect(disabled?.active).toBe(false);
-        expect(harness.playbackEngine.primedListeningActive).toBe(false);
-        expect(harness.playbackEngine.playbackModes.has(PlayMode.autoPause)).toBe(false);
-        expect(harness.savedSettings).toContainEqual({
-            autoPausePreference: AutoPausePreference.atEnd,
-            autoPauseResumeMode: AutoPauseResumeMode.manual,
-            subtitleVisibility: SubtitleVisibility.always,
-        });
-    });
-
-    it('keeps a resume mode the user already configured when turning primed listening on', async () => {
-        const harness = await makePlaybackEngine([PlayMode.autoPause], 0, [subtitle], {
-            settings: { autoPauseResumeMode: AutoPauseResumeMode.fixed, subtitleVisibility: SubtitleVisibility.always },
-        });
-
-        harness.playbackEngine.togglePrimedListening();
-
-        expect(harness.savedSettings).toContainEqual({
-            autoPausePreference: AutoPausePreference.atStart,
-            autoPauseResumeMode: AutoPauseResumeMode.fixed,
-            subtitleVisibility: SubtitleVisibility.whilePaused,
-        });
-        // Auto-pause was already on, so turning primed listening off must not turn it off.
-        harness.playbackEngine.togglePrimedListening();
-        expect(harness.playbackEngine.playbackModes.has(PlayMode.autoPause)).toBe(true);
-    });
-
-    it('moves the pause to the start of the line when turning primed listening on', async () => {
-        const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
-            settings: { autoPausePreference: AutoPausePreference.atEnd },
-        });
-
-        harness.playbackEngine.togglePrimedListening();
-
-        expect(harness.playbackEngine.primedListeningActive).toBe(true);
-        expect(harness.savedSettings).toContainEqual(
-            expect.objectContaining({ autoPausePreference: AutoPausePreference.atStart })
-        );
-
-        harness.playbackEngine.togglePrimedListening();
-
-        expect(harness.savedSettings).toContainEqual(
-            expect.objectContaining({ autoPausePreference: AutoPausePreference.atEnd })
-        );
-    });
-
-    it('keeps both edges when the user already pauses at the start too', async () => {
-        const harness = await makePlaybackEngine([PlayMode.autoPause], 0, [subtitle], {
-            settings: { autoPausePreference: AutoPausePreference.atStartAndEnd },
-        });
-
-        harness.playbackEngine.togglePrimedListening();
-
-        expect(harness.savedSettings).toContainEqual(
-            expect.objectContaining({ autoPausePreference: AutoPausePreference.atStartAndEnd })
-        );
     });
 });

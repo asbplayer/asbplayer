@@ -42,6 +42,38 @@ export enum SubtitleVisibility {
     whilePaused = 'whilePaused',
 }
 
+/** Order the cycle keybind steps through, ending back at the original behavior. */
+export const nextAutoPauseResumeMode = (mode: AutoPauseResumeMode): AutoPauseResumeMode => {
+    switch (mode) {
+        case AutoPauseResumeMode.manual:
+            return AutoPauseResumeMode.fixed;
+        case AutoPauseResumeMode.fixed:
+            return AutoPauseResumeMode.subtitleLength;
+        default:
+            return AutoPauseResumeMode.manual;
+    }
+};
+
+export const nextSubtitleVisibility = (visibility: SubtitleVisibility): SubtitleVisibility =>
+    visibility === SubtitleVisibility.always ? SubtitleVisibility.whilePaused : SubtitleVisibility.always;
+
+/** Shared by the settings UI and the keybind notifications so a value is named the same way in both. */
+export const autoPauseResumeModeLocKey = (mode: AutoPauseResumeMode): string => {
+    switch (mode) {
+        case AutoPauseResumeMode.fixed:
+            return 'settings.autoPauseResumeModeFixed';
+        case AutoPauseResumeMode.subtitleLength:
+            return 'settings.autoPauseResumeModeSubtitleLength';
+        default:
+            return 'settings.autoPauseResumeModeManual';
+    }
+};
+
+export const subtitleVisibilityLocKey = (visibility: SubtitleVisibility): string =>
+    visibility === SubtitleVisibility.whilePaused
+        ? 'settings.subtitleVisibilityWhilePaused'
+        : 'settings.subtitleVisibilityAlways';
+
 export enum VideoSubtitleSplitBehavior {
     rememberSplitPosition = 'rememberSplitPosition',
     autoMaximizeVideo = 'autoMaximizeVideo',
@@ -933,7 +965,8 @@ export interface KeyBindSet {
     readonly increasePlaybackRate: KeyBind;
     readonly toggleSidePanel: KeyBind;
     readonly toggleRepeat: KeyBind;
-    readonly togglePrimedListening: KeyBind;
+    readonly cycleAutoPauseResumeMode: KeyBind;
+    readonly toggleSubtitleVisibility: KeyBind;
     readonly moveBottomSubtitlesUp: KeyBind;
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;

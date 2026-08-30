@@ -196,7 +196,6 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Toggle condensed playback    |         ✓         |          ✓          |
 | Toggle fast forward playback |         ✓         |          ✓          |
 | Toggle repeat mode           |         ✓         |          ✓          |
-| Toggle primed listening      |         ✓         |          ✓          |
 
 ### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
@@ -744,7 +743,7 @@ Offsets the subtitle gap triggers used by fast-forward and condensed playback. T
 
 ### When a pause ends
 
-Controls how an automatic pause finishes. **Wait for me** is the original behavior: playback stays paused until you resume it. **After a set time** pauses every subtitle for the same length. **After time to read the line** sizes each pause to the subtitle, from its character count multiplied by the reading time per character, clamped between the minimum and maximum (a maximum of `0` means no limit). Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause, and only text that is actually shown counts — markup and ruby readings do not.
+Controls how an automatic pause finishes. **Wait for me** is the original behavior: playback stays paused until you resume it. **After a set time** pauses every subtitle for the same length. **After time to read the line** sizes each pause to the subtitle, from its character count multiplied by the reading time per character, clamped between the minimum and maximum (a maximum of `0` means no limit). Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
 
 ### Silence before resuming
 
@@ -756,9 +755,15 @@ When a pause ends by itself it runs in two phases: the subtitle is shown for the
 
 ### Primed listening
 
-Primed listening is not a separate playback mode. It is auto-pause at the start of a line, with **After time to read the line**, **Only while paused for them**, and a resume delay — read the native-language line, watch it disappear, then hear the target-language audio on its own.
+Primed listening is not a separate playback mode or setting. It is what you get from auto-pause at the start of a line, **After time to read the line**, **Only while paused for them**, and a resume delay — read the native-language line, watch it disappear, then hear the target-language audio on its own.
 
-The **Toggle primed listening** shortcut turns auto-pause on and switches its pause edge, resume mode and subtitle visibility together, then puts all of them back on the second press, so it can be turned on and off without visiting the settings. Pausing at the start is what puts reading before the audio; if you already pause at both edges, both are kept. Each part remains usable on its own: auto-resume without hiding subtitles, or hidden subtitles without auto-resume.
+Set the auto-pause preference to pause at the start of a subtitle once, and the two shortcuts below switch the rest on and off during playback.
+
+### Cycle when a pause ends / Toggle when subtitles are shown
+
+Two keyboard shortcuts that step **When a pause ends** through its options and switch **Show subtitles** between its two. Both are unbound by default; assign them under keyboard shortcuts if you want them.
+
+They are ordinary setting shortcuts rather than a primed listening switch, so they are equally useful on their own — turning subtitles off for a listening pass, for instance, or dropping back to waiting for yourself at a difficult scene.
 
 ### Enable WebSocket client
 

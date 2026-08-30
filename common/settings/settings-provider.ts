@@ -215,7 +215,9 @@ export const defaultSettings: AsbplayerSettings = {
         increasePlaybackRate: { keys: isMacOs ? '⇧+⌃+]' : 'ctrl+shift+]' },
         toggleSidePanel: { keys: '`' },
         toggleRepeat: { keys: isMacOs ? '⇧+R' : 'shift+R' },
-        togglePrimedListening: { keys: isMacOs ? '⇧+L' : 'shift+L' },
+        // Niche enough that they are left unbound until a user asks for them.
+        cycleAutoPauseResumeMode: { keys: '' },
+        toggleSubtitleVisibility: { keys: '' },
         moveBottomSubtitlesUp: { keys: '' },
         moveBottomSubtitlesDown: { keys: '' },
         moveTopSubtitlesUp: { keys: '' },

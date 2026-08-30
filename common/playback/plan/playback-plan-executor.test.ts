@@ -21,7 +21,7 @@ function executorHarness(
     modes: PlayMode[],
     timestampMs: number,
     overrides = {},
-    callbackOverrides: Partial<PlaybackPlanExecutorCallbacks> = {}
+    callbackOverrides: Partial<PlaybackPlanExecutorCallbacks<IndexedSubtitleModel>> = {}
 ) {
     const plan = makePlan(modes, overrides);
     const pauses: number[] = [];

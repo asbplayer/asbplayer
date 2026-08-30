@@ -178,8 +178,13 @@ export interface KeyBinder {
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
-    bindTogglePrimedListening(
-        onTogglePrimedListening: (event: KeyboardEvent) => void,
+    bindCycleAutoPauseResumeMode(
+        onCycleAutoPauseResumeMode: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture?: boolean
+    ): () => void;
+    bindToggleSubtitleVisibility(
+        onToggleSubtitleVisibility: (event: KeyboardEvent) => void,
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
@@ -1027,19 +1032,38 @@ export class DefaultKeyBinder implements KeyBinder {
         return this._bind(shortcut, capture, handler);
     }
 
-    bindTogglePrimedListening(
-        onTogglePrimedListening: (event: KeyboardEvent) => void,
+    bindCycleAutoPauseResumeMode(
+        onCycleAutoPauseResumeMode: (event: KeyboardEvent) => void,
         disabledGetter: () => boolean,
         capture = false
     ) {
-        const shortcut = this.keyBindSet.togglePrimedListening.keys;
+        const shortcut = this.keyBindSet.cycleAutoPauseResumeMode.keys;
 
         const handler = (event: KeyboardEvent) => {
             if (disabledGetter()) {
                 return false;
             }
 
-            onTogglePrimedListening(event);
+            onCycleAutoPauseResumeMode(event);
+            return true;
+        };
+
+        return this._bind(shortcut, capture, handler);
+    }
+
+    bindToggleSubtitleVisibility(
+        onToggleSubtitleVisibility: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture = false
+    ) {
+        const shortcut = this.keyBindSet.toggleSubtitleVisibility.keys;
+
+        const handler = (event: KeyboardEvent) => {
+            if (disabledGetter()) {
+                return false;
+            }
+
+            onToggleSubtitleVisibility(event);
             return true;
         };
 

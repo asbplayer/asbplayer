@@ -15,10 +15,11 @@ import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/p
 
 export type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
 
-export interface PlaybackPlanExecutorCallbacks {
+export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
     readonly play: () => Promise<void>;
     readonly paused: () => boolean;
-    readonly pause: () => void;
+    /** Carries the subtitles showing where the pause happened rather than leaving them to be read back. */
+    readonly pause: (subtitles: readonly T[]) => void;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
     readonly correctAutoPause: (timestampMs: number) => Promise<{ readonly seekIssued: boolean }>;
@@ -65,7 +66,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     private timeline: PlaybackTimeline<T>;
     private readonly runner: PlaybackTimelineRunner<T>;
     private readonly lookaheadCursor: PlaybackTimelineLookaheadCursor<T>;
-    private readonly callbacks: PlaybackPlanExecutorCallbacks;
+    private readonly callbacks: PlaybackPlanExecutorCallbacks<T>;
     private repeatedBlock?: RepeatedBlock;
     private pendingTarget?: PendingTarget;
     private startPauseSuppression?: StartPauseSuppression;
@@ -77,7 +78,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     private updateInProgress = false;
     private deferredDiscontinuity?: DeferredDiscontinuity;
 
-    constructor(plan: PlaybackPlan<T>, timestampMs: number, callbacks: PlaybackPlanExecutorCallbacks) {
+    constructor(plan: PlaybackPlan<T>, timestampMs: number, callbacks: PlaybackPlanExecutorCallbacks<T>) {
         this.plan = plan;
         this._isFastForwarding = false;
         this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
@@ -252,7 +253,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             if (block.endAction?.pause === true) return { autoPaused: false };
         }
 
-        this.callbacks.pause();
+        this.callbacks.pause(this.timeline.showingSubtitlesAt(event.timestampMs));
         return { autoPaused: true };
     }
 
@@ -267,7 +268,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         const repeat = action.repeat !== undefined && this.shouldRepeat(block, action.repeat.count);
         let seeked = false;
 
-        if (action.pause && !options.alreadyAutoPaused) this.callbacks.pause();
+        if (action.pause && !options.alreadyAutoPaused) {
+            this.callbacks.pause(this.timeline.showingSubtitlesAt(event.timestampMs));
+        }
         if (repeat) {
             const blockId = block.id;
             if (action.pause) {
@@ -322,10 +325,13 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation = operation;
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
-            if (shouldPause) this.callbacks.pause();
+            if (shouldPause) this.callbacks.pause(this.timeline.showingSubtitlesAt(target));
             await seek;
             if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
-            if (shouldPause && !this.callbacks.paused()) this.callbacks.pause(); // Just in case the pause wasn't delivered asynchronously
+            if (shouldPause && !this.callbacks.paused()) {
+                // Just in case the pause wasn't delivered asynchronously
+                this.callbacks.pause(this.timeline.showingSubtitlesAt(target));
+            }
             if (this.callbacks.paused()) return { stateChangedTimestampMs: undefined };
             await this.callbacks.play();
             if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
