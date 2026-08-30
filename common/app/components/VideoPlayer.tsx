@@ -81,7 +81,6 @@ import BlurOverlay from '@project/common/app/components/BlurOverlay';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
 import type { Theme } from '@mui/material/styles';
-import { bindPlaybackSettingKeyBindings } from '@project/common/app/services/playback-setting-key-bindings';
 
 const overlayContainerHeight = 48;
 interface ExperimentalHTMLVideoElement extends HTMLVideoElement {
@@ -1723,32 +1722,50 @@ export default function VideoPlayer({
     }, [keyBinder, togglePlaybackMode]);
 
     useEffect(() => {
-        return bindPlaybackSettingKeyBindings({
-            keyBinder,
-            autoPauseResumeMode: miscSettings.autoPauseResumeMode,
-            subtitleVisibility: miscSettings.subtitleVisibility,
-            disabled: () => subtitles.length === 0,
-            saveSettings: onSettingsChanged,
-            notify: ({ locKey, valueLocKey }) => {
+        return keyBinder.bindCycleAutoPauseResumeMode(
+            (event) => {
+                event.preventDefault();
+                const notification = playbackEngineRef.current?.cycleAutoPauseResumeMode();
+                if (notification === undefined) return;
                 setAlert({
                     open: true,
                     notifications: [
                         {
-                            message: { locKey, replacements: { value: t(valueLocKey) } },
+                            message: {
+                                locKey: notification.locKey,
+                                replacements: { value: t(notification.valueLocKey) },
+                            },
                             severity: 'info',
                         },
                     ],
                 });
             },
-        });
-    }, [
-        keyBinder,
-        miscSettings.autoPauseResumeMode,
-        miscSettings.subtitleVisibility,
-        onSettingsChanged,
-        subtitles.length,
-        t,
-    ]);
+            () => subtitles.length === 0
+        );
+    }, [keyBinder, subtitles.length, t]);
+
+    useEffect(() => {
+        return keyBinder.bindToggleSubtitleVisibility(
+            (event) => {
+                event.preventDefault();
+                const notification = playbackEngineRef.current?.toggleSubtitleVisibility();
+                if (notification === undefined) return;
+                setAlert({
+                    open: true,
+                    notifications: [
+                        {
+                            message: {
+                                locKey: notification.locKey,
+                                replacements: { value: t(notification.valueLocKey) },
+                            },
+                            severity: 'info',
+                        },
+                    ],
+                });
+            },
+            () => subtitles.length === 0
+        );
+    }, [keyBinder, subtitles.length, t]);
 
     const handleSubtitlesToggle = useCallback(() => {
         setDisplaySubtitles(!displaySubtitles);

@@ -1,21 +1,53 @@
 import type { SubtitleModel } from '@project/common';
 import { AutoPauseResumeMode } from '@project/common/settings';
+import { playbackPlanAutoPauseResumesEqual } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlanAutoPauseResume } from '@project/common/playback/plan/playback-plan';
+
+export const autoPauseResumeModeNotificationKey = 'auto-pause-resume-mode';
+
+export interface AutoPauseResumeModeNotification {
+    readonly key: typeof autoPauseResumeModeNotificationKey;
+    readonly locKey: 'info.autoPauseResumeMode';
+    readonly valueLocKey: string;
+}
+
+export const nextAutoPauseResumeMode = (mode: AutoPauseResumeMode): AutoPauseResumeMode => {
+    switch (mode) {
+        case AutoPauseResumeMode.manual:
+            return AutoPauseResumeMode.fixed;
+        case AutoPauseResumeMode.fixed:
+            return AutoPauseResumeMode.subtitleLength;
+        default:
+            return AutoPauseResumeMode.manual;
+    }
+};
+
+export const autoPauseResumeModeLocKey = (mode: AutoPauseResumeMode): string => {
+    switch (mode) {
+        case AutoPauseResumeMode.fixed:
+            return 'settings.autoPauseResumeModeFixed';
+        case AutoPauseResumeMode.subtitleLength:
+            return 'settings.autoPauseResumeModeSubtitleLength';
+        default:
+            return 'settings.autoPauseResumeModeManual';
+    }
+};
+
+export const formatAutoPauseResumeModeNotification = (mode: AutoPauseResumeMode): AutoPauseResumeModeNotification => ({
+    key: autoPauseResumeModeNotificationKey,
+    locKey: 'info.autoPauseResumeMode',
+    valueLocKey: autoPauseResumeModeLocKey(mode),
+});
 
 export interface AutoPauseControllerCallbacks {
     readonly play: () => Promise<void>;
-    readonly showingSubtitlesChanged: () => void;
+    readonly readingPeriodEnded: () => void;
     readonly onError: (error: unknown) => void;
-}
-
-export interface AutoPausePolicy {
-    readonly resume?: PlaybackPlanAutoPauseResume;
-    readonly subtitlesWhilePausedOnly: boolean;
 }
 
 /** How long a pause lasts before its subtitle is hidden. */
 export const autoPauseDurationMs = (
-    resume: PlaybackPlanAutoPauseResume,
+    resume: Exclude<PlaybackPlanAutoPauseResume, { readonly mode: AutoPauseResumeMode.manual }>,
     subtitles: readonly SubtitleModel[]
 ): number => {
     if (resume.mode === AutoPauseResumeMode.fixed) return resume.fixedDurationMs;
@@ -26,52 +58,32 @@ export const autoPauseDurationMs = (
 };
 
 /**
- * Ends automatic pauses on their own and decides when subtitles may be on screen.
- *
- * A resuming pause runs in two phases: its subtitle is shown for the pause duration, then hidden
- * while playback stays paused for the resume delay. The silent, subtitle-free gap that leaves is
- * what lets the audio be heard with the meaning already in mind, so visibility follows the pause
- * duration rather than whether the media happens to be paused.
+ * Handles automatic resume after a pause issued by the playback engine itself.
  */
 export default class AutoPauseController {
     private readonly callbacks: AutoPauseControllerCallbacks;
-    private resume?: PlaybackPlanAutoPauseResume;
-    private subtitlesWhilePausedOnly = false;
+    private resume: PlaybackPlanAutoPauseResume = { mode: AutoPauseResumeMode.manual };
     private timeout?: ReturnType<typeof setTimeout>;
-    private subtitlesVisible = false;
 
     constructor(callbacks: AutoPauseControllerCallbacks) {
         this.callbacks = callbacks;
     }
 
-    /** Subtitles are withheld outside of a pause that is showing them. */
-    get subtitlesSuppressed(): boolean {
-        return this.subtitlesWhilePausedOnly && !this.subtitlesVisible;
-    }
-
-    setPolicy({ resume, subtitlesWhilePausedOnly }: AutoPausePolicy, paused: boolean): void {
+    replacePlan(resume: PlaybackPlanAutoPauseResume): void {
+        if (playbackPlanAutoPauseResumesEqual(this.resume, resume)) return;
         this.clearTimeout();
         this.resume = resume;
-        this.subtitlesWhilePausedOnly = subtitlesWhilePausedOnly;
-        if (paused) this.showSubtitles();
-        else this.hideSubtitles();
     }
 
-    /**
-     * Reports a pause issued by playback itself. Every automatic pause opens a window, including
-     * pauses with nothing to read such as negatively offset subtitle starts, so that playback is
-     * never left waiting on a subtitle that is not shown.
-     */
+    /** Starts automatic resume timing for a pause issued by playback itself. */
     autoPaused(subtitles: readonly SubtitleModel[]): void {
         this.clearTimeout();
-        this.showSubtitles();
-
         const resume = this.resume;
-        if (resume === undefined) return;
+        if (resume.mode === AutoPauseResumeMode.manual) return;
 
         this.timeout = setTimeout(
             () => {
-                this.hideSubtitles();
+                this.callbacks.readingPeriodEnded();
                 this.timeout = setTimeout(() => {
                     this.timeout = undefined;
                     this.callbacks.play().catch(this.callbacks.onError);
@@ -81,47 +93,22 @@ export default class AutoPauseController {
         );
     }
 
-    /** Reports a pause that playback did not ask for, which shows subtitles without resuming. */
-    userPaused(): void {
-        if (this.timeout !== undefined) return; // An automatic pause is already running its phases
-        this.showSubtitles();
-    }
-
     playbackStarted(): void {
         this.clearTimeout();
-        this.hideSubtitles();
     }
 
-    /**
-     * Reports a seek the viewer made. It ends any pause in progress, but a viewer who seeks while
-     * paused is still looking at a paused frame and should keep its subtitle.
-     */
-    userSeeked(paused: boolean): void {
+    /** A viewer seek supersedes any pending automatic resume. */
+    userSeeked(): void {
         this.clearTimeout();
-        if (paused) this.showSubtitles();
-        else this.hideSubtitles();
     }
 
     cancel(): void {
         this.clearTimeout();
-        this.hideSubtitles();
     }
 
     private clearTimeout(): void {
         if (this.timeout === undefined) return;
         clearTimeout(this.timeout);
         this.timeout = undefined;
-    }
-
-    private showSubtitles(): void {
-        if (this.subtitlesVisible) return;
-        this.subtitlesVisible = true;
-        if (this.subtitlesWhilePausedOnly) this.callbacks.showingSubtitlesChanged();
-    }
-
-    private hideSubtitles(): void {
-        if (!this.subtitlesVisible) return;
-        this.subtitlesVisible = false;
-        if (this.subtitlesWhilePausedOnly) this.callbacks.showingSubtitlesChanged();
     }
 }

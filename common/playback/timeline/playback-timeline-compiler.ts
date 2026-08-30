@@ -108,6 +108,7 @@ const blocksFromSubtitles = <T extends IndexedSubtitleModel>(
 
         return {
             id: blockId(block),
+            subtitleIndexes: block.subtitles.map(({ index: subtitleIndex }) => subtitleIndex),
             playbackModeStartMs,
             playbackModeEndMs,
             playbackModeEndExclusiveMs,

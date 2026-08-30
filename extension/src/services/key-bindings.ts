@@ -111,7 +111,7 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                void context.cycleAutoPauseResumeMode();
+                context.cycleAutoPauseResumeMode();
             },
             () => context.subtitleController.subtitles.length === 0,
             true
@@ -121,7 +121,7 @@ export default class KeyBindings {
             (event) => {
                 event.preventDefault();
                 event.stopImmediatePropagation();
-                void context.toggleSubtitleVisibility();
+                context.toggleSubtitleVisibility();
             },
             () => context.subtitleController.subtitles.length === 0,
             true

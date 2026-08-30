@@ -17,9 +17,18 @@ import PlaybackModeController, {
     playbackModesFromSettings,
 } from '@project/common/playback/controllers/playback-mode-controller';
 import type { PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
-import AutoPauseController from '@project/common/playback/controllers/auto-pause-controller';
+import AutoPauseController, {
+    formatAutoPauseResumeModeNotification,
+    nextAutoPauseResumeMode,
+} from '@project/common/playback/controllers/auto-pause-controller';
+import type { AutoPauseResumeModeNotification } from '@project/common/playback/controllers/auto-pause-controller';
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
+import SubtitleVisibilityController, {
+    formatSubtitleVisibilityNotification,
+    nextSubtitleVisibility,
+} from '@project/common/playback/controllers/subtitle-visibility-controller';
+import type { SubtitleVisibilityNotification } from '@project/common/playback/controllers/subtitle-visibility-controller';
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 
@@ -109,6 +118,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  *     ├── PlaybackModeController
  *     ├── PlaybackPositionController
  *     ├── AutoPauseController
+ *     ├── SubtitleVisibilityController
  *     ├── PlaybackPlan
  *     └── PlaybackPlanExecutor
  *         ├── PlaybackTimeline
@@ -132,6 +142,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly timingDriver: TimingDriver;
     private readonly playbackPositionController: PlaybackPositionController<T>;
     private readonly autoPauseController: AutoPauseController;
+    private readonly subtitleVisibilityController: SubtitleVisibilityController;
     private readonly playbackStateController: PlaybackStateController<T>;
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
@@ -163,23 +174,28 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.callbacks = callbacks;
         this.timingDriver = timingDriver;
         this.plan = this.buildPlan();
-        this.autoPauseController = new AutoPauseController({
-            play: callbacks.play,
-            showingSubtitlesChanged: () => {
+        this.subtitleVisibilityController = new SubtitleVisibilityController({
+            visibilityChanged: () => {
                 if (!this.timingDriver.bound) return;
                 this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
             },
+        });
+        this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
+        this.autoPauseController = new AutoPauseController({
+            play: callbacks.play,
+            readingPeriodEnded: () => this.subtitleVisibilityController.autoPauseReadingPeriodEnded(),
             onError: callbacks.onError,
         });
-        this.autoPauseController.setPolicy(this.autoPausePolicy(), this.timingDriver.paused());
+        this.autoPauseController.replacePlan(this.plan.autoPauseResume);
 
         const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
             play: callbacks.play,
             paused: () => this.timingDriver.paused(),
             pause: (subtitles) => {
+                this.subtitleVisibilityController.autoPaused();
+                this.autoPauseController.autoPaused(subtitles);
                 callbacks.pause();
                 void this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
-                this.autoPauseController.autoPaused(this.playbackModeSubtitles(subtitles));
             },
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
             setPlaybackRate: (playbackRate) => {
@@ -226,7 +242,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackStateController = new PlaybackStateController({
             paused: () => this.timingDriver.paused(),
             showingSubtitlesAt: (timestampMs) =>
-                this.autoPauseController.subtitlesSuppressed ? [] : this.executor.showingSubtitlesAt(timestampMs),
+                this.subtitleVisibilityController.subtitlesVisible ? this.executor.showingSubtitlesAt(timestampMs) : [],
             playbackStateChanged: callbacks.playbackStateChanged,
             now: () => performance.now(),
         });
@@ -242,7 +258,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 }
             },
             onPlaybackPaused: () => {
-                this.autoPauseController.userPaused();
+                this.subtitleVisibilityController.playbackPaused();
                 this.playbackPositionController.playbackPaused();
                 const timestampMs = this.timingDriver.currentTimeMs();
                 this.playbackStateController.reconcileAndNotify(
@@ -256,14 +272,16 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             onDiscontinuity: (currentTimestampMs) => {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
-                // Auto-pause corrects its position by seeking right after pausing, so only a user
-                // seek ends a pause. A viewer who seeks while paused keeps the subtitle in front of them.
-                if (cause === 'user-seek') this.autoPauseController.userSeeked(this.timingDriver.paused());
+                if (cause === 'user-seek') {
+                    this.autoPauseController.userSeeked();
+                    this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
+                }
                 this.playbackStateController.notify(currentTimestampMs, { force: true });
             },
             onCancel: (options) => this.executor.cancelPendingOperations(options),
             onPlaybackStarted: async () => {
                 this.autoPauseController.playbackStarted();
+                this.subtitleVisibilityController.playbackStarted();
                 await this.executor.playbackStarted();
                 this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
             },
@@ -391,6 +409,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private teardown({ saveSettings }: { readonly saveSettings: boolean }): void {
         ++this.unbindOperationId;
         this.autoPauseController.cancel();
+        this.subtitleVisibilityController.cancel();
         if (!saveSettings) this.playbackPositionController.profileChanged();
         if (!this.timingDriver.bound) return;
         this.playbackPositionController.unbind();
@@ -543,6 +562,24 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.applyPlaybackModeTransition(transition, { savePlaybackModes: true, rebuildWhenUnchanged: false });
     }
 
+    cycleAutoPauseResumeMode(): AutoPauseResumeModeNotification | undefined {
+        if (!this.timingDriver.bound) return;
+        const autoPauseResumeMode = nextAutoPauseResumeMode(this.settings.autoPauseResumeMode);
+        this.settings = { ...this.settings, autoPauseResumeMode };
+        this.rebuildPlan();
+        this.callbacks.saveSettings({ autoPauseResumeMode });
+        return formatAutoPauseResumeModeNotification(autoPauseResumeMode);
+    }
+
+    toggleSubtitleVisibility(): SubtitleVisibilityNotification | undefined {
+        if (!this.timingDriver.bound) return;
+        const subtitleVisibility = nextSubtitleVisibility(this.settings.subtitleVisibility);
+        this.settings = { ...this.settings, subtitleVisibility };
+        this.rebuildPlan();
+        this.callbacks.saveSettings({ subtitleVisibility });
+        return formatSubtitleVisibilityNotification(subtitleVisibility);
+    }
+
     dismissPlaybackPosition(): void {
         this.playbackPositionController.dismissPlaybackPosition();
     }
@@ -557,7 +594,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.timingDriver.externalSeeked!(timestampMs);
             return;
         }
-        this.executor.handleDiscontinuity(timestampMs);
+        const { cause } = this.executor.handleDiscontinuity(timestampMs);
+        if (cause === 'user-seek') {
+            this.autoPauseController.userSeeked();
+            this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
+        }
         this.playbackStateController.notify(timestampMs, { force: true });
     }
 
@@ -578,18 +619,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
         this.timingDriver.cancelExpectedInternalSeek();
         this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
-    }
-
-    /** Subtitles on tracks that drive playback modes, which are the ones a pause is timed against. */
-    private playbackModeSubtitles(subtitles: readonly T[]): readonly T[] {
-        return subtitles.filter((subtitle) => isTrackSeekable(this.settings.seekableTracks, subtitle.track));
-    }
-
-    private autoPausePolicy() {
-        return {
-            resume: this.plan.autoPauseResume,
-            subtitlesWhilePausedOnly: this.plan.subtitlesWhilePausedOnly,
-        };
     }
 
     private buildPlan(): PlaybackPlan<T> {
@@ -636,7 +665,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const planChanged = !playbackPlansEqual(this.plan, plan);
         if (planChanged) {
             this.plan = plan;
-            this.autoPauseController.setPolicy(this.autoPausePolicy(), this.timingDriver.paused());
+            this.autoPauseController.replacePlan(this.plan.autoPauseResume);
+            this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,
             });

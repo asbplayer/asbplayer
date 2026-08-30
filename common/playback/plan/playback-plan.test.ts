@@ -2,8 +2,13 @@ import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel } from '@project/common';
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-test-utils';
-import { buildPlaybackPlan, fastForwardingForPlanState } from '@project/common/playback/plan/playback-plan';
+import {
+    buildPlaybackPlan,
+    fastForwardingForPlanState,
+    normalizeAutoPauseDurationBounds,
+} from '@project/common/playback/plan/playback-plan';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
+import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 
 const makePlan = (
     modes: PlayMode[],
@@ -32,6 +37,44 @@ describe('buildPlaybackPlan', () => {
         expect(plan.timelineSubtitles.blocks[0].endAction).toBeUndefined();
         expect(plan.condensed).toBeUndefined();
         expect(plan.fastForward).toBeUndefined();
+    });
+
+    it('keeps manual resume and subtitle visibility as explicit plan values', () => {
+        const plan = makePlan([PlayMode.normal], {
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            subtitleVisibility: SubtitleVisibility.whilePaused,
+        });
+
+        expect(plan.autoPauseResume).toEqual({ mode: AutoPauseResumeMode.manual });
+        expect(plan.subtitleVisibility).toBe(SubtitleVisibility.whilePaused);
+    });
+
+    it('builds mode-specific fixed and subtitle-length resume plans', () => {
+        const fixed = makePlan([PlayMode.autoPause], {
+            autoPauseResumeMode: AutoPauseResumeMode.fixed,
+            autoPauseFixedDurationMs: -1,
+            autoPauseResumeDelayMs: 300,
+        });
+        const subtitleLength = makePlan([PlayMode.autoPause], {
+            autoPauseResumeMode: AutoPauseResumeMode.subtitleLength,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 100,
+            autoPauseTimePerCharacterMs: 0,
+            autoPauseResumeDelayMs: -1,
+        });
+
+        expect(fixed.autoPauseResume).toEqual({
+            mode: AutoPauseResumeMode.fixed,
+            fixedDurationMs: 0,
+            delayMs: 300,
+        });
+        expect(subtitleLength.autoPauseResume).toEqual({
+            mode: AutoPauseResumeMode.subtitleLength,
+            minimumDurationMs: 500,
+            maximumDurationMs: 500,
+            timePerCharacterMs: 0,
+            delayMs: 0,
+        });
     });
 
     it('keeps display-only subtitles active without creating playback blocks', () => {
@@ -279,5 +322,21 @@ describe('buildPlaybackPlan', () => {
         expect(rateAt(799)).toBe(1.25);
         expect(rateAt(2299)).toBe(1.25);
         expect(rateAt(2300)).toBe(2.5);
+    });
+});
+
+describe('normalizeAutoPauseDurationBounds', () => {
+    it('raises a bounded maximum to the minimum', () => {
+        expect(normalizeAutoPauseDurationBounds(2000, 1000)).toEqual({
+            minimumDurationMs: 2000,
+            maximumDurationMs: 2000,
+        });
+    });
+
+    it('preserves zero as an unbounded maximum', () => {
+        expect(normalizeAutoPauseDurationBounds(2000, 0)).toEqual({
+            minimumDurationMs: 2000,
+            maximumDurationMs: 0,
+        });
     });
 });

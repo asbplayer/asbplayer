@@ -253,7 +253,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             if (block.endAction?.pause === true) return { autoPaused: false };
         }
 
-        this.callbacks.pause(this.timeline.showingSubtitlesAt(event.timestampMs));
+        this.callbacks.pause(this.pauseSubtitlesAt(event.timestampMs, [block]));
         return { autoPaused: true };
     }
 
@@ -269,7 +269,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         let seeked = false;
 
         if (action.pause && !options.alreadyAutoPaused) {
-            this.callbacks.pause(this.timeline.showingSubtitlesAt(event.timestampMs));
+            this.callbacks.pause(this.pauseSubtitlesAt(event.timestampMs, [block]));
         }
         if (repeat) {
             const blockId = block.id;
@@ -325,12 +325,12 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation = operation;
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
-            if (shouldPause) this.callbacks.pause(this.timeline.showingSubtitlesAt(target));
+            const pauseSubtitles = this.pauseSubtitlesAt(target, this.timeline.startActionsAt(target));
+            if (shouldPause) this.callbacks.pause(pauseSubtitles);
             await seek;
             if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
             if (shouldPause && !this.callbacks.paused()) {
-                // Just in case the pause wasn't delivered asynchronously
-                this.callbacks.pause(this.timeline.showingSubtitlesAt(target));
+                this.callbacks.pause(pauseSubtitles); // Just in case the pause wasn't delivered asynchronously
             }
             if (this.callbacks.paused()) return { stateChangedTimestampMs: undefined };
             await this.callbacks.play();
@@ -344,6 +344,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     private shouldPauseForCondensedSeek(timestampMs: number): boolean {
         if (!this.plan.condensed?.pauseAtStart) return false;
         return this.timeline.hasStartActionAt(timestampMs);
+    }
+
+    private pauseSubtitlesAt(timestampMs: number, blocks: readonly PlaybackTimelineBlock[]): readonly T[] {
+        const subtitleIndexes = new Set(blocks.flatMap((block) => block.subtitleIndexes));
+        return this.timeline.showingSubtitlesAt(timestampMs).filter((subtitle) => subtitleIndexes.has(subtitle.index));
     }
 
     private nextCondensedTarget(timestampMs: number): number | undefined {

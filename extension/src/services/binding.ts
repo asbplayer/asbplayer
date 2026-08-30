@@ -73,12 +73,8 @@ import {
     VideoDataUiOpenReason,
 } from '@project/common';
 import { adjacentSubtitle } from '@project/common/key-binder';
-import type { AsbplayerSettings, SeekableTracks } from '@project/common/settings';
+import type { SeekableTracks } from '@project/common/settings';
 import {
-    autoPauseResumeModeLocKey,
-    nextAutoPauseResumeMode,
-    nextSubtitleVisibility,
-    subtitleVisibilityLocKey,
     calculateSeekableTracksValue,
     extractAnkiSettings,
     PauseOnHoverMode,
@@ -367,33 +363,22 @@ export default class Binding {
         this.subtitleController.notification(options.notification);
     }
 
-    async cycleAutoPauseResumeMode(): Promise<void> {
-        const mode = nextAutoPauseResumeMode(await this.settings.getSingle('autoPauseResumeMode'));
-        await this._applySettingWithNotification({ autoPauseResumeMode: mode }, 'info.autoPauseResumeMode', {
-            value: i18n.t(autoPauseResumeModeLocKey(mode)),
+    cycleAutoPauseResumeMode(): void {
+        const notification = this.playbackEngine.cycleAutoPauseResumeMode();
+        if (notification === undefined) return;
+        this.subtitleController.notification({
+            locKey: notification.locKey,
+            replacements: { value: i18n.t(notification.valueLocKey) },
         });
     }
 
-    async toggleSubtitleVisibility(): Promise<void> {
-        const visibility = nextSubtitleVisibility(await this.settings.getSingle('subtitleVisibility'));
-        await this._applySettingWithNotification({ subtitleVisibility: visibility }, 'info.subtitleVisibility', {
-            value: i18n.t(subtitleVisibilityLocKey(visibility)),
+    toggleSubtitleVisibility(): void {
+        const notification = this.playbackEngine.toggleSubtitleVisibility();
+        if (notification === undefined) return;
+        this.subtitleController.notification({
+            locKey: notification.locKey,
+            replacements: { value: i18n.t(notification.valueLocKey) },
         });
-    }
-
-    private async _applySettingWithNotification(
-        settings: Partial<AsbplayerSettings>,
-        locKey: string,
-        replacements: { [key: string]: string }
-    ): Promise<void> {
-        await this.settings.set(settings);
-        const settingsUpdatedCommand: VideoToExtensionCommand<SettingsUpdatedMessage> = {
-            sender: 'asbplayer-video',
-            message: { command: 'settings-updated' },
-            src: this.registeredVideoSrc,
-        };
-        void browser.runtime.sendMessage(settingsUpdatedCommand);
-        this.subtitleController.notification({ locKey, replacements });
     }
 
     private _handlePlaybackModesChanged(

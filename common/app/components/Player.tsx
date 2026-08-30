@@ -71,7 +71,6 @@ import { createTheme } from '@project/common/theme/theme';
 import Alert from '@project/common/app/components/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
 import useSnackbar from '@project/common/hooks/use-snackbar';
-import { bindPlaybackSettingKeyBindings } from '@project/common/app/services/playback-setting-key-bindings';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -1351,38 +1350,50 @@ function PlayerComponent(
     }, [keyBinder, disableKeyEvents, togglePlayMode]);
 
     useEffect(() => {
-        return bindPlaybackSettingKeyBindings({
-            keyBinder,
-            autoPauseResumeMode: settings.autoPauseResumeMode,
-            subtitleVisibility: settings.subtitleVisibility,
-            disabled: () => disableKeyEvents || !playModeEnabled,
-            saveSettings: (changedSettings) => {
-                if (onSettingsChanged !== undefined) onSettingsChanged(changedSettings);
-                else void settingsProvider.set(changedSettings).catch(onError);
-            },
-            notify: ({ locKey, valueLocKey }) => {
+        return keyBinder.bindCycleAutoPauseResumeMode(
+            (event) => {
+                event.preventDefault();
+                const notification = syntheticPlaybackEngineRef.current?.cycleAutoPauseResumeMode();
+                if (notification === undefined) return;
                 setAlert({
                     open: true,
                     notifications: [
                         {
-                            message: { locKey, replacements: { value: t(valueLocKey) } },
+                            message: {
+                                locKey: notification.locKey,
+                                replacements: { value: t(notification.valueLocKey) },
+                            },
                             severity: 'info',
                         },
                     ],
                 });
             },
-        });
-    }, [
-        disableKeyEvents,
-        keyBinder,
-        onError,
-        onSettingsChanged,
-        playModeEnabled,
-        settings.autoPauseResumeMode,
-        settings.subtitleVisibility,
-        settingsProvider,
-        t,
-    ]);
+            () => disableKeyEvents || !playModeEnabled
+        );
+    }, [disableKeyEvents, keyBinder, playModeEnabled, t]);
+
+    useEffect(() => {
+        return keyBinder.bindToggleSubtitleVisibility(
+            (event) => {
+                event.preventDefault();
+                const notification = syntheticPlaybackEngineRef.current?.toggleSubtitleVisibility();
+                if (notification === undefined) return;
+                setAlert({
+                    open: true,
+                    notifications: [
+                        {
+                            message: {
+                                locKey: notification.locKey,
+                                replacements: { value: t(notification.valueLocKey) },
+                            },
+                            severity: 'info',
+                        },
+                    ],
+                });
+            },
+            () => disableKeyEvents || !playModeEnabled
+        );
+    }, [disableKeyEvents, keyBinder, playModeEnabled, t]);
 
     useEffect(() => channel?.appBarToggle(appBarHidden), [channel, appBarHidden]);
     useEffect(() => channel?.fullscreenToggle(videoFullscreen), [channel, videoFullscreen]);

@@ -326,6 +326,43 @@ describe('PlaybackEngine', () => {
         expect(harness.savedSettings).toEqual([{ lastPlaybackModes: [PlayMode.repeat] }]);
     });
 
+    it('owns and persists rapid auto-pause resume mode transitions', async () => {
+        const harness = await makePlaybackEngine([PlayMode.autoPause]);
+
+        const notifications = [
+            harness.playbackEngine.cycleAutoPauseResumeMode(),
+            harness.playbackEngine.cycleAutoPauseResumeMode(),
+            harness.playbackEngine.cycleAutoPauseResumeMode(),
+        ];
+
+        expect(harness.savedSettings).toEqual([
+            { autoPauseResumeMode: AutoPauseResumeMode.fixed },
+            { autoPauseResumeMode: AutoPauseResumeMode.subtitleLength },
+            { autoPauseResumeMode: AutoPauseResumeMode.manual },
+        ]);
+        expect(notifications.map((notification) => notification?.valueLocKey)).toEqual([
+            'settings.autoPauseResumeModeFixed',
+            'settings.autoPauseResumeModeSubtitleLength',
+            'settings.autoPauseResumeModeManual',
+        ]);
+    });
+
+    it('owns and persists subtitle visibility transitions', async () => {
+        const harness = await makePlaybackEngine([PlayMode.autoPause]);
+
+        const hiddenDuringPlayback = harness.playbackEngine.toggleSubtitleVisibility();
+        const alwaysVisible = harness.playbackEngine.toggleSubtitleVisibility();
+
+        expect(harness.savedSettings).toEqual([
+            { subtitleVisibility: SubtitleVisibility.whilePaused },
+            { subtitleVisibility: SubtitleVisibility.always },
+        ]);
+        expect([hiddenDuringPlayback?.valueLocKey, alwaysVisible?.valueLocKey]).toEqual([
+            'settings.subtitleVisibilityWhilePaused',
+            'settings.subtitleVisibilityAlways',
+        ]);
+    });
+
     it('does not change the engine-owned offset when settings are refreshed', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], 0, [subtitle], {
             settings: { lastSubtitleOffset: 375, rememberSubtitleOffset: false },
@@ -1782,6 +1819,28 @@ describe('PlaybackEngine', () => {
             jest.advanceTimersByTime(300);
 
             expect(harness.plays).toEqual([1000]);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('keeps the automatic reading phase when the media reports its pause synchronously', async () => {
+        jest.useFakeTimers();
+
+        try {
+            const harness = await makePlaybackEngine([PlayMode.autoPause], 500, [subtitle], {
+                settings: resumingAutoPauseSettings,
+                notifyPauseSynchronously: true,
+            });
+
+            await harness.driver.time(1000, 1000);
+            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([0]);
+
+            jest.advanceTimersByTime(subtitle.text.length * 100);
+            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
+
+            jest.advanceTimersByTime(300);
+            expect(harness.plays).toHaveLength(1);
         } finally {
             jest.useRealTimers();
         }

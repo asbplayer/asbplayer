@@ -39,6 +39,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
 import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
 import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
+import { normalizeAutoPauseDurationBounds } from '@project/common/playback/plan/playback-plan';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
@@ -133,6 +134,26 @@ const MiscSettingTab: React.FC<Props> = ({
             );
         },
         [autoPausePreference, onSettingChanged]
+    );
+    const handleAutoPauseMinimumDurationChanged = useCallback(
+        (minimumDurationMs: number) => {
+            const bounds = normalizeAutoPauseDurationBounds(minimumDurationMs, autoPauseMaximumDurationMs);
+            onSettingsChanged({
+                autoPauseMinimumDurationMs: bounds.minimumDurationMs,
+                autoPauseMaximumDurationMs: bounds.maximumDurationMs,
+            });
+        },
+        [autoPauseMaximumDurationMs, onSettingsChanged]
+    );
+    const handleAutoPauseMaximumDurationChanged = useCallback(
+        (maximumDurationMs: number) => {
+            const bounds = normalizeAutoPauseDurationBounds(autoPauseMinimumDurationMs, maximumDurationMs);
+            onSettingsChanged({
+                autoPauseMinimumDurationMs: bounds.minimumDurationMs,
+                autoPauseMaximumDurationMs: bounds.maximumDurationMs,
+            });
+        },
+        [autoPauseMinimumDurationMs, onSettingsChanged]
     );
     const validRegex = useMemo(() => regexIsValid(subtitleRegexFilter), [subtitleRegexFilter]);
     const [webSocketConnectionSucceeded, setWebSocketConnectionSucceeded] = useState<boolean>();
@@ -648,9 +669,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                         fullWidth
                                         label={t('settings.autoPauseMinimumDuration')}
                                         value={autoPauseMinimumDurationMs}
-                                        onValueChange={(value) =>
-                                            void onSettingChanged('autoPauseMinimumDurationMs', value)
-                                        }
+                                        onValueChange={handleAutoPauseMinimumDurationChanged}
                                         slotProps={{
                                             htmlInput: { min: 0, step: 1 },
                                             input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
@@ -662,9 +681,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                         label={t('settings.autoPauseMaximumDuration')}
                                         helperText={t('settings.autoPauseMaximumDurationHelperText')}
                                         value={autoPauseMaximumDurationMs}
-                                        onValueChange={(value) =>
-                                            void onSettingChanged('autoPauseMaximumDurationMs', value)
-                                        }
+                                        onValueChange={handleAutoPauseMaximumDurationChanged}
                                         slotProps={{
                                             htmlInput: { min: 0, step: 1 },
                                             input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },

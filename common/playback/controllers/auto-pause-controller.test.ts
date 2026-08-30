@@ -2,54 +2,77 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { AutoPauseResumeMode } from '@project/common/settings';
 import { makeSubtitle } from '@project/common/playback/playback-test-utils';
 import type { PlaybackPlanAutoPauseResume } from '@project/common/playback/plan/playback-plan';
-import AutoPauseController, { autoPauseDurationMs } from '@project/common/playback/controllers/auto-pause-controller';
+import AutoPauseController, {
+    autoPauseDurationMs,
+    formatAutoPauseResumeModeNotification,
+    nextAutoPauseResumeMode,
+} from '@project/common/playback/controllers/auto-pause-controller';
 
-const subtitleLengthResume: PlaybackPlanAutoPauseResume = {
+const manualResume: PlaybackPlanAutoPauseResume = { mode: AutoPauseResumeMode.manual };
+const subtitleLengthResume = {
     mode: AutoPauseResumeMode.subtitleLength,
-    fixedDurationMs: 2000,
     minimumDurationMs: 500,
     maximumDurationMs: 2000,
     timePerCharacterMs: 100,
     delayMs: 300,
-};
-
-const fixedResume: PlaybackPlanAutoPauseResume = { ...subtitleLengthResume, mode: AutoPauseResumeMode.fixed };
+} as const;
+const fixedResume = {
+    mode: AutoPauseResumeMode.fixed,
+    fixedDurationMs: 2000,
+    delayMs: 300,
+} as const;
 
 const subtitleOfLength = (length: number) => makeSubtitle({ text: 'a'.repeat(length) });
 
-const harness = (policy: { resume?: PlaybackPlanAutoPauseResume; subtitlesWhilePausedOnly: boolean }) => {
+const harness = (resume: PlaybackPlanAutoPauseResume) => {
     const events: string[] = [];
     const controller = new AutoPauseController({
         play: async () => {
             events.push('play');
         },
-        showingSubtitlesChanged: () => events.push('subtitles'),
+        readingPeriodEnded: () => events.push('reading-ended'),
         onError: (error) => events.push(`error: ${String(error)}`),
     });
-    controller.setPolicy(policy, false);
+    controller.replacePlan(resume);
     return { controller, events };
 };
 
+describe('auto-pause resume mode', () => {
+    it('cycles through each mode and formats its notification', () => {
+        const fixed = nextAutoPauseResumeMode(AutoPauseResumeMode.manual);
+        const subtitleLength = nextAutoPauseResumeMode(fixed);
+        const manual = nextAutoPauseResumeMode(subtitleLength);
+
+        expect([fixed, subtitleLength, manual]).toEqual([
+            AutoPauseResumeMode.fixed,
+            AutoPauseResumeMode.subtitleLength,
+            AutoPauseResumeMode.manual,
+        ]);
+        expect(formatAutoPauseResumeModeNotification(fixed)).toEqual({
+            key: 'auto-pause-resume-mode',
+            locKey: 'info.autoPauseResumeMode',
+            valueLocKey: 'settings.autoPauseResumeModeFixed',
+        });
+    });
+});
+
 describe('autoPauseDurationMs', () => {
-    it('uses the fixed duration regardless of subtitle length', () => {
-        expect(autoPauseDurationMs(fixedResume, [subtitleOfLength(1)])).toBe(2000);
+    it('uses the fixed duration regardless of subtitle count', () => {
         expect(autoPauseDurationMs(fixedResume, [])).toBe(2000);
+        expect(autoPauseDurationMs(fixedResume, [subtitleOfLength(1)])).toBe(2000);
+        expect(autoPauseDurationMs(fixedResume, [subtitleOfLength(6), subtitleOfLength(4)])).toBe(2000);
     });
 
-    it('scales with the characters being read and clamps to the configured bounds', () => {
-        expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(10)])).toBe(1000);
+    it('scales with all readable characters and clamps to the configured bounds', () => {
+        expect(autoPauseDurationMs(subtitleLengthResume, [])).toBe(500);
         expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(1)])).toBe(500);
+        expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(6), subtitleOfLength(4)])).toBe(1000);
         expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(100)])).toBe(2000);
     });
 
     it('treats a zero maximum as no upper bound', () => {
         const unbounded = { ...subtitleLengthResume, maximumDurationMs: 0 };
-
         expect(autoPauseDurationMs(unbounded, [subtitleOfLength(100)])).toBe(10_000);
-    });
-
-    it('sums every subtitle it is given', () => {
-        expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(6), subtitleOfLength(4)])).toBe(1000);
     });
 });
 
@@ -61,124 +84,42 @@ describe('AutoPauseController', () => {
         jest.useRealTimers();
     });
 
-    it('shows the subtitle for the pause duration, hides it, then resumes after the delay', () => {
-        const { controller, events } = harness({
-            resume: subtitleLengthResume,
-            subtitlesWhilePausedOnly: true,
-        });
+    it('ends the reading period and then resumes after the configured delay', () => {
+        const { controller, events } = harness(subtitleLengthResume);
 
         controller.autoPaused([subtitleOfLength(10)]);
-        expect(controller.subtitlesSuppressed).toBe(false);
-
         jest.advanceTimersByTime(1000);
-        expect(controller.subtitlesSuppressed).toBe(true);
-        expect(events).toEqual(['subtitles', 'subtitles']);
+        expect(events).toEqual(['reading-ended']);
 
         jest.advanceTimersByTime(300);
-        expect(events).toEqual(['subtitles', 'subtitles', 'play']);
+        expect(events).toEqual(['reading-ended', 'play']);
     });
 
-    it('never withholds subtitles when visibility is always', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: false });
-
-        expect(controller.subtitlesSuppressed).toBe(false);
+    it('waits indefinitely in manual mode', () => {
+        const { controller, events } = harness(manualResume);
         controller.autoPaused([subtitleOfLength(10)]);
+        jest.advanceTimersByTime(60_000);
+        expect(events).toEqual([]);
+    });
+
+    it('preserves a pending resume when an equivalent plan is replaced', () => {
+        const { controller, events } = harness(subtitleLengthResume);
+        controller.autoPaused([subtitleOfLength(10)]);
+        controller.replacePlan({ ...subtitleLengthResume });
         jest.advanceTimersByTime(1300);
-
-        expect(controller.subtitlesSuppressed).toBe(false);
-        expect(events).toEqual(['play']);
+        expect(events).toEqual(['reading-ended', 'play']);
     });
 
-    it('stays paused with the subtitle shown when no resume is configured', () => {
-        const { controller, events } = harness({ subtitlesWhilePausedOnly: true });
-
+    it.each([
+        ['playback starts', (controller: AutoPauseController) => controller.playbackStarted()],
+        ['the user seeks', (controller: AutoPauseController) => controller.userSeeked()],
+        ['the controller is cancelled', (controller: AutoPauseController) => controller.cancel()],
+        ['the plan is replaced', (controller: AutoPauseController) => controller.replacePlan(manualResume)],
+    ])('drops a pending resume when %s', (_description, interrupt) => {
+        const { controller, events } = harness(subtitleLengthResume);
         controller.autoPaused([subtitleOfLength(10)]);
+        interrupt(controller);
         jest.advanceTimersByTime(60_000);
-
-        expect(controller.subtitlesSuppressed).toBe(false);
-        expect(events).toEqual(['subtitles']);
-    });
-
-    it('still resumes when the pause has nothing to read', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.autoPaused([]);
-        jest.advanceTimersByTime(500 + 300);
-
-        expect(events).toEqual(['subtitles', 'subtitles', 'play']);
-    });
-
-    it('shows subtitles for a pause playback did not ask for, without resuming', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.userPaused();
-        jest.advanceTimersByTime(60_000);
-
-        expect(controller.subtitlesSuppressed).toBe(false);
-        expect(events).toEqual(['subtitles']);
-    });
-
-    it('leaves a running automatic pause alone when the media reports it paused', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.autoPaused([subtitleOfLength(10)]);
-        controller.userPaused();
-        jest.advanceTimersByTime(1300);
-
-        expect(events).toEqual(['subtitles', 'subtitles', 'play']);
-    });
-
-    it('hides subtitles and drops a pending resume once playback starts', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.autoPaused([subtitleOfLength(10)]);
-        controller.playbackStarted();
-        jest.advanceTimersByTime(60_000);
-
-        expect(controller.subtitlesSuppressed).toBe(true);
-        expect(events).toEqual(['subtitles', 'subtitles']);
-    });
-
-    it('keeps the subtitle of a paused frame when the viewer seeks while paused', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.autoPaused([subtitleOfLength(10)]);
-        controller.userSeeked(true);
-        jest.advanceTimersByTime(60_000);
-
-        expect(controller.subtitlesSuppressed).toBe(false);
-        expect(events).toEqual(['subtitles']);
-    });
-
-    it('hides subtitles when the viewer seeks while playing', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.autoPaused([subtitleOfLength(10)]);
-        controller.userSeeked(false);
-        jest.advanceTimersByTime(60_000);
-
-        expect(controller.subtitlesSuppressed).toBe(true);
-        expect(events).toEqual(['subtitles', 'subtitles']);
-    });
-
-    it('drops a pending resume when the policy changes', () => {
-        const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
-
-        controller.autoPaused([subtitleOfLength(10)]);
-        controller.setPolicy({ subtitlesWhilePausedOnly: false }, false);
-        jest.advanceTimersByTime(60_000);
-
-        expect(controller.subtitlesSuppressed).toBe(false);
-        expect(events).toEqual(['subtitles']);
-    });
-
-    it('keeps subtitles visible when the policy changes while playback is paused', () => {
-        const { controller, events } = harness({ subtitlesWhilePausedOnly: false });
-
-        controller.userPaused();
-        controller.setPolicy({ subtitlesWhilePausedOnly: true }, true);
-
-        expect(controller.subtitlesSuppressed).toBe(false);
         expect(events).toEqual([]);
     });
 });

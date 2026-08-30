@@ -295,6 +295,26 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.seeks).toEqual([1000]);
     });
 
+    it('reports only playback-mode subtitles when display-only tracks overlap an automatic pause', async () => {
+        const playbackSubtitle = makeSubtitle({ text: 'read me', track: 0, index: 0 });
+        const displayOnlySubtitle = makeSubtitle({ text: 'translation', track: 1, index: 1 });
+        const pausedWith: (readonly IndexedSubtitleModel[])[] = [];
+        const harness = executorHarness(
+            [PlayMode.autoPause],
+            0,
+            {
+                subtitles: [playbackSubtitle],
+                displaySubtitles: [playbackSubtitle, displayOnlySubtitle],
+                autoPausePreference: AutoPausePreference.atStart,
+            },
+            { pause: (subtitles) => pausedWith.push(subtitles) }
+        );
+
+        await harness.executor.update(1000, {});
+
+        expect(pausedWith).toEqual([[playbackSubtitle]]);
+    });
+
     it('clamps playback offsets to the gap between neighboring subtitles', () => {
         const first = makeSubtitle();
         const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });
