@@ -1870,6 +1870,29 @@ describe('PlaybackEngine', () => {
         }
     });
 
+    it('restores paused subtitle visibility when auto-pause is disabled during the resume delay', async () => {
+        jest.useFakeTimers();
+
+        try {
+            const harness = await makePlaybackEngine([PlayMode.autoPause], 500, [subtitle], {
+                settings: resumingAutoPauseSettings,
+            });
+
+            await harness.driver.time(1000, 1000);
+            jest.advanceTimersByTime(subtitle.text.length * 100);
+            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
+
+            harness.playbackEngine.togglePlaybackMode(PlayMode.autoPause);
+
+            expect(harness.driver.paused()).toBe(true);
+            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([0]);
+            jest.advanceTimersByTime(300);
+            expect(harness.plays).toEqual([]);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     it('leaves auto-pause waiting for the user by default', async () => {
         jest.useFakeTimers();
 

@@ -315,6 +315,43 @@ describe('PlaybackPlanExecutor', () => {
         expect(pausedWith).toEqual([[playbackSubtitle]]);
     });
 
+    it.each([
+        {
+            name: 'before a negatively offset start',
+            autoPausePreference: AutoPausePreference.atStart,
+            subtitleTriggerStartOffset: -250,
+            initialTimestampMs: 500,
+            updateTimestampMs: 1000,
+        },
+        {
+            name: 'after a positively offset end',
+            autoPausePreference: AutoPausePreference.atEnd,
+            subtitleTriggerEndOffset: 500,
+            initialTimestampMs: 1500,
+            updateTimestampMs: 2500,
+        },
+    ])(
+        'reports the triggering subtitle when pausing $name',
+        async ({ autoPausePreference, initialTimestampMs, updateTimestampMs, ...offsets }) => {
+            const playbackSubtitle = makeSubtitle({ text: 'read me' });
+            const pausedWith: (readonly IndexedSubtitleModel[])[] = [];
+            const harness = executorHarness(
+                [PlayMode.autoPause],
+                initialTimestampMs,
+                {
+                    subtitles: [playbackSubtitle],
+                    autoPausePreference,
+                    ...offsets,
+                },
+                { pause: (subtitles) => pausedWith.push(subtitles) }
+            );
+
+            await harness.executor.update(updateTimestampMs, {});
+
+            expect(pausedWith).toEqual([[playbackSubtitle]]);
+        }
+    );
+
     it('clamps playback offsets to the gap between neighboring subtitles', () => {
         const first = makeSubtitle();
         const second = makeSubtitle({ start: 3000, end: 4000, originalStart: 3000, originalEnd: 4000, index: 1 });

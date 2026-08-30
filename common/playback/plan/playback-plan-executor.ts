@@ -253,7 +253,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             if (block.endAction?.pause === true) return { autoPaused: false };
         }
 
-        this.callbacks.pause(this.pauseSubtitlesAt(event.timestampMs, [block]));
+        this.callbacks.pause(this.pauseSubtitlesFor([block]));
         return { autoPaused: true };
     }
 
@@ -269,7 +269,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         let seeked = false;
 
         if (action.pause && !options.alreadyAutoPaused) {
-            this.callbacks.pause(this.pauseSubtitlesAt(event.timestampMs, [block]));
+            this.callbacks.pause(this.pauseSubtitlesFor([block]));
         }
         if (repeat) {
             const blockId = block.id;
@@ -325,7 +325,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation = operation;
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
-            const pauseSubtitles = this.pauseSubtitlesAt(target, this.timeline.startActionsAt(target));
+            const pauseSubtitles = this.pauseSubtitlesFor(this.timeline.startActionsAt(target));
             if (shouldPause) this.callbacks.pause(pauseSubtitles);
             await seek;
             if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
@@ -346,9 +346,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return this.timeline.hasStartActionAt(timestampMs);
     }
 
-    private pauseSubtitlesAt(timestampMs: number, blocks: readonly PlaybackTimelineBlock[]): readonly T[] {
+    private pauseSubtitlesFor(blocks: readonly PlaybackTimelineBlock[]): readonly T[] {
         const subtitleIndexes = new Set(blocks.flatMap((block) => block.subtitleIndexes));
-        return this.timeline.showingSubtitlesAt(timestampMs).filter((subtitle) => subtitleIndexes.has(subtitle.index));
+        return this.plan.timelineSubtitles.displaySubtitles.filter((subtitle) => subtitleIndexes.has(subtitle.index));
     }
 
     private nextCondensedTarget(timestampMs: number): number | undefined {

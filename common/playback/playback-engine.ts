@@ -665,8 +665,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const planChanged = !playbackPlansEqual(this.plan, plan);
         if (planChanged) {
             this.plan = plan;
-            this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
+            const autoPauseResumeChanged = this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
             this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
+            if (autoPauseResumeChanged) {
+                this.subtitleVisibilityController.autoPauseCancelled(this.timingDriver.paused());
+            }
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,
             });

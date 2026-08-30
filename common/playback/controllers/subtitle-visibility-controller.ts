@@ -90,6 +90,13 @@ export default class SubtitleVisibilityController {
         });
     }
 
+    autoPauseCancelled(paused: boolean): void {
+        this.mutate(() => {
+            this.automaticPauseActive = false;
+            this._subtitlesVisible = this.visibleWhen(paused);
+        });
+    }
+
     cancel(): void {
         this.mutate(() => {
             this.automaticPauseActive = false;

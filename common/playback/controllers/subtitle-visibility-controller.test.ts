@@ -84,6 +84,16 @@ describe('SubtitleVisibilityController', () => {
         expect(playingHarness.controller.subtitlesVisible).toBe(false);
     });
 
+    it('ends an automatic pause when its pending resume is cancelled', () => {
+        const { controller } = harness(SubtitleVisibility.whilePaused);
+        controller.autoPaused();
+        controller.autoPauseResumeDelayStarted();
+
+        controller.autoPauseCancelled(true);
+
+        expect(controller.subtitlesVisible).toBe(true);
+    });
+
     it('reconciles visibility from current playback state when its plan is replaced', () => {
         const playingHarness = harness(SubtitleVisibility.whenDue);
         playingHarness.controller.replacePlan(SubtitleVisibility.whilePaused, false);

@@ -68,10 +68,11 @@ export default class AutoPauseController {
         this.callbacks = callbacks;
     }
 
-    replacePlan(resume: PlaybackPlanAutoPauseResume | undefined): void {
-        if (playbackPlanAutoPauseResumesEqual(this.resume, resume)) return;
+    replacePlan(resume: PlaybackPlanAutoPauseResume | undefined): boolean {
+        if (playbackPlanAutoPauseResumesEqual(this.resume, resume)) return false;
         this.clearTimeout();
         this.resume = resume;
+        return true;
     }
 
     autoPaused(subtitles: readonly SubtitleModel[]): void {
