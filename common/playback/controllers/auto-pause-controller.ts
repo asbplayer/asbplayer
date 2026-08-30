@@ -49,10 +49,12 @@ export default class AutoPauseController {
         return this.subtitlesWhilePausedOnly && !this.subtitlesVisible;
     }
 
-    setPolicy({ resume, subtitlesWhilePausedOnly }: AutoPausePolicy): void {
-        this.cancel();
+    setPolicy({ resume, subtitlesWhilePausedOnly }: AutoPausePolicy, paused: boolean): void {
+        this.clearTimeout();
         this.resume = resume;
         this.subtitlesWhilePausedOnly = subtitlesWhilePausedOnly;
+        if (paused) this.showSubtitles();
+        else this.hideSubtitles();
     }
 
     /**

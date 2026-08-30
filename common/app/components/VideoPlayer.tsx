@@ -81,6 +81,7 @@ import BlurOverlay from '@project/common/app/components/BlurOverlay';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 import useLastScrollableControlType from '@project/common/hooks/use-last-scrollable-control-type';
 import type { Theme } from '@mui/material/styles';
+import { bindPlaybackSettingKeyBindings } from '@project/common/app/services/playback-setting-key-bindings';
 
 const overlayContainerHeight = 48;
 interface ExperimentalHTMLVideoElement extends HTMLVideoElement {
@@ -1720,6 +1721,34 @@ export default function VideoPlayer({
             () => false
         );
     }, [keyBinder, togglePlaybackMode]);
+
+    useEffect(() => {
+        return bindPlaybackSettingKeyBindings({
+            keyBinder,
+            autoPauseResumeMode: miscSettings.autoPauseResumeMode,
+            subtitleVisibility: miscSettings.subtitleVisibility,
+            disabled: () => subtitles.length === 0,
+            saveSettings: onSettingsChanged,
+            notify: ({ locKey, valueLocKey }) => {
+                setAlert({
+                    open: true,
+                    notifications: [
+                        {
+                            message: { locKey, replacements: { value: t(valueLocKey) } },
+                            severity: 'info',
+                        },
+                    ],
+                });
+            },
+        });
+    }, [
+        keyBinder,
+        miscSettings.autoPauseResumeMode,
+        miscSettings.subtitleVisibility,
+        onSettingsChanged,
+        subtitles.length,
+        t,
+    ]);
 
     const handleSubtitlesToggle = useCallback(() => {
         setDisplaySubtitles(!displaySubtitles);

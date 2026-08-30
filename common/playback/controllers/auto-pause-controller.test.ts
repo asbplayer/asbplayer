@@ -26,7 +26,7 @@ const harness = (policy: { resume?: PlaybackPlanAutoPauseResume; subtitlesWhileP
         showingSubtitlesChanged: () => events.push('subtitles'),
         onError: (error) => events.push(`error: ${String(error)}`),
     });
-    controller.setPolicy(policy);
+    controller.setPolicy(policy, false);
     return { controller, events };
 };
 
@@ -165,10 +165,20 @@ describe('AutoPauseController', () => {
         const { controller, events } = harness({ resume: subtitleLengthResume, subtitlesWhilePausedOnly: true });
 
         controller.autoPaused([subtitleOfLength(10)]);
-        controller.setPolicy({ subtitlesWhilePausedOnly: false });
+        controller.setPolicy({ subtitlesWhilePausedOnly: false }, false);
         jest.advanceTimersByTime(60_000);
 
         expect(controller.subtitlesSuppressed).toBe(false);
-        expect(events).toEqual(['subtitles', 'subtitles']);
+        expect(events).toEqual(['subtitles']);
+    });
+
+    it('keeps subtitles visible when the policy changes while playback is paused', () => {
+        const { controller, events } = harness({ subtitlesWhilePausedOnly: false });
+
+        controller.userPaused();
+        controller.setPolicy({ subtitlesWhilePausedOnly: true }, true);
+
+        expect(controller.subtitlesSuppressed).toBe(false);
+        expect(events).toEqual([]);
     });
 });

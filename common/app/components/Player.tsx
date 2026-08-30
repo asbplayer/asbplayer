@@ -71,6 +71,7 @@ import { createTheme } from '@project/common/theme/theme';
 import Alert from '@project/common/app/components/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
 import useSnackbar from '@project/common/hooks/use-snackbar';
+import { bindPlaybackSettingKeyBindings } from '@project/common/app/services/playback-setting-key-bindings';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -1348,6 +1349,40 @@ function PlayerComponent(
             () => disableKeyEvents
         );
     }, [keyBinder, disableKeyEvents, togglePlayMode]);
+
+    useEffect(() => {
+        return bindPlaybackSettingKeyBindings({
+            keyBinder,
+            autoPauseResumeMode: settings.autoPauseResumeMode,
+            subtitleVisibility: settings.subtitleVisibility,
+            disabled: () => disableKeyEvents || !playModeEnabled,
+            saveSettings: (changedSettings) => {
+                if (onSettingsChanged !== undefined) onSettingsChanged(changedSettings);
+                else void settingsProvider.set(changedSettings).catch(onError);
+            },
+            notify: ({ locKey, valueLocKey }) => {
+                setAlert({
+                    open: true,
+                    notifications: [
+                        {
+                            message: { locKey, replacements: { value: t(valueLocKey) } },
+                            severity: 'info',
+                        },
+                    ],
+                });
+            },
+        });
+    }, [
+        disableKeyEvents,
+        keyBinder,
+        onError,
+        onSettingsChanged,
+        playModeEnabled,
+        settings.autoPauseResumeMode,
+        settings.subtitleVisibility,
+        settingsProvider,
+        t,
+    ]);
 
     useEffect(() => channel?.appBarToggle(appBarHidden), [channel, appBarHidden]);
     useEffect(() => channel?.fullscreenToggle(videoFullscreen), [channel, videoFullscreen]);
