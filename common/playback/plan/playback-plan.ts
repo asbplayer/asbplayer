@@ -30,10 +30,6 @@ export interface PlaybackPlanCondensed {
     readonly pauseAtStart: boolean;
 }
 
-/**
- * How an automatic pause ends on its own. Which edges pause is already encoded in the timeline
- * blocks, so only the policy that the blocks cannot express lives here.
- */
 export interface PlaybackPlanAutoPauseResumeManual {
     readonly mode: AutoPauseResumeMode.manual;
 }
@@ -41,17 +37,14 @@ export interface PlaybackPlanAutoPauseResumeManual {
 export interface PlaybackPlanAutoPauseResumeFixed {
     readonly mode: AutoPauseResumeMode.fixed;
     readonly fixedDurationMs: number;
-    /** Silence between ending the reading period and resuming playback. */
     readonly delayMs: number;
 }
 
 export interface PlaybackPlanAutoPauseResumeSubtitleLength {
     readonly mode: AutoPauseResumeMode.subtitleLength;
     readonly minimumDurationMs: number;
-    /** Zero means no upper bound. */
     readonly maximumDurationMs: number;
     readonly timePerCharacterMs: number;
-    /** Silence between ending the reading period and resuming playback. */
     readonly delayMs: number;
 }
 

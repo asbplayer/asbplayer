@@ -41,11 +41,10 @@ export const formatAutoPauseResumeModeNotification = (mode: AutoPauseResumeMode)
 
 export interface AutoPauseControllerCallbacks {
     readonly play: () => Promise<void>;
-    readonly readingPeriodEnded: () => void;
+    readonly resumeDelayStarted: () => void;
     readonly onError: (error: unknown) => void;
 }
 
-/** How long a pause lasts before its subtitle is hidden. */
 export const autoPauseDurationMs = (
     resume: Exclude<PlaybackPlanAutoPauseResume, { readonly mode: AutoPauseResumeMode.manual }>,
     subtitles: readonly SubtitleModel[]
@@ -75,7 +74,6 @@ export default class AutoPauseController {
         this.resume = resume;
     }
 
-    /** Starts automatic resume timing for a pause issued by playback itself. */
     autoPaused(subtitles: readonly SubtitleModel[]): void {
         this.clearTimeout();
         const resume = this.resume;
@@ -83,7 +81,7 @@ export default class AutoPauseController {
 
         this.timeout = setTimeout(
             () => {
-                this.callbacks.readingPeriodEnded();
+                this.callbacks.resumeDelayStarted();
                 this.timeout = setTimeout(() => {
                     this.timeout = undefined;
                     this.callbacks.play().catch(this.callbacks.onError);
@@ -97,7 +95,6 @@ export default class AutoPauseController {
         this.clearTimeout();
     }
 
-    /** A viewer seek supersedes any pending automatic resume. */
     userSeeked(): void {
         this.clearTimeout();
     }

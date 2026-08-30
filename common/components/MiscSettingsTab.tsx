@@ -63,6 +63,7 @@ interface Props {
     extensionSupportsSeekableTrackSetting?: boolean;
     extensionSupportsAutoCopyableTrackSetting?: boolean;
     supportsPlaybackEngine: boolean;
+    supportsAutoPauseResume: boolean;
     onViewPlaybackModeKeyboardShortcuts: () => void;
     onViewPlaybackRateKeyboardShortcuts: () => void;
     onViewSubtitleKeyboardShortcuts: () => void;
@@ -79,6 +80,7 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
     supportsPlaybackEngine,
+    supportsAutoPauseResume,
     onViewPlaybackModeKeyboardShortcuts,
     onViewPlaybackRateKeyboardShortcuts,
     onViewSubtitleKeyboardShortcuts,
@@ -626,7 +628,7 @@ const MiscSettingTab: React.FC<Props> = ({
                         </RadioGroup>
                     )}
                 </FormControl>
-                {supportsPlaybackEngine && (
+                {supportsAutoPauseResume && (
                     <>
                         <FormControl>
                             <FormLabel component="legend">{t('settings.autoPauseResumeMode')}</FormLabel>

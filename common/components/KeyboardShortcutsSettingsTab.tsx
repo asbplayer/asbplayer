@@ -288,6 +288,7 @@ interface Props {
     extensionInstalled?: boolean;
     extensionSupportsExportCardBind?: boolean;
     extensionSupportsSidePanel?: boolean;
+    extensionSupportsAutoPauseResume?: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp?: boolean;
     onOpenChromeExtensionShortcuts: () => void;
 }
@@ -312,6 +313,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     extensionInstalled,
     extensionSupportsExportCardBind,
     extensionSupportsSidePanel,
+    extensionSupportsAutoPauseResume,
     extensionSupportsSubtitleTrackSelectorInWebApp,
     onOpenChromeExtensionShortcuts,
 }) => {
@@ -386,8 +388,16 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             toggleCondensedPlayback: { label: t('binds.toggleCondensedPlayback'), boundViaBrowser: false },
             toggleFastForwardPlayback: { label: t('binds.toggleFastForwardPlayback'), boundViaBrowser: false },
             toggleRepeat: { label: t('binds.toggleRepeat'), boundViaBrowser: false },
-            toggleSubtitleVisibility: { label: t('binds.toggleSubtitleVisibility'), boundViaBrowser: false },
-            cycleAutoPauseResumeMode: { label: t('binds.cycleAutoPauseResumeMode'), boundViaBrowser: false },
+            toggleSubtitleVisibility: {
+                label: t('binds.toggleSubtitleVisibility'),
+                boundViaBrowser: false,
+                hide: extensionInstalled && !extensionSupportsAutoPauseResume,
+            },
+            cycleAutoPauseResumeMode: {
+                label: t('binds.cycleAutoPauseResumeMode'),
+                boundViaBrowser: false,
+                hide: extensionInstalled && !extensionSupportsAutoPauseResume,
+            },
             toggleSubtitles: { label: t('binds.toggleSubtitles'), boundViaBrowser: false },
             toggleVideoSubtitleTrack1: { label: t('binds.toggleVideoSubtitleTrack1'), boundViaBrowser: false },
             toggleVideoSubtitleTrack2: { label: t('binds.toggleVideoSubtitleTrack2'), boundViaBrowser: false },
@@ -551,6 +561,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             extensionInstalled,
             extensionSupportsSidePanel,
             extensionSupportsExportCardBind,
+            extensionSupportsAutoPauseResume,
             extensionSupportsSubtitleTrackSelectorInWebApp,
             onSettingChanged,
             seekDuration,

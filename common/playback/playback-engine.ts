@@ -183,7 +183,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
         this.autoPauseController = new AutoPauseController({
             play: callbacks.play,
-            readingPeriodEnded: () => this.subtitleVisibilityController.autoPauseReadingPeriodEnded(),
+            resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
             onError: callbacks.onError,
         });
         this.autoPauseController.replacePlan(this.plan.autoPauseResume);

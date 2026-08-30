@@ -29,14 +29,12 @@ export enum PauseOnHoverMode {
     inNotOut = 2,
 }
 
-/** How an auto-pause ends. `manual` keeps today's behavior of waiting for the user. */
 export enum AutoPauseResumeMode {
     manual = 'manual',
     fixed = 'fixed',
     subtitleLength = 'subtitleLength',
 }
 
-/** When due subtitles are allowed on screen. `whilePaused` hides them during playback. */
 export enum SubtitleVisibility {
     whenDue = 'whenDue',
     whilePaused = 'whilePaused',
@@ -67,7 +65,6 @@ export interface MiscSettings {
     readonly autoPauseResumeDelayMs: number;
     readonly autoPauseFixedDurationMs: number;
     readonly autoPauseMinimumDurationMs: number;
-    /** Zero means no upper bound. */
     readonly autoPauseMaximumDurationMs: number;
     readonly autoPauseTimePerCharacterMs: number;
     readonly subtitleVisibility: SubtitleVisibility;

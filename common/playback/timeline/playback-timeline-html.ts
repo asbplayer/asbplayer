@@ -34,7 +34,6 @@ export const buildPlaybackTimelineExportPlan = <T extends IndexedSubtitleModel>(
         playbackRate,
         fastForwardModePlaybackRate: settings.fastForwardModePlaybackRate,
         fastForwardPlaybackMinimumSkipIntervalMs: settings.fastForwardPlaybackMinimumSkipIntervalMs,
-        // Resume timing and subtitle visibility do not change which intervals the timeline draws.
         autoPauseResumeMode: settings.autoPauseResumeMode,
         autoPauseResumeDelayMs: settings.autoPauseResumeDelayMs,
         autoPauseFixedDurationMs: settings.autoPauseFixedDurationMs,

@@ -31,7 +31,7 @@ describe('SubtitleVisibilityController', () => {
     it('keeps due subtitles visible in when-due mode', () => {
         const { controller, visibilityChanged } = harness(SubtitleVisibility.whenDue);
         controller.autoPaused();
-        controller.autoPauseReadingPeriodEnded();
+        controller.autoPauseResumeDelayStarted();
         controller.playbackStarted();
         expect(controller.subtitlesVisible).toBe(true);
         expect(visibilityChanged).not.toHaveBeenCalled();
@@ -42,7 +42,7 @@ describe('SubtitleVisibilityController', () => {
         expect(controller.subtitlesVisible).toBe(false);
         controller.autoPaused();
         expect(controller.subtitlesVisible).toBe(true);
-        controller.autoPauseReadingPeriodEnded();
+        controller.autoPauseResumeDelayStarted();
         expect(controller.subtitlesVisible).toBe(false);
         expect(visibilityChanged).toHaveBeenCalledTimes(2);
     });
@@ -50,7 +50,7 @@ describe('SubtitleVisibilityController', () => {
     it('does not reopen the reading period when the automatic media pause is reported', () => {
         const { controller } = harness(SubtitleVisibility.whilePaused);
         controller.autoPaused();
-        controller.autoPauseReadingPeriodEnded();
+        controller.autoPauseResumeDelayStarted();
         controller.playbackPaused();
         expect(controller.subtitlesVisible).toBe(false);
     });
@@ -58,7 +58,7 @@ describe('SubtitleVisibilityController', () => {
     it('preserves an automatic reading phase when an equivalent plan is replaced', () => {
         const { controller } = harness(SubtitleVisibility.whilePaused);
         controller.autoPaused();
-        controller.autoPauseReadingPeriodEnded();
+        controller.autoPauseResumeDelayStarted();
         controller.replacePlan(SubtitleVisibility.whilePaused, true);
         controller.playbackPaused();
         expect(controller.subtitlesVisible).toBe(false);

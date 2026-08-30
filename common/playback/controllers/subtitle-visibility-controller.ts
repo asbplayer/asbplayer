@@ -29,8 +29,7 @@ export interface SubtitleVisibilityControllerCallbacks {
 }
 
 /**
- * Decides whether timeline subtitles are exposed for rendering by managing the external inputs
- * from PlaybackEngine or the user.
+ * Decides whether timeline subtitles are exposed for rendering by managing the external inputs from PlaybackEngine or the user.
  */
 export default class SubtitleVisibilityController {
     private readonly callbacks: SubtitleVisibilityControllerCallbacks;
@@ -64,7 +63,7 @@ export default class SubtitleVisibilityController {
         });
     }
 
-    autoPauseReadingPeriodEnded(): void {
+    autoPauseResumeDelayStarted(): void {
         this.mutate(() => {
             this._subtitlesVisible = this.visibleWhen(false);
         });

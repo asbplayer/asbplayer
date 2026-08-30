@@ -30,7 +30,7 @@ const harness = (resume: PlaybackPlanAutoPauseResume) => {
         play: async () => {
             events.push('play');
         },
-        readingPeriodEnded: () => events.push('reading-ended'),
+        resumeDelayStarted: () => events.push('resume-delay-started'),
         onError: (error) => events.push(`error: ${String(error)}`),
     });
     controller.replacePlan(resume);
@@ -84,15 +84,15 @@ describe('AutoPauseController', () => {
         jest.useRealTimers();
     });
 
-    it('ends the reading period and then resumes after the configured delay', () => {
+    it('starts the resume delay and then resumes after it', () => {
         const { controller, events } = harness(subtitleLengthResume);
 
         controller.autoPaused([subtitleOfLength(10)]);
         jest.advanceTimersByTime(1000);
-        expect(events).toEqual(['reading-ended']);
+        expect(events).toEqual(['resume-delay-started']);
 
         jest.advanceTimersByTime(300);
-        expect(events).toEqual(['reading-ended', 'play']);
+        expect(events).toEqual(['resume-delay-started', 'play']);
     });
 
     it('waits indefinitely in manual mode', () => {
@@ -107,7 +107,7 @@ describe('AutoPauseController', () => {
         controller.autoPaused([subtitleOfLength(10)]);
         controller.replacePlan({ ...subtitleLengthResume });
         jest.advanceTimersByTime(1300);
-        expect(events).toEqual(['reading-ended', 'play']);
+        expect(events).toEqual(['resume-delay-started', 'play']);
     });
 
     it.each([
