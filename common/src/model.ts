@@ -1,5 +1,5 @@
 import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings/settings';
-import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
 
@@ -210,6 +210,7 @@ export interface VideoDataSubtitleTrackDef {
     url?: string | string[];
     file?: File;
     extension: string;
+    capturedDuringPlayback?: boolean;
 }
 
 export interface VideoDataSubtitleTrack extends VideoDataSubtitleTrackDef {
@@ -252,6 +253,9 @@ export interface VideoDataUiModel {
     settings: VideoDataUiSettings;
     hasSeenFtue: boolean;
     hideRememberTrackPreferenceToggle: boolean;
+    isGenericPage: boolean;
+    showGenericPageOption: boolean;
+    genericSubtitleParser: GenericParseType;
 }
 
 export interface SubtitleTrack {

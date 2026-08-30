@@ -261,6 +261,10 @@
             "selectSubtitles": "字幕を選択",
             "subtitleTrack": "字幕トラック",
             "videoName": "動画ファイル名",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "自動検出された字幕トラックはここで選択できます。asbplayerはすべてのサイトで字幕トラックを検出できるわけではありません。自分の字幕ファイルはいつでもロードすることができます。"
         },
         "videoSelect": {
@@ -335,7 +339,8 @@
         "error": "エラー：{{message}}",
         "errorNoMessage": "エラー",
         "toggleSubtitlesShortcut": "字幕を表示するには 「{{keys}}」 を押してください",
-        "manualMiningIntervalPrompt": "マイニングショートカットを再度使用してください"
+        "manualMiningIntervalPrompt": "マイニングショートカットを再度使用してください",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "字幕やメディアファイルをドラッグ＆ドロップ、または<1>ファイルを選択</1>してください。",

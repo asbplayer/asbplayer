@@ -74,6 +74,39 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
         expect(subtitles[2]).toMatchObject({ start: 7000, end: 9000, text: 'Third line' });
     });
 
+    it('orders simultaneous Netflix IMSC cues by their vertical region position', async () => {
+        const xml =
+            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
+            '<head><layout>' +
+            '<region xml:id="bottom" tts:origin="17.5% 84.62%"/>' +
+            '<region xml:id="top" tts:origin="30% 79.29%"/>' +
+            '</layout></head>' +
+            '<body><div>' +
+            '<p begin="385807505t" end="411245000t" region="bottom">I couldn\'t close it, so...</p>' +
+            '<p begin="385807505t" end="411245000t" region="top">Oh, I told you.</p>' +
+            '</div></body>' +
+            '</tt>';
+
+        const subtitles = await parse(xml);
+
+        expect(subtitles.map(({ text }) => text)).toEqual(['Oh, I told you.', "I couldn't close it, so..."]);
+    });
+
+    it('retains source order when a simultaneous Netflix IMSC cue has no usable region position', async () => {
+        const xml =
+            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
+            '<head><layout><region xml:id="top" tts:origin="30% 79.29%"/></layout></head>' +
+            '<body><div>' +
+            '<p begin="10000000t" end="30000000t">First in source</p>' +
+            '<p begin="10000000t" end="30000000t" region="top">Second in source</p>' +
+            '</div></body>' +
+            '</tt>';
+
+        const subtitles = await parse(xml);
+
+        expect(subtitles.map(({ text }) => text)).toEqual(['First in source', 'Second in source']);
+    });
+
     it('converts IMSC ruby styles through the Netflix ruby tokenization', async () => {
         // The ruby container references two styles ("plain container") to exercise
         // multi-id style resolution.

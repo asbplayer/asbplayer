@@ -73,7 +73,7 @@ describe('StatisticsOverlayController mobile overlay positioning', () => {
     };
 
     it('moves below a visible top mobile overlay and returns when it is removed', async () => {
-        const controller = new StatisticsOverlayController();
+        const controller = new StatisticsOverlayController([]);
         controller.bind();
         openStatistics();
 
@@ -92,7 +92,7 @@ describe('StatisticsOverlayController mobile overlay positioning', () => {
     });
 
     it('keeps a deliberate stats movement after the mobile overlay is removed', async () => {
-        const controller = new StatisticsOverlayController();
+        const controller = new StatisticsOverlayController([]);
         controller.bind();
         openStatistics();
 
@@ -124,7 +124,7 @@ describe('StatisticsOverlayController mobile overlay positioning', () => {
 
     it('uses a transparent dark color scheme for the overlay iframe', () => {
         document.documentElement.style.colorScheme = 'dark';
-        const controller = new StatisticsOverlayController();
+        const controller = new StatisticsOverlayController([]);
         controller.bind();
         openStatistics();
 

@@ -261,6 +261,10 @@
             "selectSubtitles": "Untertitel auswählen",
             "subtitleTrack": "Untertitelspur",
             "videoName": "Videotitel",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "Auto-detected subtitle tracks can be selected here. asbplayer does not know how to detect subtitles on every site. You can always load your own subtitle files."
         },
         "videoSelect": {
@@ -335,7 +339,8 @@
         "error": "Error: {{message}}",
         "errorNoMessage": "Error",
         "toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display",
-        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range"
+        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Untertitel und Medien hierher ziehen oder <1>suchen</1>",

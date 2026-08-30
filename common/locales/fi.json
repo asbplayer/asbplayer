@@ -261,6 +261,10 @@
             "selectSubtitles": "Valitse tekstitys",
             "subtitleTrack": "Tekstitysraita",
             "videoName": "Videonnimi",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "Automaattisesti havaitut tekstitysraidat voidaan valita täällä. asbplayer ei osaa havaita tekstityksiä jokaisella sivustolla. Voit aina ladata omia tekstitystiedostoja."
         },
         "videoSelect": {
@@ -335,7 +339,8 @@
         "error": "Virhe: {{message}}",
         "errorNoMessage": "Virhe",
         "toggleSubtitlesShortcut": "Valitse tekstityksen näyttö painamalla \"{{keys}}\"",
-        "manualMiningIntervalPrompt": "Käytä louhintapikakuvaketta uudelleen"
+        "manualMiningIntervalPrompt": "Käytä louhintapikakuvaketta uudelleen",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Vedä ja pudota tekstitys ja media tiedostot, tai <1>browse</1>.",

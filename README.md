@@ -135,7 +135,8 @@ Thank you to all those who have contributed to asbplayer:
 [@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
 [@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
 [@aramrw](https://github.com/aramrw),
-[@steckums](https://github.com/steckums)
+[@steckums](https://github.com/steckums),
+[@eXaminator](https://github.com/eXaminator)
 
 Thank you to all those who have translated asbplayer:
 
@@ -143,8 +144,8 @@ Thank you to all those who have translated asbplayer:
 **Kai Böse** (German),
 **Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
 **NeverWinterSwor** (Simplified Chinese),
-**[@AkihaZhang](https://github.com/AkihaZhang)** (Simlified Chinese),
-**senorli** (Simlified Chinese),
+**[@AkihaZhang](https://github.com/AkihaZhang)** (Simplified Chinese),
+**senorli** (Simplified Chinese),
 **Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
 **Leo Gonzalez** (Spanish),
 **[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
