@@ -61,14 +61,14 @@ export const autoPauseDurationMs = (
  */
 export default class AutoPauseController {
     private readonly callbacks: AutoPauseControllerCallbacks;
-    private resume: PlaybackPlanAutoPauseResume = { mode: AutoPauseResumeMode.manual };
+    private resume?: PlaybackPlanAutoPauseResume;
     private timeout?: ReturnType<typeof setTimeout>;
 
     constructor(callbacks: AutoPauseControllerCallbacks) {
         this.callbacks = callbacks;
     }
 
-    replacePlan(resume: PlaybackPlanAutoPauseResume): void {
+    replacePlan(resume: PlaybackPlanAutoPauseResume | undefined): void {
         if (playbackPlanAutoPauseResumesEqual(this.resume, resume)) return;
         this.clearTimeout();
         this.resume = resume;
@@ -77,7 +77,7 @@ export default class AutoPauseController {
     autoPaused(subtitles: readonly SubtitleModel[]): void {
         this.clearTimeout();
         const resume = this.resume;
-        if (resume.mode === AutoPauseResumeMode.manual) return;
+        if (resume === undefined || resume.mode === AutoPauseResumeMode.manual) return;
 
         this.timeout = setTimeout(
             () => {

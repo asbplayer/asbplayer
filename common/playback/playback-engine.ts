@@ -186,7 +186,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
             onError: callbacks.onError,
         });
-        this.autoPauseController.replacePlan(this.plan.autoPauseResume);
+        this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
 
         const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
             play: callbacks.play,
@@ -665,7 +665,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const planChanged = !playbackPlansEqual(this.plan, plan);
         if (planChanged) {
             this.plan = plan;
-            this.autoPauseController.replacePlan(this.plan.autoPauseResume);
+            this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
             this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,

@@ -53,13 +53,17 @@ export type PlaybackPlanAutoPauseResume =
     | PlaybackPlanAutoPauseResumeFixed
     | PlaybackPlanAutoPauseResumeSubtitleLength;
 
+export interface PlaybackPlanAutoPause {
+    readonly resume: PlaybackPlanAutoPauseResume;
+}
+
 /** Playback policy compiled and applied beside its owning media element. */
 export interface PlaybackPlan<T extends IndexedSubtitleModel> {
     readonly timelineSubtitles: PlaybackTimelineSubtitles<T>;
     readonly playbackRate: number;
     readonly condensed?: PlaybackPlanCondensed;
     readonly fastForward?: PlaybackPlanFastForward;
-    readonly autoPauseResume: PlaybackPlanAutoPauseResume;
+    readonly autoPause?: PlaybackPlanAutoPause;
     readonly subtitleVisibility: SubtitleVisibility;
 }
 
@@ -129,9 +133,11 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
     autoPauseTimePerCharacterMs,
     subtitleVisibility,
 }: PlaybackPlanInput<T>): PlaybackPlan<T> => {
-    const autoPause = playModes.has(PlayMode.autoPause);
-    const autoPauseAtStart = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
-    const autoPauseAtEnd = autoPause && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atEnd);
+    const autoPauseEnabled = playModes.has(PlayMode.autoPause);
+    const autoPauseAtStart =
+        autoPauseEnabled && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atStart);
+    const autoPauseAtEnd =
+        autoPauseEnabled && autoPausePreferenceIncludes(autoPausePreference, AutoPausePreference.atEnd);
     const repeat = playModes.has(PlayMode.repeat);
     const startOffset = normalizeFinite(subtitleTriggerStartOffset);
     const gapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffset);
@@ -197,8 +203,8 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
             blocks,
         },
         playbackRate,
-        autoPauseResume,
         subtitleVisibility,
+        ...(autoPauseEnabled ? { autoPause: { resume: autoPauseResume } } : {}),
         ...(playModes.has(PlayMode.condensed)
             ? {
                   condensed: {
@@ -322,10 +328,11 @@ function arePlaybackPlanCondensedEqual(
 }
 
 export function playbackPlanAutoPauseResumesEqual(
-    left: PlaybackPlanAutoPauseResume,
-    right: PlaybackPlanAutoPauseResume
+    left: PlaybackPlanAutoPauseResume | undefined,
+    right: PlaybackPlanAutoPauseResume | undefined
 ): boolean {
     if (left === right) return true;
+    if (left === undefined || right === undefined) return false;
     if (left.mode !== right.mode) return false;
     switch (left.mode) {
         case AutoPauseResumeMode.fixed:
@@ -345,6 +352,15 @@ export function playbackPlanAutoPauseResumesEqual(
         default:
             return true;
     }
+}
+
+function arePlaybackPlanAutoPausesEqual(
+    left: PlaybackPlanAutoPause | undefined,
+    right: PlaybackPlanAutoPause | undefined
+): boolean {
+    if (left === right) return true;
+    if (left === undefined || right === undefined) return false;
+    return playbackPlanAutoPauseResumesEqual(left.resume, right.resume);
 }
 
 const playbackPlanFastForwardComparators: ObjectComparators<PlaybackPlanFastForward> = {
@@ -400,7 +416,7 @@ const playbackPlanComparators: PlaybackPlanComparators = {
     playbackRate: (left, right) => left === right,
     condensed: (left, right) => arePlaybackPlanCondensedEqual(left, right),
     fastForward: (left, right) => arePlaybackPlanFastForwardsEqual(left, right),
-    autoPauseResume: (left, right) => playbackPlanAutoPauseResumesEqual(left, right),
+    autoPause: (left, right) => arePlaybackPlanAutoPausesEqual(left, right),
     subtitleVisibility: (left, right) => left === right,
 };
 
@@ -413,5 +429,5 @@ export const playbackPlansEqual = <T extends IndexedSubtitleModel>(
         playbackPlanComparators.playbackRate(left.playbackRate, right.playbackRate) &&
         playbackPlanComparators.condensed(left.condensed, right.condensed) &&
         playbackPlanComparators.fastForward(left.fastForward, right.fastForward) &&
-        playbackPlanComparators.autoPauseResume(left.autoPauseResume, right.autoPauseResume) &&
+        playbackPlanComparators.autoPause(left.autoPause, right.autoPause) &&
         playbackPlanComparators.subtitleVisibility(left.subtitleVisibility, right.subtitleVisibility));

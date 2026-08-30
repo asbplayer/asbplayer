@@ -114,7 +114,7 @@ describe('AutoPauseController', () => {
         ['playback starts', (controller: AutoPauseController) => controller.playbackStarted()],
         ['the user seeks', (controller: AutoPauseController) => controller.userSeeked()],
         ['the controller is cancelled', (controller: AutoPauseController) => controller.cancel()],
-        ['the plan is replaced', (controller: AutoPauseController) => controller.replacePlan(manualResume)],
+        ['auto-pause is disabled', (controller: AutoPauseController) => controller.replacePlan(undefined)],
     ])('drops a pending resume when %s', (_description, interrupt) => {
         const { controller, events } = harness(subtitleLengthResume);
         controller.autoPaused([subtitleOfLength(10)]);

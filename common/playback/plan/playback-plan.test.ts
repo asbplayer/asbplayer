@@ -39,14 +39,16 @@ describe('buildPlaybackPlan', () => {
         expect(plan.fastForward).toBeUndefined();
     });
 
-    it('keeps manual resume and subtitle visibility as explicit plan values', () => {
-        const plan = makePlan([PlayMode.normal], {
+    it('distinguishes disabled auto-pause from enabled manual resume', () => {
+        const disabled = makePlan([PlayMode.normal]);
+        const manual = makePlan([PlayMode.autoPause], {
             autoPauseResumeMode: AutoPauseResumeMode.manual,
             subtitleVisibility: SubtitleVisibility.whilePaused,
         });
 
-        expect(plan.autoPauseResume).toEqual({ mode: AutoPauseResumeMode.manual });
-        expect(plan.subtitleVisibility).toBe(SubtitleVisibility.whilePaused);
+        expect(disabled.autoPause).toBeUndefined();
+        expect(manual.autoPause).toEqual({ resume: { mode: AutoPauseResumeMode.manual } });
+        expect(manual.subtitleVisibility).toBe(SubtitleVisibility.whilePaused);
     });
 
     it('builds mode-specific fixed and subtitle-length resume plans', () => {
@@ -63,17 +65,21 @@ describe('buildPlaybackPlan', () => {
             autoPauseResumeDelayMs: -1,
         });
 
-        expect(fixed.autoPauseResume).toEqual({
-            mode: AutoPauseResumeMode.fixed,
-            fixedDurationMs: 0,
-            delayMs: 300,
+        expect(fixed.autoPause).toEqual({
+            resume: {
+                mode: AutoPauseResumeMode.fixed,
+                fixedDurationMs: 0,
+                delayMs: 300,
+            },
         });
-        expect(subtitleLength.autoPauseResume).toEqual({
-            mode: AutoPauseResumeMode.subtitleLength,
-            minimumDurationMs: 500,
-            maximumDurationMs: 500,
-            timePerCharacterMs: 0,
-            delayMs: 0,
+        expect(subtitleLength.autoPause).toEqual({
+            resume: {
+                mode: AutoPauseResumeMode.subtitleLength,
+                minimumDurationMs: 500,
+                maximumDurationMs: 500,
+                timePerCharacterMs: 0,
+                delayMs: 0,
+            },
         });
     });
 
