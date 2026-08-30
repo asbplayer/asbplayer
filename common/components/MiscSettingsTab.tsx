@@ -794,6 +794,10 @@ const MiscSettingTab: React.FC<Props> = ({
                                 />
                             </RadioGroup>
                         </FormControl>
+                    </>
+                )}
+                {supportsPlaybackEngine && (
+                    <>
                         <NumericSettingInput
                             color="primary"
                             fullWidth
