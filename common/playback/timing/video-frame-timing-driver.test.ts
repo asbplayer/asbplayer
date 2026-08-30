@@ -119,6 +119,23 @@ const timingDriver = (
 };
 
 describe('VideoFrameTimingDriver', () => {
+    it('classifies internal and user seek starts', async () => {
+        const video = new FakeVideo();
+        const seekStarts: string[] = [];
+        const driver = timingDriver(videoSource(video), {
+            onSeekStarted: (cause) => seekStarts.push(cause),
+        });
+        driver.bind();
+
+        const internalSeeked = driver.beginInternalSeek();
+        video.seek(3);
+        await internalSeeked;
+        video.dispatchEvent(new Event('seeking'));
+
+        expect(seekStarts).toEqual(['internal-seek', 'user-seek']);
+        driver.unbind();
+    });
+
     it('resolves internal seek completion from the native seeked event', async () => {
         const video = new FakeVideo();
         const driver = timingDriver(videoSource(video), {});

@@ -31,6 +31,7 @@ const harness = (resume: PlaybackPlanAutoPauseResume) => {
             events.push('play');
         },
         resumeDelayStarted: () => events.push('resume-delay-started'),
+        autoResumeFailed: () => events.push('auto-resume-failed'),
         onError: (error) => events.push(`error: ${String(error)}`),
     });
     controller.replacePlan(resume);

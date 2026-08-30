@@ -10,7 +10,10 @@ import {
 } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
-import type { PlaybackPlanExecutorCallbacks } from '@project/common/playback/plan/playback-plan-executor';
+import type {
+    PlaybackPlanExecutorCallbacks,
+    PlaybackTimelineTransitionCause,
+} from '@project/common/playback/plan/playback-plan-executor';
 import PlaybackModeController, {
     minimumPlaybackRate,
     normalizePlaybackRate,
@@ -184,6 +187,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.autoPauseController = new AutoPauseController({
             play: callbacks.play,
             resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
+            autoResumeFailed: () => this.subtitleVisibilityController.autoPauseCancelled(this.timingDriver.paused()),
             onError: callbacks.onError,
         });
         this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
@@ -269,6 +273,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     { force: true }
                 );
             },
+            onSeekStarted: (cause) => this.seekStartedWithCause(cause),
             onDiscontinuity: (currentTimestampMs) => {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
@@ -608,7 +613,14 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.timingDriver.externalSeekStarted!();
             return;
         }
+        this.seekStartedWithCause('user-seek');
         this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
+    }
+
+    private seekStartedWithCause(cause: PlaybackTimelineTransitionCause): void {
+        if (cause !== 'user-seek') return;
+        this.autoPauseController.userSeeked();
+        this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
     }
 
     /** Reports that a seek operation has been canceled from a non-standard media adapter, such as Disney+'s page-script seek event. */

@@ -143,31 +143,6 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
     const gapEndOffset = normalizeNonPositive(subtitleTriggerGapEndOffset);
     const condensedMinimumSkipIntervalMs = normalizeNonNegative(condensedPlaybackMinimumSkipIntervalMs);
     const fastForwardMinimumSkipIntervalMs = normalizeNonNegative(fastForwardPlaybackMinimumSkipIntervalMs);
-    const autoPauseResume = (() => {
-        switch (autoPauseResumeMode) {
-            case AutoPauseResumeMode.fixed:
-                return {
-                    mode: AutoPauseResumeMode.fixed,
-                    fixedDurationMs: normalizeNonNegative(autoPauseFixedDurationMs),
-                    delayMs: normalizeNonNegative(autoPauseResumeDelayMs),
-                } as const;
-            case AutoPauseResumeMode.subtitleLength: {
-                const { minimumDurationMs, maximumDurationMs } = normalizeAutoPauseDurationBounds(
-                    autoPauseMinimumDurationMs,
-                    autoPauseMaximumDurationMs
-                );
-                return {
-                    mode: AutoPauseResumeMode.subtitleLength,
-                    minimumDurationMs,
-                    maximumDurationMs,
-                    timePerCharacterMs: normalizeNonNegative(autoPauseTimePerCharacterMs),
-                    delayMs: normalizeNonNegative(autoPauseResumeDelayMs),
-                } as const;
-            }
-            default:
-                return { mode: AutoPauseResumeMode.manual } as const;
-        }
-    })();
     const timeline = compilePlaybackTimelineSubtitles({
         subtitles,
         displaySubtitles,
@@ -204,7 +179,37 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
         },
         playbackRate,
         subtitleVisibility,
-        ...(autoPauseEnabled ? { autoPause: { resume: autoPauseResume } } : {}),
+        ...(autoPauseEnabled
+            ? {
+                  autoPause: {
+                      resume: (() => {
+                          switch (autoPauseResumeMode) {
+                              case AutoPauseResumeMode.fixed:
+                                  return {
+                                      mode: AutoPauseResumeMode.fixed,
+                                      fixedDurationMs: normalizeNonNegative(autoPauseFixedDurationMs),
+                                      delayMs: normalizeNonNegative(autoPauseResumeDelayMs),
+                                  } as const;
+                              case AutoPauseResumeMode.subtitleLength: {
+                                  const { minimumDurationMs, maximumDurationMs } = normalizeAutoPauseDurationBounds(
+                                      autoPauseMinimumDurationMs,
+                                      autoPauseMaximumDurationMs
+                                  );
+                                  return {
+                                      mode: AutoPauseResumeMode.subtitleLength,
+                                      minimumDurationMs,
+                                      maximumDurationMs,
+                                      timePerCharacterMs: normalizeNonNegative(autoPauseTimePerCharacterMs),
+                                      delayMs: normalizeNonNegative(autoPauseResumeDelayMs),
+                                  } as const;
+                              }
+                              default:
+                                  return { mode: AutoPauseResumeMode.manual } as const;
+                          }
+                      })(),
+                  },
+              }
+            : {}),
         ...(playModes.has(PlayMode.condensed)
             ? {
                   condensed: {

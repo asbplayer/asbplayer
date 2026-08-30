@@ -1,8 +1,11 @@
 import { asbError } from '@project/common/util';
+import type { PlaybackTimelineTransitionCause } from '@project/common/playback/plan/playback-plan-executor';
+
 export interface TimingDriverCallbacks {
     onTime(timestampMs: number, options: { lookaheadTimestampMs?: number }): Promise<void>;
     onPlaybackStarted(): Promise<void>;
     onPlaybackPaused(): void;
+    onSeekStarted(cause: PlaybackTimelineTransitionCause): void;
     onDiscontinuity(timestampMs: number): void;
     onCancel(options: { preserveExpectedDiscontinuity: boolean }): void;
     onError(error: unknown): void;

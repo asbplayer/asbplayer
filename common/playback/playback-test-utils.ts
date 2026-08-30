@@ -11,6 +11,7 @@ export const emptyTimingDriverCallbacks: TimingDriverCallbacks = {
     onTime: async () => {},
     onPlaybackStarted: async () => {},
     onPlaybackPaused: () => {},
+    onSeekStarted: () => {},
     onDiscontinuity: () => {},
     onCancel: () => {},
     onError: () => {},

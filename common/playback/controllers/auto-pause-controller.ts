@@ -42,6 +42,7 @@ export const formatAutoPauseResumeModeNotification = (mode: AutoPauseResumeMode)
 export interface AutoPauseControllerCallbacks {
     readonly play: () => Promise<void>;
     readonly resumeDelayStarted: () => void;
+    readonly autoResumeFailed: () => void;
     readonly onError: (error: unknown) => void;
 }
 
@@ -85,7 +86,10 @@ export default class AutoPauseController {
                 this.callbacks.resumeDelayStarted();
                 this.timeout = setTimeout(() => {
                     this.timeout = undefined;
-                    this.callbacks.play().catch(this.callbacks.onError);
+                    this.callbacks.play().catch((error) => {
+                        this.callbacks.autoResumeFailed();
+                        this.callbacks.onError(error);
+                    });
                 }, resume.delayMs);
             },
             autoPauseDurationMs(resume, subtitles)
