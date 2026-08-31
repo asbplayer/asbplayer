@@ -2,6 +2,7 @@ import type { SubtitleModel } from '@project/common';
 import { AutoPauseResumeMode } from '@project/common/settings';
 import { playbackPlanAutoPauseResumesEqual } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlanAutoPauseResume } from '@project/common/playback/plan/playback-plan';
+import { readableCharacterCount } from '@project/common/util';
 
 export const autoPauseResumeModeNotificationKey = 'auto-pause-resume-mode';
 
@@ -52,7 +53,7 @@ export const autoPauseDurationMs = (
 ): number => {
     if (resume.mode === AutoPauseResumeMode.fixed) return resume.fixedDurationMs;
 
-    const characters = subtitles.reduce((total, { text }) => total + text.length, 0);
+    const characters = subtitles.reduce((total, { text }) => total + readableCharacterCount(text), 0);
     const durationMs = Math.max(resume.minimumDurationMs, characters * resume.timePerCharacterMs);
     return resume.maximumDurationMs === 0 ? durationMs : Math.min(resume.maximumDurationMs, durationMs);
 };

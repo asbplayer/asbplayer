@@ -16,6 +16,29 @@ import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
 
+let subtitleHtmlHelperElement: HTMLDivElement | undefined;
+const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
+
+/** Removes presentation markup, ruby readings, and ruby fallback text from subtitle text. */
+export const removeSubtitleHtml = (text: string): string => {
+    subtitleHtmlHelperElement ??= document.createElement('div');
+    subtitleHtmlHelperElement.innerHTML = text;
+    for (const element of subtitleHtmlHelperElement.querySelectorAll('br')) element.replaceWith('\n');
+    for (const element of subtitleHtmlHelperElement.querySelectorAll('rt, rp')) element.remove();
+    return subtitleHtmlHelperElement.textContent ?? subtitleHtmlHelperElement.innerText;
+};
+
+/** Counts visible subtitle graphemes, excluding markup, ruby annotations, whitespace, and formatting controls. */
+export const readableCharacterCount = (text: string): number => {
+    const readableText = removeSubtitleHtml(text).normalize('NFC');
+    let count = 0;
+    for (const { segment } of subtitleGraphemeSegmenter.segment(readableText)) {
+        if (!invisibleGraphemePattern.test(segment)) count++;
+    }
+    return count;
+};
+
 // Cues on the same track can share a start time (e.g. Netflix splitting one line into
 // multiple cues), and SubtitleCollection does not guarantee source order in that case, so
 // callers displaying subtitles should sort by track and fall back to source index for ties.

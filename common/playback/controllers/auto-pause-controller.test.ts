@@ -75,6 +75,30 @@ describe('autoPauseDurationMs', () => {
         const unbounded = { ...subtitleLengthResume, maximumDurationMs: 0 };
         expect(autoPauseDurationMs(unbounded, [subtitleOfLength(100)])).toBe(10_000);
     });
+
+    it.each([
+        ['presentation markup', '<b>foo</b>', 300],
+        ['ruby readings and fallback text', '<ruby>漢<rp>(</rp><rt>かん</rt><rp>)</rp></ruby>', 100],
+    ])('counts visible characters without %s', (_description, text, expectedDurationMs) => {
+        const resume = { ...subtitleLengthResume, minimumDurationMs: 0, maximumDurationMs: 0 };
+
+        expect(autoPauseDurationMs(resume, [makeSubtitle({ text })])).toBe(expectedDurationMs);
+    });
+
+    it.each([
+        ['plain line breaks and repeated whitespace', '  foo\n\t bar  '],
+        ['HTML line breaks', 'foo<br class="line">bar'],
+    ])('excludes %s', (_description, text) => {
+        const resume = { ...subtitleLengthResume, minimumDurationMs: 0, maximumDurationMs: 0 };
+
+        expect(autoPauseDurationMs(resume, [makeSubtitle({ text })])).toBe(600);
+    });
+
+    it('counts visible grapheme clusters rather than UTF-16 code units', () => {
+        const resume = { ...subtitleLengthResume, minimumDurationMs: 0, maximumDurationMs: 0 };
+
+        expect(autoPauseDurationMs(resume, [makeSubtitle({ text: 'e\u0301👨‍👩‍👧‍👦' })])).toBe(200);
+    });
 });
 
 describe('AutoPauseController', () => {

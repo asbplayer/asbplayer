@@ -38,6 +38,8 @@ import {
     normalizeNonPositive,
     normalizedLookupTerms,
     percentToHex2,
+    readableCharacterCount,
+    removeSubtitleHtml,
     seekWithNudge,
     sourceString,
     subtitleIntersectsTimeInterval,
@@ -73,6 +75,33 @@ function textSubtitleSettings(overrides: Partial<TextSubtitleSettings> = {}): Te
         ...overrides,
     };
 }
+
+describe('removeSubtitleHtml', () => {
+    it('removes presentation markup while preserving and decoding its text', () => {
+        expect(removeSubtitleHtml('<b>foo</b> &amp;<br class="line"> <i>bar</i>')).toBe('foo &\n bar');
+    });
+
+    it('removes ruby readings and fallback text while preserving the base text', () => {
+        expect(removeSubtitleHtml('<ruby><b>漢</b><rp>(</rp><rt>かん</rt><rp>)</rp></ruby><i>字')).toBe('漢字');
+    });
+});
+
+describe('readableCharacterCount', () => {
+    it('excludes whitespace and invisible formatting controls', () => {
+        expect(readableCharacterCount('')).toBe(0);
+        expect(readableCharacterCount('  foo\n\tbar&nbsp;\u200b\u202a\u202c')).toBe(6);
+    });
+
+    it('counts canonically equivalent text and combined emoji as grapheme clusters', () => {
+        expect(readableCharacterCount('e\u0301')).toBe(1);
+        expect(readableCharacterCount('é')).toBe(1);
+        expect(readableCharacterCount('👨‍👩‍👧‍👦👍🏽')).toBe(2);
+    });
+
+    it('counts visible punctuation but excludes markup and ruby annotations', () => {
+        expect(readableCharacterCount('<b>Hi!</b>&amp;<ruby>漢<rp>(</rp><rt>かん</rt><rp>)</rp></ruby>')).toBe(5);
+    });
+});
 
 describe('numeric normalization', () => {
     it('normalizes non-finite values to zero', () => {
