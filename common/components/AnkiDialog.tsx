@@ -27,7 +27,6 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
-import Slider from '@mui/material/Slider';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -52,6 +51,7 @@ import type { Theme } from '@mui/material';
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import AnkiDialogTutorialBubble from '@project/common/components/AnkiDialogTutorialBubble';
 import CardSelectView from '@project/common/components/CardSelectView';
+import SubtitleTimeline from '@project/common/components/SubtitleTimeline';
 
 const quickSelectShortcut = isMacOs ? '⌘+⇧+Enter' : 'Alt+Shift+Enter';
 
@@ -68,20 +68,6 @@ const useStyles = makeStyles<Theme>((theme) => ({
         cursor: 'pointer',
         '& input': {
             cursor: 'pointer',
-        },
-    },
-    rangeSelectSlider: {
-        '& .MuiSlider-markLabel': {
-            transform: 'translateX(-3%)',
-            background: theme.palette.mode === 'dark' ? '#222' : '#ddd',
-            borderRadius: theme.spacing(1),
-            paddingLeft: theme.spacing(1),
-            paddingRight: theme.spacing(1),
-            color: theme.palette.text.disabled,
-        },
-        '& .MuiSlider-markLabelActive': {
-            opacity: 1,
-            color: theme.palette.text.primary,
         },
     },
 }));
@@ -112,50 +98,6 @@ const boundaryIntervalFromCard = (subtitle: SubtitleModel, theSurroundingSubtitl
     }
 
     return min !== null && max !== null && [min, max];
-};
-
-type Mark = {
-    value: number;
-    label: string;
-};
-
-const sliderMarksFromCard = (surroundingSubtitles: SubtitleModel[], boundary: number[]): Mark[] => {
-    const seenTimestamps: any = {};
-
-    return surroundingSubtitles
-        .filter((s) => s.text.trim() !== '' || s.textImage !== undefined)
-        .map((s) => {
-            if (s.start in seenTimestamps) {
-                return null;
-            }
-
-            seenTimestamps[s.start] = true;
-
-            return {
-                value: s.start,
-                label: `${s.text.trim().substring(0, Math.min(s.text.length, 3))}...`,
-            };
-        })
-        .filter((mark: Mark | null) => mark !== null)
-        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]);
-};
-
-const sliderValueLabelFormat = (ms: number) => {
-    return humanReadableTime(ms, true);
-};
-
-interface ValueLabelComponentProps {
-    children: React.ReactElement;
-    open: boolean;
-    value: number;
-}
-
-const ValueLabelComponent = ({ children, open, value }: ValueLabelComponentProps) => {
-    return (
-        <Tooltip open={open} enterTouchDelay={0} placement="top" title={value}>
-            {children}
-        </Tooltip>
-    );
 };
 
 enum TutorialStep {
@@ -259,7 +201,6 @@ const AnkiDialog = ({
     const [initialTimestampInterval, setInitialTimestampInterval] = useState<number[]>();
     const [initialTimestampBoundaryInterval, setInitialTimestampBoundaryInterval] = useState<number[]>();
     const [timestampBoundaryInterval, setTimestampBoundaryInterval] = useState<number[]>();
-    const [timestampMarks, setTimestampMarks] = useState<Mark[]>();
     const [lastAppliedTimestampIntervalToText, setLastAppliedTimestampIntervalToText] = useState<number[]>();
     const [lastAppliedTimestampIntervalToAudio, setLastAppliedTimestampIntervalToAudio] = useState<number[]>();
     const [width, setWidth] = useState<number>(0);
@@ -377,7 +318,6 @@ const AnkiDialog = ({
             initialSelectedTimestampInterval || [card.subtitle.start, card.subtitle.end] || undefined;
         const timestampBoundaryInterval =
             boundaryIntervalFromCard(card.subtitle, card.surroundingSubtitles) || undefined;
-        const timestampMarks = sliderMarksFromCard(card.surroundingSubtitles, timestampBoundaryInterval!) || undefined;
         const selectedSubtitles =
             timestampInterval === undefined
                 ? []
@@ -394,7 +334,6 @@ const AnkiDialog = ({
         setLastAppliedTimestampIntervalToAudio(initialLastAppliedTimestampIntervalToAudio || timestampInterval);
         setTimestampBoundaryInterval(forceTimestampBoundaryInterval ?? timestampBoundaryInterval);
         setInitialTimestampBoundaryInterval(timestampBoundaryInterval);
-        setTimestampMarks(timestampMarks);
     }, [
         card.subtitle,
         card.surroundingSubtitles,
@@ -631,7 +570,6 @@ const AnkiDialog = ({
         setSelectedSubtitles(selectedSubtitles);
         setTimestampInterval(initialTimestampInterval);
         setTimestampBoundaryInterval(initialTimestampBoundaryInterval);
-        setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, initialTimestampBoundaryInterval));
 
         if (initialTimestampInterval !== undefined) {
             applyTimestampIntervalToAllTracks(initialTimestampInterval, true);
@@ -653,8 +591,7 @@ const AnkiDialog = ({
         const newMax = (timestampBoundaryInterval[1] + timestampInterval[1]) / 2;
         const newTimestampBoundaryInterval = [newMin, newMax];
         setTimestampBoundaryInterval(newTimestampBoundaryInterval);
-        setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, newTimestampBoundaryInterval));
-    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles]);
+    }, [timestampBoundaryInterval, timestampInterval]);
 
     const handleZoomOutTimestampInterval = useCallback(() => {
         if (!timestampBoundaryInterval || !timestampInterval) {
@@ -676,8 +613,7 @@ const AnkiDialog = ({
         );
         const newTimestampBoundaryInterval = [newMin, newMax];
         setTimestampBoundaryInterval(newTimestampBoundaryInterval);
-        setTimestampMarks(sliderMarksFromCard(card.surroundingSubtitles, newTimestampBoundaryInterval));
-    }, [timestampBoundaryInterval, timestampInterval, card.surroundingSubtitles]);
+    }, [timestampBoundaryInterval, timestampInterval]);
 
     const handleCopyImageToClipboard = useCallback(
         async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -983,21 +919,14 @@ const AnkiDialog = ({
                             items={tags}
                             onItemsChange={setTags}
                         />
-                        {timestampInterval && timestampBoundaryInterval && timestampMarks && (
-                            <Grid container direction="row">
+                        {timestampInterval && timestampBoundaryInterval && (
+                            <Grid container direction="row" spacing={1} alignItems="center">
                                 <Grid item style={{ flexGrow: 1 }}>
-                                    <Slider
-                                        slots={{ valueLabel: ValueLabelComponent }}
-                                        value={timestampInterval}
-                                        valueLabelFormat={sliderValueLabelFormat}
+                                    <SubtitleTimeline
+                                        boundaryInterval={timestampBoundaryInterval}
+                                        timestampInterval={timestampInterval}
+                                        subtitles={card.surroundingSubtitles}
                                         onChange={handleTimestampIntervalChange}
-                                        min={timestampBoundaryInterval[0]}
-                                        max={timestampBoundaryInterval[1]}
-                                        marks={timestampMarks}
-                                        step={1}
-                                        valueLabelDisplay="auto"
-                                        className={classes.rangeSelectSlider}
-                                        color="primary"
                                     />
                                 </Grid>
                                 <Grid item>
