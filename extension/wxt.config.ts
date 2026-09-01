@@ -43,7 +43,7 @@ export default defineConfig({
     }),
     zip: {
         sourcesRoot: '..',
-        includeSources: ['.yarn/patches/**'],
+        includeSources: ['patches/**'],
         artifactTemplate: `${extName}-{{version}}-{{browser}}.zip`,
         sourcesTemplate: `${extName}-{{version}}-sources.zip`,
     },

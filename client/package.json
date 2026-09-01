@@ -11,9 +11,9 @@
         "@mui/material": "^6.4.8",
         "@mui/styles": "^6.4.8",
         "@project/common": "workspace:^",
-        "@types/node": "^22.13.14",
+        "@types/node": "^24.13.3",
         "@types/react": "^19.1.8",
-        "@vitejs/plugin-react": "^6.0.1",
+        "@vitejs/plugin-react": "^6.1.1",
         "gh-pages": "^6.3.0",
         "i18next": "^25.3.2",
         "react": "^19.1.0",
@@ -21,15 +21,15 @@
         "react-dom": "^19.1.0",
         "react-i18next": "^15.6.1",
         "typescript": "^5.8.3",
-        "vite": "^8.0.0"
+        "vite": "^8.2.2"
     },
     "homepage": "https://app.asbplayer.dev",
     "scripts": {
         "start": "VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) vite",
         "verify": "../scripts/loc/loc-keys-match && tsc && jest",
-        "build": "yarn run verify && VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) vite build",
+        "build": "pnpm run verify && VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) vite build",
         "buildFast": "VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) vite build",
-        "buildStaging": "yarn run verify && VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) VITE_APP_BASE_PATH=\"/asbplayer-staging\" vite build",
+        "buildStaging": "pnpm run verify && VITE_APP_GIT_COMMIT=$(git rev-parse --short HEAD) VITE_APP_BASE_PATH=\"/asbplayer-staging\" vite build",
         "preview": "vite preview",
         "deploy": "gh-pages -d dist",
         "test": "jest"
@@ -59,7 +59,6 @@
         "ts-jest": "^29.4.0",
         "vite-plugin-html": "^3.2.2",
         "vite-plugin-pwa": "^1.2.0",
-        "vite-plugin-static-copy": "^3.3.0",
-        "yarn-upgrade-all": "^0.7.5"
+        "vite-plugin-static-copy": "^3.3.0"
     }
 }

@@ -1,13 +1,6 @@
 {
     "name": "root",
     "private": true,
-    "workspaces": {
-        "packages": [
-            "client",
-            "extension",
-            "common"
-        ]
-    },
     "devDependencies": {
         "@eslint/js": "^9.32.0",
         "@typescript-eslint/parser": "^8.38.0",
@@ -17,18 +10,21 @@
         "eslint-plugin-react-hooks": "^5.2.0",
         "prettier": "^3.6.2",
         "typescript": "^5.8.3",
-        "typescript-eslint": "^8.59.1",
-        "yarn-upgrade-all": "^0.7.5"
+        "typescript-eslint": "^8.59.1"
+    },
+    "engines": {
+        "node": ">=24.19.0"
+    },
+    "devEngines": {
+        "packageManager": {
+            "name": "pnpm",
+            "version": "11.21.0",
+            "onFail": "error"
+        }
     },
     "scripts": {
-        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && yarn workspace @project/common run test && yarn workspace @project/client run test && yarn workspace @project/extension run test && yarn run eslint common extension/src client/src && yarn run pretty:check",
-        "pretty": "yarn prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)'",
-        "pretty:check": "yarn prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)'"
-    },
-    "packageManager": "yarn@3.2.0",
-    "resolutions": {
-        "lamejs@1.2.0": "patch:lamejs@npm:1.2.0#.yarn/patches/lamejs-npm-1.2.0-b0315d05aa.patch",
-        "vite": "8.0.0",
-        "@vitejs/plugin-react": "^6.0.1"
+        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm run eslint common extension/src client/src && pnpm run pretty:check",
+        "pretty": "pnpm prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)'",
+        "pretty:check": "pnpm prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)'"
     }
 }

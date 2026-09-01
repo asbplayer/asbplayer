@@ -11,12 +11,12 @@
         "build:dev": "wxt build --mode development",
         "build:firefox": "wxt build -b firefox",
         "build:firefox-android": "wxt build -b firefox-android --mv2",
-        "zip": "yarn check && wxt zip",
-        "zip:firefox": "yarn check && wxt zip -b firefox",
-        "zip:firefox-android": "yarn check && wxt zip -b firefox-android --mv2 --sources",
+        "zip": "pnpm check && wxt zip",
+        "zip:firefox": "pnpm check && wxt zip -b firefox",
+        "zip:firefox-android": "pnpm check && wxt zip -b firefox-android --mv2 --sources",
         "compile": "tsc --noEmit",
         "postinstall": "wxt prepare",
-        "check": "yarn workspace root run verify && yarn compile",
+        "check": "pnpm --workspace-root run verify && pnpm compile",
         "test": "jest"
     },
     "dependencies": {
@@ -48,7 +48,8 @@
         "@wxt-dev/module-react": "^1.2.2",
         "jest": "^30.0.5",
         "ts-jest": "^29.4.0",
-        "wxt": "^0.20.19",
-        "yarn-upgrade-all": "^0.7.5"
+        "vite": "^8.2.2",
+        "web-ext": "^10.6.0",
+        "wxt": "^0.21.4"
     }
 }
