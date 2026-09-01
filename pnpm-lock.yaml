@@ -620,6 +620,9 @@ importers:
 
   scripts/loc:
     dependencies:
+      '@crowdin/cli':
+        specifier: ^5.0.1
+        version: 5.0.1
       fast-xml-parser:
         specifier: ^4.3.6
         version: 4.5.7
@@ -804,10 +807,6 @@ packages:
 
   '@babel/helper-member-expression-to-functions@7.29.7':
     resolution: {integrity: sha512-j+7JYmk1JYDtACIGj0QJqqWZjoUpMoEikQGADMaHgCMCSDqd2+P32rfcibUNrGOMWrlzK1WJBdxrB3JJQZwWtg==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/helper-module-imports@7.27.1':
-    resolution: {integrity: sha512-0gSFWUPNXNopqtIPQvlD5WgXYI5GY2kP2cCvoT8kczjbfcfuIljTbcWrulD1CIPIX2gt1wghbDy08yE1p+/r3w==}
     engines: {node: '>=6.9.0'}
 
   '@babel/helper-module-imports@7.29.7':
@@ -1432,6 +1431,50 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@crowdin/cli-darwin-arm64@5.0.1':
+    resolution: {integrity: sha512-x8sfmegf4Rqdyw6mTH5Dvj+MKpSNrU32xLZjjZZ3SZ9jDGIke/ULOTO4mbd2UA+ryNrk+a9PgHxcKX5CF0LDgg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@crowdin/cli-darwin-x64@5.0.1':
+    resolution: {integrity: sha512-tKWIGOKJVW+0L40E5pEhy4ghlFd5nYzJLdYbrTnOtmK+g3D/QkQpmY5Y3yujZah1A9KOewg5AgNDl2sEZFASLQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@crowdin/cli-linux-arm64-musl@5.0.1':
+    resolution: {integrity: sha512-88r2zA+QwgzqqY6cY2qdFlO8r5gmMkv4WYFeiCh6fIFMFcFFpKkJh1xyAu/bg+Gt6/ltOXHWXtflkxppncvmpg==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@crowdin/cli-linux-arm64@5.0.1':
+    resolution: {integrity: sha512-cZrzCGNeN6n0QVTYnSBy18mdv4M+PcXyJ/MAAIq4E603WEP2pKQ5KM9eS32tdQIIaCl3NZ8miXundFcYOAlHEQ==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@crowdin/cli-linux-x64-musl@5.0.1':
+    resolution: {integrity: sha512-4MGZ+1M+A2cp8RyuQC2cvX5wwEpPS4i/qOVTGJ3QIYK0xn3IR/GKt9QObKqIjZNYCsn8tUDzwDiyHuM+LZmhUw==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@crowdin/cli-linux-x64@5.0.1':
+    resolution: {integrity: sha512-a76gwEcI0EUPcZKhjHsWP6V8BhoLqK7Qo19avQ5Fdque+uh7YTfYZ5CYM8oI2PIozkpL7rXECj4PY7Ul07vxTA==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@crowdin/cli-win32-x64@5.0.1':
+    resolution: {integrity: sha512-wqPqWsCtw2s2eVopy2ZEYC6KfIcphI/1dVo+ikJAb47OQwzRot3JWN2n9GS+WKtRqtfuCTug3QVOx6Ypbme43Q==}
+    cpu: [x64]
+    os: [win32]
+
+  '@crowdin/cli@5.0.1':
+    resolution: {integrity: sha512-4CUJYUNK8qVB2htvdbGWsmToC2wB9L3L7O41jfhlWs5QK/YpeMjnDJIkN5fDL6bq9Iq9AlgsGqVojamQwmqWkw==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@csstools/cascade-layer-name-parser@2.0.5':
     resolution: {integrity: sha512-p1ko5eHgV+MgXFVa4STPKpvPxr6ReS8oS2jzTukjR74i5zJNyWO1ZM1m8YKBXnzDKWfBN1ztLYlHxbVemDD88A==}
@@ -9943,13 +9986,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/helper-module-imports@7.27.1(supports-color@8.1.1)':
-    dependencies:
-      '@babel/traverse': 7.28.0(supports-color@8.1.1)
-      '@babel/types': 7.29.8
-    transitivePeerDependencies:
-      - supports-color
-
   '@babel/helper-module-imports@7.29.7(supports-color@8.1.1)':
     dependencies:
       '@babel/traverse': 7.29.8(supports-color@8.1.1)
@@ -10707,6 +10743,37 @@ snapshots:
 
   '@colors/colors@1.5.0':
     optional: true
+
+  '@crowdin/cli-darwin-arm64@5.0.1':
+    optional: true
+
+  '@crowdin/cli-darwin-x64@5.0.1':
+    optional: true
+
+  '@crowdin/cli-linux-arm64-musl@5.0.1':
+    optional: true
+
+  '@crowdin/cli-linux-arm64@5.0.1':
+    optional: true
+
+  '@crowdin/cli-linux-x64-musl@5.0.1':
+    optional: true
+
+  '@crowdin/cli-linux-x64@5.0.1':
+    optional: true
+
+  '@crowdin/cli-win32-x64@5.0.1':
+    optional: true
+
+  '@crowdin/cli@5.0.1':
+    optionalDependencies:
+      '@crowdin/cli-darwin-arm64': 5.0.1
+      '@crowdin/cli-darwin-x64': 5.0.1
+      '@crowdin/cli-linux-arm64': 5.0.1
+      '@crowdin/cli-linux-arm64-musl': 5.0.1
+      '@crowdin/cli-linux-x64': 5.0.1
+      '@crowdin/cli-linux-x64-musl': 5.0.1
+      '@crowdin/cli-win32-x64': 5.0.1
 
   '@csstools/cascade-layer-name-parser@2.0.5(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
     dependencies:
@@ -12153,7 +12220,7 @@ snapshots:
 
   '@emotion/babel-plugin@11.13.5(supports-color@8.1.1)':
     dependencies:
-      '@babel/helper-module-imports': 7.27.1(supports-color@8.1.1)
+      '@babel/helper-module-imports': 7.29.7(supports-color@8.1.1)
       '@babel/runtime': 7.28.2
       '@emotion/hash': 0.9.2
       '@emotion/memoize': 0.9.0

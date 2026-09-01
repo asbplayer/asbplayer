@@ -13,26 +13,25 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
-            - name: Install loc dependencies
-              working-directory: ./scripts/loc
-              run: npm install
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
 
-            - name: Install Crowdin CLI
-              run: npm i -g @crowdin/cli
+            - name: Install loc dependencies
+              run: pnpm install --filter loc
 
             - name: Pull loc
-              working-directory: ./scripts/loc
               env:
                   CROWDIN_API_TOKEN: ${{ secrets.CROWDIN_API_TOKEN }}
-              run: ./pull
+              run: pnpm --filter loc run pull
+
             - name: Create branch name
               run: echo "LOC_BRANCH=loc-$(date +'%Y-%m-%d-%H-%M-%S')" >> $GITHUB_ENV
             - name: Create pull request
               uses: peter-evans/create-pull-request@v7
               with:
-                commit-message: |
-                  Pulled latest loc strings
-                branch: ${{ env.LOC_BRANCH }}
+                  commit-message: |
+                      Pulled latest loc strings
+                  branch: ${{ env.LOC_BRANCH }}
             - name: Check outputs
               if: ${{ steps.cpr.outputs.pull-request-number }}
               run: |
