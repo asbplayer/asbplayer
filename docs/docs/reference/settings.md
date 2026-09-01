@@ -108,11 +108,11 @@ How long to wait after the target subtitle appears before taking the screenshot.
 
 ### Surrounding subtitles count radius
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+At the bottom of **Anki Export Dialog** there's a timeline slider which can be used to adjust the selected time interval. The timeline slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
 
 ### Surrounding subtitles time radius
 
-At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+At the bottom of **Anki Export Dialog** there's a timeline slider which can be used to adjust the selected time interval. The timeline slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
 
 ## [Subtitle appearance](https://app.asbplayer.dev/?view=settings#subtitle-appearance)
 

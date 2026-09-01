@@ -32,7 +32,7 @@ Prior to being exported, cards can be adjusted from the dialog.
 
 ### Selected time range
 
-A **slider** at the bottom of the dialog can be used to change the selected time range.
+A **subtitle timeline slider** at the bottom of the dialog can be used to change the selected time range. It visually separates subtitle tracks and allows you to instantly select a subtitle by clicking on it.
 
 - The **Sentence Field** will be automatically updated to match the selected time range, if it has not been manually edited already.
 - For local files, the audio clip will also be automatically updated.
