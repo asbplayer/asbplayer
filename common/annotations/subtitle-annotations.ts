@@ -350,7 +350,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         return this._subtitles;
     }
 
-    setSubtitles(subtitles: TokenizedSubtitleModel[]) {
+    override setSubtitles(subtitles: TokenizedSubtitleModel[]) {
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
         }

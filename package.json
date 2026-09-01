@@ -8,6 +8,7 @@
         "eslint-plugin-import": "^2.32.0",
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^5.2.0",
+        "globals": "^14.0.0",
         "prettier": "^3.6.2",
         "typescript": "^5.8.3",
         "typescript-eslint": "^8.59.1"
@@ -23,7 +24,7 @@
         }
     },
     "scripts": {
-        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm run eslint common extension/src client/src && pnpm run pretty:check",
+        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm eslint common extension/src client/src && pnpm run pretty:check",
         "pretty": "pnpm prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)'",
         "pretty:check": "pnpm prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)'"
     }

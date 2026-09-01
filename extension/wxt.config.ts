@@ -1,5 +1,5 @@
 import { defineConfig } from 'wxt';
-import type { ResolvedPublicFile, UserManifest, Wxt } from 'wxt';
+import type { PublicPathEntry, ResolvedPublicFile, UserManifest, Wxt } from 'wxt';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -12,13 +12,13 @@ const moveToPublicAssets = (srcPath: string, destPath: string, files: ResolvedPu
     const srcFiles = fs.readdirSync(srcPath);
     for (const file of srcFiles) {
         files.push({
-            absoluteSrc: path.resolve(srcPath, file) as string,
+            absoluteSrc: path.resolve(srcPath, file),
             relativeDest: `${destPath}/${file}`,
         });
     }
 };
 
-const addToPublicPathsType = (srcPath: string, destPath: string, paths: string[]) => {
+const addToPublicPathsType = (srcPath: string, destPath: string, paths: PublicPathEntry[]) => {
     const srcFiles = fs.readdirSync(srcPath);
     for (const file of srcFiles) {
         paths.push(`${destPath}/${file}`);
@@ -31,6 +31,15 @@ const extName = 'asbplayer';
 export default defineConfig({
     modules: ['@wxt-dev/module-react'],
     srcDir: 'src',
+    // The shared `@project/common` package is framework-agnostic and must not receive WXT's
+    // auto-imports. Without this, unimport mis-scans files like common/settings/settings-provider.ts
+    // (a `storage` constructor param) and injects a spurious `import { storage } from 'wxt/utils/storage'`,
+    // which pnpm's strict node_modules can't resolve from common/. (Yarn's hoisting masked this.)
+    imports: {
+        // `exclude` is consumed by unimport's unplugin but missing from WXT's type.
+        // @ts-expect-error -- honored at runtime
+        exclude: [/[\\/]node_modules[\\/]/, /[\\/]\.git[\\/]/, /[\\/]common[\\/]/],
+    },
     vite: () => ({
         plugins: [
             {
@@ -53,7 +62,7 @@ export default defineConfig({
                 moveToPublicAssets(srcDir, destDir, files);
             }
         },
-        'prepare:publicPaths': (wxt: Wxt, paths: string[]) => {
+        'prepare:publicPaths': (wxt: Wxt, paths: PublicPathEntry[]) => {
             for (const { srcDir, destDir } of commonAssets) {
                 addToPublicPathsType(srcDir, destDir, paths);
             }
