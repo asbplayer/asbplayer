@@ -18,7 +18,7 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
 
-            - run: pnpm install
+            - run: pnpm install --filter @project/extension --filter @project/common
             - run: pnpm --filter @project/extension run zip:firefox
             - name: Submit to stores
               working-directory: ./extension

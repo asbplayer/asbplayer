@@ -16,6 +16,6 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
 
-            - run: pnpm install
+            - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build
