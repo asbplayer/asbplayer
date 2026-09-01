@@ -27,7 +27,11 @@ import type {
 } from '@project/common';
 import { PostMineAction } from '@project/common';
 import type { AsbplayerSettings, DictionaryTrack, TokenAnnotationConfig } from '@project/common/settings';
-import { tokenAnnotationStyleValues } from '@project/common/settings';
+import {
+    effectiveSubtitleListCustomization,
+    SubtitleListTimestampDisplay,
+    tokenAnnotationStyleValues,
+} from '@project/common/settings';
 import {
     surroundingSubtitles,
     mockSurroundingSubtitles,
@@ -209,6 +213,7 @@ enum SelectionState {
 interface SubtitleRowContext {
     compressed: boolean;
     showCopyButton: boolean;
+    timestampDisplay: SubtitleListTimestampDisplay;
     disabledSubtitleTracks: { [track: number]: boolean };
     dictionaryTracks: DictionaryTrack[];
     richTextWindowRef: React.RefObject<RichTextWindow>;
@@ -405,6 +410,7 @@ interface SubtitleRowCellsProps {
     disabled: boolean;
     compressed: boolean;
     showCopyButton: boolean;
+    timestampDisplay: SubtitleListTimestampDisplay;
     tokenAnnotationConfig?: TokenAnnotationConfig;
     rendered?: RenderedRichText;
     onCopySubtitle: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, index: number) => void;
@@ -420,6 +426,7 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
     disabled,
     compressed,
     showCopyButton,
+    timestampDisplay,
     tokenAnnotationConfig,
     rendered,
     onCopySubtitle,
@@ -467,13 +474,25 @@ const SubtitleRowCells = React.memo(function SubtitleRowCells({
                     </IconButton>
                 </TableCell>
             )}
-            <TableCell className={classes.timestamp}>
-                <div>
-                    <span style={{ display: 'none' }}>.</span>
-                    {`\n${subtitle.displayTime}\n`}
-                    <span style={{ display: 'none' }}>.</span>
-                </div>
-            </TableCell>
+            {timestampDisplay !== SubtitleListTimestampDisplay.hidden && (
+                <Tooltip
+                    title={`#${subtitle.index + 1} · ${t('settings.subtitleTrackChoice', {
+                        trackNumber: subtitle.track + 1,
+                    })}`}
+                    placement="top"
+                >
+                    <TableCell className={classes.timestamp}>
+                        <div>
+                            <span style={{ display: 'none' }}>.</span>
+                            <div>{`\n${subtitle.displayTime}\n`}</div>
+                            {timestampDisplay === SubtitleListTimestampDisplay.startAndEnd && (
+                                <div>{`\n${subtitle.displayEndTime}\n`}</div>
+                            )}
+                            <span style={{ display: 'none' }}>.</span>
+                        </div>
+                    </TableCell>
+                </Tooltip>
+            )}
         </>
     );
 });
@@ -490,6 +509,7 @@ const renderSubtitleRow = (index: number, subtitle: DisplaySubtitleModel, contex
         disabled={!!context.disabledSubtitleTracks[subtitle.track]}
         compressed={context.compressed}
         showCopyButton={context.showCopyButton}
+        timestampDisplay={context.timestampDisplay}
         tokenAnnotationConfig={context.dictionaryTracks[subtitle.track]?.dictionaryTokenAnnotationConfig.subtitlePlayer}
         rendered={renderRichTextForSubtitle(
             context.richTextWindowRef.current,
@@ -1392,10 +1412,15 @@ export default function SubtitlePlayer({
         onCopy,
     ]);
 
+    const subtitleListCustomization = effectiveSubtitleListCustomization(
+        settings,
+        !extension.installed || extension.supportsSubtitleListCustomization
+    );
     const rowContext = useMemo<SubtitleRowContext>(
         () => ({
             compressed,
-            showCopyButton,
+            showCopyButton: showCopyButton && subtitleListCustomization.showMiningButton,
+            timestampDisplay: subtitleListCustomization.timestampDisplay,
             disabledSubtitleTracks,
             dictionaryTracks: settings.dictionaryTracks,
             richTextWindowRef,
@@ -1412,6 +1437,8 @@ export default function SubtitlePlayer({
         [
             compressed,
             showCopyButton,
+            subtitleListCustomization.showMiningButton,
+            subtitleListCustomization.timestampDisplay,
             disabledSubtitleTracks,
             settings.dictionaryTracks,
             selectedSubtitleIndexes,

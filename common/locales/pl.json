@@ -64,6 +64,11 @@
         "inNotOut": "Enabled",
         "inAndOut": "Enabled with auto-resume"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -473,6 +478,8 @@
         "subtitleAlignment": "Wyrównanie napisów",
         "subtitleAlignmentBottom": "Dół",
         "subtitleAlignmentTop": "Góra",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Rozmycie napisów",
@@ -480,7 +487,6 @@
         "allSubtitleTracks": "All",
         "subtitleTrackChoice": "Track {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Changes settings for ALL tracks. Settings that already have track-specific values are hidden.",
-        "subtitleBlurEntryLabel": "Ścieżka {{trackNumber}}",
         "subtitleBlurDescription": "Ukrywa zaznaczone ścieżki napisów, rozmywając je. Rozmycie można deaktywować najeżdżając na nie myszką.",
         "tabName": "Nazwa karty",
         "subtitleRegexFilter": "Filtr Regex napisów",

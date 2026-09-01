@@ -24,6 +24,7 @@ import {
     isTrackSeekable,
     mergeImportedSettings,
     PauseOnHoverMode,
+    SubtitleListTimestampDisplay,
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
     validateSettings,
@@ -62,6 +63,7 @@ interface Props {
     extensionSupportsPauseOnHover?: boolean;
     extensionSupportsSeekableTrackSetting?: boolean;
     extensionSupportsAutoCopyableTrackSetting?: boolean;
+    supportsSubtitleListCustomization: boolean;
     supportsPlaybackEngine: boolean;
     supportsAutoPauseResume: boolean;
     onViewPlaybackModeKeyboardShortcuts: () => void;
@@ -79,6 +81,7 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsPauseOnHover,
     extensionSupportsSeekableTrackSetting,
     extensionSupportsAutoCopyableTrackSetting,
+    supportsSubtitleListCustomization,
     supportsPlaybackEngine,
     supportsAutoPauseResume,
     onViewPlaybackModeKeyboardShortcuts,
@@ -89,6 +92,8 @@ const MiscSettingTab: React.FC<Props> = ({
     const {
         themeType,
         videoSubtitleSplitBehavior,
+        showSubtitleListMiningButton,
+        subtitleListTimestampDisplay,
         language,
         rememberSubtitleOffset,
         autoCopyCurrentSubtitle,
@@ -282,6 +287,43 @@ const MiscSettingTab: React.FC<Props> = ({
                     label={t('videoSubtitleSplitBehavior.autoMaximizeVideo')}
                     labelPlacement="start"
                 />
+                {supportsSubtitleListCustomization && (
+                    <>
+                        <SwitchLabelWithHoverEffect
+                            control={
+                                <Switch
+                                    checked={showSubtitleListMiningButton}
+                                    onChange={(event) =>
+                                        onSettingChanged('showSubtitleListMiningButton', event.target.checked)
+                                    }
+                                />
+                            }
+                            label={t('settings.showSubtitleListMiningButton')}
+                            labelPlacement="start"
+                        />
+                        <FormControl>
+                            <FormLabel>{t('settings.subtitleListTimestamps')}</FormLabel>
+                            <RadioGroup
+                                row
+                                value={subtitleListTimestampDisplay}
+                                onChange={(event) =>
+                                    onSettingChanged(
+                                        'subtitleListTimestampDisplay',
+                                        event.target.value as SubtitleListTimestampDisplay
+                                    )
+                                }
+                            >
+                                {Object.values(SubtitleListTimestampDisplay).map((value) => (
+                                    <LabelWithHoverEffect
+                                        key={value}
+                                        control={<Radio value={value} />}
+                                        label={t(`subtitleListTimestampDisplay.${value}`)}
+                                    />
+                                ))}
+                            </RadioGroup>
+                        </FormControl>
+                    </>
+                )}
                 <SettingsSection>{t('settings.subtitles')}</SettingsSection>
                 <SwitchLabelWithHoverEffect
                     control={

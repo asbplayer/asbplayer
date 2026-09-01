@@ -1,6 +1,7 @@
 import type { SubtitleAlignment } from '@project/common/settings';
 import {
     SettingsProvider,
+    SubtitleListTimestampDisplay,
     VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
@@ -24,6 +25,8 @@ it('starts at default settings', async () => {
     expect(initialSettings.rememberPlaybackModes).toBe(false);
     expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
     expect(initialSettings.lastPlaybackPositions).toEqual([]);
+    expect(initialSettings.showSubtitleListMiningButton).toBe(true);
+    expect(initialSettings.subtitleListTimestampDisplay).toBe(SubtitleListTimestampDisplay.startAndEnd);
 });
 
 it('keeps playback-owned settings separate from UI settings', () => {
@@ -54,6 +57,8 @@ it('can change the value of value-typed settings', async () => {
     expect(await provider.getSingle('audioField')).toBe('test-value');
     await provider.set({ videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.autoMaximizeVideo });
     expect(await provider.getSingle('videoSubtitleSplitBehavior')).toBe(VideoSubtitleSplitBehavior.autoMaximizeVideo);
+    await provider.set({ subtitleListTimestampDisplay: SubtitleListTimestampDisplay.hidden });
+    expect(await provider.getSingle('subtitleListTimestampDisplay')).toBe(SubtitleListTimestampDisplay.hidden);
 });
 
 it('returns the same object references if the values inside do not change', async () => {

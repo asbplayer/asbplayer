@@ -11,6 +11,7 @@ import type {
 import {
     AutoPauseResumeMode,
     SubtitleListPreference,
+    SubtitleListTimestampDisplay,
     SubtitleVisibility,
     textSubtitleSettingsKeys,
     VideoSubtitleSplitBehavior,
@@ -238,6 +239,8 @@ export const defaultSettings: AsbplayerSettings = {
     postMiningPlaybackState: PostMinePlayback.remember,
     themeType: 'dark',
     videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.rememberSplitPosition,
+    showSubtitleListMiningButton: true,
+    subtitleListTimestampDisplay: SubtitleListTimestampDisplay.startAndEnd,
     copyToClipboardOnMine: false,
     rememberSubtitleOffset: true,
     lastSubtitleOffset: 0,

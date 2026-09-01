@@ -1,3 +1,10 @@
+# The Qt names below are imported in a try/except and then used under a
+# WEBSOCKETS_AVAILABLE guard, and the two AsbplayerWebSocketServer definitions are
+# mutually exclusive. The type checker can't correlate either with the import result,
+# so both rules are disabled for this file only.
+#
+# pyright: reportPossiblyUnboundVariable=false, reportRedeclaration=false
+
 from __future__ import annotations
 
 import json

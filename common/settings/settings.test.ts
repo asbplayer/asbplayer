@@ -1,12 +1,35 @@
 import {
     autoPausePreferenceForCheckboxChange,
     calculateSeekableTracksValue,
+    effectiveSubtitleListCustomization,
     isTrackSeekable,
+    SubtitleListTimestampDisplay,
     updateSeekableTracksValue,
 } from '.';
 import type { AutoPausePreferenceEdge } from '.';
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference } from '@project/common/src/model';
+
+describe('effectiveSubtitleListCustomization', () => {
+    const configured = {
+        showSubtitleListMiningButton: false,
+        subtitleListTimestampDisplay: SubtitleListTimestampDisplay.startAndEnd,
+    };
+
+    it('uses the configured values when customization is supported', () => {
+        expect(effectiveSubtitleListCustomization(configured, true)).toEqual({
+            showMiningButton: false,
+            timestampDisplay: SubtitleListTimestampDisplay.startAndEnd,
+        });
+    });
+
+    it('uses legacy defaults when customization is not supported', () => {
+        expect(effectiveSubtitleListCustomization(configured, false)).toEqual({
+            showMiningButton: true,
+            timestampDisplay: SubtitleListTimestampDisplay.start,
+        });
+    });
+});
 
 describe('autoPausePreferenceForCheckboxChange', () => {
     it.each<{

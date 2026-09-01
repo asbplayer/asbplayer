@@ -203,6 +203,10 @@ export default class ChromeExtension {
         return this.installed && gte(this.version, '1.21.0');
     }
 
+    get supportsSubtitleListCustomization() {
+        return this.installed && gte(this.version, '1.21.0');
+    }
+
     get supportsPlaybackEngine() {
         return this.installed && gte(this.version, '1.20.0');
     }

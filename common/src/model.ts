@@ -54,6 +54,7 @@ export interface SubtitleModel {
     readonly originalStart: number;
     readonly originalEnd: number;
     readonly displayTime?: string;
+    readonly displayEndTime?: string;
     readonly track: number;
     readonly index?: number;
     readonly tokenization?: Tokenization;
@@ -71,6 +72,7 @@ export interface PlaybackState {
 
 export interface DisplaySubtitleModel extends IndexedSubtitleModel {
     readonly displayTime: string;
+    readonly displayEndTime: string;
 }
 
 export interface TokenizedSubtitleModel extends IndexedSubtitleModel {

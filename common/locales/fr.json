@@ -64,6 +64,11 @@
         "inNotOut": "Activé",
         "inAndOut": "Activé avec reprise automatique"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -473,6 +478,8 @@
         "subtitleAlignment": "Alignement des sous-titres",
         "subtitleAlignmentBottom": "Bas",
         "subtitleAlignmentTop": "Haut",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Flou des sous-titres",
@@ -480,7 +487,6 @@
         "allSubtitleTracks": "Tout",
         "subtitleTrackChoice": "Piste {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Modifie les paramètres pour TOUTES les pistes. Les paramètres qui ont déjà des valeurs spécifiques à une piste sont masqués.",
-        "subtitleBlurEntryLabel": "Piste {{trackNumber}}",
         "subtitleBlurDescription": "Masque les pistes de sous-titres sélectionnées en les floutant. Le flou est supprimé au survol de la souris.",
         "tabName": "Nom de l'onglet",
         "subtitleRegexFilter": "Filtre regex des sous-titres",

@@ -193,6 +193,7 @@ interface Props {
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
+    extensionSupportsSubtitleListCustomization: boolean;
     insideApp?: boolean;
     appVersion?: string;
     dictionaryProvider: DictionaryProvider;
@@ -230,6 +231,7 @@ export default function SettingsForm({
     extensionSupportsOverlay,
     extensionSupportsSidePanel,
     extensionSupportsSubtitleTrackSelectorInWebApp,
+    extensionSupportsSubtitleListCustomization,
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
@@ -272,6 +274,7 @@ export default function SettingsForm({
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
+    const supportsSubtitleListCustomization = !extensionInstalled || extensionSupportsSubtitleListCustomization;
     const supportsAutoPauseResume = !extensionInstalled || extensionSupportsAutoPauseResume;
     const theme = useTheme();
     const settingsTheme = useMemo(
@@ -589,6 +592,7 @@ export default function SettingsForm({
                         extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
                         extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
+                        supportsSubtitleListCustomization={supportsSubtitleListCustomization}
                         supportsPlaybackEngine={supportsPlaybackEngine}
                         supportsAutoPauseResume={supportsAutoPauseResume}
                         onViewPlaybackModeKeyboardShortcuts={() => viewKeyboardShortcutSection('playback')}

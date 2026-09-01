@@ -64,6 +64,11 @@
         "inNotOut": "Вкл",
         "inAndOut": "Включено с автовозобновлением"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -473,6 +478,8 @@
         "subtitleAlignment": "Расположение субтитров",
         "subtitleAlignmentBottom": "У нижнего края",
         "subtitleAlignmentTop": "У верхнего края",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Размытие субтитров",
@@ -480,7 +487,6 @@
         "allSubtitleTracks": "Все",
         "subtitleTrackChoice": "Дорожка {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Изменение настроек для ВСЕХ треков. Настройки у которых уже есть специфичные для трека значения, будут скрыты.",
-        "subtitleBlurEntryLabel": "Дорожка {{trackNumber}}",
         "subtitleBlurDescription": "Скрывает выбранные дорожки субтитров, размывая их. Показывается обратно при наведении мыши.",
         "tabName": "Название вкладки",
         "subtitleRegexFilter": "Пропускать субтитры через фильтр с регулярным выражением",

@@ -916,6 +916,7 @@ describe('areSubtitleModelsEqual', () => {
     const subtitle = {
         text: 'subtitle',
         displayTime: '00:01.000',
+        displayEndTime: '00:02.000',
         originalText: 'original subtitle',
         textImage: {
             dataUrl: 'data:image/png;base64,image',
@@ -966,6 +967,7 @@ describe('areSubtitleModelsEqual', () => {
     it.each([
         ['text', { text: 'different' }],
         ['display time', { displayTime: '00:02.000' }],
+        ['display end time', { displayEndTime: '00:03.000' }],
         ['original text', { originalText: 'different original subtitle' }],
         [
             'text image',
