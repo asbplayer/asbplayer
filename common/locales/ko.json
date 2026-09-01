@@ -64,6 +64,11 @@
         "inNotOut": "사용",
         "inAndOut": "활성화 (마우스커서 이동시 자동재생)"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "자막 위치 정렬",
         "subtitleAlignmentBottom": "하단",
         "subtitleAlignmentTop": "상단",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "자막 블러 효과",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "모두 선택",
         "subtitleTrackChoice": "트랙 {{trackNumber}}",
         "subtitleTrackSelectorHelper": "모든 자막 트랙에 동일한 설정 적용. 트랙별로 따로 지정된 값은 표시되지 않습니다.",
-        "subtitleBlurEntryLabel": "트랙 {{trackNumber}}",
         "subtitleBlurDescription": "선택한 자막을 블러 효과로 숨깁니다. 마우스를 올리면 해제됩니다.",
         "tabName": "탭 이름",
         "subtitleRegexFilter": "자막 정규식 필터",

@@ -64,6 +64,11 @@
         "inNotOut": "Habilitado",
         "inAndOut": "Ativado com reinício automático"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "Alinhamento da legenda",
         "subtitleAlignmentBottom": "Inferior",
         "subtitleAlignmentTop": "Superior",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Desfoque de legenda",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "Todos",
         "subtitleTrackChoice": "Faixa {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Muda as configurações para TODAS as faixas. Configurações que já possuem valores específicas para faixa estão escondidos.",
-        "subtitleBlurEntryLabel": "Faixa {{trackNumber}}",
         "subtitleBlurDescription": "Oculta as faixas de legendas selecionadas desfocando-as. Não pode ser desfocado ao passar o mouse.",
         "tabName": "Nome da guia",
         "subtitleRegexFilter": "Filtro regex da legenda",

@@ -590,6 +590,12 @@ const settingsSchema = {
         videoSubtitleSplitBehavior: {
             type: 'string',
         },
+        showSubtitleListMiningButton: {
+            type: 'boolean',
+        },
+        subtitleListTimestampDisplay: {
+            type: 'string',
+        },
         copyToClipboardOnMine: {
             type: 'boolean',
         },

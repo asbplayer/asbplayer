@@ -64,6 +64,11 @@
         "inNotOut": "有効",
         "inAndOut": "有効。マウスカーソルを外すと自動再生。"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "ローカルビデオの自動拡大表示"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "字幕の表示位置",
         "subtitleAlignmentBottom": "下部",
         "subtitleAlignmentTop": "上部",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "字幕の上にサムネイルを表示",
         "thumbnailPreview": "ビデオタイムラインのサムネイルを表示",
         "subtitleBlur": "字幕のぼかし",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "全て",
         "subtitleTrackChoice": "字幕トラック{{trackNumber}}",
         "subtitleTrackSelectorHelper": "設定の変更は全トラックに適用されます。トラックごとに異なる値が設定されている場合、その設定は表示されません。",
-        "subtitleBlurEntryLabel": "トラック {{trackNumber}}",
         "subtitleBlurDescription": "字幕トラックをぼかします。マウスホバーでぼかしを解除できます。",
         "tabName": "タブ名",
         "subtitleRegexFilter": "字幕の正規表現フィルタ",

@@ -64,6 +64,11 @@
         "inNotOut": "Käytössä",
         "inAndOut": "Käytössä automaattisella jatkamisella"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -456,6 +461,8 @@
         "subtitleAlignment": "Tekstityksen kohdistus",
         "subtitleAlignmentBottom": "Pohja",
         "subtitleAlignmentTop": "Ylhäällä",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Tekstityksen sumennus",
@@ -463,7 +470,6 @@
         "allSubtitleTracks": "Kaikki",
         "subtitleTrackChoice": "Kappaleen {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Muutokset KAIKKI kappaleita. Asetukset, joilla on jo raidalle asetetut arvot on piilotettu.",
-        "subtitleBlurEntryLabel": "Kappaleen {{trackNumber}}",
         "subtitleBlurDescription": "Piilottaa valitut tekstityskappaleet hämärtämällä niitä. Voi olla puristumaton hiiren liikutuksessa.",
         "tabName": "Sarkaimen nimi",
         "subtitleRegexFilter": "Tekstityksen regex suodatin",
