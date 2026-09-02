@@ -30,7 +30,7 @@ import type { CardModel } from '@project/common/src/model';
 import { Direction, TutorialStep } from '@project/common/components/settings-model';
 import { Anki, exportCard } from '@project/common/anki';
 import Stack from '@mui/material/Stack';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 
 const defaultDeckName = 'Sentences';
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);

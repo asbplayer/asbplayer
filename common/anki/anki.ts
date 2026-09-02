@@ -1,4 +1,4 @@
-import { asbInfo, extractText, fromBatches, sourceString } from '@project/common/util';
+import { asbError, asbInfo, extractText, fromBatches, sourceString } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
 import type { AnkiExportMode, CardModel, Progress, Fetcher } from '@project/common';
 import { MediaFragment, HttpFetcher } from '@project/common';
@@ -770,7 +770,7 @@ export class Anki {
             await this._executeAction('guiBrowse', { query: 'nid:1' }, ankiConnectUrl);
             await this._executeAction('guiBrowse', { query: `nid:${noteId}` }, ankiConnectUrl);
         } catch (e) {
-            console.error('Failed to refresh Anki card browser after updating note:', e);
+            asbError('anki/connect', 'Failed to refresh Anki card browser after updating note:', e);
         }
     }
 
