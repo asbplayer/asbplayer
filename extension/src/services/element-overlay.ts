@@ -434,6 +434,8 @@ export class CachingElementOverlay implements ElementOverlay {
     private _refreshContainerStylesAfterLayout(container: HTMLElement, options: ApplyContainerStylesOptions) {
         this._applyContainerStyles(container, options);
         if (this.layoutAnimationFrame !== undefined) cancelAnimationFrame(this.layoutAnimationFrame);
+        // Page-owned fullscreenchange listeners may update the player after ours runs.
+        // Measure again after the event dispatch using the resulting DOM and styles.
         this.layoutAnimationFrame = requestAnimationFrame(() => {
             this.layoutAnimationFrame = undefined;
             if (container.isConnected) this._applyContainerStyles(container, options);
@@ -459,10 +461,14 @@ export class CachingElementOverlay implements ElementOverlay {
         container.style.removeProperty('visibility');
 
         let left = rect.left + rect.width / 2;
+        const videoBottom = rect.top + rect.height;
+        const videoIntersectsViewport = rect.top < window.innerHeight && videoBottom > 0;
+        const videoCoversViewport = rect.top < 0 && videoBottom > window.innerHeight;
         let top =
             this.offsetAnchor === OffsetAnchor.bottom
-                ? rect.top + rect.height - this.contentPositionOffset
-                : rect.top + this.contentPositionOffset;
+                ? (videoIntersectsViewport ? Math.min(videoBottom, window.innerHeight) : videoBottom) -
+                  this.contentPositionOffset
+                : (videoCoversViewport ? 0 : rect.top) + this.contentPositionOffset;
 
         const containingBlock =
             container.offsetParent instanceof HTMLElement

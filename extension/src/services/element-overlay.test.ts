@@ -192,6 +192,88 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         }
     });
 
+    it('keeps top and bottom overlays inside the viewport when the video covers it', () => {
+        const originalInnerHeight = Object.getOwnPropertyDescriptor(window, 'innerHeight');
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+        const targetElement = document.createElement('video');
+        targetElement.getBoundingClientRect = () => ({ left: 0, top: -100, width: 1000, height: 800 }) as DOMRect;
+        const topOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'top-container',
+            nonFullscreenContentClassName: 'top-content',
+            fullscreenContainerClassName: 'fullscreen-top-container',
+            fullscreenContentClassName: 'fullscreen-top-content',
+            offsetAnchor: OffsetAnchor.top,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        const bottomOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'bottom-container',
+            nonFullscreenContentClassName: 'bottom-content',
+            fullscreenContainerClassName: 'fullscreen-bottom-container',
+            fullscreenContentClassName: 'fullscreen-bottom-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            topOverlay.setHtml([{ key: 'top', html: () => '<span>top</span>' }]);
+            bottomOverlay.setHtml([{ key: 'bottom', html: () => '<span>bottom</span>' }]);
+
+            expect(document.querySelector<HTMLElement>('.top-container')?.style.top).toBe('8px');
+            expect(document.querySelector<HTMLElement>('.bottom-container')?.style.top).toBe('525px');
+        } finally {
+            topOverlay.dispose();
+            bottomOverlay.dispose();
+            if (originalInnerHeight) Object.defineProperty(window, 'innerHeight', originalInnerHeight);
+            else delete (window as unknown as { innerHeight?: number }).innerHeight;
+        }
+    });
+
+    it('does not pin overlays to the viewport when the video is completely outside it', () => {
+        const originalInnerHeight = Object.getOwnPropertyDescriptor(window, 'innerHeight');
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 600 });
+        const targetElement = document.createElement('video');
+        targetElement.getBoundingClientRect = () => ({ left: 0, top: 700, width: 1000, height: 200 }) as DOMRect;
+        const topOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'top-container',
+            nonFullscreenContentClassName: 'top-content',
+            fullscreenContainerClassName: 'fullscreen-top-container',
+            fullscreenContentClassName: 'fullscreen-top-content',
+            offsetAnchor: OffsetAnchor.top,
+            contentPositionOffset: 8,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        const bottomOverlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'bottom-container',
+            nonFullscreenContentClassName: 'bottom-content',
+            fullscreenContainerClassName: 'fullscreen-bottom-container',
+            fullscreenContentClassName: 'fullscreen-bottom-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        try {
+            topOverlay.setHtml([{ key: 'top', html: () => '<span>top</span>' }]);
+            bottomOverlay.setHtml([{ key: 'bottom', html: () => '<span>bottom</span>' }]);
+
+            expect(document.querySelector<HTMLElement>('.top-container')?.style.top).toBe('708px');
+            expect(document.querySelector<HTMLElement>('.bottom-container')?.style.top).toBe('825px');
+        } finally {
+            topOverlay.dispose();
+            bottomOverlay.dispose();
+            if (originalInnerHeight) Object.defineProperty(window, 'innerHeight', originalInnerHeight);
+            else delete (window as unknown as { innerHeight?: number }).innerHeight;
+        }
+    });
+
     it('keeps top and bottom overlays attached to the video while it scrolls above the viewport', () => {
         const originalScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
         let scrollY = 0;
