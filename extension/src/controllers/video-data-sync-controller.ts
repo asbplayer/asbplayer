@@ -137,6 +137,7 @@ export default class VideoDataSyncController {
         this._refreshingOpenPicker = false;
         this._cleanupPlayBlocker();
         this._openedLocation = undefined;
+        this._frame.unbind();
     }
 
     updateSettings({ streamingAutoSync, streamingLastLanguagesSynced }: AsbplayerSettings) {
