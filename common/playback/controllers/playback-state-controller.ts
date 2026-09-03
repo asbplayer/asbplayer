@@ -12,6 +12,7 @@ export interface PlaybackStateLock {
 export interface PlaybackStateControllerOptions<T extends IndexedSubtitleModel> {
     readonly paused: () => boolean;
     readonly showingSubtitlesAt: (timestampMs: number) => readonly T[];
+    readonly subtitlesVisible: () => boolean;
     readonly playbackStateChanged: (state: PlaybackState) => void;
     readonly now: () => number;
 }
@@ -20,6 +21,7 @@ export interface PlaybackStateControllerOptions<T extends IndexedSubtitleModel> 
 export default class PlaybackStateController<T extends IndexedSubtitleModel> {
     private readonly paused: () => boolean;
     private readonly showingSubtitlesAt: (timestampMs: number) => readonly T[];
+    private readonly subtitlesVisible: () => boolean;
     private readonly playbackStateChanged: (state: PlaybackState) => void;
     private readonly now: () => number;
     private bindGeneration = 0;
@@ -27,11 +29,22 @@ export default class PlaybackStateController<T extends IndexedSubtitleModel> {
     private pendingForce = false;
     private pendingReconcile?: (timestampMs: number) => void;
     private lastNotifiedAt?: number;
-    private lastNotifiedState?: { readonly paused: boolean; readonly showingSubtitleIndexes: readonly number[] };
+    private lastNotifiedState?: {
+        readonly paused: boolean;
+        readonly showingSubtitleIndexes: readonly number[];
+        readonly hiddenSubtitleIndexes: readonly number[];
+    };
 
-    constructor({ paused, showingSubtitlesAt, playbackStateChanged, now }: PlaybackStateControllerOptions<T>) {
+    constructor({
+        paused,
+        showingSubtitlesAt,
+        subtitlesVisible,
+        playbackStateChanged,
+        now,
+    }: PlaybackStateControllerOptions<T>) {
         this.paused = paused;
         this.showingSubtitlesAt = showingSubtitlesAt;
+        this.subtitlesVisible = subtitlesVisible;
         this.playbackStateChanged = playbackStateChanged;
         this.now = now;
     }
@@ -87,11 +100,13 @@ export default class PlaybackStateController<T extends IndexedSubtitleModel> {
         }
 
         const showingSubtitleIndexes = this.showingSubtitlesAt(timestampMs).map(({ index }) => index);
+        const hiddenSubtitleIndexes = this.subtitlesVisible() ? [] : showingSubtitleIndexes;
         const previousState = this.lastNotifiedState;
         const stateChanged =
             previousState === undefined ||
             previousState.paused !== this.paused() ||
-            !arrayEquals(previousState.showingSubtitleIndexes, showingSubtitleIndexes);
+            !arrayEquals(previousState.showingSubtitleIndexes, showingSubtitleIndexes) ||
+            !arrayEquals(previousState.hiddenSubtitleIndexes, hiddenSubtitleIndexes);
         const now = this.now();
         if (!options.force && !stateChanged && this.lastNotifiedAt !== undefined && now - this.lastNotifiedAt < 1000) {
             return;
@@ -100,12 +115,14 @@ export default class PlaybackStateController<T extends IndexedSubtitleModel> {
         const state: PlaybackState = {
             timestampMs,
             showingSubtitleIndexes,
+            ...(hiddenSubtitleIndexes.length ? { hiddenSubtitleIndexes } : {}),
             paused: this.paused(),
         };
         this.lastNotifiedAt = now;
         this.lastNotifiedState = {
             paused: state.paused,
             showingSubtitleIndexes,
+            hiddenSubtitleIndexes,
         };
         this.playbackStateChanged(state);
     }

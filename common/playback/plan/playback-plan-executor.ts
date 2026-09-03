@@ -49,7 +49,10 @@ type ExpectedDiscontinuity = {
 };
 
 type DeferredDiscontinuity = {
+    /** Actual timestamp reported by the media, used to reconcile continuous playback state. */
     readonly timestampMs: number;
+    /** Timestamp used to reset timeline cursors: the requested target for an internal seek, otherwise the actual timestamp. */
+    readonly timelineTimestampMs: number;
     readonly cause: PlaybackTimelineTransitionCause;
     readonly includeAtTimestamp: boolean;
 };
@@ -156,7 +159,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             const deferredDiscontinuity = this.deferredDiscontinuity;
             this.deferredDiscontinuity = undefined;
             if (deferredDiscontinuity !== undefined) {
-                this.reset(deferredDiscontinuity.timestampMs, {
+                this.reset(deferredDiscontinuity.timestampMs, deferredDiscontinuity.timelineTimestampMs, {
                     includeAtTimestamp: deferredDiscontinuity.includeAtTimestamp,
                     cause: deferredDiscontinuity.cause,
                 });
@@ -164,17 +167,24 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         }
     }
 
-    reset(timestampMs: number, options: { includeAtTimestamp: boolean; cause: PlaybackTimelineTransitionCause }): void {
+    private reset(
+        timestampMs: number,
+        timelineTimestampMs: number,
+        options: {
+            includeAtTimestamp: boolean;
+            cause: PlaybackTimelineTransitionCause;
+        }
+    ): void {
         if (options.cause === 'user-seek') {
             this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
             this.pendingTarget = undefined;
             this.repeatedBlock = undefined;
             this.startPauseSuppression = undefined;
         }
-        this.runner.reset(timestampMs, {
+        this.runner.reset(timelineTimestampMs, {
             includeAtTimestamp: options.cause === 'user-seek' ? false : options.includeAtTimestamp,
         });
-        this.lookaheadCursor.reset(timestampMs);
+        this.lookaheadCursor.reset(timelineTimestampMs);
         this.reconcileAt(timestampMs, { forcePlaybackRate: false });
     }
 
@@ -195,31 +205,41 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     /** Returns the cause so callers can tell a user seek from one playback issued itself. */
     handleDiscontinuity(timestampMs: number): { readonly cause: PlaybackTimelineTransitionCause } {
-        const discontinuity = this.consumeDiscontinuity();
+        const discontinuity = this.consumeDiscontinuity(timestampMs);
         if (discontinuity.cause === 'user-seek') {
             this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
         }
         if (this.updateInProgress) {
-            this.deferredDiscontinuity = { timestampMs, ...discontinuity };
+            this.deferredDiscontinuity = {
+                timestampMs,
+                timelineTimestampMs: discontinuity.timelineTimestampMs,
+                cause: discontinuity.cause,
+                includeAtTimestamp: discontinuity.includeAtTimestamp,
+            };
             return { cause: discontinuity.cause };
         }
-        this.reset(timestampMs, {
+        this.reset(timestampMs, discontinuity.timelineTimestampMs, {
             includeAtTimestamp: discontinuity.includeAtTimestamp,
             cause: discontinuity.cause,
         });
         return { cause: discontinuity.cause };
     }
 
-    private consumeDiscontinuity(): {
+    private consumeDiscontinuity(timestampMs: number): {
         cause: PlaybackTimelineTransitionCause;
         includeAtTimestamp: boolean;
+        timelineTimestampMs: number;
     } {
         const expected = this.expectedDiscontinuity;
         this.expectedDiscontinuity = undefined;
         if (expected !== undefined) {
-            return { cause: 'internal-seek', includeAtTimestamp: expected.includeAtTimestamp };
+            return {
+                cause: 'internal-seek',
+                includeAtTimestamp: expected.includeAtTimestamp,
+                timelineTimestampMs: expected.timestampMs,
+            };
         }
-        return { cause: 'user-seek', includeAtTimestamp: false };
+        return { cause: 'user-seek', includeAtTimestamp: false, timelineTimestampMs: timestampMs };
     }
 
     async playbackStarted(): Promise<void> {

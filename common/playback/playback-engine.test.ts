@@ -1816,7 +1816,10 @@ describe('PlaybackEngine', () => {
 
             jest.advanceTimersByTime(subtitle.text.length * 100);
 
-            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
+            expect(harness.playbackStates.at(-1)).toMatchObject({
+                showingSubtitleIndexes: [0],
+                hiddenSubtitleIndexes: [0],
+            });
             expect(harness.plays).toEqual([]);
 
             jest.advanceTimersByTime(300);
@@ -1840,7 +1843,10 @@ describe('PlaybackEngine', () => {
             expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([0]);
 
             jest.advanceTimersByTime(subtitle.text.length * 100);
-            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
+            expect(harness.playbackStates.at(-1)).toMatchObject({
+                showingSubtitleIndexes: [0],
+                hiddenSubtitleIndexes: [0],
+            });
 
             jest.advanceTimersByTime(300);
             expect(harness.plays).toHaveLength(1);
@@ -1911,7 +1917,10 @@ describe('PlaybackEngine', () => {
 
             await harness.driver.time(1000, 1000);
             jest.advanceTimersByTime(subtitle.text.length * 100);
-            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
+            expect(harness.playbackStates.at(-1)).toMatchObject({
+                showingSubtitleIndexes: [0],
+                hiddenSubtitleIndexes: [0],
+            });
 
             jest.advanceTimersByTime(300);
             await Promise.resolve();
@@ -1934,7 +1943,10 @@ describe('PlaybackEngine', () => {
 
             await harness.driver.time(1000, 1000);
             jest.advanceTimersByTime(subtitle.text.length * 100);
-            expect(harness.playbackStates.at(-1)?.showingSubtitleIndexes).toEqual([]);
+            expect(harness.playbackStates.at(-1)).toMatchObject({
+                showingSubtitleIndexes: [0],
+                hiddenSubtitleIndexes: [0],
+            });
 
             harness.playbackEngine.togglePlaybackMode(PlayMode.autoPause);
 

@@ -403,7 +403,9 @@ export default class SubtitleController {
     }
 
     playbackStateChanged(state: PlaybackState): void {
+        const hiddenSubtitleIndexes = state.hiddenSubtitleIndexes ?? [];
         this.timelineShowingSubtitles = state.showingSubtitleIndexes
+            .filter((index) => !hiddenSubtitleIndexes.includes(index))
             .map((index) => this.subtitles[index])
             .filter((subtitle): subtitle is IndexedSubtitleModel => subtitle !== undefined);
         this.refreshShowingSubtitles();

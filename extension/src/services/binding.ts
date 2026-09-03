@@ -608,9 +608,7 @@ export default class Binding {
             sender: 'asbplayer-video',
             message: {
                 command: 'playbackState',
-                timestampMs: state.timestampMs,
-                showingSubtitleIndexes: [...state.showingSubtitleIndexes],
-                paused: state.paused,
+                ...state,
             },
             src: this._registeredVideoSrc,
         };

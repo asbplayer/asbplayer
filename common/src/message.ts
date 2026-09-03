@@ -394,6 +394,7 @@ export interface PlaybackStateFromVideoMessage extends Message {
     readonly command: 'playbackState';
     readonly timestampMs: number;
     readonly showingSubtitleIndexes: readonly number[];
+    readonly hiddenSubtitleIndexes?: readonly number[];
     readonly paused: boolean;
 }
 

@@ -159,6 +159,7 @@ describe('VideoChannel playback intents', () => {
             command: 'playbackState' as const,
             timestampMs: 1234,
             showingSubtitleIndexes: [2, 5],
+            hiddenSubtitleIndexes: [5],
             paused: true,
         };
         protocol.receive(state);

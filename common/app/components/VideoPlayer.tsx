@@ -677,7 +677,7 @@ export default function VideoPlayer({
                     updateSubtitlesWithOffset(offset, options.notifyPlayer, notificationKey),
                 playbackStateChanged: (state) => {
                     playbackStateChangedRef.current(state);
-                    playerChannel.playbackState(state.timestampMs, state.showingSubtitleIndexes, state.paused);
+                    playerChannel.playbackState(state);
                 },
                 playbackPositionChanged: setPendingPlaybackPosition,
                 saveSettings: (settings) => onSettingsChangedRef.current(settings),
@@ -1069,8 +1069,12 @@ export default function VideoPlayer({
     }, []);
 
     playbackStateChangedRef.current = (state) => {
-        showingSubtitleIndexesRef.current = state.showingSubtitleIndexes;
-        updateShowingSubtitles(state.showingSubtitleIndexes);
+        const hiddenSubtitleIndexes = state.hiddenSubtitleIndexes ?? [];
+        const visibleSubtitleIndexes = state.showingSubtitleIndexes.filter(
+            (index) => !hiddenSubtitleIndexes.includes(index)
+        );
+        showingSubtitleIndexesRef.current = visibleSubtitleIndexes;
+        updateShowingSubtitles(visibleSubtitleIndexes);
     };
 
     useEffect(() => {

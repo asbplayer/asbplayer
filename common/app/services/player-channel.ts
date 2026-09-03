@@ -17,6 +17,7 @@ import type {
     OffsetFromVideoMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PlaybackState,
     PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
@@ -445,12 +446,10 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
-    playbackState(timestampMs: number, showingSubtitleIndexes: readonly number[], paused: boolean) {
+    playbackState(state: PlaybackState) {
         const message: PlaybackStateFromVideoMessage = {
             command: 'playbackState',
-            timestampMs,
-            showingSubtitleIndexes,
-            paused,
+            ...state,
         };
         this.channel?.postMessage(message);
     }

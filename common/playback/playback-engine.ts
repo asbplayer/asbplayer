@@ -245,8 +245,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
         this.playbackStateController = new PlaybackStateController({
             paused: () => this.timingDriver.paused(),
-            showingSubtitlesAt: (timestampMs) =>
-                this.subtitleVisibilityController.subtitlesVisible ? this.executor.showingSubtitlesAt(timestampMs) : [],
+            showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
+            subtitlesVisible: () => this.subtitleVisibilityController.subtitlesVisible,
             playbackStateChanged: callbacks.playbackStateChanged,
             now: () => performance.now(),
         });

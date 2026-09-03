@@ -478,6 +478,32 @@ describe('Binding playback mode integration', () => {
         binding.unbind();
     });
 
+    it('keeps active subtitle state while excluding hidden subtitles from the video', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+        await jest.advanceTimersByTimeAsync(1000);
+
+        binding.subtitleController.playbackStateChanged({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            hiddenSubtitleIndexes: [0],
+            paused: false,
+        });
+        expect(binding.subtitleController.currentSubtitle()[0]).toBeNull();
+
+        binding.subtitleController.playbackStateChanged({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            paused: false,
+        });
+        expect(displayedSubtitleTexts()).toContain('subtitle');
+
+        binding.unbind();
+    });
+
     it('reconciles subtitle visibility on a user seek without firing auto-pause actions', async () => {
         await storage.set({ autoPausePreference: AutoPausePreference.atStartAndEnd });
         const video = createVideo();
