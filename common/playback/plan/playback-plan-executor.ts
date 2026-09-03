@@ -13,7 +13,9 @@ import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimelineRunner from '@project/common/playback/timeline/playback-timeline-runner';
 import PlaybackTimelineLookaheadCursor from '@project/common/playback/timeline/playback-timeline-lookahead-cursor';
 
-export type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek';
+export type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek' | 'failed-internal-seek';
+
+export const maximumInternalSeekMismatchMs = 3000;
 
 export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
     readonly play: () => Promise<void>;
@@ -175,14 +177,14 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             cause: PlaybackTimelineTransitionCause;
         }
     ): void {
-        if (options.cause === 'user-seek') {
+        if (options.cause !== 'internal-seek') {
             this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
             this.pendingTarget = undefined;
             this.repeatedBlock = undefined;
             this.startPauseSuppression = undefined;
         }
         this.runner.reset(timelineTimestampMs, {
-            includeAtTimestamp: options.cause === 'user-seek' ? false : options.includeAtTimestamp,
+            includeAtTimestamp: options.cause === 'internal-seek' ? options.includeAtTimestamp : false,
         });
         this.lookaheadCursor.reset(timelineTimestampMs);
         this.reconcileAt(timestampMs, { forcePlaybackRate: false });
@@ -206,7 +208,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     /** Returns the cause so callers can tell a user seek from one playback issued itself. */
     handleDiscontinuity(timestampMs: number): { readonly cause: PlaybackTimelineTransitionCause } {
         const discontinuity = this.consumeDiscontinuity(timestampMs);
-        if (discontinuity.cause === 'user-seek') {
+        if (discontinuity.cause !== 'internal-seek') {
             this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
         }
         if (this.updateInProgress) {
@@ -233,6 +235,13 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         const expected = this.expectedDiscontinuity;
         this.expectedDiscontinuity = undefined;
         if (expected !== undefined) {
+            if (Math.abs(timestampMs - expected.timestampMs) > maximumInternalSeekMismatchMs) {
+                return {
+                    cause: 'failed-internal-seek',
+                    includeAtTimestamp: false,
+                    timelineTimestampMs: timestampMs,
+                };
+            }
             return {
                 cause: 'internal-seek',
                 includeAtTimestamp: expected.includeAtTimestamp,

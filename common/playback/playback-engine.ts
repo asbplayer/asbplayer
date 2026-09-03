@@ -9,7 +9,9 @@ import {
     playbackPlanCorrectionToleranceMs,
 } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
-import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
+import PlaybackPlanExecutor, {
+    maximumInternalSeekMismatchMs,
+} from '@project/common/playback/plan/playback-plan-executor';
 import type {
     PlaybackPlanExecutorCallbacks,
     PlaybackTimelineTransitionCause,
@@ -278,7 +280,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             onDiscontinuity: (currentTimestampMs) => {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
-                if (cause === 'user-seek') {
+                if (cause !== 'internal-seek') {
                     this.autoPauseController.userSeeked();
                     this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
                 }
@@ -601,7 +603,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             return;
         }
         const { cause } = this.executor.handleDiscontinuity(timestampMs);
-        if (cause === 'user-seek') {
+        if (cause !== 'internal-seek') {
             this.autoPauseController.userSeeked();
             this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
         }
@@ -746,7 +748,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             await this.callbacks.seek(targetTimestampMs);
             if ((await Promise.race([seekCompletion, watchdog])) !== 'completed') return;
             this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);
-            void this.playbackPositionController.savePlaybackPosition(targetTimestampMs);
+            const actualTimestampMs = this.timingDriver.currentTimeMs();
+            const playbackPositionTimestampMs =
+                Math.abs(actualTimestampMs - targetTimestampMs) > maximumInternalSeekMismatchMs
+                    ? actualTimestampMs
+                    : targetTimestampMs;
+            void this.playbackPositionController.savePlaybackPosition(playbackPositionTimestampMs);
         } catch (error) {
             this.timingDriver.cancelExpectedInternalSeek();
             throw error;

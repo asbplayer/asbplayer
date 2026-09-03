@@ -307,6 +307,31 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.corrections).toEqual([1999]);
     });
 
+    it('resets actions at the actual timestamp when an internal seek misses by more than three seconds', async () => {
+        const first = makeSubtitle({ start: 12_000, end: 13_000, originalStart: 12_000, originalEnd: 13_000 });
+        const second = makeSubtitle({
+            start: 60_000,
+            end: 61_000,
+            originalStart: 60_000,
+            originalEnd: 61_000,
+            index: 1,
+        });
+        const harness = executorHarness([PlayMode.autoPause], 60_500, {
+            subtitles: [first, second],
+            durationMs: 70_000,
+            autoPausePreference: AutoPausePreference.atEnd,
+        });
+
+        await harness.executor.update(61_000, { lookaheadTimestampMs: undefined });
+        expect(harness.executor.handleDiscontinuity(0)).toEqual({ cause: 'failed-internal-seek' });
+        harness.resume();
+        await harness.executor.playbackStarted();
+        await harness.executor.update(13_000, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(2);
+        expect(harness.corrections).toEqual([60_999, 12_999]);
+    });
+
     it('treats overlapping subtitles as one auto-pause and repeat block', async () => {
         const first = makeSubtitle({ end: 3000, originalEnd: 3000 });
         const second = makeSubtitle({ start: 2000, end: 4000, originalStart: 2000, originalEnd: 4000, index: 1 });

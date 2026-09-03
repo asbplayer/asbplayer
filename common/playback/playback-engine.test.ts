@@ -1879,6 +1879,33 @@ describe('PlaybackEngine', () => {
         }
     });
 
+    it('cancels automatic resume when an auto-pause correction misses by more than three seconds', async () => {
+        jest.useFakeTimers();
+
+        try {
+            const lateSubtitle = {
+                ...subtitle,
+                start: 60_000,
+                end: 61_000,
+                originalStart: 60_000,
+                originalEnd: 61_000,
+            };
+            const harness = await makePlaybackEngine([PlayMode.autoPause], 59_500, [lateSubtitle], {
+                settings: resumingAutoPauseSettings,
+                durationMs: 70_000,
+            });
+
+            await harness.driver.time(60_200);
+            harness.driver.discontinuity(0);
+            jest.advanceTimersByTime(10_000);
+
+            expect(harness.plays).toEqual([]);
+            expect(harness.driver.paused()).toBe(true);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     it.each([
         ['reading phase', 400],
         ['resume-delay phase', subtitle.text.length * 100],
