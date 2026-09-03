@@ -368,7 +368,7 @@ describe('AnimationFrameTimingDriver', () => {
             {
                 onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
                 onDiscontinuity: (timestampMs) => {
-                    executor.reset(timestampMs, { includeAtTimestamp: false, cause: 'user-seek' });
+                    executor.handleDiscontinuity(timestampMs);
                 },
             },
             animationFrames
