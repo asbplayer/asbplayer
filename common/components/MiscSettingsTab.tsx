@@ -673,7 +673,13 @@ const MiscSettingTab: React.FC<Props> = ({
                 {supportsAutoPauseResume && (
                     <>
                         <FormControl>
-                            <FormLabel component="legend">{t('settings.autoPauseResumeMode')}</FormLabel>
+                            <FormLabel component="legend" sx={{ display: 'flex' }}>
+                                {t('settings.autoPauseResumeMode')}
+                                <KeyboardShortcutLink
+                                    onClick={onViewPlaybackModeKeyboardShortcuts}
+                                    preset="formLabel"
+                                />
+                            </FormLabel>
                             <RadioGroup>
                                 <LabelWithHoverEffect
                                     control={
@@ -803,7 +809,13 @@ const MiscSettingTab: React.FC<Props> = ({
                             </>
                         )}
                         <FormControl>
-                            <FormLabel component="legend">{t('settings.subtitleVisibility')}</FormLabel>
+                            <FormLabel component="legend" sx={{ display: 'flex' }}>
+                                {t('settings.subtitleVisibility')}
+                                <KeyboardShortcutLink
+                                    onClick={onViewPlaybackModeKeyboardShortcuts}
+                                    preset="formLabel"
+                                />
+                            </FormLabel>
                             <RadioGroup row>
                                 <LabelWithHoverEffect
                                     control={
