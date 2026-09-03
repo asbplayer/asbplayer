@@ -293,6 +293,20 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.corrections).toEqual([1999]);
     });
 
+    it('does not repeat an auto-pause when an imprecise correction lands before the subtitle', async () => {
+        const harness = executorHarness([PlayMode.autoPause], 1500);
+
+        await harness.executor.update(2000, { lookaheadTimestampMs: undefined });
+        harness.executor.handleDiscontinuity(500);
+        harness.resume();
+        await harness.executor.playbackStarted();
+        await harness.executor.update(500, { lookaheadTimestampMs: undefined });
+        await harness.executor.update(2000, { lookaheadTimestampMs: undefined });
+
+        expect(harness.pauses).toHaveLength(1);
+        expect(harness.corrections).toEqual([1999]);
+    });
+
     it('treats overlapping subtitles as one auto-pause and repeat block', async () => {
         const first = makeSubtitle({ end: 3000, originalEnd: 3000 });
         const second = makeSubtitle({ start: 2000, end: 4000, originalStart: 2000, originalEnd: 4000, index: 1 });

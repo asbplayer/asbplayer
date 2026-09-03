@@ -118,6 +118,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  * └── PlaybackEngine
  *     ├── VideoFrameTimingDriver (Player: AnimationFrameTimingDriver)
  *     │   └── TimingUpdateQueue
+ *     ├── PlaybackStateController
  *     ├── PlaybackModeController
  *     ├── PlaybackPositionController
  *     ├── AutoPauseController
