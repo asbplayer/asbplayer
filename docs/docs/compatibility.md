@@ -57,4 +57,5 @@ You can always request a dedicated parser for any website, even if the generic p
 | Natural Japanese        |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |
+| Crunchyroll             |                                                                                            ✓                                                                                             |
 | All Other Websites      |                                                                Best-effort generic subtitle detection with ~85% efficacy.                                                                |
