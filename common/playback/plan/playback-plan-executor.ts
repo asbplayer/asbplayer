@@ -17,11 +17,15 @@ export type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek' | 'f
 
 export const maximumInternalSeekMismatchMs = 3000;
 
+export interface PlaybackPlanPause<T extends IndexedSubtitleModel> {
+    readonly playbackModeSubtitlesAtPause: readonly T[];
+    readonly showingSubtitlesAtPause: readonly T[];
+}
+
 export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
     readonly play: () => Promise<void>;
     readonly paused: () => boolean;
-    /** Carries the subtitles showing where the pause happened rather than leaving them to be read back. */
-    readonly pause: (subtitles: readonly T[]) => void;
+    readonly pause: (pause: PlaybackPlanPause<T>) => void;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
     readonly correctAutoPause: (timestampMs: number) => Promise<{ readonly seekIssued: boolean }>;
@@ -282,7 +286,10 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             if (block.endAction?.pause === true) return { autoPaused: false };
         }
 
-        this.callbacks.pause(this.pauseSubtitlesFor([block]));
+        this.callbacks.pause({
+            playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
+            showingSubtitlesAtPause: this.showingSubtitlesAt(event.timestampMs),
+        });
         return { autoPaused: true };
     }
 
@@ -298,7 +305,10 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         let seeked = false;
 
         if (action.pause && !options.alreadyAutoPaused) {
-            this.callbacks.pause(this.pauseSubtitlesFor([block]));
+            this.callbacks.pause({
+                playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
+                showingSubtitlesAtPause: this.showingSubtitlesAt(event.timestampMs),
+            });
         }
         if (repeat) {
             const blockId = block.id;
@@ -354,12 +364,15 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation = operation;
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
-            const pauseSubtitles = this.pauseSubtitlesFor(this.timeline.startActionsAt(target));
-            if (shouldPause) this.callbacks.pause(pauseSubtitles);
+            const pause = {
+                playbackModeSubtitlesAtPause: this.pauseSubtitlesFor(this.timeline.startActionsAt(target)),
+                showingSubtitlesAtPause: this.showingSubtitlesAt(target),
+            };
+            if (shouldPause) this.callbacks.pause(pause);
             await seek;
             if (!this.isCurrentOperation(operation)) return { stateChangedTimestampMs: undefined };
             if (shouldPause && !this.callbacks.paused()) {
-                this.callbacks.pause(pauseSubtitles); // Just in case the pause wasn't delivered asynchronously
+                this.callbacks.pause(pause); // Just in case the pause wasn't delivered asynchronously
             }
             if (this.callbacks.paused()) return { stateChangedTimestampMs: undefined };
             await this.callbacks.play();

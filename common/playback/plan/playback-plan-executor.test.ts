@@ -352,10 +352,11 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.seeks).toEqual([1000]);
     });
 
-    it('reports only playback-mode subtitles when display-only tracks overlap an automatic pause', async () => {
+    it('separates playback-mode subtitles from all display subtitles showing at an automatic pause', async () => {
         const playbackSubtitle = makeSubtitle({ text: 'read me', track: 0, index: 0 });
         const displayOnlySubtitle = makeSubtitle({ text: 'translation', track: 1, index: 1 });
         const pausedWith: (readonly IndexedSubtitleModel[])[] = [];
+        const showingAtPause: (readonly IndexedSubtitleModel[])[] = [];
         const harness = executorHarness(
             [PlayMode.autoPause],
             0,
@@ -364,12 +365,18 @@ describe('PlaybackPlanExecutor', () => {
                 displaySubtitles: [playbackSubtitle, displayOnlySubtitle],
                 autoPausePreference: AutoPausePreference.atStart,
             },
-            { pause: (subtitles) => pausedWith.push(subtitles) }
+            {
+                pause: ({ playbackModeSubtitlesAtPause, showingSubtitlesAtPause }) => {
+                    pausedWith.push(playbackModeSubtitlesAtPause);
+                    showingAtPause.push(showingSubtitlesAtPause);
+                },
+            }
         );
 
         await harness.executor.update(1000, {});
 
         expect(pausedWith).toEqual([[playbackSubtitle]]);
+        expect(showingAtPause).toEqual([[playbackSubtitle, displayOnlySubtitle]]);
     });
 
     it.each([
@@ -400,7 +407,7 @@ describe('PlaybackPlanExecutor', () => {
                     autoPausePreference,
                     ...offsets,
                 },
-                { pause: (subtitles) => pausedWith.push(subtitles) }
+                { pause: ({ playbackModeSubtitlesAtPause }) => pausedWith.push(playbackModeSubtitlesAtPause) }
             );
 
             await harness.executor.update(updateTimestampMs, {});
