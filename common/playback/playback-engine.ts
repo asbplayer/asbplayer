@@ -2,7 +2,7 @@ import { defaultSettings, isTrackSeekable } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { PlayMode } from '@project/common';
-import { asbWarn, formatAsSignedMs } from '@project/common/util';
+import { asbInfo, asbWarn, formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
     playbackPlansEqual,
@@ -106,6 +106,8 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly playbackPositionKeys: readonly string[];
     readonly callbacks: PlaybackEngineCallbacks;
     readonly timingDriver: TimingDriver;
+    /** Logs playback events (seeks, play/pause, rate changes) via asbInfo. Intended for the browser extension. */
+    readonly logPlaybackEvents?: boolean;
 }
 
 /**
@@ -136,6 +138,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
     private readonly appIntegration: boolean;
+    private readonly logPlaybackEvents: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
     private lastSubtitleEndMs?: number;
@@ -168,9 +171,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         playbackPositionKeys,
         callbacks,
         timingDriver,
+        logPlaybackEvents = false,
     }: PlaybackEngineOptions<T>) {
         this.settings = defaultSettings;
         this.appIntegration = appIntegration;
+        this.logPlaybackEvents = logPlaybackEvents;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
         this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
@@ -281,6 +286,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
                 if (cause !== 'internal-seek') {
+                    if (this.logPlaybackEvents) {
+                        asbInfo('playback/seek', 'Seek detected', { timestampMs: currentTimestampMs, cause });
+                    }
                     this.autoPauseController.userSeeked();
                     this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
                 }
@@ -508,7 +516,15 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         if (normalizedPlaybackRate === undefined || this.settings[setting] === normalizedPlaybackRate) {
             return { notify: false, playbackRate: this.settings[setting], notification };
         }
+        const previousPlaybackRate = this.settings[setting];
         this.settings = { ...this.settings, [setting]: normalizedPlaybackRate };
+        if (this.logPlaybackEvents) {
+            asbInfo('playback/rate', 'Playback rate changed', {
+                previousPlaybackRate,
+                playbackRate: normalizedPlaybackRate,
+                fastForwarding: isFastForwarding,
+            });
+        }
         if (!this.rebuildPlan()) {
             return {
                 notify: false,
@@ -612,6 +628,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     /** Reports that a seek operation has started from a non-standard media adapter, such as Disney+'s page-script seek event. */
     seekStarted(): void {
+        if (this.logPlaybackEvents) {
+            asbInfo('playback/seek', 'Seek started reported');
+        }
         if (this.timingDriver.externalSeekEvents) {
             this.timingDriver.externalSeekStarted!();
             return;
@@ -628,6 +647,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     /** Reports that a seek operation has been canceled from a non-standard media adapter, such as Disney+'s page-script seek event. */
     seekCanceled(): void {
+        if (this.logPlaybackEvents) {
+            asbInfo('playback/seek', 'Seek cancelled reported');
+        }
         if (this.timingDriver.externalSeekEvents) {
             this.timingDriver.externalSeekCanceled!();
             return;
@@ -745,6 +767,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             }, internalSeekWatchdogMs);
         });
         try {
+            if (this.logPlaybackEvents) {
+                asbInfo('playback/seek', 'Internal seek', { targetTimestampMs, command: warningCommand });
+            }
             await this.callbacks.seek(targetTimestampMs);
             if ((await Promise.race([seekCompletion, watchdog])) !== 'completed') return;
             this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);

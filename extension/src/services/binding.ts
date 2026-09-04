@@ -1,5 +1,7 @@
 import {
     asbError,
+    asbInfo,
+    asbWarn,
     buildSubtitleTracks,
     clampMediaTimestamp,
     errorMessageFromVideo,
@@ -430,6 +432,7 @@ export default class Binding {
         return new PlaybackEngine({
             settingsProvider: this.settings,
             appIntegration: true,
+            logPlaybackEvents: true,
             subtitles,
             playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
@@ -456,6 +459,7 @@ export default class Binding {
                 },
                 {
                     onPlay: () => {
+                        asbInfo('video/playback', 'Play', { src: this._registeredVideoSrc });
                         const command: VideoToExtensionCommand<PlayFromVideoMessage> = {
                             sender: 'asbplayer-video',
                             message: {
@@ -468,6 +472,7 @@ export default class Binding {
                         this.pausedDueToHover = false;
                     },
                     onPause: () => {
+                        asbInfo('video/playback', 'Pause', { src: this._registeredVideoSrc });
                         const command: VideoToExtensionCommand<PauseFromVideoMessage> = {
                             sender: 'asbplayer-video',
                             message: {
@@ -483,6 +488,7 @@ export default class Binding {
                     },
                     onSeeked: () => this.seekedListener?.(new Event('seeked')),
                     onPlaybackRateChanged: (playbackRate) => {
+                        asbInfo('video/playback', 'Observed playback rate', { playbackRate });
                         if (disneyPlus) this.disneyPlusClock.updateRate(playbackRate, performance.now());
                         this._notifyPlaybackRateChanged(playbackRate);
 
@@ -727,6 +733,7 @@ export default class Binding {
             this.disneyPlusSeekStartedListener = (e: Event) => {
                 const detail = (e as CustomEvent<DisneyPlaybackEventDetail>).detail;
                 if (detail === undefined || !Number.isFinite(detail.timestampMs)) return;
+                asbInfo('video/playback', 'Disney+ seek started', { timestampMs: detail.timestampMs });
                 this.disneyPlusTimeListener?.(new CustomEvent('asbplayer-disney-plus-time', { detail }));
                 this.playbackEngine.seekStarted();
             };
@@ -735,6 +742,10 @@ export default class Binding {
             this.disneyPlusSeekedListener = (e: Event) => {
                 const detail = (e as CustomEvent<DisneyPlaybackEventDetail>).detail;
                 if (detail === undefined || !Number.isFinite(detail.timestampMs)) return;
+                asbInfo('video/playback', 'Disney+ seeked', {
+                    timestampMs: detail.timestampMs,
+                    requestId: detail.requestId,
+                });
                 this.disneyPlusTimeListener?.(new CustomEvent('asbplayer-disney-plus-time', { detail }));
                 this.playbackEngine.seeked(detail.timestampMs);
                 if (detail.requestId !== undefined) {
@@ -752,6 +763,7 @@ export default class Binding {
                 const requestId = (e as CustomEvent<string>).detail;
                 const pending = this.disneyPlusPendingSeeks.get(requestId);
                 if (pending === undefined) return;
+                asbInfo('video/playback', 'Disney+ seek cancelled', { requestId });
                 this.playbackEngine.seekCanceled();
                 this.disneyPlusPendingSeeks.delete(requestId);
                 pending.resolve();
@@ -1658,6 +1670,10 @@ export default class Binding {
                 const timeout = setTimeout(() => {
                     const pending = this.disneyPlusPendingSeeks.get(requestId);
                     if (pending === undefined) return;
+                    asbWarn('video/playback', 'Disney+ seek timed out', {
+                        requestId,
+                        timestampMs: clampedTimestampMs,
+                    });
                     this.disneyPlusPendingSeeks.delete(requestId);
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-disney-plus-seek-cancelled', { detail: requestId })
@@ -1670,6 +1686,10 @@ export default class Binding {
                         clearTimeout(timeout);
                         resolve();
                     },
+                });
+                asbInfo('video/playback', 'Seeking Disney+ player', {
+                    requestId,
+                    timestampMs: clampedTimestampMs,
                 });
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-disney-plus-seek', {
@@ -1741,6 +1761,7 @@ export default class Binding {
     }
 
     _playDisneyPlus() {
+        asbInfo('video/playback', 'Play Disney+ player');
         document.dispatchEvent(new CustomEvent('asbplayer-disney-plus-play'));
 
         // If already playing, the play/playing events won't fire, so resolve immediately
@@ -1768,6 +1789,7 @@ export default class Binding {
         }
 
         if (disneyPlus) {
+            asbInfo('video/playback', 'Pause Disney+ player');
             document.dispatchEvent(new CustomEvent('asbplayer-disney-plus-pause'));
             return;
         }
