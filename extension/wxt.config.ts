@@ -61,7 +61,7 @@ export default defineConfig({
         },
     },
     manifest: ({ browser, mode }) => {
-        const version = '1.20.2';
+        const version = '1.21.0';
         const isDev = mode === 'development';
         const devLabel = isDev ? ' (Dev)' : '';
         const title = `${extName}${devLabel}`;
@@ -105,6 +105,8 @@ export default defineConfig({
                         'areena-yle-page.js',
                         'hbo-max-page.js',
                         'nijapanese-page.js',
+                        'base-generic-page.js',
+                        'aggressive-generic-page.js',
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'hulu-jp-page.js',
@@ -120,6 +122,7 @@ export default defineConfig({
                         'statistics-overlay-one-uncollected-ui.js',
                         'page-favicons/*',
                         'content-scripts/video.css',
+                        'js/ui-frame-head.js',
                     ],
                     matches: ['<all_urls>'],
                 },

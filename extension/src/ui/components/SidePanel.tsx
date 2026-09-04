@@ -193,6 +193,7 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                                     ...s,
                                     index,
                                     displayTime: timeDurationDisplay(s.start, length),
+                                    displayEndTime: timeDurationDisplay(s.end, length),
                                 }))
                             );
                             setSubtitleFileNames(response.subtitleFileNames);

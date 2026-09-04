@@ -389,6 +389,126 @@ describe('Yomitan', () => {
         await expect(yomitan.tokenizeBulk(['empty-group'])).resolves.toEqual([]);
     });
 
+    it('splits leading and trailing punctuation and whitespace from scanning-parser tokens that contain letters', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValueOnce([
+            makeTokenizeResult({
+                content: [
+                    [makeTokenPart({ text: ' \t「alpha!?」  ', reading: 'alpha' })],
+                    [makeTokenPart({ text: 'in-side', reading: 'in-side' })],
+                    [makeTokenPart({ text: '!?', reading: '' })],
+                ],
+            }),
+        ]);
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.tokenize(' \t「alpha!?」  in-side!?')).resolves.toEqual([
+            [{ text: ' ', reading: '' }],
+            [{ text: '\t', reading: '' }],
+            [{ text: '「', reading: '' }],
+            [{ text: 'alpha', reading: 'alpha' }],
+            [{ text: '!', reading: '' }],
+            [{ text: '?', reading: '' }],
+            [{ text: '」', reading: '' }],
+            [{ text: ' ', reading: '' }],
+            [{ text: ' ', reading: '' }],
+            [{ text: 'in-side', reading: 'in-side' }],
+            [{ text: '!?', reading: '' }],
+        ]);
+    });
+
+    it('clips a multipart scanning-parser token to the separator-free range', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValueOnce([
+            makeTokenizeResult({
+                content: [
+                    [
+                        makeTokenPart({ text: ' ', reading: '' }),
+                        makeTokenPart({
+                            text: '「al',
+                            reading: 'al',
+                            headwords: [
+                                [
+                                    makeHeadword({
+                                        term: 'alpha',
+                                        reading: 'alpha',
+                                        sources: [makeSource({ originalText: 'alpha', deinflectedText: 'alpha' })],
+                                    }),
+                                ],
+                            ],
+                        }),
+                        makeTokenPart({ text: 'ph', reading: 'ph' }),
+                        makeTokenPart({ text: 'a」', reading: 'a' }),
+                        makeTokenPart({ text: '\t', reading: '' }),
+                    ],
+                ],
+            }),
+        ]);
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.tokenize(' 「alpha」\t')).resolves.toEqual([
+            [{ text: ' ', reading: '' }],
+            [{ text: '「', reading: '' }],
+            [
+                { text: 'al', reading: 'al' },
+                { text: 'ph', reading: 'ph' },
+                { text: 'a', reading: 'a' },
+            ],
+            [{ text: '」', reading: '' }],
+            [{ text: '\t', reading: '' }],
+        ]);
+        await expect(yomitan.lemmatize('alpha')).resolves.toEqual(['alpha']);
+        expect(fetcher.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not split non-punctuation Unicode characters merely because they are not letters', async () => {
+        const fetcher = new MockFetcher();
+        const tokenTexts = ['5alpha5', '$alpha$', '+alpha=', '🙂alpha🙂', 'e\u0301'];
+        fetcher.fetch.mockResolvedValueOnce([
+            makeTokenizeResult({
+                content: tokenTexts.map((text) => [makeTokenPart({ text, reading: text })]),
+            }),
+        ]);
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.tokenize(tokenTexts.join(''))).resolves.toEqual(
+            tokenTexts.map((text) => [{ text, reading: text }])
+        );
+    });
+
+    it('keeps whitespace and punctuation inside real-world words and phrases attached', async () => {
+        const fetcher = new MockFetcher();
+        const tokenTexts = ['New York', "can't", 'mother-in-law', 'example.com', 'rock ’n’ roll', 'l·l'];
+        fetcher.fetch.mockResolvedValueOnce([
+            makeTokenizeResult({
+                content: tokenTexts.map((text) => [makeTokenPart({ text, reading: text })]),
+            }),
+        ]);
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.tokenize(tokenTexts.join(''))).resolves.toEqual(
+            tokenTexts.map((text) => [{ text, reading: text }])
+        );
+    });
+
+    it('leaves punctuation attached for mecab tokens', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch
+            .mockResolvedValueOnce({ version: '26.4.6' })
+            .mockResolvedValueOnce([makeMecabSupportResult()])
+            .mockResolvedValueOnce([
+                makeTokenizeResult({
+                    source: 'mecab',
+                    dictionary: 'UniDic 202402',
+                    content: [[makeTokenPart({ text: '「alpha」', reading: 'alpha' })]],
+                }),
+            ]);
+        const yomitan = new Yomitan(testDictionaryTrack({ dictionaryYomitanParser: 'mecab' }), fetcher);
+
+        await yomitan.version();
+        await expect(yomitan.tokenize('「alpha」')).resolves.toEqual([[{ text: '「alpha」', reading: 'alpha' }]]);
+    });
+
     it('returns an empty array without fetching in tokenizeBulk for 0 items', async () => {
         const fetcher = new MockFetcher();
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);

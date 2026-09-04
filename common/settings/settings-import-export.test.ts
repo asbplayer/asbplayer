@@ -316,6 +316,8 @@ it('validates exported settings', () => {
         postMiningPlaybackState: 0,
         themeType: 'dark',
         videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.rememberSplitPosition,
+        showSubtitleListMiningButton: true,
+        subtitleListTimestampDisplay: 'startAndEnd',
         copyToClipboardOnMine: false,
         lastPlaybackPositions: [{ fileName: 'example.mp4', position: 1200 }],
         rememberSubtitleOffset: true,

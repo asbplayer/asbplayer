@@ -1,6 +1,6 @@
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { inferTracks, trackId } from '@project/extension/src/pages/util';
-import { parse } from 'mpd-parser';
+import { inheritAttributes, stringToMpdXml, toM3u8, toPlaylists } from 'mpd-parser';
 
 export interface Segment {
     resolvedUri: string;
@@ -12,46 +12,66 @@ export interface Playlist {
     segments: Segment[];
 }
 
+export interface MpdTrackMetadata {
+    mimeType?: string;
+}
+
+function parseMpdManifest(manifest: string, manifestUri: string) {
+    const parsedManifestInfo = inheritAttributes(stringToMpdXml(manifest), { manifestUri });
+    const dashPlaylists = toPlaylists(parsedManifestInfo.representationInfo);
+    const metadata = new Map<string, MpdTrackMetadata>();
+    for (const playlist of dashPlaylists) {
+        const { id, mimeType } = playlist.attributes;
+        if (typeof id === 'string') metadata.set(id, { mimeType });
+    }
+    return {
+        manifest: toM3u8({
+            dashPlaylists,
+            locations: parsedManifestInfo.locations,
+            contentSteering: parsedManifestInfo.contentSteeringInfo,
+            eventStream: parsedManifestInfo.eventStream,
+        }),
+        metadata,
+    };
+}
+
+export const subtitleTracksFromMpdManifest = (
+    mpdUrl: string,
+    manifest: string,
+    trackExtractor: (
+        playlist: Playlist,
+        language: string,
+        metadata?: MpdTrackMetadata
+    ) => VideoDataSubtitleTrackDef | undefined
+): VideoDataSubtitleTrack[] => {
+    const { manifest: parsedManifest, metadata: metadataByRepresentationId } = parseMpdManifest(manifest, mpdUrl);
+    const subGroups = parsedManifest.mediaGroups?.SUBTITLES?.subs ?? {};
+    const tracks: VideoDataSubtitleTrack[] = [];
+
+    if (typeof subGroups !== 'object') return tracks;
+    for (const [language, info] of Object.entries(subGroups)) {
+        if (typeof info !== 'object' || info === null) continue;
+        const playlists = (info as any).playlists ?? [];
+        if (!Array.isArray(playlists)) continue;
+        for (const playlist of playlists) {
+            if (typeof playlist.resolvedUri !== 'string') continue;
+            const representationId = playlist.attributes?.NAME;
+            const metadata =
+                typeof representationId === 'string' ? metadataByRepresentationId.get(representationId) : undefined;
+            const track = trackExtractor(playlist, language, metadata);
+            if (track !== undefined) tracks.push({ id: trackId(track), ...track });
+        }
+    }
+    return tracks;
+};
+
 const tryExtractSubtitleTracks = async (
     mpdUrl: string,
     originalFetch: typeof window.fetch,
     trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
 ): Promise<VideoDataSubtitleTrack[]> => {
     const manifest = await (await originalFetch(mpdUrl)).text();
-    const parsedManifest = parse(manifest, { manifestUri: mpdUrl });
-    const subGroups = parsedManifest.mediaGroups?.SUBTITLES?.subs ?? {};
-    const tracks: VideoDataSubtitleTrack[] = [];
-
-    if (typeof subGroups !== 'object') {
-        return [];
-    }
-
-    for (const [language, info] of Object.entries(subGroups)) {
-        if (typeof info !== 'object') {
-            continue;
-        }
-
-        const playlists = (info as any).playlists ?? [];
-
-        if (typeof playlists !== 'object' || !Array.isArray(playlists)) {
-            continue;
-        }
-
-        for (const playlist of playlists) {
-            if (typeof playlist.resolvedUri !== 'string') {
-                continue;
-            }
-
-            const track = trackExtractor(playlist, language);
-
-            if (track !== undefined) {
-                const id = trackId(track);
-                tracks.push({ id, ...track });
-            }
-        }
-    }
-
-    return tracks;
+    return subtitleTracksFromMpdManifest(mpdUrl, manifest, trackExtractor);
 };
 
 export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (

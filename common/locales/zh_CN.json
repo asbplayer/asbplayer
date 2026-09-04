@@ -64,6 +64,11 @@
         "inNotOut": "已启用",
         "inAndOut": "已启用（移开后自动恢复播放）"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "选择字幕",
             "subtitleTrack": "字幕轨道",
             "videoName": "视频名称",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "可在此选择自动检测到的字幕轨道。若未能识别，您可随时手动加载字幕文件。"
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "错误：{{message}}",
         "errorNoMessage": "发生错误",
         "toggleSubtitlesShortcut": "按“{{keys}}”切换字幕显示",
-        "manualMiningIntervalPrompt": "再次使用挖掘快捷键确认时间段"
+        "manualMiningIntervalPrompt": "再次使用挖掘快捷键确认时间段",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "拖放字幕与媒体文件至此，或点击 <1>浏览</1>。",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "字幕对齐方式",
         "subtitleAlignmentBottom": "底部对齐",
         "subtitleAlignmentTop": "顶部对齐",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "字幕模糊处理",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "全部",
         "subtitleTrackChoice": "轨道 {{trackNumber}}",
         "subtitleTrackSelectorHelper": "统一更改所有轨道的设置，覆盖单独轨道的特定值。",
-        "subtitleBlurEntryLabel": "轨道 {{trackNumber}}",
         "subtitleBlurDescription": "通过模糊处理隐藏选定字幕，鼠标悬停时可恢复清晰。",
         "tabName": "选项卡名称",
         "subtitleRegexFilter": "字幕正则过滤器",

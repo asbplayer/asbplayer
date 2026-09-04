@@ -64,6 +64,11 @@
         "inNotOut": "Abilita",
         "inAndOut": "Abilita con ripristino automatico"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Massimizzazione automatica del video locale"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "Seleziona sottotitoli",
             "subtitleTrack": "Traccia sottotitoli",
             "videoName": "Nome video",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "Qui è possibile selezionare le tracce dei sottotitoli rilevate automaticamente. asbplayer non sa come rilevare i sottotitoli su tutti i siti. Puoi sempre caricare i tuoi file di sottotitoli."
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "Errore: {{message}}",
         "errorNoMessage": "Errore",
         "toggleSubtitlesShortcut": "Premi \"{{keys}}\" per mostrare/nascondere i sottotitoli",
-        "manualMiningIntervalPrompt": "Usa di nuovo la scorciatoia di estrazione"
+        "manualMiningIntervalPrompt": "Usa di nuovo la scorciatoia di estrazione",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Trascina e rilascia file di sottotitoli e media, o <1>sfoglia</1>.",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "Allineamento sottotitoli",
         "subtitleAlignmentBottom": "In basso",
         "subtitleAlignmentTop": "In alto",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Sfocatura sottotitoli",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "Tutte",
         "subtitleTrackChoice": "Traccia {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Modifica le impostazioni per TUTTE le tracce. Le impostazioni che hanno già valori specifici per traccia sono nascoste.",
-        "subtitleBlurEntryLabel": "Traccia {{trackNumber}}",
         "subtitleBlurDescription": "Nasconde le tracce di sottotitoli selezionate sfocandole. È possibile togliere la sfocatura passando il mouse sopra.",
         "tabName": "Nome della scheda",
         "subtitleRegexFilter": "Filtro regex sottotitoli",

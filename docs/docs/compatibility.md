@@ -28,6 +28,12 @@ sidebar_position: 7
 
 ### Streaming services and subtitle detection
 
+:::tip
+For streaming services not listed below, asbplayer can attempt a best-effort generic subtitle detection which works for ~85% of websites.
+
+You can always request a dedicated parser for any website, even if the generic parser detects subtitles, through an [issue](https://github.com/asbplayer/asbplayer/issues) or submit your own implementation in a [PR](https://github.com/asbplayer/asbplayer/pulls) on GitHub.
+:::
+
 | Service                 |                                                                                      Compatibility                                                                                       |
 | ----------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
 | Netflix                 |                                                                                            ✓                                                                                             |
@@ -47,7 +53,8 @@ sidebar_position: 7
 | HBO Max                 |                                                             See [issue](https://github.com/asbplayer/asbplayer/issues/1006)                                                              |
 | Yle Areena              |                                                                                            ✓                                                                                             |
 | iWantTFC                |                                                                                            ✓                                                                                             |
-| Stemio                  |                                                              See [issue](https://github.com/asbplayer/asbplayer/issues/800)                                                              |
+| Stremio                 |                                                                                            ✓                                                                                             |
 | Natural Japanese        |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |
+| All Other Websites      |                                                                Best-effort generic subtitle detection with ~85% efficacy.                                                                |

@@ -64,6 +64,11 @@
         "inNotOut": "Habilitado",
         "inAndOut": "Ativado com reinício automático"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "Selecionar legenda",
             "subtitleTrack": "Selecionar faixa",
             "videoName": "Nome do vídeo",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "As faixas de legendas detectadas automaticamente podem ser selecionadas aqui. O asbplayer não sabe como detectar legendas em todo site. Você sempre pode carregar seus próprios arquivos de legenda."
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "Erro: {{message}}",
         "errorNoMessage": "Erro",
         "toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display",
-        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range"
+        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Arraste e solte arquivos de mídia e legenda, ou <1>procure</1>.",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "Alinhamento da legenda",
         "subtitleAlignmentBottom": "Inferior",
         "subtitleAlignmentTop": "Superior",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Desfoque de legenda",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "Todos",
         "subtitleTrackChoice": "Faixa {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Muda as configurações para TODAS as faixas. Configurações que já possuem valores específicas para faixa estão escondidos.",
-        "subtitleBlurEntryLabel": "Faixa {{trackNumber}}",
         "subtitleBlurDescription": "Oculta as faixas de legendas selecionadas desfocando-as. Não pode ser desfocado ao passar o mouse.",
         "tabName": "Nome da guia",
         "subtitleRegexFilter": "Filtro regex da legenda",

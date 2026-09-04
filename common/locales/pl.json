@@ -64,6 +64,11 @@
         "inNotOut": "Enabled",
         "inAndOut": "Enabled with auto-resume"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "Wybierz napisy",
             "subtitleTrack": "Ścieżka napisów",
             "videoName": "Nazwa wideo",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "Auto-detected subtitle tracks can be selected here. asbplayer does not know how to detect subtitles on every site. You can always load your own subtitle files."
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "Błąd: {{message}}",
         "errorNoMessage": "Błąd",
         "toggleSubtitlesShortcut": "Naciśnij \"{{keys}}\", aby przełączyć wyświetlanie napisów",
-        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range"
+        "manualMiningIntervalPrompt": "Use mining shortcut again to select time range",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Przenieś i upuść napisy i pliki medialne, lub <1>przeglądaj</1>.",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "Wyrównanie napisów",
         "subtitleAlignmentBottom": "Dół",
         "subtitleAlignmentTop": "Góra",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Rozmycie napisów",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "All",
         "subtitleTrackChoice": "Track {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Changes settings for ALL tracks. Settings that already have track-specific values are hidden.",
-        "subtitleBlurEntryLabel": "Ścieżka {{trackNumber}}",
         "subtitleBlurDescription": "Ukrywa zaznaczone ścieżki napisów, rozmywając je. Rozmycie można deaktywować najeżdżając na nie myszką.",
         "tabName": "Nazwa karty",
         "subtitleRegexFilter": "Filtr Regex napisów",

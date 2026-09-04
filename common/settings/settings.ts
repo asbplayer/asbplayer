@@ -34,6 +34,31 @@ export enum VideoSubtitleSplitBehavior {
     autoMaximizeVideo = 'autoMaximizeVideo',
 }
 
+export enum SubtitleListTimestampDisplay {
+    hidden = 'hidden',
+    start = 'start',
+    startAndEnd = 'startAndEnd',
+}
+
+export interface SubtitleListCustomization {
+    readonly showMiningButton: boolean;
+    readonly timestampDisplay: SubtitleListTimestampDisplay;
+}
+
+export const effectiveSubtitleListCustomization = (
+    settings: Pick<MiscSettings, 'showSubtitleListMiningButton' | 'subtitleListTimestampDisplay'>,
+    supported: boolean
+): SubtitleListCustomization =>
+    supported
+        ? {
+              showMiningButton: settings.showSubtitleListMiningButton,
+              timestampDisplay: settings.subtitleListTimestampDisplay,
+          }
+        : {
+              showMiningButton: true,
+              timestampDisplay: SubtitleListTimestampDisplay.start,
+          };
+
 // Bitsets - if the nth bit is 1 then the nth track is "seekable" where "seekable"
 // means that the track is eligible for seeking, and automatic play mode behaviors
 export type SeekableTracks = number;
@@ -48,6 +73,8 @@ export interface PlaybackPosition {
 export interface MiscSettings {
     readonly themeType: 'dark' | 'light';
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
+    readonly showSubtitleListMiningButton: boolean;
+    readonly subtitleListTimestampDisplay: SubtitleListTimestampDisplay;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
     readonly subtitleTriggerStartOffset: number;

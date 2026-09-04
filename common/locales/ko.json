@@ -64,6 +64,11 @@
         "inNotOut": "사용",
         "inAndOut": "활성화 (마우스커서 이동시 자동재생)"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "자막 선택",
             "subtitleTrack": "자막 트랙",
             "videoName": "영상 이름",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "자동으로 감지된 자막 트랙은 여기에서 선택할 수 있습니다.\nasbplayer가 모든 사이트에서 자막을 감지할 수 있는 것은 아닙니다.\n언제든지 직접 자막 파일을 불러올 수 있습니다."
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "오류: {{message}}",
         "errorNoMessage": "오류",
         "toggleSubtitlesShortcut": "\"{{keys}}\" 키를 눌러 자막 표시를 전환",
-        "manualMiningIntervalPrompt": "자막 추출 단축키를 다시 사용하세요"
+        "manualMiningIntervalPrompt": "자막 추출 단축키를 다시 사용하세요",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "자막 및 미디어 파일을 드래그 앤 드롭 하거나, <1>찾아보기</1>를 클릭하세요.",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "자막 위치 정렬",
         "subtitleAlignmentBottom": "하단",
         "subtitleAlignmentTop": "상단",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "자막 블러 효과",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "모두 선택",
         "subtitleTrackChoice": "트랙 {{trackNumber}}",
         "subtitleTrackSelectorHelper": "모든 자막 트랙에 동일한 설정 적용. 트랙별로 따로 지정된 값은 표시되지 않습니다.",
-        "subtitleBlurEntryLabel": "트랙 {{trackNumber}}",
         "subtitleBlurDescription": "선택한 자막을 블러 효과로 숨깁니다. 마우스를 올리면 해제됩니다.",
         "tabName": "탭 이름",
         "subtitleRegexFilter": "자막 정규식 필터",

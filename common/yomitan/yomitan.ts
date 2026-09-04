@@ -23,6 +23,8 @@ const FREQUENCY_MODE_INFERENCE_GROUP_SIZE = 10;
 const FREQUENCY_MODE_INFERENCE_RANK_BASED_MATCHES = 7;
 
 const YEAR_MONTH_REGEX = /(?<year>20\d{2})(?<month>[01]\d)/;
+const LEADING_TOKEN_SEPARATOR_REGEX = /^[\p{P}\s]+/u;
+const TRAILING_TOKEN_SEPARATOR_REGEX = /[\p{P}\s]+$/u;
 
 export interface TokenPart {
     text: string;
@@ -110,6 +112,38 @@ export const splitTextForTokenization = (text: string) =>
         .split(STERM_AND_NEWLINES_REGEX)
         .map((part) => part.trim())
         .filter((part) => HAS_LETTER_REGEX.test(part));
+
+const splitTokenSeparators = (tokenParts: TokenPartResult[], tokenText: string): TokenPartResult[][] => {
+    const leadingSeparators = tokenText.match(LEADING_TOKEN_SEPARATOR_REGEX)?.[0] ?? '';
+    if (leadingSeparators.length === tokenText.length) return [tokenParts];
+
+    const trailingSeparators = tokenText.match(TRAILING_TOKEN_SEPARATOR_REGEX)?.[0] ?? '';
+    if (!leadingSeparators && !trailingSeparators) return [tokenParts];
+    if (!HAS_LETTER_REGEX.test(tokenText)) return [tokenParts];
+
+    const coreStart = leadingSeparators.length;
+    const coreEnd = tokenText.length - trailingSeparators.length;
+    const coreParts: TokenPartResult[] = [];
+    let partStart = 0;
+    for (const part of tokenParts) {
+        const partEnd = partStart + part.text.length;
+        const start = Math.max(coreStart, partStart);
+        const end = Math.min(coreEnd, partEnd);
+        if (start < end) {
+            coreParts.push({
+                ...part,
+                text: part.text.slice(start - partStart, end - partStart),
+            });
+        }
+        partStart = partEnd;
+    }
+
+    return [
+        ...Array.from(leadingSeparators, (text) => [{ text, reading: '' }]),
+        coreParts,
+        ...Array.from(trailingSeparators, (text) => [{ text, reading: '' }]),
+    ];
+};
 
 export function filterYomitanDictionaries(
     tokenizeResults: TokenizeResult[],
@@ -374,11 +408,11 @@ export class Yomitan {
         newlines: { text: string; index: number }[]
     ): void {
         let currIndex = 0;
-        for (const tokenParts of tokenizeResult.content) {
-            const tokenPart = tokenParts[0];
+        for (const originalTokenParts of tokenizeResult.content) {
+            const tokenPart = originalTokenParts[0];
             if (!tokenPart) continue;
 
-            const tokenText = tokenParts.map((p) => p.text).join('');
+            const tokenText = originalTokenParts.map((p) => p.text).join('');
             currIndex += tokenText.length;
             while (newlines.length && newlines[0].index < currIndex) {
                 const { text } = newlines.shift()!;
@@ -386,16 +420,25 @@ export class Yomitan {
                 tokensForText.push([{ text, reading: '' }]);
                 currIndex += text.length;
             }
-            tokensForText.push(tokenParts.map((p) => ({ text: p.text, reading: p.reading })));
-            const token = tokenText.trim();
+            const splitTokenParts =
+                this.dt.dictionaryYomitanParser === 'scanning-parser'
+                    ? splitTokenSeparators(originalTokenParts, tokenText)
+                    : [originalTokenParts];
+            for (const tokenParts of splitTokenParts) {
+                tokensForText.push(tokenParts.map((p) => ({ text: p.text, reading: p.reading })));
+                const currentTokenText =
+                    tokenParts === originalTokenParts ? tokenText : tokenParts.map((p) => p.text).join('');
+                const token = currentTokenText.trim();
+                const tokenPart = tokenParts[0];
 
-            if (!this.lemmatizeCache.has(token)) this.extractLemmaFromMecab(token, tokenPart);
+                if (!this.lemmatizeCache.has(token)) this.extractLemmaFromMecab(token, tokenPart);
 
-            const headwords = tokenPart.headwords;
-            if (headwords) {
-                if (!this.lemmatizeCache.has(token)) this.extractLemmas(token, headwords);
-                if (!this.frequencyCache.has(token)) this.extractFrequencyFromTokenize(token, headwords);
-                if (!this.pitchAccentCache.has(token)) this.extractPitchAccentFromTokenize(token, headwords);
+                const headwords = tokenPart.headwords;
+                if (headwords) {
+                    if (!this.lemmatizeCache.has(token)) this.extractLemmas(token, headwords);
+                    if (!this.frequencyCache.has(token)) this.extractFrequencyFromTokenize(token, headwords);
+                    if (!this.pitchAccentCache.has(token)) this.extractPitchAccentFromTokenize(token, headwords);
+                }
             }
         }
         while (newlines.length) {

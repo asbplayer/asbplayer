@@ -9,7 +9,7 @@ import type {
     TokenState,
     TokenStatus,
 } from '@project/common/settings/settings';
-import type { GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { GenericParseType, GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import type {
     RectModel,
@@ -560,6 +560,11 @@ export interface VideoDataUiBridgeOpenFileMessage extends Message {
 export interface VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage extends Message {
     readonly command: 'setOnlineSubtitleSourceConfig';
     readonly state: Partial<OnlineSubtitleSourceConfig>;
+}
+
+export interface VideoDataUiBridgeSetGenericSubtitleParserMessage extends Message {
+    readonly command: 'setGenericSubtitleParser';
+    readonly parse: GenericParseType;
 }
 
 export interface CropAndResizeMessage extends Message, ImageCaptureParams {
@@ -1144,5 +1149,10 @@ export interface MoveStatisticsOverlayMessage extends Message {
 
 export interface CloseStatisticsOverlayMessage extends Message {
     readonly command: 'close-statistics-overlay';
+    readonly mediaId: string;
+}
+
+export interface ElementExistsStatisticsOverlayMessage extends Message {
+    readonly command: 'element-exists';
     readonly mediaId: string;
 }

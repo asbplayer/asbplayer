@@ -714,6 +714,8 @@ export default class VideoChannel {
         const {
             themeType,
             videoSubtitleSplitBehavior,
+            showSubtitleListMiningButton,
+            subtitleListTimestampDisplay,
             copyToClipboardOnMine,
             autoPausePreference,
             subtitleTriggerStartOffset,
@@ -758,6 +760,8 @@ export default class VideoChannel {
             value: {
                 themeType,
                 videoSubtitleSplitBehavior,
+                showSubtitleListMiningButton,
+                subtitleListTimestampDisplay,
                 copyToClipboardOnMine,
                 autoPausePreference,
                 subtitleTriggerStartOffset,

@@ -64,6 +64,11 @@
         "inNotOut": "Activé",
         "inAndOut": "Activé avec reprise automatique"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "Sélectionner des sous-titres",
             "subtitleTrack": "Piste de sous-titre",
             "videoName": "Nom de la vidéo",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "Auto-detected subtitle tracks can be selected here. asbplayer does not know how to detect subtitles on every site. You can always load your own subtitle files."
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "Erreur : {{message}}",
         "errorNoMessage": "Erreur",
         "toggleSubtitlesShortcut": "Appuyez sur \"{{keys}}\" pour activer/désactiver l'affichage des sous-titres",
-        "manualMiningIntervalPrompt": "Réutiliser le raccourci de minage"
+        "manualMiningIntervalPrompt": "Réutiliser le raccourci de minage",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Glissez-déposez des fichiers de sous-titres et multimédia, ou <1>parcourir</1>.",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "Alignement des sous-titres",
         "subtitleAlignmentBottom": "Bas",
         "subtitleAlignmentTop": "Haut",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Flou des sous-titres",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "Tout",
         "subtitleTrackChoice": "Piste {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Modifie les paramètres pour TOUTES les pistes. Les paramètres qui ont déjà des valeurs spécifiques à une piste sont masqués.",
-        "subtitleBlurEntryLabel": "Piste {{trackNumber}}",
         "subtitleBlurDescription": "Masque les pistes de sous-titres sélectionnées en les floutant. Le flou est supprimé au survol de la souris.",
         "tabName": "Nom de l'onglet",
         "subtitleRegexFilter": "Filtre regex des sous-titres",

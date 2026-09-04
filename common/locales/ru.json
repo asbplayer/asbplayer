@@ -64,6 +64,11 @@
         "inNotOut": "Вкл",
         "inAndOut": "Включено с автовозобновлением"
     },
+    "subtitleListTimestampDisplay": {
+        "hidden": "Hidden",
+        "start": "Start",
+        "startAndEnd": "Start and end"
+    },
     "videoSubtitleSplitBehavior": {
         "autoMaximizeVideo": "Auto-maximize local video"
     },
@@ -259,6 +264,10 @@
             "selectSubtitles": "Выбрать субтитры",
             "subtitleTrack": "Выбрать дорожку субтитров",
             "videoName": "Название видео",
+            "genericPage": "Use generic subtitle detection for this site",
+            "aggressiveGenericPage": "Try aggressive detection methods (may degrade this site)",
+            "genericPageInfo": "This page does not have a dedicated subtitle detection parser. Enable generic subtitle detection then refresh the page to possibly detect subtitles.",
+            "genericPageWarning": "This site is using generic subtitle detection. Some subtitle tracks may be missing, mislabeled, incorrect, or inconsistently present between page loads. Additionally, a subtitle may need to be first selected on the site and shown on the video to be usable.",
             "ftue": "Здесь можно выбрать дорожки субтитров найденные автоматически. Автоматическая загрузка субтитров не работает на каждом сайте - вы всегда можете загрузить свои собственные файлы с субтитрами."
         },
         "videoSelect": {
@@ -331,7 +340,8 @@
         "error": "Ошибка: {{message}}",
         "errorNoMessage": "Ошибка",
         "toggleSubtitlesShortcut": "Нажмите \"{{keys}}\" для переключения отображения субтитров",
-        "manualMiningIntervalPrompt": "Нажмите горячую клавишу для майнинга ещё раз, чтобы задать временной отрезок"
+        "manualMiningIntervalPrompt": "Нажмите горячую клавишу для майнинга ещё раз, чтобы задать временной отрезок",
+        "refreshForChangesToTakeEffect": "Refresh for changes to take effect"
     },
     "landing": {
         "cta": "Перетащите медиафайлы и файлы субтитров или <1>выберите</1> их.",
@@ -453,6 +463,8 @@
         "subtitleAlignment": "Расположение субтитров",
         "subtitleAlignmentBottom": "У нижнего края",
         "subtitleAlignmentTop": "У верхнего края",
+        "showSubtitleListMiningButton": "Show mining button in subtitle list",
+        "subtitleListTimestamps": "Subtitle list timestamps",
         "subtitleAboveThumbnail": "Subtitle above thumbnail",
         "thumbnailPreview": "Show preview thumbnails",
         "subtitleBlur": "Размытие субтитров",
@@ -460,7 +472,6 @@
         "allSubtitleTracks": "Все",
         "subtitleTrackChoice": "Дорожка {{trackNumber}}",
         "subtitleTrackSelectorHelper": "Изменение настроек для ВСЕХ треков. Настройки у которых уже есть специфичные для трека значения, будут скрыты.",
-        "subtitleBlurEntryLabel": "Дорожка {{trackNumber}}",
         "subtitleBlurDescription": "Скрывает выбранные дорожки субтитров, размывая их. Показывается обратно при наведении мыши.",
         "tabName": "Название вкладки",
         "subtitleRegexFilter": "Пропускать субтитры через фильтр с регулярным выражением",

@@ -521,11 +521,17 @@ describe('extractText', () => {
 
 describe('computeStyles and computeStyleString', () => {
     it('returns base styles when optional decorations are disabled', () => {
-        expect(computeStyles(textSubtitleSettings())).toEqual({
+        const settings = textSubtitleSettings();
+
+        expect(computeStyles(settings)).toEqual({
             color: '#FFFFFF',
             fontSize: '32px',
             fontWeight: '700',
+            WebkitTextStroke: '0 transparent',
+            textShadow: 'none',
         });
+        expect(computeStyleString(settings)).toContain('-webkit-text-stroke: 0 transparent !important');
+        expect(computeStyleString(settings)).toContain('text-shadow: none !important');
     });
 
     it('applies outline, shadow, background, font family, and custom styles while ignoring numeric keys', () => {
@@ -887,6 +893,7 @@ describe('areSubtitleModelsEqual', () => {
     const subtitle = {
         text: 'subtitle',
         displayTime: '00:01.000',
+        displayEndTime: '00:02.000',
         originalText: 'original subtitle',
         textImage: {
             dataUrl: 'data:image/png;base64,image',
@@ -937,6 +944,7 @@ describe('areSubtitleModelsEqual', () => {
     it.each([
         ['text', { text: 'different' }],
         ['display time', { displayTime: '00:02.000' }],
+        ['display end time', { displayEndTime: '00:03.000' }],
         ['original text', { originalText: 'different original subtitle' }],
         [
             'text image',

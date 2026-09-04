@@ -18,6 +18,7 @@ import { ExtensionSettingsStorage } from '@/services/extension-settings-storage'
 import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
 import { isFirefoxBuild } from '@/services/build-flags';
+import { mediaSourceIdentity } from '@/pages/util';
 
 import './video.css';
 
@@ -62,21 +63,13 @@ export default defineContentScript({
             });
         };
 
-        const hasValidVideoSource = (videoElement: HTMLVideoElement, page?: PageDelegate) => {
-            if (page?.config?.allowVideoElementsWithBlankSrc) {
+        const hasValidVideoSource = (videoElement: HTMLVideoElement, page: PageDelegate) => {
+            if (page.config.allowVideoElementsWithBlankSrc) {
                 return true;
             }
 
-            if (videoElement.src) {
+            if (mediaSourceIdentity(videoElement) !== undefined) {
                 return true;
-            }
-
-            for (let index = 0, length = videoElement.children.length; index < length; index++) {
-                const elm = videoElement.children[index];
-
-                if ('SOURCE' === elm.tagName && (elm as HTMLSourceElement).src) {
-                    return true;
-                }
             }
 
             return false;
@@ -100,7 +93,7 @@ export default defineContentScript({
         const bind = async () => {
             const bindings: Binding[] = [];
             const page = await currentPageDelegate();
-            const hasPageScript = page?.config.pageScript !== undefined;
+            const hasPageScript = page.config.pageScript !== undefined;
             let frameInfoListener: FrameInfoListener | undefined;
             let frameInfoBroadcaster: FrameInfoBroadcaster | undefined;
             const isParentDocument = window.self === window.top;
@@ -135,15 +128,11 @@ export default defineContentScript({
                     const videoElement = videoElements[i];
                     const bindingExists = bindings.filter((b) => b.video.isSameNode(videoElement)).length > 0;
 
-                    if (
-                        !bindingExists &&
-                        hasValidVideoSource(videoElement, page) &&
-                        !page?.shouldIgnore(videoElement)
-                    ) {
+                    if (!bindingExists && hasValidVideoSource(videoElement, page) && !page.shouldIgnore(videoElement)) {
                         const b = new Binding(videoElement, {
                             hasPageScript,
                             frameId: frameInfoBroadcaster?.frameId,
-                            videoSrcChangesIndicateNewVideo: page?.config.videoSrcChangesIndicateNewVideo ?? false,
+                            videoSrcChangesIndicateNewVideo: page.config.videoSrcChangesIndicateNewVideo ?? false,
                         });
                         b.bind();
                         bindings.push(b);
@@ -160,7 +149,7 @@ export default defineContentScript({
                         if (
                             videoElement.isSameNode(b.video) &&
                             hasValidVideoSource(videoElement, page) &&
-                            !page?.shouldIgnore(videoElement)
+                            !page.shouldIgnore(videoElement)
                         ) {
                             videoElementExists = true;
                             break;
@@ -173,11 +162,7 @@ export default defineContentScript({
                     }
                 }
 
-                if (page !== undefined) {
-                    bindings.sort(
-                        (a, b) => page.videoElementPreference(a.video) - page.videoElementPreference(b.video)
-                    );
-                }
+                bindings.sort((a, b) => page.videoElementPreference(a.video) - page.videoElementPreference(b.video));
 
                 if (bindings.length === 0) {
                     frameInfoBroadcaster?.unbind();
@@ -188,12 +173,12 @@ export default defineContentScript({
 
             bindToVideoElements();
             const videoInterval = setInterval(bindToVideoElements, 1000);
-            const shadowRootInterval = page?.config.searchShadowRootsForVideoElements
+            const shadowRootInterval = page.config.searchShadowRootsForVideoElements
                 ? setInterval(incrementallyFindShadowRoots, 100)
                 : undefined;
 
             const videoSelectController = new VideoSelectController(bindings, {
-                isBindingsSorted: page?.config.preferredVideoElementSelector !== undefined,
+                isBindingsSorted: page.config.preferredVideoElementSelector !== undefined,
             });
             videoSelectController.bind();
 
@@ -202,7 +187,7 @@ export default defineContentScript({
 
             if (isParentDocument) {
                 bindToggleSidePanel();
-                statisticsOverlayController = new StatisticsOverlayController();
+                statisticsOverlayController = new StatisticsOverlayController(bindings);
                 statisticsOverlayController.bind();
             }
 
@@ -310,14 +295,14 @@ export default defineContentScript({
             });
         };
 
-        if (document.readyState === 'complete') {
-            bind().catch((error) => asbError('video', error));
-        } else {
-            document.addEventListener('readystatechange', () => {
-                if (document.readyState === 'complete') {
-                    bind().catch((error) => asbError('video', error));
-                }
-            });
-        }
+        let bindingStarted = false;
+        const bindOnceDocumentComplete = () => {
+            if (bindingStarted || document.readyState !== 'complete') return;
+            bindingStarted = true;
+            document.removeEventListener('readystatechange', bindOnceDocumentComplete);
+            void bind().catch((error) => asbError('video', error));
+        };
+        bindOnceDocumentComplete();
+        if (!bindingStarted) document.addEventListener('readystatechange', bindOnceDocumentComplete);
     },
 });
