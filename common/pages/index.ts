@@ -7,7 +7,6 @@ export interface PageMetadata {
 
 export const pageMetadata: { [K in keyof PageSettings]: PageMetadata } = {
     netflix: { title: 'Netflix', disableCspRuleId: 1 },
-    crunchyroll: { title: 'Crunchyroll', disableCspRuleId: 26 },
     youtube: { title: 'YouTube', disableCspRuleId: 2 },
     tver: { title: 'TVer', disableCspRuleId: 3 },
     bandaiChannel: { title: 'Bandai Channel', disableCspRuleId: 4 },
@@ -32,4 +31,5 @@ export const pageMetadata: { [K in keyof PageSettings]: PageMetadata } = {
     urplay: { title: 'UR Play', disableCspRuleId: 23 },
     archive: { title: 'Internet Archive', disableCspRuleId: 24 },
     huluJp: { title: 'Hulu Japan', disableCspRuleId: 25 },
+    crunchyroll: { title: 'Crunchyroll', disableCspRuleId: 26 },
 };

@@ -1009,7 +1009,6 @@ export interface YoutubePage extends Page {
 
 export interface PageSettings {
     netflix: Page;
-    crunchyroll: Page;
     youtube: YoutubePage;
     tver: Page;
     bandaiChannel: Page;
@@ -1034,6 +1033,7 @@ export interface PageSettings {
     svtplay: Page;
     urplay: Page;
     archive: Page;
+    crunchyroll: Page;
 }
 
 export interface StreamingVideoSettings {

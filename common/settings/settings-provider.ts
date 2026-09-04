@@ -258,7 +258,6 @@ export const defaultSettings: AsbplayerSettings = {
     streamingEnableOverlay: true,
     streamingPages: {
         netflix: {},
-        crunchyroll: {},
         youtube: {},
         tver: {},
         bandaiChannel: {},
@@ -283,6 +282,7 @@ export const defaultSettings: AsbplayerSettings = {
         svtplay: {},
         urplay: {},
         archive: {},
+        crunchyroll: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
