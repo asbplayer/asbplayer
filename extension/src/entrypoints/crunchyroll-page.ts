@@ -1,11 +1,13 @@
 import type { VideoDataSubtitleTrackDef } from '@project/common';
 
 import { inferTracksFromInterceptedMpdViaXMLHTTPRequest } from '@/pages/mpd-util';
-import { canonicalLanguageTag, extractExtension, languageDisplayName } from '@/pages/util';
+import { extractExtension, languageDisplayName } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
     const playbackUrlRegex = /\/playback\/v3\/.*\/play(?:\?|$)/i;
     const mpdUrlRegex = /manifest\.mpd(?:\?|$)/i;
+    const timedTextLanguagesUrlRegex = /timed_text_languages/i;
+    const originalJsonParse = JSON.parse; // inferTracks may override JSON.parse
     const languageTitles = new Map<string, string>();
 
     function currentBasename(): string {
@@ -21,51 +23,23 @@ export default defineUnlistedScript(() => {
     }
 
     function captureLanguageTitles(value: unknown): void {
-        const queue: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
-        const seen = new Set<object>();
-        let next = 0;
-        let visited = 0;
+        const titles = recordFromUnknown(value);
+        if (titles === undefined) return;
+        for (const [language, title] of Object.entries(titles)) {
+            if (typeof title === 'string') languageTitles.set(language, title);
+        }
+    }
 
-        while (next < queue.length && visited < 100) {
-            const current = queue[next++];
-            visited++;
-
-            const record = recordFromUnknown(current.value);
-            if (record === undefined || current.depth >= 4) continue;
-
-            if (seen.has(record)) continue;
-            seen.add(record);
-
-            const entries = Object.entries(record);
-            const titles = entries.flatMap(([language, title]) => {
-                const normalizedLanguage = canonicalLanguageTag(language);
-                const normalizedTitle = typeof title === 'string' ? title.trim() : '';
-
-                return normalizedLanguage !== undefined &&
-                    normalizedTitle !== '' &&
-                    normalizedTitle.length <= 100 &&
-                    !/^https?:\/\//i.test(normalizedTitle)
-                    ? [[normalizedLanguage, normalizedTitle] as const]
-                    : [];
-            });
-
-            if (titles.length >= 5 && titles.length / entries.length >= 0.75) {
-                for (const [language, title] of titles) languageTitles.set(language, title);
-            }
-
-            for (const [, child] of entries) {
-                if (child !== null && typeof child === 'object') {
-                    queue.push({
-                        value: child,
-                        depth: current.depth + 1,
-                    });
-                }
-            }
+    function captureLanguageTitlesFromText(text: string): void {
+        try {
+            captureLanguageTitles(originalJsonParse(text));
+        } catch {
+            // Ignore non-JSON language-title responses.
         }
     }
 
     function languageLabel(language: string): string {
-        return languageTitles.get(canonicalLanguageTag(language) ?? '') ?? languageDisplayName(language);
+        return languageTitles.get(language) ?? languageDisplayName(language);
     }
 
     /*
@@ -77,8 +51,6 @@ export default defineUnlistedScript(() => {
         addTrack: (track: VideoDataSubtitleTrackDef) => void,
         setBasename: (basename: string) => void
     ): void {
-        captureLanguageTitles(value);
-
         const root = recordFromUnknown(value);
 
         if (root === undefined) {
@@ -134,8 +106,9 @@ export default defineUnlistedScript(() => {
      * which does not necessarily call the page's JSON.parse implementation.
      * Parse a cloned response so the shared inferTracks onJson hook sees it.
      */
-    function interceptPlaybackResponses(): void {
+    function interceptResponses(): void {
         const originalFetch = window.fetch;
+        const originalXhrOpen = window.XMLHttpRequest.prototype.open;
 
         window.fetch = function (...args: Parameters<typeof originalFetch>) {
             const [input] = args;
@@ -155,6 +128,15 @@ export default defineUnlistedScript(() => {
 
             const responsePromise = originalFetch.call(this, ...args);
 
+            if (timedTextLanguagesUrlRegex.test(requestUrl)) {
+                void responsePromise
+                    .then((response) => response.clone().json())
+                    .then(captureLanguageTitles)
+                    .catch(() => {
+                        // Subtitle detection must never interfere with playback.
+                    });
+            }
+
             if (playbackUrlRegex.test(requestUrl)) {
                 void responsePromise
                     .then((response) => response.clone().text())
@@ -171,6 +153,33 @@ export default defineUnlistedScript(() => {
             }
 
             return responsePromise;
+        };
+
+        window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+            const url = args[1];
+
+            if (typeof url === 'string' && timedTextLanguagesUrlRegex.test(url)) {
+                this.addEventListener(
+                    'load',
+                    () => {
+                        if (this.responseType === 'json') {
+                            captureLanguageTitles(this.response);
+                        } else {
+                            try {
+                                if (typeof this.responseText === 'string') {
+                                    captureLanguageTitlesFromText(this.responseText);
+                                }
+                            } catch {
+                                // responseText is unavailable for some response types.
+                            }
+                        }
+                    },
+                    { once: true }
+                );
+            }
+
+            // @ts-expect-error: forwarding original XHR arguments
+            originalXhrOpen.apply(this, args);
         };
     }
 
@@ -195,5 +204,5 @@ export default defineUnlistedScript(() => {
         }
     );
 
-    interceptPlaybackResponses();
+    interceptResponses();
 });
