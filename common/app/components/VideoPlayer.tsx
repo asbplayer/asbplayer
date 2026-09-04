@@ -618,6 +618,7 @@ export default function VideoPlayer({
         const playbackEngine = new PlaybackEngine({
             settingsProvider,
             appIntegration: extension.supportsAppIntegration,
+            autoPauseCorrectionSuppressed: false,
             subtitles: subtitlesRef.current,
             playbackModesDisabled: false,
             playbackModesSuppressed: false,

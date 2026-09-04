@@ -164,6 +164,7 @@ async function makePlaybackEngine(
         settingsReady: boolean;
         emitInitialDiscontinuity?: boolean;
         appIntegration?: boolean;
+        autoPauseCorrectionSuppressed?: boolean;
         playbackModesDisabled?: boolean;
         playbackPositionKeys?: readonly string[];
         profile?: string;
@@ -222,6 +223,7 @@ async function makePlaybackEngine(
     const playbackEngine = new PlaybackEngine({
         settingsProvider,
         appIntegration: overrides.appIntegration ?? true,
+        autoPauseCorrectionSuppressed: overrides.autoPauseCorrectionSuppressed ?? false,
         subtitles,
         playbackModesDisabled: overrides.playbackModesDisabled ?? false,
         playbackModesSuppressed: false,
@@ -663,6 +665,7 @@ describe('PlaybackEngine', () => {
                 activeProfile: async () => undefined,
             } as unknown as SettingsProvider,
             appIntegration: true,
+            autoPauseCorrectionSuppressed: false,
             subtitles: [],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
@@ -1211,6 +1214,18 @@ describe('PlaybackEngine', () => {
         expect(harness.seeks).toEqual([1999]);
     });
 
+    it('auto-pauses without correcting the timestamp when correction is suppressed', async () => {
+        const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
+            autoPauseCorrectionSuppressed: true,
+        });
+
+        await harness.driver.time(2100);
+
+        expect(harness.pauses).toEqual([2100]);
+        expect(harness.seeks).toEqual([]);
+        expect(harness.driver.expectedInternalSeekCalls).toBe(0);
+    });
+
     it('clears the internal marker when a seek fails', async () => {
         const harness = await makePlaybackEngine([PlayMode.repeat], 1500, [subtitle], {
             seek: async () => {
@@ -1371,6 +1386,7 @@ describe('PlaybackEngine', () => {
                 activeProfile: async () => undefined,
             } as unknown as SettingsProvider,
             appIntegration: true,
+            autoPauseCorrectionSuppressed: false,
             subtitles: [subtitle],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,

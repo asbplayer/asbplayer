@@ -100,6 +100,7 @@ export interface PlaybackEngineCallbacks {
 export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly settingsProvider: SettingsProvider;
     readonly appIntegration: boolean;
+    readonly autoPauseCorrectionSuppressed: boolean;
     readonly subtitles: readonly T[];
     readonly playbackModesDisabled: boolean;
     readonly playbackModesSuppressed: boolean;
@@ -136,6 +137,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
     private readonly appIntegration: boolean;
+    private readonly autoPauseCorrectionSuppressed: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
     private lastSubtitleEndMs?: number;
@@ -162,6 +164,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     constructor({
         settingsProvider,
         appIntegration,
+        autoPauseCorrectionSuppressed,
         subtitles,
         playbackModesDisabled,
         playbackModesSuppressed,
@@ -171,6 +174,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }: PlaybackEngineOptions<T>) {
         this.settings = defaultSettings;
         this.appIntegration = appIntegration;
+        this.autoPauseCorrectionSuppressed = autoPauseCorrectionSuppressed;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
         this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
@@ -723,6 +727,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         timestampMs: number,
         warningCommand: 'pause-correction'
     ): Promise<{ seekIssued: boolean }> {
+        if (this.autoPauseCorrectionSuppressed) return { seekIssued: false };
         const targetTimestampMs = this.clampTimestamp(timestampMs);
         if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
             return { seekIssued: false };
