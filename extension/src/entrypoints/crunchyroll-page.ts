@@ -1,36 +1,15 @@
 import type { VideoDataSubtitleTrackDef } from '@project/common';
 
 import { inferTracksFromInterceptedMpdViaXMLHTTPRequest } from '@/pages/mpd-util';
-import { extractExtension } from '@/pages/util';
+import { canonicalLanguageTag, extractExtension, languageDisplayName } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
     const playbackUrlRegex = /\/playback\/v3\/.*\/play(?:\?|$)/i;
     const mpdUrlRegex = /manifest\.mpd(?:\?|$)/i;
+    const languageTitles = new Map<string, string>();
 
     function currentBasename(): string {
         return document.title.replace(/\s*-\s*Watch on Crunchyroll\s*$/i, '').trim();
-    }
-
-    function languageLabel(language: string): string {
-        const normalized = language.toLowerCase();
-
-        if (normalized.startsWith('en')) {
-            return 'English';
-        }
-
-        if (normalized.startsWith('pt')) {
-            return 'Portuguese';
-        }
-
-        if (normalized.startsWith('es')) {
-            return 'Spanish';
-        }
-
-        if (normalized.startsWith('ja')) {
-            return 'Japanese';
-        }
-
-        return language;
     }
 
     function recordFromUnknown(value: unknown): Record<string, unknown> | undefined {
@@ -39,6 +18,54 @@ export default defineUnlistedScript(() => {
         }
 
         return value as Record<string, unknown>;
+    }
+
+    function captureLanguageTitles(value: unknown): void {
+        const queue: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+        const seen = new Set<object>();
+        let next = 0;
+        let visited = 0;
+
+        while (next < queue.length && visited < 100) {
+            const current = queue[next++];
+            visited++;
+
+            const record = recordFromUnknown(current.value);
+            if (record === undefined || current.depth >= 4) continue;
+
+            if (seen.has(record)) continue;
+            seen.add(record);
+
+            const entries = Object.entries(record);
+            const titles = entries.flatMap(([language, title]) => {
+                const normalizedLanguage = canonicalLanguageTag(language);
+                const normalizedTitle = typeof title === 'string' ? title.trim() : '';
+
+                return normalizedLanguage !== undefined &&
+                    normalizedTitle !== '' &&
+                    normalizedTitle.length <= 100 &&
+                    !/^https?:\/\//i.test(normalizedTitle)
+                    ? [[normalizedLanguage, normalizedTitle] as const]
+                    : [];
+            });
+
+            if (titles.length >= 5 && titles.length / entries.length >= 0.75) {
+                for (const [language, title] of titles) languageTitles.set(language, title);
+            }
+
+            for (const [, child] of entries) {
+                if (child !== null && typeof child === 'object') {
+                    queue.push({
+                        value: child,
+                        depth: current.depth + 1,
+                    });
+                }
+            }
+        }
+    }
+
+    function languageLabel(language: string): string {
+        return languageTitles.get(canonicalLanguageTag(language) ?? '') ?? languageDisplayName(language);
     }
 
     /*
@@ -50,6 +77,8 @@ export default defineUnlistedScript(() => {
         addTrack: (track: VideoDataSubtitleTrackDef) => void,
         setBasename: (basename: string) => void
     ): void {
+        captureLanguageTitles(value);
+
         const root = recordFromUnknown(value);
 
         if (root === undefined) {

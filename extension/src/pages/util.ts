@@ -1,6 +1,31 @@
 import { asbError } from '@project/common/util';
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
+export function canonicalLanguageTag(language: string): string | undefined {
+    try {
+        return new Intl.Locale(language.trim().replace(/_/g, '-')).baseName; // baseName removes extensions such as "-u-ca-gregory"
+    } catch {
+        return;
+    }
+}
+
+export function languageDisplayName(language: string): string {
+    const canonical = canonicalLanguageTag(language);
+    if (canonical === undefined) return language;
+
+    try {
+        return (
+            new Intl.DisplayNames([canonical], {
+                type: 'language',
+                languageDisplay: 'standard',
+                fallback: 'none',
+            }).of(canonical) ?? language
+        );
+    } catch {
+        return language;
+    }
+}
+
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];
     const dotIndex = path.lastIndexOf('.');
