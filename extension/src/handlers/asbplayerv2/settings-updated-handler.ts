@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerCommand,
     Command,
     ExtensionToAsbPlayerCommand,
@@ -6,10 +6,10 @@ import {
     Message,
     SettingsUpdatedMessage,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { primeLocalization } from '../../services/localization-fetcher';
-import TabRegistry from '../../services/tab-registry';
-import { bindWebSocketClient, unbindWebSocketClient } from '../../services/web-socket-client-binding';
+import type { SettingsProvider } from '@project/common/settings';
+import { primeLocalization } from '@project/extension/src/services/localization-fetcher';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
+import { bindWebSocketClient, unbindWebSocketClient } from '@project/extension/src/services/web-socket-client-binding';
 
 export default class SettingsUpdatedHandler {
     private readonly _tabRegistry: TabRegistry;

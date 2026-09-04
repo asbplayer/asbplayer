@@ -1,10 +1,24 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
-import { subtitlesToSrt } from './subtitles-to-srt';
+import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
-import { SubtitleHtml, SubtitleTextImage, Token, Tokenization } from '@project/common';
+import type { SubtitleTextImage, Token, Tokenization } from '@project/common';
+import { SubtitleHtml } from '@project/common';
 import DOMPurify from 'dompurify';
+
+/**
+ * Subtitle files are untrusted input.  Keep this list deliberately small: subtitle
+ * markup is for presentation only and must not be able to navigate, fetch, or run
+ * code.  In particular, do not add `style` or URL-bearing attributes here.
+ */
+export const sanitizeSubtitleHtml = (html: string) =>
+    DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'br', 'ruby', 'rt', 'rp', 'span'],
+        ALLOWED_ATTR: [],
+        ALLOW_DATA_ATTR: false,
+        ALLOW_ARIA_ATTR: false,
+    });
 
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
@@ -121,32 +135,23 @@ export default class SubtitleReader {
             .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
+        // Sanitize after all parser, filter, decoding, and flattening transformations.
+        // Ruby tokenization runs afterwards because it relies on positions in this
+        // sanitized text and does not introduce any new markup.
+        for (const node of allNodes) node.text = sanitizeSubtitleHtml(node.text);
+
         if (this._convertNetflixRuby) {
-            if (flatten) {
-                // Flattened output keeps inline base(reading) without tokenizing, so
-                // the ruby base markers are simply dropped here.
-                for (const node of allNodes) {
-                    node.text = node.text.replaceAll(netflixRubyBaseMarker, '');
-                }
-            } else {
-                for (const node of allNodes) {
-                    this._convertNetflixRubyToHtml(node);
-                }
-            }
+            for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        if (flatten) {
-            return this._deduplicate(allNodes);
-        }
-
-        return allNodes;
+        return this._deduplicate(allNodes);
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
         const deduplicated: SubtitleNode[] = [];
 
         for (const node of nodes) {
-            if (deduplicated.length == 0 || !this._isSame(node, deduplicated[deduplicated.length - 1])) {
+            if (!deduplicated.length || !this._isSame(node, deduplicated[deduplicated.length - 1])) {
                 deduplicated.push(node);
             }
         }
@@ -155,11 +160,8 @@ export default class SubtitleReader {
     }
 
     private _isSame(a: SubtitleNode, b: SubtitleNode) {
-        if (a.textImage || b.textImage) {
-            return false;
-        }
-
-        return a.start === b.start && a.end === b.end && a.text === b.text;
+        if (a.textImage || b.textImage) return false;
+        return a.start === b.start && a.end === b.end && a.text === b.text && a.track === b.track;
     }
 
     async _subtitles(file: File, track: number): Promise<SubtitleNode[]> {
@@ -573,10 +575,24 @@ export default class SubtitleReader {
             return undefined;
         };
 
-        const subtitles: SubtitleNode[] = [];
+        const subtitles: { node: SubtitleNode; regionY?: number; sourceIndex: number }[] = [];
+
+        const regionYById = new Map<string, number>();
+        const percentageOriginRegex = /^\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)%\s+(?<y>[+-]?(?:\d+(?:\.\d*)?|\.\d+))%\s*$/;
+
+        for (const region of Array.from(doc.getElementsByTagNameNS('*', 'region'))) {
+            const id =
+                region.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id') ?? region.getAttribute('xml:id');
+            const origin = region.getAttributeNS(stylingNamespace, 'origin') ?? region.getAttribute('tts:origin');
+            const match = origin === null ? null : percentageOriginRegex.exec(origin);
+            if (id !== null && match !== null) {
+                const regionY = Number(match.groups!.y);
+                if (Number.isFinite(regionY)) regionYById.set(id, regionY);
+            }
+        }
 
         // Collect every <p> regardless of how many <div>s the body splits them across.
-        for (const paragraph of Array.from(doc.getElementsByTagNameNS('*', 'p'))) {
+        for (const [sourceIndex, paragraph] of Array.from(doc.getElementsByTagNameNS('*', 'p')).entries()) {
             const begin = paragraph.getAttribute('begin');
             const end = paragraph.getAttribute('end');
             const dur = paragraph.getAttribute('dur');
@@ -596,15 +612,38 @@ export default class SubtitleReader {
                 continue;
             }
 
+            const regionId = paragraph.getAttribute('region');
             subtitles.push({
-                start,
-                end: stop,
-                text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
-                track,
+                node: {
+                    start,
+                    end: stop,
+                    text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
+                    track,
+                },
+                regionY: regionId === null ? undefined : regionYById.get(regionId),
+                sourceIndex,
             });
         }
 
-        return subtitles;
+        subtitles.sort((a, b) => a.node.start - b.node.start || a.sourceIndex - b.sourceIndex);
+
+        // Netflix sometimes authors simultaneous lines in bottom-to-top XML order. The
+        // region's vertical origin captures their intended visual reading order. Only use
+        // it when every cue in the group has a position; otherwise retain source order.
+        for (let start = 0; start < subtitles.length; ) {
+            let end = start + 1;
+            while (end < subtitles.length && subtitles[end].node.start === subtitles[start].node.start) {
+                ++end;
+            }
+            const group = subtitles.slice(start, end);
+            if (group.length > 1 && group.every((subtitle) => subtitle.regionY !== undefined)) {
+                group.sort((a, b) => a.regionY! - b.regionY! || a.sourceIndex - b.sourceIndex);
+                subtitles.splice(start, group.length, ...group);
+            }
+            start = end;
+        }
+
+        return subtitles.map(({ node }) => node);
     }
 
     // Flattens an IMSC <p> to text. Furigana renders inline as base(reading)
@@ -766,7 +805,6 @@ export default class SubtitleReader {
     }
 
     private _filterText(text: string): string {
-        text = DOMPurify.sanitize(text);
         text =
             this._textFilter === undefined
                 ? text

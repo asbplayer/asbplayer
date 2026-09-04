@@ -1,5 +1,5 @@
-import { JSX } from 'react';
-import { MutablePageConfig, Page, PageConfig, PageSettings, YoutubePage } from '../settings';
+import type { JSX } from 'react';
+import type { MutablePageConfig, Page, PageConfig, PageSettings, YoutubePage } from '@project/common/settings';
 import { useTranslation } from 'react-i18next';
 import Dialog from '@mui/material/Dialog';
 import Toolbar from '@mui/material/Toolbar';
@@ -9,14 +9,13 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
-import TextField from './SettingsTextField';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Alert from '@mui/material/Alert';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
-import { pageMetadata } from '../pages';
-import ListField from './ListField';
-import SettingsTextField from './SettingsTextField';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
+import { pageMetadata } from '@project/common/pages';
+import ListField from '@project/common/components/ListField';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 
 const maxAdditionalHostsLength = 50;
 const youtubeTargetLanguageLimit = 3;
@@ -204,7 +203,7 @@ const DefaultPageSettingsForm = ({
                                 {t('extension.settings.pages.overridesWarning')}
                             </Alert>
                         )}
-                        <TextField
+                        <SettingsTextField
                             disabled
                             label={t('extension.settings.pages.host')}
                             value={defaultPageConfig.hostRegex}
@@ -227,27 +226,27 @@ const DefaultPageSettingsForm = ({
                                 });
                             }}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.syncAllowedAtPath')}
                             value={overrides?.syncAllowedAtPath ?? defaultPageConfig.syncAllowedAtPath ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('syncAllowedAtPath', e.target.value)}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.syncAllowedAtHash')}
                             value={overrides?.syncAllowedAtHash ?? defaultPageConfig.syncAllowedAtHash ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('syncAllowedAtHash', e.target.value)}
                         />
-                        {/* <TextField
+                        {/* <SettingsTextField
                             label={t('extension.settings.pages.autoSyncVideoSrc')}
                             value={overrides?.autoSyncVideoSrc ?? defaultPageConfig.autoSyncVideoSrc ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('autoSyncVideoSrc', e.target.value)}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.autoSyncElementId')}
                             value={overrides?.autoSyncElementId ?? defaultPageConfig.autoSyncElementId ?? ''}
                             onChange={(e) => handleOverrideFieldChanged('autoSyncElementId', e.target.value)}
                         />
-                        <TextField
+                        <SettingsTextField
                             label={t('extension.settings.pages.ignoreVideoElementsClass')}
                             value={
                                 overrides?.ignoreVideoElementsClass ?? defaultPageConfig.ignoreVideoElementsClass ?? ''

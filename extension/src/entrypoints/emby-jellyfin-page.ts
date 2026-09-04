@@ -1,5 +1,6 @@
-import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { trackFromDef } from '@/pages/util';
+import { asbError } from '@project/common/util';
 
 declare const ApiClient: any | undefined;
 
@@ -77,6 +78,7 @@ export default defineUnlistedScript(() => {
                     })
                 );
             })().catch((e) => {
+                asbError('emby-jellyfin', e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {

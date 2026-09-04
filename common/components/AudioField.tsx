@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import makeStyles from '@mui/styles/makeStyles';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import DownloadIcon from '@mui/icons-material/Download';
-import { AudioClip } from '../audio-clip';
+import type { AudioClip } from '@project/common/audio-clip';
 import { useTranslation } from 'react-i18next';
 import Badge from '@mui/material/Badge';
 

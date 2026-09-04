@@ -1,4 +1,5 @@
-import { VideoData, VideoDataSubtitleTrack } from '@project/common';
+import { asbError } from '@project/common/util';
+import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { poll, trackFromDef, trackId } from '@/pages/util';
 import { decodePoToken, fetchPlayerContextForPage } from '@/services/youtube';
 
@@ -239,7 +240,7 @@ const publishCurrentTracks = async ({
         response.subtitles = subtitles ?? [];
         return videoId;
     } catch (error) {
-        console.error(error);
+        asbError('youtube', error);
         if (error instanceof Error) {
             response.error = error.message;
         } else {
@@ -296,6 +297,6 @@ export default defineUnlistedScript(() => {
             } finally {
                 publishing = false;
             }
-        })().catch(console.error);
+        })().catch((error) => asbError('youtube', error));
     }, 500);
 });

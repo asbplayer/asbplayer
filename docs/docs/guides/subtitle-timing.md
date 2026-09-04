@@ -8,7 +8,7 @@ Subtitle files will very often not be aligned to the video source you load them 
 
 ## Keyboard shortcuts
 
-The fastest way to fix subtitle timing is with the [keyboard shortcuts](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
+The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
 
 - `Ctrl + Left/Right` or `Shift + Left/Right`: Align the current timestamp to the left or right subtitle.
 - `Ctrl + Shift + Left/Right`: Move the current timestamp `100ms` to the left or right.

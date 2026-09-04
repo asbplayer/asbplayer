@@ -1,3 +1,10 @@
+import {
+    asbError,
+    ensureStoragePersisted,
+    HAS_LETTER_REGEX,
+    humanReadableTime,
+    localizedDate,
+} from '@project/common/util';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Stack from '@mui/material/Stack';
@@ -12,20 +19,16 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Switch from '@mui/material/Switch';
 import MuiAlert from '@mui/material/Alert';
-import {
-    DictionaryTrack,
-    TokenStatus,
-    getFullyKnownTokenStatus,
-    NUM_TOKEN_STATUSES,
-    TokenState,
-    ApplyStrategy,
-    Profile,
-} from '@project/common/settings';
-import { Yomitan } from '../yomitan';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import SettingsTextField from './SettingsTextField';
-import { DictionaryLocalTokenInput, DictionaryProvider, DictionaryTokenRecord } from '../dictionary-db';
-import { ensureStoragePersisted, HAS_LETTER_REGEX, humanReadableTime, localizedDate } from '../util';
+import type { DictionaryTrack, TokenStatus, Profile } from '@project/common/settings';
+import { getFullyKnownTokenStatus, NUM_TOKEN_STATUSES, TokenState, ApplyStrategy } from '@project/common/settings';
+import { Yomitan } from '@project/common/yomitan';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import type {
+    DictionaryLocalTokenInput,
+    DictionaryProvider,
+    DictionaryTokenRecord,
+} from '@project/common/dictionary-db';
 import Typography from '@mui/material/Typography';
 
 interface ImportClipboardToken {
@@ -73,7 +76,10 @@ const DictionaryImport: React.FC<Props> = ({
         yomitan
             .version()
             .then(() => setYomitanError(''))
-            .catch((e) => setYomitanError(e instanceof Error ? e.message : String(e)));
+            .catch((e) => {
+                asbError('dictionary/import', e);
+                setYomitanError(e instanceof Error ? e.message : String(e));
+            });
     }, [importClipboardTrack, dictionaryTracks, open]);
 
     useEffect(() => {
@@ -140,6 +146,7 @@ const DictionaryImport: React.FC<Props> = ({
             setImportClipboardPreview(entries);
             setImportClipboardPreviewHasChanges(false);
         } catch (e) {
+            asbError('dictionary/import', e);
             const message = e instanceof Error ? e.message : String(e);
             setImportClipboardMessageSeverity('error');
             setImportClipboardMessage(message);
@@ -166,6 +173,7 @@ const DictionaryImport: React.FC<Props> = ({
             setImportClipboardText('');
             setImportClipboardMessage(undefined);
         } catch (e) {
+            asbError('dictionary/import', e);
             setImportClipboardMessageSeverity('error');
             setImportClipboardMessage(e instanceof Error ? e.message : String(e));
         } finally {
@@ -206,7 +214,7 @@ const DictionaryImport: React.FC<Props> = ({
             try {
                 text = await file.text();
             } catch (e) {
-                console.error(e);
+                asbError('dictionary/import', e);
                 setImportClipboardMessageSeverity('error');
                 setImportClipboardMessage(e instanceof Error ? e.message : String(e));
                 return;
@@ -232,7 +240,7 @@ const DictionaryImport: React.FC<Props> = ({
                 );
                 onClose();
             } catch (e) {
-                console.error(e);
+                asbError('dictionary/import', e);
                 setImportClipboardMessageSeverity('error');
                 setImportClipboardMessage(e instanceof Error ? e.message : String(e));
             } finally {
@@ -247,7 +255,7 @@ const DictionaryImport: React.FC<Props> = ({
         try {
             await tryImportFile(file);
         } catch (e) {
-            console.error(e);
+            asbError('dictionary/import', e);
         } finally {
             if (dictionaryDBFileInputRef.current) {
                 // Reset value to allow same file to be opened again

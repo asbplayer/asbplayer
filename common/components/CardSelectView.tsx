@@ -11,8 +11,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
-import { Anki, NoteInfo } from '@project/common/anki';
-import { AnkiSettings } from '../settings';
+import type { Anki, NoteInfo } from '@project/common/anki';
+import type { AnkiSettings } from '@project/common/settings';
 import Dialog from '@mui/material/Dialog';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
@@ -23,7 +23,8 @@ import DialogContent from '@mui/material/DialogContent';
 import Stack from '@mui/material/Stack';
 import ListItem from '@mui/material/ListItem';
 import Tooltip from '@mui/material/Tooltip';
-import { type ButtonBaseActions } from '@mui/material';
+import type { ButtonBaseActions } from '@mui/material';
+import { asbError } from '@project/common/util';
 
 interface Props {
     open: boolean;
@@ -69,6 +70,7 @@ const useSearchAnki = ({ anki, querier }: { anki: Anki; querier: (anki: Anki) =>
 
             setNotes(noteInfos);
         } catch (e) {
+            asbError('anki/connect', e);
             setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
@@ -142,6 +144,7 @@ export default function CardSelectView({
         try {
             await onUpdate([...selectedNoteIds]);
         } catch (e) {
+            asbError('anki/connect', e);
             setError(e instanceof Error ? e.message : String(e));
         }
     }, [selectedNoteIds, onUpdate]);
@@ -151,6 +154,7 @@ export default function CardSelectView({
             try {
                 await onUpdate([noteId]);
             } catch (e) {
+                asbError('anki/connect', e);
                 setError(e instanceof Error ? e.message : String(e));
             }
         },

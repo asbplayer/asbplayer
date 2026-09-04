@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -9,16 +10,19 @@ import {
     CopyMessage,
     CopyToVideoMessage,
     CurrentTimeToVideoMessage,
+    DurationFromVideoMessage,
     FullscreenToggleMessageToVideoMessage,
     HideSubtitlePlayerToggleToVideoMessage,
     MiscSettingsToVideoMessage,
     OffsetFromVideoMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
     PlayMode,
+    PlayModeMessage,
     PlayModesMessage,
     PostMineAction,
     ReadyFromVideoMessage,
@@ -34,7 +38,7 @@ import {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import {
+import type {
     AnkiSettings,
     ApplyStrategy,
     MiscSettings,
@@ -48,6 +52,8 @@ export default class PlayerChannel {
     private readyCallbacks: ((duration: number, videoFileName?: string) => void)[];
     private playCallbacks: (() => void)[];
     private pauseCallbacks: (() => void)[];
+    private playbackStateCallbacks: ((state: PlaybackStateFromVideoMessage) => void)[];
+    private latestPlaybackState?: PlaybackStateFromVideoMessage;
     private currentTimeCallbacks: ((currentTime: number) => void)[];
     private audioTrackSelectedCallbacks: ((id: string) => void)[];
     private closeCallbacks: (() => void)[];
@@ -62,7 +68,7 @@ export default class PlayerChannel {
     ) => void)[];
     private offsetCallbacks: ((offset: number) => void)[];
     private playbackRateCallbacks: ((playbackRate: number) => void)[];
-    private playModesCallbacks: ((playModes: Set<PlayMode>) => void)[];
+    private playModeCallbacks: ((playMode: PlayMode) => void)[];
     private hideSubtitlePlayerToggleCallbacks: ((hidden: boolean) => void)[];
     private appBarToggleCallbacks: ((hidden: boolean) => void)[];
     private fullscreenToggleCallbacks: ((hidden: boolean) => void)[];
@@ -81,6 +87,7 @@ export default class PlayerChannel {
         this.channel = new BroadcastChannel(channel);
         this.playCallbacks = [];
         this.pauseCallbacks = [];
+        this.playbackStateCallbacks = [];
         this.currentTimeCallbacks = [];
         this.audioTrackSelectedCallbacks = [];
         this.closeCallbacks = [];
@@ -90,7 +97,7 @@ export default class PlayerChannel {
         this.saveTokenLocalCallbacks = [];
         this.offsetCallbacks = [];
         this.playbackRateCallbacks = [];
-        this.playModesCallbacks = [];
+        this.playModeCallbacks = [];
         this.hideSubtitlePlayerToggleCallbacks = [];
         this.appBarToggleCallbacks = [];
         this.fullscreenToggleCallbacks = [];
@@ -123,6 +130,14 @@ export default class PlayerChannel {
                         callback();
                     }
                     break;
+                case 'playbackState': {
+                    const playbackStateMessage = event.data as PlaybackStateFromVideoMessage;
+                    this.latestPlaybackState = playbackStateMessage;
+                    for (const callback of this.playbackStateCallbacks) {
+                        callback(playbackStateMessage);
+                    }
+                    break;
+                }
                 case 'currentTime': {
                     const currentTimeMessage = event.data as CurrentTimeToVideoMessage;
 
@@ -195,12 +210,10 @@ export default class PlayerChannel {
                     }
                     break;
                 }
-                case 'playModes': {
-                    const playModesMessage = event.data as PlayModesMessage;
-
-                    for (const callback of this.playModesCallbacks) {
-                        const modes = new Set<PlayMode>(playModesMessage.playModes);
-                        callback(modes);
+                case 'playMode': {
+                    const playModeMessage = event.data as PlayModeMessage;
+                    for (const callback of this.playModeCallbacks) {
+                        callback(playModeMessage.playMode);
                     }
                     break;
                 }
@@ -268,7 +281,7 @@ export default class PlayerChannel {
                     break;
                 }
                 default:
-                    console.error('Unrecognized event ' + event.data.command);
+                    asbError('app/messages', 'Unrecognized event ' + event.data.command);
             }
         };
     }
@@ -285,6 +298,12 @@ export default class PlayerChannel {
     onPause(callback: () => void) {
         this.pauseCallbacks.push(callback);
         return () => this._remove(callback, this.pauseCallbacks);
+    }
+
+    onPlaybackState(callback: (state: PlaybackStateFromVideoMessage) => void) {
+        this.playbackStateCallbacks.push(callback);
+        if (this.latestPlaybackState !== undefined) callback(this.latestPlaybackState);
+        return () => this._remove(callback, this.playbackStateCallbacks);
     }
 
     onCurrentTime(callback: (currentTime: number) => void) {
@@ -334,9 +353,9 @@ export default class PlayerChannel {
         return () => this._remove(callback, this.playbackRateCallbacks);
     }
 
-    onPlayModes(callback: (playModes: Set<PlayMode>) => void) {
-        this.playModesCallbacks.push(callback);
-        return () => this._remove(callback, this.playModesCallbacks);
+    onPlayMode(callback: (playMode: PlayMode) => void) {
+        this.playModeCallbacks.push(callback);
+        return () => this._remove(callback, this.playModeCallbacks);
     }
 
     onHideSubtitlePlayerToggle(callback: (hidden: boolean) => void) {
@@ -406,6 +425,11 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
+    duration(duration: number) {
+        const message: DurationFromVideoMessage = { command: 'duration', value: duration };
+        this.channel?.postMessage(message);
+    }
+
     readyState(readyState: number) {
         const message: ReadyStateFromVideoMessage = { command: 'readyState', value: readyState };
         this.channel?.postMessage(message);
@@ -418,6 +442,16 @@ export default class PlayerChannel {
 
     pause(echo = true) {
         const message: PauseFromVideoMessage = { command: 'pause', echo };
+        this.channel?.postMessage(message);
+    }
+
+    playbackState(timestampMs: number, showingSubtitleIndexes: readonly number[], paused: boolean) {
+        const message: PlaybackStateFromVideoMessage = {
+            command: 'playbackState',
+            timestampMs,
+            showingSubtitleIndexes,
+            paused,
+        };
         this.channel?.postMessage(message);
     }
 
@@ -480,7 +514,8 @@ export default class PlayerChannel {
     }
 
     playModes(playModes: Set<PlayMode>) {
-        this.channel?.postMessage({ command: 'playModes', playModes: Array.from(playModes) });
+        const message: PlayModesMessage = { command: 'playModes', playModes: [...playModes] };
+        this.channel?.postMessage(message);
     }
 
     hideSubtitlePlayerToggle() {
@@ -522,6 +557,8 @@ export default class PlayerChannel {
             this.channel = undefined;
             this.playCallbacks = [];
             this.pauseCallbacks = [];
+            this.playbackStateCallbacks = [];
+            this.latestPlaybackState = undefined;
             this.currentTimeCallbacks = [];
             this.audioTrackSelectedCallbacks = [];
             this.closeCallbacks = [];
@@ -530,7 +567,7 @@ export default class PlayerChannel {
             this.subtitlesUpdatedCallbacks = [];
             this.offsetCallbacks = [];
             this.playbackRateCallbacks = [];
-            this.playModesCallbacks = [];
+            this.playModeCallbacks = [];
             this.hideSubtitlePlayerToggleCallbacks = [];
             this.appBarToggleCallbacks = [];
             this.fullscreenToggleCallbacks = [];

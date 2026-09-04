@@ -54,7 +54,12 @@ We epecially acknowledge the wonderful humans below.
 [@Roka20012](https://github.com/Roka20012),
 [@RonzyOnGIT](https://github.com/RonzyOnGIT),
 [@Dr-TNineS](https://github.com/Dr-TNineS),
-[@thntx](https://github.com/thntx)
+[@thntx](https://github.com/thntx),
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
+[@aramrw](https://github.com/aramrw),
+[@steckums](https://github.com/steckums),
+[@eXaminator](https://github.com/eXaminator)
 
 ## Translators
 
@@ -62,7 +67,8 @@ We epecially acknowledge the wonderful humans below.
 **Kai Böse** (German),
 **Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
 **NeverWinterSwor** (Simplified Chinese),
-**[@AkihaZhang](https://github.com/AkihaZhang)** (Simlified Chinese),
+**[@AkihaZhang](https://github.com/AkihaZhang)** (Simplified Chinese),
+**senorli** (Simplified Chinese),
 **Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
 **Leo Gonzalez** (Spanish),
 **Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russian),

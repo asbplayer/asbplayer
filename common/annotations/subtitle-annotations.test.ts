@@ -14,7 +14,8 @@ import {
 } from '@project/common/settings';
 import { Anki } from '@project/common/anki';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
-import { SubtitleAnnotations, TrackState } from './subtitle-annotations';
+import type { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
+import { needsReset, TrackState } from '@project/common/annotations/subtitle-annotations';
 import {
     makeDictionaryTrack,
     makeDictionaryTracks,
@@ -22,7 +23,7 @@ import {
     makeSubtitle,
     makeSubtitleAnnotations,
     makeToken,
-} from './annotations-test-utils';
+} from '@project/common/annotations/annotations-test-utils';
 
 const privateAnnotations = (subtitleAnnotations: SubtitleAnnotations) => subtitleAnnotations as any;
 
@@ -94,6 +95,26 @@ describe('TrackState', () => {
 });
 
 describe('SubtitleAnnotations', () => {
+    it('only needs a reset when subtitle source content or original tokenization changes', () => {
+        const previous = [makeSubtitle({ text: 'annotated', originalText: 'word' })];
+
+        expect(needsReset([makeSubtitle({ text: 'updated', originalText: 'word' })], previous)).toBe(false);
+        expect(needsReset([makeSubtitle({ text: 'other', originalText: 'other' })], previous)).toBe(true);
+        expect(
+            needsReset(
+                [
+                    makeSubtitle({
+                        text: 'word',
+                        originalText: 'word',
+                        tokenization: { tokens: [makeToken({ pos: [0, 2] })] },
+                    }),
+                ],
+                previous
+            )
+        ).toBe(true);
+        expect(needsReset([], previous)).toBe(true);
+    });
+
     it('defaults originalText, clones subtitles, preserves cached tokenization, and stores external readings', () => {
         const { subtitleAnnotations } = makeSubtitleAnnotations();
         const buildAnnotations = jest.spyOn(subtitleAnnotations as any, '_buildAnnotations').mockResolvedValue(true);
@@ -358,7 +379,19 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.ankiState.recentlyModifiedCardIds).toEqual(new Set());
         expect(runtime.ankiState.recentlyModifiedFirstCheck).toBe(false);
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
-        expect(consoleError).toHaveBeenCalledWith('Error checking Anki recently modified cards:', expect.any(Error));
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Error checking Anki recently modified cards:',
+            expect.any(Error)
+        );
+
+        await runtime._checkAnkiRecentlyModifiedCards('Profile', ['Word'], []);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        expect(runtime.ankiConnectionError).toBe(true);
+
+        runtime.anki = { findRecentlyEditedOrReviewedCards: jest.fn(async () => []) };
+        await runtime._checkAnkiRecentlyModifiedCards('Profile', ['Word'], []);
+        expect(runtime.ankiConnectionError).toBe(false);
     });
 
     it('refreshes Anki once, merges configured fields, and treats an empty deck list as all decks', async () => {
@@ -406,7 +439,11 @@ describe('SubtitleAnnotations', () => {
         const { subtitleAnnotations, storage } = makeSubtitleAnnotations();
         const runtime = privateAnnotations(subtitleAnnotations);
         const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        const permission = jest.spyOn(Anki.prototype, 'requestPermission').mockResolvedValue({ permission: 'denied' });
+        const permission = jest
+            .spyOn(Anki.prototype, 'requestPermission')
+            .mockResolvedValueOnce({ permission: 'denied' })
+            .mockResolvedValueOnce({ permission: 'denied' })
+            .mockResolvedValueOnce({ permission: 'granted' });
         runtime.profile = 'Profile';
         runtime.trackStates = [new TrackState(0, track)];
         const checkRecentlyModified = jest
@@ -421,7 +458,18 @@ describe('SubtitleAnnotations', () => {
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
         expect(checkRecentlyModified).toHaveBeenCalledWith('Profile', ['Word'], []);
         expect(runtime.ankiState.refreshing).toBe(false);
-        expect(consoleWarn).toHaveBeenCalledWith('Anki permission request failed:', expect.any(Error));
+        expect(consoleWarn).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Anki permission request failed:',
+            expect.any(Error)
+        );
+
+        await runtime._refreshAnki();
+        expect(consoleWarn).toHaveBeenCalledTimes(1);
+        expect(runtime.ankiConnectionError).toBe(true);
+
+        await runtime._refreshAnki();
+        expect(runtime.ankiConnectionError).toBe(false);
     });
 
     it('resets Anki refresh state when the cache build rejects', async () => {
@@ -441,7 +489,11 @@ describe('SubtitleAnnotations', () => {
 
         expect(runtime.ankiState.refreshed).toBe(false);
         expect(runtime.ankiState.refreshing).toBe(false);
-        expect(consoleWarn).toHaveBeenCalledWith('Anki refresh failed:', expect.any(Error));
+        expect(consoleWarn).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Anki refresh failed:',
+            expect.any(Error)
+        );
     });
 
     it('builds and caches the Anki statistics snapshot, including due-card requests', async () => {
@@ -532,7 +584,15 @@ describe('SubtitleAnnotations', () => {
             cardsStatus: {},
             dueCards: {},
         });
-        expect(consoleError).toHaveBeenCalledWith('Error refreshing Anki for statistics:', expect.any(Error));
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/anki]',
+            'Error refreshing Anki for statistics:',
+            expect.any(Error)
+        );
+
+        await runtime._refreshAnkiStatistics('Profile', ['Word'], []);
+        expect(consoleError).toHaveBeenCalledTimes(1);
+        expect(runtime.ankiConnectionError).toBe(true);
     });
 
     it('builds the WaniKani cache once and always releases its refresh lock', async () => {
@@ -587,7 +647,11 @@ describe('SubtitleAnnotations', () => {
 
         expect(runtime.waniKaniState.refreshed).toBe(false);
         expect(runtime.waniKaniState.refreshing).toBe(false);
-        expect(consoleWarn).toHaveBeenCalledWith('WaniKani refresh failed:', expect.any(Error));
+        expect(consoleWarn).toHaveBeenCalledWith(
+            '[asbplayer][annotations/wanikani]',
+            'WaniKani refresh failed:',
+            expect.any(Error)
+        );
     });
 
     it('builds per-track WaniKani statistics while isolating a failed track', async () => {
@@ -621,6 +685,7 @@ describe('SubtitleAnnotations', () => {
         });
         expect(runtime.waniKaniState.statisticsRefreshed).toBe(true);
         expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/wanikani]',
             'Error refreshing WaniKani for Track2 statistics:',
             expect.any(Error)
         );
@@ -730,7 +795,11 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.initialized).toBe(false);
         expect(runtime.annotationsBuilding).toBe(false);
         expect(runtime.tokenRequestFailedForTracks).toEqual(new Set());
-        expect(consoleError).toHaveBeenCalledWith('Error annotating subtitle text for Track1:', expect.any(Error));
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][annotations/tokenization]',
+            'Error annotating subtitle text for Track1:',
+            expect.any(Error)
+        );
     });
 
     it('cancels an in-flight annotation build without publishing partial results', async () => {

@@ -16,7 +16,7 @@ import IconButton from '@mui/material/IconButton';
 import { Trans } from 'react-i18next';
 import Link from '@mui/material/Link';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { AsbPlayerToVideoCommandV2, RequestSubtitlesMessage } from '@project/common';
+import type { AsbPlayerToVideoCommandV2, RequestSubtitlesMessage } from '@project/common';
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import { isFirefox } from '@project/common/browser-detection';
 

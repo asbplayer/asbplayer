@@ -7,8 +7,8 @@ import VideoDataSyncDialog, {
     useVideoDataSyncDialogState,
     emptySubtitleTrack,
 } from '@project/common/components/VideoDataSyncDialog';
-import Bridge from '../bridge';
-import {
+import type Bridge from '@project/extension/src/ui/bridge';
+import type {
     ConfirmedVideoDataSubtitleTrack,
     Message,
     SerializedSubtitleFile,
@@ -16,18 +16,20 @@ import {
     VideoDataUiBridgeConfirmMessage,
     VideoDataUiBridgeOpenFileMessage,
     VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
+    VideoDataUiBridgeSetGenericSubtitleParserMessage,
     VideoDataUiModel,
-    VideoDataUiOpenReason,
     ActiveProfileMessage,
 } from '@project/common';
-import type { OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import { VideoDataUiOpenReason } from '@project/common';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import { createTheme } from '@project/common/theme';
-import { type PaletteMode } from '@mui/material/styles';
+import type { PaletteMode } from '@mui/material/styles';
 import { bufferToBase64 } from '@project/common/base64';
 import { useTranslation } from 'react-i18next';
 import type { Profile } from '@project/common/settings';
 import { StyledEngineProvider } from '@mui/material/styles';
-import { DefaultFileSelector, FileWithId } from '@project/common/file-selector';
+import type { FileWithId } from '@project/common/file-selector';
+import { DefaultFileSelector } from '@project/common/file-selector';
 
 interface Props {
     bridge: Bridge;
@@ -46,6 +48,9 @@ export default function VideoDataSyncUi({ bridge }: Props) {
     const [activeProfile, setActiveProfile] = useState<string>();
     const [hasSeenFtue, setHasSeenFtue] = useState<boolean>();
     const [hideRememberTrackPreferenceToggle, setHideRememberTrackPreferenceToggle] = useState<boolean>();
+    const [isGenericPage, setIsGenericPage] = useState(false);
+    const [showGenericPageOption, setShowGenericPageOption] = useState(false);
+    const [genericSubtitleParser, setGenericSubtitleParser] = useState<GenericParseType>('off');
     const [onlineSubtitleSourceConfig, setOnlineSubtitleSourceConfig] = useState<OnlineSubtitleSourceConfig>({
         jimakuApiKey: '',
         jimakuSearchCategory: 'anime',
@@ -117,7 +122,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                 return;
             }
 
-            const model = (message as UpdateStateMessage).state as VideoDataUiModel;
+            const model = (message as UpdateStateMessage).state as Partial<VideoDataUiModel>;
 
             if (model.open !== undefined) {
                 if (model.open) {
@@ -183,6 +188,18 @@ export default function VideoDataSyncUi({ bridge }: Props) {
 
             if (model.hideRememberTrackPreferenceToggle !== undefined) {
                 setHideRememberTrackPreferenceToggle(model.hideRememberTrackPreferenceToggle);
+            }
+
+            if (model.isGenericPage !== undefined) {
+                setIsGenericPage(model.isGenericPage);
+            }
+
+            if (model.showGenericPageOption !== undefined) {
+                setShowGenericPageOption(model.showGenericPageOption);
+            }
+
+            if (model.genericSubtitleParser !== undefined) {
+                setGenericSubtitleParser(model.genericSubtitleParser);
             }
 
             if (model.onlineSubtitleSourceConfig !== undefined) {
@@ -280,6 +297,17 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         },
         [bridge]
     );
+    const handleGenericSubtitleParserChange = useCallback(
+        (parse: GenericParseType) => {
+            setGenericSubtitleParser(parse);
+            const message: VideoDataUiBridgeSetGenericSubtitleParserMessage = {
+                command: 'setGenericSubtitleParser',
+                parse,
+            };
+            bridge.sendMessageFromServer(message);
+        },
+        [bridge]
+    );
 
     return (
         <StyledEngineProvider injectFirst>
@@ -302,6 +330,9 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     onlineSubtitleSourceConfig={onlineSubtitleSourceConfig}
                     hasSeenFtue={hasSeenFtue}
                     hideRememberTrackPreferenceToggle={hideRememberTrackPreferenceToggle}
+                    isGenericPage={isGenericPage}
+                    showGenericPageOption={showGenericPageOption}
+                    genericSubtitleParser={genericSubtitleParser}
                     fileSelector={fileSelector}
                     onCancel={handleCancel}
                     onOpenFiles={handleOpenFiles}
@@ -310,6 +341,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     onConfirm={handleConfirm}
                     onSetActiveProfile={handleSetActiveProfile}
                     onDismissFtue={handleDismissFtue}
+                    onGenericSubtitleParserChange={handleGenericSubtitleParserChange}
                 />
                 <input
                     ref={fileInputRef}

@@ -4,20 +4,21 @@ import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
-import ChromeExtension from '../services/chrome-extension';
-import SettingsForm from '../../components/SettingsForm';
-import { useLocalFontFamilies } from '../../hooks';
-import { Anki } from '../../anki';
-import { AsbplayerSettings, Profile, supportedLanguages, testCard } from '../../settings';
-import SettingsProfileSelectMenu from '../../components/SettingsProfileSelectMenu';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import SettingsForm from '@project/common/components/SettingsForm';
+import { useLocalFontFamilies } from '@project/common/hooks';
+import type { Anki } from '@project/common/anki';
+import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import { supportedLanguages, testCard } from '@project/common/settings';
+import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import { type Theme } from '@mui/material';
-import { DictionaryProvider } from '../../dictionary-db';
+import type { Theme } from '@mui/material';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
-import { AppExtensionGlobalStateProvider } from '../services/app-extension-global-state-provider';
+import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 
 const appTestCard = () => {
     const basePath = window.location.pathname === '/' ? '' : window.location.pathname;
@@ -109,6 +110,7 @@ export default function SettingsDialog({
                     extensionSupportsTrackSpecificSettings={extension.supportsTrackSpecificSettings}
                     extensionSupportsSubtitlesWidthSetting={extension.supportsSubtitlesWidthSetting}
                     extensionSupportsPauseOnHover={extension.supportsPauseOnHover}
+                    extensionSupportsPlaybackEngine={extension.supportsPlaybackEngine}
                     extensionSupportsExportCardBind={extension.supportsExportCardBind}
                     extensionSupportsPageSettings={extension.supportsPageSettings}
                     extensionSupportsDictionary={extension.supportsDictionary}
@@ -122,6 +124,7 @@ export default function SettingsDialog({
                     }
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
+                    extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersion={import.meta.env.VITE_APP_GIT_COMMIT}

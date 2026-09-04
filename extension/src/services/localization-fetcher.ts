@@ -1,6 +1,8 @@
-import { LocalizationConfig, fetchExtensionConfig } from './extension-config';
+import { asbError } from '@project/common/util';
+import type { LocalizationConfig } from '@project/extension/src/services/extension-config';
+import { fetchExtensionConfig } from '@project/extension/src/services/extension-config';
 import { SettingsProvider, supportedLanguages as defaultSupportedLanguages } from '@project/common/settings';
-import { ExtensionSettingsStorage } from './extension-settings-storage';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import type { PublicPath } from 'wxt/browser';
 
 const stringsKeyForLang = (lang: string) => `locStrings-${lang}`;
@@ -58,7 +60,7 @@ export const primeLocalization = async (lang: string): Promise<void> => {
             await fetchAndCache(langConfig);
         }
     } catch (e) {
-        console.error(e);
+        asbError('i18n', e);
     }
 };
 
@@ -74,7 +76,7 @@ const fetchAndCache = async ({ code, url, version }: LocalizationConfig): Promis
             await browser.storage.local.set({ [stringsKey]: strings, [versionKey]: version });
         }
     } catch (e) {
-        console.error(e);
+        asbError('i18n', e);
     }
 };
 

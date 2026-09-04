@@ -1,9 +1,43 @@
-import { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import { asbError } from '@project/common/util';
+import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];
     const dotIndex = path.lastIndexOf('.');
-    return dotIndex === -1 ? fallback : path.substring(dotIndex + 1);
+    return dotIndex <= path.lastIndexOf('/') ? fallback : path.substring(dotIndex + 1);
+}
+
+const normalizedSubtitleExtensions: Readonly<Record<string, string>> = {
+    ass: 'ass',
+    dfxp: 'dfxp',
+    srt: 'srt',
+    ssa: 'ass',
+    sup: 'sup',
+    ttml: 'ttml2',
+    ttml2: 'ttml2',
+    vtt: 'vtt',
+    webvtt: 'vtt',
+};
+
+export function normalizeSubtitleExtension(extension: string): string | undefined {
+    return normalizedSubtitleExtensions[extension.trim().toLowerCase()];
+}
+
+export function subtitleFileExtensionForUrl(url: string, declaredExtension: string): string {
+    return normalizeSubtitleExtension(extractExtension(url, '')) ?? declaredExtension;
+}
+
+export function mediaSourceUrl(media: HTMLMediaElement): string | undefined {
+    return (
+        media.currentSrc ||
+        media.src ||
+        Array.from(media.querySelectorAll('source')).find((source) => source.src.length > 0)?.src ||
+        undefined
+    );
+}
+
+export function mediaSourceIdentity(media: HTMLMediaElement): unknown {
+    return media.srcObject ?? mediaSourceUrl(media) ?? undefined;
 }
 
 export async function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {
@@ -155,7 +189,7 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
                                     );
                                 }
                             }
-                        ).catch(console.error);
+                        ).catch((error) => asbError('subtitle/source', error));
                     }
 
                     const ready = () => {
@@ -180,7 +214,7 @@ export function inferTracks({ onJson, onRequest, waitForBasename }: InferHooks, 
 
                     garbageCollect();
                     trackDataRequestHandled = true;
-                })().catch(console.error);
+                })().catch((error) => asbError('subtitle/source', error));
             },
             false
         );

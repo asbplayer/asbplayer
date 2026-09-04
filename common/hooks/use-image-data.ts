@@ -1,4 +1,6 @@
-import { CancelledMediaFragmentDataRenderingError, MediaFragment } from '@project/common';
+import { asbError } from '@project/common/util';
+import type { MediaFragment } from '@project/common';
+import { CancelledMediaFragmentDataRenderingError } from '@project/common';
 import { useEffect, useState } from 'react';
 
 const mediaFragmentDimensionsLoader = (
@@ -71,7 +73,7 @@ export const useImageData = ({ image, smoothTransition }: { image?: MediaFragmen
             })
             .catch((e) => {
                 if (!(e instanceof CancelledMediaFragmentDataRenderingError)) {
-                    console.error(e);
+                    asbError('image', e);
                 }
             });
 

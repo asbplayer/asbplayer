@@ -6,9 +6,9 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import { getTokenStatus } from '@project/common/util';
-import { TrackState } from './subtitle-annotations';
-import { resolveTokenStatus } from './token-collection';
-import { makeDictionaryTrack } from './annotations-test-utils';
+import { TrackState } from '@project/common/annotations/subtitle-annotations';
+import { resolveTokenStatus } from '@project/common/annotations/token-collection';
+import { makeDictionaryTrack } from '@project/common/annotations/annotations-test-utils';
 
 const cardStatus = (status: TokenStatus, cardId = 1) => ({ cardId, status, suspended: false });
 

@@ -1,7 +1,7 @@
-import { VideoDataSubtitleTrack } from '@project/common';
-import { VideoData } from '@project/common';
+import type { VideoDataSubtitleTrack, VideoData } from '@project/common';
 import { trackFromDef } from '@/pages/util';
 import { v4 as uuidv4 } from 'uuid';
+import { asbError } from '@project/common/util';
 
 const SUBTITLE_IMAGE_CODECS = ['pgs', 'vobsub']; // Plex will only burn in these subtitles
 
@@ -296,6 +296,7 @@ export default defineUnlistedScript(() => {
                     })
                 );
             })().catch((e) => {
+                asbError('plex', e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {

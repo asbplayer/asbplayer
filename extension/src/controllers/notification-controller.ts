@@ -1,10 +1,13 @@
-import Binding from '../services/binding';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import FrameBridgeClient from '../services/frame-bridge-client';
-import { fetchLocalization } from '../services/localization-fetcher';
+import type Binding from '@project/extension/src/services/binding';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import type FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 export default class NotificationController {
     public onClose?: () => void;
+    public onAction?: () => void;
 
     private readonly _context: Binding;
     private readonly _frame: UiFrame;
@@ -22,6 +25,7 @@ export default class NotificationController {
                         <title>asbplayer</title>
                         <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                         </style>
                     </head>
                     <body>
@@ -59,6 +63,28 @@ export default class NotificationController {
         this._context.pause();
     }
 
+    async showSnackbar(
+        messageLocKey: string,
+        options?: {
+            readonly actionLocKey?: string;
+            readonly replacements?: Record<string, string>;
+        }
+    ) {
+        await this._prepareAndShowFrame('asbplayer-alert');
+
+        this._client!.updateState({
+            themeType: await this._context.settings.getSingle('themeType'),
+            titleLocKey: '',
+            messageLocKey: '',
+            snackbar: {
+                messageLocKey,
+                actionLocKey: options?.actionLocKey,
+                replacements: options?.replacements,
+            },
+        });
+        this._context.pause();
+    }
+
     async updateAlert(newVersion: string) {
         await this._prepareAndShowFrame('asbplayer-alert');
         this._client!.updateState({
@@ -77,11 +103,16 @@ export default class NotificationController {
 
         if (isNewClient) {
             this._client.onMessage((message) => {
+                if (message.command === 'action') {
+                    this.hide();
+                    this.onAction?.();
+                    return;
+                }
                 if (message.command === 'close') {
                     this._context.subtitleController.forceHideSubtitles = false;
                     this._context.mobileVideoOverlayController.forceHide = false;
                     this._context.controlsController.show();
-                    this._frame.hide();
+                    this.hide();
                     this.onClose?.();
                 }
             });

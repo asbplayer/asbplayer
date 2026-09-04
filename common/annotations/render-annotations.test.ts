@@ -1,12 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 import {
-    type DictionaryTrack,
     TokenFrequencyAnnotation,
     TokenReadingAnnotation,
     TokenStatus,
     TokenStyling,
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     computeRichText,
     emptyRichTextWindow,
@@ -15,8 +15,13 @@ import {
     renderRichTextForSubtitle,
     renderRichTextOntoSubtitles,
     renderRichTextWindow,
-} from './render-annotations';
-import { makeDictionaryTrack, makeDictionaryTracks, makeSubtitle, makeToken } from './annotations-test-utils';
+} from '@project/common/annotations/render-annotations';
+import {
+    makeDictionaryTrack,
+    makeDictionaryTracks,
+    makeSubtitle,
+    makeToken,
+} from '@project/common/annotations/annotations-test-utils';
 
 type AnnotationToggles = {
     color?: boolean;
@@ -273,6 +278,62 @@ describe('rich text rendering', () => {
         ).toBe(`<span class="asb-token asb-token-highlight">${pitchAccentHtml(['か', 'な'], '#33445566')}</span>`);
     });
 
+    it('keeps coloring on hover when pitch accent data has no renderable kana text', () => {
+        const dt = makeAnnotationTrack({ color: true, pitchAccent: true });
+        setUnknownTokenColor(dt, '#334455', '66');
+        dt.dictionaryTokenAnnotationConfig.video.color.onHoverEnabled = true;
+        dt.dictionaryTokenAnnotationConfig.video.pitchAccent.onHoverEnabled = true;
+
+        const rendered = renderRichTextOntoSubtitles(
+            [
+                makeSubtitle({
+                    text: '語学',
+                    tokenization: {
+                        tokens: [makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 })],
+                    },
+                }),
+            ],
+            'video',
+            makeDictionaryTracks(dt)
+        ).get(0);
+
+        expect(rendered?.richText).toBeUndefined();
+        expect(rendered?.richTextOnHover).toBe(
+            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">語学</span>'
+        );
+    });
+
+    it('keeps coloring on hover for ASCII text without a rendered reading', () => {
+        const dt = makeAnnotationTrack({ color: true, reading: true, pitchAccent: true });
+        setUnknownTokenColor(dt, '#334455', '66');
+        dt.dictionaryTokenAnnotationConfig.video.color.onHoverEnabled = true;
+        dt.dictionaryTokenAnnotationConfig.video.pitchAccent.onHoverEnabled = true;
+
+        const rendered = renderRichTextOntoSubtitles(
+            [
+                makeSubtitle({
+                    text: 'RAIN',
+                    tokenization: {
+                        tokens: [
+                            makeInternalToken({
+                                pos: [0, 4],
+                                status: TokenStatus.UNKNOWN,
+                                readings: [{ pos: [0, 4], reading: 'れいん' }],
+                                pitchAccent: 1,
+                            }),
+                        ],
+                    },
+                }),
+            ],
+            'video',
+            makeDictionaryTracks(dt)
+        ).get(0);
+
+        expect(rendered?.richTextOnHover).toBe(
+            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">RAIN</span>'
+        );
+    });
+
     it('carries pitch accent context onto an attached particle', () => {
         const rendered = computeRichText(
             '日本は',
@@ -295,6 +356,51 @@ describe('rich text rendering', () => {
         );
 
         expect(rendered).toContain('<span class="asb-pitch-accent-mora asb-pitch-accent-mora-high">は</span>');
+    });
+
+    it('preserves pitch context when a token reading is hidden', () => {
+        const dt = makeAnnotationTrack({ pitchAccent: true });
+        dt.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.MATURE].pitchAccent = false;
+
+        expect(
+            computeRichText(
+                '学校は',
+                {
+                    tokens: [
+                        makeInternalToken({
+                            pos: [0, 2],
+                            status: TokenStatus.MATURE,
+                            readings: [{ pos: [0, 2], reading: 'がっこう' }],
+                            pitchAccent: 1,
+                        }),
+                        makeInternalToken({ pos: [2, 3], status: TokenStatus.UNKNOWN, pitchAccent: null }),
+                    ],
+                },
+                {
+                    dt,
+                    enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                    allowAsciiReading: false,
+                }
+            )
+        ).toBe(
+            '学校<span class="asb-pitch-accent" style="--asb-pitch-accent-color: currentColor;">' +
+                '<span class="asb-pitch-accent-mora asb-pitch-accent-mora-low">は</span></span>'
+        );
+    });
+
+    it('applies token styling when pitch accent is not enabled for the token status', () => {
+        const dt = makeAnnotationTrack(
+            { color: true, pitchAccent: true },
+            { dictionaryTokenStyling: TokenStyling.UNDERLINE }
+        );
+        dt.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].pitchAccent = false;
+        setUnknownTokenColor(dt, '#334455', '66');
+
+        expect(
+            renderToken('かな', makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 }), dt)
+        ).toBe(
+            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">かな</span>'
+        );
     });
 
     it.each<HoverCase>([

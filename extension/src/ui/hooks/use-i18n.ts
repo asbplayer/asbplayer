@@ -1,8 +1,10 @@
-import i18n, { ReadCallback } from 'i18next';
+import { asbError } from '@project/common/util';
+import type { ReadCallback } from 'i18next';
+import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import resourcesToBackend from 'i18next-resources-to-backend';
 import { useEffect, useState } from 'react';
-import { fetchLocalization } from '../../services/localization-fetcher';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 
 let init: Promise<any> = i18n
     .use(
@@ -37,7 +39,7 @@ export const useI18n = ({ language }: { language: string }) => {
     }, [initialized]);
 
     useEffect(() => {
-        init = init.then(() => i18n.changeLanguage(language)).catch((e) => console.error(e));
+        init = init.then(() => i18n.changeLanguage(language)).catch((e) => asbError('i18n', e));
     }, [language]);
 
     return { initialized };

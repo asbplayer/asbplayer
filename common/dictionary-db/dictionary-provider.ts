@@ -1,4 +1,4 @@
-import {
+import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,
@@ -14,10 +14,10 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
-import { download, getCurrentTimeString } from '../util';
+import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import { download, getCurrentTimeString } from '@project/common/util';
 
 export interface DictionaryStorage {
     getBulk: (profile: string | undefined, track: number, tokens: string[]) => Promise<TokenResults>;

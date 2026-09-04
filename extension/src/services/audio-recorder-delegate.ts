@@ -1,4 +1,4 @@
-import {
+import type {
     ExtensionToOffscreenDocumentCommand,
     ExtensionToVideoCommand,
     StartRecordingAudioMessage,
@@ -9,7 +9,7 @@ import {
     StopRecordingAudioMessage,
     StopRecordingResponse,
 } from '@project/common';
-import { ensureOffscreenAudioServiceDocument } from './offscreen-document';
+import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
 
 export interface Requester {
     tabId: number;

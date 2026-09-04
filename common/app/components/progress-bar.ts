@@ -1,4 +1,4 @@
-import { timeDurationDisplay } from '../../util';
+import { timeDurationDisplay } from '@project/common/util';
 
 const horizontalPadding = 10;
 

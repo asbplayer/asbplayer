@@ -1,9 +1,20 @@
+import { asbWarn } from '@project/common/util/log';
 import sanitize from 'sanitize-filename';
-import { Rgb, SubtitleModel, SubtitleTrack, Token, Tokenization, TokenReading } from '../src/model';
-import { TextSubtitleSettings, TokenStatus } from '../settings/settings';
-import { Progress } from '..';
-import { TokenStatusInfo } from '../dictionary-db';
-import { PitchAccentPosition } from '../yomitan';
+import type {
+    DimensionsModel,
+    Rgb,
+    SubtitleModel,
+    SubtitleTextImage,
+    SubtitleTrack,
+    Token,
+    Tokenization,
+    TokenReading,
+} from '@project/common/src/model';
+import type { TextSubtitleSettings } from '@project/common/settings/settings';
+import { TokenStatus } from '@project/common/settings/settings';
+import type { Progress } from '..';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 // Cues on the same track can share a start time (e.g. Netflix splitting one line into
 // multiple cues), and SubtitleCollection does not guarantee source order in that case, so
@@ -27,6 +38,13 @@ export function arrayEquals<T>(
         if (!equals(a[i], b[i])) return false;
     }
     return true;
+}
+
+export function keysAreEqual(a: any, b: any) {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key));
 }
 
 export const localizedDate = (timestamp: number, locales: Intl.LocalesArgument = [], timeZone?: string) => {
@@ -79,6 +97,15 @@ export function humanReadableTime(timestamp: number, nearestTenth = false, fully
     }
 }
 
+export function formatAsSigned(value: number, decimalPlaces?: number): string {
+    const stringValue = decimalPlaces === undefined ? String(value) : value.toFixed(decimalPlaces);
+    return value >= 0 ? `+${stringValue}` : stringValue;
+}
+
+export function formatAsSignedMs(milliseconds: number): string {
+    return `${formatAsSigned(milliseconds)} ms`;
+}
+
 export function timeDurationDisplay(
     milliseconds: number,
     totalMilliseconds: number,
@@ -116,6 +143,19 @@ export function clampMediaTimestamp(timestamp: number, mediaLength?: number): nu
     if (mediaLength === undefined || !Number.isFinite(mediaLength) || mediaLength <= 0) return clampedTimestamp;
     return Math.min(clampedTimestamp, mediaLength);
 }
+
+export const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+export function normalizeFinite(value: number): number;
+export function normalizeFinite(value: number, fallback: number): number;
+export function normalizeFinite(value: number, fallback: undefined): number | undefined;
+export function normalizeFinite(value: number, fallback?: number): number | undefined {
+    return Number.isFinite(value) ? value : arguments.length > 1 ? fallback : 0;
+}
+
+export const normalizeNonNegative = (value: number): number => Math.max(0, normalizeFinite(value));
+
+export const normalizeNonPositive = (value: number): number => Math.min(0, normalizeFinite(value));
 
 export function getCurrentTimeString(): string {
     const now = new Date();
@@ -309,6 +349,28 @@ function withinBoundaryAroundInterval(
     return false;
 }
 
+export function errorMessageFromVideo(element: HTMLMediaElement): string {
+    let error: string;
+    switch (element.error?.code) {
+        case 1:
+            error = 'MEDIA_ERR_ABORTED';
+            break;
+        case 2:
+            error = 'MEDIA_ERR_ABORTED';
+            break;
+        case 3:
+            error = 'MEDIA_ERR_DECODE';
+            break;
+        case 4:
+            error = 'MEDIA_ERR_SRC_NOT_SUPPORTED';
+            break;
+        default:
+            error = 'Unknown error';
+            break;
+    }
+    return error + ': ' + (element.error?.message || '<details missing>');
+}
+
 export function subtitleTimestampWithDelay(subtitle: Pick<SubtitleModel, 'start' | 'end'>, delay: number): number {
     const start = Math.min(subtitle.start, subtitle.end);
     const end = Math.max(subtitle.start, subtitle.end);
@@ -382,6 +444,8 @@ export function computeStyles(
         color: subtitleColor,
         fontSize: `${subtitleSize}px`,
         fontWeight: String(subtitleThickness),
+        WebkitTextStroke: '0 transparent',
+        textShadow: 'none',
     };
 
     if (subtitleOutlineThickness > 0) {
@@ -698,7 +762,7 @@ export async function ensureStoragePersisted(): Promise<boolean | undefined> {
     if (!navigator.storage?.persist) return;
     if (await navigator.storage.persisted()) return true;
     const persisted = await navigator.storage.persist();
-    if (!persisted) console.warn('Storage could not be persisted, data may be cleared by the browser');
+    if (!persisted) asbWarn('storage', 'Storage could not be persisted, data may be cleared by the browser');
     return persisted;
 }
 
@@ -745,13 +809,96 @@ export function iterateOverStringInBlocks<B extends Block>(
     }
 }
 
-export const areTokenizationsEqual = (a: Tokenization | undefined, b: Tokenization | undefined) => {
+type DimensionsComparators = {
+    [K in keyof DimensionsModel]: (a: DimensionsModel[K], b: DimensionsModel[K]) => boolean;
+};
+
+const dimensionsComparators: DimensionsComparators = {
+    width: (a, b) => a === b,
+    height: (a, b) => a === b,
+};
+
+function compareDimensionsField<K extends keyof DimensionsModel>(key: K, a: DimensionsModel, b: DimensionsModel) {
+    return dimensionsComparators[key](a[key], b[key]);
+}
+
+function areDimensionsEqual(a: DimensionsModel, b: DimensionsModel): boolean {
+    if (a === b) return true;
+    for (const key in dimensionsComparators) {
+        if (!compareDimensionsField(key as keyof DimensionsModel, a, b)) return false;
+    }
+    return true;
+}
+
+type SubtitleTextImageComparators = {
+    [K in keyof SubtitleTextImage]: (a: SubtitleTextImage[K], b: SubtitleTextImage[K]) => boolean;
+};
+
+const subtitleTextImageComparators: SubtitleTextImageComparators = {
+    dataUrl: (a, b) => a === b,
+    screen: (a, b) => areDimensionsEqual(a, b),
+    image: (a, b) => areDimensionsEqual(a, b),
+};
+
+function compareSubtitleTextImageField<K extends keyof SubtitleTextImage>(
+    key: K,
+    a: SubtitleTextImage,
+    b: SubtitleTextImage
+) {
+    return subtitleTextImageComparators[key](a[key], b[key]);
+}
+
+function areSubtitleTextImagesEqual(a: SubtitleTextImage | undefined, b: SubtitleTextImage | undefined): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    for (const key in subtitleTextImageComparators) {
+        if (!compareSubtitleTextImageField(key as keyof SubtitleTextImage, a, b)) return false;
+    }
+    return true;
+}
+
+type SubtitleModelComparators = {
+    [K in keyof SubtitleModel]: (a: SubtitleModel[K], b: SubtitleModel[K]) => boolean;
+};
+
+const subtitleModelComparators: SubtitleModelComparators = {
+    text: (a, b) => a === b,
+    originalText: (a, b) => a === b,
+    textImage: (a, b) => areSubtitleTextImagesEqual(a, b),
+    start: (a, b) => a === b,
+    end: (a, b) => a === b,
+    originalStart: (a, b) => a === b,
+    originalEnd: (a, b) => a === b,
+    displayTime: (a, b) => a === b,
+    displayEndTime: (a, b) => a === b,
+    track: (a, b) => a === b,
+    index: (a, b) => a === b,
+    tokenization: (a, b) => areTokenizationsEqual(a, b),
+} satisfies Required<SubtitleModelComparators>;
+
+export function compareSubtitleModelField<K extends keyof SubtitleModel>(
+    key: K,
+    a: SubtitleModel,
+    b: SubtitleModel
+): boolean {
+    return subtitleModelComparators[key]!(a[key], b[key]);
+}
+
+export function areSubtitleModelsEqual(a: SubtitleModel, b: SubtitleModel): boolean {
+    if (a === b) return true;
+    for (const key in subtitleModelComparators) {
+        if (!compareSubtitleModelField(key as keyof SubtitleModel, a, b)) return false;
+    }
+    return true;
+}
+
+export function areTokenizationsEqual(a: Tokenization | undefined, b: Tokenization | undefined) {
     if (a === b) return true;
     if (!a || !b) return false;
 
     if (a.error !== b.error) return false;
     return arrayEquals(a.tokens, b.tokens, areTokensEqual);
-};
+}
 
 type TokenReadingComparators = {
     [K in keyof TokenReading]: (a: TokenReading[K], b: TokenReading[K]) => boolean;
@@ -913,7 +1060,7 @@ export class AsyncSemaphore {
     release(id: number): void {
         if (!this.acquired.has(id)) return;
         this.acquired.delete(id);
-        clearTimeout(this.timers.get(id)!);
+        clearTimeout(this.timers.get(id));
         this.timers.delete(id);
 
         if (this.waiting.size > 0) {

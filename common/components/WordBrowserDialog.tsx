@@ -1,4 +1,5 @@
-import React, { memo, MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Alert from '@mui/material/Alert';
 import Badge from '@mui/material/Badge';
@@ -37,27 +38,27 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
-import {
+import type {
     DictionaryAnkiCardRecord,
     DictionaryProvider,
     DictionaryRecordsResult,
     DictionaryTokenKey,
     DictionaryWaniKaniAssignmentRecordWithStatus,
-    LOCAL_TOKEN_TRACK,
     DictionaryRecordUpdateInput,
     TokenStatusInfo,
 } from '@project/common/dictionary-db';
+import { LOCAL_TOKEN_TRACK } from '@project/common/dictionary-db';
+import type { DictionaryTrack } from '@project/common/settings';
 import {
     ApplyStrategy,
     DictionaryTokenSource,
-    DictionaryTrack,
     getFullyKnownTokenStatus,
     isAnkiSource,
     isWaniKaniSource,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, normalizedLookupTerms } from '@project/common/util';
+import { asbError, getTokenStatus, normalizedLookupTerms } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import Box from '@mui/material/Box';
 
@@ -178,7 +179,7 @@ function hasExactSearchTermMatch(searchTerms: string[], term: string) {
 function nextFilterMode(currentMode?: FilterMode) {
     if (currentMode === undefined) return 'include' as const;
     if (currentMode === 'include') return 'exclude' as const;
-    return undefined;
+    return;
 }
 
 function cycleFilterMode<T extends FilterModeValue>(filters: FilterMap<T>, value: T): FilterMap<T> {
@@ -621,6 +622,7 @@ const BulkUpdateDialog: React.FC<{
             );
             onClose();
         } catch (error) {
+            asbError('dictionary/word-browser', error);
             setError(error instanceof Error ? error.message : String(error));
         } finally {
             setMutating(false);
@@ -643,6 +645,7 @@ const BulkUpdateDialog: React.FC<{
             await onDeleteSelected(selectedRows.map((row) => row.tokenKey));
             onClose();
         } catch (error) {
+            asbError('dictionary/word-browser', error);
             setError(error instanceof Error ? error.message : String(error));
         } finally {
             setMutating(false);
@@ -859,6 +862,7 @@ export default function WordBrowserDialog({
                 setRecords(nextRecords);
             } catch (error) {
                 if (requestId !== loadRequestIdRef.current) return;
+                asbError('dictionary/word-browser', error);
                 setLoadError(errorMessage(error));
             } finally {
                 if (requestId === loadRequestIdRef.current) {
@@ -1658,6 +1662,7 @@ export default function WordBrowserDialog({
                 setSelectedRowKeys(new Set());
                 await loadRecords(draftViewCriteria);
             } catch (error) {
+                asbError('dictionary/word-browser', error);
                 setLoadError(error instanceof Error ? error.message : String(error));
             } finally {
                 setMutating(false);
@@ -1675,6 +1680,7 @@ export default function WordBrowserDialog({
                 setSelectedRowKeys(new Set());
                 await loadRecords(draftViewCriteria);
             } catch (error) {
+                asbError('dictionary/word-browser', error);
                 setLoadError(error instanceof Error ? error.message : String(error));
             } finally {
                 setMutating(false);

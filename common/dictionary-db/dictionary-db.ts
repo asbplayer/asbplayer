@@ -1,26 +1,27 @@
-import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
-import {
-    ApplyStrategy,
+import { asbError, asbWarn, getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
+import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
+import type {
     AsbplayerSettings,
-    DictionaryTokenSource,
     DictionaryTrack,
     ExternalWordSource,
+    SettingsProvider,
+    TokenState,
+} from '@project/common/settings';
+import {
+    ApplyStrategy,
+    DictionaryTokenSource,
     externalWordSourcePriority,
     getFullyKnownTokenStatus,
     isAnkiSource,
     isExternalWordSource,
     isWaniKaniSource,
-    SettingsProvider,
-    TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
-import { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
-import { Yomitan } from '@project/common/yomitan';
+import type { WaniKaniAssignment, WaniKaniSpacedRepetitionSystem, WaniKaniSubject } from '@project/common/wanikani';
+import type { Yomitan } from '@project/common/yomitan';
 import Dexie from 'dexie';
-import { buildAnkiCachePipeline } from '@project/common/dictionary-db';
-import { buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
-import { CardInfo } from '@project/common/anki';
+import { buildAnkiCachePipeline, buildWaniKaniCachePipeline } from '@project/common/dictionary-db';
+import type { CardInfo } from '@project/common/anki';
 
 /**
  * This file only contains the public interface functions and types.
@@ -781,7 +782,10 @@ export class DictionaryDB {
             const tokensToDelete: string[] = [];
             for (const localTokenInput of localTokenInputs) {
                 if (!HAS_LETTER_REGEX.test(localTokenInput.token)) {
-                    console.error(`Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`);
+                    asbError(
+                        'dictionary',
+                        `Cannot save local token with invalid token: ${JSON.stringify(localTokenInput)}`
+                    );
                     continue;
                 }
                 const existingRecord = tokenRecordMap.get(localTokenInput.token); // Ignore existing lemmas as they should be re-calculated
@@ -798,7 +802,10 @@ export class DictionaryDB {
                 localTokenInput.states = Array.from(new Set(localTokenInput.states)).sort((lhs, rhs) => lhs - rhs);
                 localTokenInput.lemmas = localTokenInput.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
                 if (!localTokenInput.lemmas.length) {
-                    console.error(`Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`);
+                    asbError(
+                        'dictionary',
+                        `Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`
+                    );
                     continue;
                 }
                 if (localTokenInput.status === TokenStatus.UNCOLLECTED && !localTokenInput.states.length) {
@@ -806,7 +813,8 @@ export class DictionaryDB {
                         tokensToDelete.push(localTokenInput.token);
                         continue;
                     } else {
-                        console.error(
+                        asbError(
+                            'dictionary',
                             `Cannot save local token with uncollected status and no states: ${JSON.stringify(localTokenInput)}`
                         );
                         continue;
@@ -1179,6 +1187,10 @@ function buildIdLabel(buildIdSlot: DictionaryBuildIdSlot): string {
     return buildIdSlot === 'waniKani' ? 'WaniKani buildId' : 'Anki buildId';
 }
 
+function buildIdLogLabel(buildIdSlot: DictionaryBuildIdSlot): string {
+    return `dictionary/${buildIdSlot === 'waniKani' ? 'wanikani' : 'anki'}`;
+}
+
 function setBuildIdChanges(
     trackMeta: DictionaryMetaRecord,
     buildIdSlot: DictionaryBuildIdSlot,
@@ -1260,7 +1272,8 @@ export async function _ensureBuildId(
         if (existingBuildId && existingBuildId !== nextBuildId) {
             const existingBuildExpiration = _buildIdExpiration(trackMeta, buildIdSlot);
             if (buildTs < existingBuildExpiration) return false;
-            console.warn(
+            asbWarn(
+                buildIdLogLabel(buildIdSlot),
                 `Stale ${buildIdLabel(buildIdSlot)} ${existingBuildId} which expired at ${new Date(existingBuildExpiration).toISOString()} detected for track ${key[1] + 1}, ignoring.`
             );
         }
@@ -1319,7 +1332,10 @@ export async function _clearBuildIds(
         try {
             await clearBuildId(db, key, nextBuildId, buildIdSlot);
         } catch (e) {
-            console.error(`Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`);
+            asbError(
+                buildIdLogLabel(buildIdSlot),
+                `Error clearing ${buildIdLabel(buildIdSlot)} for track ${key[1] + 1}: ${e}`
+            );
         }
     }
 }

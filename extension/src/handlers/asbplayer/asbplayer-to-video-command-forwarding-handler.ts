@@ -1,4 +1,4 @@
-import { AsbPlayerToVideoCommand, Command, ExtensionToVideoCommand, Message } from '@project/common';
+import type { AsbPlayerToVideoCommand, Command, ExtensionToVideoCommand, Message } from '@project/common';
 
 export default class AsbplayerToVideoCommandForwardingHandler {
     get sender() {
