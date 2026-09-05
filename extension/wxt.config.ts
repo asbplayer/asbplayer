@@ -111,6 +111,7 @@ export default defineConfig({
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'hulu-jp-page.js',
+                        'appletv-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',

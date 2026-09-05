@@ -510,7 +510,7 @@ function directResourceTrackScore(detectedExtension: string | undefined, text: s
 
 export class AggressiveGenericPageDiscovery implements VideoDataProvider {
     private readonly cueAccumulator = new AggressiveTextTrackCueAccumulator();
-    private readonly baseDiscovery = new BaseGenericPageDiscovery(this.cueAccumulator);
+    private readonly baseDiscovery = new BaseGenericPageDiscovery({ cueProvider: this.cueAccumulator });
     private readonly records: ResourceRecord[] = [];
     private readonly parsedJson: Array<{
         tracks: VideoDataSubtitleTrack[];
@@ -669,7 +669,11 @@ export class AggressiveGenericPageDiscovery implements VideoDataProvider {
             for (const track of tracks) candidates.push({ track, score, order: candidates.length });
         };
         for (const track of base.subtitles ?? []) {
-            candidates.push({ track, score: baseTrackScore(track), order: candidates.length });
+            candidates.push({
+                track: { ...track, label: `${track.label} (Basic)` },
+                score: baseTrackScore(track),
+                order: candidates.length,
+            });
         }
         const metadataUrls = new Set<string>();
         const runtimeJsonManifestUrls = new Set<string>();

@@ -1010,6 +1010,7 @@ export interface PageConfig {
     autoSyncVideoSrc?: string;
     autoSyncElementId?: string;
     ignoreVideoElementsClass?: string;
+    wrapUiFramesInDialogElements?: boolean;
 }
 
 export interface SettingsFormPageConfig extends PageConfig {
@@ -1054,6 +1055,7 @@ export interface PageSettings {
     urplay: Page;
     archive: Page;
     crunchyroll: Page;
+    appletv: Page;
 }
 
 export interface StreamingVideoSettings {

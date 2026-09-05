@@ -8,6 +8,7 @@ import { MockStorageArea } from '@project/extension/src/services/mock-storage-ar
 const bindingOptions = (hasPageScript: boolean, videoSrcChangesIndicateNewVideo: boolean): BindingOptions => ({
     hasPageScript,
     videoSrcChangesIndicateNewVideo,
+    wrapUiFramesInDialogElements: false,
 });
 
 jest.mock('@project/common/subtitle-reader', () => ({

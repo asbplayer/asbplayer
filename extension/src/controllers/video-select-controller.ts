@@ -11,6 +11,7 @@ import { SettingsProvider } from '@project/common/settings';
 import type { VideoElement } from '@project/extension/src/ui/components/VideoSelectUi';
 import type Binding from '@project/extension/src/services/binding';
 import type UiFrame from '@project/extension/src/services/ui-frame';
+import type { UiFrameControllerOptions } from '@project/extension/src/services/ui-frame';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
@@ -33,7 +34,7 @@ export default class VideoSelectController {
         sendResponse: (response?: any) => void
     ) => void;
 
-    constructor(bindings: Binding[], options: VideoSelectControllerOptions) {
+    constructor(bindings: Binding[], options: VideoSelectControllerOptions & UiFrameControllerOptions) {
         this._bindings = bindings;
         this._isBindingsSorted = options.isBindingsSorted;
         this._frame = uiFrameForHtml(
@@ -53,7 +54,8 @@ export default class VideoSelectController {
                     <script type="application/json" id="loc">${JSON.stringify(await fetchLocalization(lang))}</script>
                     <script type="module" src="${browser.runtime.getURL('/video-select-ui.js')}"></script>
                 </body>
-            </html>`
+            </html>`,
+            { wrapInDialogElement: options.wrapInDialogElement, onDialogCancel: () => void this._hideUi() }
         );
     }
 
