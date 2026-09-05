@@ -120,6 +120,7 @@ import type { SubtitleOffsetOptions } from '@project/common/playback/playback-en
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
 import { mediaSourceIdentity } from '@project/extension/src/pages/util';
+import type { UiFrameControllerOptions } from '@project/extension/src/services/ui-frame';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -170,6 +171,7 @@ export interface BindingOptions {
     readonly hasPageScript: boolean;
     readonly frameId?: string;
     readonly videoSrcChangesIndicateNewVideo: boolean;
+    readonly wrapUiFramesInDialogElements: boolean;
 }
 
 export default class Binding {
@@ -261,6 +263,9 @@ export default class Binding {
 
     constructor(video: HTMLMediaElement, options: BindingOptions) {
         this.video = video;
+        const frameControllerOptions: UiFrameControllerOptions = {
+            wrapInDialogElement: options.wrapUiFramesInDialogElements,
+        };
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
         this._lastLoadedMetadataMediaIdentity = mediaSourceIdentity(video);
         this.hasPageScript = options.hasPageScript;
@@ -269,11 +274,12 @@ export default class Binding {
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
         this.playbackEngine = this._createPlaybackEngine();
-        this.videoDataSyncController = new VideoDataSyncController(this, this.settings);
+        this.videoDataSyncController = new VideoDataSyncController(this, this.settings, frameControllerOptions);
         this.controlsController = new ControlsController(video);
         this.dragController = new DragController(video);
         this.keyBindings = new KeyBindings();
-        this.ankiUiController = new AnkiUiController();
+
+        this.ankiUiController = new AnkiUiController(this, frameControllerOptions);
         this.notificationController = new NotificationController(this);
         this.mobileVideoOverlayController = new MobileVideoOverlayController(this, OffsetAnchor.top);
         this.subtitleController.onOffsetChange = () => {

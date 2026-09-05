@@ -17,6 +17,7 @@ import type {
 import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
 import { ankiSettingsKeys } from '@project/common/settings';
 import type UiFrame from '@project/extension/src/services/ui-frame';
+import type { UiFrameControllerOptions } from '@project/extension/src/services/ui-frame';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
@@ -54,8 +55,8 @@ export class TabAnkiUiController {
     private readonly _settings: SettingsProvider;
     private readonly _inTutorial = isOnTutorialPage();
 
-    constructor(settings: SettingsProvider) {
-        this._frame = uiFrameForHtml(html);
+    constructor(settings: SettingsProvider, { wrapInDialogElement }: UiFrameControllerOptions) {
+        this._frame = uiFrameForHtml(html, { wrapInDialogElement, onDialogCancel: () => this._frame?.hide() });
         this._settings = settings;
     }
 

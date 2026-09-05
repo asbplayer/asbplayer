@@ -3,7 +3,14 @@ import type { FetchOptions } from '@project/extension/src/services/frame-bridge-
 import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
 import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 
-export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
+export type UiFrameOptions = {
+    wrapInDialogElement: boolean;
+    onDialogCancel: () => void;
+};
+
+export type UiFrameControllerOptions = Pick<UiFrameOptions, 'wrapInDialogElement'>;
+
+export const uiFrameForHtml = (html: (lang: string) => Promise<string>, options?: UiFrameOptions) => {
     return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {
         if (isFirefoxBuild) {
             // Firefox does not allow document.write() into the about:blank iframe.
@@ -16,14 +23,14 @@ export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
             doc.write(await html(lang));
             doc.close();
         }
-    });
+    }, options);
 };
 
-export const uiFrameForSrc = (src: string) => {
+export const uiFrameForSrc = (src: string, options?: UiFrameOptions) => {
     return new UiFrame(async (frame: HTMLIFrameElement) => {
         const colorScheme = frameColorScheme();
         frame.src = `${src}?colorScheme=${encodeURIComponent(colorScheme)}`;
-    });
+    }, options);
 };
 
 type FrameInitializer = (frame: HTMLIFrameElement, lang: string) => Promise<void>;
@@ -33,12 +40,15 @@ export default class UiFrame {
     private _fetchOptions: FetchOptions | undefined;
     private _client: FrameBridgeClient | undefined;
     private _frame: HTMLIFrameElement | undefined;
+    private _dialog: HTMLDialogElement | undefined;
     private _language: string = 'en';
+    private _options?: UiFrameOptions;
     private _dirty = true;
     private _bound = false;
 
-    constructor(frameInitializer: FrameInitializer) {
+    constructor(frameInitializer: FrameInitializer, options?: UiFrameOptions) {
         this._frameInitializer = frameInitializer;
+        this._options = options;
     }
 
     set fetchOptions(fetchOptions: FetchOptions) {
@@ -95,7 +105,19 @@ export default class UiFrame {
         this._frame.setAttribute('allowtransparency', 'true');
 
         this._client = new FrameBridgeClient(this._frame, this._fetchOptions);
-        document.body.appendChild(this._frame);
+
+        let element: HTMLElement;
+
+        if (this._options?.wrapInDialogElement) {
+            this._dialog = document.createElement('dialog');
+            this._dialog.appendChild(this._frame);
+            this._dialog.addEventListener('cancel', this._options.onDialogCancel);
+            element = this._dialog;
+        } else {
+            element = this._frame;
+        }
+
+        document.body.appendChild(element);
 
         await this._frameInitializer(this._frame, this._language);
         await this._client.bind();
@@ -104,16 +126,24 @@ export default class UiFrame {
 
     show() {
         this._frame?.classList.remove('asbplayer-hide');
+        if (this._dialog && !this._dialog.open) {
+            this._dialog.showModal();
+        }
     }
 
     hide() {
         this._frame?.classList.add('asbplayer-hide');
         this._frame?.blur();
+        this._dialog?.close();
     }
 
     unbind() {
         this._dirty = true;
         this._client?.unbind();
         this._frame?.remove();
+        if (this._dialog) {
+            this._dialog.remove();
+            this._dialog.removeEventListener('cancel', this._options!.onDialogCancel);
+        }
     }
 }

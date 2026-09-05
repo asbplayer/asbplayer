@@ -9,6 +9,6 @@ const colorScheme = params.get('colorScheme');
 
 if (colorScheme === 'normal' || colorScheme === 'light' || colorScheme === 'dark') {
     document.documentElement.style.setProperty('color-scheme', colorScheme, 'important');
-} else if (colorScheme === 'none') {
+} else if (colorScheme === 'light dark') {
     document.documentElement.style.setProperty('color-scheme', 'light dark', 'important');
 }

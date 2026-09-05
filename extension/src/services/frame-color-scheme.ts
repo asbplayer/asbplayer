@@ -11,7 +11,7 @@ export const frameColorScheme = () => {
     const dark = documentColorScheme.includes('dark');
 
     if (light && dark) {
-        return 'none';
+        return 'light dark';
     }
 
     if (light) {
@@ -29,7 +29,7 @@ export const frameColorSchemeClass = () => {
     const colorScheme = frameColorScheme();
 
     switch (colorScheme) {
-        case 'none':
+        case 'light dark':
             return 'asbplayer-color-scheme-light-dark';
         case 'light':
             return 'asbplayer-color-scheme-light';

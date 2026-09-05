@@ -133,6 +133,7 @@ export default defineContentScript({
                             hasPageScript,
                             frameId: frameInfoBroadcaster?.frameId,
                             videoSrcChangesIndicateNewVideo: page.config.videoSrcChangesIndicateNewVideo ?? false,
+                            wrapUiFramesInDialogElements: page.config.wrapUiFramesInDialogElements ?? false,
                         });
                         b.bind();
                         bindings.push(b);
@@ -179,10 +180,13 @@ export default defineContentScript({
 
             const videoSelectController = new VideoSelectController(bindings, {
                 isBindingsSorted: page.config.preferredVideoElementSelector !== undefined,
+                wrapInDialogElement: page.config.wrapUiFramesInDialogElements ?? false,
             });
             videoSelectController.bind();
 
-            const ankiUiController = new TabAnkiUiController(settingsProvider);
+            const ankiUiController = new TabAnkiUiController(settingsProvider, {
+                wrapInDialogElement: page.config.wrapUiFramesInDialogElements ?? false,
+            });
             let statisticsOverlayController: StatisticsOverlayController | undefined;
 
             if (isParentDocument) {

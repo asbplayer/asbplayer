@@ -242,6 +242,11 @@
             "key": "archive",
             "host": "archive\\.org",
             "searchShadowRootsForVideoElements": true
+        },
+        {
+            "key": "appletv",
+            "host": "tv\\.apple\\.com",
+            "wrapUiFramesInDialogElements": true
         }
     ]
 }

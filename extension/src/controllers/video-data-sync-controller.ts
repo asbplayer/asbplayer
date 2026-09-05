@@ -20,6 +20,7 @@ import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
 import type Binding from '@project/extension/src/services/binding';
 import { currentPageDelegate } from '@project/extension/src/services/pages';
 import type UiFrame from '@project/extension/src/services/ui-frame';
+import type { UiFrameControllerOptions } from '@project/extension/src/services/ui-frame';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import i18n from 'i18next';
@@ -97,7 +98,7 @@ export default class VideoDataSyncController {
     private _dataReceivedEventTarget?: EventTarget;
     private _isTutorial: boolean;
 
-    constructor(context: Binding, settings: SettingsProvider) {
+    constructor(context: Binding, settings: SettingsProvider, { wrapInDialogElement }: UiFrameControllerOptions) {
         this._context = context;
         this._settings = settings;
         this._autoSync = false;
@@ -110,7 +111,7 @@ export default class VideoDataSyncController {
             extension: 'srt',
         };
         this._domain = new URL(window.location.href).host;
-        this._frame = uiFrameForHtml(html);
+        this._frame = uiFrameForHtml(html, { wrapInDialogElement, onDialogCancel: () => this._hideAndResume() });
         this._isTutorial = isOnTutorialPage();
     }
 
