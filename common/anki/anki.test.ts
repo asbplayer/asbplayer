@@ -54,6 +54,7 @@ const testAnkiSettings: AnkiSettings = {
         track3: { order: 9, display: true },
     },
     customAnkiFieldSettings: {},
+    ankiRefreshBrowserAfterUpdate: false,
 };
 
 const makeCardInfo = (overrides: Partial<CardInfo> = {}): CardInfo => ({
@@ -1516,5 +1517,113 @@ describe('Anki', () => {
         const anki = new Anki(testAnkiSettings, fetcher);
 
         await expect(anki.version()).rejects.toThrow('boom');
+    });
+});
+
+describe('refreshing the Anki card browser after an update', () => {
+    const refreshSettings: AnkiSettings = { ...testAnkiSettings, ankiRefreshBrowserAfterUpdate: true };
+
+    const exportArguments = (mode: ExportArguments['mode'], noteId?: number): ExportArguments => ({
+        text: 'updated sentence',
+        track1: undefined,
+        track2: undefined,
+        track3: undefined,
+        definition: undefined,
+        audioClip: undefined,
+        image: undefined,
+        word: undefined,
+        source: undefined,
+        url: undefined,
+        customFieldValues: {},
+        tags: [],
+        mode,
+        noteId,
+    });
+
+    const ankiConnectFetcher = (onAction?: (body: any) => any) => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockImplementation(async (_url: any, body: any) => {
+            const custom = onAction?.(body);
+
+            if (custom !== undefined) {
+                return custom;
+            }
+
+            switch (body.action) {
+                case 'findNotes':
+                    return ankiConnectResponse([42]);
+                case 'notesInfo':
+                    return ankiConnectResponse([{ noteId: body.params.notes[0], fields: {} }]);
+                default:
+                    return ankiConnectResponse(null);
+            }
+        });
+        return fetcher;
+    };
+
+    const requestedActions = (fetcher: MockFetcher) =>
+        fetcher.fetch.mock.calls.map(([, body]: [any, any]) => ({ action: body.action, params: body.params }));
+
+    it('refreshes the updated note after updating the last card when enabled', async () => {
+        const fetcher = ankiConnectFetcher();
+        const anki = new Anki(refreshSettings, fetcher);
+
+        await expect(anki.export(exportArguments('updateLast'))).resolves.toBe(42);
+
+        expect(requestedActions(fetcher)).toEqual([
+            { action: 'findNotes', params: { query: 'added:1' } },
+            { action: 'notesInfo', params: { notes: [42] } },
+            { action: 'updateNoteFields', params: expect.any(Object) },
+            { action: 'guiBrowse', params: { query: 'nid:1' } },
+            { action: 'guiBrowse', params: { query: 'nid:42' } },
+        ]);
+    });
+
+    it('does not refresh the card browser when the setting is disabled', async () => {
+        const fetcher = ankiConnectFetcher();
+        const anki = new Anki(testAnkiSettings, fetcher);
+
+        await expect(anki.export(exportArguments('updateLast'))).resolves.toBe(42);
+
+        expect(requestedActions(fetcher).map(({ action }) => action)).toEqual([
+            'findNotes',
+            'notesInfo',
+            'updateNoteFields',
+        ]);
+    });
+
+    it('refreshes the provided note after updating a specific card when enabled', async () => {
+        const fetcher = ankiConnectFetcher();
+        const anki = new Anki(refreshSettings, fetcher);
+
+        await expect(anki.export(exportArguments('updateSpecific', 84))).resolves.toBe(84);
+
+        expect(requestedActions(fetcher)).toEqual([
+            { action: 'notesInfo', params: { notes: [84] } },
+            { action: 'updateNoteFields', params: expect.any(Object) },
+            { action: 'guiBrowse', params: { query: 'nid:1' } },
+            { action: 'guiBrowse', params: { query: 'nid:84' } },
+        ]);
+    });
+
+    it('does not fail the export when refreshing the card browser fails', async () => {
+        const fetcher = ankiConnectFetcher((body) => {
+            if (body.action === 'guiBrowse' && body.params.query === 'nid:42') {
+                return { result: null, error: 'guiBrowse failed' };
+            }
+
+            return undefined;
+        });
+        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const anki = new Anki(refreshSettings, fetcher);
+
+        await expect(anki.export(exportArguments('updateLast'))).resolves.toBe(42);
+        expect(consoleError).toHaveBeenCalledWith(
+            '[asbplayer][anki/connect]',
+            'Failed to refresh Anki card browser after updating note:',
+            expect.any(Error)
+        );
+
+        consoleError.mockRestore();
     });
 });

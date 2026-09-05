@@ -103,6 +103,9 @@ class SettingsAccessor {
     get recordWithAudioPlayback() {
         return this.settings.recordWithAudioPlayback;
     }
+    get ankiRefreshBrowserAfterUpdate() {
+        return this.settings.ankiRefreshBrowserAfterUpdate;
+    }
 }
 
 const settingsAccessor = new SettingsAccessor();
