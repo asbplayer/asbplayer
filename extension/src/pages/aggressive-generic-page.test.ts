@@ -82,7 +82,7 @@ it('discovers contextual subtitle metadata observed through JSON.parse', async (
         await expect(discovery.videoData(video)).resolves.toMatchObject({
             subtitles: [
                 {
-                    label: 'Japanese',
+                    label: '日本語',
                     language: 'ja',
                     url: 'http://localhost/captions/ja.vtt',
                     extension: 'vtt',
@@ -282,7 +282,7 @@ it('uses one bounded aggressive pass for a large late hydration payload', async 
         await expect(discovery.videoData(video)).resolves.toMatchObject({
             subtitles: [
                 {
-                    label: 'eng-us',
+                    label: 'English (United States)',
                     language: 'eng-us',
                     url: 'https://cdn.example/timedtext?id=1',
                     extension: 'vtt',
@@ -406,7 +406,7 @@ it('follows a subtitle metadata reference once and applies response URL context'
         const expected = {
             subtitles: [
                 {
-                    label: 'es',
+                    label: 'Español',
                     language: 'es',
                     url: 'https://example.com/captions/es.vtt',
                     extension: 'vtt',
@@ -1291,7 +1291,7 @@ it('discovers extensionless DASH subtitles using representation MIME metadata', 
         await expect(discovery.videoData(video)).resolves.toMatchObject({
             subtitles: [
                 {
-                    label: 'en',
+                    label: 'English',
                     language: 'en',
                     extension: 'ttml2',
                     url: ['https://cdn.example/media/captions?id=en'],

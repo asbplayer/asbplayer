@@ -22,6 +22,7 @@ import {
     bindVideoDataDiscovery,
     deduplicateTracks,
     detectedSubtitleLabel,
+    genericSubtitleDisplayLabel,
     hasSubtitleMetadataHint,
     isJsonContentType,
     normalizedContentType,
@@ -455,7 +456,7 @@ function requestUrl(input: RequestInfo | URL) {
 
 function dashTrack(
     playlist: Playlist,
-    language: string,
+    lang: string,
     metadata?: MpdTrackMetadata
 ): VideoDataSubtitleTrackDef | undefined {
     const urls = playlist.segments
@@ -470,7 +471,13 @@ function dashTrack(
         (metadata?.mimeType?.includes('ttml') === true ? 'ttml2' : undefined) ??
         (metadata?.mimeType?.includes('vtt') === true ? 'vtt' : undefined);
     if (extension === undefined) return;
-    return { label: language || detectedSubtitleLabel, language: language || undefined, url, extension };
+    const language = lang || undefined;
+    return {
+        label: genericSubtitleDisplayLabel(undefined, language, detectedSubtitleLabel),
+        language,
+        url,
+        extension,
+    };
 }
 
 function standaloneHlsTrack(manifestUrl: string, manifest: any): VideoDataSubtitleTrack | undefined {

@@ -6,12 +6,15 @@ import {
     basenameForVideo,
     bindVideoDataDiscovery,
     deduplicateTracks,
+    detectedSubtitleLabel,
+    genericSubtitleDisplayLabel,
     hasSubtitleMetadataHint,
     isJsonContentType,
     normalizedContentType,
     responseTextWithinLimit,
     tracksFromJson,
 } from '@project/extension/src/pages/subtitle-discovery';
+import { languageDisplayName } from '@project/extension/src/pages/util';
 
 function appendVideo() {
     const video = document.createElement('video');
@@ -34,6 +37,66 @@ afterEach(() => {
     document.head.querySelectorAll('meta[property="og:title"]').forEach((element) => element.remove());
     document.title = '';
     history.replaceState(null, '', '/');
+});
+
+it('selects the best generic subtitle display label', () => {
+    expect(genericSubtitleDisplayLabel('Spanish commentary', 'es-ES', detectedSubtitleLabel)).toBe(
+        'Español (España) · commentary'
+    );
+    expect(genericSubtitleDisplayLabel('es', undefined, detectedSubtitleLabel)).toBe('Español');
+    expect(genericSubtitleDisplayLabel(undefined, 'es-ES', detectedSubtitleLabel)).toBe('Español (España)');
+    expect(genericSubtitleDisplayLabel(undefined, undefined, detectedSubtitleLabel)).toBe(detectedSubtitleLabel);
+});
+
+it('appends unresolvable language tags to the available label using the dot separator', () => {
+    expect(genericSubtitleDisplayLabel('Commentary', 'qaa', detectedSubtitleLabel)).toBe('Commentary · qaa');
+    expect(genericSubtitleDisplayLabel(undefined, 'qaa', detectedSubtitleLabel)).toBe(`${detectedSubtitleLabel} · qaa`);
+});
+
+it.each([
+    ['SDH', 'sdh', ['SDH', 'sdh', 'Sdh']],
+    ['HI', 'hi', ['HI', 'hi', 'Hi']],
+    ['OC', 'oc', ['OC', 'oc', 'Oc']],
+    ['VI', 'vi', ['VI', 'vi', 'Vi']],
+    ['ALT', 'alt', ['ALT', 'alt', 'Alt']],
+    ['FAN', 'fan', ['FAN', 'fan', 'Fan']],
+])(
+    'recognizes the subtitle qualifier %s case-insensitively instead of as language code %s',
+    (_qualifier, language, labels) => {
+        const languageDisplay = languageDisplayName(language);
+
+        for (const label of labels) {
+            expect(genericSubtitleDisplayLabel(label, undefined, detectedSubtitleLabel)).toBe(label);
+            expect(genericSubtitleDisplayLabel(label, language, detectedSubtitleLabel)).toBe(
+                `${languageDisplay} · ${label}`
+            );
+        }
+    }
+);
+
+it('omits language-code labels that are redundant with the supplied language', () => {
+    expect(genericSubtitleDisplayLabel('en', 'en', detectedSubtitleLabel)).toBe('English');
+    expect(genericSubtitleDisplayLabel('eng', 'en-US', detectedSubtitleLabel)).toBe('English (United States)');
+    expect(genericSubtitleDisplayLabel('es', 'es-ES', detectedSubtitleLabel)).toBe('Español (España)');
+});
+
+it('preserves label details while adding or refining its language display name', () => {
+    expect(genericSubtitleDisplayLabel('SDH', 'en-US', detectedSubtitleLabel)).toBe('English (United States) · SDH');
+    expect(genericSubtitleDisplayLabel('English SDH', 'en-US', detectedSubtitleLabel)).toBe(
+        'English (United States) · SDH'
+    );
+    expect(genericSubtitleDisplayLabel('English (United States) SDH', 'en-US', detectedSubtitleLabel)).toBe(
+        'English (United States) · SDH'
+    );
+    expect(genericSubtitleDisplayLabel('English', 'en-US', detectedSubtitleLabel)).toBe('English (United States)');
+});
+
+it('recognizes localized language names as equivalent to the supplied language', () => {
+    expect(genericSubtitleDisplayLabel('Japanese', 'ja', detectedSubtitleLabel)).toBe('日本語');
+    expect(genericSubtitleDisplayLabel('Portuguese', 'pt-BR', detectedSubtitleLabel)).toBe('Português (Brasil)');
+    expect(genericSubtitleDisplayLabel('Spanish commentary', 'es-ES', detectedSubtitleLabel)).toBe(
+        'Español (España) · commentary'
+    );
 });
 
 it('normalizes JSON MIME types and restricts resolved URLs to supported protocols', () => {
@@ -95,7 +158,7 @@ it('accepts a supported format as strict subtitle evidence', () => {
         ).tracks
     ).toMatchObject([
         {
-            label: 'English auto-generated',
+            label: 'English (United States) · auto-generated',
             language: 'eng-us',
             url: 'https://cdn.example/opaque',
             extension: 'vtt',
@@ -120,7 +183,7 @@ it('uses baseUrl as a source only inside strong subtitle context', () => {
 
     expect(contextual.extensionlessTracks).toEqual([
         {
-            label: 'Portuguese',
+            label: 'Português (Brasil)',
             language: 'pt-br',
             url: 'https://cdn.example/timedtext?id=1',
         },
@@ -135,11 +198,28 @@ it('uses baseUrl as a source only inside strong subtitle context', () => {
 });
 
 it('discovers contextual string tracks but keeps strict discovery unambiguous', () => {
-    const metadata = { subtitles: { English: '/captions/en.vtt', ignored: '/video.mp4' } };
+    const metadata = { subtitles: { ja: '/captions/ja.vtt', ignored: '/video.mp4' } };
 
     expect(tracksFromJson(metadata, 'http://localhost/').tracks).toEqual([]);
     expect(tracksFromJson(metadata, 'http://localhost/', { contextual: true }).tracks).toMatchObject([
-        { label: 'English', url: 'http://localhost/captions/en.vtt', extension: 'vtt' },
+        { label: '日本語', url: 'http://localhost/captions/ja.vtt', extension: 'vtt' },
+    ]);
+});
+
+it('adds language display names without discarding explicit JSON labels', () => {
+    const discovery = tracksFromJson(
+        {
+            tracks: [
+                { kind: 'subtitles', src: '/captions/ja.vtt', language: 'ja', label: 'ja' },
+                { kind: 'captions', src: '/captions/es.vtt', language: 'es', label: 'Spanish commentary' },
+            ],
+        },
+        'http://localhost/'
+    );
+
+    expect(discovery.tracks).toMatchObject([
+        { label: '日本語', language: 'ja', url: 'http://localhost/captions/ja.vtt' },
+        { label: 'Español · commentary', language: 'es', url: 'http://localhost/captions/es.vtt' },
     ]);
 });
 
@@ -182,7 +262,7 @@ it('inherits subtitle metadata through namespaced JSON-serialized XML', () => {
         }).tracks
     ).toMatchObject([
         {
-            label: 'ko',
+            label: '한국어',
             language: 'ko',
             url: 'https://cdn.example.com/captions/korean',
             extension: 'vtt',
@@ -201,7 +281,7 @@ it('uses response provenance as root subtitle context', () => {
         }).tracks
     ).toMatchObject([
         {
-            label: 'es',
+            label: 'Español',
             language: 'es',
             url: 'https://example.com/resources/spanish.vtt',
             extension: 'vtt',

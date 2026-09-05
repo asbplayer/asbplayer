@@ -40,7 +40,7 @@ it('fetches subtitle track segments and resolves relative URIs against each mani
             [
                 'https://cdn.example/media/master.m3u8',
                 `#EXTM3U
-#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="subs/en.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="en",LANGUAGE="en",URI="subs/en.m3u8"
 #EXT-X-STREAM-INF:BANDWIDTH=1280000,SUBTITLES="subs"
 video.m3u8`,
             ],
@@ -142,8 +142,8 @@ video.m3u8`);
     );
 
     expect(tracks).toMatchObject([
-        { label: 'TTML', extension: 'ttml2' },
-        { label: 'Other', extension: 'scc' },
+        { label: 'English · TTML', extension: 'ttml2' },
+        { label: '日本語 · Other', extension: 'scc' },
     ]);
 });
 

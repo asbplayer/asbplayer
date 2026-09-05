@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import {
     canonicalLanguageTag,
     extractExtension,
+    getLocale,
     inferTracks,
     languageDisplayName,
     mediaSourceIdentity,
@@ -55,12 +56,21 @@ describe('subtitleFileExtensionForUrl', () => {
 });
 
 describe('language names', () => {
+    it('parses normalized locales and rejects invalid language tags', () => {
+        expect(getLocale(' PT_br ')?.baseName).toBe('pt-BR');
+        expect(getLocale('ja-JP-u-ca-japanese')?.language).toBe('ja');
+        expect(getLocale('invalid!')).toBeUndefined();
+    });
+
     it('canonicalizes whitespace and underscore-separated BCP-47 language tags', () => {
         expect(canonicalLanguageTag(' PT_br ')).toBe('pt-BR');
     });
 
     it('removes Unicode locale extensions from canonical language tags', () => {
         expect(canonicalLanguageTag('ja-JP-u-ca-japanese')).toBe('ja-JP');
+        const locale = getLocale('ja-JP-u-ca-japanese');
+        expect(locale).toBeDefined();
+        if (locale) expect(canonicalLanguageTag(locale)).toBe('ja-JP');
     });
 
     it('returns undefined for invalid language tags', () => {
@@ -69,7 +79,7 @@ describe('language names', () => {
 
     it('uses each canonical language autonym with standard language display', () => {
         expect(languageDisplayName('ja')).toBe('日本語');
-        expect(languageDisplayName('es-419')).toBe('español (Latinoamérica)');
+        expect(languageDisplayName('es-419')).toBe('Español (Latinoamérica)');
         expect(languageDisplayName(' JA_jp-u-ca-japanese ')).toBe('日本語 (日本)');
     });
 
