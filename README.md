@@ -19,20 +19,20 @@
 - **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**.
 - **Seek through subtitles** using a **navigable subtitle list**.
 - **Optimize language acquisition** with **playback modes** like:
-  - **Condensed playback**: Skip unsubtitled sections of video.
-  - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
-  - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
+    - **Condensed playback**: Skip unsubtitled sections of video.
+    - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
+    - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
 - **Use customizable keyboard shortcuts** to access most of asbplayer's features.
 - **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
-  - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
-  - **Reading annotation** for reading displayed above each word or based on status.
-  - **Accent annotation** such as pitch accent.
-  - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
-  - **Statistics and Comprehension** on your known words for the current media.
-  - **Word browser** to manage local and view words synced from external sources.
-  - Many more features for future releases! Some planned features include:
-    - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
-    - **Statistics and Comprehension** on your known words across media.
+    - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
+    - **Reading annotation** for reading displayed above each word or based on status.
+    - **Accent annotation** such as pitch accent.
+    - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
+    - **Statistics and Comprehension** on your known words for the current media.
+    - **Word browser** to manage local and view words synced from external sources.
+    - Many more features for future releases! Some planned features include:
+        - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
+        - **Statistics and Comprehension** on your known words across media.
 
 ## Thanks
 
@@ -194,20 +194,18 @@ Submit bugs or feature requests from the [issues page](https://github.com/asbpla
 
 ### Environment
 
-```
-node 22.17.1
-yarn 3.2.0
-```
+node 24.19.0
+pnpm 11.21.0
 
 ### Building
 
-```
+```sh
 # Install dependencies
-yarn
+pnpm install
 
 # Builds Firefox extension to extension/.output/asbplayer-<version>-firefox.zip
-yarn workspace @project/extension run wxt zip -b firefox
+pnpm --filter @project/extension run wxt zip -b firefox
 
 # Builds Firefox for Android extension to extension/.output/asbplayer-<version>-firefox-android.zip
-yarn workspace @project/extension run wxt zip -b firefox-android --mv2
+pnpm --filter @project/extension run wxt zip -b firefox-android --mv2
 ```

@@ -1,0 +1,21 @@
+minimumReleaseAge: 720
+
+packages:
+    - 'client'
+    - 'common'
+    - 'extension'
+    - 'docs'
+    - 'scripts/loc'
+
+allowBuilds:
+    core-js: true
+    core-js-pure: true
+    esbuild: true
+    unrs-resolver: true
+
+overrides:
+    'vite': '^8.2.2'
+    '@vitejs/plugin-react': '^6.1.1'
+
+patchedDependencies:
+    'lamejs@1.2.0': patches/lamejs-npm-1.2.0-b0315d05aa.patch

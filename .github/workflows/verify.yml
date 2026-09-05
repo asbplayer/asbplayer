@@ -2,26 +2,20 @@ name: Verify
 
 on:
     push:
-        branches: main
+        branches: [main]
     pull_request:
-        branches: main
+        branches: [main]
 
 jobs:
     build:
         runs-on: ubuntu-latest
 
-        strategy:
-            matrix:
-                node-version: [22.x]
         steps:
-            - uses: actions/checkout@v3
-            - name: Use Node.js ${{ matrix.node-version }}
-              uses: actions/setup-node@v3
-              with:
-                  node-version: ${{ matrix.node-version }}
-                  cache: 'npm'
-            - run: npm install --global yarn
-            - run: yarn set version 3.2.0
-            - run: yarn install
-            - run: yarn workspace @project/extension run zip
-            - run: yarn workspace @project/client run build
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+
+            - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
+            - run: pnpm --filter @project/extension run zip
+            - run: pnpm --filter @project/client run build

@@ -1,0 +1,14 @@
+name: Setup Node and pnpm
+description: Installs Node.js and pnpm for use in GitHub Actions workflows.
+
+runs:
+    using: composite
+    steps:
+        - name: Setup pnpm
+          uses: pnpm/action-setup@v6
+          with:
+              cache: true
+        - name: Setup Node.js
+          uses: actions/setup-node@v6
+          with:
+              node-version-file: 'package.json'
