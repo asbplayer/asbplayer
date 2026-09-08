@@ -29,6 +29,8 @@ import type {
     NotifyErrorMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PrepareAnimatedWebpRecordingMessage,
+    PrepareAnimatedWebpRecordingResponse,
     PlaybackState,
     PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
@@ -73,7 +75,7 @@ import {
     StopRecordingErrorCode,
     VideoDataUiOpenReason,
 } from '@project/common';
-import type { SeekableTracks } from '@project/common/settings';
+import type { MediaFragmentFormatSetting, SeekableTracks } from '@project/common/settings';
 import {
     calculateSeekableTracksValue,
     extractAnkiSettings,
@@ -120,6 +122,11 @@ import type { SubtitleOffsetOptions } from '@project/common/playback/playback-en
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
 import { mediaSourceIdentity } from '@project/extension/src/pages/util';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
+import {
+    armAnimatedWebpCapture,
+    discardArmedAnimatedWebpCapture,
+} from '@project/extension/src/services/animated-webp-capture';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -221,6 +228,7 @@ export default class Binding {
     private cleanScreenshot: boolean;
     private audioPaddingStart: number;
     private audioPaddingEnd: number;
+    private mediaFragmentFormat: MediaFragmentFormatSetting;
     private maxImageWidth: number;
     private maxImageHeight: number;
     private trimBlackBars = false;
@@ -293,6 +301,7 @@ export default class Binding {
         this.clickToMineDefaultAction = PostMineAction.showAnkiDialog;
         this.audioPaddingStart = 0;
         this.audioPaddingEnd = 500;
+        this.mediaFragmentFormat = 'jpeg';
         this.maxImageWidth = 0;
         this.maxImageHeight = 0;
         this.copyToClipboardOnMine = false;
@@ -1347,6 +1356,7 @@ export default class Binding {
         this.imageDelay = currentSettings.streamingScreenshotDelay;
         this.audioPaddingStart = currentSettings.audioPaddingStart;
         this.audioPaddingEnd = currentSettings.audioPaddingEnd;
+        this.mediaFragmentFormat = currentSettings.mediaFragmentFormat;
         this.clickToMineDefaultAction = currentSettings.clickToMineDefaultAction;
         this.maxImageWidth = currentSettings.maxImageWidth;
         this.maxImageHeight = currentSettings.maxImageHeight;
@@ -1563,12 +1573,21 @@ export default class Binding {
             return;
         }
 
+        let animatedWebpArmed = false;
+
         if (this.recordMedia) {
             this.recordingState = RecordingState.requested;
             this.recordingPostMineAction = postMineAction;
             this.wasPlayingBeforeRecordingMedia = !this.video.paused;
             this.recordingMediaStartedTimestamp = this.currentTimeMs;
             this.recordingMediaWithScreenshot = this.takeScreenshot;
+
+            // Negotiate and open the tab-capture stream before seeking, so it's already flowing by the
+            // time playback resumes at the padding-adjusted start (see animated-webp-capture.ts).
+            if (this.takeScreenshot && this.mediaFragmentFormat === 'webp' && !isFirefoxBuild) {
+                animatedWebpArmed = await this._armAnimatedWebpCapture();
+            }
+
             const start = Math.max(0, subtitle.start - this.audioPaddingStart);
             await this.seek(start);
             await this.play();
@@ -1602,6 +1621,7 @@ export default class Binding {
                 customFieldValues,
                 isBulkExport,
                 noteId,
+                animatedWebpArmed,
                 ...this._imageCaptureParams,
             },
             src: this._registeredVideoSrc,
@@ -2186,6 +2206,32 @@ export default class Binding {
         }
 
         return this.audioStream.active ? this.audioStream : undefined;
+    }
+
+    // Negotiates settings + a tabCapture stream and opens it (getUserMedia) right now, before the mining
+    // seek, instead of leaving that negotiation to happen afterward (which is slow enough to clip the
+    // start of the clip once the seek jumps back to the padding-adjusted mining start). Returns whether
+    // the capture was armed - record-media-handler falls back to negotiating one itself if not.
+    private async _armAnimatedWebpCapture(): Promise<boolean> {
+        try {
+            const prepareCommand: VideoToExtensionCommand<PrepareAnimatedWebpRecordingMessage> = {
+                sender: 'asbplayer-video',
+                message: { command: 'prepare-animated-webp-recording', recordAudio: true },
+                src: this._registeredVideoSrc,
+            };
+            const response: PrepareAnimatedWebpRecordingResponse = await browser.runtime.sendMessage(prepareCommand);
+
+            if (response.error || !response.streamId) {
+                return false;
+            }
+
+            await armAnimatedWebpCapture(response.streamId, response.fps, response.quality, true);
+            return true;
+        } catch (e) {
+            discardArmedAnimatedWebpCapture();
+            asbError('recording/prepare-animated-webp', e);
+            return false;
+        }
     }
 
     private async _sendAudioBase64(base64: string, requestId: string, encodeAsMp3: boolean) {

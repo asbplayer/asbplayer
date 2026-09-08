@@ -93,21 +93,26 @@ export default class RecordMediaHandler {
         }
 
         if (useAnimatedWebp) {
-            const { maxWidth, maxHeight, rect, frameId } = message;
-            const fps = await this._settingsProvider.getSingle('animatedImageFps');
-            const quality = await this._settingsProvider.getSingle('animatedImageQuality');
+            const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = message;
 
             try {
-                const streamId = await tabCaptureStreamId(tabId);
+                // When the content script already armed a capture before the seek (see binding.ts /
+                // animated-webp-capture.ts), skip re-negotiating settings and a tabCapture stream - it
+                // would just be discarded, and doing it again here is exactly the latency this avoids.
+                const negotiation = message.animatedWebpArmed
+                    ? undefined
+                    : {
+                          streamId: await tabCaptureStreamId(tabId),
+                          fps: await this._settingsProvider.getSingle('animatedImageFps'),
+                          quality: await this._settingsProvider.getSingle('animatedImageQuality'),
+                      };
                 const { base64, audioBase64 } = await recordAnimatedWebp(
                     tabId,
                     src,
-                    streamId,
                     windowMs,
-                    fps,
-                    quality,
                     message.record,
-                    { maxWidth, maxHeight, rect, frameId }
+                    { maxWidth, maxHeight, rect, frameId, trimBlackBars },
+                    negotiation
                 );
                 imageModel = {
                     base64,
@@ -244,7 +249,7 @@ export default class RecordMediaHandler {
                 extension: 'webm',
             },
         };
-        return (await browser.runtime.sendMessage(command)) as string;
+        return browser.runtime.sendMessage(command);
     }
 
     private _notifyScreenshotTaken(src: string, tabId: number) {
@@ -253,7 +258,7 @@ export default class RecordMediaHandler {
             message: { command: 'screenshot-taken' },
             src,
         };
-        browser.tabs.sendMessage(tabId, command);
+        void browser.tabs.sendMessage(tabId, command);
     }
 
     private _notifyRecordingFinished(src: string, tabId: number) {
