@@ -318,6 +318,7 @@
             "progressCompleted": "Exported {{current}} of {{total}}"
         },
         "playbackRate": "Vitesse de lecture : {{rate}}",
+        "processingClip": "Processing clip…",
         "savedTimestamp": "Enregistré : {{timestamp}}",
         "updatedCard": "Carte mise à jour : {{result}}",
         "enabledRepeatPlayback": "Répéter la lecture : Activé",
@@ -397,6 +398,9 @@
         "mediaFragmentCaptureFormat": "Capture format",
         "mediaFragmentFormatScreenshot": "Screenshot",
         "mediaFragmentFormatVideoClip": "Video clip (local video only)",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality",
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
@@ -643,10 +647,7 @@
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
         "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy",
-        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
-        "animatedImageFps": "Animated image FPS",
-        "animatedImageQuality": "Animated image quality"
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
     },
     "statistics": {
         "title": "Statistics",

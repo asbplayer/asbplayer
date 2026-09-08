@@ -318,6 +318,7 @@
             "progressCompleted": "已导出 {{current}} / {{total}}"
         },
         "playbackRate": "播放速度：{{Rate}}",
+        "processingClip": "Processing clip…",
         "savedTimestamp": "已保存进度：{{timestamp}}",
         "updatedCard": "已更新卡片：{{result}}",
         "enabledRepeatPlayback": "循环模式：已启用",
@@ -397,6 +398,9 @@
         "mediaFragmentCaptureFormat": "Capture format",
         "mediaFragmentFormatScreenshot": "Screenshot",
         "mediaFragmentFormatVideoClip": "Video clip (local video only)",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality",
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
@@ -643,10 +647,7 @@
         "webSocketInterface": "WebSocket 接口",
         "yomitanHelperText": "Yomitan API 配置说明详见 <0>此处</0>。",
         "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy",
-        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
-        "animatedImageFps": "Animated image FPS",
-        "animatedImageQuality": "Animated image quality"
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
     },
     "statistics": {
         "title": "统计数据",

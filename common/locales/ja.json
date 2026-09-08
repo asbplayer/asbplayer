@@ -318,6 +318,7 @@
             "progressCompleted": "{{current}} / {{total}} をエクスポートしました"
         },
         "playbackRate": "再生速度：{{rate}}",
+        "processingClip": "Processing clip…",
         "savedTimestamp": "保存しました：{{timestamp}}",
         "updatedCard": "カードの更新：{{result}}",
         "enabledRepeatPlayback": "リピートプレイバック：オン",
@@ -397,6 +398,9 @@
         "mediaFragmentCaptureFormat": "キャプチャ形式",
         "mediaFragmentFormatScreenshot": "スクリーンショット",
         "mediaFragmentFormatVideoClip": "ビデオクリップ（ローカルビデオのみ）",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality",
         "mediaFragmentMaxClipLength": "クリップの最大時間",
         "mediaFragmentTrimEnd": "開始時のカット時間",
         "mediaFragmentTrimStart": "終了時のカット時間",
@@ -643,10 +647,7 @@
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。",
         "seekableTracks": "操作対象の字幕トラック（プレイバックモード/ショートカット）",
-        "autoCopyableTracks": "自動コピー対象の字幕トラック",
-        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
-        "animatedImageFps": "Animated image FPS",
-        "animatedImageQuality": "Animated image quality"
+        "autoCopyableTracks": "自動コピー対象の字幕トラック"
     },
     "statistics": {
         "title": "統計",

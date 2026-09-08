@@ -318,6 +318,7 @@
             "progressCompleted": "Exported {{current}} of {{total}}"
         },
         "playbackRate": "재생 속도: {{rate}}",
+        "processingClip": "Processing clip…",
         "savedTimestamp": "저장 완료: {{timestamp}}",
         "updatedCard": "카드 업데이트 완료: {{result}}",
         "enabledRepeatPlayback": "반복 재생: 켜짐",
@@ -397,6 +398,9 @@
         "mediaFragmentCaptureFormat": "Capture format",
         "mediaFragmentFormatScreenshot": "Screenshot",
         "mediaFragmentFormatVideoClip": "Video clip (local video only)",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality",
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
@@ -643,10 +647,7 @@
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
         "seekableTracks": "Subtitle tracks eligible for keyboard shortcut seeking and play mode behavior",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy",
-        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
-        "animatedImageFps": "Animated image FPS",
-        "animatedImageQuality": "Animated image quality"
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
     },
     "statistics": {
         "title": "Statistics",
