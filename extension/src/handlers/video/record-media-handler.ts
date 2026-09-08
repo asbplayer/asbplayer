@@ -1,5 +1,6 @@
-import ImageCapturer from '../../services/image-capturer';
-import {
+import { asbError } from '@project/common/util';
+import type ImageCapturer from '@project/extension/src/services/image-capturer';
+import type {
     AudioModel,
     Command,
     ImageModel,
@@ -12,16 +13,15 @@ import {
     RecordingFinishedMessage,
     EncodeMp3InServiceWorkerMessage,
     CardModel,
-    AudioErrorCode,
-    ImageErrorCode,
-    PostMineAction,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { CardPublisher } from '../../services/card-publisher';
-import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
-import { recordAnimatedWebp, tabCaptureStreamId } from '../../services/video-capturer';
-import { ensureOffscreenAudioServiceDocument } from '../../services/offscreen-document';
-import { isFirefoxBuild } from '../../services/build-flags';
+import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
+import { recordAnimatedWebp, tabCaptureStreamId } from '@project/extension/src/services/video-capturer';
+import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -50,25 +50,25 @@ export default class RecordMediaHandler {
     }
 
     async handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
-        const senderTab = sender.tab!;
         const recordMediaCommand = command as VideoToExtensionCommand<RecordMediaAndForwardSubtitleMessage>;
-        await this._recordAndForward(recordMediaCommand, sender, senderTab);
+        await this._recordAndForward(recordMediaCommand, sender);
     }
 
     private async _recordAndForward(
         recordMediaCommand: VideoToExtensionCommand<RecordMediaAndForwardSubtitleMessage>,
-        sender: Browser.runtime.MessageSender,
-        senderTab: Browser.tabs.Tab
+        sender: Browser.runtime.MessageSender
     ) {
         const message = recordMediaCommand.message;
         const subtitle = message.subtitle;
-        const tabId = senderTab.id!;
         const src = recordMediaCommand.src;
         let audioPromise: Promise<string> | undefined;
         let imagePromise: Promise<string> | undefined;
         let imageModel: ImageModel | undefined = undefined;
         let audioModel: AudioModel | undefined = undefined;
         let encodeAsMp3 = false;
+
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) throw new Error('Cannot record media without a valid tab ID');
 
         // Capture window (subtitle duration adjusted for playback rate + padding), shared by audio
         // recording and the animated-WebP capture.
@@ -119,7 +119,7 @@ export default class RecordMediaHandler {
                     audioModel = await this._buildAnimatedAudioModel(audioBase64, encodeAsMp3, message);
                 }
             } catch (e) {
-                console.error(e);
+                asbError('recording/animated-webp', e);
                 imageModel = { base64: '', extension: 'webp', error: ImageErrorCode.captureFailed };
             }
 
@@ -142,7 +142,7 @@ export default class RecordMediaHandler {
                 rect,
                 frameId,
             });
-            imagePromise.finally(() => this._notifyScreenshotTaken(src, tabId));
+            void imagePromise.finally(() => this._notifyScreenshotTaken(src, tabId));
         }
 
         if (audioPromise) {
@@ -182,7 +182,7 @@ export default class RecordMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                console.error(e);
+                asbError('recording/screenshot', e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',
@@ -191,7 +191,7 @@ export default class RecordMediaHandler {
             }
         }
 
-        const { isBulkExport, ...messageWithoutBulkFlag } = message;
+        const { isBulkExport, noteId, ...messageWithoutBulkFlag } = message;
         const card: CardModel = {
             image: imageModel,
             audio: audioModel,
@@ -199,9 +199,9 @@ export default class RecordMediaHandler {
         };
 
         if (isBulkExport) {
-            this._cardPublisher.publishBulk(card, tabId, src);
+            void this._cardPublisher.publishBulk(card, tabId, src);
         } else {
-            this._cardPublisher.publish(card, message.postMineAction, tabId, src);
+            void this._cardPublisher.publish(card, message.postMineAction, tabId, src, noteId);
         }
     }
 
@@ -243,7 +243,7 @@ export default class RecordMediaHandler {
                 extension: 'webm',
             },
         };
-        return (await browser.runtime.sendMessage(command)) as string;
+        return browser.runtime.sendMessage(command);
     }
 
     private _notifyScreenshotTaken(src: string, tabId: number) {
@@ -252,7 +252,7 @@ export default class RecordMediaHandler {
             message: { command: 'screenshot-taken' },
             src,
         };
-        browser.tabs.sendMessage(tabId, command);
+        void browser.tabs.sendMessage(tabId, command);
     }
 
     private _notifyRecordingFinished(src: string, tabId: number) {
@@ -261,6 +261,6 @@ export default class RecordMediaHandler {
             message: { command: 'recording-finished' },
             src,
         };
-        browser.tabs.sendMessage(tabId, command).catch(() => {});
+        void browser.tabs.sendMessage(tabId, command).catch(() => {});
     }
 }

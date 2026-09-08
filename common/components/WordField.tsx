@@ -1,13 +1,14 @@
+import { asbError } from '@project/common/util';
 import { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';
 import { useTranslation, Trans } from 'react-i18next';
-import { Anki } from '../anki';
+import type { Anki } from '@project/common/anki';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import SearchIcon from '@mui/icons-material/Search';
-import Tooltip from './Tooltip';
-import TutorialBubble from './TutorialBubble';
+import Tooltip from '@project/common/components/Tooltip';
+import TutorialBubble from '@project/common/components/TutorialBubble';
 
 interface Props {
     anki: Anki;
@@ -50,13 +51,15 @@ export default function WordField({
             return;
         }
 
-        const timeout = setTimeout(async () => {
-            try {
-                setDuplicateNotes(await anki.findNotesWithWord(trimmedWord));
-                setLastSearchedWord(trimmedWord);
-            } catch (e) {
-                console.error(e);
-            }
+        const timeout = setTimeout(() => {
+            void (async () => {
+                try {
+                    setDuplicateNotes(await anki.findNotesWithWord(trimmedWord));
+                    setLastSearchedWord(trimmedWord);
+                } catch (e) {
+                    asbError('anki/connect', e);
+                }
+            })();
         }, 500);
 
         return () => clearTimeout(timeout);
@@ -112,7 +115,7 @@ export default function WordField({
                     input: {
                         endAdornment: (
                             <InputAdornment position="end">
-                                <Tooltip title={t('ankiDialog.searchInAnki')!}>
+                                <Tooltip title={t('ankiDialog.searchInAnki')}>
                                     <span>
                                         <IconButton
                                             disabled={disabled || !wordField || !text || text.trim() === ''}

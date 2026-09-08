@@ -1,6 +1,6 @@
 import TableRow from '@mui/material/TableRow';
 import styled from '@mui/styles/styled';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 
 const TableRowWithHoverEffect = styled(TableRow)<Theme>(({ theme }) => ({
     '&:hover .MuiIconButton-root': {

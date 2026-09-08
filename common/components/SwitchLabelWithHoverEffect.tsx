@@ -1,5 +1,5 @@
 import styled from '@mui/styles/styled';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
 
 const SwitchLabelWithHoverEffect = styled(LabelWithHoverEffect)(() => ({
     justifyContent: 'space-between',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { VideoSubtitleSplitBehavior } from '../../settings';
+import { VideoSubtitleSplitBehavior } from '@project/common/settings';
 
 interface ResolveVideoSubtitleSplitLayoutArgs {
     behavior: VideoSubtitleSplitBehavior;

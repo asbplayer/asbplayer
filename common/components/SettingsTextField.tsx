@@ -1,7 +1,8 @@
 import React from 'react';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
-import MuiTextField, { type TextFieldProps } from '@mui/material/TextField';
+import MuiTextField from '@mui/material/TextField';
+import type { TextFieldProps } from '@mui/material/TextField';
 
 const SettingsTextField: React.FC<TextFieldProps> = ({ label, ...rest }) => {
     return (

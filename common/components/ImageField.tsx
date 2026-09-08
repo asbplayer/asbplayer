@@ -5,10 +5,11 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import { useTranslation } from 'react-i18next';
-import { MediaFragment, MediaFragmentErrorCode } from '@project/common';
-import { type Theme } from '@mui/material';
-import { useImageData } from '../hooks/use-image-data';
-import Tooltip from './Tooltip';
+import type { MediaFragment } from '@project/common';
+import { MediaFragmentErrorCode } from '@project/common';
+import type { Theme } from '@mui/material';
+import { useImageData } from '@project/common/hooks/use-image-data';
+import Tooltip from '@project/common/components/Tooltip';
 import ImageIcon from '@mui/icons-material/Image';
 
 interface StyleProps {
@@ -48,10 +49,10 @@ const useImageHelperText = (image?: MediaFragment) => {
                 setImageHelperText(undefined);
             } else if (image.error === MediaFragmentErrorCode.fileLinkLost) {
                 setImageAvailable(false);
-                setImageHelperText(t('ankiDialog.imageFileLinkLost')!);
+                setImageHelperText(t('ankiDialog.imageFileLinkLost'));
             } else if (image.error === MediaFragmentErrorCode.captureFailed) {
                 setImageAvailable(false);
-                setImageHelperText(t('ankiDialog.imageCaptureFailed')!);
+                setImageHelperText(t('ankiDialog.imageCaptureFailed'));
             }
         }
     }, [image, t]);
@@ -114,7 +115,7 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
                                 <>
                                     <Tooltip
                                         disabled={!image.canChangeTimestamp || !imageAvailable}
-                                        title={t('ankiDialog.imagePreview')!}
+                                        title={t('ankiDialog.imagePreview')}
                                     >
                                         <span>
                                             <IconButton disabled={!imageAvailable} onClick={() => {}} edge="end">
@@ -123,7 +124,7 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
                                         </span>
                                     </Tooltip>
                                     {copyAllowed && (
-                                        <Tooltip disabled={!imageAvailable} title={t('ankiDialog.copyToClipboard')!}>
+                                        <Tooltip disabled={!imageAvailable} title={t('ankiDialog.copyToClipboard')}>
                                             <span>
                                                 <IconButton
                                                     disabled={!imageAvailable}

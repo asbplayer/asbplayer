@@ -1,28 +1,32 @@
-import {
+import type {
     AnkiField,
     AnkiFieldSettings,
     AnkiSettings,
     AsbplayerSettings,
-    CustomAnkiFieldSettings,
     KeyBindName,
-    SubtitleListPreference,
     SubtitleSettings,
     TextSubtitleSettings,
+    DictionaryTrack,
+} from '.';
+import {
+    AutoPauseResumeMode,
+    SubtitleListPreference,
+    SubtitleListTimestampDisplay,
+    SubtitleVisibility,
     textSubtitleSettingsKeys,
     VideoSubtitleSplitBehavior,
     TokenMatchStrategyPriority,
     TokenMatchStrategy,
     TokenStyling,
-    DictionaryTrack,
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
     getFullyKnownTokenStatus,
     TokenStatus,
     TokenState,
 } from '.';
-import { AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
+import { AutoPausePreference, PlayMode, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
 
-// @ts-ignore
+// @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;
 
 const defaultSubtitleTextSettings = {
@@ -153,12 +157,31 @@ export const defaultSettings: AsbplayerSettings = {
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
+    autoPauseResumeMode: AutoPauseResumeMode.manual,
+    autoPauseResumeDelayMs: 300,
+    autoPauseFixedDurationMs: 2000,
+    autoPauseMinimumDurationMs: 1000,
+    autoPauseMaximumDurationMs: 4000,
+    autoPauseTimePerCharacterMs: 60,
+    subtitleVisibility: SubtitleVisibility.whenDue,
+    subtitleTriggerStartOffset: 0,
+    subtitleTriggerEndOffset: 0,
+    subtitleTriggerGapEndOffset: 0,
+    subtitleTriggerGapStartOffset: 0,
     seekableTracks: 1, // Bitset with first bit flipped i.e. first track
     autoCopyableTracks: 1, // Also bitset
     subtitleHtml: SubtitleHtml.remove,
     seekDuration: 3,
     speedChangeStep: 0.1,
+    playbackRate: 1,
+    playbackRateNotificationEnabled: true,
+    rememberPlaybackRate: false,
     fastForwardModePlaybackRate: 2.7,
+    fastForwardPlaybackMinimumSkipIntervalMs: 500,
+    repeatCountPreference: 0,
+    rememberPlaybackModes: false,
+    lastPlaybackModes: [PlayMode.normal],
+    lastPlaybackPositions: [],
     keyBindSet: {
         togglePlay: { keys: 'space' },
         toggleAutoPause: { keys: isMacOs ? '⇧+P' : 'shift+P' },
@@ -190,10 +213,13 @@ export const defaultSettings: AsbplayerSettings = {
         exportCard: { keys: '' },
         takeScreenshot: { keys: isMacOs ? '⇧+⌃+V' : 'ctrl+shift+V' },
         toggleRecording: { keys: isMacOs ? '⇧+⌃+R' : 'ctrl+shift+R' },
+        selectSubtitleTrack: { keys: isMacOs ? '⇧+⌃+F' : 'ctrl+shift+F' },
         decreasePlaybackRate: { keys: isMacOs ? '⇧+⌃+[' : 'ctrl+shift+[' },
         increasePlaybackRate: { keys: isMacOs ? '⇧+⌃+]' : 'ctrl+shift+]' },
         toggleSidePanel: { keys: '`' },
         toggleRepeat: { keys: isMacOs ? '⇧+R' : 'shift+R' },
+        toggleSubtitleVisibility: { keys: '' },
+        cycleAutoPauseResumeMode: { keys: '' },
         moveBottomSubtitlesUp: { keys: '' },
         moveBottomSubtitlesDown: { keys: '' },
         moveTopSubtitlesUp: { keys: '' },
@@ -215,6 +241,8 @@ export const defaultSettings: AsbplayerSettings = {
     postMiningPlaybackState: PostMinePlayback.remember,
     themeType: 'dark',
     videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.rememberSplitPosition,
+    showSubtitleListMiningButton: true,
+    subtitleListTimestampDisplay: SubtitleListTimestampDisplay.startAndEnd,
     copyToClipboardOnMine: false,
     rememberSubtitleOffset: true,
     lastSubtitleOffset: 0,
@@ -267,6 +295,7 @@ export const defaultSettings: AsbplayerSettings = {
         svtplay: {},
         urplay: {},
         archive: {},
+        crunchyroll: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
@@ -276,7 +305,7 @@ export const defaultSettings: AsbplayerSettings = {
 };
 
 export const NUM_DICTIONARY_TRACKS = defaultSettings.dictionaryTracks.length;
-export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenStatusColors.length;
+export const NUM_TOKEN_STATUSES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStatuses.length;
 export const NUM_TOKEN_STATES = defaultDictionaryTrackSettings.dictionaryTokenAnnotationConfig.onStates.length;
 
 export interface AnkiFieldUiModel {
@@ -358,7 +387,7 @@ export const textSubtitleSettingsForTrack = (
             return true;
         };
 
-        let mergedSettings: any = {};
+        const mergedSettings: any = {};
 
         for (const key of textSubtitleSettingsKeys) {
             if (valuesAllSame(key)) {
@@ -372,12 +401,10 @@ export const textSubtitleSettingsForTrack = (
     }
 
     if (track === 0 || track > subtitleSettings.subtitleTracksV2.length) {
-        return Object.fromEntries(
-            textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]])
-        ) as unknown as TextSubtitleSettings;
+        return Object.fromEntries(textSubtitleSettingsKeys.map((k) => [k, subtitleSettings[k]]));
     }
 
-    return subtitleSettings.subtitleTracksV2[track - 1] as TextSubtitleSettings;
+    return subtitleSettings.subtitleTracksV2[track - 1];
 };
 
 export const changeForTextSubtitleSetting = (
@@ -623,9 +650,9 @@ export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) =>
     ensureDictionaryTracksConsistency(settings);
 
     let keyBindSetModified = false;
-    let newKeyBindSet: any = {};
+    const newKeyBindSet: any = {};
     let ankiFieldSettingsModified = false;
-    let newAnkiFieldSettings: any = {};
+    const newAnkiFieldSettings: any = {};
 
     if (settings.keyBindSet !== undefined) {
         const keyBindSet = settings.keyBindSet;
@@ -691,7 +718,7 @@ export class SettingsProvider {
     }
 
     async get<K extends keyof AsbplayerSettings>(keys: K[]): Promise<Pick<AsbplayerSettings, K>> {
-        let parameters: Partial<AsbplayerSettings> = {};
+        const parameters: Partial<AsbplayerSettings> = {};
 
         for (const key of keys) {
             parameters[key] = defaultSettings[key];
@@ -732,11 +759,11 @@ export class SettingsProvider {
         }
         const customAnkiFieldSettings =
             settings.customAnkiFieldSettings ??
-            ((
+            (
                 await this._storage.get({
                     customAnkiFieldSettings: defaultSettings.customAnkiFieldSettings,
                 })
-            ).customAnkiFieldSettings as CustomAnkiFieldSettings);
+            ).customAnkiFieldSettings!;
 
         let modifyCustomAnkiFieldSettings = false;
 
@@ -755,7 +782,7 @@ export class SettingsProvider {
     }
 
     async activeProfile() {
-        return await this._storage.activeProfile();
+        return this._storage.activeProfile();
     }
 
     async setActiveProfile(name: string | undefined) {
@@ -763,7 +790,7 @@ export class SettingsProvider {
     }
 
     async profiles() {
-        return await this._storage.profiles();
+        return this._storage.profiles();
     }
 
     async addProfile(name: string) {
@@ -788,7 +815,7 @@ export const prefixKey = (key: string, profile: string) => {
 };
 
 export const unprefixKey = (key: string, profile: string) => {
-    return (key as string).substring(profile.length + 7);
+    return key.substring(profile.length + 7);
 };
 
 export const prefixedSettings = <P extends string>(
@@ -798,7 +825,7 @@ export const prefixedSettings = <P extends string>(
     const prefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        prefixed[prefixKey(key as keyof AsbplayerSettings, profile)] = settings[key as keyof AsbplayerSettings];
+        prefixed[prefixKey(key, profile)] = settings[key as keyof AsbplayerSettings];
     }
 
     return prefixed;
@@ -808,7 +835,7 @@ export const unprefixedSettings = <P extends string>(settings: Partial<Asbplayer
     const unprefixed: any = {};
 
     for (const key of Object.keys(settings)) {
-        const unprefixedKey = unprefixKey(key as keyof AsbplayerSettingsProfile<P>, profile);
+        const unprefixedKey = unprefixKey(key, profile);
         unprefixed[unprefixedKey] = settings[key as keyof AsbplayerSettingsProfile<P>];
     }
 

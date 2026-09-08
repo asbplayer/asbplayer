@@ -1,4 +1,4 @@
-import {
+import type {
     AckTabsMessage,
     AsbplayerHeartbeatMessage,
     AsbplayerInstance,
@@ -12,7 +12,7 @@ import {
     VideoTabModel,
     SubtitleTrack,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
+import type { SettingsProvider } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
 interface SlimTab {
@@ -56,9 +56,9 @@ export default class TabRegistry {
 
         // Update video element state on tab changes
         // Triggers events for when synced video elements appear/disappear
-        browser.tabs.onRemoved.addListener((tabId, removeInfo) => {
-            this._removeVideoElementsInTab(tabId);
-            this._removeAsbplayersInTab(tabId);
+        browser.tabs.onRemoved.addListener((tabId) => {
+            void this._removeVideoElementsInTab(tabId);
+            void this._removeAsbplayersInTab(tabId);
         });
         browser.tabs.onUpdated.addListener((tabId, updateInfo) => {
             let shouldGarbageCollect = false;
@@ -72,8 +72,8 @@ export default class TabRegistry {
             }
 
             if (shouldGarbageCollect) {
-                this._removeVideoElementsInTab(tabId);
-                this._removeAsbplayersInTab(tabId);
+                void this._removeVideoElementsInTab(tabId);
+                void this._removeAsbplayersInTab(tabId);
             }
         });
 
@@ -81,8 +81,8 @@ export default class TabRegistry {
         // onReplaced, not onRemoved, for the old id...without this the old id's bound
         // media would remain in the registry forever.
         browser.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
-            this._removeVideoElementsInTab(removedTabId);
-            this._removeAsbplayersInTab(removedTabId);
+            void this._removeVideoElementsInTab(removedTabId);
+            void this._removeAsbplayersInTab(removedTabId);
         });
     }
 
@@ -209,7 +209,7 @@ export default class TabRegistry {
             syncedVideoElement,
         }: AsbplayerHeartbeatMessage
     ) {
-        this._updateAsbplayers(
+        void this._updateAsbplayers(
             tab,
             asbplayerId,
             videoPlayer,
@@ -237,7 +237,7 @@ export default class TabRegistry {
             } else {
                 await browser.runtime.sendMessage(command);
             }
-        } catch (e) {
+        } catch {
             // Swallow
         }
     }
@@ -255,7 +255,7 @@ export default class TabRegistry {
             syncedVideoElement,
         }: AckTabsMessage
     ) {
-        this._updateAsbplayers(
+        void this._updateAsbplayers(
             tab,
             asbplayerId,
             videoPlayer,
@@ -474,7 +474,7 @@ export default class TabRegistry {
         const messageId = uuidv4();
 
         return new Promise<R | undefined>((resolve) => {
-            let timeout: ReturnType<typeof setTimeout>;
+            let timeout: ReturnType<typeof setTimeout>; // eslint-disable-line prefer-const
 
             const listener = (request: any) => {
                 if (
@@ -494,7 +494,7 @@ export default class TabRegistry {
             }, timeoutMs);
 
             browser.runtime.onMessage.addListener(listener);
-            this.publishCommandToAsbplayers({
+            void this.publishCommandToAsbplayers({
                 asbplayerId,
                 commandFactory: (asbplayer) => commandFactory(asbplayer, messageId),
             });
@@ -508,7 +508,7 @@ export default class TabRegistry {
             } else if (asbplayer.sidePanel) {
                 await browser.runtime.sendMessage(command);
             }
-        } catch (e) {
+        } catch {
             // Swallow as this usually only indicates that the tab is not an asbplayer tab
         }
     }
@@ -526,7 +526,7 @@ export default class TabRegistry {
                 const command = commandFactory(videoElement);
 
                 if (command !== undefined) {
-                    browser.tabs.sendMessage(tabId, command);
+                    void browser.tabs.sendMessage(tabId, command);
                 }
             }
         }
@@ -549,7 +549,7 @@ export default class TabRegistry {
                 const command = commandFactory(tab);
 
                 if (command !== undefined) {
-                    browser.tabs.sendMessage(tab.id, command);
+                    void browser.tabs.sendMessage(tab.id, command);
                 }
             }
         }
@@ -591,12 +591,12 @@ export default class TabRegistry {
         }
 
         if (allowTabCreation) {
-            return new Promise(async (resolve, reject) => {
-                if (asbplayerTabCount === 0) {
-                    await this._createNewTab();
-                }
+            if (asbplayerTabCount === 0) {
+                await this._createNewTab();
+            }
 
-                this._anyAsbplayerTab(resolve, reject, 0, 10, filter);
+            return new Promise((resolve, reject) => {
+                void this._anyAsbplayerTab(resolve, reject, 0, 10, filter);
             });
         }
 
@@ -623,17 +623,12 @@ export default class TabRegistry {
     }
 
     async _createNewTab() {
-        return new Promise<Browser.tabs.Tab>(async (resolve, reject) => {
-            const activeTabs = await browser.tabs.query({ active: true });
-            const activeTabIndex = !activeTabs || activeTabs.length === 0 ? undefined : activeTabs[0].index + 1;
-            browser.tabs.create(
-                {
-                    active: false,
-                    url: await this._settings.getSingle('streamingAppUrl'),
-                    index: activeTabIndex,
-                },
-                resolve
-            );
+        const activeTabs = await browser.tabs.query({ active: true });
+        const activeTabIndex = !activeTabs || activeTabs.length === 0 ? undefined : activeTabs[0].index + 1;
+        return browser.tabs.create({
+            active: false,
+            url: await this._settings.getSingle('streamingAppUrl'),
+            index: activeTabIndex,
         });
     }
 
@@ -658,7 +653,9 @@ export default class TabRegistry {
             }
         }
 
-        setTimeout(() => this._anyAsbplayerTab(resolve, reject, attempt + 1, maxAttempts, filter), 1000);
+        setTimeout(() => {
+            void this._anyAsbplayerTab(resolve, reject, attempt + 1, maxAttempts, filter);
+        }, 1000);
     }
 
     async focusTabForMediaId(mediaId: string) {

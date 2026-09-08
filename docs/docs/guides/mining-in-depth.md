@@ -15,7 +15,7 @@ There are multiple ways to open the **Anki Export Dialog**:
 
 1. **Mine Subtitle** <NoteAddIcon /> button that can be found in the **Subtitle List** of the **Side Panel** or on the website.
 2. **Mine Subtitle** <NoteAddIcon /> button in the **Overlay UI** on streaming videos or on the mobile website.
-3. The **mine current subtitle and open Anki dialog** keyboard shortcut - `Ctrl + Shift + X` by default.
+3. The **mine current subtitle and open Anki dialog** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + X` by default.
 4. Right-click → asbplayer → **Mine Subtitle** on streaming video.
 
 :::info
@@ -72,12 +72,12 @@ A dialog-less mining flow with Yomitan looks like this:
 
 1. Using Yomitan, highlight the word inside the subtitles that you would like to mine.
 2. Use Yomitan's card-creation button to create a card.
-3. Immediately use asbplayer's **update last card** keyboard shortcut - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
+3. Immediately use asbplayer's **update last card** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + U` - to update the card with asbplayer-supplied content.
 
 The disadvantage of this flow is that skipping the dialog means skipping the opportunity to modify the card. However, there are ways to work around this:
 
 - Instead of directly updating the last card at the final step, you can always use `Ctrl + Shift + X` instead to open the dialog, adjust the card, and finally **update last card** using the dialog GUI. With this method you still go through the dialog, but retain the benefit of Yomitan's automatically-supplied word definition.
-- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** keyboard shortcut - `Ctrl + Shift + V` by default.
+- The **Anki Export Dialog** can always be opened _after_ card creation with the **manually take screenshot** [Mining keyboard shortcut](../reference/settings.md#mining-keyboard-shortcuts) - `Ctrl + Shift + V` by default.
 
 ### One click
 

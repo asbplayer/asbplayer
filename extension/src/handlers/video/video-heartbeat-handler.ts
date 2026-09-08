@@ -1,5 +1,5 @@
-import { Command, Message, VideoHeartbeatMessage, VideoToExtensionCommand } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import type { Command, Message, VideoHeartbeatMessage, VideoToExtensionCommand } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class VideoHeartbeatHandler {
     private readonly tabRegistry: TabRegistry;
@@ -20,7 +20,7 @@ export default class VideoHeartbeatHandler {
         const videoToExtensionCommand = command as VideoToExtensionCommand<VideoHeartbeatMessage>;
 
         if (sender.tab) {
-            this.tabRegistry.onVideoElementHeartbeat(
+            void this.tabRegistry.onVideoElementHeartbeat(
                 sender.tab,
                 videoToExtensionCommand.src,
                 videoToExtensionCommand.message

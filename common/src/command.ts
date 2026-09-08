@@ -1,4 +1,4 @@
-import { Message, TabsMessage } from './message';
+import type { Message, TabsMessage } from '@project/common/src/message';
 
 export interface Command<T extends Message> {
     readonly sender: string;

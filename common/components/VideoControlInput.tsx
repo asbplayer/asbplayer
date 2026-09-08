@@ -1,5 +1,7 @@
-import Input, { InputProps } from '@mui/material/Input';
-import React, { MutableRefObject, useCallback, useEffect, useState } from 'react';
+import type { InputProps } from '@mui/material/Input';
+import Input from '@mui/material/Input';
+import type { MutableRefObject } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { makeStyles } from '@mui/styles';
 
 const useStyles = makeStyles(() => ({

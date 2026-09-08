@@ -1,4 +1,4 @@
-import { VideoData } from '@project/common';
+import type { VideoData } from '@project/common';
 
 export default defineUnlistedScript(() => {
     document.addEventListener('asbplayer-get-synced-data', () => {

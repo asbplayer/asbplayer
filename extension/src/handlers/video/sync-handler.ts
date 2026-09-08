@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     Command,
     ExtensionSyncMessage,
     ExtensionToAsbPlayerCommand,
@@ -6,7 +7,7 @@ import {
     PlayerSyncMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class SyncHandler {
     private readonly tabRegistry: TabRegistry;
@@ -66,10 +67,13 @@ export default class SyncHandler {
             };
 
             if (asbplayerId !== undefined) {
-                this.tabRegistry.publishCommandToAsbplayers({ asbplayerId, commandFactory: () => playerSyncCommand });
+                void this.tabRegistry.publishCommandToAsbplayers({
+                    asbplayerId,
+                    commandFactory: () => playerSyncCommand,
+                });
             }
         } catch (error) {
-            console.error(error);
+            asbError('video/sync', error);
         }
     }
 }

@@ -1,4 +1,4 @@
-import TutorialBubble from './TutorialBubble';
+import TutorialBubble from '@project/common/components/TutorialBubble';
 import Link from '@mui/material/Link';
 import { Trans } from 'react-i18next';
 

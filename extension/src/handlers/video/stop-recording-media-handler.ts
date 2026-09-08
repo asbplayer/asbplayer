@@ -1,22 +1,22 @@
-import ImageCapturer from '../../services/image-capturer';
-import {
+import { asbError, mockSurroundingSubtitles } from '@project/common/util';
+import type ImageCapturer from '@project/extension/src/services/image-capturer';
+import type {
     AudioModel,
     Command,
-    ImageErrorCode,
     ImageModel,
     Message,
-    PostMineAction,
     StopRecordingMediaMessage,
     SubtitleModel,
     VideoToExtensionCommand,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { mockSurroundingSubtitles } from '@project/common/util';
-import { CardPublisher } from '../../services/card-publisher';
-import AudioRecorderService, {
+import { ImageErrorCode, PostMineAction } from '@project/common';
+import type { SettingsProvider } from '@project/common/settings';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import {
     TimedRecordingInProgressError,
     NoRecordingInProgressServiceError,
-} from '../../services/audio-recorder-service';
+} from '@project/extension/src/services/audio-recorder-service';
 
 export default class StopRecordingMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -60,13 +60,16 @@ export default class StopRecordingMediaHandler {
 
         let imageModel: ImageModel | undefined = undefined;
 
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) throw new Error('Cannot stop recording media without a valid tab ID');
+
         if (stopRecordingCommand.message.screenshot) {
             try {
                 let lastImageBase64 = this._imageCapturer.lastImageBase64;
 
                 if (lastImageBase64 === undefined) {
                     const { maxWidth, maxHeight, rect, frameId } = stopRecordingCommand.message;
-                    lastImageBase64 = await this._imageCapturer.capture(sender.tab!.id!, stopRecordingCommand.src, 0, {
+                    lastImageBase64 = await this._imageCapturer.capture(tabId, stopRecordingCommand.src, 0, {
                         maxWidth,
                         maxHeight,
                         rect,
@@ -79,7 +82,7 @@ export default class StopRecordingMediaHandler {
                     extension: 'jpeg',
                 };
             } catch (e) {
-                console.error(e);
+                asbError('recording/screenshot', e);
                 imageModel = {
                     base64: '',
                     extension: 'jpeg',
@@ -96,7 +99,7 @@ export default class StopRecordingMediaHandler {
             }
 
             const audioBase64 = await this._audioRecorder.stop(encodeAsMp3, {
-                tabId: sender.tab!.id!,
+                tabId,
                 src: stopRecordingCommand.src,
             });
             const audioModel: AudioModel = {
@@ -109,7 +112,7 @@ export default class StopRecordingMediaHandler {
                 playbackRate: stopRecordingCommand.message.playbackRate,
             };
 
-            this._cardPublisher.publish(
+            void this._cardPublisher.publish(
                 {
                     subtitle: subtitle,
                     surroundingSubtitles: surroundingSubtitles,
@@ -120,7 +123,7 @@ export default class StopRecordingMediaHandler {
                     mediaTimestamp: stopRecordingCommand.message.startTimestamp,
                 },
                 stopRecordingCommand.message.postMineAction,
-                sender.tab!.id!,
+                tabId,
                 stopRecordingCommand.src
             );
         } catch (e) {

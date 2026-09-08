@@ -27,7 +27,7 @@ export class MiningContext {
         this._callbacks['stopped-mining'].forEach((c) => c());
     }
 
-    private _remove(callback: Function, callbacks: Callback[]) {
+    private _remove(callback: Callback, callbacks: Callback[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

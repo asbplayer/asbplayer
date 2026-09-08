@@ -40,7 +40,7 @@ Make sure that in the extension details, the extension has access to all sites.
 
 ### Keyboard shortcuts aren't working.
 
-Check the [keyboard shortcut settings](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts).
+Check the [keyboard shortcut settings](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts) or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
 
 Also, if using the extension:
 
@@ -74,6 +74,7 @@ This can happen because `Experimental Web Platform features` is enabled in `chro
 ### Enable or disable annotation for a track
 
 Annotation is considered disabled if the following settings are set to these values:
+
 - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
 - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
 - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
@@ -96,7 +97,7 @@ To clear the WaniKani word database entries for a track, set the [WaniKani API t
 
 ### Delete locally tracked words
 
-You can delete a locally tracked word by hovering over it and using the keyboard shortcut to set its status to [**Uncollected**](./reference/settings.md#keyboard-shortcuts) and toggling [**Ignored**](./reference/settings.md#keyboard-shortcuts) if it was set.
+You can delete a locally tracked word by hovering over it and using the [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set its status to **Uncollected** and toggle **Ignored** if it was set.
 
 To bulk delete locally tracked words, use the [`Word Browser`](./reference/settings.md#word-browser) to mark words as **Uncollected** and remove their states. You can also use the [`Import Words`](./reference/settings.md#import-words) feature.
 
@@ -105,7 +106,8 @@ To bulk delete locally tracked words, use the [`Word Browser`](./reference/setti
 If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
 
 If word statuses never change from **Uncollected**:
-- If you rely on local status, import words into the local word database or use the hover + keyboard shortcuts to set statuses.
+
+- If you rely on local status, import words into the local word database or use the hover + [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set statuses.
 - If you rely on Anki for status, make sure Anki is running and your **AnkiConnect URL** is correct.
     - Configure [`Anki word fields`](./reference/settings.md#anki-word-fields) (recommended) and/or [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields).
     - Run [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database).

@@ -1,5 +1,4 @@
-import {
-    AudioErrorCode,
+import type {
     AudioModel,
     Command,
     ExtensionToVideoCommand,
@@ -8,9 +7,11 @@ import {
     ShowAnkiUiAfterRerecordMessage,
     VideoToExtensionCommand,
 } from '@project/common';
-import { CardPublisher } from '../../services/card-publisher';
-import { SettingsProvider } from '@project/common/settings';
-import AudioRecorderService, { DrmProtectedStreamError } from '../../services/audio-recorder-service';
+import { AudioErrorCode } from '@project/common';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
+import type { SettingsProvider } from '@project/common/settings';
+import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
 
 export default class RerecordMediaHandler {
     private readonly _settingsProvider: SettingsProvider;
@@ -46,12 +47,15 @@ export default class RerecordMediaHandler {
         };
         let audio: AudioModel;
 
+        const tabId = sender.tab?.id;
+        if (tabId === undefined) throw new Error('Cannot rerecord media without a valid tab ID');
+
         try {
             const audioBase64 = await this._audioRecorder.startWithTimeout(
                 rerecordCommand.message.duration / rerecordCommand.message.playbackRate +
                     rerecordCommand.message.audioPaddingEnd,
                 false,
-                { src: rerecordCommand.src, tabId: sender.tab?.id! }
+                { src: rerecordCommand.src, tabId }
             );
             audio = {
                 ...baseAudioModel,
@@ -68,7 +72,7 @@ export default class RerecordMediaHandler {
             };
         }
 
-        this._cardPublisher.publish(
+        void this._cardPublisher.publish(
             {
                 audio: audio,
                 image: rerecordCommand.message.uiState.image,
@@ -79,7 +83,7 @@ export default class RerecordMediaHandler {
                 mediaTimestamp: rerecordCommand.message.timestamp,
             },
             undefined,
-            sender.tab!.id!,
+            tabId,
             rerecordCommand.src
         );
 
@@ -98,6 +102,6 @@ export default class RerecordMediaHandler {
             src: rerecordCommand.src,
         };
 
-        browser.tabs.sendMessage(sender.tab!.id!, showAnkiUiAfterRerecordCommand);
+        void browser.tabs.sendMessage(tabId, showAnkiUiAfterRerecordCommand);
     }
 }

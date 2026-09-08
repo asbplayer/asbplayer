@@ -22,7 +22,8 @@ const diff = (a, b) => {
 
 fs.readdir(localesPath, (err, files) => {
     if (err) {
-        console.error(error);
+        console.error(err);
+        return;
     }
 
     const enLocale = JSON.parse(fs.readFileSync(`${localesPath}/en.json`));

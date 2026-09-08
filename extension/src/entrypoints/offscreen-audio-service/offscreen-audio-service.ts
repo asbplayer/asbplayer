@@ -1,15 +1,15 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     StartRecordingAudioWithTimeoutMessage,
     StopRecordingAudioMessage,
     AudioBase64Message,
     StartRecordingAudioMessage,
     OffscreenDocumentToExtensionCommand,
     StartRecordingResponse,
-    StartRecordingErrorCode,
-    StopRecordingErrorCode,
     StopRecordingResponse,
     EncodeMp3InServiceWorkerMessage,
 } from '@project/common';
+import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import AudioRecorder, { TimedRecordingInProgressError, NoRecordingInProgressError } from '@/services/audio-recorder';
 import { Mp3Encoder } from '@project/common/audio-clip';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
@@ -33,13 +33,13 @@ const _sendAudioBase64 = async (base64: string, requestId: string, encodeAsMp3: 
         },
     };
 
-    browser.runtime.sendMessage(command);
+    void browser.runtime.sendMessage(command);
 };
 
 const _stream: (streamId: string) => Promise<MediaStream> = async (streamId: string) => {
     return navigator.mediaDevices.getUserMedia({
         audio: {
-            // @ts-ignore
+            // @ts-expect-error: The ts declaration is missing mandatory
             mandatory: {
                 chromeMediaSource: 'tab',
                 chromeMediaSourceId: streamId,
@@ -69,7 +69,7 @@ window.onload = async () => {
     const listener = (request: any, sender: Browser.runtime.MessageSender, sendResponse: (response?: any) => void) => {
         if (request.sender === 'asbplayer-extension-to-offscreen-document') {
             switch (request.message.command) {
-                case 'start-recording-audio-with-timeout':
+                case 'start-recording-audio-with-timeout': {
                     const startRecordingAudioWithTimeoutMessage =
                         request.message as StartRecordingAudioWithTimeoutMessage;
                     _stream(startRecordingAudioWithTimeoutMessage.streamId)
@@ -93,22 +93,24 @@ window.onload = async () => {
                             )
                         )
                         .catch((e) => {
-                            console.error(e);
+                            asbError('recording/audio', e);
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
-                case 'start-recording-audio':
+                }
+                case 'start-recording-audio': {
                     const startRecordingAudioMessage = request.message as StartRecordingAudioMessage;
                     currentRequestId = startRecordingAudioMessage.requestId;
                     _stream(startRecordingAudioMessage.streamId)
                         .then((stream) => audioRecorder.stopSafely().then(() => audioRecorder.start(stream)))
                         .then(() => sendResponse({ started: true }))
                         .catch((e) => {
-                            console.error(e);
+                            asbError('recording/audio', e);
                             sendResponse(errorResponseForError(e));
                         });
                     return true;
-                case 'stop-recording-audio':
+                }
+                case 'stop-recording-audio': {
                     const stopRecordingAudioMessage = request.message as StopRecordingAudioMessage;
                     audioRecorder
                         .stop()
@@ -118,7 +120,11 @@ window.onload = async () => {
                             };
 
                             sendResponse(successResponse);
-                            _sendAudioBase64(audioBase64, currentRequestId!, stopRecordingAudioMessage.encodeAsMp3);
+                            void _sendAudioBase64(
+                                audioBase64,
+                                currentRequestId!,
+                                stopRecordingAudioMessage.encodeAsMp3
+                            );
                         })
                         .catch((e) => {
                             let errorCode: StopRecordingErrorCode;
@@ -129,7 +135,7 @@ window.onload = async () => {
                                 // Just no-op if nothing is recording--this can happen in bulk export.
                                 errorCode = StopRecordingErrorCode.other;
                             } else {
-                                console.error(e);
+                                asbError('recording/audio', e);
                                 errorCode = StopRecordingErrorCode.other;
                             }
 
@@ -144,21 +150,23 @@ window.onload = async () => {
                             sendResponse(errorResponse);
                         });
                     return true;
-                case 'encode-mp3':
+                }
+                case 'encode-mp3': {
                     const encodeMp3Message = request.message as EncodeMp3InServiceWorkerMessage;
                     const { base64, extension } = encodeMp3Message;
 
                     Mp3Encoder.encode(base64ToBlob(base64, `audio/${extension}`), mp3WorkerFactory)
                         .then((blob) => blob.arrayBuffer())
                         .then((buffer) => sendResponse(bufferToBase64(buffer)))
-                        .catch(console.error);
+                        .catch((error) => asbError('recording/encoding', error));
                     return true;
+                }
             }
         }
     };
     browser.runtime.onMessage.addListener(listener);
 
-    window.addEventListener('beforeunload', (event) => {
+    window.addEventListener('beforeunload', () => {
         browser.runtime.onMessage.removeListener(listener);
     });
 };

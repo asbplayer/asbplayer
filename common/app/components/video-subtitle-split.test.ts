@@ -1,5 +1,9 @@
 import { VideoSubtitleSplitBehavior } from '@project/common/settings';
-import { clampSubtitlePlayerWidth, resolveVideoSubtitleSplitLayout } from './video-subtitle-split';
+import {
+    clampSubtitlePlayerWidth,
+    resolveVideoSubtitleSplitLayout,
+} from '@project/common/app/components/video-subtitle-split';
+import { expect, it } from '@jest/globals';
 
 it('uses the saved split width in remember mode', () => {
     expect(

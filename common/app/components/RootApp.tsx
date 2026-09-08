@@ -1,12 +1,14 @@
-import { Fetcher } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { Fetcher } from '@project/common';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import { isSaveOnlySettings } from '@project/common/settings';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import App from './App';
-import { AppSettingsStorage } from '../services/app-settings-storage';
-import { useSettingsProfileContext } from '../../hooks/use-settings-profile-context';
-import ChromeExtension from '../services/chrome-extension';
-import { GlobalState, GlobalStateProvider } from '../../global-state';
-import { DictionaryProvider, DictionaryStorage } from '../../dictionary-db';
+import App from '@project/common/app/components/App';
+import type { AppSettingsStorage } from '@project/common/app/services/app-settings-storage';
+import { useSettingsProfileContext } from '@project/common/hooks/use-settings-profile-context';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
+import type { GlobalState, GlobalStateProvider } from '@project/common/global-state';
+import type { DictionaryStorage } from '@project/common/dictionary-db';
+import { DictionaryProvider } from '@project/common/dictionary-db';
 
 interface Props {
     origin: string;
@@ -34,20 +36,19 @@ const RootApp = ({
     const [globalState, setGlobalState] = useState<GlobalState>();
 
     useEffect(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, [settingsProvider]);
 
     const handleSettingsChanged = useCallback(
         async (settings: Partial<AsbplayerSettings>) => {
-            setSettings((s) => ({ ...s!, ...settings }));
-
+            if (!isSaveOnlySettings(settings)) setSettings((s) => ({ ...s!, ...settings }));
             await settingsProvider.set(settings);
         },
         [settingsProvider]
     );
 
     const handleProfileChanged = useCallback(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, [settingsProvider]);
     const { refreshProfileContext, ...profilesContext } = useSettingsProfileContext({
         dictionaryProvider,
@@ -57,13 +58,13 @@ const RootApp = ({
 
     useEffect(() => {
         return settingsStorage.onSettingsUpdated(() => {
-            settingsProvider.getAll().then(setSettings);
+            void settingsProvider.getAll().then(setSettings);
             refreshProfileContext();
         });
     }, [extension, settingsProvider, settingsStorage, refreshProfileContext]);
 
     useEffect(() => {
-        globalStateProvider.getAll().then(setGlobalState);
+        void globalStateProvider.getAll().then(setGlobalState);
     }, [globalStateProvider]);
 
     const handleGlobalStateChanged = useCallback(
@@ -75,7 +76,7 @@ const RootApp = ({
 
                 return { ...s, ...state };
             });
-            globalStateProvider.set(state);
+            void globalStateProvider.set(state);
         },
         [globalStateProvider]
     );
@@ -95,6 +96,7 @@ const RootApp = ({
             extension={extension}
             fetcher={fetcher}
             onSettingsChanged={handleSettingsChanged}
+            profile={profilesContext.activeProfile}
             onGlobalStateChanged={handleGlobalStateChanged}
             {...profilesContext}
         />

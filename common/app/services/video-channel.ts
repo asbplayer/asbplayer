@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
     AppBarToggleMessageToVideoMessage,
@@ -11,6 +12,7 @@ import {
     CopyToVideoMessage,
     CurrentTimeFromVideoMessage,
     CurrentTimeToVideoMessage,
+    DurationFromVideoMessage,
     FullscreenToggleMessageToVideoMessage,
     HideSubtitlePlayerToggleToVideoMessage,
     ImageModel,
@@ -18,12 +20,12 @@ import {
     OffsetFromVideoMessage,
     OffsetToVideoMessage,
     PauseFromVideoMessage,
+    PlaybackStateFromVideoMessage,
     PlaybackRateFromVideoMessage,
     PlaybackRateToVideoMessage,
     PlayFromVideoMessage,
-    PlayMode,
+    PlayModeMessage,
     PlayModesMessage,
-    PostMineAction,
     ReadyFromVideoMessage,
     ReadyStateFromVideoMessage,
     ReadyToVideoMessage,
@@ -38,7 +40,8 @@ import {
     SaveTokenLocalToVideoMessage,
     IndexedSubtitleModel,
 } from '@project/common';
-import {
+import { PlayMode, PostMineAction } from '@project/common';
+import type {
     AnkiSettings,
     ApplyStrategy,
     MiscSettings,
@@ -46,17 +49,21 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { VideoProtocol } from './video-protocol';
+import type { VideoProtocol } from '@project/common/app/services/video-protocol';
 
 export default class VideoChannel {
     private readonly protocol: VideoProtocol;
     private time: number;
+    private paused: boolean;
+    private latestPlaybackState?: PlaybackStateFromVideoMessage;
     private isReady: boolean;
     private readyCallbacks: ((paused: boolean) => void)[];
     private playCallbacks: ((echo: boolean) => void)[];
     private pauseCallbacks: ((echo: boolean) => void)[];
+    private playbackStateCallbacks: ((state: PlaybackStateFromVideoMessage) => void)[];
     private audioTrackSelectedCallbacks: ((audioTrack: string) => void)[];
     private currentTimeCallbacks: ((currentTime: number, echo: boolean) => void)[];
+    private durationCallbacks: ((duration: number) => void)[];
     private exitCallbacks: (() => void)[];
     private offsetCallbacks: ((offset: number) => void)[];
     private playbackRateCallbacks: ((playbackRate: number, echo: boolean) => void)[];
@@ -85,6 +92,7 @@ export default class VideoChannel {
         applyStates: ApplyStrategy
     ) => void)[];
     private loadFilesCallbacks: (() => void)[];
+    private loadSubtitlesCallbacks: (() => void)[];
     private playModesCallbacks: ((modes: Set<PlayMode>) => void)[];
     private cardUpdatedDialogCallbacks: (() => void)[];
     private cardExportedDialogCallbacks: (() => void)[];
@@ -93,21 +101,26 @@ export default class VideoChannel {
     oncanplay: ((ev: Event) => void) | null = null;
     audioTracks?: AudioTrackModel[];
     selectedAudioTrack?: string;
+    playModes: Set<PlayMode>;
     duration: number;
     _playbackRate: number;
 
     constructor(protocol: VideoProtocol) {
         this.protocol = protocol;
         this.time = 0;
+        this.paused = true;
         this.duration = 0;
         this.isReady = false;
         this.readyState = 0;
         this._playbackRate = 1;
+        this.playModes = new Set([PlayMode.normal]);
         this.selectedAudioTrack = undefined;
         this.readyCallbacks = [];
         this.playCallbacks = [];
         this.pauseCallbacks = [];
+        this.playbackStateCallbacks = [];
         this.currentTimeCallbacks = [];
+        this.durationCallbacks = [];
         this.audioTrackSelectedCallbacks = [];
         this.exitCallbacks = [];
         this.offsetCallbacks = [];
@@ -121,92 +134,118 @@ export default class VideoChannel {
         this.subtitlesUpdatedCallbacks = [];
         this.saveTokenLocalCallbacks = [];
         this.loadFilesCallbacks = [];
+        this.loadSubtitlesCallbacks = [];
         this.playModesCallbacks = [];
         this.cardUpdatedDialogCallbacks = [];
         this.cardExportedDialogCallbacks = [];
 
-        const that = this;
-
         this.protocol.onMessage = (event) => {
             switch (event.data.command) {
-                case 'ready':
+                case 'ready': {
                     const readyMessage = event.data as ReadyFromVideoMessage;
 
-                    that.duration = readyMessage.duration;
-                    that.isReady = true;
-                    that.audioTracks = readyMessage.audioTracks;
-                    that.selectedAudioTrack = readyMessage.selectedAudioTrack;
-                    that.readyState = 4;
-                    that.time = readyMessage.currentTime;
+                    this.duration = readyMessage.duration;
+                    this.paused = readyMessage.paused;
+                    this.isReady = true;
+                    this.audioTracks = readyMessage.audioTracks;
+                    this.selectedAudioTrack = readyMessage.selectedAudioTrack;
+                    this.readyState = 4;
+                    this.time = readyMessage.currentTime;
                     this._playbackRate = readyMessage.playbackRate;
 
-                    for (let callback of that.readyCallbacks) {
+                    for (const callback of this.readyCallbacks) {
                         callback(readyMessage.paused);
                     }
                     break;
-                case 'readyState':
+                }
+                case 'readyState': {
                     const readyStateMessage = event.data as ReadyStateFromVideoMessage;
 
-                    that.readyState = readyStateMessage.value;
-                    if (that.readyState === 4) {
-                        that.oncanplay?.(new Event('canplay'));
+                    this.readyState = readyStateMessage.value;
+                    if (this.readyState === 4) {
+                        this.oncanplay?.(new Event('canplay'));
                     }
                     break;
-                case 'play':
+                }
+                case 'play': {
                     const playMessage = event.data as PlayFromVideoMessage;
-
-                    for (let callback of that.playCallbacks) {
+                    this.paused = false;
+                    for (const callback of this.playCallbacks) {
                         callback(playMessage.echo);
                     }
                     break;
-                case 'pause':
+                }
+                case 'pause': {
                     const pauseMessage = event.data as PauseFromVideoMessage;
-
-                    for (let callback of that.pauseCallbacks) {
+                    this.paused = true;
+                    for (const callback of this.pauseCallbacks) {
                         callback(pauseMessage.echo);
                     }
                     break;
-                case 'audioTrackSelected':
+                }
+                case 'playbackState': {
+                    const playbackStateMessage = event.data as PlaybackStateFromVideoMessage;
+                    this.latestPlaybackState = playbackStateMessage;
+                    this.time = playbackStateMessage.timestampMs / 1000;
+                    this.paused = playbackStateMessage.paused;
+                    for (const callback of this.playbackStateCallbacks) {
+                        callback(playbackStateMessage);
+                    }
+                    break;
+                }
+                case 'audioTrackSelected': {
                     const audioTrackSelectedMessage = event.data as AudioTrackSelectedFromVideoMessage;
 
-                    for (let callback of that.audioTrackSelectedCallbacks) {
-                        that.selectedAudioTrack = audioTrackSelectedMessage.id;
+                    for (const callback of this.audioTrackSelectedCallbacks) {
+                        this.selectedAudioTrack = audioTrackSelectedMessage.id;
                         callback(audioTrackSelectedMessage.id);
                     }
                     break;
-                case 'currentTime':
+                }
+                case 'currentTime': {
                     const currentTimeMessage = event.data as CurrentTimeFromVideoMessage;
 
-                    for (let callback of that.currentTimeCallbacks) {
+                    for (const callback of this.currentTimeCallbacks) {
                         callback(currentTimeMessage.value, currentTimeMessage.echo);
                     }
                     break;
+                }
+                case 'duration': {
+                    const durationMessage = event.data as DurationFromVideoMessage;
+                    this.duration = durationMessage.value;
+                    for (const callback of this.durationCallbacks) {
+                        callback(this.duration);
+                    }
+                    break;
+                }
                 case 'exit':
-                    for (let callback of that.exitCallbacks) {
+                    for (const callback of this.exitCallbacks) {
                         callback();
                     }
                     break;
-                case 'offset':
+                case 'offset': {
                     const offsetMessage = event.data as OffsetFromVideoMessage;
 
-                    for (let callback of that.offsetCallbacks) {
+                    for (const callback of this.offsetCallbacks) {
                         callback(offsetMessage.value);
                     }
                     break;
-                case 'playbackRate':
+                }
+                case 'playbackRate': {
                     const playbackRateMessage = event.data as PlaybackRateFromVideoMessage;
 
-                    for (const callback of that.playbackRateCallbacks) {
+                    for (const callback of this.playbackRateCallbacks) {
                         callback(playbackRateMessage.value, playbackRateMessage.echo);
                     }
                     break;
+                }
                 case 'popOutToggle':
-                    for (let callback of that.popOutToggleCallbacks) {
+                    for (const callback of this.popOutToggleCallbacks) {
                         callback();
                     }
                     break;
                 case 'copy':
-                    for (let callback of that.copyCallbacks) {
+                    for (const callback of this.copyCallbacks) {
                         const copyMessage = event.data as CopyMessage;
                         const { word, text, definition, customFieldValues } = copyMessage;
                         callback(
@@ -223,12 +262,12 @@ export default class VideoChannel {
                     }
                     break;
                 case 'hideSubtitlePlayerToggle':
-                    for (let callback of that.hideSubtitlePlayerToggleCallbacks) {
+                    for (const callback of this.hideSubtitlePlayerToggleCallbacks) {
                         callback();
                     }
                     break;
                 case 'appBarToggle':
-                    for (let callback of that.appBarToggleCallbacks) {
+                    for (const callback of this.appBarToggleCallbacks) {
                         callback();
                     }
                     break;
@@ -239,55 +278,69 @@ export default class VideoChannel {
                     // ignore
                     break;
                 case 'ankiDialogRequest':
-                    for (let callback of that.ankiDialogRequestCallbacks) {
+                    for (const callback of this.ankiDialogRequestCallbacks) {
                         callback();
                     }
                     break;
-                case 'toggleSubtitleTrackInList':
+                case 'toggleSubtitleTrackInList': {
                     const toggleSubtitleTrackInListMessage = event.data as ToggleSubtitleTrackInListFromVideoMessage;
 
-                    for (const callback of that.toggleSubtitleTrackInListCallbacks) {
+                    for (const callback of this.toggleSubtitleTrackInListCallbacks) {
                         callback(toggleSubtitleTrackInListMessage.track);
                     }
                     break;
-                case 'subtitlesUpdated':
+                }
+                case 'subtitlesUpdated': {
                     const subtitlesUpdatedMessage = event.data as SubtitlesUpdatedFromVideoMessage;
 
-                    for (const callback of that.subtitlesUpdatedCallbacks) {
+                    for (const callback of this.subtitlesUpdatedCallbacks) {
                         callback(subtitlesUpdatedMessage.updatedSubtitles);
                     }
                     break;
-                case 'saveTokenLocal':
+                }
+                case 'saveTokenLocal': {
                     const { track, token, status, states, applyStates } = event.data as SaveTokenLocalFromVideoMessage;
 
-                    for (const callback of that.saveTokenLocalCallbacks) {
+                    for (const callback of this.saveTokenLocalCallbacks) {
                         callback(track, token, status, states, applyStates);
                     }
                     break;
-                case 'loadFiles':
-                    for (const callback of that.loadFilesCallbacks) {
+                }
+                case 'loadFiles': {
+                    for (const callback of this.loadFilesCallbacks) {
                         callback();
                     }
                     break;
-                case 'playModes':
-                    for (let callback of that.playModesCallbacks) {
-                        const playModesMessage = event.data as PlayModesMessage;
-                        const modes = new Set<PlayMode>(playModesMessage.playModes);
-                        callback(modes);
-                    }
-                    break;
-                case 'card-updated-dialog':
-                    for (const callback of that.cardUpdatedDialogCallbacks) {
+                }
+                case 'loadSubtitles': {
+                    for (const callback of this.loadSubtitlesCallbacks) {
                         callback();
                     }
                     break;
-                case 'card-exported-dialog':
-                    for (const callback of that.cardExportedDialogCallbacks) {
+                }
+                case 'playModes': {
+                    const playModesMessage = event.data as PlayModesMessage;
+                    const modes = new Set<PlayMode>(playModesMessage.playModes);
+                    this.playModes = modes;
+                    for (const callback of this.playModesCallbacks) {
+                        callback(new Set(modes));
+                    }
+                    break;
+                }
+                case 'card-updated-dialog': {
+                    for (const callback of this.cardUpdatedDialogCallbacks) {
                         callback();
                     }
                     break;
+                }
+                case 'card-exported-dialog': {
+                    for (const callback of this.cardExportedDialogCallbacks) {
+                        callback();
+                    }
+                    break;
+                }
                 default:
-                    console.error('Unrecognized event ' + event.data.command);
+                    asbError('app/messages', 'Unrecognized event ' + event.data.command);
             }
         };
     }
@@ -314,10 +367,15 @@ export default class VideoChannel {
 
     onReady(callback: (paused: boolean) => void) {
         if (this.isReady) {
-            callback(false);
+            callback(this.paused);
         }
         this.readyCallbacks.push(callback);
         return () => this._remove(callback, this.readyCallbacks);
+    }
+
+    onDuration(callback: (duration: number) => void) {
+        this.durationCallbacks.push(callback);
+        return () => this._remove(callback, this.durationCallbacks);
     }
 
     onPlay(callback: (echo: boolean) => void) {
@@ -328,6 +386,12 @@ export default class VideoChannel {
     onPause(callback: (echo: boolean) => void) {
         this.pauseCallbacks.push(callback);
         return () => this._remove(callback, this.pauseCallbacks);
+    }
+
+    onPlaybackState(callback: (state: PlaybackStateFromVideoMessage) => void) {
+        this.playbackStateCallbacks.push(callback);
+        if (this.latestPlaybackState !== undefined) callback(this.latestPlaybackState);
+        return () => this._remove(callback, this.playbackStateCallbacks);
     }
 
     onCurrentTime(callback: (currentTime: number, echo: boolean) => void) {
@@ -420,6 +484,11 @@ export default class VideoChannel {
         return () => this._remove(callback, this.loadFilesCallbacks);
     }
 
+    onLoadSubtitles(callback: () => void) {
+        this.loadSubtitlesCallbacks.push(callback);
+        return () => this._remove(callback, this.loadSubtitlesCallbacks);
+    }
+
     onPlayModes(callback: (modes: Set<PlayMode>) => void) {
         this.playModesCallbacks.push(callback);
         return () => this._remove(callback, this.playModesCallbacks);
@@ -447,7 +516,7 @@ export default class VideoChannel {
     // Return a promise to implement the analogous HTMLMediaElement method
     play(): Promise<void> {
         this.protocol.postMessage({ command: 'play' });
-        return new Promise((resolve, reject) => resolve());
+        return new Promise((resolve) => resolve());
     }
 
     pause() {
@@ -536,10 +605,10 @@ export default class VideoChannel {
         this.protocol.postMessage(message);
     }
 
-    playModes(playModes: Set<PlayMode>) {
-        const message: PlayModesMessage = {
-            command: 'playModes',
-            playModes: [...playModes],
+    playMode(playMode: PlayMode) {
+        const message: PlayModeMessage = {
+            command: 'playMode',
+            playMode,
         };
         this.protocol.postMessage(message);
     }
@@ -647,13 +716,35 @@ export default class VideoChannel {
         const {
             themeType,
             videoSubtitleSplitBehavior,
+            showSubtitleListMiningButton,
+            subtitleListTimestampDisplay,
             copyToClipboardOnMine,
             autoPausePreference,
+            subtitleTriggerStartOffset,
+            subtitleTriggerEndOffset,
+            subtitleTriggerGapEndOffset,
+            subtitleTriggerGapStartOffset,
             seekableTracks,
             autoCopyableTracks,
             seekDuration,
             speedChangeStep,
+            playbackRate,
+            playbackRateNotificationEnabled,
+            rememberPlaybackRate,
             fastForwardModePlaybackRate,
+            fastForwardPlaybackMinimumSkipIntervalMs,
+            streamingCondensedPlaybackMinimumSkipIntervalMs,
+            repeatCountPreference,
+            autoPauseResumeMode,
+            autoPauseResumeDelayMs,
+            autoPauseFixedDurationMs,
+            autoPauseMinimumDurationMs,
+            autoPauseMaximumDurationMs,
+            autoPauseTimePerCharacterMs,
+            subtitleVisibility,
+            rememberPlaybackModes,
+            lastPlaybackModes,
+            lastPlaybackPositions,
             keyBindSet,
             rememberSubtitleOffset,
             autoCopyCurrentSubtitle,
@@ -678,13 +769,35 @@ export default class VideoChannel {
             value: {
                 themeType,
                 videoSubtitleSplitBehavior,
+                showSubtitleListMiningButton,
+                subtitleListTimestampDisplay,
                 copyToClipboardOnMine,
                 autoPausePreference,
+                subtitleTriggerStartOffset,
+                subtitleTriggerEndOffset,
+                subtitleTriggerGapEndOffset,
+                subtitleTriggerGapStartOffset,
                 seekableTracks,
                 autoCopyableTracks,
                 seekDuration,
                 speedChangeStep,
+                playbackRate,
+                playbackRateNotificationEnabled,
+                rememberPlaybackRate,
                 fastForwardModePlaybackRate,
+                fastForwardPlaybackMinimumSkipIntervalMs,
+                streamingCondensedPlaybackMinimumSkipIntervalMs,
+                repeatCountPreference,
+                autoPauseResumeMode,
+                autoPauseResumeDelayMs,
+                autoPauseFixedDurationMs,
+                autoPauseMinimumDurationMs,
+                autoPauseMaximumDurationMs,
+                autoPauseTimePerCharacterMs,
+                subtitleVisibility,
+                rememberPlaybackModes,
+                lastPlaybackModes,
+                lastPlaybackPositions,
                 keyBindSet,
                 rememberSubtitleOffset,
                 autoCopyCurrentSubtitle,
@@ -740,6 +853,8 @@ export default class VideoChannel {
         this.readyCallbacks = [];
         this.playCallbacks = [];
         this.pauseCallbacks = [];
+        this.playbackStateCallbacks = [];
+        this.latestPlaybackState = undefined;
         this.currentTimeCallbacks = [];
         this.audioTrackSelectedCallbacks = [];
         this.exitCallbacks = [];
@@ -758,7 +873,7 @@ export default class VideoChannel {
         this.cardExportedDialogCallbacks = [];
     }
 
-    _remove(callback: Function, callbacks: Function[]) {
+    _remove<T>(callback: T, callbacks: T[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

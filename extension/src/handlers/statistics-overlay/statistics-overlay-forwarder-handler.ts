@@ -1,4 +1,4 @@
-import { Command, Message } from '@project/common';
+import type { Command, Message } from '@project/common';
 
 export default class StatisticsOverlayForwarderHandler {
     get sender() {
@@ -14,7 +14,13 @@ export default class StatisticsOverlayForwarderHandler {
             return;
         }
 
-        browser.tabs.sendMessage(sender.tab.id, command);
+        // For now only element-exists requires a response
+        if (command.message.command === 'element-exists') {
+            void browser.tabs.sendMessage(sender.tab.id, command).then(sendResponse);
+            return true;
+        }
+
+        void browser.tabs.sendMessage(sender.tab.id, command);
         return false;
     }
 }

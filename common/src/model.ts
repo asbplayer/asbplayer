@@ -1,7 +1,7 @@
-import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
-import type { OnlineSubtitleSourceConfig } from '../global-state';
-import type { TokenStatusInfo } from '../dictionary-db';
-import type { PitchAccentPosition } from '../yomitan/yomitan';
+import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings/settings';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 type Profile = { name: string };
 
@@ -47,11 +47,14 @@ export interface Tokenization {
 
 export interface SubtitleModel {
     readonly text: string;
+    readonly originalText?: string;
     readonly textImage?: SubtitleTextImage;
     readonly start: number;
     readonly end: number;
     readonly originalStart: number;
     readonly originalEnd: number;
+    readonly displayTime?: string;
+    readonly displayEndTime?: string;
     readonly track: number;
     readonly index?: number;
     readonly tokenization?: Tokenization;
@@ -59,6 +62,18 @@ export interface SubtitleModel {
 
 export interface IndexedSubtitleModel extends SubtitleModel {
     readonly index: number;
+}
+
+export interface PlaybackState {
+    readonly timestampMs: number;
+    readonly showingSubtitleIndexes: readonly number[];
+    readonly hiddenSubtitleIndexes?: readonly number[];
+    readonly paused: boolean;
+}
+
+export interface DisplaySubtitleModel extends IndexedSubtitleModel {
+    readonly displayTime: string;
+    readonly displayEndTime: string;
 }
 
 export interface TokenizedSubtitleModel extends IndexedSubtitleModel {
@@ -195,9 +210,10 @@ export interface AnkiUiSavedState {
 export interface VideoDataSubtitleTrackDef {
     label: string;
     language?: string;
-    url: string | string[];
+    url?: string | string[];
+    file?: File;
     extension: string;
-    localFile?: boolean;
+    capturedDuringPlayback?: boolean;
 }
 
 export interface VideoDataSubtitleTrack extends VideoDataSubtitleTrackDef {
@@ -233,7 +249,6 @@ export interface VideoDataUiModel {
     subtitles?: VideoDataSubtitleTrack[];
     error?: string;
     selectedSubtitle?: string[];
-    showSubSelect?: boolean;
     openReason?: VideoDataUiOpenReason;
     openedFromAsbplayerId?: string;
     defaultCheckboxState?: boolean;
@@ -241,6 +256,9 @@ export interface VideoDataUiModel {
     settings: VideoDataUiSettings;
     hasSeenFtue: boolean;
     hideRememberTrackPreferenceToggle: boolean;
+    isGenericPage: boolean;
+    showGenericPageOption: boolean;
+    genericSubtitleParser: GenericParseType;
 }
 
 export interface SubtitleTrack {
@@ -289,6 +307,7 @@ export enum PostMinePlayback {
 export enum AutoPausePreference {
     atStart = 1,
     atEnd = 2,
+    atStartAndEnd = 3,
 }
 
 export enum SubtitleHtml {
@@ -319,6 +338,7 @@ export interface MobileOverlayModel {
     subtitlesAreVisible: boolean;
     themeType: 'dark' | 'light';
     playModes: PlayMode[];
+    overlayInstanceId?: string;
 }
 
 export enum ControlType {

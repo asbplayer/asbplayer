@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerToVideoCommandV2,
     Command,
     ExtensionToVideoCommand,
@@ -24,7 +24,7 @@ export default class RequestSubtitlesHandler {
                 command: 'request-subtitles',
             },
         };
-        browser.tabs.sendMessage(tabId, requestSubtitlesFromTabCommand).then((response) => {
+        void browser.tabs.sendMessage(tabId, requestSubtitlesFromTabCommand).then((response) => {
             sendResponse(response);
         });
         return true;

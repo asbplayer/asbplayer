@@ -1,5 +1,5 @@
-import { Message } from '@project/common';
-import { VideoProtocol, VideoProtocolMessage } from './video-protocol';
+import type { Message } from '@project/common';
+import type { VideoProtocol, VideoProtocolMessage } from '@project/common/app/services/video-protocol';
 
 export default class BroadcastChannelVideoProtocol implements VideoProtocol {
     private channel?: BroadcastChannel;
@@ -8,9 +8,8 @@ export default class BroadcastChannelVideoProtocol implements VideoProtocol {
 
     constructor(channelId: string) {
         this.channel = new BroadcastChannel(channelId);
-        const that = this;
         this.channel.onmessage = (event) => {
-            that.onMessage?.(event as VideoProtocolMessage);
+            this.onMessage?.(event as VideoProtocolMessage);
         };
     }
 

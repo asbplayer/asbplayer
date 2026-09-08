@@ -1,5 +1,5 @@
-import ImageElement from '../services/image-element';
-import Binding from '../services/binding';
+import ImageElement from '@project/extension/src/services/image-element';
+import type Binding from '@project/extension/src/services/binding';
 
 export default class DragController {
     private readonly video: HTMLMediaElement;
@@ -19,7 +19,7 @@ export default class DragController {
     private bodyDragEnterListener?: (event: DragEvent) => void;
     private bodyDragLeaveListener?: (event: DragEvent) => void;
 
-    private dragElementStylesInterval?: NodeJS.Timeout;
+    private dragElementStylesInterval?: ReturnType<typeof setInterval>;
 
     constructor(video: HTMLMediaElement) {
         this.video = video;
@@ -32,7 +32,7 @@ export default class DragController {
             return;
         }
 
-        this.dropListener = async (e: DragEvent) => {
+        this.dropListener = (e: DragEvent) => {
             e.preventDefault();
 
             this.dragEnterElement = null;
@@ -69,7 +69,7 @@ export default class DragController {
                 }
             }
 
-            context.loadSubtitles(files, false);
+            void context.loadSubtitles(files, false);
         };
 
         this.dragOverListener = (e) => e.preventDefault();

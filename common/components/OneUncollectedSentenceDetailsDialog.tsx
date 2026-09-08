@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { useCallback, type ComponentProps } from 'react';
+import { useCallback } from 'react';
+import type { ComponentProps } from 'react';
 
-import StatisticsSentenceDetailsDialog from './StatisticsSentenceDetailsDialog';
-import { type DictionaryProvider } from '../dictionary-db';
-import { type DictionaryStatisticsSentence } from '../dictionary-statistics';
+import StatisticsSentenceDetailsDialog from '@project/common/components/StatisticsSentenceDetailsDialog';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryStatisticsSentence } from '@project/common/dictionary-statistics';
 
 interface Props
     extends Omit<
@@ -23,7 +24,7 @@ const OneUncollectedSentenceDetailsDialog: React.FC<Props> = ({ dictionaryProvid
             if (!mediaId) {
                 return;
             }
-            dictionaryProvider.requestStatisticsSeek(mediaId, sentence.start);
+            void dictionaryProvider.requestStatisticsSeek(mediaId, sentence.start);
         },
         [mediaId, dictionaryProvider]
     );
@@ -32,7 +33,7 @@ const OneUncollectedSentenceDetailsDialog: React.FC<Props> = ({ dictionaryProvid
             if (!mediaId) {
                 return;
             }
-            dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]);
+            void dictionaryProvider.requestStatisticsMineSentences(mediaId, [sentence.index]);
         },
         [mediaId, dictionaryProvider]
     );

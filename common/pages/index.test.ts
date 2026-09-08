@@ -1,4 +1,5 @@
 import { pageMetadata } from '.';
+import { expect, it } from '@jest/globals';
 
 it('page csp rule ids are distinct', () => {
     const seenRuleIds: { [ruleId: number]: boolean } = {};

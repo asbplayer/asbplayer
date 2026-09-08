@@ -1,6 +1,6 @@
-import { CopyHistoryItem } from '../..';
-import { CopyHistoryRepository } from '../../copy-history';
-import ChromeExtension from './chrome-extension';
+import type { CopyHistoryItem } from '@project/common';
+import type { CopyHistoryRepository } from '@project/common/copy-history';
+import type ChromeExtension from '@project/common/app/services/chrome-extension';
 
 export class ExtensionBridgedCopyHistoryRepository implements CopyHistoryRepository {
     private readonly _extension: ChromeExtension;
@@ -25,7 +25,7 @@ export class ExtensionBridgedCopyHistoryRepository implements CopyHistoryReposit
         await this._extension.saveCopyHistory(copyHistoryItem);
     }
 
-    liveFetch(count: number, callback: (items: CopyHistoryItem[]) => void): () => void {
+    liveFetch(): () => void {
         // Not supported
         return () => {};
     }

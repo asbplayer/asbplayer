@@ -1,8 +1,8 @@
 import React from 'react';
 import { makeStyles } from '@mui/styles';
 import Fade from '@mui/material/Fade';
-import { type Theme } from '@mui/material';
-import { useAppBarHeight } from '../../hooks/use-app-bar-height';
+import type { Theme } from '@mui/material';
+import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 
 interface StylesProps {
     dragging: boolean;
@@ -18,7 +18,7 @@ interface Props {
     logoUrl: string;
 }
 
-const useStyles = makeStyles<Theme, StylesProps>((theme) => ({
+const useStyles = makeStyles<Theme, StylesProps>(() => ({
     root: ({ dragging, appBarHidden, appBarHeight }) => ({
         position: 'absolute',
         height: appBarHidden ? '100%' : `calc(100% - ${appBarHeight}px)`,

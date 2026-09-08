@@ -8,10 +8,10 @@ import type {
     SubtitleSettings,
     TokenState,
     TokenStatus,
-} from '../settings/settings';
-import type { GlobalState, OnlineSubtitleSourceConfig } from '../global-state';
-import type { DictionaryStatisticsSnapshot } from '../dictionary-statistics';
-import {
+} from '@project/common/settings/settings';
+import type { GenericParseType, GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     RectModel,
     SubtitleModel,
     SubtitleTrack,
@@ -28,16 +28,15 @@ import {
     AnkiDialogSettings,
     AnkiExportMode,
     BrowserFeatures,
-    Tokenization,
     IndexedSubtitleModel,
-} from './model';
-import { AsbPlayerToVideoCommandV2 } from './command';
-import {
+} from '@project/common/src/model';
+import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
+import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,
     DictionaryRecordUpdateInput,
-} from '../dictionary-db/dictionary-db';
+} from '@project/common/dictionary-db/dictionary-db';
 
 export interface Message {
     readonly command: string;
@@ -148,6 +147,7 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly playbackRate: number;
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
+    readonly noteId?: number;
 }
 
 export interface StartRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -197,6 +197,7 @@ export interface CopySubtitleMessage extends Message, CardTextFieldValues {
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
     readonly isBulkExport?: boolean;
+    readonly noteId?: number;
 }
 
 export interface CopySubtitleWithAdditionalFieldsMessage extends Message, CardTextFieldValues {
@@ -362,6 +363,11 @@ export interface ReadyFromVideoMessage extends Message {
     readonly playbackRate: number;
 }
 
+export interface DurationFromVideoMessage extends Message {
+    readonly command: 'duration';
+    readonly value: number;
+}
+
 export interface ReadyToVideoMessage extends Message {
     readonly command: 'ready';
     readonly duration: number;
@@ -382,6 +388,14 @@ export interface CurrentTimeFromVideoMessage extends Message {
     readonly command: 'currentTime';
     readonly value: number;
     readonly echo: boolean;
+}
+
+export interface PlaybackStateFromVideoMessage extends Message {
+    readonly command: 'playbackState';
+    readonly timestampMs: number;
+    readonly showingSubtitleIndexes: readonly number[];
+    readonly hiddenSubtitleIndexes?: readonly number[];
+    readonly paused: boolean;
 }
 
 export interface CurrentTimeToVideoMessage extends Message {
@@ -549,6 +563,11 @@ export interface VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage extends M
     readonly state: Partial<OnlineSubtitleSourceConfig>;
 }
 
+export interface VideoDataUiBridgeSetGenericSubtitleParserMessage extends Message {
+    readonly command: 'setGenericSubtitleParser';
+    readonly parse: GenericParseType;
+}
+
 export interface CropAndResizeMessage extends Message, ImageCaptureParams {
     readonly command: 'crop-and-resize';
     readonly dataUrl: string;
@@ -690,7 +709,7 @@ export interface RequestActiveTabPermissionMessage extends Message {
     readonly command: 'request-active-tab-permission';
 }
 
-export interface RequestingActiveTabPermsisionMessage extends Message {
+export interface RequestingActiveTabPermissionMessage extends Message {
     readonly command: 'requesting-active-tab-permission';
     readonly requesting: boolean;
 }
@@ -807,6 +826,7 @@ export interface NotifyErrorMessage extends Message {
 
 export interface RequestMobileOverlayModelMessage extends Message {
     readonly command: 'request-mobile-overlay-model';
+    readonly overlayInstanceId: string;
 }
 
 export interface UpdateMobileOverlayModelMessage extends Message {
@@ -826,6 +846,14 @@ export interface NotificationDialogMessage extends Message {
 
 export interface HiddenMessage extends Message {
     readonly command: 'hidden';
+}
+
+export interface PlaybackModeSelectorOpenedMessage extends Message {
+    readonly command: 'playback-mode-selector-opened';
+}
+
+export interface PlaybackModeSelectorClosedMessage extends Message {
+    readonly command: 'playback-mode-selector-closed';
 }
 
 export interface RequestCopyHistoryMessage extends MessageWithId {
@@ -1139,5 +1167,10 @@ export interface MoveStatisticsOverlayMessage extends Message {
 
 export interface CloseStatisticsOverlayMessage extends Message {
     readonly command: 'close-statistics-overlay';
+    readonly mediaId: string;
+}
+
+export interface ElementExistsStatisticsOverlayMessage extends Message {
+    readonly command: 'element-exists';
     readonly mediaId: string;
 }

@@ -1,32 +1,33 @@
+import { asbError } from '@project/common/util';
 import FormHelperText from '@mui/material/FormHelperText';
-import AnkiConnectTutorialBubble from './AnkiConnectTutorialBubble';
-import DeckFieldTutorialBubble from './DeckFieldTutorialBubble';
-import SettingsTextField from './SettingsTextField';
+import AnkiConnectTutorialBubble from '@project/common/components/AnkiConnectTutorialBubble';
+import DeckFieldTutorialBubble from '@project/common/components/DeckFieldTutorialBubble';
+import SettingsTextField from '@project/common/components/SettingsTextField';
 import { Trans, useTranslation } from 'react-i18next';
-import AnkiSelect from './AnkiSelect';
+import AnkiSelect from '@project/common/components/AnkiSelect';
 import React, { useCallback, useEffect, useState } from 'react';
-import TutorialBubble from './TutorialBubble';
+import TutorialBubble from '@project/common/components/TutorialBubble';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import NoteTypeTutorialBubble from './NoteTypeTutorialBubble';
-import ListField from './ListField';
+import NoteTypeTutorialBubble from '@project/common/components/NoteTypeTutorialBubble';
+import ListField from '@project/common/components/ListField';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import Tooltip from '@mui/material/Tooltip';
-import {
+import type {
     AnkiFieldSettings,
     AnkiFieldUiModel,
     AsbplayerSettings,
     CustomAnkiFieldSettings,
-    sortedAnkiFieldModels,
-} from '../settings';
-import { CardModel } from '../src/model';
-import { Direction, TutorialStep } from './settings-model';
-import { Anki, exportCard } from '../anki';
+} from '@project/common/settings';
+import { sortedAnkiFieldModels } from '@project/common/settings';
+import type { CardModel } from '@project/common/src/model';
+import { Direction, TutorialStep } from '@project/common/components/settings-model';
+import { Anki, exportCard } from '@project/common/anki';
 import Stack from '@mui/material/Stack';
 
 const defaultDeckName = 'Sentences';
@@ -86,7 +87,7 @@ function AddCustomField({ onAddCustomField }: AddCustomFieldProps) {
     return (
         <SettingsTextField
             label={t('settings.addCustomField')}
-            placeholder={t('settings.customFieldName')!}
+            placeholder={t('settings.customFieldName')}
             fullWidth
             value={fieldName}
             color="primary"
@@ -152,13 +153,13 @@ const AnkiSettingsTab: React.FC<Props> = ({
 
     const handleAddCustomField = useCallback(
         (customFieldName: string) => {
-            onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: '' });
+            void onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: '' });
         },
         [settings.customAnkiFields, onSettingChanged]
     );
     const handleCustomFieldChange = useCallback(
         (customFieldName: string, value: string) => {
-            onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: value });
+            void onSettingChanged('customAnkiFields', { ...settings.customAnkiFields, [customFieldName]: value });
         },
         [settings.customAnkiFields, onSettingChanged]
     );
@@ -166,7 +167,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
         (customFieldName: string) => {
             const newCustomFields = { ...settings.customAnkiFields };
             delete newCustomFields[customFieldName];
-            onSettingChanged('customAnkiFields', newCustomFields);
+            void onSettingChanged('customAnkiFields', newCustomFields);
         },
         [onSettingChanged, settings.customAnkiFields]
     );
@@ -222,7 +223,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
             setAnkiConnectUrlError(undefined);
         } catch (e) {
             setAnkiConnectApiKeyRequired(apiKeyRequired || Anki.requiresApiKey(e));
-            console.error(e);
+            asbError('anki/connect', e);
             setDeckNames(undefined);
             setModelNames(undefined);
 
@@ -239,12 +240,12 @@ const AnkiSettingsTab: React.FC<Props> = ({
     useEffect(() => {
         let canceled = false;
 
-        const timeout = setTimeout(async () => {
+        const timeout = setTimeout(() => {
             if (canceled) {
                 return;
             }
 
-            requestAnkiConnect();
+            void requestAnkiConnect();
         }, 1000);
 
         return () => {
@@ -273,7 +274,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     return;
                 }
 
-                console.error(e);
+                asbError('anki/connect', e);
                 setFieldNames(undefined);
 
                 if (e instanceof Error) {
@@ -286,7 +287,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
             }
         }
 
-        refreshFieldNames();
+        void refreshFieldNames();
 
         return () => {
             canceled = true;
@@ -356,7 +357,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
         anki.createDeck(defaultDeckName)
             .then(() => requestAnkiConnect())
             .then(() => onSettingChanged('deck', defaultDeckName))
-            .catch(console.error);
+            .catch((error) => asbError('anki/connect', error));
     }, [anki, requestAnkiConnect, onSettingChanged]);
 
     useEffect(() => {
@@ -380,7 +381,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     onSettingChanged('urlField', 'URL'),
                 ])
             )
-            .catch(console.error);
+            .catch((error) => asbError('anki/connect', error));
         if (tutorialStep === TutorialStep.ankiFields) {
             onTutorialStepChanged(TutorialStep.testCard);
         }
@@ -547,7 +548,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                                 disabled={!inTutorial}
                                 show={tutorialStep === TutorialStep.ankiFields && Boolean(deck) && Boolean(noteType)}
                                 disableArrow
-                                text={t('ftue.ankiFields')!}
+                                text={t('ftue.ankiFields')}
                                 onConfirm={() => onTutorialStepChanged(TutorialStep.testCard)}
                             >
                                 <AnkiSelect
@@ -650,7 +651,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                             <AnkiSelect
                                 label={`${model.key}`}
                                 value={customAnkiFields[model.key]}
-                                selections={fieldNames!}
+                                selections={fieldNames}
                                 onValueChange={(value) => handleCustomFieldChange(model.key, value)}
                                 onRemoval={() => handleCustomFieldRemoval(model.key)}
                                 removable={true}
@@ -674,7 +675,7 @@ const AnkiSettingsTab: React.FC<Props> = ({
                     placement="top"
                     disabled={!inTutorial}
                     show={tutorialStep === TutorialStep.testCard}
-                    text={t('ftue.testCard')!}
+                    text={t('ftue.testCard')}
                     onConfirm={() => onTutorialStepChanged(TutorialStep.done)}
                 >
                     <Button variant="contained" onClick={handleCreateTestCard}>

@@ -1,15 +1,19 @@
-import React, { useCallback, useState, useEffect, useMemo, useRef, RefObject } from 'react';
-import { useTranslation } from 'react-i18next';
-import makeStyles from '@mui/styles/makeStyles';
-import { MediaFragment, SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
-import { AnkiSettings, Profile, sortedAnkiFieldModels } from '@project/common/settings';
 import {
+    asbInfo,
     humanReadableTime,
     surroundingSubtitlesAroundInterval,
     subtitleIntersectsTimeInterval,
     joinSubtitles,
     extractText,
 } from '@project/common/util';
+import type { RefObject } from 'react';
+import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import makeStyles from '@mui/styles/makeStyles';
+import type { SubtitleModel, CardModel, AnkiExportMode } from '@project/common';
+import { MediaFragment } from '@project/common';
+import type { AnkiSettings, Profile } from '@project/common/settings';
+import { sortedAnkiFieldModels } from '@project/common/settings';
 import { AudioClip } from '@project/common/audio-clip';
 import Badge from '@mui/material/Badge';
 import Button from '@mui/material/Button';
@@ -25,29 +29,29 @@ import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import Slider from '@mui/material/Slider';
 import Toolbar from '@mui/material/Toolbar';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import DoneIcon from '@mui/icons-material/Done';
-import ListField from './ListField';
-import { Anki, ExportParams } from '../anki';
-import { isFirefox } from '../browser-detection';
-import SentenceField from './SentenceField';
-import DefinitionField from './DefinitionField';
-import WordField from './WordField';
-import CustomField from './CustomField';
-import AudioField from './AudioField';
-import ImageField from './ImageField';
-import ImageDialog from './ImageDialog';
-import MiniProfileSelector from './MiniProfileSelector';
+import ListField from '@project/common/components/ListField';
+import type { Anki, ExportParams } from '@project/common/anki';
+import { isFirefox } from '@project/common/browser-detection';
+import SentenceField from '@project/common/components/SentenceField';
+import DefinitionField from '@project/common/components/DefinitionField';
+import WordField from '@project/common/components/WordField';
+import CustomField from '@project/common/components/CustomField';
+import AudioField from '@project/common/components/AudioField';
+import ImageField from '@project/common/components/ImageField';
+import ImageDialog from '@project/common/components/ImageDialog';
+import MiniProfileSelector from '@project/common/components/MiniProfileSelector';
 import Alert from '@mui/material/Alert';
-import { isMacOs } from '../device-detection/mac';
-import AnkiDialogButton from './AnkiDialogButton';
-import { type Theme } from '@mui/material';
-import TutorialBubble from './TutorialBubble';
-import AnkiDialogTutorialBubble from './AnkiDialogTutorialBubble';
-import CardSelectView from './CardSelectView';
+import { isMacOs } from '@project/common/device-detection/mac';
+import AnkiDialogButton from '@project/common/components/AnkiDialogButton';
+import type { Theme } from '@mui/material';
+import TutorialBubble from '@project/common/components/TutorialBubble';
+import AnkiDialogTutorialBubble from '@project/common/components/AnkiDialogTutorialBubble';
+import CardSelectView from '@project/common/components/CardSelectView';
 
 const quickSelectShortcut = isMacOs ? '⌘+⇧+Enter' : 'Alt+Shift+Enter';
 
@@ -86,9 +90,6 @@ const boundaryIntervalSubtitleCountRadius = 1;
 const boundaryIntervalSubtitleTimeRadius = 5000;
 
 const boundaryIntervalFromCard = (subtitle: SubtitleModel, theSurroundingSubtitles: SubtitleModel[]) => {
-    let index = theSurroundingSubtitles.findIndex((s) => s.start === subtitle.start);
-    index = index === -1 ? theSurroundingSubtitles.length / 2 : index;
-
     const { surroundingSubtitles: subtitlesToDisplay } = surroundingSubtitlesAroundInterval(
         theSurroundingSubtitles,
         subtitle.start,
@@ -136,7 +137,7 @@ const sliderMarksFromCard = (surroundingSubtitles: SubtitleModel[], boundary: nu
             };
         })
         .filter((mark: Mark | null) => mark !== null)
-        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]) as Mark[];
+        .filter((mark: Mark | null) => mark!.value >= boundary[0] && mark!.value <= boundary[1]);
 };
 
 const sliderValueLabelFormat = (ms: number) => {
@@ -453,7 +454,7 @@ const AnkiDialog = ({
 
             e.preventDefault();
             e.stopPropagation();
-            audioClip!.play().catch(console.info);
+            audioClip!.play().catch((error) => asbInfo('anki/ui', error));
         },
         [audioClip]
     );
@@ -773,7 +774,7 @@ const AnkiDialog = ({
                     await onProceed(buildExportParams(mode, noteId));
                 }
             } else {
-                onProceed(buildExportParams(mode));
+                void onProceed(buildExportParams(mode));
             }
         },
         [buildExportParams, onProceed]
@@ -841,7 +842,7 @@ const AnkiDialog = ({
                             placement="bottom"
                             disabled={!effectiveInTutorial}
                             show={tutorialStep === TutorialStep.configure}
-                            text={t('ftue.configureAnki')!}
+                            text={t('ftue.configureAnki')}
                             onConfirm={() => setTutorialStep(TutorialStep.export)}
                         >
                             <IconButton
@@ -876,7 +877,7 @@ const AnkiDialog = ({
                                     {!model.custom && model.key === 'sentence' && model.field.display && (
                                         <SentenceField
                                             text={text}
-                                            label={t('ankiDialog.sentence')!}
+                                            label={t('ankiDialog.sentence')}
                                             width={width}
                                             onChangeText={handleSentenceTextChange}
                                             selectedSubtitles={selectedSubtitles}
@@ -980,7 +981,7 @@ const AnkiDialog = ({
                             fullWidth
                             color="primary"
                             items={tags}
-                            onItemsChange={(newTags) => setTags(newTags)}
+                            onItemsChange={setTags}
                         />
                         {timestampInterval && timestampBoundaryInterval && timestampMarks && (
                             <Grid container direction="row">
@@ -1000,7 +1001,7 @@ const AnkiDialog = ({
                                     />
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.resetSlider')!}>
+                                    <Tooltip title={t('ankiDialog.resetSlider')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1013,7 +1014,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.zoomIn')!}>
+                                    <Tooltip title={t('ankiDialog.zoomIn')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1026,7 +1027,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.zoomOut')!}>
+                                    <Tooltip title={t('ankiDialog.zoomOut')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1039,7 +1040,7 @@ const AnkiDialog = ({
                                     </Tooltip>
                                 </Grid>
                                 <Grid item>
-                                    <Tooltip title={t('ankiDialog.applySelection')!}>
+                                    <Tooltip title={t('ankiDialog.applySelection')}>
                                         <span>
                                             <IconButton
                                                 edge="end"
@@ -1136,7 +1137,7 @@ const AnkiDialog = ({
                 disabled={disabled}
                 selectedNoteIds={selectedNoteIdsToUpdate ?? []}
                 onSelect={setSelectedNoteIdsToUpdate}
-                onUpdate={(noteIds) => handleUpdateSelectedCards(noteIds)}
+                onUpdate={handleUpdateSelectedCards}
                 onClose={() => setCardSelectDialogOpen(false)}
             />
         </>

@@ -1,13 +1,13 @@
-import { Fetcher } from '@project/common';
+import type { Fetcher } from '@project/common';
 import { useChromeExtension } from '@project/common/app';
 import RootApp from '@project/common/app/components/RootApp';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppExtensionDictionaryStorage } from '@project/common/app/services/app-extension-dictionary-storage';
 import { AppExtensionSettingsStorage } from '@project/common/app/services/app-extension-settings-storage';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 import { SettingsProvider } from '@project/common/settings';
-import { LocalDictionaryStorage } from '../local-dictionary-storage';
-import { LocalSettingsStorage } from '../local-settings-storage';
+import { LocalDictionaryStorage } from '@project/client/src/local-dictionary-storage';
+import { LocalSettingsStorage } from '@project/client/src/local-settings-storage';
 
 interface Props {
     origin: string;
@@ -21,6 +21,9 @@ const WebsiteApp = (props: Props) => {
         if (extension.supportsAppIntegration) return new AppExtensionSettingsStorage(extension);
         return new LocalSettingsStorage();
     }, [extension]);
+    useEffect(() => {
+        if (extension.version) window.plausible?.('extension_version', { props: { version: extension.version } });
+    }, [extension.version]);
     const settingsProvider = useMemo(() => new SettingsProvider(settingsStorage), [settingsStorage]);
     const dictionaryStorage = useMemo(() => {
         if (extension.supportsDictionary) return new AppExtensionDictionaryStorage(extension);

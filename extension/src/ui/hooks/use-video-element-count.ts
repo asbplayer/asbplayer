@@ -1,5 +1,5 @@
-import { VideoTabModel } from '@project/common';
-import { ChromeExtension } from '@project/common/app';
+import type { VideoTabModel } from '@project/common';
+import type { ChromeExtension } from '@project/common/app';
 import { useEffect, useState } from 'react';
 
 export const useVideoElementCount = ({

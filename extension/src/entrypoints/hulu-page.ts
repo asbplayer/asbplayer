@@ -1,4 +1,4 @@
-import { VideoDataSubtitleTrackDef } from '@project/common';
+import type { VideoDataSubtitleTrackDef } from '@project/common';
 import { extractExtension, inferTracks, poll } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
@@ -19,7 +19,6 @@ export default defineUnlistedScript(() => {
 
     const originalFetch = window.fetch;
     window.fetch = function (...args) {
-        // @ts-ignore
         const promise = originalFetch.apply(this, args);
         const input = args[0];
         const url =

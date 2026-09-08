@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     CaptureVisibleTabMessage,
     ForegroundToExtensionCommand,
     OpenAsbplayerSettingsMessage,
@@ -7,16 +8,23 @@ import {
     VideoSelectModeConfirmMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
-import { VideoElement } from '../ui/components/VideoSelectUi';
-import Binding from '../services/binding';
-import UiFrame, { uiFrameForHtml } from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
-import { ExtensionSettingsStorage } from '../services/extension-settings-storage';
+import type { VideoElement } from '@project/extension/src/ui/components/VideoSelectUi';
+import type Binding from '@project/extension/src/services/binding';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
+
+interface VideoSelectControllerOptions {
+    readonly isBindingsSorted: boolean;
+}
 
 export default class VideoSelectController {
     private readonly _bindings: Binding[];
     private readonly _frame: UiFrame;
     private readonly _settings: SettingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
+    private readonly _isBindingsSorted: boolean;
     private _subtitleFiles?: SubtitleFile[];
 
     private messageListener?: (
@@ -25,8 +33,9 @@ export default class VideoSelectController {
         sendResponse: (response?: any) => void
     ) => void;
 
-    constructor(bindings: Binding[]) {
+    constructor(bindings: Binding[], options: VideoSelectControllerOptions) {
         this._bindings = bindings;
+        this._isBindingsSorted = options.isBindingsSorted;
         this._frame = uiFrameForHtml(
             async (lang) => `<!DOCTYPE html>
                 <html lang="en">
@@ -36,6 +45,7 @@ export default class VideoSelectController {
                     <title>asbplayer - Video Select</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                     </style>
                 </head>
                 <body>
@@ -48,28 +58,29 @@ export default class VideoSelectController {
     }
 
     bind() {
-        this.messageListener = (
-            request: any,
-            sender: Browser.runtime.MessageSender,
-            sendResponse: (response?: any) => void
-        ) => {
+        this.messageListener = (request: any) => {
             if (request.sender !== 'asbplayer-extension-to-video') {
                 return;
             }
 
             switch (request.message.command) {
                 case 'toggle-video-select':
-                    this._trigger(false, request.message.fromAsbplayerId, request.src, request.message.subtitleFiles);
+                    void this._trigger(
+                        false,
+                        request.message.fromAsbplayerId,
+                        request.src,
+                        request.message.subtitleFiles
+                    );
                     break;
                 case 'copy-subtitle':
                 case 'toggle-recording':
                 case 'take-screenshot':
                     if (this._bindings.find((b) => b.synced) === undefined) {
-                        this._trigger(true);
+                        void this._trigger(true);
                     }
                     break;
                 case 'subtitles':
-                    this._hideUi();
+                    void this._hideUi();
                     break;
                 default:
                 // ignore
@@ -95,11 +106,15 @@ export default class VideoSelectController {
         subtitleFiles?: SubtitleFile[]
     ) {
         if (targetSrc !== undefined) {
-            var binding = this._bindings.find((b) => b.registeredVideoSrc === targetSrc);
+            const binding = this._bindings.find((b) => b.registeredVideoSrc === targetSrc);
 
             if (binding !== undefined && binding.subscribed) {
                 if (subtitleFiles !== undefined) {
-                    binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false, fromAsbplayerId);
+                    await binding.loadSubtitles(
+                        await this._filesForSubtitleFiles(subtitleFiles),
+                        false,
+                        fromAsbplayerId
+                    );
                 } else {
                     binding.showVideoDataDialog(openedFromMiningCommand, fromAsbplayerId);
                 }
@@ -110,14 +125,14 @@ export default class VideoSelectController {
 
             if (binding.subscribed) {
                 if (subtitleFiles !== undefined) {
-                    binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false);
+                    await binding.loadSubtitles(await this._filesForSubtitleFiles(subtitleFiles), false);
                 } else {
                     binding.showVideoDataDialog(openedFromMiningCommand);
                 }
             }
         } else if (this._bindings.length > 1) {
             // Toggle on
-            this._showUi(openedFromMiningCommand);
+            void this._showUi(openedFromMiningCommand);
             this._subtitleFiles = subtitleFiles;
         }
     }
@@ -128,11 +143,12 @@ export default class VideoSelectController {
             message: { command: 'capture-visible-tab' },
         };
 
-        const tabImageDataUrl = (await browser.runtime.sendMessage(captureVisibleTabCommand)) as string;
-        const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b) => {
+        const tabImageDataUrl = await browser.runtime.sendMessage(captureVisibleTabCommand);
+        const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b, index) => {
             return {
                 src: b.registeredVideoSrc,
-                imageDataUrl: await b.cropAndResize(tabImageDataUrl),
+                imageDataUrl: tabImageDataUrl ? await b.cropAndResize(tabImageDataUrl) : '',
+                preferred: this._isBindingsSorted && index === 0,
             };
         });
 
@@ -153,35 +169,41 @@ export default class VideoSelectController {
         const client = await this._frame.client();
 
         if (isNewClient) {
-            client.onMessage(async (message) => {
-                if (message.command === 'confirm') {
-                    client.updateState({ open: false });
-                    this._frame.hide();
-                    const binding = this._bindings.find(
-                        (b) =>
-                            b.registeredVideoSrc === (message as VideoSelectModeConfirmMessage).selectedVideoElementSrc
-                    );
-                    if (binding !== undefined) {
-                        if (this._subtitleFiles === undefined) {
-                            binding.showVideoDataDialog(false);
-                        } else {
-                            binding.loadSubtitles(await this._filesForSubtitleFiles(this._subtitleFiles), false);
-                            this._subtitleFiles = undefined;
+            client.onMessage((message) => {
+                void (async () => {
+                    if (message.command === 'confirm') {
+                        client.updateState({ open: false });
+                        this._frame.hide();
+                        const binding = this._bindings.find(
+                            (b) =>
+                                b.registeredVideoSrc ===
+                                (message as VideoSelectModeConfirmMessage).selectedVideoElementSrc
+                        );
+                        if (binding !== undefined) {
+                            if (this._subtitleFiles === undefined) {
+                                binding.showVideoDataDialog(false);
+                            } else {
+                                await binding.loadSubtitles(
+                                    await this._filesForSubtitleFiles(this._subtitleFiles),
+                                    false
+                                );
+                                this._subtitleFiles = undefined;
+                            }
                         }
+                    } else if (message.command === 'openSettings') {
+                        const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
+                            sender: 'asbplayer-video-tab',
+                            message: {
+                                command: 'open-asbplayer-settings',
+                            },
+                        };
+                        void browser.runtime.sendMessage(openSettingsCommand);
+                    } else if (message.command === 'cancel') {
+                        client.updateState({ open: false });
+                        this._frame.hide();
+                        this._subtitleFiles = undefined;
                     }
-                } else if (message.command === 'openSettings') {
-                    const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                        sender: 'asbplayer-video-tab',
-                        message: {
-                            command: 'open-asbplayer-settings',
-                        },
-                    };
-                    browser.runtime.sendMessage(openSettingsCommand);
-                } else if (message.command === 'cancel') {
-                    client.updateState({ open: false });
-                    this._frame.hide();
-                    this._subtitleFiles = undefined;
-                }
+                })().catch((error) => asbError('video/select', error));
             });
         }
 
@@ -203,6 +225,6 @@ export default class VideoSelectController {
         const filePromises = subtitleFiles.map(
             async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
         );
-        return await Promise.all(filePromises);
+        return Promise.all(filePromises);
     }
 }

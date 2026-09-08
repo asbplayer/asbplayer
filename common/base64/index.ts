@@ -19,18 +19,17 @@ export async function urlToBase64(url: string): Promise<string> {
 }
 
 export const blobToBase64 = (blob: Blob) => {
-    return new Promise<string>(async (resolve, reject) => {
-        try {
-            var reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-                const result = reader.result as string;
-                const base64 = result.substring(result.indexOf(',') + 1);
-                resolve(base64);
-            };
-        } catch (e) {
-            reject(e);
-        }
+    return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => {
+            reject(reader.error ?? new Error('Could not read blob as base64'));
+        };
+        reader.onloadend = () => {
+            const result = reader.result as string;
+            const base64 = result.substring(result.indexOf(',') + 1);
+            resolve(base64);
+        };
+        reader.readAsDataURL(blob);
     });
 };
 

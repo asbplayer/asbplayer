@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util';
 import { inferTracks } from '@/pages/util';
 
 export default defineUnlistedScript(() => {
@@ -66,7 +67,7 @@ export default defineUnlistedScript(() => {
                     }
                 }
             } catch (e) {
-                console.error('[svtplay] Failed to infer tracks from', lastVideoApiUrl, e);
+                asbError('svt-play', 'Failed to infer tracks from', lastVideoApiUrl, e);
             }
         },
 

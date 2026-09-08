@@ -1,5 +1,6 @@
+import { asbError } from '@project/common/util';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
+import type {
     MediaFragmentModel,
     AudioModel,
     SubtitleModel,
@@ -20,25 +21,26 @@ import {
     AnkiDialogSettings,
     AnkiUiBridgeExportedMessage,
     AnkiDialogDismissedQuickSelectFtueMessage,
-    CardUpdatedDialogMessage,
-    CardExportedDialogMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
 import type { Profile } from '@project/common/settings';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import Alert, { AlertColor } from '@mui/material/Alert';
+import type { AlertColor } from '@mui/material/Alert';
+import Alert from '@mui/material/Alert';
 import CssBaseline from '@mui/material/CssBaseline';
 import AnkiDialog from '@project/common/components/AnkiDialog';
 import Snackbar from '@mui/material/Snackbar';
-import Bridge from '../bridge';
+import type Bridge from '@project/extension/src/ui/bridge';
 import type { PaletteMode } from '@mui/material/styles';
-import { AnkiDialogState } from '@project/common/components/AnkiDialog';
-import { BridgeFetcher } from '../bridge-fetcher';
-import { Anki, ExportParams } from '@project/common/anki';
+import type { AnkiDialogState } from '@project/common/components/AnkiDialog';
+import { BridgeFetcher } from '@project/extension/src/ui/bridge-fetcher';
+import type { ExportParams } from '@project/common/anki';
+import { Anki } from '@project/common/anki';
 import { v4 as uuidv4 } from 'uuid';
 import { base64ToBlob, blobToBase64 } from '@project/common/base64';
 import { isMobile } from '@project/common/device-detection/mobile';
 import { StyledEngineProvider } from '@mui/material/styles';
+import LogoIcon from '@project/common/components/LogoIcon';
 
 interface Props {
     bridge: Bridge;
@@ -46,7 +48,7 @@ interface Props {
 
 const blobToDataUrl = async (blob: Blob): Promise<string> => {
     return new Promise((resolve) => {
-        var reader = new FileReader();
+        const reader = new FileReader();
         reader.onload = () => {
             resolve(reader.result as string);
         };
@@ -193,16 +195,16 @@ export default function AnkiUi({ bridge }: Props) {
                 }
 
                 if (params.mode === 'updateLast' || params.mode === 'updateSpecific') {
-                    bridge.sendMessageFromServer({ command: 'card-updated-dialog' } as CardUpdatedDialogMessage);
+                    bridge.sendMessageFromServer({ command: 'card-updated-dialog' });
                 } else if (params.mode === 'default') {
-                    bridge.sendMessageFromServer({ command: 'card-exported-dialog' } as CardExportedDialogMessage);
+                    bridge.sendMessageFromServer({ command: 'card-exported-dialog' });
                 }
             } catch (e) {
-                console.error(e);
+                asbError('anki/ui', e);
                 setAlertSeverity('error');
 
                 if (e instanceof Error) {
-                    setAlert((e as Error).message);
+                    setAlert(e.message);
                 } else {
                     setAlert(String(e));
                 }
@@ -234,8 +236,8 @@ export default function AnkiUi({ bridge }: Props) {
         const message: AnkiUiBridgeRerecordMessage = {
             command: 'rerecord',
             uiState: state,
-            recordStart: state.timestampInterval![0],
-            recordEnd: state.timestampInterval![1],
+            recordStart: state.timestampInterval[0],
+            recordEnd: state.timestampInterval[1],
         };
 
         bridge.sendMessageFromServer(message);
@@ -346,7 +348,7 @@ export default function AnkiUi({ bridge }: Props) {
                 messageId: uuidv4(),
             };
             const { base64 } = await bridge.sendMessageFromServerAndExpectResponse(encodeMp3Message, 60_000);
-            return await base64ToBlob(base64, 'audio/mp3');
+            return base64ToBlob(base64, 'audio/mp3');
         },
         [bridge]
     );
@@ -363,7 +365,11 @@ export default function AnkiUi({ bridge }: Props) {
                     autoHideDuration={5000}
                     onClose={() => setAlertOpen(false)}
                 >
-                    <Alert onClose={() => setAlertOpen(false)} severity={alertSeverity}>
+                    <Alert
+                        onClose={() => setAlertOpen(false)}
+                        severity={alertSeverity}
+                        icon={<LogoIcon fontSize="small" />}
+                    >
                         {alert}
                     </Alert>
                 </Snackbar>

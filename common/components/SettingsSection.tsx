@@ -9,9 +9,17 @@ interface Props {
     docs?: string;
 }
 
+interface SubSectionProps {
+    children: React.ReactNode;
+}
+
 const SettingsSection = React.forwardRef<HTMLSpanElement, Props>(function SettingsSection({ children, docs }, ref) {
     return (
-        <Typography ref={ref} variant="h5" sx={{ fontWeight: 'bold', pb: 0.5, pt: 1 }}>
+        <Typography
+            ref={ref}
+            variant="h5"
+            sx={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', pb: 0.5, pt: 1, width: '100%' }}
+        >
             {children}
             {docs && (
                 <Link href={`https://docs.asbplayer.dev/${docs}`} target="_blank">
@@ -23,5 +31,11 @@ const SettingsSection = React.forwardRef<HTMLSpanElement, Props>(function Settin
         </Typography>
     );
 });
+
+export const SettingsSubSection: React.FC<SubSectionProps> = ({ children }) => (
+    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 'bold', pb: 0.5, pt: 1 }}>
+        {children}
+    </Typography>
+);
 
 export default SettingsSection;

@@ -2,12 +2,12 @@ import React, { useState, useLayoutEffect } from 'react';
 import makeStyles from '@mui/styles/makeStyles';
 import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
-import { MediaFragment } from '@project/common';
-import { useImageData } from '../hooks/use-image-data';
+import type { MediaFragment } from '@project/common';
+import { useImageData } from '@project/common/hooks/use-image-data';
 import Slider from '@mui/material/Slider';
 import Modal from '@mui/material/Modal';
-import { humanReadableTime } from '../util';
-import Tooltip from './Tooltip';
+import { humanReadableTime } from '@project/common/util';
+import Tooltip from '@project/common/components/Tooltip';
 
 interface ImageDimensions {
     width: number;
@@ -91,9 +91,9 @@ export default function ImageDialog({
     }
 
     const webm = image.extension === 'webm';
-  
+
     const animated = webm || image.extension === 'webp';
-    
+
     return (
         <div>
             <Modal disableRestoreFocus style={{ width: '100vw', height: '100vh' }} open={open} onClose={onClose}>

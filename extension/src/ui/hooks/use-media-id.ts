@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import TabRegistry, { Asbplayer } from '@/services/tab-registry';
+import type { Asbplayer } from '@/services/tab-registry';
+import TabRegistry from '@/services/tab-registry';
 import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
-import { AsbplayerInstance, VideoTabModel } from '@project/common';
+import type { AsbplayerInstance, VideoTabModel } from '@project/common';
 
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
 export const uiTabRegistry = new TabRegistry(settingsProvider);
@@ -40,12 +41,12 @@ export const useMediaId = (params?: Params) => {
                     setMediaIdWithSubtitles(anySyncedVideoElement?.src || syncedAsbplayerId);
                     return;
                 }
-            } catch (e) {
+            } catch {
                 // Swallow errors - best effort
             }
         };
         void update();
-        const interval = setInterval(update, 1000);
+        const interval = setInterval(() => void update(), 1000);
         return () => {
             mounted = false;
             clearInterval(interval);
@@ -103,7 +104,7 @@ const findLastMediaId = async () => {
             return lastSyncedAsbplayer.id;
         }
         return lastSyncedVideoElement.src;
-    } catch (e) {
+    } catch {
         // Swallow errors - best effort
     }
 };
@@ -113,7 +114,7 @@ export const useLastMediaIdOnce = () => {
     useEffect(() => {
         let mounted = true;
 
-        findLastMediaId().then((lastMediaId) => {
+        void findLastMediaId().then((lastMediaId) => {
             if (mounted) {
                 setLastMediaId(lastMediaId);
             }
@@ -131,7 +132,7 @@ export const useLastMediaId = () => {
         let mounted = true;
 
         const interval = setInterval(() => {
-            findLastMediaId().then((lastMediaId) => {
+            void findLastMediaId().then((lastMediaId) => {
                 if (mounted) {
                     setLastMediaId(lastMediaId);
                 }

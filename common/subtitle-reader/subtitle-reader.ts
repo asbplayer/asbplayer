@@ -1,10 +1,25 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
-import { subtitlesToSrt } from './subtitles-to-srt';
+import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
+import { removeSubtitleHtml } from '@project/common/util';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
-import { SubtitleHtml, SubtitleTextImage, Token, Tokenization } from '@project/common';
+import type { SubtitleTextImage, Token, Tokenization } from '@project/common';
+import { SubtitleHtml } from '@project/common';
 import DOMPurify from 'dompurify';
+
+/**
+ * Subtitle files are untrusted input.  Keep this list deliberately small: subtitle
+ * markup is for presentation only and must not be able to navigate, fetch, or run
+ * code.  In particular, do not add `style` or URL-bearing attributes here.
+ */
+export const sanitizeSubtitleHtml = (html: string) =>
+    DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'br', 'ruby', 'rt', 'rp', 'span'],
+        ALLOWED_ATTR: [],
+        ALLOW_DATA_ATTR: false,
+        ALLOW_ARIA_ATTR: false,
+    });
 
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
@@ -25,8 +40,6 @@ const netflixRubyRegex = new RegExp(
 // always consumed.
 const netflixRubyBaseRegex = new RegExp(`^[${netflixRubyBaseClass}]+$`, 'u');
 const netflixRubyReadingRegex = new RegExp(`^[^)]*[${netflixRubyKanaClass}]`, 'u');
-const helperElement = document.createElement('div');
-
 interface SubtitleNode {
     start: number;
     end: number;
@@ -99,7 +112,7 @@ export default class SubtitleReader {
 
         try {
             regex = regexFilter.trim() === '' ? undefined : new RegExp(regexFilter, 'gv');
-        } catch (e) {
+        } catch {
             regex = undefined;
         }
 
@@ -121,32 +134,23 @@ export default class SubtitleReader {
             .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
+        // Sanitize after all parser, filter, decoding, and flattening transformations.
+        // Ruby tokenization runs afterwards because it relies on positions in this
+        // sanitized text and does not introduce any new markup.
+        for (const node of allNodes) node.text = sanitizeSubtitleHtml(node.text);
+
         if (this._convertNetflixRuby) {
-            if (flatten) {
-                // Flattened output keeps inline base(reading) without tokenizing, so
-                // the ruby base markers are simply dropped here.
-                for (const node of allNodes) {
-                    node.text = node.text.replaceAll(netflixRubyBaseMarker, '');
-                }
-            } else {
-                for (const node of allNodes) {
-                    this._convertNetflixRubyToHtml(node);
-                }
-            }
+            for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        if (flatten) {
-            return this._deduplicate(allNodes);
-        }
-
-        return allNodes;
+        return this._deduplicate(allNodes);
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
         const deduplicated: SubtitleNode[] = [];
 
         for (const node of nodes) {
-            if (deduplicated.length == 0 || !this._isSame(node, deduplicated[deduplicated.length - 1])) {
+            if (!deduplicated.length || !this._isSame(node, deduplicated[deduplicated.length - 1])) {
                 deduplicated.push(node);
             }
         }
@@ -155,11 +159,8 @@ export default class SubtitleReader {
     }
 
     private _isSame(a: SubtitleNode, b: SubtitleNode) {
-        if (a.textImage || b.textImage) {
-            return false;
-        }
-
-        return a.start === b.start && a.end === b.end && a.text === b.text;
+        if (a.textImage || b.textImage) return false;
+        return a.start === b.start && a.end === b.end && a.text === b.text && a.track === b.track;
     }
 
     async _subtitles(file: File, track: number): Promise<SubtitleNode[]> {
@@ -177,7 +178,7 @@ export default class SubtitleReader {
         }
 
         if (file.name.endsWith('.vtt') || file.name.endsWith('.nfvtt')) {
-            return new Promise(async (resolve, reject) => {
+            return new Promise((resolve, reject) => {
                 const isFromNetflix = file.name.endsWith('.nfvtt');
                 const parser = new WebVTT.Parser(window, WebVTT.StringDecoder());
                 const allBuffers: VTTCue[][] = [];
@@ -227,8 +228,12 @@ export default class SubtitleReader {
 
                     resolve(nodes);
                 };
-                parser.parse(await file.text());
-                parser.flush();
+                file.text()
+                    .then((text) => {
+                        parser.parse(text);
+                        parser.flush();
+                    })
+                    .catch(reject);
             });
         }
 
@@ -266,7 +271,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                let parts = [];
+                const parts = [];
 
                 if (typeof row['#text'] === 'string') {
                     parts.push(row['#text']);
@@ -291,7 +296,7 @@ export default class SubtitleReader {
                 const text = parts.join('').trim();
 
                 if (text) {
-                    let nextRow = subtitleRows[i + 1];
+                    const nextRow = subtitleRows[i + 1];
 
                     // Prevent subtitle from overlapping with next one by reading ahead to see where the next one starts.
                     // Usually text rows are separated by empty newline rows.
@@ -340,7 +345,7 @@ export default class SubtitleReader {
                 const subtitle = {
                     start: Math.floor(start * 1000),
                     end: Math.floor((start + parseFloat(elm['@_dur'])) * 1000),
-                    text: this._filterText(this._decodeHTML(String(elm['#text']))),
+                    text: this._filterText(removeSubtitleHtml(String(elm['#text']))),
                     track,
                 };
 
@@ -372,7 +377,7 @@ export default class SubtitleReader {
         }
 
         if (file.name.endsWith('.sup')) {
-            return await this._parsePgs(file, track);
+            return this._parsePgs(file, track);
         }
 
         if (file.name.endsWith('.nfimsc')) {
@@ -403,7 +408,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                const text = this._decodeHTML(elm.innerHTML.replaceAll(/<br(\s[^\s]+)?(\/)?>/g, '\n'));
+                const text = removeSubtitleHtml(elm.innerHTML);
                 subtitles.push({
                     text: this._filterText(text),
                     start,
@@ -430,46 +435,57 @@ export default class SubtitleReader {
 
     private _parsePgs(file: File, track: number): Promise<SubtitleNode[]> {
         const subtitles: SubtitleNode[] = [];
-        return new Promise(async (resolve, reject) => {
-            const worker = await this._pgsWorkerFactory();
-            worker.onmessage = async (e) => {
-                switch (e.data.command) {
-                    case 'subtitle':
-                        const subtitle = { ...e.data.subtitle, track };
-                        const imageBlob = e.data.imageBlob;
-                        subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
-                        subtitles.push(subtitle);
-                        break;
-                    case 'finished':
-                        worker.terminate();
-                        resolve(subtitles);
-                        break;
-                    case 'error':
-                        worker.terminate();
-                        reject(e.data.error);
-                        break;
-                }
-            };
-            worker.onerror = (e) => {
-                const error = e?.error ?? new Error('PGS decoding failed: ' + e?.message);
+        return new Promise((resolve, reject) => {
+            let worker: Worker | undefined;
+
+            void (async () => {
+                worker = await this._pgsWorkerFactory();
+                worker.onmessage = (e) => {
+                    void (async () => {
+                        switch (e.data.command) {
+                            case 'subtitle': {
+                                const subtitle = { ...e.data.subtitle, track };
+                                const imageBlob = e.data.imageBlob;
+                                subtitle.textImage.dataUrl = await this._blobToDataUrl(imageBlob);
+                                subtitles.push(subtitle);
+                                break;
+                            }
+                            case 'finished':
+                                worker?.terminate();
+                                resolve(subtitles);
+                                break;
+                            case 'error':
+                                worker?.terminate();
+                                reject(e.data.error);
+                                break;
+                        }
+                    })().catch((error) => {
+                        worker?.terminate();
+                        reject(error);
+                    });
+                };
+                worker.onerror = (e) => {
+                    const error = e?.error ?? new Error('PGS decoding failed: ' + e?.message);
+                    reject(error);
+                    worker?.terminate();
+                };
+                const canvas = document.createElement('canvas');
+
+                const offscreenCanvas = canvas.transferControlToOffscreen();
+
+                // Node ReadableStream clashes with web ReadableStream
+                const fileStream = file.stream() as unknown as ReadableStream;
+                worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
+            })().catch((error) => {
+                worker?.terminate();
                 reject(error);
-                worker.terminate();
-            };
-            const canvas = document.createElement('canvas');
-
-            // transferControlToOffscreen is not in lib.dom.d.ts
-            // @ts-ignore
-            const offscreenCanvas = canvas.transferControlToOffscreen();
-
-            // Node ReadableStream clashes with web ReadableStream
-            const fileStream = (await file.stream()) as unknown as ReadableStream;
-            worker.postMessage({ fileStream, canvas: offscreenCanvas }, [fileStream, offscreenCanvas]);
+            });
         });
     }
 
     private _blobToDataUrl(blob: Blob) {
-        return new Promise((resolve, reject) => {
-            var reader = new FileReader();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = () => {
                 resolve(reader.result);
@@ -558,10 +574,24 @@ export default class SubtitleReader {
             return undefined;
         };
 
-        const subtitles: SubtitleNode[] = [];
+        const subtitles: { node: SubtitleNode; regionY?: number; sourceIndex: number }[] = [];
+
+        const regionYById = new Map<string, number>();
+        const percentageOriginRegex = /^\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)%\s+(?<y>[+-]?(?:\d+(?:\.\d*)?|\.\d+))%\s*$/;
+
+        for (const region of Array.from(doc.getElementsByTagNameNS('*', 'region'))) {
+            const id =
+                region.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id') ?? region.getAttribute('xml:id');
+            const origin = region.getAttributeNS(stylingNamespace, 'origin') ?? region.getAttribute('tts:origin');
+            const match = origin === null ? null : percentageOriginRegex.exec(origin);
+            if (id !== null && match !== null) {
+                const regionY = Number(match.groups!.y);
+                if (Number.isFinite(regionY)) regionYById.set(id, regionY);
+            }
+        }
 
         // Collect every <p> regardless of how many <div>s the body splits them across.
-        for (const paragraph of Array.from(doc.getElementsByTagNameNS('*', 'p'))) {
+        for (const [sourceIndex, paragraph] of Array.from(doc.getElementsByTagNameNS('*', 'p')).entries()) {
             const begin = paragraph.getAttribute('begin');
             const end = paragraph.getAttribute('end');
             const dur = paragraph.getAttribute('dur');
@@ -581,15 +611,38 @@ export default class SubtitleReader {
                 continue;
             }
 
+            const regionId = paragraph.getAttribute('region');
             subtitles.push({
-                start,
-                end: stop,
-                text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
-                track,
+                node: {
+                    start,
+                    end: stop,
+                    text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
+                    track,
+                },
+                regionY: regionId === null ? undefined : regionYById.get(regionId),
+                sourceIndex,
             });
         }
 
-        return subtitles;
+        subtitles.sort((a, b) => a.node.start - b.node.start || a.sourceIndex - b.sourceIndex);
+
+        // Netflix sometimes authors simultaneous lines in bottom-to-top XML order. The
+        // region's vertical origin captures their intended visual reading order. Only use
+        // it when every cue in the group has a position; otherwise retain source order.
+        for (let start = 0; start < subtitles.length; ) {
+            let end = start + 1;
+            while (end < subtitles.length && subtitles[end].node.start === subtitles[start].node.start) {
+                ++end;
+            }
+            const group = subtitles.slice(start, end);
+            if (group.length > 1 && group.every((subtitle) => subtitle.regionY !== undefined)) {
+                group.sort((a, b) => a.regionY! - b.regionY! || a.sourceIndex - b.sourceIndex);
+                subtitles.splice(start, group.length, ...group);
+            }
+            start = end;
+        }
+
+        return subtitles.map(({ node }) => node);
     }
 
     // Flattens an IMSC <p> to text. Furigana renders inline as base(reading)
@@ -704,17 +757,6 @@ export default class SubtitleReader {
         return line;
     }
 
-    private _decodeHTML(text: string): string {
-        helperElement.innerHTML = text;
-
-        const rubyTextElements = [...helperElement.getElementsByTagName('rt')];
-        for (const rubyTextElement of rubyTextElements) {
-            rubyTextElement.remove();
-        }
-
-        return helperElement.textContent ?? helperElement.innerText;
-    }
-
     private _convertNetflixRubyToHtml(node: SubtitleNode) {
         if (!node.text) {
             return;
@@ -751,14 +793,13 @@ export default class SubtitleReader {
     }
 
     private _filterText(text: string): string {
-        text = DOMPurify.sanitize(text);
         text =
             this._textFilter === undefined
                 ? text
                 : text.replace(this._textFilter.regex, this._textFilter.replacement).trim();
 
         if (this._removeXml) {
-            text = this._decodeHTML(text);
+            text = removeSubtitleHtml(text);
         }
 
         return text;

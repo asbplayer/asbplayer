@@ -1,4 +1,4 @@
-import {
+import type {
     CardExportedDialogMessage,
     CardUpdatedDialogMessage,
     DictionaryBuildAnkiCacheMessage,
@@ -28,8 +28,8 @@ import {
     ExtensionToVideoCommand,
     Message,
 } from '@project/common';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import {
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     DictionaryLocalTokenInput,
     DictionaryStorage,
     DictionaryTokenKey,
@@ -39,7 +39,7 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { ApplyStrategy } from '@project/common/settings';
+import type { ApplyStrategy } from '@project/common/settings';
 import { v4 as uuidv4 } from 'uuid';
 
 type ExtensionDictionaryStatisticsCommand<T extends Message> =
@@ -256,10 +256,10 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
     }
 
     ankiCardWasModified() {
-        browser.runtime.sendMessage({
+        void browser.runtime.sendMessage({
             sender: 'asbplayer-dictionary',
             message: { command: 'card-updated-dialog' },
-        } as DictionaryDBCommand<CardUpdatedDialogMessage>);
+        });
     }
 
     onAnkiCardModified(callback: () => void) {
@@ -493,7 +493,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    _removeCallback(callback: Function, callbacks: Function[]) {
+    _removeCallback<T>(callback: T, callbacks: T[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

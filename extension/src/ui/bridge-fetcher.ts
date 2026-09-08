@@ -1,5 +1,5 @@
-import { HttpPostMessage } from '@project/common';
-import Bridge from './bridge';
+import type { HttpPostMessage } from '@project/common';
+import type Bridge from '@project/extension/src/ui/bridge';
 import { v4 as uuidv4 } from 'uuid';
 
 export class BridgeFetcher {
@@ -15,6 +15,6 @@ export class BridgeFetcher {
             body,
             messageId: uuidv4(),
         };
-        return await this._bridge.sendMessageFromServerAndExpectResponse(httpPostMessage);
+        return this._bridge.sendMessageFromServerAndExpectResponse(httpPostMessage);
     }
 }

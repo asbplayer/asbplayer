@@ -1,7 +1,8 @@
 import React from 'react';
 import Box from '@mui/material/Box';
-import MuiLink, { type LinkProps } from '@mui/material/Link';
-import LogoIcon from './LogoIcon';
+import MuiLink from '@mui/material/Link';
+import type { LinkProps } from '@mui/material/Link';
+import LogoIcon from '@project/common/components/LogoIcon';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -11,9 +12,9 @@ import MuiTableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import Typography from '@mui/material/Typography';
 import { useTheme, withStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import SettingsSection from './SettingsSection';
+import SettingsSection from '@project/common/components/SettingsSection';
 
 interface Props {
     appVersion?: string;
@@ -38,7 +39,7 @@ const TableCell = withStyles((theme) => ({
     },
 }))(MuiTableCell);
 
-const BorderedTableCell = withStyles((theme) => ({
+const BorderedTableCell = withStyles(() => ({
     root: {},
 }))(MuiTableCell);
 
@@ -207,7 +208,7 @@ const dependencies: Dependency[] = [
 const dependencyPurposeCounts: { [key: string]: number } = {};
 
 for (const dep of dependencies) {
-    let count = dependencyPurposeCounts[dep.purpose] ?? 0;
+    const count = dependencyPurposeCounts[dep.purpose] ?? 0;
     dependencyPurposeCounts[dep.purpose] = count + 1;
 }
 
@@ -215,7 +216,6 @@ const About = ({ appVersion, extensionVersion }: Props) => {
     const theme = useTheme<Theme>();
     const { t } = useTranslation();
     const renderedPurpose: { [key: string]: boolean } = {};
-    let purposeIndex = 0;
     return (
         <Box p={1} style={{ width: '100%' }}>
             <Box style={{ width: '100%', textAlign: 'center' }}>
@@ -292,7 +292,6 @@ const About = ({ appVersion, extensionVersion }: Props) => {
 
                                 if (renderedPurpose[d.purpose] === undefined) {
                                     alreadyRenderedPurpose = false;
-                                    purposeIndex++;
                                 } else {
                                     alreadyRenderedPurpose = true;
                                 }
@@ -300,7 +299,7 @@ const About = ({ appVersion, extensionVersion }: Props) => {
                                 renderedPurpose[d.purpose] = true;
 
                                 let CellComponent = TableCell;
-                                let nextPurpose = dependencies[index + 1]?.purpose;
+                                const nextPurpose = dependencies[index + 1]?.purpose;
 
                                 if (nextPurpose !== undefined && d.purpose !== nextPurpose) {
                                     CellComponent = BorderedTableCell;

@@ -1,5 +1,6 @@
-import { ExtensionGlobalStateProvider } from './extension-global-state-provider';
-import { MockStorageArea } from './mock-storage-area';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
+import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
+import { expect, it } from '@jest/globals';
 
 it('can retrieve list of keys', async () => {
     const provider = new ExtensionGlobalStateProvider(new MockStorageArea());
@@ -23,6 +24,9 @@ it('can retrieve all keys', async () => {
         ftueHasSeenAnkiDialogQuickSelectV2: false,
         ftueHasSeenSubtitleTrackSelector: false,
         ftueAnnotation: 0,
+        genericSubtitleParser: {
+            pages: {},
+        },
         onlineSubtitleSourceConfig: {
             jimakuApiKey: '',
             jimakuSearchCategory: 'anime',

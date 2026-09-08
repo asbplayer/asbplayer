@@ -1,9 +1,10 @@
-import { JpegFileMediaFragmentData } from './jpeg-file-media-fragment-data';
-import { CancelledMediaFragmentDataRenderingError, createVideoElement } from './media-fragment';
-import { FileModel } from './model';
+import { JpegFileMediaFragmentData } from '@project/common/src/jpeg-file-media-fragment-data';
+import { CancelledMediaFragmentDataRenderingError, createVideoElement } from '@project/common/src/media-fragment';
+import type { FileModel } from '@project/common/src/model';
+import { afterEach, expect, it, jest } from '@jest/globals';
 
-jest.mock('./media-fragment', () => {
-    const actual = jest.requireActual('./media-fragment');
+jest.mock('@project/common/src/media-fragment', () => {
+    const actual: object = jest.requireActual('@project/common/src/media-fragment');
     return {
         ...actual,
         createVideoElement: jest.fn(),
@@ -67,7 +68,7 @@ const toListener = (listener: EventListenerOrEventListenerObject): Listener => {
 };
 
 const flushAsync = async () =>
-    await new Promise<void>((resolve) => {
+    new Promise<void>((resolve) => {
         setTimeout(resolve, 0);
     });
 
@@ -93,13 +94,13 @@ const mockCanvasCreation = () => {
     } as unknown as HTMLCanvasElement;
 
     const originalCreateElement = document.createElement.bind(document);
-    jest.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+    jest.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
         if (tagName.toLowerCase() === 'canvas') {
-            return canvas as unknown as HTMLElement;
+            return canvas;
         }
 
         return originalCreateElement(tagName);
-    }) as any);
+    });
 };
 
 afterEach(() => {

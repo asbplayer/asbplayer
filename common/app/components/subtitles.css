@@ -7,7 +7,7 @@
 .asbplayer-subtitles {
     margin: 0;
     padding: 0;
-    display: table;
+    display: inline-block; /* Chromium can discard newline-only text nodes between inline children during table layout. */
     margin: auto;
     white-space: pre-wrap !important;
 }

@@ -1,13 +1,13 @@
-import { resizeCanvas } from './image-transformer';
+import { resizeCanvas } from '@project/common/src/image-transformer';
 import {
     CancelledMediaFragmentDataRenderingError,
     createVideoElement,
     disposeVideoElement,
     makeMediaFragmentFileName,
-    type MediaFragmentData,
     mediaFragmentErrorForFile,
-} from './media-fragment';
-import { FileModel, MediaFragmentErrorCode } from './model';
+} from '@project/common/src/media-fragment';
+import type { MediaFragmentData } from '@project/common/src/media-fragment';
+import type { FileModel, MediaFragmentErrorCode } from '@project/common/src/model';
 
 export const defaultJpegCompressionQuality = 0.85;
 
@@ -101,7 +101,7 @@ export class JpegFileMediaFragmentData implements MediaFragmentData {
 
     async blob(): Promise<Blob> {
         const canvas = await this._getCanvas();
-        return await new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             canvas.toBlob(
                 (blob) => {
                     if (blob === null) {
@@ -126,8 +126,7 @@ export class JpegFileMediaFragmentData implements MediaFragmentData {
             return this._canvasPromise;
         }
 
-        let canvasPromise: Promise<HTMLCanvasElement>;
-        canvasPromise = this._renderCanvas().catch((error) => {
+        const canvasPromise: Promise<HTMLCanvasElement> = this._renderCanvas().catch((error) => {
             if (this._canvasPromise === canvasPromise) {
                 this._canvasPromise = undefined;
             }
@@ -143,7 +142,7 @@ export class JpegFileMediaFragmentData implements MediaFragmentData {
         const video = await this._videoElement(this._file);
         const calculateCurrentTime = () => Math.max(0, Math.min(video.duration, this._timestamp / 1000));
 
-        return await new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             let settled = false;
 
             const cleanup = () => {

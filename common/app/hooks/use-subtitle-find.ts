@@ -1,9 +1,11 @@
-import { MutableRefObject, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type ListRange, type TableVirtuosoHandle } from 'react-virtuoso';
-import { type DictionaryTrack, dictionaryTrackEnabled } from '@project/common/settings';
+import type { MutableRefObject, RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ListRange, TableVirtuosoHandle } from 'react-virtuoso';
+import type { DisplaySubtitleModel } from '@project/common';
+import { dictionaryTrackEnabled } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
 import { normalizedLookupTerms, normalizeSearchText } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
-import { type DisplaySubtitleModel } from '../components/SubtitlePlayer';
 
 const findDelayMs = 300;
 
@@ -12,7 +14,7 @@ const parseRegexQuery = (query: string): RegExp | undefined => {
     if (!regexMatch) return;
     try {
         return new RegExp(regexMatch[1], regexMatch[2].replace(/[gy]/g, ''));
-    } catch (e) {
+    } catch {
         return;
     }
 };
@@ -85,52 +87,54 @@ export const useSubtitleFind = ({
         if (!open || !trimmed || parseRegexQuery(query) !== undefined || !yomitans.length) return;
 
         let cancelled = false;
-        const timeout = setTimeout(async () => {
-            await ensureYomitanVersion();
-            if (cancelled) return;
-            const queryForms = new Set<string>([trimmed]);
+        const timeout = setTimeout(() => {
+            void (async () => {
+                await ensureYomitanVersion();
+                if (cancelled) return;
+                const queryForms = new Set<string>([trimmed]);
 
-            const tokenizeResults = await Promise.allSettled(
-                yomitans.map((yt) => {
-                    try {
-                        return yt.tokenize(trimmed);
-                    } catch (e) {
-                        yomitanVersionPromisesRef.current.delete(yt);
-                        throw e;
-                    }
-                })
-            );
-            for (const result of tokenizeResults) {
-                if (result.status !== 'fulfilled') continue;
-                for (const tokenParts of result.value) {
-                    const tokenText = tokenParts
-                        .map((part) => part.text)
-                        .join('')
-                        .trim();
-                    if (tokenText) queryForms.add(tokenText);
-                }
-            }
-
-            const lemmaTerms = new Set<string>();
-            for (const queryForm of queryForms) {
-                const lemmaResults = await Promise.allSettled(
+                const tokenizeResults = await Promise.allSettled(
                     yomitans.map((yt) => {
                         try {
-                            return yt.lemmatize(queryForm);
+                            return yt.tokenize(trimmed);
                         } catch (e) {
                             yomitanVersionPromisesRef.current.delete(yt);
                             throw e;
                         }
                     })
                 );
-                for (const result of lemmaResults) {
+                for (const result of tokenizeResults) {
                     if (result.status !== 'fulfilled') continue;
-                    for (const lemma of result.value ?? []) lemmaTerms.add(lemma);
+                    for (const tokenParts of result.value) {
+                        const tokenText = tokenParts
+                            .map((part) => part.text)
+                            .join('')
+                            .trim();
+                        if (tokenText) queryForms.add(tokenText);
+                    }
                 }
-            }
 
-            if (cancelled) return;
-            setExpansion({ query: trimmed, terms: normalizedLookupTerms(...queryForms, ...lemmaTerms) });
+                const lemmaTerms = new Set<string>();
+                for (const queryForm of queryForms) {
+                    const lemmaResults = await Promise.allSettled(
+                        yomitans.map((yt) => {
+                            try {
+                                return yt.lemmatize(queryForm);
+                            } catch (e) {
+                                yomitanVersionPromisesRef.current.delete(yt);
+                                throw e;
+                            }
+                        })
+                    );
+                    for (const result of lemmaResults) {
+                        if (result.status !== 'fulfilled') continue;
+                        for (const lemma of result.value ?? []) lemmaTerms.add(lemma);
+                    }
+                }
+
+                if (cancelled) return;
+                setExpansion({ query: trimmed, terms: normalizedLookupTerms(...queryForms, ...lemmaTerms) });
+            })();
         }, findDelayMs);
 
         return () => {

@@ -1,6 +1,14 @@
+import type { Fetcher } from '@project/common';
+
 const WANIKANI_API_BASE_URL = 'https://api.wanikani.com/v2';
 const WANIKANI_REVISION = '20170710';
 const DEFAULT_RATE_LIMIT_RETRY_MS = 61000;
+
+class WaniKaniHttpFetcher implements Fetcher<RequestInit, Response> {
+    fetch(url: string, init: RequestInit) {
+        return fetch(url, init);
+    }
+}
 
 type WaniKaniResourceObject<TObject extends string, TData> = {
     id: number;
@@ -122,9 +130,20 @@ export class WaniKaniApiError extends Error {
 
 export class WaniKani {
     private readonly apiToken: string;
+    private readonly fetcher: Fetcher<RequestInit, Response>;
+    private readonly now: () => number;
+    private readonly wait: (ms: number) => Promise<void>;
 
-    constructor(apiToken: string) {
+    constructor(
+        apiToken: string,
+        fetcher = new WaniKaniHttpFetcher(),
+        now = Date.now,
+        wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+    ) {
         this.apiToken = apiToken.trim();
+        this.fetcher = fetcher;
+        this.now = now;
+        this.wait = wait;
     }
 
     async user(): Promise<WaniKaniUser> {
@@ -195,7 +214,7 @@ export class WaniKani {
     private async _getJson<T>(url: string): Promise<T> {
         let retriedRateLimit = false;
         while (true) {
-            const response = await fetch(url, {
+            const response = await this.fetcher.fetch(url, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${this.apiToken}`,
@@ -224,8 +243,8 @@ export class WaniKani {
         const resetHeader = response.headers.get('RateLimit-Reset');
         const resetValue = resetHeader === null ? Number.NaN : Number(resetHeader);
         const delay = Number.isFinite(resetValue)
-            ? Math.max(1000, resetValue * 1000 - Date.now() + 1000)
+            ? Math.max(1000, resetValue * 1000 - this.now() + 1000)
             : DEFAULT_RATE_LIMIT_RETRY_MS;
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await this.wait(delay);
     }
 }

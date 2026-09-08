@@ -1,5 +1,6 @@
-import i18n, { TFunction } from 'i18next';
-import { fetchLocalization } from './localization-fetcher';
+import type { TFunction } from 'i18next';
+import i18n from 'i18next';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 
 let initializedPromise: Promise<void> | undefined;
 
@@ -20,32 +21,27 @@ export const i18nInit = async (lang: string): Promise<TFunction<['translation', 
         const actualLanguage = langsInitialized[lang];
 
         if (i18n.language !== actualLanguage) {
-            i18n.changeLanguage(actualLanguage);
+            await i18n.changeLanguage(actualLanguage);
         }
 
         return i18n.t;
     }
 
-    initializedPromise = new Promise<void>(async (resolve, reject) => {
-        try {
-            const loc = await fetchLocalization(lang);
-            i18n.init({
-                resources: { [loc.lang]: { translation: loc.strings } },
-                lng: loc.lang,
-                fallbackLng: loc.lang,
-                debug: import.meta.env.MODE === 'development',
-                ns: 'translation',
-                defaultNS: 'translation',
-                interpolation: {
-                    escapeValue: false,
-                },
-            });
-            langsInitialized[lang] = loc.lang;
-            resolve();
-        } catch (e) {
-            reject(e);
-        }
-    });
+    initializedPromise = (async () => {
+        const loc = await fetchLocalization(lang);
+        await i18n.init({
+            resources: { [loc.lang]: { translation: loc.strings } },
+            lng: loc.lang,
+            fallbackLng: loc.lang,
+            debug: import.meta.env.MODE === 'development',
+            ns: 'translation',
+            defaultNS: 'translation',
+            interpolation: {
+                escapeValue: false,
+            },
+        });
+        langsInitialized[lang] = loc.lang;
+    })();
 
     await initializedPromise;
     return i18n.t;

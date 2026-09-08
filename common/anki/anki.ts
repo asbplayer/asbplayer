@@ -1,9 +1,9 @@
+import { asbInfo, extractText, fromBatches, sourceString } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
-import { AnkiExportMode, CardModel, MediaFragment, Progress } from '@project/common';
-import { HttpFetcher, Fetcher } from '@project/common';
-import { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
+import type { AnkiExportMode, CardModel, Progress, Fetcher } from '@project/common';
+import { MediaFragment, HttpFetcher } from '@project/common';
+import type { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
 import sanitize from 'sanitize-filename';
-import { extractText, fromBatches, sourceString } from '@project/common/util';
 
 const ANKI_CARDS_INFO_BATCH_SIZE = 10;
 const ANKI_NOTES_INFO_BATCH_SIZE = 100;
@@ -12,11 +12,11 @@ const ANKI_MOD_BATCH_SIZE = 10000;
 const ankiQuerySpecialCharacters = ['"', '*', '_', '\\', ':'];
 const ankiQueryDeckSpecialCharacters = ['"', '*', '_', '\\'];
 const alphaNumericCharacters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-const unsafeURLChars = /[:\/\?#\[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
+const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
 
 const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {
-    console.info(`[asbplayer] ${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
+    asbInfo('anki/media', `${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
 };
 
 const timedMediaBase64 = async (
@@ -88,14 +88,14 @@ const makeUniqueFileName = (fileName: string) => {
     return `${baseName}_${randomString()}.${exension}`;
 };
 
-const htmlTagRegexString = '<([^/ >])*[^>]*>(.*?)</\\1>';
+const htmlTagRegexString = '<([^/ >]+)[^>]*>(.*?)</\\1>';
 const anyHtmlTagRegex = /<[^>]+>/;
 
 // Given <a><b>content</b></a> return ['<a><b>content</b></a>', '<b>content</b>', 'content']
 const tagContent = (html: string) => {
     const htmlTagRegex = new RegExp(htmlTagRegexString);
     let content = html;
-    let contents = [html];
+    const contents = [html];
 
     while (true) {
         const match = htmlTagRegex.exec(content);
@@ -177,11 +177,13 @@ interface Base64Exportable {
 export async function exportCard(
     card: CardModel,
     ankiSettings: AnkiSettings,
-    exportMode: AnkiExportMode = 'default'
+    exportMode: AnkiExportMode = 'default',
+    fetcher?: Fetcher,
+    noteId?: number
 ): Promise<string> {
-    const anki = new Anki(ankiSettings);
+    const anki = new Anki(ankiSettings, fetcher);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
-    let audioClip =
+    const audioClip =
         card.audio === undefined
             ? undefined
             : AudioClip.fromBase64(
@@ -194,7 +196,7 @@ export async function exportCard(
                   card.audio.error
               );
 
-    return await anki.export({
+    return anki.export({
         text: card.text ?? extractText(card.subtitle, card.surroundingSubtitles),
         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
         track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
@@ -217,6 +219,7 @@ export async function exportCard(
         customFieldValues: card.customFieldValues ?? {},
         tags: ankiSettings.tags,
         mode: exportMode,
+        noteId,
     });
 }
 
@@ -572,20 +575,20 @@ export class Anki {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
             case 'updateLast': {
-                const lastNoteId = [...recentNotes].sort()[recentNotes.length - 1];
+                const lastNoteId = [...recentNotes].sort((a, b) => a - b)[recentNotes.length - 1];
 
                 if (recentNotes.length === 0) {
                     throw new Error('Could not find note to update');
                 }
 
-                return await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
+                return this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
             }
             case 'updateSpecific': {
                 if (noteId === undefined) {
                     throw new Error('noteId is required for updateSpecific mode');
                 }
 
-                return await this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
+                return this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
             }
             case 'default':
                 return (await this._executeAction('addNote', params, ankiConnectUrl)).result;

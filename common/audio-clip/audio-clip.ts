@@ -1,10 +1,11 @@
-import Mp3Encoder from './mp3-encoder';
+import { asbError, download } from '@project/common/util';
+import Mp3Encoder from '@project/common/audio-clip/mp3-encoder';
 
-import { AudioErrorCode, CardModel, FileModel } from '@project/common';
-import { download } from '@project/common/util';
-import { isActiveBlobUrl } from '../blob-url';
-import { base64ToBlob, blobToBase64 } from '../base64';
-import { isFirefox } from '../browser-detection';
+import type { CardModel, FileModel } from '@project/common';
+import { AudioErrorCode } from '@project/common';
+import { isActiveBlobUrl } from '@project/common/blob-url';
+import { base64ToBlob, blobToBase64 } from '@project/common/base64';
+import { isFirefox } from '@project/common/browser-detection';
 
 const maxPrefixLength = 24;
 
@@ -59,7 +60,7 @@ function recorderConfiguration() {
     };
     return Object.keys(AUDIO_TYPES)
         .filter(MediaRecorder.isTypeSupported)
-        .map((t) => [t as string, AUDIO_TYPES[t] as string])[0];
+        .map((t) => [t, AUDIO_TYPES[t]])[0];
 }
 
 class Base64AudioData implements AudioData {
@@ -72,7 +73,7 @@ class Base64AudioData implements AudioData {
     private readonly _error?: AudioErrorCode;
     private readonly _callbacks: AudioClipEventCallbacks = { play: [], pause: [] };
     private playingAudio?: HTMLAudioElement;
-    private stopAudioTimeout?: NodeJS.Timeout;
+    private stopAudioTimeout?: ReturnType<typeof setTimeout>;
     private cachedBlob?: Blob;
 
     constructor(
@@ -114,7 +115,7 @@ class Base64AudioData implements AudioData {
     }
 
     async blob() {
-        return await this._blob();
+        return this._blob();
     }
 
     get playing() {
@@ -161,7 +162,7 @@ class Base64AudioData implements AudioData {
         }
 
         this.stopAudio(this.playingAudio);
-        clearTimeout(this.stopAudioTimeout!);
+        clearTimeout(this.stopAudioTimeout);
         this.playingAudio = undefined;
         this.stopAudioTimeout = undefined;
         invokeCallbacks('pause', this._callbacks);
@@ -183,7 +184,7 @@ class Base64AudioData implements AudioData {
         return this.cachedBlob;
     }
 
-    slice(start: number, end: number): AudioData {
+    slice(): AudioData {
         // Not supported
         return this;
     }
@@ -207,11 +208,12 @@ class FileAudioClipper {
     private readonly _recorderMimeType: string;
     private readonly _trackId?: string;
     private _clippingAudioElement?: HTMLAudioElement;
+    private _clippingAudioContext?: AudioContext;
     private _clippingAudibly?: boolean;
     private _clippingAudioReject?: (error: Error) => void;
-    private _stopClippingTimeout?: NodeJS.Timeout;
+    private _stopClippingTimeout?: ReturnType<typeof setTimeout>;
     private _playingAudioElement?: HTMLAudioElement;
-    private _stopAudioTimeout?: NodeJS.Timeout;
+    private _stopAudioTimeout?: ReturnType<typeof setTimeout>;
     private _blob?: Blob;
     private _blobPromise?: Promise<Blob>;
     private _callbacks: AudioClipEventCallbacks;
@@ -240,7 +242,7 @@ class FileAudioClipper {
 
     get isPlayingAudibly(): boolean {
         return (
-            (!isFirefox && this._clippingAudioElement !== undefined && this._clippingAudibly === true) ||
+            (this._clippingAudioElement !== undefined && this._clippingAudibly === true) ||
             this._playingAudioElement !== undefined
         );
     }
@@ -268,8 +270,8 @@ class FileAudioClipper {
             this._playingAudioElement = audio;
         } else {
             const audio = await this._audioElement(this._file.blobUrl, true);
-            audio.oncanplay = async (e) => {
-                audio.play();
+            audio.oncanplay = async () => {
+                void audio.play();
                 invokeCallbacks('play', this._callbacks);
                 audio.oncanplay = null;
             };
@@ -293,65 +295,74 @@ class FileAudioClipper {
     async clip(audible: boolean): Promise<Blob> {
         this._stopClippingAudio();
         this._clippingAudibly = audible;
-        this._blobPromise = new Promise(async (resolve, reject) => {
-            try {
+        this._blobPromise = new Promise((resolve, reject) => {
+            void (async () => {
                 const audio = await this._audioElement(this._file.blobUrl, true);
-                audio.oncanplay = async (e) => {
+                audio.oncanplay = () => {
                     audio.oncanplay = null;
 
-                    if (!audible) {
-                        // Direct audio to destination other than speakers
-                        const audioContext = new AudioContext();
-                        const destination = audioContext.createMediaStreamDestination();
-                        const source = audioContext.createMediaElementSource(audio);
-                        source.connect(destination);
-                    }
-
-                    await audio.play();
-
-                    if (audible) {
-                        invokeCallbacks('play', this._callbacks);
-                    }
-
-                    const stream = this._captureStream(audio);
-                    const recorder = new MediaRecorder(stream, { mimeType: this._recorderMimeType });
-                    const chunks: BlobPart[] = [];
-
-                    recorder.ondataavailable = (e) => {
-                        chunks.push(e.data);
-                    };
-
-                    let finished = false;
-
-                    recorder.onstop = (e) => {
-                        if (finished) {
-                            this._blob = new Blob(chunks, { type: this._recorderMimeType });
-                            resolve(this._blob);
+                    void (async () => {
+                        if (!audible) {
+                            // Direct audio to destination other than speakers
+                            const audioContext = new AudioContext();
+                            this._clippingAudioContext = audioContext;
+                            const destination = audioContext.createMediaStreamDestination();
+                            const source = audioContext.createMediaElementSource(audio);
+                            source.connect(destination);
+                        } else if (isFirefox) {
+                            // In Firefox, captureStream() mutes the media element audio to speakers unless connected to AudioContext destination
+                            const audioContext = new AudioContext();
+                            this._clippingAudioContext = audioContext;
+                            const source = audioContext.createMediaElementSource(audio);
+                            source.connect(audioContext.destination);
                         }
-                    };
 
-                    recorder.start();
+                        await audio.play();
 
-                    this._clippingAudioReject = reject;
-                    this._clippingAudioElement = audio;
-                    this._stopClippingTimeout = setTimeout(
-                        () => {
-                            this._stopAudio(audio, false);
-                            this._clippingAudioElement = undefined;
-                            this._stopClippingTimeout = undefined;
-                            this._clippingAudioReject = undefined;
-                            finished = true;
-                            recorder.stop();
-                            for (const track of stream.getAudioTracks()) {
-                                track.stop();
+                        if (audible) {
+                            invokeCallbacks('play', this._callbacks);
+                        }
+
+                        const stream = this._captureStream(audio);
+                        const recorder = new MediaRecorder(stream, { mimeType: this._recorderMimeType });
+                        const chunks: BlobPart[] = [];
+
+                        recorder.ondataavailable = (e) => {
+                            chunks.push(e.data);
+                        };
+
+                        let finished = false;
+
+                        recorder.onstop = () => {
+                            if (finished) {
+                                this._blob = new Blob(chunks, { type: this._recorderMimeType });
+                                resolve(this._blob);
                             }
-                        },
-                        (this._end - this._start) / this._playbackRate + 100
-                    );
+                        };
+
+                        recorder.start();
+
+                        this._clippingAudioReject = reject;
+                        this._clippingAudioElement = audio;
+                        this._stopClippingTimeout = setTimeout(
+                            () => {
+                                this._stopAudio(audio, false);
+                                void this._clippingAudioContext?.close();
+                                this._clippingAudioContext = undefined;
+                                this._clippingAudioElement = undefined;
+                                this._stopClippingTimeout = undefined;
+                                this._clippingAudioReject = undefined;
+                                finished = true;
+                                recorder.stop();
+                                for (const track of stream.getAudioTracks()) {
+                                    track.stop();
+                                }
+                            },
+                            (this._end - this._start) / this._playbackRate + 100
+                        );
+                    })().catch(reject);
                 };
-            } catch (e) {
-                reject(e);
-            }
+            })().catch(reject);
         });
         return this._blobPromise;
     }
@@ -374,7 +385,9 @@ class FileAudioClipper {
         }
 
         this._stopAudio(this._clippingAudioElement, false);
-        clearTimeout(this._stopClippingTimeout!);
+        void this._clippingAudioContext?.close();
+        this._clippingAudioContext = undefined;
+        clearTimeout(this._stopClippingTimeout);
         this._clippingAudioReject?.(new ClippingCancelledError());
         this._clippingAudioElement = undefined;
         this._stopClippingTimeout = undefined;
@@ -388,7 +401,7 @@ class FileAudioClipper {
         }
 
         this._stopAudio(this._playingAudioElement, true);
-        clearTimeout(this._stopAudioTimeout!);
+        clearTimeout(this._stopAudioTimeout);
         this._playingAudioElement = undefined;
         this._stopAudioTimeout = undefined;
     }
@@ -406,7 +419,6 @@ class FileAudioClipper {
                     Date.now() - t0 >= 5_000
                 ) {
                     if (selectTrack && this._trackId && audio.audioTracks && audio.audioTracks.length > 0) {
-                        // @ts-ignore
                         for (const t of audio.audioTracks) {
                             t.enabled = this._trackId === t.id;
                         }
@@ -527,20 +539,11 @@ class FileAudioData implements AudioData {
     }
 
     async base64() {
-        return new Promise<string>(async (resolve, reject) => {
-            var reader = new FileReader();
-            const blob = await this.blob();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-                const result = reader.result as string;
-                const base64 = result.substring(result.indexOf(',') + 1);
-                resolve(base64);
-            };
-        });
+        return blobToBase64(await this.blob());
     }
 
     get playing() {
-        return this._playClipper?.isPlayingAudibly ?? false;
+        return this._blobClipper.isPlayingAudibly || (this._playClipper?.isPlayingAudibly ?? false);
     }
 
     onEvent(event: AudioClipEvent, callback: () => void) {
@@ -569,10 +572,10 @@ class FileAudioData implements AudioData {
                     this._callbacks,
                     this._trackId
                 );
-            this._playClipper.play();
+            void this._playClipper.play();
             invokeCallbacks('play', this._callbacks);
         } else if (this._blobClipper.finishedRecording) {
-            this._blobClipper.play();
+            void this._blobClipper.play();
             invokeCallbacks('play', this._callbacks);
             this._playClipper = undefined;
         } else {
@@ -583,7 +586,7 @@ class FileAudioData implements AudioData {
                 })
                 .catch((e) => {
                     if (!(e instanceof ClippingCancelledError)) {
-                        console.error(e);
+                        asbError('audio-clip', e);
                     }
                 });
             invokeCallbacks('play', this._callbacks);
@@ -766,7 +769,7 @@ export default class AudioClip {
             const end = card.audio.end ?? card.subtitle.end;
 
             return AudioClip.fromBase64(
-                card.subtitleFileName!,
+                card.subtitleFileName,
                 Math.max(0, start - (card.audio.paddingStart ?? 0)),
                 end + (card.audio.paddingEnd ?? 0),
                 card.audio.playbackRate ?? 1,
@@ -856,11 +859,11 @@ export default class AudioClip {
     }
 
     async base64() {
-        return await this.data.base64();
+        return this.data.base64();
     }
 
     async blob() {
-        return await this.data.blob();
+        return this.data.blob();
     }
 
     async download() {

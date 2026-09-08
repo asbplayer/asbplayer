@@ -1,6 +1,7 @@
-import { WebSocketClientSettings } from '../../settings';
-import { CardTextFieldValues, PostMineAction } from '../../src/model';
-import { WebSocketClient } from '../../web-socket-client';
+import { asbError } from '@project/common/util';
+import type { WebSocketClientSettings } from '@project/common/settings';
+import type { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
+import { WebSocketClient } from '@project/common/web-socket-client';
 import { useEffect, useState } from 'react';
 
 export interface MineSubtitleParams extends CardTextFieldValues {
@@ -13,7 +14,7 @@ export const useAppWebSocketClient = ({ settings }: { settings: WebSocketClientS
     useEffect(() => {
         if (settings.webSocketClientEnabled && settings.webSocketServerUrl) {
             const client = new WebSocketClient();
-            client.bind(settings.webSocketServerUrl).catch(console.error);
+            client.bind(settings.webSocketServerUrl).catch((error) => asbError('web-socket', error));
             setClient(client);
             return () => client.unbind();
         }

@@ -1,5 +1,5 @@
-import { Command, CopyMessage, Message, PublishCardMessage } from '@project/common';
-import { CardPublisher } from '../../services/card-publisher';
+import type { Command, Message, PublishCardMessage } from '@project/common';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 
 export default class PublishCardHandler {
     private readonly _cardPublisher: CardPublisher;
@@ -16,9 +16,9 @@ export default class PublishCardHandler {
         return 'publish-card';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const message = command.message as PublishCardMessage;
-        this._cardPublisher.publish(message);
+        void this._cardPublisher.publish(message);
         return false;
     }
 }

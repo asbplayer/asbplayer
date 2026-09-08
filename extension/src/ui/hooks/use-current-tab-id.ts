@@ -3,7 +3,7 @@ import { useEffect, useCallback, useState } from 'react';
 export const useCurrentTabId = () => {
     const [currentTabId, setCurrentTabId] = useState<number>();
     const refresh = useCallback(() => {
-        browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+        void browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
             if (tabs.length > 0) {
                 setCurrentTabId(tabs[0].id);
             }

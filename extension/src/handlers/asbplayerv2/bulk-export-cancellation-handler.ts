@@ -1,4 +1,4 @@
-import { CardPublisher } from '../../services/card-publisher';
+import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 
 export default class BulkExportCancellationHandler {
     readonly sender = 'asbplayerv2';
@@ -6,7 +6,7 @@ export default class BulkExportCancellationHandler {
 
     constructor(private readonly _cardPublisher: CardPublisher) {}
 
-    handle(request: any, sender: any, sendResponse: any): boolean {
+    handle(): boolean {
         this._cardPublisher.bulkExportCancelled = true;
         return false;
     }

@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util';
+import type {
     ExtensionToVideoCommand,
     ImageCaptureParams,
     RecordAnimatedWebpMessage,
@@ -9,7 +10,7 @@ import {
 // consume it via getUserMedia. Chrome only — Firefox has no tabCapture API.
 export const tabCaptureStreamId = (tabId: number): Promise<string> =>
     new Promise((resolve) =>
-        browser.tabCapture.getMediaStreamId({ targetTabId: tabId, consumerTabId: tabId } as any, (streamId) =>
+        browser.tabCapture.getMediaStreamId({ targetTabId: tabId, consumerTabId: tabId }, (streamId) =>
             resolve(streamId)
         )
     );
@@ -33,10 +34,10 @@ export const recordAnimatedWebp = async (
         src,
     };
 
-    const response = (await browser.tabs.sendMessage(tabId, command)) as RecordAnimatedWebpResponse;
+    const response: RecordAnimatedWebpResponse = await browser.tabs.sendMessage(tabId, command);
 
     if (response.error) {
-        console.error('Animated WebP recording failed:', response.error);
+        asbError('recording/animated-webp', response.error);
     }
 
     return response;

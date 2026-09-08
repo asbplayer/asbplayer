@@ -1,5 +1,6 @@
 import React from 'react';
-import Grid, { GridProps } from '@mui/material/Grid';
+import type { GridProps } from '@mui/material/Grid';
+import Grid from '@mui/material/Grid';
 
 const CenteredGridContainer = ({ children, ...props }: { children: React.ReactNode } & GridProps) => {
     return (

@@ -3,12 +3,10 @@ export const frameColorScheme = () => {
     // https://fvsch.com/transparent-iframes
 
     const documentColorSchemeMetaTag = document.querySelector('meta[name="color-scheme"]');
-
-    if (documentColorSchemeMetaTag === null) {
-        return 'normal';
-    }
-
-    const documentColorScheme = (documentColorSchemeMetaTag as HTMLMetaElement).content;
+    const documentColorScheme =
+        documentColorSchemeMetaTag === null
+            ? getComputedStyle(document.documentElement).colorScheme
+            : (documentColorSchemeMetaTag as HTMLMetaElement).content;
     const light = documentColorScheme.includes('light');
     const dark = documentColorScheme.includes('dark');
 
@@ -25,4 +23,28 @@ export const frameColorScheme = () => {
     }
 
     return 'normal';
+};
+
+export const frameColorSchemeClass = () => {
+    const colorScheme = frameColorScheme();
+
+    switch (colorScheme) {
+        case 'none':
+            return 'asbplayer-color-scheme-light-dark';
+        case 'light':
+            return 'asbplayer-color-scheme-light';
+        case 'dark':
+            return 'asbplayer-color-scheme-dark';
+        default:
+            return 'asbplayer-color-scheme-normal';
+    }
+};
+
+export const frameColorSchemeStyleBlock = () => {
+    return `
+:root {
+    color-scheme: ${frameColorScheme()} !important;
+    background-color: transparent !important;
+}
+    `;
 };

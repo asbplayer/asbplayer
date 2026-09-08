@@ -9,7 +9,7 @@ export const useCommandKeyBinds = () => {
             return;
         }
 
-        browser.commands.getAll().then((commands) => {
+        void browser.commands.getAll().then((commands) => {
             const commandsObj: any = {};
 
             for (const c of commands) {

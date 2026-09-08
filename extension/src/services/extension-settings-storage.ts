@@ -1,14 +1,11 @@
+import type { AsbplayerSettings, SettingsStorage, Profile } from '@project/common/settings';
 import {
-    AsbplayerSettings,
-    SettingsStorage,
     unprefixedSettings,
     prefixedSettings,
     defaultSettings,
-    Profile,
+    activeProfileKey,
+    profilesKey,
 } from '@project/common/settings';
-
-const activeProfileKey = 'activeSettingsProfile';
-const profilesKey = 'settingsProfiles';
 
 export interface StorageArea {
     set(items: { [key: string]: any }): Promise<void>;
@@ -31,7 +28,7 @@ export class ExtensionSettingsStorage implements SettingsStorage {
         const activeProfile = await this.activeProfile();
 
         if (activeProfile === undefined) {
-            return await this._storage.get(keysAndDefaults);
+            return this._storage.get(keysAndDefaults);
         }
 
         return unprefixedSettings(

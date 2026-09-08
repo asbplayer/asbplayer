@@ -1,6 +1,6 @@
 import type { Command, Message } from '@project/common';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
-import { SettingsProvider } from '@project/common/settings';
+import type { SettingsProvider } from '@project/common/settings';
 
 export default class ClearCopyHistoryHandler {
     private readonly _settings: SettingsProvider;
@@ -17,11 +17,11 @@ export default class ClearCopyHistoryHandler {
     }
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
-        this._settings
+        void this._settings
             .getSingle('miningHistoryStorageLimit')
             .then((limit) => new IndexedDBCopyHistoryRepository(limit))
             .then((copyHistoryRepository) => {
-                copyHistoryRepository.clear().then(() => {
+                void copyHistoryRepository.clear().then(() => {
                     sendResponse({});
                 });
             });

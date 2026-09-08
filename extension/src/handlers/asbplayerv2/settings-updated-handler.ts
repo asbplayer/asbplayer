@@ -1,4 +1,4 @@
-import {
+import type {
     AsbPlayerCommand,
     Command,
     ExtensionToAsbPlayerCommand,
@@ -6,10 +6,10 @@ import {
     Message,
     SettingsUpdatedMessage,
 } from '@project/common';
-import { SettingsProvider } from '@project/common/settings';
-import { primeLocalization } from '../../services/localization-fetcher';
-import TabRegistry from '../../services/tab-registry';
-import { bindWebSocketClient, unbindWebSocketClient } from '../../services/web-socket-client-binding';
+import type { SettingsProvider } from '@project/common/settings';
+import { primeLocalization } from '@project/extension/src/services/localization-fetcher';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
+import { bindWebSocketClient, unbindWebSocketClient } from '@project/extension/src/services/web-socket-client-binding';
 
 export default class SettingsUpdatedHandler {
     private readonly _tabRegistry: TabRegistry;
@@ -28,20 +28,20 @@ export default class SettingsUpdatedHandler {
         return 'settings-updated';
     }
 
-    handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
+    handle(command: Command<Message>) {
         const settingsUpdatedCommand = command as AsbPlayerCommand<SettingsUpdatedMessage>;
-        this._settingsProvider
+        void this._settingsProvider
             .get(['language', 'webSocketClientEnabled'])
             .then(({ language, webSocketClientEnabled }) => {
-                primeLocalization(language);
+                void primeLocalization(language);
 
                 if (webSocketClientEnabled) {
-                    bindWebSocketClient(this._settingsProvider, this._tabRegistry);
+                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry);
                 } else {
                     unbindWebSocketClient();
                 }
             });
-        this._tabRegistry.publishCommandToVideoElements((videoElement) => {
+        void this._tabRegistry.publishCommandToVideoElements((videoElement) => {
             const videoElementCommand: ExtensionToVideoCommand<SettingsUpdatedMessage> = {
                 sender: 'asbplayer-extension-to-video',
                 message: {
@@ -51,7 +51,7 @@ export default class SettingsUpdatedHandler {
             };
             return videoElementCommand;
         });
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => {
                 if (
                     settingsUpdatedCommand.asbplayerId !== undefined &&

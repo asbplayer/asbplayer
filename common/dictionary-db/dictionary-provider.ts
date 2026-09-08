@@ -1,4 +1,4 @@
-import {
+import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,
@@ -14,10 +14,10 @@ import {
     DictionaryRecordUpdateResult,
     DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
-import { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
-import { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
-import { download, getCurrentTimeString } from '../util';
+import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type { ApplyStrategy, AsbplayerSettings } from '@project/common/settings';
+import { download, getCurrentTimeString } from '@project/common/util';
 
 export interface DictionaryStorage {
     getBulk: (profile: string | undefined, track: number, tokens: string[]) => Promise<TokenResults>;
@@ -64,7 +64,7 @@ export interface DictionaryStorage {
     onRequestStatisticsSeek: (callback: (timestamp: number) => void) => () => void;
     requestStatisticsMineSentences: (mediaId: string, indexes: number[]) => Promise<void> | void;
     onRequestStatisticsMineSentences: (callback: (mediaId: string, indexes: number[]) => void) => () => void;
-    _removeCallback(callback: Function, callbacks: Function[]): void;
+    _removeCallback<T>(callback: T, callbacks: T[]): void;
 }
 
 export class DictionaryProvider {

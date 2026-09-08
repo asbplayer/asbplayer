@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material/styles';
-import { useOverlayBounds } from '../hooks/use-overlay-bounds';
+import type { Theme } from '@mui/material/styles';
+import { useOverlayBounds } from '@project/common/app/hooks/use-overlay-bounds';
 
 // Resizable, draggable blur mask that stays within its container and auto-hides its handles when idle
 
@@ -76,7 +76,7 @@ export default function BlurOverlay({ anchorRef, containerRef }: BlurOverlayProp
     const dragStart = useRef<Position>({ x: 0, y: 0 });
     const posStart = useRef<Position>({ x: 0, y: 0 });
     const sizeStart = useRef<Size>({ width: 0, height: 0 });
-    const autoHideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const { bounds, boundsRef, containerBounds, clampPos, clampSizeToBounds } = useOverlayBounds({
         anchorRef,

@@ -1,5 +1,5 @@
-export interface Fetcher {
-    fetch: (url: string, body: any) => Promise<any>;
+export interface Fetcher<TRequest = any, TResponse = any> {
+    fetch: (url: string, request: TRequest) => Promise<TResponse>;
 }
 
 export class HttpFetcher implements Fetcher {
@@ -8,6 +8,6 @@ export class HttpFetcher implements Fetcher {
             method: 'POST',
             body: JSON.stringify(body),
         });
-        return await response.json();
+        return response.json();
     }
 }

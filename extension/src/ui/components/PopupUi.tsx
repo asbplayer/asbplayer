@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import {
+import type {
     ExtensionToVideoCommand,
     GrantedActiveTabPermissionMessage,
     PopupToExtensionCommand,
     SettingsUpdatedMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
-import { ExtensionSettingsStorage } from '../../services/extension-settings-storage';
-import Popup from './Popup';
-import { useRequestingActiveTabPermission } from '../hooks/use-requesting-active-tab-permission';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
+import Popup from '@project/extension/src/ui/components/Popup';
+import { useRequestingActiveTabPermission } from '@project/extension/src/ui/hooks/use-requesting-active-tab-permission';
 import { isMobile } from 'react-device-detect';
 import { useSettingsProfileContext } from '@project/common/hooks/use-settings-profile-context';
 import { StyledEngineProvider } from '@mui/material/styles';
@@ -32,7 +33,7 @@ const notifySettingsUpdated = () => {
             command: 'settings-updated',
         },
     };
-    browser.runtime.sendMessage(settingsUpdatedCommand);
+    void browser.runtime.sendMessage(settingsUpdatedCommand);
 };
 
 export function PopupUi({ commands }: Props) {
@@ -42,7 +43,7 @@ export function PopupUi({ commands }: Props) {
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
 
     useEffect(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
     }, [settingsProvider]);
 
     const handleSettingsChanged = useCallback(
@@ -55,27 +56,28 @@ export function PopupUi({ commands }: Props) {
     );
 
     const handleOpenExtensionShortcuts = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
+        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
     }, []);
 
     const handleOpenApp = useCallback(async () => {
         if (settings?.streamingAppUrl) {
-            browser.tabs.create({ active: true, url: settings.streamingAppUrl });
+            void browser.tabs.create({ active: true, url: settings.streamingAppUrl });
         }
     }, [settings]);
 
     const handleOpenSidePanel = useCallback(async () => {
         if (isFirefoxBuild) {
-            // @ts-ignore
+            // @ts-expect-error: browser.sidebarAction is not yet in the TypeScript lib.dom.d.ts
             browser.sidebarAction.open();
         } else {
-            // @ts-ignore
-            browser.windows.getLastFocused((window) => browser.sidePanel.open({ windowId: window.id }));
+            browser.windows.getLastFocused((window) => {
+                void browser.sidePanel.open({ windowId: window.id! });
+            });
         }
     }, []);
 
     const handleOpenUserGuide = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
     }, []);
 
     const { requestingActiveTabPermission, tabRequestingActiveTabPermission } = useRequestingActiveTabPermission();
@@ -92,12 +94,12 @@ export function PopupUi({ commands }: Props) {
             },
             src: tabRequestingActiveTabPermission.src,
         };
-        browser.tabs.sendMessage(tabRequestingActiveTabPermission.tabId, command);
+        void browser.tabs.sendMessage(tabRequestingActiveTabPermission.tabId, command);
         window.close();
     }, [requestingActiveTabPermission, tabRequestingActiveTabPermission]);
 
     const handleProfileChanged = useCallback(() => {
-        settingsProvider.getAll().then(setSettings);
+        void settingsProvider.getAll().then(setSettings);
         notifySettingsUpdated();
     }, [settingsProvider]);
 

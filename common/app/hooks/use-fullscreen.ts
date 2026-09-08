@@ -11,9 +11,9 @@ export const useFullscreen = () => {
     }, []);
     const requestFullscreen = useCallback((newFullscreen: boolean) => {
         if (newFullscreen && !document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
+            void document.documentElement.requestFullscreen();
         } else if (!newFullscreen && document.fullscreenElement) {
-            document.exitFullscreen();
+            void document.exitFullscreen();
         }
     }, []);
     return { fullscreen, requestFullscreen };

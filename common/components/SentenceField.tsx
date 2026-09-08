@@ -1,9 +1,9 @@
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import makeStyles from '@mui/styles/makeStyles';
-import { SubtitleModel } from '..';
-import SubtitleTextImage from './SubtitleTextImage';
-import { type Theme } from '@mui/material';
+import type { SubtitleModel } from '..';
+import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
+import type { Theme } from '@mui/material';
 
 interface TextImageSetProps {
     selectedSubtitles: SubtitleModel[];

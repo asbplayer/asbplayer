@@ -1,5 +1,5 @@
-import TabRegistry from '@/services/tab-registry';
-import { Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
+import type TabRegistry from '@/services/tab-registry';
+import type { Command, Message, OpenStatisticsOverlayMessage } from '@project/common';
 
 export default class OpenStatisticsOverlayHandler {
     private readonly _tabRegistry: TabRegistry;
@@ -16,11 +16,7 @@ export default class OpenStatisticsOverlayHandler {
         return 'open-statistics-overlay';
     }
 
-    async handle(
-        command: Command<Message>,
-        sender: Browser.runtime.MessageSender,
-        sendResponse: (response?: any) => void
-    ) {
+    async handle(command: Command<Message>) {
         const openCommand: Command<OpenStatisticsOverlayMessage> = command as Command<OpenStatisticsOverlayMessage>;
         void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => {

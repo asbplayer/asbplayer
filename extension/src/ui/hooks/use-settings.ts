@@ -1,6 +1,7 @@
-import { Command, SettingsUpdatedMessage } from '@project/common';
-import { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
-import { ExtensionSettingsStorage } from '../../services/extension-settings-storage';
+import type { Command, SettingsUpdatedMessage } from '@project/common';
+import type { AsbplayerSettings } from '@project/common/settings';
+import { SettingsProvider } from '@project/common/settings';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSettingsProfileContext } from '@project/common/hooks/use-settings-profile-context';
 import { DictionaryProvider } from '@project/common/dictionary-db';
@@ -16,13 +17,13 @@ export const useSettings = () => {
     const refreshSettings = useCallback(() => settingsProvider.getAll().then(setSettings), [settingsProvider]);
 
     useEffect(() => {
-        refreshSettings();
+        void refreshSettings();
     }, [refreshSettings]);
 
     useEffect(() => {
-        browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        browser.runtime.onMessage.addListener((request) => {
             if (request.message?.command === 'settings-updated') {
-                settingsProvider.getAll().then(setSettings);
+                void settingsProvider.getAll().then(setSettings);
             }
         });
     }, [settingsProvider]);
@@ -34,19 +35,19 @@ export const useSettings = () => {
                 command: 'settings-updated',
             },
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
     }, []);
 
     const onSettingsChanged = useCallback(
         (settings: Partial<AsbplayerSettings>) => {
             setSettings((s) => ({ ...s!, ...settings }));
-            settingsProvider.set(settings).then(() => notifySettingsUpdated());
+            void settingsProvider.set(settings).then(() => notifySettingsUpdated());
         },
         [settingsProvider, notifySettingsUpdated]
     );
 
     const handleProfileChanged = useCallback(() => {
-        refreshSettings();
+        void refreshSettings();
         notifySettingsUpdated();
     }, [refreshSettings, notifySettingsUpdated]);
 

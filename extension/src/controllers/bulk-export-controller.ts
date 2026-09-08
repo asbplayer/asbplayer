@@ -1,18 +1,11 @@
-import { CardExportedMessage, CopySubtitleMessage, Message, PostMineAction } from '@project/common';
-import { surroundingSubtitlesAroundInterval } from '@project/common/util';
-import Binding from '../services/binding';
+import { asbError, surroundingSubtitlesAroundInterval } from '@project/common/util';
+import type { CardExportedMessage, CopySubtitleMessage, Message } from '@project/common';
+import { PostMineAction } from '@project/common';
+import type Binding from '@project/extension/src/services/binding';
 
 export interface BulkExportStartedPayload extends Message {
     command: 'bulk-export-started';
     total: number;
-}
-
-interface BulkExportCompletedPayload extends Message {
-    command: 'bulk-export-completed';
-}
-
-interface BulkExportCancelledPayload extends Message {
-    command: 'bulk-export-cancelled';
 }
 
 export default class BulkExportController {
@@ -58,10 +51,13 @@ export default class BulkExportController {
                 this._currentIndex++;
 
                 if (exported.exportError) {
-                    console.error('Bulk export error:', exported.exportError);
+                    asbError('anki/export', 'Bulk export error:', exported.exportError);
                 } else if (exported.skippedDuplicate) {
-                    this._context.subtitleController.notification('info.cardNotExported', {
-                        reason: 'Duplicate',
+                    this._context.subtitleController.notification({
+                        locKey: 'info.cardNotExported',
+                        replacements: {
+                            reason: 'Duplicate',
+                        },
                     });
                 } else {
                     this._notifyProgress();
@@ -129,7 +125,7 @@ export default class BulkExportController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(startedMessage).catch(console.error);
+        browser.runtime.sendMessage(startedMessage).catch((error) => asbError('anki/export', error));
 
         // Kick off first item
         this._sendNext();
@@ -156,7 +152,7 @@ export default class BulkExportController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(cancelledMessage);
+        void browser.runtime.sendMessage(cancelledMessage);
     }
 
     private _sendNext() {
@@ -165,13 +161,13 @@ export default class BulkExportController {
         }
 
         if (this._currentIndex >= this._queue.length) {
-            this._complete();
+            void this._complete();
             return;
         }
 
         const subtitles = this._context.subtitleController.subtitles;
         if (!subtitles || subtitles.length === 0) {
-            this._complete();
+            void this._complete();
             return;
         }
 
@@ -220,7 +216,7 @@ export default class BulkExportController {
             },
             src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(completedMessage);
+        void browser.runtime.sendMessage(completedMessage);
     }
 
     private _notifyProgress() {
@@ -229,8 +225,11 @@ export default class BulkExportController {
         }
         const total = this._queue.length;
         const current = Math.min(this._currentIndex, total);
-        this._context.subtitleController.notification('info.exportedCard', {
-            result: `${current}/${total}`,
+        this._context.subtitleController.notification({
+            locKey: 'info.exportedCard',
+            replacements: {
+                result: `${current}/${total}`,
+            },
         });
     }
 }
