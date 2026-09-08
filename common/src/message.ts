@@ -148,6 +148,9 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
     readonly noteId?: number;
+    // Set when an animated-WebP tab-capture stream was already armed (getUserMedia negotiated) by the
+    // content script before the mining seek, so record-media-handler can skip re-negotiating one.
+    readonly animatedWebpArmed?: boolean;
 }
 
 export interface StartRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -583,18 +586,35 @@ export interface StartRecordingAudioWithTimeoutMessage extends Message {
 
 // Record a tab-capture clip in the content script and transcode it to a cropped animated WebP. The
 // audio is captured in the same stream and returned separately. Crop params come via ImageCaptureParams.
+// streamId/fps/quality are omitted when the content script already has a capture armed via
+// PrepareAnimatedWebpRecordingMessage (see below) - it uses that instead of negotiating a new one.
 export interface RecordAnimatedWebpMessage extends Message, ImageCaptureParams {
     readonly command: 'record-animated-webp';
-    readonly streamId: string;
+    readonly streamId?: string;
     readonly durationMs: number;
-    readonly fps: number;
-    readonly quality: number;
+    readonly fps?: number;
+    readonly quality?: number;
     readonly recordAudio: boolean;
 }
 
 export interface RecordAnimatedWebpResponse {
     readonly base64: string; // animated webp
     readonly audioBase64?: string; // audio webm, when recordAudio was requested
+    readonly error?: string;
+}
+
+// Sent by the content script before the mining seek, so the tab-capture stream (settings lookup +
+// chrome.tabCapture negotiation + getUserMedia) is already flowing by the time playback resumes at the
+// padding-adjusted start, instead of only starting afterward and clipping the beginning of the clip.
+export interface PrepareAnimatedWebpRecordingMessage extends Message {
+    readonly command: 'prepare-animated-webp-recording';
+    readonly recordAudio: boolean;
+}
+
+export interface PrepareAnimatedWebpRecordingResponse {
+    readonly streamId: string;
+    readonly fps: number;
+    readonly quality: number;
     readonly error?: string;
 }
 

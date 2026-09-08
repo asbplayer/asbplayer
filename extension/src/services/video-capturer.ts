@@ -17,17 +17,17 @@ export const tabCaptureStreamId = (tabId: number): Promise<string> =>
 
 // Asks the content script to capture the tab stream, encoding its video frames into a cropped animated
 // WebP and recording the audio in parallel. Returns the webp (empty string on failure) plus the audio
-// webm when requested.
+// webm when requested. streamId/fps/quality can be omitted when the content script already has a
+// capture armed from a prior PrepareAnimatedWebpRecordingMessage - it uses that instead.
 export const recordAnimatedWebp = async (
     tabId: number,
     src: string,
-    streamId: string,
     durationMs: number,
-    fps: number,
-    quality: number,
     recordAudio: boolean,
-    captureParams: ImageCaptureParams
+    captureParams: ImageCaptureParams,
+    negotiation?: { streamId: string; fps: number; quality: number }
 ): Promise<RecordAnimatedWebpResponse> => {
+    const { streamId, fps, quality } = negotiation ?? {};
     const command: ExtensionToVideoCommand<RecordAnimatedWebpMessage> = {
         sender: 'asbplayer-extension-to-video',
         message: { command: 'record-animated-webp', streamId, durationMs, fps, quality, recordAudio, ...captureParams },

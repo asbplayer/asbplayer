@@ -94,20 +94,25 @@ export default class RecordMediaHandler {
 
         if (useAnimatedWebp) {
             const { maxWidth, maxHeight, rect, frameId } = message;
-            const fps = await this._settingsProvider.getSingle('animatedImageFps');
-            const quality = await this._settingsProvider.getSingle('animatedImageQuality');
 
             try {
-                const streamId = await tabCaptureStreamId(tabId);
+                // When the content script already armed a capture before the seek (see binding.ts /
+                // animated-webp-capture.ts), skip re-negotiating settings and a tabCapture stream - it
+                // would just be discarded, and doing it again here is exactly the latency this avoids.
+                const negotiation = message.animatedWebpArmed
+                    ? undefined
+                    : {
+                          streamId: await tabCaptureStreamId(tabId),
+                          fps: await this._settingsProvider.getSingle('animatedImageFps'),
+                          quality: await this._settingsProvider.getSingle('animatedImageQuality'),
+                      };
                 const { base64, audioBase64 } = await recordAnimatedWebp(
                     tabId,
                     src,
-                    streamId,
                     windowMs,
-                    fps,
-                    quality,
                     message.record,
-                    { maxWidth, maxHeight, rect, frameId }
+                    { maxWidth, maxHeight, rect, frameId },
+                    negotiation
                 );
                 imageModel = {
                     base64,

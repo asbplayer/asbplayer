@@ -7,13 +7,15 @@ import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
     RecordAnimatedWebpMessage,
-    RectModel,
     TabToExtensionCommand,
     ToggleSidePanelMessage,
 } from '@project/common';
-import { muxAnimatedWebp } from '@project/common';
-import { bufferToBase64 } from '@project/common/base64';
 import { SettingsProvider } from '@project/common/settings';
+import {
+    armAnimatedWebpCapture,
+    finishAnimatedWebpCapture,
+    takeArmedAnimatedWebpCapture,
+} from '@/services/animated-webp-capture';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
@@ -31,201 +33,6 @@ const excludeGlobs = ['*://app.asbplayer.dev/*'];
 if (import.meta.env.DEV) {
     excludeGlobs.push('*://localhost:3000/*');
 }
-
-const animatedWebpMaxFrames = 90;
-
-const canvasToWebpBytes = (canvas: HTMLCanvasElement, quality: number): Promise<Uint8Array> =>
-    new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) => {
-                if (!blob) {
-                    reject(new Error('Failed to encode WebP frame'));
-                    return;
-                }
-                blob.arrayBuffer()
-                    .then((buffer) => resolve(new Uint8Array(buffer)))
-                    .catch(reject);
-            },
-            'image/webp',
-            quality
-        );
-    });
-
-const recordTrack = (track: MediaStreamTrack, mimeType: string): { stop: () => Promise<Blob> } => {
-    const recorder = new MediaRecorder(new MediaStream([track]));
-    const chunks: BlobPart[] = [];
-    recorder.ondataavailable = (e) => chunks.push(e.data);
-    const stopped = new Promise<Blob>((resolve) => {
-        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
-    });
-    recorder.start();
-    return {
-        stop: () => {
-            recorder.stop();
-            return stopped;
-        },
-    };
-};
-
-// The captured frame is the whole tab, so map the video element's CSS-pixel rect onto it (matching the
-// screenshot crop path). Derived once from the first frame.
-interface CropDimensions {
-    sx: number;
-    sy: number;
-    sw: number;
-    sh: number;
-    dw: number;
-    dh: number;
-}
-
-const cropDimensions = (
-    frameWidth: number,
-    frameHeight: number,
-    rect: RectModel,
-    maxWidth: number,
-    maxHeight: number
-): CropDimensions => {
-    const scaleX = frameWidth / window.innerWidth;
-    const scaleY = frameHeight / window.innerHeight;
-    const sx = Math.max(0, rect.left * scaleX);
-    const sy = Math.max(0, rect.top * scaleY);
-    const sw = Math.min(frameWidth - sx, rect.width * scaleX) || frameWidth;
-    const sh = Math.min(frameHeight - sy, rect.height * scaleY) || frameHeight;
-    const scale = Math.min(1, maxWidth > 0 ? maxWidth / sw : 1, maxHeight > 0 ? maxHeight / sh : 1);
-    return { sx, sy, sw, sh, dw: Math.max(1, Math.round(sw * scale)), dh: Math.max(1, Math.round(sh * scale)) };
-};
-
-// Read a tabCapture stream's video frames in real time (MediaStreamTrackProcessor, Chrome-only), crop
-// and encode each kept frame to a static WebP, then mux them into one animated WebP. Each frame's real
-// timestamp drives its per-frame duration. Audio is recorded from the same stream in parallel.
-const recordAnimatedWebp = async (
-    streamId: string,
-    durationMs: number,
-    rect: RectModel,
-    maxWidth: number,
-    maxHeight: number,
-    fps: number,
-    quality: number,
-    recordAudio: boolean,
-    onRecordingStopped?: () => (() => void) | void
-): Promise<{ base64: string; audioBase64?: string }> => {
-    const Processor = (window as any).MediaStreamTrackProcessor;
-
-    if (!Processor) {
-        throw new Error('MediaStreamTrackProcessor is unavailable');
-    }
-
-    // Capture at the viewport's device resolution so the crop lines up with the screenshot crop.
-    // chromeMediaSource constraints aren't in the standard typings.
-    const dpr = window.devicePixelRatio || 1;
-    const constraints: MediaStreamConstraints = {
-        video: {
-            mandatory: {
-                chromeMediaSource: 'tab',
-                chromeMediaSourceId: streamId,
-                maxWidth: Math.round(window.innerWidth * dpr),
-                maxHeight: Math.round(window.innerHeight * dpr),
-            },
-        } as any,
-    };
-    if (recordAudio) {
-        constraints.audio = { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } } as any;
-    }
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-    // Widen the interval when the target fps would exceed the frame cap, so frames span the whole clip.
-    const frameIntervalUs = Math.max(1e6 / fps, (durationMs * 1000) / animatedWebpMaxFrames);
-    const frames: { timestampUs: number; data: Uint8Array }[] = [];
-    let audioBase64: string | undefined;
-
-    try {
-        const videoTrack = stream.getVideoTracks()[0];
-        const audioTrack = recordAudio ? stream.getAudioTracks()[0] : undefined;
-
-        // The tab is briefly muted while capturing (piping the captured audio back to keep the tab
-        // audible would feed back into tabCapture). The MediaRecorder still records the audio cleanly.
-        const audioRecording = audioTrack ? recordTrack(audioTrack, 'audio/webm') : undefined;
-
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-        const reader: ReadableStreamDefaultReader<VideoFrame> = new Processor({
-            track: videoTrack,
-        }).readable.getReader();
-
-        // Safety net: a stalled track would otherwise hang reader.read(). Stopping it closes the reader.
-        const stopTimeout = setTimeout(() => videoTrack.stop(), durationMs + 2000);
-
-        let dimensions: CropDimensions | undefined;
-        let firstTimestampUs: number | undefined;
-        let nextCaptureUs = -Infinity;
-
-        try {
-            while (frames.length < animatedWebpMaxFrames) {
-                const { value: frame, done } = await reader.read();
-
-                if (done || !frame) {
-                    break;
-                }
-
-                const timestampUs = frame.timestamp;
-
-                if (firstTimestampUs === undefined) {
-                    firstTimestampUs = timestampUs;
-                }
-
-                if (timestampUs - firstTimestampUs >= durationMs * 1000) {
-                    frame.close();
-                    break;
-                }
-
-                // Drop frames closer together than the target interval.
-                if (timestampUs < nextCaptureUs) {
-                    frame.close();
-                    continue;
-                }
-                nextCaptureUs = timestampUs + frameIntervalUs;
-
-                if (!dimensions) {
-                    dimensions = cropDimensions(frame.displayWidth, frame.displayHeight, rect, maxWidth, maxHeight);
-                    canvas.width = dimensions.dw;
-                    canvas.height = dimensions.dh;
-                }
-
-                const { sx, sy, sw, sh, dw, dh } = dimensions;
-                ctx.drawImage(frame, sx, sy, sw, sh, 0, 0, dw, dh);
-                frame.close();
-                frames.push({ timestampUs, data: await canvasToWebpBytes(canvas, quality) });
-            }
-        } finally {
-            clearTimeout(stopTimeout);
-            await reader.cancel().catch(() => {});
-        }
-
-        if (audioRecording) {
-            audioBase64 = bufferToBase64(await (await audioRecording.stop()).arrayBuffer());
-        }
-    } finally {
-        stream.getTracks().forEach((t) => t.stop());
-    }
-
-    // Capture done — pause the video and show the processing notification while muxing.
-    const removeOverlay = onRecordingStopped?.();
-
-    try {
-        if (frames.length === 0) {
-            throw new Error('No frames captured');
-        }
-
-        const muxFrames = frames.map((frame, i) => {
-            const nextUs = i + 1 < frames.length ? frames[i + 1].timestampUs : frame.timestampUs + frameIntervalUs;
-            return { data: frame.data, durationMs: Math.max(1, Math.round((nextUs - frame.timestampUs) / 1000)) };
-        });
-
-        return { base64: bufferToBase64(muxAnimatedWebp(muxFrames).buffer), audioBase64 };
-    } finally {
-        removeOverlay?.();
-    }
-};
 
 export default defineContentScript({
     // Set manifest options
@@ -475,21 +282,45 @@ export default defineContentScript({
 
                         const animatedBinding =
                             bindings.find((b) => b.registeredVideoSrc === request.src) ?? bindings[0];
-                        recordAnimatedWebp(
-                            recordAnimatedWebpMessage.streamId,
-                            recordAnimatedWebpMessage.durationMs,
-                            animatedRect,
-                            recordAnimatedWebpMessage.maxWidth,
-                            recordAnimatedWebpMessage.maxHeight,
-                            recordAnimatedWebpMessage.fps,
-                            recordAnimatedWebpMessage.quality,
-                            recordAnimatedWebpMessage.recordAudio,
-                            () => {
-                                animatedBinding?.pause();
-                                animatedBinding?.subtitleController.persistentNotification('info.processingClip');
-                                return () => animatedBinding?.subtitleController.hideNotification();
+                        const onAnimatedRecordingStopped = () => {
+                            animatedBinding?.pause();
+                            animatedBinding?.subtitleController.persistentNotification('info.processingClip');
+                            return () => animatedBinding?.subtitleController.hideNotification();
+                        };
+
+                        (async () => {
+                            // Prefer a capture that was already armed (getUserMedia negotiated) before the
+                            // mining seek happened, so we don't lose the start of the clip to that
+                            // negotiation's latency. Fall back to arming it now if none is available.
+                            let capture = takeArmedAnimatedWebpCapture();
+
+                            if (!capture) {
+                                if (
+                                    recordAnimatedWebpMessage.streamId === undefined ||
+                                    recordAnimatedWebpMessage.fps === undefined ||
+                                    recordAnimatedWebpMessage.quality === undefined
+                                ) {
+                                    throw new Error('No armed animated WebP capture and no stream to arm one from');
+                                }
+
+                                await armAnimatedWebpCapture(
+                                    recordAnimatedWebpMessage.streamId,
+                                    recordAnimatedWebpMessage.fps,
+                                    recordAnimatedWebpMessage.quality,
+                                    recordAnimatedWebpMessage.recordAudio
+                                );
+                                capture = takeArmedAnimatedWebpCapture()!;
                             }
-                        )
+
+                            return finishAnimatedWebpCapture(
+                                capture,
+                                recordAnimatedWebpMessage.durationMs,
+                                animatedRect,
+                                recordAnimatedWebpMessage.maxWidth,
+                                recordAnimatedWebpMessage.maxHeight,
+                                onAnimatedRecordingStopped
+                            );
+                        })()
                             .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
                             .catch((e) => {
                                 asbError('recording/animated-webp', e);
