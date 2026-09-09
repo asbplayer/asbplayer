@@ -132,6 +132,41 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         overlay.dispose();
     });
 
+    it('selects a fullscreen player parent when the overlay container ignores pointer events', () => {
+        const fullscreenRoot = document.createElement('div');
+        const videoParent = document.createElement('div');
+        const targetElement = document.createElement('video');
+        fullscreenRoot.appendChild(videoParent);
+        videoParent.appendChild(targetElement);
+        document.body.appendChild(fullscreenRoot);
+        videoParent.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 500 }) as DOMRect;
+        Object.defineProperty(document, 'elementFromPoint', {
+            configurable: true,
+            value: () => {
+                const probe = videoParent.lastElementChild as HTMLElement;
+                return probe.style.pointerEvents === 'none' ? targetElement : probe;
+            },
+        });
+
+        const overlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'non-fullscreen-container',
+            nonFullscreenContentClassName: 'non-fullscreen-content',
+            fullscreenContainerClassName: 'fullscreen-container',
+            fullscreenContentClassName: 'fullscreen-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        overlay.setHtml([{ key: 'subtitle', html: () => '<span>subtitle</span>' }]);
+
+        fullscreenElement = fullscreenRoot;
+        document.dispatchEvent(new Event('fullscreenchange'));
+
+        expect(videoParent.querySelector('.fullscreen-container')).not.toBeNull();
+        overlay.dispose();
+    });
+
     it('accounts for horizontal and vertical document scrolling outside fullscreen', () => {
         const originalScrollX = Object.getOwnPropertyDescriptor(window, 'scrollX');
         const originalScrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');

@@ -51,6 +51,32 @@ export function compareSubtitlesForDisplay(
     return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
 }
 
+/** Maps separately sorted showing and invisible subtitles into canonical display order. */
+export function mapSubtitlesForDisplay<T extends Pick<SubtitleModel, 'track' | 'index'>, R>(
+    showingSubtitles: readonly T[],
+    invisibleSubtitles: readonly T[],
+    map: (subtitle: T, visible: boolean, sourceIndex: number) => R
+): R[] {
+    const result: R[] = [];
+    let showingIndex = 0;
+    let invisibleIndex = 0;
+    while (showingIndex < showingSubtitles.length || invisibleIndex < invisibleSubtitles.length) {
+        const showingSubtitle = showingSubtitles[showingIndex];
+        const invisibleSubtitle = invisibleSubtitles[invisibleIndex];
+        if (
+            invisibleSubtitle === undefined ||
+            (showingSubtitle !== undefined && compareSubtitlesForDisplay(showingSubtitle, invisibleSubtitle) < 0)
+        ) {
+            result.push(map(showingSubtitle, true, showingIndex));
+            showingIndex++;
+        } else {
+            result.push(map(invisibleSubtitle, false, invisibleIndex));
+            invisibleIndex++;
+        }
+    }
+    return result;
+}
+
 export function keysAreEqual(a: any, b: any) {
     const aKeys = Object.keys(a);
     const bKeys = Object.keys(b);

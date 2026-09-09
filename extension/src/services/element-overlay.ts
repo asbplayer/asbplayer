@@ -8,6 +8,7 @@ export enum OffsetAnchor {
 export interface KeyedHtml {
     key?: string;
     html: () => string;
+    visible?: boolean;
 }
 
 export interface ElementOverlayParams {
@@ -161,7 +162,7 @@ export class CachingElementOverlay implements ElementOverlay {
     }
 
     private _displayNonFullscreenContentElementsWithHtml(htmls: KeyedHtml[]) {
-        this._displayNonFullscreenContentElements(htmls.map((html) => this._cachedContentElement(html.html, html.key)));
+        this._displayNonFullscreenContentElements(this._contentElementsWithHtml(htmls));
     }
 
     private _displayNonFullscreenContentElements(contentElements: HTMLElement[]) {
@@ -175,7 +176,18 @@ export class CachingElementOverlay implements ElementOverlay {
     }
 
     private _displayFullscreenContentElementsWithHtml(htmls: KeyedHtml[]) {
-        this._displayFullscreenContentElements(htmls.map((html) => this._cachedContentElement(html.html, html.key)));
+        this._displayFullscreenContentElements(this._contentElementsWithHtml(htmls));
+    }
+
+    private _contentElementsWithHtml(htmls: KeyedHtml[]): HTMLElement[] {
+        return htmls.map((html) => {
+            const element = this._cachedContentElement(html.html, html.key);
+            const visible = html.visible !== false;
+            element.style.visibility = visible ? '' : 'hidden';
+            element.style.pointerEvents = visible ? 'auto' : 'none';
+            element.setAttribute('aria-hidden', String(!visible));
+            return element;
+        });
     }
 
     private _displayFullscreenContentElements(contentElements: HTMLElement[]) {
@@ -195,6 +207,7 @@ export class CachingElementOverlay implements ElementOverlay {
 
         const container = document.createElement('div');
         container.className = this.nonFullscreenContainerClassName;
+        container.style.setProperty('pointer-events', 'none', 'important');
         container.onmouseover = this.onMouseOver;
         container.onmouseout = this.onMouseOut;
         document.body.appendChild(container);
@@ -240,6 +253,7 @@ export class CachingElementOverlay implements ElementOverlay {
 
         const container = document.createElement('div');
         container.className = this.fullscreenContainerClassName;
+        container.style.setProperty('pointer-events', 'none', 'important');
         container.onmouseover = this.onMouseOver;
         container.onmouseout = this.onMouseOut;
         this._findFullscreenParentElement(container).appendChild(container);
@@ -291,6 +305,7 @@ export class CachingElementOverlay implements ElementOverlay {
 
     private _findFullscreenParentElement(container: HTMLElement): HTMLElement {
         const testNode = container.cloneNode(true) as HTMLElement;
+        testNode.style.setProperty('pointer-events', 'auto', 'important');
         testNode.innerHTML = '&nbsp;'; // The node needs to take up some space to perform test clicks
         let current = this.targetElement.parentElement;
 

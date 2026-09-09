@@ -431,7 +431,7 @@ export default class Binding {
         return new PlaybackEngine({
             settingsProvider: this.settings,
             appIntegration: true,
-            autoPauseCorrectionSuppressed: disneyPlus,
+            autoPauseCorrectionDisabled: disneyPlus,
             subtitles,
             playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
