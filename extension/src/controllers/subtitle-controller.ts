@@ -373,7 +373,7 @@ export default class SubtitleController {
         return { subtitleOverlayParams, topSubtitleOverlayParams, notificationOverlayParams };
     }
 
-    private _subtitleAnnotationsUpdated(updatedSubtitles: IndexedSubtitleModel[]): void {
+    private _subtitleAnnotationsUpdated(updatedSubtitles: readonly IndexedSubtitleModel[]): void {
         if (updatedSubtitles.length) {
             const htmls = this._buildSubtitlesHtml(updatedSubtitles);
             for (const [index, updatedSubtitle] of updatedSubtitles.entries()) {
@@ -526,7 +526,7 @@ export default class SubtitleController {
         return subtitle.track === undefined || !this.disabledSubtitleTracks[subtitle.track];
     }
 
-    private _buildSubtitlesHtml(subtitles: IndexedSubtitleModel[]) {
+    private _buildSubtitlesHtml(subtitles: readonly IndexedSubtitleModel[]) {
         const buffer = renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings);
 
         return subtitles.map((subtitle) => {

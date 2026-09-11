@@ -59,7 +59,7 @@ export default class PlayerChannel {
     private audioTrackSelectedCallbacks: ((id: string) => void)[];
     private closeCallbacks: (() => void)[];
     private subtitlesCallbacks: ((subtitles: SubtitleModel[], subtitleFileName: string) => void)[];
-    private subtitlesUpdatedCallbacks: ((updatedSubtitles: IndexedSubtitleModel[]) => void)[];
+    private subtitlesUpdatedCallbacks: ((updatedSubtitles: readonly IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
         token: string,
@@ -332,7 +332,7 @@ export default class PlayerChannel {
         return () => this._remove(callback, this.subtitlesCallbacks);
     }
 
-    onSubtitlesUpdated(callback: (updatedSubtitles: IndexedSubtitleModel[]) => void) {
+    onSubtitlesUpdated(callback: (updatedSubtitles: readonly IndexedSubtitleModel[]) => void) {
         this.subtitlesUpdatedCallbacks.push(callback);
         return () => this._remove(callback, this.subtitlesUpdatedCallbacks);
     }
@@ -533,7 +533,7 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
-    subtitlesUpdated(updatedSubtitles: IndexedSubtitleModel[]) {
+    subtitlesUpdated(updatedSubtitles: readonly IndexedSubtitleModel[]) {
         const message: SubtitlesUpdatedFromVideoMessage = {
             command: 'subtitlesUpdated',
             updatedSubtitles,

@@ -6,8 +6,8 @@ import type {
     KeyBindName,
     SubtitleSettings,
     TextSubtitleSettings,
-    DictionaryTrack,
-} from '.';
+} from '@project/common/settings/settings';
+import type { DictionaryTrack } from '@project/common/settings/settings-dictionary';
 import {
     AutoPauseResumeMode,
     SubtitleListPreference,
@@ -15,16 +15,24 @@ import {
     SubtitleVisibility,
     textSubtitleSettingsKeys,
     VideoSubtitleSplitBehavior,
-    TokenMatchStrategyPriority,
-    TokenMatchStrategy,
-    TokenStyling,
-    TokenReadingAnnotation,
+} from '@project/common/settings/settings';
+import {
     TokenFrequencyAnnotation,
-    getFullyKnownTokenStatus,
-    TokenStatus,
+    TokenMatchStrategy,
+    TokenMatchStrategyPriority,
+    TokenReadingAnnotation,
     TokenState,
-} from '.';
-import { AutoPausePreference, PlayMode, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
+    TokenStatus,
+    TokenStyling,
+    getFullyKnownTokenStatus,
+} from '@project/common/settings/settings-dictionary';
+import {
+    AutoPausePreference,
+    PlayMode,
+    PostMineAction,
+    PostMinePlayback,
+    SubtitleHtml,
+} from '@project/common/src/model';
 
 // @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;

@@ -1,4 +1,4 @@
-import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings/settings';
+import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings';
 import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';

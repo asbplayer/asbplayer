@@ -1,12 +1,11 @@
+import { PauseOnHoverMode, VideoSubtitleSplitBehavior } from '@project/common/settings/settings';
 import {
-    PauseOnHoverMode,
     TokenMatchStrategyPriority,
     TokenMatchStrategy,
     TokenStyling,
     TokenReadingAnnotation,
     TokenFrequencyAnnotation,
-    VideoSubtitleSplitBehavior,
-} from '@project/common/settings/settings';
+} from '@project/common/settings';
 import {
     mergeImportedSettings,
     omitPath,

@@ -1,5 +1,7 @@
 import { asbWarn } from '@project/common/util/log';
 import sanitize from 'sanitize-filename';
+export { arrayEquals } from '@project/common/util/array-equals'; // Necessary to break an import cycle between settings and util
+import { arrayEquals } from '@project/common/util/array-equals';
 import type {
     DimensionsModel,
     Rgb,
@@ -10,8 +12,8 @@ import type {
     Tokenization,
     TokenReading,
 } from '@project/common/src/model';
-import type { TextSubtitleSettings } from '@project/common/settings/settings';
-import { TokenStatus } from '@project/common/settings/settings';
+import type { TextSubtitleSettings } from '@project/common/settings';
+import { TokenStatus } from '@project/common/settings';
 import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
@@ -47,20 +49,6 @@ export function compareSubtitlesForDisplay(
     s2: Pick<SubtitleModel, 'track' | 'index'>
 ): number {
     return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
-}
-
-export function arrayEquals<T>(
-    a: readonly T[] | undefined,
-    b: readonly T[] | undefined,
-    equals = (lhs: T, rhs: T) => lhs === rhs
-): boolean {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; ++i) {
-        if (!equals(a[i], b[i])) return false;
-    }
-    return true;
 }
 
 export function keysAreEqual(a: any, b: any) {

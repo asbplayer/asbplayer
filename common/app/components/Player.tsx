@@ -109,7 +109,7 @@ function trackLengthMs(videoDuration: number | undefined, subtitles: SubtitleMod
     return Math.max(videoLength, subtitlesLength);
 }
 
-function subtitlesForPlayer<T extends IndexedSubtitleModel>(subtitles: T[]): T[] {
+function subtitlesForPlayer<T extends IndexedSubtitleModel>(subtitles: readonly T[]): T[] {
     return subtitles.map((subtitle) => ({ ...subtitle }));
 }
 

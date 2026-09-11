@@ -103,7 +103,7 @@ interface RichTextRenderable {
 }
 
 export const renderRichTextOntoSubtitles = (
-    subtitles: RichTextRenderable[],
+    subtitles: readonly RichTextRenderable[],
     tokenAnnotationTarget: TokenAnnotationConfigTarget,
     dictionaryTracks: DictionaryTrack[] | undefined
 ): Map<number, RenderedRichText> => {
