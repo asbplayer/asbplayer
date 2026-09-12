@@ -479,6 +479,42 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         overlay.dispose();
     });
 
+    it('attaches the overlay to the active fullscreen player when hit testing cannot find a parent', () => {
+        const fullscreenRoot = document.createElement('div');
+        const videoParent = document.createElement('div');
+        const targetElement = document.createElement('video');
+        fullscreenRoot.appendChild(videoParent);
+        videoParent.appendChild(targetElement);
+        document.body.appendChild(fullscreenRoot);
+        targetElement.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 500 }) as DOMRect;
+        Object.defineProperty(document, 'elementFromPoint', {
+            configurable: true,
+            value: () => null,
+        });
+
+        const overlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'non-fullscreen-container',
+            nonFullscreenContentClassName: 'non-fullscreen-content',
+            fullscreenContainerClassName: 'fullscreen-container',
+            fullscreenContentClassName: 'fullscreen-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+        overlay.setHtml([{ key: 'subtitle', html: () => '<span>subtitle</span>' }]);
+
+        fullscreenElement = fullscreenRoot;
+        document.dispatchEvent(new Event('fullscreenchange'));
+
+        expect(fullscreenRoot.querySelector('.fullscreen-container')).not.toBeNull();
+        expect([...document.body.children].some((element) => element.classList.contains('fullscreen-container'))).toBe(
+            false
+        );
+
+        overlay.dispose();
+    });
+
     it('resizes responsive cached content when the video width changes', () => {
         const targetElement = document.createElement('video');
         let videoWidth = 640;
