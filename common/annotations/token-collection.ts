@@ -178,7 +178,7 @@ export class TokenCollection extends TokenCollectionBase<TokenStatusResult> {
     }
 
     private resolve(
-        normalizedTokens: string[],
+        normalizedTokens: readonly string[],
         sourceMatches: (source: DictionaryTokenSource) => boolean
     ): TokenStatusResult[] {
         const statusResults: TokenStatusResult[] = [];
@@ -189,12 +189,12 @@ export class TokenCollection extends TokenCollectionBase<TokenStatusResult> {
         return statusResults;
     }
 
-    resolveForWord(normalizedTokens: string[]): TokenStatusResult[] {
+    resolveForWord(normalizedTokens: readonly string[]): TokenStatusResult[] {
         if (!this.wordEnabled) return [];
         return this.resolve(normalizedTokens, (source) => isWordSource(source));
     }
 
-    resolveForSentence(normalizedTokens: string[]): TokenStatusResult[] {
+    resolveForSentence(normalizedTokens: readonly string[]): TokenStatusResult[] {
         if (!this.sentenceEnabled) return [];
         return this.resolve(normalizedTokens, (source) => !isWordSource(source));
     }
@@ -232,7 +232,7 @@ export class TokenCollectionArray extends TokenCollectionBase<TokenStatusResult[
      */
     private getStatusResults(
         normalizedToken: string,
-        normalizedLemmas: string[],
+        normalizedLemmas: readonly string[],
         sourceMatches: (source: DictionaryTokenSource) => boolean
     ): TokenStatusResult[] {
         const tokenIsKanaOnly = isKanaOnly(normalizedToken);
@@ -257,13 +257,13 @@ export class TokenCollectionArray extends TokenCollectionBase<TokenStatusResult[
         return normalizedToken === normalizedKey;
     }
 
-    private tokenMatchesAnyKey(normalizedToken: string, normalizedKeys: string[]): boolean {
+    private tokenMatchesAnyKey(normalizedToken: string, normalizedKeys: readonly string[]): boolean {
         return normalizedKeys.some((normalizedKey) => this.tokenMatchesKey(normalizedToken, normalizedKey));
     }
 
     private resolve(
         normalizedToken: string,
-        lemmas: string[],
+        lemmas: readonly string[],
         sourceMatches: (source: DictionaryTokenSource) => boolean,
         exactPriority: boolean | null
     ): TokenStatusResult[] {
@@ -283,12 +283,20 @@ export class TokenCollectionArray extends TokenCollectionBase<TokenStatusResult[
         return statusResults;
     }
 
-    resolveForWord(normalizedToken: string, lemmas: string[], exactPriority: boolean | null): TokenStatusResult[] {
+    resolveForWord(
+        normalizedToken: string,
+        lemmas: readonly string[],
+        exactPriority: boolean | null
+    ): TokenStatusResult[] {
         if (!this.wordEnabled) return [];
         return this.resolve(normalizedToken, lemmas, (source) => isWordSource(source), exactPriority);
     }
 
-    resolveForSentence(normalizedToken: string, lemmas: string[], exactPriority: boolean | null): TokenStatusResult[] {
+    resolveForSentence(
+        normalizedToken: string,
+        lemmas: readonly string[],
+        exactPriority: boolean | null
+    ): TokenStatusResult[] {
         if (!this.sentenceEnabled) return [];
         return this.resolve(normalizedToken, lemmas, (source) => !isWordSource(source), exactPriority);
     }
@@ -329,7 +337,7 @@ export async function resolveTokenStatus(
 
 async function handlePriorityExact(
     normalizedToken: string,
-    lemmas: string[],
+    lemmas: readonly string[],
     ts: TrackState
 ): Promise<ResolvedTokenStatusResult | null> {
     const statusResults: TokenStatusResult[] = [];
@@ -353,7 +361,7 @@ async function handlePriorityExact(
 
 async function handlePriorityLemma(
     normalizedToken: string,
-    lemmas: string[],
+    lemmas: readonly string[],
     ts: TrackState
 ): Promise<ResolvedTokenStatusResult | null> {
     const statusResults: TokenStatusResult[] = [];
@@ -377,7 +385,7 @@ async function handlePriorityLemma(
 
 async function handlePriorityKnown(
     normalizedToken: string,
-    lemmas: string[],
+    lemmas: readonly string[],
     ts: TrackState,
     cmp: (tokenStatuses: TokenStatus[]) => TokenStatus
 ): Promise<ResolvedTokenStatusResult | null> {

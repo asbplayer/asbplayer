@@ -153,16 +153,19 @@ const tokenAnnotationHoverOptions: { annotation: TokenAnnotationHoverKey; labelK
     { annotation: 'color', labelKey: 'settings.dictionaryTokenAnnotationHoverColor' },
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenAnnotationHoverReading' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenAnnotationHoverFrequency' },
+    { annotation: 'gloss', labelKey: 'settings.dictionaryTokenAnnotationHoverGloss' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationHoverPitchAccent' },
 ];
 const tokenAnnotationSizeOptions: { annotation: TokenAnnotationSizeKey; labelKey: string }[] = [
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenAnnotationReadingSize' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenAnnotationFrequencySize' },
+    { annotation: 'gloss', labelKey: 'settings.dictionaryTokenAnnotationGlossSize' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationPitchAccentSize' },
 ];
 const tokenAnnotationTriggerOptions: { annotation: TokenAnnotationTriggerKey; labelKey: string }[] = [
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenReadingAnnotation' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenFrequencyAnnotation' },
+    { annotation: 'gloss', labelKey: 'settings.dictionaryTokenGlossAnnotation' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenPitchAccentAnnotation' },
 ];
 
@@ -2162,6 +2165,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     },
                                 ],
                                 frequency: statusFrequencies[tokenStatus],
+                                gloss: t('settings.dictionaryTokenGlossAnnotationPreview'),
                                 pitchAccent: readingPitchAccents[localizedReading] ?? statusPitchAccents[tokenStatus],
                                 __internal: true,
                             };
@@ -2190,6 +2194,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         },
                                     ],
                                     frequency: statusFrequencies[tokenStatus],
+                                    gloss: t('settings.dictionaryTokenGlossAnnotationPreview'),
                                     pitchAccent: readingPitchAccents[ignoredReading] ?? statusPitchAccents[tokenStatus],
                                     __internal: true,
                                 });
@@ -2206,6 +2211,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                           dt,
                                           enabledAnnotations: ta.richTextEnabledAnnotations,
                                           allowAsciiReading: true,
+                                          glossSize: ta.glossSize,
                                       }
                                   )
                                 : undefined;
@@ -2218,6 +2224,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                           dt,
                                           enabledAnnotations: ta.richTextOnHoverEnabledAnnotations,
                                           allowAsciiReading: true,
+                                          glossSize: ta.glossSize,
                                       }
                                   )
                                 : undefined;

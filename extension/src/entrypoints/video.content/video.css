@@ -31,7 +31,7 @@
     user-select: text !important;
     cursor: text !important;
     line-height: normal !important;
-    white-space: pre-wrap !important;
+    white-space: pre !important; /* Preserve authored line breaks without letting ruby annotations add new ones. */
 }
 
 /* Subtitle annotations wrap text in extra token/ruby elements; keep their font
@@ -116,6 +116,59 @@
     font-size: var(--asb-reading-size) !important;
     line-height: 1 !important;
     display: revert !important; /* Safari doesn't support 'ruby-text' */
+}
+
+.asb-gloss {
+    ruby-position: over !important;
+}
+
+.asb-gloss-under {
+    ruby-position: under !important;
+}
+
+.asb-gloss rt {
+    font-size: var(--asb-gloss-size);
+    line-height: 1;
+}
+
+.asb-gloss-text {
+    display: inline-block;
+}
+
+.asb-gloss-popup {
+    position: relative;
+}
+
+.asb-gloss-popup::after {
+    content: attr(data-asb-gloss);
+    display: none;
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    bottom: calc(100% + 1.5em);
+    width: max-content;
+    max-width: min(28em, 80vw);
+    transform: translateX(-50%);
+    padding: 0.4em 0.6em;
+    border-radius: 0.25em;
+    background: rgb(32 33 36 / 95%);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 35%);
+    color: white;
+    font-family: sans-serif;
+    font-size: 14px !important;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    text-align: left;
+    text-shadow: none;
+    white-space: normal !important;
+    -webkit-text-fill-color: white;
+}
+
+.asb-gloss-popup:hover::after {
+    display: block;
 }
 
 .asb-pitch-accent {

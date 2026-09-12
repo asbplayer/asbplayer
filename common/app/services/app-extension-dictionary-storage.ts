@@ -82,7 +82,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
 
     saveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ) {
         return this._extension.dictionarySaveRecordLocalBulk(profile, localTokenInputs, applyStates);

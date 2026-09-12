@@ -354,6 +354,10 @@ The attaching particle's pitch accent following a word is determined by the pitc
 Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
 :::
 
+### Display word definitions
+
+Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+
 ### Word field search strategy
 
 Controls how asbplayer matches a subtitle word against your known words.

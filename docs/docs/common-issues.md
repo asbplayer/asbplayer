@@ -80,6 +80,7 @@ Annotation is considered disabled if the following settings are set to these val
 - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
 - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
 - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
+- [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
 
 To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
 
