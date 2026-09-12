@@ -197,7 +197,7 @@ export class CachingElementOverlay implements ElementOverlay {
         container.className = this.nonFullscreenContainerClassName;
         container.onmouseover = this.onMouseOver;
         container.onmouseout = this.onMouseOut;
-        document.body.appendChild(container);
+        this._findTopLayerElement().appendChild(container);
         this._applyContainerStyles(container, { fullscreen: false });
 
         const toggle = () => {
@@ -295,7 +295,7 @@ export class CachingElementOverlay implements ElementOverlay {
         let current = this.targetElement.parentElement;
 
         if (!current) {
-            return document.body;
+            return this._findTopLayerElement();
         }
 
         const targetElementRootNode = this.targetElement.getRootNode();
@@ -323,6 +323,20 @@ export class CachingElementOverlay implements ElementOverlay {
 
         if (chosen) {
             return chosen;
+        }
+
+        return this._findTopLayerElement();
+    }
+
+    private _findTopLayerElement(): HTMLElement {
+        let curr: HTMLElement | null = this.targetElement;
+
+        while (curr !== null) {
+            if (curr instanceof HTMLDialogElement) {
+                return curr;
+            }
+
+            curr = curr.parentElement;
         }
 
         return document.body;

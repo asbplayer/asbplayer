@@ -89,7 +89,7 @@ function directSubtitleTracksFromPerformance(): VideoDataSubtitleTrack[] {
 
             tracks.push(
                 trackFromDef({
-                    label: genericSubtitleDisplayLabel(undefined, language, detectedSubtitleLabel),
+                    label: `${genericSubtitleDisplayLabel(undefined, language, detectedSubtitleLabel)} (performance)`,
                     language,
                     url,
                     extension,
@@ -219,7 +219,8 @@ function srtFromCues(cues: readonly SerializableCue[]): string | undefined {
 
 export function nativeSubtitleTracks(
     video: HTMLVideoElement,
-    cueProvider?: TextTrackCueProvider
+    cueProvider?: TextTrackCueProvider,
+    options?: { cueByteCountLabels?: boolean }
 ): VideoDataSubtitleTrack[] {
     const tracks: VideoDataSubtitleTrack[] = [];
     const elementTextTracks = new Set<TextTrack>();
@@ -234,19 +235,20 @@ export function nativeSubtitleTracks(
         if (url === undefined) continue;
 
         const language = element.getAttribute('srclang')?.trim().toLowerCase() || undefined;
-        tracks.push(
-            trackFromDef({
-                label: genericSubtitleDisplayLabel(
-                    element.getAttribute('label') ?? undefined,
-                    language,
-                    `Subtitle ${index + 1}`
-                ),
+        tracks.push({
+            // Explicitly define the ID, because if the URL is a data URL, then trackFromDef
+            // would stuff it into the ID and make it very large.
+            id: `native:${language}:${index}`,
+            label: `${genericSubtitleDisplayLabel(
+                element.getAttribute('label') ?? undefined,
                 language,
-                url,
-                // HTML track resources are WebVTT even when served by an extensionless endpoint.
-                extension: subtitleExtensionForUrl(url) ?? 'vtt',
-            })
-        );
+                `Subtitle ${index + 1}`
+            )}`,
+            language,
+            url,
+            // HTML track resources are WebVTT even when served by an extensionless endpoint.
+            extension: subtitleExtensionForUrl(url) ?? 'vtt',
+        });
         elementTextTracks.add(element.track);
     }
 
@@ -263,19 +265,22 @@ export function nativeSubtitleTracks(
             const text = srtFromCues(accumulated.cues);
             if (text === undefined) continue;
             const language = textTrack.language.trim().toLowerCase() || undefined;
-            tracks.push(
-                trackFromDef({
-                    label: `${genericSubtitleDisplayLabel(
-                        textTrack.label,
-                        language,
-                        `Subtitle ${trackElements.length + index + 1}`
-                    )}${accumulated.capturedOverTime ? capturedDuringPlaybackLabelSuffix : ''}`,
-                    language,
-                    url: `data:application/x-subrip;charset=utf-8,${encodeURIComponent(text)}`,
-                    extension: 'srt',
-                    capturedDuringPlayback: accumulated.capturedOverTime || undefined,
-                })
-            );
+
+            const label = `${genericSubtitleDisplayLabel(
+                textTrack.label,
+                language,
+                `Subtitle ${trackElements.length + index + 1}`
+            )}${accumulated.capturedOverTime ? capturedDuringPlaybackLabelSuffix : ''}${options?.cueByteCountLabels ? ` (${(text.length / 1024).toFixed(2)} kb)` : ''}`;
+
+            tracks.push({
+                // Explicitly define the ID, because trackFromDef would stuff the data URL into the ID and make it very large.
+                id: `native:${language}:${index}`,
+                label,
+                language,
+                url: `data:application/x-subrip;charset=utf-8,${encodeURIComponent(text)}`,
+                extension: 'srt',
+                capturedDuringPlayback: accumulated.capturedOverTime || undefined,
+            });
         }
     } catch {
         // Some player implementations expose TextTrack objects whose cue lists are not readable.
@@ -302,11 +307,18 @@ function subtitleLanguageFromUrl(url: string) {
     }
 }
 
+type BaseGenericPageDiscoveryOptions = {
+    cueProvider?: TextTrackCueProvider;
+    cueByteCountLabels?: boolean;
+};
+
 export class BaseGenericPageDiscovery implements VideoDataProvider {
-    constructor(private readonly cueProvider?: TextTrackCueProvider) {}
+    constructor(private readonly options?: BaseGenericPageDiscoveryOptions) {}
 
     async videoData(video: HTMLVideoElement): Promise<VideoData> {
-        const tracks = nativeSubtitleTracks(video, this.cueProvider);
+        const tracks = nativeSubtitleTracks(video, this.options?.cueProvider, {
+            cueByteCountLabels: this.options?.cueByteCountLabels,
+        });
         tracks.push(...directSubtitleTracksFromPerformance());
         const inlineJson = tracksFromInlineJson();
         tracks.push(...inlineJson.tracks, ...(await tracksFromInlineManifests(inlineJson.manifestUrls)));

@@ -26,6 +26,7 @@ import type { SettingsProvider } from '@project/common/settings';
 import type Binding from '@project/extension/src/services/binding';
 import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
 import type UiFrame from '@project/extension/src/services/ui-frame';
+import type { UiFrameControllerOptions } from '@project/extension/src/services/ui-frame';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
@@ -66,8 +67,14 @@ export default class AnkiUiController {
     private _settings?: AnkiDialogSettings;
     private _inTutorial: boolean;
 
-    constructor() {
-        this.frame = uiFrameForHtml(html);
+    constructor(context: Binding, { wrapInDialogElement }: UiFrameControllerOptions) {
+        this.frame = uiFrameForHtml(html, {
+            wrapInDialogElement,
+            onDialogCancel: () => {
+                this._hide(context);
+                this._resume(context);
+            },
+        });
         this._inTutorial = isOnTutorialPage();
     }
 
@@ -354,54 +361,11 @@ export default class AnkiUiController {
                         }
                     }
 
-                    context.keyBindings.bind(context);
-                    context.subtitleController.forceHideSubtitles = false;
-                    context.mobileVideoOverlayController.forceHide = false;
-                    this.frame?.hide();
-
-                    if (this.fullscreenElement) {
-                        void this.fullscreenElement.requestFullscreen();
-                        this.fullscreenElement = undefined;
-                    }
-
-                    if (this.activeElement) {
-                        const activeHtmlElement = this.activeElement as HTMLElement;
-
-                        if (typeof activeHtmlElement.focus === 'function') {
-                            activeHtmlElement.focus();
-                        }
-
-                        this.activeElement = undefined;
-                    } else {
-                        window.focus();
-                    }
+                    this._hide(context);
 
                     switch (message.command) {
                         case 'resume': {
-                            const resumeMessage = message as AnkiUiBridgeResumeMessage;
-                            context.ankiUiSavedState = resumeMessage.uiState;
-
-                            if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
-                                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp;
-
-                                if (context.currentTimeMs !== seekTo) {
-                                    void context.seek(seekTo);
-                                }
-                            }
-
-                            switch (context.postMinePlayback) {
-                                case PostMinePlayback.remember:
-                                    if (context.wasPlayingBeforeRecordingMedia) {
-                                        void context.play();
-                                    }
-                                    break;
-                                case PostMinePlayback.play:
-                                    void context.play();
-                                    break;
-                                case PostMinePlayback.pause:
-                                    // already paused, don't need to do anything
-                                    break;
-                            }
+                            this._resume(context, message as AnkiUiBridgeResumeMessage);
                             break;
                         }
                         case 'rewind': {
@@ -429,6 +393,58 @@ export default class AnkiUiController {
 
         this.frame.show();
         return client;
+    }
+
+    private _hide(context: Binding) {
+        context.keyBindings.bind(context);
+        context.subtitleController.forceHideSubtitles = false;
+        context.mobileVideoOverlayController.forceHide = false;
+        this.frame?.hide();
+
+        if (this.fullscreenElement) {
+            void this.fullscreenElement.requestFullscreen();
+            this.fullscreenElement = undefined;
+        }
+
+        if (this.activeElement) {
+            const activeHtmlElement = this.activeElement as HTMLElement;
+
+            if (typeof activeHtmlElement.focus === 'function') {
+                activeHtmlElement.focus();
+            }
+
+            this.activeElement = undefined;
+        } else {
+            window.focus();
+        }
+    }
+
+    private _resume(context: Binding, resumeMessage?: AnkiUiBridgeResumeMessage) {
+        if (resumeMessage) {
+            context.ankiUiSavedState = resumeMessage.uiState;
+
+            if (resumeMessage.cardExported && resumeMessage.uiState.dialogRequestedTimestamp !== 0) {
+                const seekTo = resumeMessage.uiState.dialogRequestedTimestamp;
+
+                if (context.currentTimeMs !== seekTo) {
+                    void context.seek(seekTo);
+                }
+            }
+        }
+
+        switch (context.postMinePlayback) {
+            case PostMinePlayback.remember:
+                if (context.wasPlayingBeforeRecordingMedia) {
+                    void context.play();
+                }
+                break;
+            case PostMinePlayback.play:
+                void context.play();
+                break;
+            case PostMinePlayback.pause:
+                // already paused, don't need to do anything
+                break;
+        }
     }
 
     private async _additionalUiState(context: Binding) {

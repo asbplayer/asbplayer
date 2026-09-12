@@ -72,6 +72,10 @@ export interface PageConfig {
 
     // Whether to hide "remember track preferences" toggle
     hideRememberTrackPreferenceToggle?: boolean;
+
+    // Whether asbplayer should wrap its UI in dialog elements.
+    // Useful on sites that themselves render video inside of a dialog element.
+    wrapUiFramesInDialogElements?: boolean;
 }
 
 const settings = new SettingsProvider(new ExtensionSettingsStorage());
@@ -271,7 +275,8 @@ export const settingsPageConfigs: { [K in keyof PageSettings]: SettingsFormPageC
             autoSyncVideoSrc: config.autoSync?.videoSrc,
             autoSyncElementId: config.autoSync?.elementId,
             ignoreVideoElementsClass: config.ignoreVideoElements?.class,
-            faviconUrl: chrome.runtime.getURL(`/page-favicons/${config.key}.ico`),
+            wrapUiFramesInDialogElements: config.wrapUiFramesInDialogElements,
+            faviconUrl: browser.runtime.getURL(`/page-favicons/${config.key}.ico` as PublicPath),
         };
         return [config.key, settingsFormPageConfig];
     })

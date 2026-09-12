@@ -120,6 +120,7 @@ import type { SubtitleOffsetOptions } from '@project/common/playback/playback-en
 import VideoFrameTimingDriver from '@project/common/playback/timing/video-frame-timing-driver';
 import InterpolatedContentClock from '@project/extension/src/services/interpolated-content-clock';
 import { mediaSourceIdentity } from '@project/extension/src/pages/util';
+import type { UiFrameControllerOptions } from '@project/extension/src/services/ui-frame';
 
 let netflix = false;
 document.addEventListener('asbplayer-netflix-enabled', (e) => {
@@ -129,6 +130,7 @@ document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 const disneyPlus = /www\.disneyplus\..+/.test(window.location.host);
+const appletv = window.location.host === 'tv.apple.com';
 
 interface DisneyPlaybackEventDetail {
     readonly timestampMs: number;
@@ -170,6 +172,7 @@ export interface BindingOptions {
     readonly hasPageScript: boolean;
     readonly frameId?: string;
     readonly videoSrcChangesIndicateNewVideo: boolean;
+    readonly wrapUiFramesInDialogElements: boolean;
 }
 
 export default class Binding {
@@ -261,7 +264,11 @@ export default class Binding {
 
     constructor(video: HTMLMediaElement, options: BindingOptions) {
         this.video = video;
+        const frameControllerOptions: UiFrameControllerOptions = {
+            wrapInDialogElement: options.wrapUiFramesInDialogElements,
+        };
         this._registeredVideoSrc = video.src || this._fallbackVideoSrc;
+        this.video.dataset.asbplayerSrc = this._registeredVideoSrc;
         this._lastLoadedMetadataMediaIdentity = mediaSourceIdentity(video);
         this.hasPageScript = options.hasPageScript;
         this._videoSrcChangesIndicateNewVideo = options.videoSrcChangesIndicateNewVideo;
@@ -269,11 +276,12 @@ export default class Binding {
         this.settings = new SettingsProvider(new ExtensionSettingsStorage());
         this.subtitleController = new SubtitleController(this, this.dictionary, this.settings);
         this.playbackEngine = this._createPlaybackEngine();
-        this.videoDataSyncController = new VideoDataSyncController(this, this.settings);
+        this.videoDataSyncController = new VideoDataSyncController(this, this.settings, frameControllerOptions);
         this.controlsController = new ControlsController(video);
         this.dragController = new DragController(video);
         this.keyBindings = new KeyBindings();
-        this.ankiUiController = new AnkiUiController();
+
+        this.ankiUiController = new AnkiUiController(this, frameControllerOptions);
         this.notificationController = new NotificationController(this);
         this.mobileVideoOverlayController = new MobileVideoOverlayController(this, OffsetAnchor.top);
         this.subtitleController.onOffsetChange = () => {
@@ -1678,6 +1686,12 @@ export default class Binding {
                     })
                 );
             });
+        } else if (appletv) {
+            document.dispatchEvent(
+                new CustomEvent('asbplayer-appletv-seek', {
+                    detail: { src: this._registeredVideoSrc, timestampMs: clampedTimestampMs },
+                })
+            );
         } else {
             seekWithNudge(this.video, clampedTimestampMs / 1000);
         }
@@ -1691,6 +1705,13 @@ export default class Binding {
 
         if (disneyPlus) {
             await this._playDisneyPlus();
+            return;
+        }
+
+        if (appletv) {
+            document.dispatchEvent(
+                new CustomEvent('asbplayer-appletv-play', { detail: { src: this._registeredVideoSrc } })
+            );
             return;
         }
 
@@ -1770,6 +1791,13 @@ export default class Binding {
 
         if (disneyPlus) {
             document.dispatchEvent(new CustomEvent('asbplayer-disney-plus-pause'));
+            return;
+        }
+
+        if (appletv) {
+            document.dispatchEvent(
+                new CustomEvent('asbplayer-appletv-pause', { detail: { src: this._registeredVideoSrc } })
+            );
             return;
         }
 
@@ -1948,6 +1976,7 @@ export default class Binding {
         if (src === this._registeredVideoSrc) return;
         this._notifyVideoDisappeared(this._registeredVideoSrc);
         this._registeredVideoSrc = src;
+        this.video.dataset.asbplayerSrc = this._registeredVideoSrc;
     }
 
     private _notifyVideoDisappeared(src: string | undefined) {
