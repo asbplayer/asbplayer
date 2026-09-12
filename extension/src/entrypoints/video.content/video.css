@@ -57,17 +57,18 @@
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-text,
-.asbplayer-fullscreen-subtitles:hover .asbplayer-subtitle-text {
+:is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles):is(:hover, .asb-subtitle-token-selected)
+    .asbplayer-subtitle-text {
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-rich,
-.asbplayer-fullscreen-subtitles:hover .asbplayer-subtitle-rich {
+:is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles):is(:hover, .asb-subtitle-token-selected)
+    .asbplayer-subtitle-rich {
     display: inline;
 }
 
-.asbplayer-token-container:focus-within .asb-token-highlight:hover {
+.asbplayer-token-container:focus-within .asb-token-highlight:hover,
+.asbplayer-token-container:focus-within .asb-token-selected {
     background-color: rgb(0, 123, 255) !important;
 }
 

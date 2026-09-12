@@ -228,16 +228,32 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 
 ### [Annotation](https://app.asbplayer.dev/?view=settings#annotation) keyboard shortcuts
 
-| Behavior                         | Website shortcut? | Extension shortcut? |
-| -------------------------------- | :---------------: | :-----------------: |
-| Mark hovered word as Mature      |         ✓         |          ✓          |
-| Mark hovered word as Young       |         ✓         |          ✓          |
-| Mark hovered word as Graduated   |         ✓         |          ✓          |
-| Mark hovered word as Learning    |         ✓         |          ✓          |
-| Mark hovered word as Unknown     |         ✓         |          ✓          |
-| Mark hovered word as Uncollected |         ✓         |          ✓          |
-| Toggle hovered word as ignored   |         ✓         |          ✓          |
-| Open statistics                  |         ✓         |          ✓          |
+| Behavior                          | Website shortcut? | Extension shortcut? |
+| --------------------------------- | :---------------: | :-----------------: |
+| Open statistics                   |         ✓         |          ✓          |
+| Jump to next word                 |         ✓         |          ✓          |
+| Jump to previous word             |         ✓         |          ✓          |
+| Mark hovered word as Mature       |         ✓         |          ✓          |
+| Jump to next Mature word          |         ✓         |          ✓          |
+| Jump to previous Mature word      |         ✓         |          ✓          |
+| Mark hovered word as Young        |         ✓         |          ✓          |
+| Jump to next Young word           |         ✓         |          ✓          |
+| Jump to previous Young word       |         ✓         |          ✓          |
+| Mark hovered word as Graduated    |         ✓         |          ✓          |
+| Jump to next Graduated word       |         ✓         |          ✓          |
+| Jump to previous Graduated word   |         ✓         |          ✓          |
+| Mark hovered word as Learning     |         ✓         |          ✓          |
+| Jump to next Learning word        |         ✓         |          ✓          |
+| Jump to previous Learning word    |         ✓         |          ✓          |
+| Mark hovered word as Unknown      |         ✓         |          ✓          |
+| Jump to next Unknown word         |         ✓         |          ✓          |
+| Jump to previous Unknown word     |         ✓         |          ✓          |
+| Mark hovered word as Uncollected  |         ✓         |          ✓          |
+| Jump to next Uncollected word     |         ✓         |          ✓          |
+| Jump to previous Uncollected word |         ✓         |          ✓          |
+| Toggle hovered word as Ignored    |         ✓         |          ✓          |
+| Jump to next Ignored word         |         ✓         |          ✓          |
+| Jump to previous Ignored word     |         ✓         |          ✓          |
 
 ### Seek interval (seconds)
 
