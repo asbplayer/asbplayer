@@ -7,6 +7,7 @@ import { useOutsideClickListener } from '@project/common/hooks';
 import hotkeys from 'hotkeys-js';
 import Grid2 from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
+import FormHelperText from '@mui/material/FormHelperText';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -82,19 +83,36 @@ const keyBindSectionByName: { [key in KeyBindName]: KeyboardShortcutSection } = 
     resetOffset: 'subtitleOffset',
     increasePlaybackRate: 'playbackRate',
     decreasePlaybackRate: 'playbackRate',
-    markHoveredToken5: 'annotation',
-    markHoveredToken4: 'annotation',
-    markHoveredToken3: 'annotation',
-    markHoveredToken2: 'annotation',
-    markHoveredToken1: 'annotation',
-    markHoveredToken0: 'annotation',
-    toggleHoveredTokenIgnored: 'annotation',
     openStatistics: 'annotation',
+    jumpToNextToken: 'annotation',
+    jumpToPreviousToken: 'annotation',
+    markHoveredToken5: 'annotation',
+    jumpToNextTokenStatus5: 'annotation',
+    jumpToPreviousTokenStatus5: 'annotation',
+    markHoveredToken4: 'annotation',
+    jumpToNextTokenStatus4: 'annotation',
+    jumpToPreviousTokenStatus4: 'annotation',
+    markHoveredToken3: 'annotation',
+    jumpToNextTokenStatus3: 'annotation',
+    jumpToPreviousTokenStatus3: 'annotation',
+    markHoveredToken2: 'annotation',
+    jumpToNextTokenStatus2: 'annotation',
+    jumpToPreviousTokenStatus2: 'annotation',
+    markHoveredToken1: 'annotation',
+    jumpToNextTokenStatus1: 'annotation',
+    jumpToPreviousTokenStatus1: 'annotation',
+    markHoveredToken0: 'annotation',
+    jumpToNextTokenStatus0: 'annotation',
+    jumpToPreviousTokenStatus0: 'annotation',
+    toggleHoveredTokenIgnored: 'annotation',
+    jumpToNextTokenState0: 'annotation',
+    jumpToPreviousTokenState0: 'annotation',
 };
 
 interface KeyBindProperties {
     label: string;
     boundViaBrowser: boolean;
+    helperText?: string;
     hide?: boolean;
     additionalControl?: React.ReactNode;
 }
@@ -122,12 +140,20 @@ const useKeyBindFieldStyles = makeStyles<Theme>((theme) => ({
 interface KeyBindFieldProps {
     label: string;
     keys: string;
+    helperText?: string;
     boundViaChrome: boolean;
     onKeysChange: (keys: string) => void;
     onOpenExtensionShortcuts: () => void;
 }
 
-function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensionShortcuts }: KeyBindFieldProps) {
+function KeyBindField({
+    label,
+    keys,
+    helperText,
+    boundViaChrome,
+    onKeysChange,
+    onOpenExtensionShortcuts,
+}: KeyBindFieldProps) {
     const { t } = useTranslation();
     const theme = useTheme<Theme>();
     const classes = useKeyBindFieldStyles();
@@ -276,6 +302,11 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
                         }}
                     />
                 </Grid2>
+                {keys && helperText && (
+                    <Grid2 size={12}>
+                        <FormHelperText>{helperText}</FormHelperText>
+                    </Grid2>
+                )}
             </Grid2>
         </Grid2>
     );
@@ -523,37 +554,117 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 label: t('binds.moveTopSubtitlesDown'),
                 boundViaBrowser: false,
             },
+            openStatistics: {
+                label: t('binds.openStatistics'),
+                boundViaBrowser: false,
+            },
+            jumpToNextToken: {
+                label: t('binds.jumpToNextTokenAny'),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousToken: {
+                label: t('binds.jumpToPreviousTokenAny'),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
             markHoveredToken5: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus5') }),
                 boundViaBrowser: false,
+            },
+            jumpToNextTokenStatus5: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus5') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenStatus5: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus5') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken4: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus4') }),
                 boundViaBrowser: false,
             },
+            jumpToNextTokenStatus4: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus4') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenStatus4: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus4') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
             markHoveredToken3: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus3') }),
                 boundViaBrowser: false,
+            },
+            jumpToNextTokenStatus3: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus3') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenStatus3: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus3') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken2: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus2') }),
                 boundViaBrowser: false,
             },
+            jumpToNextTokenStatus2: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus2') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenStatus2: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus2') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
             markHoveredToken1: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus1') }),
                 boundViaBrowser: false,
+            },
+            jumpToNextTokenStatus1: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus1') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenStatus1: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus1') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken0: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus0') }),
                 boundViaBrowser: false,
             },
+            jumpToNextTokenStatus0: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus0') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenStatus0: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus0') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
             toggleHoveredTokenIgnored: {
                 label: t('binds.toggleHoveredTokenIgnored'),
                 boundViaBrowser: false,
             },
-            openStatistics: {
-                label: t('binds.openStatistics'),
+            jumpToNextTokenState0: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStateIgnored') }),
                 boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
+            },
+            jumpToPreviousTokenState0: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStateIgnored') }),
+                boundViaBrowser: false,
+                helperText: t('binds.jumpToTokenHelperText'),
             },
         }),
         [
@@ -605,6 +716,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             <div key={keyBindName}>
                 <KeyBindField
                     label={properties.label}
+                    helperText={properties.helperText}
                     keys={
                         extensionInstalled && properties.boundViaBrowser
                             ? (chromeKeyBinds[keyBindName] ?? '')

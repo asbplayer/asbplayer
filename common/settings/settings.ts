@@ -490,14 +490,30 @@ export interface KeyBindSet {
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;
     readonly moveTopSubtitlesDown: KeyBind;
-    readonly markHoveredToken5: KeyBind;
-    readonly markHoveredToken4: KeyBind;
-    readonly markHoveredToken3: KeyBind;
-    readonly markHoveredToken2: KeyBind;
-    readonly markHoveredToken1: KeyBind;
-    readonly markHoveredToken0: KeyBind;
-    readonly toggleHoveredTokenIgnored: KeyBind;
     readonly openStatistics: KeyBind;
+    readonly jumpToNextToken: KeyBind;
+    readonly jumpToPreviousToken: KeyBind;
+    readonly markHoveredToken5: KeyBind;
+    readonly jumpToNextTokenStatus5: KeyBind;
+    readonly jumpToPreviousTokenStatus5: KeyBind;
+    readonly markHoveredToken4: KeyBind;
+    readonly jumpToNextTokenStatus4: KeyBind;
+    readonly jumpToPreviousTokenStatus4: KeyBind;
+    readonly markHoveredToken3: KeyBind;
+    readonly jumpToNextTokenStatus3: KeyBind;
+    readonly jumpToPreviousTokenStatus3: KeyBind;
+    readonly markHoveredToken2: KeyBind;
+    readonly jumpToNextTokenStatus2: KeyBind;
+    readonly jumpToPreviousTokenStatus2: KeyBind;
+    readonly markHoveredToken1: KeyBind;
+    readonly jumpToNextTokenStatus1: KeyBind;
+    readonly jumpToPreviousTokenStatus1: KeyBind;
+    readonly markHoveredToken0: KeyBind;
+    readonly jumpToNextTokenStatus0: KeyBind;
+    readonly jumpToPreviousTokenStatus0: KeyBind;
+    readonly toggleHoveredTokenIgnored: KeyBind;
+    readonly jumpToNextTokenState0: KeyBind;
+    readonly jumpToPreviousTokenState0: KeyBind;
 
     // Bound from Chrome if extension is installed
     readonly copySubtitle: KeyBind;
