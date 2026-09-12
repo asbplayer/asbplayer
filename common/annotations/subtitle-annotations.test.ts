@@ -37,8 +37,11 @@ const makeYomitan = (overrides: Record<string, unknown> = {}) => ({
     verifyTokenizeResult: jest.fn(),
     lemmatize: jest.fn(async (text: string) => [text]),
     frequency: jest.fn(async () => 42),
+    gloss: jest.fn(async () => 'definition'),
     pitchAccent: jest.fn(async () => undefined),
+    termEntriesBulk: jest.fn(async () => undefined),
     getSupportsBulkFrequency: jest.fn(() => true),
+    getSupportsBulkGloss: jest.fn(() => true),
     getSupportsBulkPitchAccent: jest.fn(() => true),
     getSupportsTermEntriesBulk: jest.fn(() => false),
     inferFrequencyModesFromTokenOccurrences: jest.fn(),
@@ -128,7 +131,7 @@ describe('SubtitleAnnotations', () => {
         runtime.trackStates = settings.dictionaryTracks.map((dt, track) => new TrackState(track, dt));
 
         // Establish the last observed Anki settings. The first update may reset while the cache is initializing.
-        subtitleAnnotations.settingsUpdated(settings);
+        subtitleAnnotations.settingsUpdated(settings, { force: false });
         buildAnnotations.mockClear();
         runtime.trackStates = settings.dictionaryTracks.map((dt, track) => new TrackState(track, dt));
 
@@ -137,17 +140,43 @@ describe('SubtitleAnnotations', () => {
         subtitle.text = 'annotated';
         subtitle.tokenization = tokenization;
 
-        subtitleAnnotations.settingsUpdated(settings);
+        subtitleAnnotations.settingsUpdated(settings, { force: false });
 
         expect(buildAnnotations).not.toHaveBeenCalled();
         expect(subtitleAnnotations.subtitles[0].text).toBe('annotated');
         expect(subtitleAnnotations.subtitles[0].tokenization).toBe(tokenization);
 
         buildAnnotations.mockClear();
-        subtitleAnnotations.settingsUpdated({ ...settings, ankiConnectUrl: 'http://different-anki:8765' });
+        subtitleAnnotations.settingsUpdated(
+            { ...settings, ankiConnectUrl: 'http://different-anki:8765' },
+            { force: false }
+        );
 
         expect(buildAnnotations).toHaveBeenCalled();
         expect(subtitleAnnotations.subtitles[0].text).toBe('word');
+        expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).not.toHaveProperty('status');
+    });
+
+    it('forces an annotation rebuild when the profile changes', async () => {
+        const settings = makeSettings();
+        const { subtitleAnnotations } = makeSubtitleAnnotations(settings);
+        const runtime = privateAnnotations(subtitleAnnotations);
+        const buildAnnotations = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+
+        subtitleAnnotations.setSubtitles([
+            makeSubtitle({ text: 'annotated', tokenization: { tokens: [makeToken()] } }),
+        ]);
+        runtime.trackStates = settings.dictionaryTracks.map((dt, index) => new TrackState(index, dt));
+        runtime.lastAnkiSettings = {
+            url: settings.ankiConnectUrl,
+            apiKey: settings.ankiConnectApiKey,
+        };
+        buildAnnotations.mockClear();
+
+        subtitleAnnotations.profileChanged();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(buildAnnotations).toHaveBeenCalled();
         expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).not.toHaveProperty('status');
     });
 
@@ -177,7 +206,7 @@ describe('SubtitleAnnotations', () => {
         renderOnlyTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.MATURE].reading = true;
         const renderOnlySettings = makeSettings(makeDictionaryTracks(renderOnlyTrack));
 
-        subtitleAnnotations.settingsUpdated(renderOnlySettings);
+        subtitleAnnotations.settingsUpdated(renderOnlySettings, { force: false });
 
         expect(buildAnnotations).not.toHaveBeenCalled();
         expect(subtitleAnnotations.subtitles[0].tokenization).toBe(tokenization);
@@ -216,7 +245,30 @@ describe('SubtitleAnnotations', () => {
         expect(dictionaryStatusCollectionEnabled(dataTrack, { includeStates: false })).toBe(true);
         expect(areDictionaryTracksRenderOnly(initialTrack, dataTrack)).toBe(false);
 
-        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(dataTrack)));
+        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(dataTrack)), { force: false });
+
+        expect(buildAnnotations).toHaveBeenCalled();
+    });
+
+    it('rebuilds annotation data when gloss triggers change', () => {
+        const initialTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
+        const settings = makeSettings(makeDictionaryTracks(initialTrack));
+        const { subtitleAnnotations } = makeSubtitleAnnotations(settings);
+        const runtime = privateAnnotations(subtitleAnnotations);
+        const buildAnnotations = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+
+        subtitleAnnotations.setSubtitles([makeSubtitle({ tokenization: { tokens: [makeToken()] } })]);
+        runtime.trackStates = settings.dictionaryTracks.map((dt, index) => new TrackState(index, dt));
+        runtime.lastAnkiSettings = {
+            url: settings.ankiConnectUrl,
+            apiKey: settings.ankiConnectApiKey,
+        };
+        buildAnnotations.mockClear();
+
+        const dataTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
+        dataTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].gloss = true;
+
+        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(dataTrack)), { force: false });
 
         expect(buildAnnotations).toHaveBeenCalled();
     });
@@ -263,7 +315,7 @@ describe('SubtitleAnnotations', () => {
         (subtitleAnnotations as any).trackStates = [new TrackState(0, enabledTrack)];
         subtitleAnnotationsUpdated.mockClear();
 
-        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(disabledTrack)));
+        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(disabledTrack)), { force: false });
 
         expect(subtitleAnnotations.subtitles[0].text).toBe('raw');
         expect(subtitleAnnotations.subtitles[0].tokenization).toEqual({
@@ -840,8 +892,14 @@ describe('SubtitleAnnotations', () => {
         initialBuild.mockRestore();
 
         runtime.annotationsBuilding = true;
-        subtitleAnnotations.settingsUpdated({ ...settings, ankiConnectUrl: 'http://first-anki:8765' });
-        subtitleAnnotations.settingsUpdated({ ...settings, ankiConnectUrl: 'http://latest-anki:8765' });
+        subtitleAnnotations.settingsUpdated(
+            { ...settings, ankiConnectUrl: 'http://first-anki:8765' },
+            { force: false }
+        );
+        subtitleAnnotations.settingsUpdated(
+            { ...settings, ankiConnectUrl: 'http://latest-anki:8765' },
+            { force: false }
+        );
 
         expect(runtime.shouldCancelBuild).toBe(true);
         expect(runtime.pendingBuild).toEqual({ annotationsStartIndex: 0, annotationsEndIndex: 1, init: true });
@@ -860,6 +918,7 @@ describe('SubtitleAnnotations', () => {
 
     it('executes the annotation pipeline and publishes a tokenized subtitle', async () => {
         const track = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
+        track.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.MATURE].gloss = true;
         const { subtitleAnnotations, storage, subtitleAnnotationsUpdated } = makeSubtitleAnnotations();
         const runtime = privateAnnotations(subtitleAnnotations);
         const initialBuild = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
@@ -884,15 +943,18 @@ describe('SubtitleAnnotations', () => {
         await expect(runtime._buildAnnotations(0, 1, true)).resolves.toBe(true);
 
         expect(yomitan.tokenizeBulk).toHaveBeenCalledWith(['word']);
+        expect(yomitan.termEntriesBulk).not.toHaveBeenCalled();
         expect(yomitan.tokenize).toHaveBeenCalledWith('word');
         expect(yomitan.verifyTokenizeResult).toHaveBeenCalled();
         expect(yomitan.frequency).toHaveBeenCalledWith('word');
+        expect(yomitan.gloss).toHaveBeenCalledWith('word');
         expect(yomitan.inferFrequencyModesFromTokenOccurrences).toHaveBeenCalled();
         expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).toEqual(
             expect.objectContaining({
                 pos: [0, 4],
                 status: TokenStatus.MATURE,
                 frequency: 42,
+                gloss: 'definition',
                 states: [],
             })
         );

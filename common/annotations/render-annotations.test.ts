@@ -27,6 +27,7 @@ type AnnotationToggles = {
     color?: boolean;
     reading?: boolean;
     frequency?: boolean;
+    gloss?: boolean;
     pitchAccent?: boolean;
 };
 type HoverAnnotation = keyof Required<AnnotationToggles>;
@@ -46,6 +47,7 @@ const renderToken = (
             dt,
             enabledAnnotations: annotations.richTextEnabledAnnotations,
             allowAsciiReading,
+            glossSize: annotations.glossSize,
         }
     );
 };
@@ -59,11 +61,13 @@ const makeAnnotationTrack = (toggles: AnnotationToggles, overrides: Partial<Dict
     for (const config of dt.dictionaryTokenAnnotationConfig.onStatuses) {
         config.reading = toggles.reading ?? false;
         config.frequency = toggles.frequency ?? false;
+        config.gloss = toggles.gloss ?? false;
         config.pitchAccent = toggles.pitchAccent ?? false;
     }
     for (const config of dt.dictionaryTokenAnnotationConfig.onStates) {
         config.reading = false;
         config.frequency = false;
+        config.gloss = false;
         config.pitchAccent = false;
     }
     for (const target of [
@@ -73,6 +77,7 @@ const makeAnnotationTrack = (toggles: AnnotationToggles, overrides: Partial<Dict
         target.color.onHoverEnabled = false;
         target.reading.onHoverEnabled = false;
         target.frequency.onHoverEnabled = false;
+        target.gloss.onHoverEnabled = false;
         target.pitchAccent.onHoverEnabled = false;
     }
     return dt;
@@ -99,6 +104,7 @@ const expectedAnnotationCombinationHtml = ({
     color = false,
     reading = false,
     frequency = false,
+    gloss = false,
     pitchAccent = false,
 }: AnnotationToggles) => {
     const colorValue = '#11223344';
@@ -112,6 +118,9 @@ const expectedAnnotationCombinationHtml = ({
     if (frequency) {
         tokenText = `<ruby class="asb-frequency">${tokenText}<rt>7</rt></ruby>`;
     }
+    if (gloss) {
+        tokenText = `<ruby class="asb-gloss"><ruby class="asb-gloss">${tokenText}<rt><span class="asb-gloss-text">ion</span></rt></ruby><rt><span class="asb-gloss-text">definit-</span></rt></ruby>`;
+    }
     if (!color) return tokenText;
     if (pitchAccent && reading) return `<span class="asb-token asb-token-highlight">${tokenText}</span>`;
     return `<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE ${colorValue} 3px;">${tokenText}</span>`;
@@ -121,8 +130,10 @@ const annotationCombinations: Required<AnnotationToggles>[] = [];
 for (const color of [false, true]) {
     for (const reading of [false, true]) {
         for (const frequency of [false, true]) {
-            for (const pitchAccent of [false, true]) {
-                annotationCombinations.push({ color, reading, frequency, pitchAccent });
+            for (const gloss of [false, true]) {
+                for (const pitchAccent of [false, true]) {
+                    annotationCombinations.push({ color, reading, frequency, gloss, pitchAccent });
+                }
             }
         }
     }
@@ -221,12 +232,263 @@ describe('rich text rendering', () => {
                 status: TokenStatus.UNKNOWN,
                 readings: [{ pos: [0, 2], reading: 'ごがく' }],
                 frequency: 7,
+                gloss: 'definition',
                 pitchAccent: 1,
             }),
             dt
         );
 
         expect(rendered).toBe(expectedAnnotationCombinationHtml(toggles));
+    });
+
+    it('renders short plain-text glosses above a single line', () => {
+        expect(
+            renderToken(
+                'word',
+                makeInternalToken({
+                    pos: [0, 4],
+                    status: TokenStatus.UNKNOWN,
+                    gloss: 'sense',
+                }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe('<ruby class="asb-gloss">word<rt><span class="asb-gloss-text">sense</span></rt></ruby>');
+    });
+
+    it.each([
+        ['<&>', '&lt;&amp;&gt;'],
+        ['&lt;img&gt;', '&amp;lt;img&amp;gt;'],
+    ])('escapes plain-text gloss content when rendering HTML: %s', (gloss, expectedGloss) => {
+        expect(
+            renderToken(
+                'longword',
+                makeInternalToken({
+                    pos: [0, 8],
+                    status: TokenStatus.UNKNOWN,
+                    gloss,
+                }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe(`<ruby class="asb-gloss">longword<rt><span class="asb-gloss-text">${expectedGloss}</span></rt></ruby>`);
+    });
+
+    it('does not render a null gloss', () => {
+        expect(
+            renderToken(
+                'word',
+                makeInternalToken({
+                    pos: [0, 4],
+                    status: TokenStatus.UNKNOWN,
+                    gloss: null,
+                }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe('word');
+    });
+
+    it.each([
+        ['to escape (disaster, death, etc.)', 'to escape'],
+        ['逃れる（災害・死など）', '逃れる'],
+        ['échapper (à un danger)', 'échapper'],
+        ['term (note (additional detail))', 'term'],
+        ['escape; avoid; evade', 'escape'],
+        ['逃れる；避ける', '逃れる'],
+        ['entkommen | vermeiden', 'entkommen'],
+        ['слово • выражение', 'слово'],
+        ['語 ・ 表現', '語'],
+        ['escape (danger).', 'escape'],
+    ])('compacts supplementary text and later senses without assuming a language: %s', (gloss, expectedGloss) => {
+        const tokenText = 'representative-token';
+        expect(
+            renderToken(
+                tokenText,
+                makeInternalToken({
+                    pos: [0, tokenText.length],
+                    status: TokenStatus.UNKNOWN,
+                    gloss,
+                }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe(
+            `<ruby class="asb-gloss">${tokenText}<rt><span class="asb-gloss-text">${expectedGloss}</span></rt></ruby>`
+        );
+    });
+
+    it.each(['(obsolete)', 'word (unclosed note'])(
+        'retains the normalized original when generic compaction cannot produce a safe replacement: %s',
+        (gloss) => {
+            const tokenText = 'representative-token';
+            expect(
+                renderToken(
+                    tokenText,
+                    makeInternalToken({
+                        pos: [0, tokenText.length],
+                        status: TokenStatus.UNKNOWN,
+                        gloss,
+                    }),
+                    makeAnnotationTrack({ gloss: true })
+                )
+            ).toBe(`<ruby class="asb-gloss">${tokenText}<rt><span class="asb-gloss-text">${gloss}</span></rt></ruby>`);
+        }
+    );
+
+    it.each([
+        ['abcdefgh', '<ruby class="asb-gloss">word<rt><span class="asb-gloss-text">abcdefgh</span></rt></ruby>'],
+        [
+            'abcdefghijkl',
+            '<ruby class="asb-gloss"><ruby class="asb-gloss">word<rt><span class="asb-gloss-text">hijkl</span></rt></ruby><rt><span class="asb-gloss-text">abcdefg-</span></rt></ruby>',
+        ],
+        [
+            'abcdefghijklmnop',
+            '<span class="asb-gloss-popup" data-asb-gloss="abcdefghijklmnop"><ruby class="asb-gloss"><ruby class="asb-gloss">word<rt><span class="asb-gloss-text">hijklmn-</span></rt></ruby><rt><span class="asb-gloss-text">abcdefg-</span></rt></ruby></span>',
+        ],
+    ])('fits gloss lines by estimated rendered width: %s', (gloss, expectedHtml) => {
+        expect(
+            renderToken(
+                'word',
+                makeInternalToken({
+                    pos: [0, 4],
+                    status: TokenStatus.UNKNOWN,
+                    gloss,
+                }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe(expectedHtml);
+    });
+
+    it.each([
+        ['生身', 'living flesh', 'flesh', 'living'],
+        ['word', 'abcdefgh ij', 'ij', 'abcdefgh'],
+    ])('wraps the gloss for %s at whitespace without adding a hyphen', (tokenText, gloss, innerLine, outerLine) => {
+        expect(
+            renderToken(
+                tokenText,
+                makeInternalToken({ pos: [0, tokenText.length], gloss }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe(
+            `<ruby class="asb-gloss"><ruby class="asb-gloss">${tokenText}<rt><span class="asb-gloss-text">${innerLine}</span></rt></ruby><rt><span class="asb-gloss-text">${outerLine}</span></rt></ruby>`
+        );
+    });
+
+    it('retains a trailing hyphen and hover popup when the second line is truncated', () => {
+        expect(
+            renderToken(
+                '生身',
+                makeInternalToken({ pos: [0, 2], gloss: 'living fleshlyyy' }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).toBe(
+            '<span class="asb-gloss-popup" data-asb-gloss="living fleshlyyy"><ruby class="asb-gloss"><ruby class="asb-gloss">生身<rt><span class="asb-gloss-text">fleshly-</span></rt></ruby><rt><span class="asb-gloss-text">living</span></rt></ruby></span>'
+        );
+    });
+
+    it('accounts for full-width token text and the configured gloss font size', () => {
+        const dt = makeAnnotationTrack({ gloss: true });
+
+        expect(renderToken('語学', makeInternalToken({ pos: [0, 2], gloss: 'abcdefgh' }), dt)).toBe(
+            '<ruby class="asb-gloss">語学<rt><span class="asb-gloss-text">abcdefgh</span></rt></ruby>'
+        );
+
+        dt.dictionaryTokenAnnotationConfig.video.gloss.size = 1;
+        expect(renderToken('語学', makeInternalToken({ pos: [0, 2], gloss: 'abcdefgh' }), dt)).toBe(
+            '<span class="asb-gloss-popup" data-asb-gloss="abcdefgh"><ruby class="asb-gloss"><ruby class="asb-gloss">語学<rt><span class="asb-gloss-text">def-</span></rt></ruby><rt><span class="asb-gloss-text">abc-</span></rt></ruby></span>'
+        );
+    });
+
+    it('includes the escaped full gloss in a popup only when the displayed gloss is truncated', () => {
+        const rendered = renderToken(
+            'word',
+            makeInternalToken({ pos: [0, 4], gloss: '0123456789 "quoted" & <tag>' }),
+            makeAnnotationTrack({ gloss: true })
+        );
+
+        expect(rendered).toContain(
+            '<span class="asb-gloss-popup" data-asb-gloss="0123456789 &quot;quoted&quot; &amp; &lt;tag&gt;">'
+        );
+        expect(
+            renderToken(
+                'word',
+                makeInternalToken({ pos: [0, 4], gloss: 'sense' }),
+                makeAnnotationTrack({ gloss: true })
+            )
+        ).not.toContain('asb-gloss-popup');
+    });
+
+    it('renders glosses below the bottom subtitle line', () => {
+        const dt = makeAnnotationTrack({ gloss: true });
+        const rendered = computeRichText(
+            'top\nbottom',
+            {
+                tokens: [
+                    makeInternalToken({ pos: [0, 3], gloss: 'upper' }),
+                    makeInternalToken({ pos: [4, 10], gloss: 'lower' }),
+                ],
+            },
+            {
+                dt,
+                enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                allowAsciiReading: false,
+                glossSize: getAnnotationsForRender(dt, 'video').glossSize,
+            }
+        );
+
+        expect(rendered).toBe(
+            '<ruby class="asb-gloss">top<rt><span class="asb-gloss-text">upper</span></rt></ruby>\n' +
+                '<ruby class="asb-gloss asb-gloss-under">bottom<rt><span class="asb-gloss-text">lower</span></rt></ruby>'
+        );
+    });
+
+    it('keeps glosses above middle lines when a subtitle has three or more lines', () => {
+        const dt = makeAnnotationTrack({ gloss: true });
+        const rendered = computeRichText(
+            'top\nmiddle\nbottom',
+            {
+                tokens: [
+                    makeInternalToken({ pos: [0, 3], gloss: 'upper' }),
+                    makeInternalToken({ pos: [4, 10], gloss: 'center' }),
+                    makeInternalToken({ pos: [11, 17], gloss: 'lower' }),
+                ],
+            },
+            {
+                dt,
+                enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                allowAsciiReading: false,
+                glossSize: getAnnotationsForRender(dt, 'video').glossSize,
+            }
+        );
+
+        expect(rendered).toBe(
+            '<ruby class="asb-gloss">top<rt><span class="asb-gloss-text">upper</span></rt></ruby>\n' +
+                '<ruby class="asb-gloss">middle<rt><span class="asb-gloss-text">center</span></rt></ruby>\n' +
+                '<ruby class="asb-gloss asb-gloss-under">bottom<rt><span class="asb-gloss-text">lower</span></rt></ruby>'
+        );
+    });
+
+    it('keeps both lines of a long bottom-line gloss in reading order', () => {
+        const dt = makeAnnotationTrack({ gloss: true });
+        const rendered = computeRichText(
+            'top\nword',
+            {
+                tokens: [
+                    makeInternalToken({ pos: [0, 3], gloss: 'top' }),
+                    makeInternalToken({ pos: [4, 8], gloss: 'abcdefghijkl' }),
+                ],
+            },
+            {
+                dt,
+                enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
+                allowAsciiReading: false,
+                glossSize: getAnnotationsForRender(dt, 'video').glossSize,
+            }
+        );
+
+        expect(rendered).toBe(
+            '<ruby class="asb-gloss">top<rt><span class="asb-gloss-text">top</span></rt></ruby>\n' +
+                '<ruby class="asb-gloss asb-gloss-under">' +
+                '<ruby class="asb-gloss asb-gloss-under">word<rt><span class="asb-gloss-text">abcdefg-</span></rt></ruby>' +
+                '<rt><span class="asb-gloss-text">hijkl</span></rt></ruby>'
+        );
     });
 
     it.each([
@@ -350,8 +612,9 @@ describe('rich text rendering', () => {
             },
             {
                 dt: makeAnnotationTrack({ reading: true, pitchAccent: true }),
-                enabledAnnotations: { color: false, reading: true, frequency: false, pitchAccent: true },
+                enabledAnnotations: { color: false, reading: true, frequency: false, gloss: false, pitchAccent: true },
                 allowAsciiReading: false,
+                glossSize: 0.5,
             }
         );
 
@@ -380,6 +643,7 @@ describe('rich text rendering', () => {
                     dt,
                     enabledAnnotations: getAnnotationsForRender(dt, 'video').richTextEnabledAnnotations,
                     allowAsciiReading: false,
+                    glossSize: getAnnotationsForRender(dt, 'video').glossSize,
                 }
             )
         ).toBe(
@@ -428,6 +692,17 @@ describe('rich text rendering', () => {
             { frequency: true },
             makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, frequency: 7 }),
             '<ruby class="asb-frequency">語学<rt>7</rt></ruby>',
+        ],
+        [
+            'gloss',
+            '語学',
+            { gloss: true },
+            makeInternalToken({
+                pos: [0, 2],
+                status: TokenStatus.UNKNOWN,
+                gloss: 'definition',
+            }),
+            '<ruby class="asb-gloss"><ruby class="asb-gloss">語学<rt><span class="asb-gloss-text">ion</span></rt></ruby><rt><span class="asb-gloss-text">definit-</span></rt></ruby>',
         ],
         [
             'pitchAccent',
@@ -486,19 +761,23 @@ describe('rich text rendering', () => {
         const dt = makeDictionaryTrack();
         dt.dictionaryTokenAnnotationConfig.video.reading.size = 0.75;
         dt.dictionaryTokenAnnotationConfig.video.frequency.size = 0.25;
+        dt.dictionaryTokenAnnotationConfig.video.gloss.size = 0.6;
         dt.dictionaryTokenAnnotationConfig.video.pitchAccent.size = 0.125;
         dt.dictionaryTokenAnnotationConfig.subtitlePlayer.reading.size = 0.9;
         dt.dictionaryTokenAnnotationConfig.subtitlePlayer.frequency.size = 0.4;
+        dt.dictionaryTokenAnnotationConfig.subtitlePlayer.gloss.size = 0.7;
         dt.dictionaryTokenAnnotationConfig.subtitlePlayer.pitchAccent.size = 0.2;
 
         expect(tokenAnnotationStyleValues(dt.dictionaryTokenAnnotationConfig.video)).toEqual({
             '--asb-reading-size': '0.75em',
             '--asb-frequency-size': '0.25em',
+            '--asb-gloss-size': '0.6em',
             '--asb-pitch-accent-size': '0.125em',
         });
         expect(tokenAnnotationStyleValues(dt.dictionaryTokenAnnotationConfig.subtitlePlayer)).toEqual({
             '--asb-reading-size': '0.9em',
             '--asb-frequency-size': '0.4em',
+            '--asb-gloss-size': '0.7em',
             '--asb-pitch-accent-size': '0.2em',
         });
     });

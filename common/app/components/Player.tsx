@@ -552,6 +552,9 @@ function PlayerComponent(
         if (profileRef.current === profile) return;
         profileRef.current = profile;
         syntheticPlaybackEngineRef.current?.profileChanged(profile);
+        if (subtitleCollectionRef.current instanceof SubtitleAnnotations) {
+            subtitleCollectionRef.current.profileChanged();
+        }
     }, [profile]);
 
     useEffect(() => {
@@ -735,7 +738,7 @@ function PlayerComponent(
 
     useEffect(() => {
         if (!(subtitleCollectionRef.current instanceof SubtitleAnnotations)) return;
-        subtitleCollectionRef.current.settingsUpdated(settings);
+        subtitleCollectionRef.current.settingsUpdated(settings, { force: false });
     }, [settings]);
 
     useEffect(() => {
