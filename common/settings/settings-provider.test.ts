@@ -27,6 +27,8 @@ it('starts at default settings', async () => {
     expect(initialSettings.lastPlaybackPositions).toEqual([]);
     expect(initialSettings.showSubtitleListMiningButton).toBe(true);
     expect(initialSettings.subtitleListTimestampDisplay).toBe(SubtitleListTimestampDisplay.startAndEnd);
+    expect(initialSettings.keyBindSet.jumpToPreviousToken).toEqual({ keys: 'Q+W' });
+    expect(initialSettings.keyBindSet.jumpToNextToken).toEqual({ keys: 'Q+E' });
 });
 
 it('keeps playback-owned settings separate from UI settings', () => {

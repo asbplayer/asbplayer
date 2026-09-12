@@ -16,6 +16,7 @@ import {
     formatAsSigned,
     formatAsSignedMs,
     fromBatches,
+    getContiguousReading,
     getCurrentTimeString,
     getKanaMoras,
     hex2ToPercent,
@@ -953,6 +954,31 @@ describe('iterateOverStringInBlocks', () => {
             [2, 4, 'b'],
             [4, 6, undefined],
         ]);
+    });
+});
+
+describe('getContiguousReading', () => {
+    it('returns the original token text when there are no readings', () => {
+        expect(getContiguousReading('飛び切り', { readings: [] })).toBe('飛び切り');
+    });
+
+    it('combines one reading with the unannotated text around it', () => {
+        expect(
+            getContiguousReading('お飛び切りだ', {
+                readings: [{ pos: [1, 5], reading: 'とびきり' }],
+            })
+        ).toBe('おとびきりだ');
+    });
+
+    it('combines adjacent readings without adding separators', () => {
+        expect(
+            getContiguousReading('語学', {
+                readings: [
+                    { pos: [0, 1], reading: 'ご' },
+                    { pos: [1, 2], reading: 'がく' },
+                ],
+            })
+        ).toBe('ごがく');
     });
 });
 

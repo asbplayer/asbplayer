@@ -541,6 +541,10 @@ export default class PlayerChannel {
         this.channel?.postMessage(message);
     }
 
+    tokenSelectionFocus = () => {
+        this.channel?.postMessage({ command: 'tokenSelectionFocus' });
+    };
+
     loadFiles() {
         this.channel?.postMessage({ command: 'loadFiles' });
     }
