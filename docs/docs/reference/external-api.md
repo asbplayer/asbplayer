@@ -90,7 +90,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target streaming media. Local media cannot be targeted by `mediaId`.
 
-> `mediaId` requires extension v1.20.0 or later.
+> `mediaId` requires extension v1.20.0+
 
 #### Request
 
@@ -121,7 +121,7 @@ Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`ge
 
 ### `get-bound-media`
 
-> This command is only available when extension v1.20.0+ (unreleased) is installed
+> Requires extension v1.20.0+
 
 Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
 
@@ -169,7 +169,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 
 ### `get-subtitles`
 
-> This command is only available when extension v1.20.0+ (unreleased) is installed
+> Requires extension v1.20.0+
 
 Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
 Returns an empty list when no matching media is found or no subtitles are loaded.

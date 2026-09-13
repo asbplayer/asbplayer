@@ -1,0 +1,150 @@
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { AutoPauseResumeMode } from '@project/common/settings';
+import { makeSubtitle } from '@project/common/playback/playback-test-utils';
+import type { PlaybackPlanAutoPauseResume } from '@project/common/playback/plan/playback-plan';
+import AutoPauseController, {
+    autoPauseDurationMs,
+    formatAutoPauseResumeModeNotification,
+    nextAutoPauseResumeMode,
+} from '@project/common/playback/controllers/auto-pause-controller';
+
+const manualResume: PlaybackPlanAutoPauseResume = { mode: AutoPauseResumeMode.manual };
+const subtitleLengthResume = {
+    mode: AutoPauseResumeMode.subtitleLength,
+    minimumDurationMs: 500,
+    maximumDurationMs: 2000,
+    timePerCharacterMs: 100,
+    delayMs: 300,
+} as const;
+const fixedResume = {
+    mode: AutoPauseResumeMode.fixed,
+    fixedDurationMs: 2000,
+    delayMs: 300,
+} as const;
+
+const subtitleOfLength = (length: number) => makeSubtitle({ text: 'a'.repeat(length) });
+
+const harness = (resume: PlaybackPlanAutoPauseResume) => {
+    const events: string[] = [];
+    const controller = new AutoPauseController({
+        play: async () => {
+            events.push('play');
+        },
+        resumeDelayStarted: () => events.push('resume-delay-started'),
+        autoResumeFailed: () => events.push('auto-resume-failed'),
+        onError: (error) => events.push(`error: ${String(error)}`),
+    });
+    controller.replacePlan(resume);
+    return { controller, events };
+};
+
+describe('auto-pause resume mode', () => {
+    it('cycles through each mode and formats its notification', () => {
+        const fixed = nextAutoPauseResumeMode(AutoPauseResumeMode.manual);
+        const subtitleLength = nextAutoPauseResumeMode(fixed);
+        const manual = nextAutoPauseResumeMode(subtitleLength);
+
+        expect([fixed, subtitleLength, manual]).toEqual([
+            AutoPauseResumeMode.fixed,
+            AutoPauseResumeMode.subtitleLength,
+            AutoPauseResumeMode.manual,
+        ]);
+        expect(formatAutoPauseResumeModeNotification(fixed)).toEqual({
+            key: 'auto-pause-resume-mode',
+            locKey: 'info.autoPauseResumeMode',
+            valueLocKey: 'settings.autoPauseResumeModeFixed',
+        });
+    });
+});
+
+describe('autoPauseDurationMs', () => {
+    it('uses the fixed duration regardless of subtitle count', () => {
+        expect(autoPauseDurationMs(fixedResume, [])).toBe(2000);
+        expect(autoPauseDurationMs(fixedResume, [subtitleOfLength(1)])).toBe(2000);
+        expect(autoPauseDurationMs(fixedResume, [subtitleOfLength(6), subtitleOfLength(4)])).toBe(2000);
+    });
+
+    it('scales with all readable characters and clamps to the configured bounds', () => {
+        expect(autoPauseDurationMs(subtitleLengthResume, [])).toBe(500);
+        expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(1)])).toBe(500);
+        expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(6), subtitleOfLength(4)])).toBe(1000);
+        expect(autoPauseDurationMs(subtitleLengthResume, [subtitleOfLength(100)])).toBe(2000);
+    });
+
+    it('treats a zero maximum as no upper bound', () => {
+        const unbounded = { ...subtitleLengthResume, maximumDurationMs: 0 };
+        expect(autoPauseDurationMs(unbounded, [subtitleOfLength(100)])).toBe(10_000);
+    });
+
+    it.each([
+        ['presentation markup', '<b>foo</b>', 300],
+        ['ruby readings and fallback text', '<ruby>漢<rp>(</rp><rt>かん</rt><rp>)</rp></ruby>', 100],
+    ])('counts visible characters without %s', (_description, text, expectedDurationMs) => {
+        const resume = { ...subtitleLengthResume, minimumDurationMs: 0, maximumDurationMs: 0 };
+
+        expect(autoPauseDurationMs(resume, [makeSubtitle({ text })])).toBe(expectedDurationMs);
+    });
+
+    it.each([
+        ['plain line breaks and repeated whitespace', '  foo\n\t bar  '],
+        ['HTML line breaks', 'foo<br class="line">bar'],
+    ])('excludes %s', (_description, text) => {
+        const resume = { ...subtitleLengthResume, minimumDurationMs: 0, maximumDurationMs: 0 };
+
+        expect(autoPauseDurationMs(resume, [makeSubtitle({ text })])).toBe(600);
+    });
+
+    it('counts visible grapheme clusters rather than UTF-16 code units', () => {
+        const resume = { ...subtitleLengthResume, minimumDurationMs: 0, maximumDurationMs: 0 };
+
+        expect(autoPauseDurationMs(resume, [makeSubtitle({ text: 'e\u0301👨‍👩‍👧‍👦' })])).toBe(200);
+    });
+});
+
+describe('AutoPauseController', () => {
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    it('starts the resume delay and then resumes after it', () => {
+        const { controller, events } = harness(subtitleLengthResume);
+
+        controller.autoPaused([subtitleOfLength(10)]);
+        jest.advanceTimersByTime(1000);
+        expect(events).toEqual(['resume-delay-started']);
+
+        jest.advanceTimersByTime(300);
+        expect(events).toEqual(['resume-delay-started', 'play']);
+    });
+
+    it('waits indefinitely in manual mode', () => {
+        const { controller, events } = harness(manualResume);
+        controller.autoPaused([subtitleOfLength(10)]);
+        jest.advanceTimersByTime(60_000);
+        expect(events).toEqual([]);
+    });
+
+    it('preserves a pending resume when an equivalent plan is replaced', () => {
+        const { controller, events } = harness(subtitleLengthResume);
+        controller.autoPaused([subtitleOfLength(10)]);
+        controller.replacePlan({ ...subtitleLengthResume });
+        jest.advanceTimersByTime(1300);
+        expect(events).toEqual(['resume-delay-started', 'play']);
+    });
+
+    it.each([
+        ['playback starts', (controller: AutoPauseController) => controller.playbackStarted()],
+        ['the user seeks', (controller: AutoPauseController) => controller.userSeeked()],
+        ['the controller is cancelled', (controller: AutoPauseController) => controller.cancel()],
+        ['auto-pause is disabled', (controller: AutoPauseController) => controller.replacePlan(undefined)],
+    ])('drops a pending resume when %s', (_description, interrupt) => {
+        const { controller, events } = harness(subtitleLengthResume);
+        controller.autoPaused([subtitleOfLength(10)]);
+        interrupt(controller);
+        jest.advanceTimersByTime(60_000);
+        expect(events).toEqual([]);
+    });
+});

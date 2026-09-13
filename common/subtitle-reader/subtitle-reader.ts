@@ -1,6 +1,7 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
+import { removeSubtitleHtml } from '@project/common/util';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
 import type { SubtitleTextImage, Token, Tokenization } from '@project/common';
@@ -39,8 +40,6 @@ const netflixRubyRegex = new RegExp(
 // always consumed.
 const netflixRubyBaseRegex = new RegExp(`^[${netflixRubyBaseClass}]+$`, 'u');
 const netflixRubyReadingRegex = new RegExp(`^[^)]*[${netflixRubyKanaClass}]`, 'u');
-const helperElement = document.createElement('div');
-
 interface SubtitleNode {
     start: number;
     end: number;
@@ -346,7 +345,7 @@ export default class SubtitleReader {
                 const subtitle = {
                     start: Math.floor(start * 1000),
                     end: Math.floor((start + parseFloat(elm['@_dur'])) * 1000),
-                    text: this._filterText(this._decodeHTML(String(elm['#text']))),
+                    text: this._filterText(removeSubtitleHtml(String(elm['#text']))),
                     track,
                 };
 
@@ -409,7 +408,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                const text = this._decodeHTML(elm.innerHTML.replaceAll(/<br(\s[^\s]+)?(\/)?>/g, '\n'));
+                const text = removeSubtitleHtml(elm.innerHTML);
                 subtitles.push({
                     text: this._filterText(text),
                     start,
@@ -575,10 +574,24 @@ export default class SubtitleReader {
             return undefined;
         };
 
-        const subtitles: SubtitleNode[] = [];
+        const subtitles: { node: SubtitleNode; regionY?: number; sourceIndex: number }[] = [];
+
+        const regionYById = new Map<string, number>();
+        const percentageOriginRegex = /^\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)%\s+(?<y>[+-]?(?:\d+(?:\.\d*)?|\.\d+))%\s*$/;
+
+        for (const region of Array.from(doc.getElementsByTagNameNS('*', 'region'))) {
+            const id =
+                region.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id') ?? region.getAttribute('xml:id');
+            const origin = region.getAttributeNS(stylingNamespace, 'origin') ?? region.getAttribute('tts:origin');
+            const match = origin === null ? null : percentageOriginRegex.exec(origin);
+            if (id !== null && match !== null) {
+                const regionY = Number(match.groups!.y);
+                if (Number.isFinite(regionY)) regionYById.set(id, regionY);
+            }
+        }
 
         // Collect every <p> regardless of how many <div>s the body splits them across.
-        for (const paragraph of Array.from(doc.getElementsByTagNameNS('*', 'p'))) {
+        for (const [sourceIndex, paragraph] of Array.from(doc.getElementsByTagNameNS('*', 'p')).entries()) {
             const begin = paragraph.getAttribute('begin');
             const end = paragraph.getAttribute('end');
             const dur = paragraph.getAttribute('dur');
@@ -598,15 +611,38 @@ export default class SubtitleReader {
                 continue;
             }
 
+            const regionId = paragraph.getAttribute('region');
             subtitles.push({
-                start,
-                end: stop,
-                text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
-                track,
+                node: {
+                    start,
+                    end: stop,
+                    text: this._filterText(this._imscParagraphText(paragraph, rubyRoleOf)),
+                    track,
+                },
+                regionY: regionId === null ? undefined : regionYById.get(regionId),
+                sourceIndex,
             });
         }
 
-        return subtitles;
+        subtitles.sort((a, b) => a.node.start - b.node.start || a.sourceIndex - b.sourceIndex);
+
+        // Netflix sometimes authors simultaneous lines in bottom-to-top XML order. The
+        // region's vertical origin captures their intended visual reading order. Only use
+        // it when every cue in the group has a position; otherwise retain source order.
+        for (let start = 0; start < subtitles.length; ) {
+            let end = start + 1;
+            while (end < subtitles.length && subtitles[end].node.start === subtitles[start].node.start) {
+                ++end;
+            }
+            const group = subtitles.slice(start, end);
+            if (group.length > 1 && group.every((subtitle) => subtitle.regionY !== undefined)) {
+                group.sort((a, b) => a.regionY! - b.regionY! || a.sourceIndex - b.sourceIndex);
+                subtitles.splice(start, group.length, ...group);
+            }
+            start = end;
+        }
+
+        return subtitles.map(({ node }) => node);
     }
 
     // Flattens an IMSC <p> to text. Furigana renders inline as base(reading)
@@ -721,17 +757,6 @@ export default class SubtitleReader {
         return line;
     }
 
-    private _decodeHTML(text: string): string {
-        helperElement.innerHTML = text;
-
-        const rubyTextElements = [...helperElement.getElementsByTagName('rt')];
-        for (const rubyTextElement of rubyTextElements) {
-            rubyTextElement.remove();
-        }
-
-        return helperElement.textContent ?? helperElement.innerText;
-    }
-
     private _convertNetflixRubyToHtml(node: SubtitleNode) {
         if (!node.text) {
             return;
@@ -774,7 +799,7 @@ export default class SubtitleReader {
                 : text.replace(this._textFilter.regex, this._textFilter.replacement).trim();
 
         if (this._removeXml) {
-            text = this._decodeHTML(text);
+            text = removeSubtitleHtml(text);
         }
 
         return text;

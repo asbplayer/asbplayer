@@ -1,10 +1,82 @@
 import { asbError } from '@project/common/util';
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
+export function getLocale(language: string): Intl.Locale | undefined {
+    try {
+        return new Intl.Locale(language.trim().replace(/_/g, '-'));
+    } catch {
+        return;
+    }
+}
+
+export function canonicalLanguageTag(language: Intl.Locale): string;
+export function canonicalLanguageTag(language: string): string | undefined;
+export function canonicalLanguageTag(language: string | Intl.Locale): string | undefined {
+    const locale = typeof language === 'string' ? getLocale(language) : language;
+    return locale?.baseName; // baseName normalizes for Intl.DisplayNames
+}
+
+function capitalizeFirstLetter(value: string, locale: string): string {
+    const firstCodePoint = value.codePointAt(0);
+    if (firstCodePoint === undefined) return value;
+    const firstCharacter = String.fromCodePoint(firstCodePoint);
+    return firstCharacter.toLocaleUpperCase(locale) + value.slice(firstCharacter.length);
+}
+
+export function languageDisplayName(language: string, locale: Intl.Locale | undefined = getLocale(language)): string {
+    const canonical = canonicalLanguageTag(language);
+    if (canonical === undefined || locale === undefined) return language;
+
+    try {
+        const displayLocale = canonicalLanguageTag(locale);
+        const displayName = new Intl.DisplayNames([displayLocale], {
+            type: 'language',
+            languageDisplay: 'standard',
+            fallback: 'none',
+        }).of(canonical);
+        return displayName === undefined ? language : capitalizeFirstLetter(displayName, displayLocale);
+    } catch {
+        return language;
+    }
+}
+
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];
     const dotIndex = path.lastIndexOf('.');
-    return dotIndex === -1 ? fallback : path.substring(dotIndex + 1);
+    return dotIndex <= path.lastIndexOf('/') ? fallback : path.substring(dotIndex + 1);
+}
+
+const normalizedSubtitleExtensions: Readonly<Record<string, string>> = {
+    ass: 'ass',
+    dfxp: 'dfxp',
+    srt: 'srt',
+    ssa: 'ass',
+    sup: 'sup',
+    ttml: 'ttml2',
+    ttml2: 'ttml2',
+    vtt: 'vtt',
+    webvtt: 'vtt',
+};
+
+export function normalizeSubtitleExtension(extension: string): string | undefined {
+    return normalizedSubtitleExtensions[extension.trim().toLowerCase()];
+}
+
+export function subtitleFileExtensionForUrl(url: string, declaredExtension: string): string {
+    return normalizeSubtitleExtension(extractExtension(url, '')) ?? declaredExtension;
+}
+
+export function mediaSourceUrl(media: HTMLMediaElement): string | undefined {
+    return (
+        media.currentSrc ||
+        media.src ||
+        Array.from(media.querySelectorAll('source')).find((source) => source.src.length > 0)?.src ||
+        undefined
+    );
+}
+
+export function mediaSourceIdentity(media: HTMLMediaElement): unknown {
+    return media.srcObject ?? mediaSourceUrl(media) ?? undefined;
 }
 
 export async function poll(test: () => boolean, timeout: number = 10000): Promise<boolean> {

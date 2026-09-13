@@ -30,7 +30,7 @@ const presets: Record<Preset, PresetValue> = {
         },
     },
     formLabel: {
-        box: {},
+        box: { ml: 1 },
         iconButton: {
             size: 'small',
             disableRipple: true,

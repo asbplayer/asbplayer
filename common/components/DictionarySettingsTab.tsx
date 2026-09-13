@@ -1218,29 +1218,36 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             </Typography>
                         )}
                         <Stack spacing={1}>
-                            <SwitchLabelWithHoverEffect
-                                control={
-                                    <Switch
-                                        checked={selectedDictionary.dictionaryTokenAnnotationConfig.colorizeEnabled}
-                                        onChange={(e) => {
-                                            const colorizeEnabled = e.target.checked;
-                                            const newTracks = [...dictionaryTracks];
-                                            newTracks[selectedDictionaryTrack] = {
-                                                ...newTracks[selectedDictionaryTrack],
-                                                dictionaryColorizeSubtitles: colorizeEnabled,
-                                                dictionaryTokenAnnotationConfig: {
-                                                    ...newTracks[selectedDictionaryTrack]
-                                                        .dictionaryTokenAnnotationConfig,
-                                                    colorizeEnabled,
-                                                },
-                                            };
-                                            void onSettingChanged('dictionaryTracks', newTracks);
-                                        }}
-                                    />
-                                }
-                                label={t('settings.dictionaryColorizeSubtitles')}
-                                labelPlacement="start"
-                            />
+                            <Box sx={{ display: 'flex', width: '100%' }}>
+                                <KeyboardShortcutLink
+                                    onClick={onViewKeyboardShortcuts}
+                                    sx={{ display: 'inline-block', ml: -1 }}
+                                />
+                                <SwitchLabelWithHoverEffect
+                                    sx={{ flexGrow: 1 }}
+                                    control={
+                                        <Switch
+                                            checked={selectedDictionary.dictionaryTokenAnnotationConfig.colorizeEnabled}
+                                            onChange={(e) => {
+                                                const colorizeEnabled = e.target.checked;
+                                                const newTracks = [...dictionaryTracks];
+                                                newTracks[selectedDictionaryTrack] = {
+                                                    ...newTracks[selectedDictionaryTrack],
+                                                    dictionaryColorizeSubtitles: colorizeEnabled,
+                                                    dictionaryTokenAnnotationConfig: {
+                                                        ...newTracks[selectedDictionaryTrack]
+                                                            .dictionaryTokenAnnotationConfig,
+                                                        colorizeEnabled,
+                                                    },
+                                                };
+                                                void onSettingChanged('dictionaryTracks', newTracks);
+                                            }}
+                                        />
+                                    }
+                                    label={t('settings.dictionaryColorizeSubtitles')}
+                                    labelPlacement="start"
+                                />
+                            </Box>
                             <Box sx={{ display: 'flex', width: '100%' }}>
                                 <KeyboardShortcutLink
                                     onClick={onViewKeyboardShortcuts}

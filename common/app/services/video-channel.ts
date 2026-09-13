@@ -83,7 +83,7 @@ export default class VideoChannel {
     private appBarToggleCallbacks: (() => void)[];
     private ankiDialogRequestCallbacks: (() => void)[];
     private toggleSubtitleTrackInListCallbacks: ((track: number) => void)[];
-    private subtitlesUpdatedCallbacks: ((updatedSubtitles: IndexedSubtitleModel[]) => void)[];
+    private subtitlesUpdatedCallbacks: ((updatedSubtitles: readonly IndexedSubtitleModel[]) => void)[];
     private saveTokenLocalCallbacks: ((
         track: number,
         token: string,
@@ -461,7 +461,7 @@ export default class VideoChannel {
         return () => this._remove(callback, this.toggleSubtitleTrackInListCallbacks);
     }
 
-    onSubtitlesUpdated(callback: (updatedSubtitles: IndexedSubtitleModel[]) => void) {
+    onSubtitlesUpdated(callback: (updatedSubtitles: readonly IndexedSubtitleModel[]) => void) {
         this.subtitlesUpdatedCallbacks.push(callback);
         return () => this._remove(callback, this.subtitlesUpdatedCallbacks);
     }
@@ -546,7 +546,7 @@ export default class VideoChannel {
         } as SaveTokenLocalToVideoMessage);
     }
 
-    subtitlesUpdated(subtitles: IndexedSubtitleModel[]) {
+    subtitlesUpdated(subtitles: readonly IndexedSubtitleModel[]) {
         this.protocol.postMessage({
             command: 'subtitlesUpdated',
             subtitles,
@@ -641,6 +641,7 @@ export default class VideoChannel {
         const {
             ankiConnectUrl,
             ankiConnectApiKey,
+            ankiRefreshBrowserAfterUpdate,
             deck,
             noteType,
             sentenceField,
@@ -675,6 +676,7 @@ export default class VideoChannel {
             value: {
                 ankiConnectUrl,
                 ankiConnectApiKey,
+                ankiRefreshBrowserAfterUpdate,
                 deck,
                 noteType,
                 sentenceField,
@@ -712,6 +714,8 @@ export default class VideoChannel {
         const {
             themeType,
             videoSubtitleSplitBehavior,
+            showSubtitleListMiningButton,
+            subtitleListTimestampDisplay,
             copyToClipboardOnMine,
             autoPausePreference,
             subtitleTriggerStartOffset,
@@ -729,6 +733,13 @@ export default class VideoChannel {
             fastForwardPlaybackMinimumSkipIntervalMs,
             streamingCondensedPlaybackMinimumSkipIntervalMs,
             repeatCountPreference,
+            autoPauseResumeMode,
+            autoPauseResumeDelayMs,
+            autoPauseFixedDurationMs,
+            autoPauseMinimumDurationMs,
+            autoPauseMaximumDurationMs,
+            autoPauseTimePerCharacterMs,
+            subtitleVisibility,
             rememberPlaybackModes,
             lastPlaybackModes,
             lastPlaybackPositions,
@@ -756,6 +767,8 @@ export default class VideoChannel {
             value: {
                 themeType,
                 videoSubtitleSplitBehavior,
+                showSubtitleListMiningButton,
+                subtitleListTimestampDisplay,
                 copyToClipboardOnMine,
                 autoPausePreference,
                 subtitleTriggerStartOffset,
@@ -773,6 +786,13 @@ export default class VideoChannel {
                 fastForwardPlaybackMinimumSkipIntervalMs,
                 streamingCondensedPlaybackMinimumSkipIntervalMs,
                 repeatCountPreference,
+                autoPauseResumeMode,
+                autoPauseResumeDelayMs,
+                autoPauseFixedDurationMs,
+                autoPauseMinimumDurationMs,
+                autoPauseMaximumDurationMs,
+                autoPauseTimePerCharacterMs,
+                subtitleVisibility,
                 rememberPlaybackModes,
                 lastPlaybackModes,
                 lastPlaybackPositions,

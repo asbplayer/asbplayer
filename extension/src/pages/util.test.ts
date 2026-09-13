@@ -1,5 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { extractExtension, inferTracks, poll, trackFromDef, trackId } from '@project/extension/src/pages/util';
+import {
+    canonicalLanguageTag,
+    extractExtension,
+    getLocale,
+    inferTracks,
+    languageDisplayName,
+    mediaSourceIdentity,
+    mediaSourceUrl,
+    poll,
+    subtitleFileExtensionForUrl,
+    trackFromDef,
+    trackId,
+} from '@project/extension/src/pages/util';
 
 function track(label: string, language: string, url: string | string[]) {
     return { label, language, url, extension: 'vtt' };
@@ -16,6 +28,8 @@ const deferred = <T>() => {
 describe('extractExtension', () => {
     it('returns the fallback when there is no extension', () => {
         expect(extractExtension('/path/to/subtitles', 'vtt')).toBe('vtt');
+        expect(extractExtension('https://cdn.example/path/to/subtitles?token=abc', 'vtt')).toBe('vtt');
+        expect(extractExtension('https://cdn.example/path.with.dots/subtitles', 'srt')).toBe('srt');
     });
 
     it('extracts a plain extension for 1 item', () => {
@@ -25,6 +39,105 @@ describe('extractExtension', () => {
     it('extracts the extension for 2 common URL variants with multiple dots and query strings', () => {
         expect(extractExtension('https://example.com/path.to/subtitles.ass?token=abc', 'vtt')).toBe('ass');
         expect(extractExtension('https://example.com/path/file.vtt?lang=ja', 'srt')).toBe('vtt');
+    });
+});
+
+describe('subtitleFileExtensionForUrl', () => {
+    it('normalizes supported aliases from manifest segment URLs', () => {
+        expect(subtitleFileExtensionForUrl('https://example.com/subtitle.WEBVTT', 'vtt')).toBe('vtt');
+        expect(subtitleFileExtensionForUrl('https://example.com/subtitle.ssa', 'ass')).toBe('ass');
+        expect(subtitleFileExtensionForUrl('https://example.com/subtitle.sup', 'vtt')).toBe('sup');
+    });
+
+    it('preserves the declared format when a segment suffix is not independently supported', () => {
+        expect(subtitleFileExtensionForUrl('https://example.com/subtitle.xml', 'ttml2')).toBe('ttml2');
+        expect(subtitleFileExtensionForUrl('https://example.com/subtitle', 'dfxp')).toBe('dfxp');
+    });
+});
+
+describe('language names', () => {
+    it('parses normalized locales and rejects invalid language tags', () => {
+        expect(getLocale(' PT_br ')?.baseName).toBe('pt-BR');
+        expect(getLocale('ja-JP-u-ca-japanese')?.language).toBe('ja');
+        expect(getLocale('invalid!')).toBeUndefined();
+    });
+
+    it('canonicalizes whitespace and underscore-separated BCP-47 language tags', () => {
+        expect(canonicalLanguageTag(' PT_br ')).toBe('pt-BR');
+    });
+
+    it('removes Unicode locale extensions from canonical language tags', () => {
+        expect(canonicalLanguageTag('ja-JP-u-ca-japanese')).toBe('ja-JP');
+        const locale = getLocale('ja-JP-u-ca-japanese');
+        expect(locale).toBeDefined();
+        if (locale) expect(canonicalLanguageTag(locale)).toBe('ja-JP');
+    });
+
+    it('returns undefined for invalid language tags', () => {
+        expect(canonicalLanguageTag('invalid!')).toBeUndefined();
+    });
+
+    it('uses each canonical language autonym with standard language display', () => {
+        expect(languageDisplayName('ja')).toBe('日本語');
+        expect(languageDisplayName('es-419')).toBe('Español (Latinoamérica)');
+        expect(languageDisplayName(' JA_jp-u-ca-japanese ')).toBe('日本語 (日本)');
+    });
+
+    it('preserves valid unknown and invalid language tags', () => {
+        expect(languageDisplayName('qaa')).toBe('qaa');
+        expect(languageDisplayName('invalid!')).toBe('invalid!');
+    });
+});
+
+describe('mediaSourceIdentity', () => {
+    it('uses the selected current source when source attributes are no longer present', () => {
+        const video = document.createElement('video');
+        Object.defineProperty(video, 'currentSrc', {
+            configurable: true,
+            value: 'https://example.com/selected-video.m3u8',
+        });
+
+        expect(mediaSourceUrl(video)).toBe('https://example.com/selected-video.m3u8');
+        expect(mediaSourceIdentity(video)).toBe('https://example.com/selected-video.m3u8');
+    });
+
+    it('uses a child source when the media element has no direct source', () => {
+        const video = document.createElement('video');
+        const source = document.createElement('source');
+        source.src = 'https://example.com/episode-1.m3u8';
+        video.append(source);
+
+        expect(mediaSourceUrl(video)).toBe('https://example.com/episode-1.m3u8');
+        expect(mediaSourceIdentity(video)).toBe('https://example.com/episode-1.m3u8');
+    });
+
+    it('uses the first non-empty child source', () => {
+        const video = document.createElement('video');
+        const emptySource = document.createElement('source');
+        const populatedSource = document.createElement('source');
+        populatedSource.src = 'https://example.com/episode-2.m3u8';
+        video.append(emptySource, populatedSource);
+
+        expect(mediaSourceUrl(video)).toBe('https://example.com/episode-2.m3u8');
+        expect(mediaSourceIdentity(video)).toBe('https://example.com/episode-2.m3u8');
+    });
+
+    it('uses srcObject when no URL source is available', () => {
+        const video = document.createElement('video');
+        const stream = {} as MediaStream;
+        Object.defineProperty(video, 'srcObject', { configurable: true, value: stream });
+
+        expect(mediaSourceIdentity(video)).toBe(stream);
+    });
+
+    it('uses the active srcObject instead of a stale URL attribute', () => {
+        const video = document.createElement('video');
+        const stream = {} as MediaStream;
+        video.src = 'https://example.com/old-video.mp4';
+        Object.defineProperty(video, 'srcObject', { configurable: true, value: stream });
+
+        expect(mediaSourceUrl(video)).toBe('https://example.com/old-video.mp4');
+        expect(mediaSourceIdentity(video)).toBe(stream);
     });
 });
 

@@ -35,6 +35,7 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
             onTime: async () => {},
             onPlaybackStarted: async () => {},
             onPlaybackPaused: () => {},
+            onSeekStarted: () => {},
             onDiscontinuity: () => {},
             onCancel: () => {},
             onError: () => {},

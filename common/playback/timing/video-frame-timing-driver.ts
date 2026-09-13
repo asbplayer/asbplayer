@@ -8,6 +8,7 @@ import type {
 
 const defaultFrameTimeMs = 1000 / 60;
 const timeUpdateIntervalMs = 50;
+const videoFrameCallbackHealthCheckIntervalMs = 1000;
 type VideoFrameTimingEvent =
     | 'play'
     | 'pause'
@@ -49,8 +50,12 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private seeking = false;
     private expectedInternalSeek = false;
     private timeUpdatesBound = false;
+    private videoFrameCallbacksEligible = false;
     private frameHandle?: number;
     private timeUpdateHandle?: ReturnType<typeof setInterval>;
+    private videoFrameCallbackHealthCheckHandle?: ReturnType<typeof setInterval>;
+    private lastRequestVideoFrameCallbackTime?: number;
+    private lastCheckedRequestVideoFrameCallbackTime?: number;
     private previousFrame?: {
         readonly expectedDisplayTimeMs: number;
         readonly callbackTimeMs: number;
@@ -72,6 +77,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
             onTime: async () => {},
             onPlaybackStarted: async () => {},
             onPlaybackPaused: () => {},
+            onSeekStarted: () => {},
             onDiscontinuity: () => {},
             onCancel: () => {},
             onError: () => {},
@@ -179,6 +185,9 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.video.addEventListener('emptied', this.onMetadataChange);
         this.video.addEventListener('error', this.onError);
         document.addEventListener('visibilitychange', this.onMetadataChange);
+        this.lastRequestVideoFrameCallbackTime = undefined;
+        this.lastCheckedRequestVideoFrameCallbackTime = undefined;
+        this.startVideoFrameCallbackHealthCheck();
         this.reset();
         this.onMetadataChange();
     }
@@ -202,9 +211,11 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.video.removeEventListener('resize', this.onMetadataChange);
         this.video.removeEventListener('emptied', this.onMetadataChange);
         this.video.removeEventListener('error', this.onError);
-        if (this.timeUpdatesBound) this.video.removeEventListener('timeupdate', this.onTimeUpdate);
-        this.timeUpdatesBound = false;
-        this.stopTimeUpdatePolling();
+        this.stopTimeUpdateFallback();
+        this.stopVideoFrameCallbackHealthCheck();
+        this.videoFrameCallbacksEligible = false;
+        this.lastRequestVideoFrameCallbackTime = undefined;
+        this.lastCheckedRequestVideoFrameCallbackTime = undefined;
         document.removeEventListener('visibilitychange', this.onMetadataChange);
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity: false });
@@ -237,6 +248,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private readonly onSeeking = () => {
         this.seeking = true;
         const preserveExpectedDiscontinuity = this.expectedInternalSeek || this.pendingSeekCompletion !== undefined;
+        this.callbacks.onSeekStarted(preserveExpectedDiscontinuity ? 'internal-seek' : 'user-seek');
         this.expectedInternalSeek = false;
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity });
@@ -266,22 +278,14 @@ export default class VideoFrameTimingDriver implements TimingDriver {
      * To work around both cases, listen for 'timeupdate' events whenever there is no usable video frame source.
      */
     private readonly onMetadataChange = () => {
-        if (document.hidden || !this.video.hasVideoTrack()) {
+        this.videoFrameCallbacksEligible = !document.hidden && this.video.hasVideoTrack();
+        if (!this.videoFrameCallbacksEligible) {
             this.cancelScheduledUpdate();
             this.previousFrame = undefined;
-            if (!this.timeUpdatesBound) {
-                this.video.addEventListener('timeupdate', this.onTimeUpdate);
-                this.timeUpdatesBound = true;
-            }
-            this.startTimeUpdatePolling();
+            this.startTimeUpdateFallback();
             return;
         }
-        if (this.timeUpdatesBound) {
-            this.video.removeEventListener('timeupdate', this.onTimeUpdate);
-            this.timeUpdatesBound = false;
-        }
-        this.stopTimeUpdatePolling();
-        this.schedule();
+        this.schedule(); // Keep fallback timing active until a frame callback proves that the frame source is responsive.
     };
 
     private readonly handleSeeked = (timestampMs: number) => {
@@ -316,11 +320,13 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     private schedule(): void {
         if (!this.shouldProcess()) return;
-        if (this.timeUpdatesBound) return;
+        if (!this.videoFrameCallbacksEligible) return;
         if (this.frameHandle !== undefined) return;
 
         this.frameHandle = this.video.requestVideoFrameCallback((now, metadata) => {
             this.frameHandle = undefined;
+            this.lastRequestVideoFrameCallbackTime = now;
+            this.stopTimeUpdateFallback();
             const timestampMs = this.video.frameTimestampMs(now, metadata) ?? metadata.mediaTime * 1000;
             const lookaheadTimestampMs = this.nextFrameTimestampMs(
                 timestampMs,
@@ -368,6 +374,46 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         if (this.timeUpdateHandle !== undefined) clearInterval(this.timeUpdateHandle);
         this.timeUpdateHandle = undefined;
     }
+
+    private startTimeUpdateFallback(): void {
+        if (!this.timeUpdatesBound) {
+            this.video.addEventListener('timeupdate', this.onTimeUpdate);
+            this.timeUpdatesBound = true;
+        }
+        this.startTimeUpdatePolling();
+    }
+
+    private stopTimeUpdateFallback(): void {
+        if (!this.timeUpdatesBound) return;
+        this.video.removeEventListener('timeupdate', this.onTimeUpdate);
+        this.timeUpdatesBound = false;
+        this.stopTimeUpdatePolling();
+    }
+
+    private startVideoFrameCallbackHealthCheck(): void {
+        if (this.videoFrameCallbackHealthCheckHandle !== undefined) return;
+        this.videoFrameCallbackHealthCheckHandle = setInterval(
+            this.checkVideoFrameCallbackHealth,
+            videoFrameCallbackHealthCheckIntervalMs
+        );
+    }
+
+    private stopVideoFrameCallbackHealthCheck(): void {
+        if (this.videoFrameCallbackHealthCheckHandle !== undefined) {
+            clearInterval(this.videoFrameCallbackHealthCheckHandle);
+        }
+        this.videoFrameCallbackHealthCheckHandle = undefined;
+    }
+
+    private readonly checkVideoFrameCallbackHealth = () => {
+        if (!this.shouldProcess() || !this.videoFrameCallbacksEligible) return;
+        if (this.lastRequestVideoFrameCallbackTime === this.lastCheckedRequestVideoFrameCallbackTime) {
+            this.startTimeUpdateFallback();
+            return;
+        }
+        this.lastCheckedRequestVideoFrameCallbackTime = this.lastRequestVideoFrameCallbackTime;
+        this.stopTimeUpdateFallback();
+    };
 
     private cancelScheduledUpdate(): void {
         if (this.frameHandle === undefined) return;

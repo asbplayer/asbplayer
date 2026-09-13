@@ -1,5 +1,7 @@
 import { asbWarn } from '@project/common/util/log';
 import sanitize from 'sanitize-filename';
+export { arrayEquals } from '@project/common/util/array-equals'; // Necessary to break an import cycle between settings and util
+import { arrayEquals } from '@project/common/util/array-equals';
 import type {
     DimensionsModel,
     Rgb,
@@ -10,11 +12,34 @@ import type {
     Tokenization,
     TokenReading,
 } from '@project/common/src/model';
-import type { TextSubtitleSettings } from '@project/common/settings/settings';
-import { TokenStatus } from '@project/common/settings/settings';
+import type { TextSubtitleSettings } from '@project/common/settings';
+import { TokenStatus } from '@project/common/settings';
 import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
+
+let subtitleHtmlHelperElement: HTMLDivElement | undefined;
+const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
+
+/** Removes presentation markup, ruby readings, and ruby fallback text from subtitle text. */
+export const removeSubtitleHtml = (text: string): string => {
+    subtitleHtmlHelperElement ??= document.createElement('div');
+    subtitleHtmlHelperElement.innerHTML = text;
+    for (const element of subtitleHtmlHelperElement.querySelectorAll('br')) element.replaceWith('\n');
+    for (const element of subtitleHtmlHelperElement.querySelectorAll('rt, rp')) element.remove();
+    return subtitleHtmlHelperElement.textContent ?? subtitleHtmlHelperElement.innerText;
+};
+
+/** Counts visible subtitle graphemes, excluding markup, ruby annotations, whitespace, and formatting controls. */
+export const readableCharacterCount = (text: string): number => {
+    const readableText = removeSubtitleHtml(text).normalize('NFC');
+    let count = 0;
+    for (const { segment } of subtitleGraphemeSegmenter.segment(readableText)) {
+        if (!invisibleGraphemePattern.test(segment)) count++;
+    }
+    return count;
+};
 
 // Cues on the same track can share a start time (e.g. Netflix splitting one line into
 // multiple cues), and SubtitleCollection does not guarantee source order in that case, so
@@ -24,20 +49,6 @@ export function compareSubtitlesForDisplay(
     s2: Pick<SubtitleModel, 'track' | 'index'>
 ): number {
     return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
-}
-
-export function arrayEquals<T>(
-    a: readonly T[] | undefined,
-    b: readonly T[] | undefined,
-    equals = (lhs: T, rhs: T) => lhs === rhs
-): boolean {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; ++i) {
-        if (!equals(a[i], b[i])) return false;
-    }
-    return true;
 }
 
 export function keysAreEqual(a: any, b: any) {
@@ -444,6 +455,8 @@ export function computeStyles(
         color: subtitleColor,
         fontSize: `${subtitleSize}px`,
         fontWeight: String(subtitleThickness),
+        WebkitTextStroke: '0 transparent',
+        textShadow: 'none',
     };
 
     if (subtitleOutlineThickness > 0) {
@@ -868,6 +881,7 @@ const subtitleModelComparators: SubtitleModelComparators = {
     originalStart: (a, b) => a === b,
     originalEnd: (a, b) => a === b,
     displayTime: (a, b) => a === b,
+    displayEndTime: (a, b) => a === b,
     track: (a, b) => a === b,
     index: (a, b) => a === b,
     tokenization: (a, b) => areTokenizationsEqual(a, b),

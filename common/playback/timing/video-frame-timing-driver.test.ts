@@ -1,3 +1,4 @@
+import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
@@ -57,7 +58,7 @@ class FakeVideo extends EventTarget {
         const callbacks = [...this.callbacks.values()];
         this.callbacks.clear();
         for (const callback of callbacks) {
-            callback(0, {
+            callback(expectedDisplayTimeMs, {
                 presentationTime: 0,
                 expectedDisplayTime: expectedDisplayTimeMs,
                 width: 0,
@@ -118,6 +119,23 @@ const timingDriver = (
 };
 
 describe('VideoFrameTimingDriver', () => {
+    it('classifies internal and user seek starts', async () => {
+        const video = new FakeVideo();
+        const seekStarts: string[] = [];
+        const driver = timingDriver(videoSource(video), {
+            onSeekStarted: (cause) => seekStarts.push(cause),
+        });
+        driver.bind();
+
+        const internalSeeked = driver.beginInternalSeek();
+        video.seek(3);
+        await internalSeeked;
+        video.dispatchEvent(new Event('seeking'));
+
+        expect(seekStarts).toEqual(['internal-seek', 'user-seek']);
+        driver.unbind();
+    });
+
     it('resolves internal seek completion from the native seeked event', async () => {
         const video = new FakeVideo();
         const driver = timingDriver(videoSource(video), {});
@@ -512,6 +530,104 @@ describe('VideoFrameTimingDriver', () => {
         }
     });
 
+    it('falls back to polling while an unresponsive video frame callback remains pending', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            const updates: number[] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+            expect(video.requestVideoFrameCallbackCalls).toBe(1);
+
+            video.currentTime = 1;
+            jest.advanceTimersByTime(1000);
+            jest.advanceTimersByTime(50);
+            await flush();
+
+            expect(updates).toEqual([1000]);
+            expect(video.requestVideoFrameCallbackCalls).toBe(1);
+
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('stops fallback polling when frame callbacks recover and restarts it after an unhealthy check window', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            const updates: number[] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+            jest.advanceTimersByTime(1000);
+            video.currentTime = 1;
+            jest.advanceTimersByTime(50);
+            await flush();
+            expect(updates).toEqual([1000]);
+
+            video.present(1100);
+            await flush();
+            expect(updates).toEqual([1000, 1100]);
+            expect(video.requestVideoFrameCallbackCalls).toBe(2);
+
+            video.currentTime = 1.2;
+            jest.advanceTimersByTime(1949);
+            await flush();
+            expect(updates).toEqual([1000, 1100]);
+
+            jest.advanceTimersByTime(1);
+            video.currentTime = 3;
+            jest.advanceTimersByTime(50);
+            await flush();
+            expect(updates).toEqual([1000, 1100, 3000]);
+
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('does not activate the frame callback watchdog while paused', async () => {
+        jest.useFakeTimers();
+        try {
+            const video = new FakeVideo();
+            const updates: number[] = [];
+            const driver = timingDriver(videoSource(video), {
+                onTime: async (timestampMs) => {
+                    updates.push(timestampMs);
+                },
+                onDiscontinuity: () => {},
+            });
+
+            driver.bind();
+            video.play();
+            video.pause();
+            video.currentTime = 1;
+            jest.advanceTimersByTime(2000);
+            await flush();
+
+            expect(updates).toEqual([]);
+            driver.unbind();
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
     it('accounts for submitted frames missed between callbacks', () => {
         const video = new FakeVideo();
         video.playbackRate = 2;
@@ -623,6 +739,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const repeatSeeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};
@@ -696,6 +819,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -786,6 +916,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -862,6 +999,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const repeatSeeks: number[] = [];
         const discontinuities: number[] = [];
@@ -949,6 +1093,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};
@@ -1027,20 +1178,21 @@ describe('VideoFrameTimingDriver', () => {
 
         setDocumentHidden(false);
         document.dispatchEvent(new Event('visibilitychange'));
-        expect(timeupdateRemoves).toBe(1);
+        expect(timeupdateRemoves).toBe(0);
         video.currentTime = 0.5;
         video.dispatchEvent(new Event('timeupdate'));
         await flush();
 
-        expect(updates).toEqual([250]);
-        video.present(250);
+        expect(updates).toEqual([250, 500]);
+        video.present(750);
         await flush();
 
-        expect(updates).toEqual([250, 250]);
+        expect(updates).toEqual([250, 500, 750]);
+        expect(timeupdateRemoves).toBe(1);
         driver.unbind();
     });
 
-    it('uses timeupdate for audio-only media and switches to video frame callbacks after metadata changes', async () => {
+    it('keeps timeupdate active while probing for video frames after metadata changes', async () => {
         const video = new FakeVideo();
         video.hasVideoTrack = false;
         const updates: number[] = [];
@@ -1066,12 +1218,16 @@ describe('VideoFrameTimingDriver', () => {
         video.dispatchEvent(new Event('timeupdate'));
         await flush();
 
-        expect(updates).toEqual([250]);
+        expect(updates).toEqual([250, 500]);
         video.present(500);
         await flush();
 
-        expect(updates).toEqual([250, 500]);
+        expect(updates).toEqual([250, 500, 500]);
         expect(video.requestVideoFrameCallbackCalls).toBeGreaterThan(0);
+        video.currentTime = 0.75;
+        video.dispatchEvent(new Event('timeupdate'));
+        await flush();
+        expect(updates).toEqual([250, 500, 500]);
         driver.unbind();
     });
 

@@ -24,6 +24,9 @@ it('can retrieve all keys', async () => {
         ftueHasSeenAnkiDialogQuickSelectV2: false,
         ftueHasSeenSubtitleTrackSelector: false,
         ftueAnnotation: 0,
+        genericSubtitleParser: {
+            pages: {},
+        },
         onlineSubtitleSourceConfig: {
             jimakuApiKey: '',
             jimakuSearchCategory: 'anime',

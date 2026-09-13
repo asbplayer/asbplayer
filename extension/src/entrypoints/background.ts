@@ -551,31 +551,4 @@ export default defineBackground(() => {
 
         action.onClicked.addListener(defaultAction);
     }
-
-    if (isFirefoxBuild) {
-        // Firefox requires the use of iframe.srcdoc in order to load UI into an about:blank iframe
-        // (which is required for UI to be scannable by other extensions like Yomitan).
-        // However, such an iframe inherits the content security directives of the parent document,
-        // which may prevent loading of extension scripts into the iframe.
-        // Because of this, we modify CSP headers below to explicitly allow access to extension-packaged resources.
-        browser.webRequest.onHeadersReceived.addListener(
-            (details) => {
-                const responseHeaders = details.responseHeaders;
-
-                if (!responseHeaders) {
-                    return;
-                }
-
-                for (const header of responseHeaders) {
-                    if (header.name.toLowerCase() === 'content-security-policy') {
-                        header.value += ` ; script-src moz-extension://${browser.runtime.id}`;
-                    }
-                }
-
-                return { responseHeaders };
-            },
-            { urls: ['<all_urls>'] },
-            ['blocking', 'responseHeaders']
-        );
-    }
 });

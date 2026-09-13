@@ -34,7 +34,7 @@ export const useSubtitleDomCache = (
     useEffect(() => () => domCacheRef.current.clear(), []);
 
     const updateSubtitleDomCache = useCallback(
-        (updatedSubtitles: IndexedSubtitleModel[]) => {
+        (updatedSubtitles: readonly IndexedSubtitleModel[]) => {
             const domCache = domCacheRef.current;
             for (const subtitle of updatedSubtitles) {
                 const key = String(subtitle.index);

@@ -181,6 +181,7 @@ interface Props {
     extensionSupportsSubtitlesWidthSetting: boolean;
     extensionSupportsPauseOnHover: boolean;
     extensionSupportsPlaybackEngine: boolean;
+    extensionSupportsAutoPauseResume: boolean;
     extensionSupportsExportCardBind: boolean;
     extensionSupportsPageSettings: boolean;
     extensionSupportsDictionary: boolean;
@@ -192,6 +193,7 @@ interface Props {
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
+    extensionSupportsSubtitleListCustomization: boolean;
     insideApp?: boolean;
     appVersion?: string;
     dictionaryProvider: DictionaryProvider;
@@ -229,11 +231,13 @@ export default function SettingsForm({
     extensionSupportsOverlay,
     extensionSupportsSidePanel,
     extensionSupportsSubtitleTrackSelectorInWebApp,
+    extensionSupportsSubtitleListCustomization,
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
     extensionSupportsPauseOnHover,
     extensionSupportsPlaybackEngine,
+    extensionSupportsAutoPauseResume,
     extensionSupportsExportCardBind,
     extensionSupportsPageSettings,
     extensionSupportsDictionary,
@@ -270,6 +274,8 @@ export default function SettingsForm({
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
+    const supportsSubtitleListCustomization = !extensionInstalled || extensionSupportsSubtitleListCustomization;
+    const supportsAutoPauseResume = !extensionInstalled || extensionSupportsAutoPauseResume;
     const theme = useTheme();
     const settingsTheme = useMemo(
         () =>
@@ -559,6 +565,7 @@ export default function SettingsForm({
                         extensionInstalled={extensionInstalled}
                         extensionSupportsExportCardBind={extensionSupportsExportCardBind}
                         extensionSupportsSidePanel={extensionSupportsSidePanel}
+                        extensionSupportsAutoPauseResume={extensionSupportsAutoPauseResume}
                         extensionSupportsSubtitleTrackSelectorInWebApp={extensionSupportsSubtitleTrackSelectorInWebApp}
                         onOpenChromeExtensionShortcuts={onOpenChromeExtensionShortcuts}
                     />
@@ -585,7 +592,9 @@ export default function SettingsForm({
                         extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
                         extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
+                        supportsSubtitleListCustomization={supportsSubtitleListCustomization}
                         supportsPlaybackEngine={supportsPlaybackEngine}
+                        supportsAutoPauseResume={supportsAutoPauseResume}
                         onViewPlaybackModeKeyboardShortcuts={() => viewKeyboardShortcutSection('playback')}
                         onViewPlaybackRateKeyboardShortcuts={() => viewKeyboardShortcutSection('playbackRate')}
                         onViewSubtitleKeyboardShortcuts={() => viewKeyboardShortcutSection('subtitles')}

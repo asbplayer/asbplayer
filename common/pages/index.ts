@@ -1,4 +1,4 @@
-import type { PageSettings } from '../settings';
+import type { PageSettings } from '@project/common/settings';
 
 export interface PageMetadata {
     title: string;
@@ -31,4 +31,5 @@ export const pageMetadata: { [K in keyof PageSettings]: PageMetadata } = {
     urplay: { title: 'UR Play', disableCspRuleId: 23 },
     archive: { title: 'Internet Archive', disableCspRuleId: 24 },
     huluJp: { title: 'Hulu Japan', disableCspRuleId: 25 },
+    crunchyroll: { title: 'Crunchyroll', disableCspRuleId: 26 },
 };

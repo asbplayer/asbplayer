@@ -8,6 +8,7 @@ import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-ex
 import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackTimelineCursor from '@project/common/playback/timeline/playback-timeline-cursor';
 import type { TimingDriverCallbacks } from '@project/common/playback/timing/timing-driver';
+import { SubtitleVisibility } from '@project/common/settings';
 
 class FakeAnimationFrames {
     private nextHandle = 1;
@@ -339,6 +340,7 @@ describe('AnimationFrameTimingDriver', () => {
             index: 0,
         };
         const plan: PlaybackPlan<IndexedSubtitleModel> = {
+            subtitleVisibility: SubtitleVisibility.whenDue,
             timelineSubtitles: {
                 durationMs: 3000,
                 blocks: [],
@@ -366,7 +368,7 @@ describe('AnimationFrameTimingDriver', () => {
             {
                 onTime: (timestampMs) => executor.update(timestampMs, { lookaheadTimestampMs: undefined }),
                 onDiscontinuity: (timestampMs) => {
-                    executor.reset(timestampMs, { includeAtTimestamp: false, cause: 'user-seek' });
+                    executor.handleDiscontinuity(timestampMs);
                 },
             },
             animationFrames

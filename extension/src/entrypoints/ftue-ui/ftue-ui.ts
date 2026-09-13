@@ -4,7 +4,7 @@ import { currentPageDelegate } from '@/services/pages';
 
 window.addEventListener('load', () => {
     void currentPageDelegate().then((pageDelegate) => {
-        pageDelegate?.loadScripts();
+        pageDelegate.loadScripts();
     });
     const root = document.getElementById('root')!;
     renderFtueUi(root);

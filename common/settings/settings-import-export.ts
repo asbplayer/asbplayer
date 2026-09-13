@@ -304,6 +304,9 @@ const settingsSchema = {
         ankiConnectApiKey: {
             type: 'string',
         },
+        ankiRefreshBrowserAfterUpdate: {
+            type: 'boolean',
+        },
         deck: {
             type: 'string',
         },
@@ -490,6 +493,29 @@ const settingsSchema = {
         repeatCountPreference: {
             type: 'number',
         },
+        autoPauseResumeMode: {
+            type: 'string',
+            enum: ['manual', 'fixed', 'subtitleLength'],
+        },
+        autoPauseResumeDelayMs: {
+            type: 'number',
+        },
+        autoPauseFixedDurationMs: {
+            type: 'number',
+        },
+        autoPauseMinimumDurationMs: {
+            type: 'number',
+        },
+        autoPauseMaximumDurationMs: {
+            type: 'number',
+        },
+        autoPauseTimePerCharacterMs: {
+            type: 'number',
+        },
+        subtitleVisibility: {
+            type: 'string',
+            enum: ['whenDue', 'whilePaused'],
+        },
         rememberPlaybackModes: {
             type: 'boolean',
         },
@@ -549,6 +575,8 @@ const settingsSchema = {
                 increasePlaybackRate: { $ref: '/KeyBind' },
                 toggleSidePanel: { $ref: '/KeyBind' },
                 toggleRepeat: { $ref: '/KeyBind' },
+                toggleSubtitleVisibility: { $ref: '/KeyBind' },
+                cycleAutoPauseResumeMode: { $ref: '/KeyBind' },
                 moveBottomSubtitlesUp: { $ref: '/KeyBind' },
                 moveBottomSubtitlesDown: { $ref: '/KeyBind' },
                 moveTopSubtitlesUp: { $ref: '/KeyBind' },
@@ -588,6 +616,12 @@ const settingsSchema = {
             type: 'string',
         },
         videoSubtitleSplitBehavior: {
+            type: 'string',
+        },
+        showSubtitleListMiningButton: {
+            type: 'boolean',
+        },
+        subtitleListTimestampDisplay: {
             type: 'string',
         },
         copyToClipboardOnMine: {
@@ -727,27 +761,87 @@ const settingsSchema = {
     },
 };
 
-const ignoreKeys: (keyof AsbplayerSettings)[] = [
-    'streamingPages', // Ignored due to security risk (e.g. disable CSP)
-];
+export type IgnorePathSegment = string | '*';
+export type IgnorePath = readonly IgnorePathSegment[];
 
-const withIgnoredKeysRemoved = (settings: any) => {
-    const copy = { ...settings };
-    for (const ignoreKey of ignoreKeys) {
-        delete copy[ignoreKey];
+const ignorePaths: readonly IgnorePath[] = [
+    ['ankiConnectApiKey'],
+    ['dictionaryTracks', '*', 'dictionaryWaniKaniApiToken'],
+    ['streamingPages'], // Ignored due to security risk (e.g. disable CSP)
+];
+const validationIgnorePaths: readonly IgnorePath[] = [['streamingPages']];
+
+export const omitPath = (value: any, path: IgnorePath): any => {
+    if (value === null || typeof value !== 'object' || !path.length) return value;
+
+    const [segment, ...remainingPath] = path;
+    if (segment === '*') {
+        if (Array.isArray(value)) return value.map((item) => omitPath(item, remainingPath));
+        return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, omitPath(child, remainingPath)]));
+    }
+
+    const copy = Array.isArray(value) ? [...value] : { ...value };
+    if (!remainingPath.length) {
+        delete copy[segment];
+    } else if (segment in copy) {
+        copy[segment] = omitPath(copy[segment], remainingPath);
     }
     return copy;
 };
 
+const omitPaths = (settings: any, paths: readonly IgnorePath[]) =>
+    paths.reduce((settingsCopy, ignorePath) => omitPath(settingsCopy, ignorePath), settings);
+
+export const settingsForExport = (settings: AsbplayerSettings): Partial<AsbplayerSettings> => {
+    return omitPaths(settings, ignorePaths);
+};
+
+const mergeIgnoredPath = (importedValue: any, currentValue: any, path: IgnorePath): any => {
+    if (importedValue === null || typeof importedValue !== 'object' || !path.length) return importedValue;
+
+    const [segment, ...remainingPath] = path;
+    if (segment === '*') {
+        if (Array.isArray(importedValue)) {
+            return importedValue.map((item, index) => mergeIgnoredPath(item, currentValue?.[index], remainingPath));
+        }
+        return Object.fromEntries(
+            Object.entries(importedValue).map(([key, value]) => [
+                key,
+                mergeIgnoredPath(value, currentValue?.[key], remainingPath),
+            ])
+        );
+    }
+
+    const mergedValue = Array.isArray(importedValue) ? [...importedValue] : { ...importedValue };
+    if (remainingPath.length && segment in importedValue) {
+        mergedValue[segment] = mergeIgnoredPath(importedValue[segment], currentValue?.[segment], remainingPath);
+    } else if (currentValue !== null && typeof currentValue === 'object' && segment in currentValue) {
+        mergedValue[segment] = currentValue[segment];
+    }
+    return mergedValue;
+};
+
+/**
+ * Restore ignored values from the current settings, regardless of whether they are present in an import.
+ */
+export const mergeImportedSettings = (
+    importedSettings: Partial<AsbplayerSettings>,
+    currentSettings: AsbplayerSettings
+): Partial<AsbplayerSettings> =>
+    ignorePaths.reduce(
+        (mergedSettings, ignorePath) => mergeIgnoredPath(mergedSettings, currentSettings, ignorePath),
+        importedSettings
+    );
+
 export const exportSettings = (settings: AsbplayerSettings) => {
     download(
-        new Blob([JSON.stringify(withIgnoredKeysRemoved(settings))], { type: 'application/json' }),
+        new Blob([JSON.stringify(settingsForExport(settings))], { type: 'application/json' }),
         `asbplayer-settings-${getCurrentTimeString()}.json`
     );
 };
 
 export const validateSettings = (settings: any) => {
-    const copy = withIgnoredKeysRemoved(settings);
+    const copy = omitPaths(settings, validationIgnorePaths);
     const validator = new Validator();
     validator.addSchema(keyBindSchema);
     validator.addSchema(ankiFieldSchema);

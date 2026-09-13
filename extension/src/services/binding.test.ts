@@ -373,9 +373,32 @@ describe('Binding playback mode integration', () => {
         video.dispatchEvent(new Event('loadedmetadata'));
         await jest.advanceTimersByTimeAsync(0);
 
-        expect(requestSubtitles).toHaveBeenCalledWith({ videoChanged: true });
+        expect(requestSubtitles).toHaveBeenCalledWith({ kind: 'reload', videoChanged: true });
         expect(resetSubtitles).toHaveBeenCalledTimes(1);
         expect(displayedSubtitleTexts()).toEqual([]);
+        binding.unbind();
+    });
+
+    it('refreshes subtitles when a configured page changes a child source without changing location', async () => {
+        const video = createVideo();
+        video.removeAttribute('src');
+        const source = document.createElement('source');
+        source.src = 'https://example.com/episode-1.m3u8';
+        video.append(source);
+        const binding = new Binding(video, bindingOptions(true, true));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle()]);
+
+        const requestSubtitles = jest.spyOn(binding.videoDataSyncController, 'requestSubtitles');
+        const resetSubtitles = jest.spyOn(binding as any, '_resetSubtitles');
+
+        source.src = 'https://example.com/episode-2.m3u8';
+        video.dispatchEvent(new Event('loadedmetadata'));
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(requestSubtitles).toHaveBeenCalledWith({ kind: 'reload', videoChanged: true });
+        expect(resetSubtitles).toHaveBeenCalledTimes(1);
         binding.unbind();
     });
 
@@ -451,6 +474,32 @@ describe('Binding playback mode integration', () => {
         video.presentFrame(2000);
         await flushPlaybackTiming();
         expect(binding.subtitleController.currentSubtitle()[0]).toBeNull();
+
+        binding.unbind();
+    });
+
+    it('keeps active subtitle state while excluding hidden subtitles from the video', async () => {
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await jest.advanceTimersByTimeAsync(0);
+        sendSubtitles(binding, [makeSubtitle({ start: 1000, end: 2000 })]);
+        await jest.advanceTimersByTimeAsync(1000);
+
+        binding.subtitleController.playbackStateChanged({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            hiddenSubtitleIndexes: [0],
+            paused: false,
+        });
+        expect(binding.subtitleController.currentSubtitle()[0]).toBeNull();
+
+        binding.subtitleController.playbackStateChanged({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            paused: false,
+        });
+        expect(displayedSubtitleTexts()).toContain('subtitle');
 
         binding.unbind();
     });

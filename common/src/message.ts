@@ -8,8 +8,8 @@ import type {
     SubtitleSettings,
     TokenState,
     TokenStatus,
-} from '@project/common/settings/settings';
-import type { GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+} from '@project/common/settings';
+import type { GenericParseType, GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import type {
     RectModel,
@@ -394,6 +394,7 @@ export interface PlaybackStateFromVideoMessage extends Message {
     readonly command: 'playbackState';
     readonly timestampMs: number;
     readonly showingSubtitleIndexes: readonly number[];
+    readonly hiddenSubtitleIndexes?: readonly number[];
     readonly paused: boolean;
 }
 
@@ -432,7 +433,7 @@ export interface SubtitlesToVideoMessage extends Message {
 
 export interface SubtitlesUpdatedToVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly subtitles: IndexedSubtitleModel[];
+    readonly subtitles: readonly IndexedSubtitleModel[];
 }
 
 export interface RequestCurrentSubtitleMessage extends Message {
@@ -445,7 +446,7 @@ export interface RequestSubtitlesMessage extends Message {
 
 export interface SubtitlesUpdatedFromVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly updatedSubtitles: IndexedSubtitleModel[];
+    readonly updatedSubtitles: readonly IndexedSubtitleModel[];
 }
 
 export interface RequestSubtitlesFromAppMessage extends MessageWithId {
@@ -560,6 +561,11 @@ export interface VideoDataUiBridgeOpenFileMessage extends Message {
 export interface VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage extends Message {
     readonly command: 'setOnlineSubtitleSourceConfig';
     readonly state: Partial<OnlineSubtitleSourceConfig>;
+}
+
+export interface VideoDataUiBridgeSetGenericSubtitleParserMessage extends Message {
+    readonly command: 'setGenericSubtitleParser';
+    readonly parse: GenericParseType;
 }
 
 export interface CropAndResizeMessage extends Message, ImageCaptureParams {
@@ -1144,5 +1150,10 @@ export interface MoveStatisticsOverlayMessage extends Message {
 
 export interface CloseStatisticsOverlayMessage extends Message {
     readonly command: 'close-statistics-overlay';
+    readonly mediaId: string;
+}
+
+export interface ElementExistsStatisticsOverlayMessage extends Message {
+    readonly command: 'element-exists';
     readonly mediaId: string;
 }

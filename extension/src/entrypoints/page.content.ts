@@ -14,6 +14,6 @@ export default defineContentScript({
     runAt: 'document_start',
 
     main() {
-        void currentPageDelegate().then((pageDelegate) => pageDelegate?.loadScripts());
+        void currentPageDelegate().then((pageDelegate) => pageDelegate.loadScripts());
     },
 });

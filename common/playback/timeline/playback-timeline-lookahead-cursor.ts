@@ -49,7 +49,11 @@ export default class PlaybackTimelineLookaheadCursor<T extends IndexedSubtitleMo
         timestampMs: number,
         { lookaheadTimestampMs, includeStateChanges }: PlaybackTimelineLookaheadOptions
     ): PlaybackTimelineLookaheadResult {
-        if (timestampMs < this.timestampMs) this.reset(timestampMs);
+        if (timestampMs < this.timestampMs) {
+            const nextActionIndex = this.nextActionIndex;
+            this.reset(timestampMs);
+            this.nextActionIndex = Math.max(this.nextActionIndex, nextActionIndex);
+        }
 
         this.nextActionIndex = advanceTimestampIndex(
             this.timeline.actionIndex.actionTimestamps,

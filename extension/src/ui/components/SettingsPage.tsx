@@ -120,6 +120,7 @@ const SettingsPage = ({
                         extensionSupportsSubtitlesWidthSetting
                         extensionSupportsPauseOnHover
                         extensionSupportsPlaybackEngine
+                        extensionSupportsAutoPauseResume
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
                         extensionSupportsDictionary
@@ -131,6 +132,7 @@ const SettingsPage = ({
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         extensionSupportsDictionaryYomitanMecab
                         extensionSupportsSubtitleTrackSelectorInWebApp
+                        extensionSupportsSubtitleListCustomization
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}

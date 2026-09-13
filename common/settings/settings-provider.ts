@@ -6,22 +6,33 @@ import type {
     KeyBindName,
     SubtitleSettings,
     TextSubtitleSettings,
-    DictionaryTrack,
-} from '.';
+} from '@project/common/settings/settings';
+import type { DictionaryTrack } from '@project/common/settings/settings-dictionary';
 import {
+    AutoPauseResumeMode,
     SubtitleListPreference,
+    SubtitleListTimestampDisplay,
+    SubtitleVisibility,
     textSubtitleSettingsKeys,
     VideoSubtitleSplitBehavior,
-    TokenMatchStrategyPriority,
-    TokenMatchStrategy,
-    TokenStyling,
-    TokenReadingAnnotation,
+} from '@project/common/settings/settings';
+import {
     TokenFrequencyAnnotation,
-    getFullyKnownTokenStatus,
-    TokenStatus,
+    TokenMatchStrategy,
+    TokenMatchStrategyPriority,
+    TokenReadingAnnotation,
     TokenState,
-} from '.';
-import { AutoPausePreference, PlayMode, PostMineAction, PostMinePlayback, SubtitleHtml } from '..';
+    TokenStatus,
+    TokenStyling,
+    getFullyKnownTokenStatus,
+} from '@project/common/settings/settings-dictionary';
+import {
+    AutoPausePreference,
+    PlayMode,
+    PostMineAction,
+    PostMinePlayback,
+    SubtitleHtml,
+} from '@project/common/src/model';
 
 // @ts-expect-error: navigator.userAgentData is not yet in the TypeScript lib.dom.d.ts
 const isMacOs = (navigator.userAgentData?.platform ?? navigator.platform)?.toUpperCase()?.indexOf('MAC') > -1;
@@ -108,6 +119,7 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
 export const defaultSettings: AsbplayerSettings = {
     ankiConnectUrl: 'http://127.0.0.1:8765',
     ankiConnectApiKey: '',
+    ankiRefreshBrowserAfterUpdate: false,
     deck: '',
     noteType: '',
     sentenceField: '',
@@ -152,6 +164,13 @@ export const defaultSettings: AsbplayerSettings = {
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
+    autoPauseResumeMode: AutoPauseResumeMode.manual,
+    autoPauseResumeDelayMs: 300,
+    autoPauseFixedDurationMs: 2000,
+    autoPauseMinimumDurationMs: 1000,
+    autoPauseMaximumDurationMs: 4000,
+    autoPauseTimePerCharacterMs: 60,
+    subtitleVisibility: SubtitleVisibility.whenDue,
     subtitleTriggerStartOffset: 0,
     subtitleTriggerEndOffset: 0,
     subtitleTriggerGapEndOffset: 0,
@@ -206,6 +225,8 @@ export const defaultSettings: AsbplayerSettings = {
         increasePlaybackRate: { keys: isMacOs ? '⇧+⌃+]' : 'ctrl+shift+]' },
         toggleSidePanel: { keys: '`' },
         toggleRepeat: { keys: isMacOs ? '⇧+R' : 'shift+R' },
+        toggleSubtitleVisibility: { keys: '' },
+        cycleAutoPauseResumeMode: { keys: '' },
         moveBottomSubtitlesUp: { keys: '' },
         moveBottomSubtitlesDown: { keys: '' },
         moveTopSubtitlesUp: { keys: '' },
@@ -227,6 +248,8 @@ export const defaultSettings: AsbplayerSettings = {
     postMiningPlaybackState: PostMinePlayback.remember,
     themeType: 'dark',
     videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.rememberSplitPosition,
+    showSubtitleListMiningButton: true,
+    subtitleListTimestampDisplay: SubtitleListTimestampDisplay.startAndEnd,
     copyToClipboardOnMine: false,
     rememberSubtitleOffset: true,
     lastSubtitleOffset: 0,
@@ -279,6 +302,7 @@ export const defaultSettings: AsbplayerSettings = {
         svtplay: {},
         urplay: {},
         archive: {},
+        crunchyroll: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',

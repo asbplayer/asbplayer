@@ -39,13 +39,19 @@ describe('PlayerChannel playback state', () => {
         const channel = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;
 
-        channel.playbackState(1234, [2, 5], true);
+        channel.playbackState({
+            timestampMs: 1234,
+            showingSubtitleIndexes: [2, 5],
+            hiddenSubtitleIndexes: [5],
+            paused: true,
+        });
 
         expect(broadcastChannel.sent).toEqual([
             {
                 command: 'playbackState',
                 timestampMs: 1234,
                 showingSubtitleIndexes: [2, 5],
+                hiddenSubtitleIndexes: [5],
                 paused: true,
             },
         ]);

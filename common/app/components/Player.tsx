@@ -109,7 +109,7 @@ function trackLengthMs(videoDuration: number | undefined, subtitles: SubtitleMod
     return Math.max(videoLength, subtitlesLength);
 }
 
-function subtitlesForPlayer<T extends IndexedSubtitleModel>(subtitles: T[]): T[] {
+function subtitlesForPlayer<T extends IndexedSubtitleModel>(subtitles: readonly T[]): T[] {
     return subtitles.map((subtitle) => ({ ...subtitle }));
 }
 
@@ -438,6 +438,7 @@ function PlayerComponent(
         const playbackEngine = new PlaybackEngine({
             settingsProvider,
             appIntegration: extension.supportsAppIntegration,
+            autoPauseCorrectionSuppressed: false,
             subtitles: subtitlesRef.current ?? [],
             playbackModesDisabled: true,
             playbackModesSuppressed: false,
@@ -585,6 +586,7 @@ function PlayerComponent(
                 end: s.originalEnd + offset,
                 originalEnd: s.originalEnd,
                 displayTime: timeDurationDisplay(s.originalStart + offset, length),
+                displayEndTime: timeDurationDisplay(s.originalEnd + offset, length),
                 track: s.track,
                 index: i,
                 tokenization: s.tokenization,
@@ -661,6 +663,7 @@ function PlayerComponent(
                         end: s.end + offset,
                         originalEnd: s.end,
                         displayTime: timeDurationDisplay(s.start + offset, length),
+                        displayEndTime: timeDurationDisplay(s.end + offset, length),
                         track: s.track,
                         index: i,
                         tokenization: s.tokenization,
@@ -1348,6 +1351,54 @@ function PlayerComponent(
             () => disableKeyEvents
         );
     }, [keyBinder, disableKeyEvents, togglePlayMode]);
+
+    useEffect(() => {
+        return keyBinder.bindCycleAutoPauseResumeMode(
+            (event) => {
+                event.preventDefault();
+                const notification = syntheticPlaybackEngineRef.current?.cycleAutoPauseResumeMode();
+                if (notification === undefined) return;
+                setAlert({
+                    open: true,
+                    notifications: [
+                        {
+                            key: notification.key,
+                            message: {
+                                locKey: notification.locKey,
+                                replacements: { value: t(notification.valueLocKey) },
+                            },
+                            severity: 'info',
+                        },
+                    ],
+                });
+            },
+            () => disableKeyEvents || !playModeEnabled
+        );
+    }, [disableKeyEvents, keyBinder, playModeEnabled, t]);
+
+    useEffect(() => {
+        return keyBinder.bindToggleSubtitleVisibility(
+            (event) => {
+                event.preventDefault();
+                const notification = syntheticPlaybackEngineRef.current?.toggleSubtitleVisibility();
+                if (notification === undefined) return;
+                setAlert({
+                    open: true,
+                    notifications: [
+                        {
+                            key: notification.key,
+                            message: {
+                                locKey: notification.locKey,
+                                replacements: { value: t(notification.valueLocKey) },
+                            },
+                            severity: 'info',
+                        },
+                    ],
+                });
+            },
+            () => disableKeyEvents || !playModeEnabled
+        );
+    }, [disableKeyEvents, keyBinder, playModeEnabled, t]);
 
     useEffect(() => channel?.appBarToggle(appBarHidden), [channel, appBarHidden]);
     useEffect(() => channel?.fullscreenToggle(videoFullscreen), [channel, videoFullscreen]);

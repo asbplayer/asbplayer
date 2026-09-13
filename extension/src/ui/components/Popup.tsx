@@ -223,6 +223,7 @@ const Popup = ({
                             extensionSupportsSubtitlesWidthSetting
                             extensionSupportsPauseOnHover
                             extensionSupportsPlaybackEngine
+                            extensionSupportsAutoPauseResume
                             extensionSupportsExportCardBind
                             extensionSupportsPageSettings
                             extensionSupportsDictionary
@@ -234,6 +235,7 @@ const Popup = ({
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             extensionSupportsDictionaryYomitanMecab
                             extensionSupportsSubtitleTrackSelectorInWebApp
+                            extensionSupportsSubtitleListCustomization
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}

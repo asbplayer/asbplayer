@@ -9,7 +9,9 @@ interface Props extends IconButtonProps {
     children: React.ReactNode;
 }
 
-const HoldableIconButton = ({ onHold, onClick, children, ...rest }: Props) => {
+const noOp = () => {};
+
+const HoldableIconButton = ({ onHold, onClick, children, disabled, ...rest }: Props) => {
     const [startTime, setStartTime] = useState<number>();
 
     const repetitions = useCallback(() => {
@@ -36,7 +38,7 @@ const HoldableIconButton = ({ onHold, onClick, children, ...rest }: Props) => {
     };
 
     useEffect(() => {
-        if (startTime === undefined) {
+        if (startTime === undefined || disabled) {
             return;
         }
 
@@ -48,16 +50,28 @@ const HoldableIconButton = ({ onHold, onClick, children, ...rest }: Props) => {
             }
         }, 250);
         return () => clearInterval(interval);
-    }, [startTime, onHold, repetitions]);
+    }, [startTime, onHold, repetitions, disabled]);
     return (
         <>
             {isMobile && (
-                <IconButton onTouchStart={handleMouseDown} onTouchEnd={handleMouseUp} onClick={() => {}} {...rest}>
+                <IconButton
+                    onTouchStart={handleMouseDown}
+                    onTouchEnd={handleMouseUp}
+                    onClick={noOp}
+                    disabled={disabled}
+                    {...rest}
+                >
                     {children}
                 </IconButton>
             )}
             {!isMobile && (
-                <IconButton onMouseDown={handleMouseDown} onMouseUp={handleMouseUp} onClick={() => {}} {...rest}>
+                <IconButton
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onClick={noOp}
+                    disabled={disabled}
+                    {...rest}
+                >
                     {children}
                 </IconButton>
             )}
