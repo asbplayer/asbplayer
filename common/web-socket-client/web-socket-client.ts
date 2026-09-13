@@ -1,279 +1,73 @@
-import { asbError, asbInfo, asbLog } from '@project/common/util';
-import type { SubtitleTrack } from '@project/common/src/model';
-
-export type { SubtitleTrack };
-
-export interface MineSubtitleCommand {
-    command: 'mine-subtitle';
-    messageId: string;
-    body: {
-        fields: { [key: string]: string };
-        postMineAction: number;
-        mediaId?: string;
-        noteId?: number;
-    };
-}
-
-interface Response<T> {
-    command: 'response';
-    messageId: string;
-    body: T;
-}
-
-interface MineSubtitleResponseBody {
-    published: boolean;
-}
-
-type LoadSubtitlesResponseBody = Record<string, never>;
-
-export interface SubtitleFile {
-    base64: string;
-    name: string;
-}
-
-export interface LoadSubtitlesCommand {
-    command: 'load-subtitles';
-    messageId: string;
-    body: {
-        files?: SubtitleFile[];
-    };
-}
-
-export interface SeekTimestampCommand {
-    command: 'seek-timestamp';
-    messageId: string;
-    body: {
-        timestamp: number;
-        mediaId?: string;
-    };
-}
-
-export interface GetBoundMediaCommand {
-    command: 'get-bound-media';
-    messageId: string;
-    body: Record<string, never>;
-}
-
-export interface BoundMedia {
-    id: string; // Derived from a hash of `streaming:<tabId>:<src>` or `local:<asbplayerId>`.
-    type: 'streaming' | 'local';
-    title?: string;
-    faviconUrl?: string;
-    loadedSubtitles: SubtitleTrack[];
-    active: boolean;
-}
-
-interface GetBoundMediaResponseBody {
-    media: BoundMedia[];
-}
-
-export interface GetSubtitlesCommand {
-    command: 'get-subtitles';
-    messageId: string;
-    body: {
-        mediaId?: string;
-        trackNumbers?: number[];
-    };
-}
-
-export interface SubtitleCue {
-    text: string;
-    start: number;
-    end: number;
-    track: number;
-}
-
-interface GetSubtitlesResponseBody {
-    subtitles: SubtitleCue[];
-}
+import { WebSocketCommandDispatcher } from '@project/common/web-socket-client/web-socket-command-dispatcher';
+import { WebSocketTransport } from '@project/common/web-socket-client/web-socket-transport';
+import type { WebSocketCommandHandlers } from '@project/common/web-socket-client/web-socket-commands';
 
 export class WebSocketClient {
-    private _socket?: WebSocket;
-    private _pingInterval?: ReturnType<typeof setInterval>;
-    private _lastPingTimestampMs?: number;
-    private _pongReceived: boolean = false;
-    private _pingPromises: { resolve: (value: unknown) => void; reject: (error: any) => void }[] = [];
-    private _connectPromise?: { resolve: (value: unknown) => void; reject: (error: any) => void };
-    onMineSubtitle?: (command: MineSubtitleCommand) => Promise<boolean>;
-    onLoadSubtitles?: (command: LoadSubtitlesCommand) => Promise<void>;
-    onSeekTimestamp?: (command: SeekTimestampCommand) => Promise<void>;
-    onGetBoundMedia?: () => Promise<BoundMedia[]>;
-    onGetSubtitles?: (mediaId: string | undefined, trackNumbers: number[] | undefined) => Promise<SubtitleCue[]>;
+    private readonly _transport = new WebSocketTransport();
+    private readonly _dispatcher = new WebSocketCommandDispatcher();
+
+    constructor() {
+        this._transport.onMessage = (data: string) => this._dispatcher.dispatch(data);
+    }
 
     get socket() {
-        return this._socket;
+        return this._transport.socket;
+    }
+
+    setHandlers(handlers: Partial<WebSocketCommandHandlers>) {
+        this._dispatcher.setHandlers(handlers);
+    }
+
+    get onMineSubtitle() {
+        return this._dispatcher.handlers.onMineSubtitle;
+    }
+
+    set onMineSubtitle(onMineSubtitle: WebSocketCommandHandlers['onMineSubtitle'] | undefined) {
+        this._dispatcher.setHandlers({ onMineSubtitle });
+    }
+
+    get onLoadSubtitles() {
+        return this._dispatcher.handlers.onLoadSubtitles;
+    }
+
+    set onLoadSubtitles(onLoadSubtitles: WebSocketCommandHandlers['onLoadSubtitles'] | undefined) {
+        this._dispatcher.setHandlers({ onLoadSubtitles });
+    }
+
+    get onSeekTimestamp() {
+        return this._dispatcher.handlers.onSeekTimestamp;
+    }
+
+    set onSeekTimestamp(onSeekTimestamp: WebSocketCommandHandlers['onSeekTimestamp'] | undefined) {
+        this._dispatcher.setHandlers({ onSeekTimestamp });
+    }
+
+    get onGetBoundMedia() {
+        return this._dispatcher.handlers.onGetBoundMedia;
+    }
+
+    set onGetBoundMedia(onGetBoundMedia: WebSocketCommandHandlers['onGetBoundMedia'] | undefined) {
+        this._dispatcher.setHandlers({ onGetBoundMedia });
+    }
+
+    get onGetSubtitles() {
+        return this._dispatcher.handlers.onGetSubtitles;
+    }
+
+    set onGetSubtitles(onGetSubtitles: WebSocketCommandHandlers['onGetSubtitles'] | undefined) {
+        this._dispatcher.setHandlers({ onGetSubtitles });
     }
 
     async bind(url: string) {
-        if (this._pingInterval) {
-            clearInterval(this._pingInterval);
-        }
-
-        this._pingInterval = setInterval(() => {
-            if (
-                (this._lastPingTimestampMs !== undefined && !this._pongReceived) ||
-                (this._socket && this._socket.readyState !== this._socket?.OPEN)
-            ) {
-                asbLog('web-socket', 'Did not receive pong - reconnecting');
-
-                for (const r of this._pingPromises) {
-                    r.reject('Timed out');
-                }
-
-                this._pingPromises = [];
-                void this._connect(url);
-            } else {
-                this.ping().catch((error) => asbInfo('web-socket', error));
-            }
-        }, 10000);
-
-        await this._connect(url);
-    }
-
-    private async _connect(url: string) {
-        this._disconnect();
-
-        if (!url) {
-            throw new Error('Invalid URL');
-        }
-
-        return new Promise((resolve, reject) => {
-            this._connectPromise = { resolve, reject };
-            const socket = new WebSocket(url);
-            socket.onmessage = async (event) => {
-                if (event.data === 'PONG') {
-                    this._pongReceived = true;
-
-                    for (const p of this._pingPromises) {
-                        p.resolve(undefined);
-                    }
-
-                    this._pingPromises = [];
-                } else {
-                    const payload = JSON.parse(event.data);
-
-                    if (payload.command === 'mine-subtitle') {
-                        const messageId = payload.messageId;
-                        const published = (await this.onMineSubtitle?.(payload)) ?? false;
-                        const response: Response<MineSubtitleResponseBody> = {
-                            command: 'response',
-                            messageId,
-                            body: { published },
-                        };
-                        this._socket?.send(JSON.stringify(response));
-                    } else if (payload.command === 'load-subtitles') {
-                        const messageId = payload.messageId;
-                        await this.onLoadSubtitles?.(payload);
-                        const response: Response<LoadSubtitlesResponseBody> = {
-                            command: 'response',
-                            messageId,
-                            body: {},
-                        };
-                        this._socket?.send(JSON.stringify(response));
-                    } else if (payload.command === 'seek-timestamp') {
-                        const messageId = payload.messageId;
-                        await this.onSeekTimestamp?.(payload);
-                        const response: Response<Record<string, never>> = {
-                            command: 'response',
-                            messageId,
-                            body: {},
-                        };
-                        this._socket?.send(JSON.stringify(response));
-                    } else if (payload.command === 'get-bound-media') {
-                        if (this.onGetBoundMedia !== undefined) {
-                            const messageId = payload.messageId;
-                            const media = await this.onGetBoundMedia();
-                            const response: Response<GetBoundMediaResponseBody> = {
-                                command: 'response',
-                                messageId,
-                                body: { media },
-                            };
-                            this._socket?.send(JSON.stringify(response));
-                        }
-                    } else if (payload.command === 'get-subtitles') {
-                        if (this.onGetSubtitles !== undefined) {
-                            const messageId = payload.messageId;
-                            const subtitles = await this.onGetSubtitles(
-                                payload.body?.mediaId,
-                                payload.body?.trackNumbers
-                            );
-                            const response: Response<GetSubtitlesResponseBody> = {
-                                command: 'response',
-                                messageId,
-                                body: { subtitles },
-                            };
-                            this._socket?.send(JSON.stringify(response));
-                        }
-                    }
-                }
-            };
-            socket.onclose = (event) => {
-                asbLog('web-socket', `Socket closed - reason: ${event.reason}`);
-                this._connectPromise?.reject('Socket closed');
-                this._connectPromise = undefined;
-            };
-            socket.onerror = () => {
-                asbLog('web-socket', 'Socket error');
-                this._connectPromise?.reject('Socket error');
-                this._connectPromise = undefined;
-            };
-            socket.onopen = () => {
-                this.ping().catch((error) => asbError('web-socket', error));
-                this._connectPromise?.resolve(undefined);
-                this._connectPromise = undefined;
-            };
-
-            this._socket = socket;
-        });
+        await this._transport.bind(url);
     }
 
     async ping() {
-        return new Promise((resolve, reject) => {
-            if (!this._socket || this._socket.readyState !== this._socket.OPEN) {
-                reject('Not connected');
-                return;
-            }
-
-            this._socket.send('PING');
-            this._lastPingTimestampMs = Date.now();
-            this._pongReceived = false;
-            this._pingPromises.push({ resolve, reject });
-        });
-    }
-
-    private _disconnect() {
-        if (!this._socket) {
-            return;
-        }
-
-        if (this._socket.readyState !== this._socket.CLOSED && this._socket.readyState !== this._socket.CLOSING) {
-            this._socket.close();
-        }
-
-        this._socket = undefined;
+        return this._transport.ping();
     }
 
     unbind() {
-        this._disconnect();
-
-        if (this._pingInterval !== undefined) {
-            clearInterval(this._pingInterval);
-            this._pingInterval = undefined;
-        }
-
-        for (const p of this._pingPromises) {
-            p.reject('Disconnecting');
-        }
-
-        this._pingPromises = [];
-        this._lastPingTimestampMs = undefined;
-        this._pongReceived = false;
-        this._connectPromise?.reject('Disconnecting');
-        this._connectPromise = undefined;
-        this.onMineSubtitle = undefined;
-        this.onSeekTimestamp = undefined;
-        this.onLoadSubtitles = undefined;
-        this.onGetBoundMedia = undefined;
-        this.onGetSubtitles = undefined;
+        this._transport.unbind();
+        this._dispatcher.clearHandlers();
     }
 }
