@@ -1,6 +1,6 @@
 import Grid from '@mui/material/Grid';
 import type { Command, HttpPostMessage, OpenStatisticsOverlayMessage, PopupToExtensionCommand } from '@project/common';
-import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import type { AsbplayerSettings, Profile, SettingsProvider } from '@project/common/settings';
 import { chromeCommandBindsToKeyBinds, dictionaryTrackEnabled } from '@project/common/settings';
 import SettingsForm from '@project/common/components/SettingsForm';
 import PanelIcon from '@project/common/components/PanelIcon';
@@ -39,8 +39,10 @@ const globalStateProvider = new ExtensionGlobalStateProvider();
 interface Props {
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     commands: any;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     onOpenApp: () => void;
     onOpenSidePanel: () => void;
     onOpenExtensionShortcuts: () => void;
@@ -94,10 +96,12 @@ const NavButton: React.FC<ButtonProps & { label: string }> = ({ label, ...button
 const Popup = ({
     dictionaryProvider,
     settings,
+    settingsProvider,
     commands,
     onOpenApp,
     onOpenSidePanel,
     onSettingsChanged,
+    onSettingsImported,
     onOpenExtensionShortcuts,
     onOpenUserGuide,
     ...profilesContext
@@ -235,12 +239,14 @@ const Popup = ({
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             extensionSupportsDictionaryYomitanMecab
                             extensionSupportsSubtitleTrackSelectorInWebApp
+                            extensionSupportsSettingsProfileImportExport
                             extensionSupportsSubtitleListCustomization
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
                             dictionaryProvider={dictionaryProvider}
                             settings={settings}
+                            settingsProvider={settingsProvider}
                             profiles={profilesContext.profiles}
                             activeProfile={profilesContext.activeProfile}
                             pageConfigs={settingsPageConfigs}
@@ -249,6 +255,7 @@ const Popup = ({
                             localFontFamilies={localFontFamilies}
                             supportedLanguages={supportedLanguages}
                             onSettingsChanged={onSettingsChanged}
+                            onSettingsImported={onSettingsImported}
                             onOpenChromeExtensionShortcuts={onOpenExtensionShortcuts}
                             onUnlockLocalFonts={handleUnlockLocalFonts}
                             inAnnotationTutorial={inAnnotationTutorial}

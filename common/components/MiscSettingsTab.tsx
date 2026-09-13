@@ -14,22 +14,23 @@ import Typography from '@mui/material/Typography';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
-import type { AsbplayerSettings } from '@project/common/settings';
+import type { AsbplayerSettings, ImportableSettings, SettingsProvider } from '@project/common/settings';
 import {
     autoPausePreferenceForCheckboxChange,
     AutoPauseResumeMode,
     SubtitleVisibility,
     exportSettings,
+    importSettings,
     isTrackAutoCopyable,
     isTrackSeekable,
-    mergeImportedSettings,
     PauseOnHoverMode,
     SubtitleListTimestampDisplay,
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
-    validateSettings,
+    validateExportedSettings,
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings';
+import ProfileSelectionDialog from '@project/common/components/ProfileSelectionDialog';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AutoPausePreference, SubtitleHtml } from '..';
@@ -55,8 +56,10 @@ function regexIsValid(regex: string) {
 
 interface Props {
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     supportedLanguages: string[];
     insideApp?: boolean;
     extensionInstalled?: boolean;
@@ -65,16 +68,30 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting?: boolean;
     supportsSubtitleListCustomization: boolean;
     supportsPlaybackEngine: boolean;
+    supportsSettingsProfileImportExport: boolean;
     supportsAutoPauseResume: boolean;
     onViewPlaybackModeKeyboardShortcuts: () => void;
     onViewPlaybackRateKeyboardShortcuts: () => void;
     onViewSubtitleKeyboardShortcuts: () => void;
 }
 
+type ProfileSelectionDialogState =
+    | {
+          mode: 'export';
+          profiles: (string | undefined)[];
+      }
+    | {
+          mode: 'import';
+          imported: ImportableSettings;
+          profiles: (string | undefined)[];
+      };
+
 const MiscSettingTab: React.FC<Props> = ({
     settings,
+    settingsProvider,
     onSettingChanged,
     onSettingsChanged,
+    onSettingsImported,
     supportedLanguages,
     insideApp,
     extensionInstalled,
@@ -83,6 +100,7 @@ const MiscSettingTab: React.FC<Props> = ({
     extensionSupportsAutoCopyableTrackSetting,
     supportsSubtitleListCustomization,
     supportsPlaybackEngine,
+    supportsSettingsProfileImportExport,
     supportsAutoPauseResume,
     onViewPlaybackModeKeyboardShortcuts,
     onViewPlaybackRateKeyboardShortcuts,
@@ -193,6 +211,9 @@ const MiscSettingTab: React.FC<Props> = ({
     }
 
     const settingsFileInputRef = useRef<HTMLInputElement>(null);
+    const [profileSelectionDialogState, setProfileSelectionDialogState] = useState<
+        ProfileSelectionDialogState | undefined
+    >(undefined);
     const handleSettingsFileInputChange = useCallback(async () => {
         try {
             const file = settingsFileInputRef.current?.files?.[0];
@@ -201,20 +222,73 @@ const MiscSettingTab: React.FC<Props> = ({
                 return;
             }
 
-            const importedSettings = JSON.parse(await file.text());
-            const validatedSettings = validateSettings(mergeImportedSettings(importedSettings, settings));
-            onSettingsChanged(validatedSettings);
+            const importedSettings = validateExportedSettings(JSON.parse(await file.text()));
+
+            if (!supportsSettingsProfileImportExport || importedSettings.forActiveProfile) {
+                await importSettings(settingsProvider, importedSettings, undefined);
+                onSettingsImported();
+                return;
+            }
+
+            setProfileSelectionDialogState({
+                mode: 'import',
+                imported: importedSettings,
+                profiles: importedSettings.profiles.map((profile) => profile.name),
+            });
         } catch (e) {
             asbError('settings/import', e);
+        } finally {
+            if (settingsFileInputRef.current !== null) {
+                settingsFileInputRef.current.value = '';
+            }
         }
-    }, [onSettingsChanged, settings]);
+    }, [settingsProvider, supportsSettingsProfileImportExport, onSettingsImported]);
 
     const handleImportSettings = useCallback(() => {
         settingsFileInputRef.current?.click();
     }, []);
-    const handleExportSettings = useCallback(() => {
-        exportSettings(settings);
-    }, [settings]);
+    const handleExportSettings = useCallback(async () => {
+        try {
+            if (!supportsSettingsProfileImportExport) {
+                await exportSettings(settingsProvider, [(await settingsProvider.activeProfile())?.name]);
+                return;
+            }
+
+            const profiles = await settingsProvider.profiles();
+            setProfileSelectionDialogState({
+                mode: 'export',
+                profiles: [undefined, ...profiles.map((profile) => profile.name)],
+            });
+        } catch (e) {
+            asbError('settings/export', e);
+        }
+    }, [settingsProvider, supportsSettingsProfileImportExport]);
+
+    const closeProfileSelectionDialog = useCallback(() => {
+        setProfileSelectionDialogState(undefined);
+    }, []);
+
+    const handleProfileSelectionConfirm = useCallback(
+        async (selectedProfiles: (string | undefined)[]) => {
+            if (profileSelectionDialogState === undefined) {
+                return;
+            }
+
+            setProfileSelectionDialogState(undefined);
+
+            try {
+                if (profileSelectionDialogState.mode === 'export') {
+                    await exportSettings(settingsProvider, selectedProfiles);
+                } else {
+                    await importSettings(settingsProvider, profileSelectionDialogState.imported, selectedProfiles);
+                    onSettingsImported();
+                }
+            } catch (e) {
+                asbError(profileSelectionDialogState.mode === 'export' ? 'settings/export' : 'settings/import', e);
+            }
+        },
+        [profileSelectionDialogState, settingsProvider, onSettingsImported]
+    );
 
     return (
         <>
@@ -1062,6 +1136,22 @@ const MiscSettingTab: React.FC<Props> = ({
                 accept=".json"
                 multiple
                 hidden
+            />
+            <ProfileSelectionDialog
+                open={profileSelectionDialogState !== undefined}
+                title={
+                    profileSelectionDialogState?.mode === 'export'
+                        ? t('settings.selectProfilesToExport')
+                        : t('settings.selectProfilesToImport')
+                }
+                confirmLabel={
+                    profileSelectionDialogState?.mode === 'export'
+                        ? t('action.exportSettings')
+                        : t('action.importSettings')
+                }
+                profiles={profileSelectionDialogState?.profiles ?? []}
+                onConfirm={handleProfileSelectionConfirm}
+                onClose={closeProfileSelectionDialog}
             />
         </>
     );

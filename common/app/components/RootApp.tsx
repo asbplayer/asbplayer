@@ -56,6 +56,11 @@ const RootApp = ({
         onProfileChanged: handleProfileChanged,
     });
 
+    const handleSettingsImported = useCallback(() => {
+        void settingsProvider.getAll().then(setSettings);
+        refreshProfileContext();
+    }, [settingsProvider, refreshProfileContext]);
+
     useEffect(() => {
         return settingsStorage.onSettingsUpdated(() => {
             void settingsProvider.getAll().then(setSettings);
@@ -96,6 +101,7 @@ const RootApp = ({
             extension={extension}
             fetcher={fetcher}
             onSettingsChanged={handleSettingsChanged}
+            onSettingsImported={handleSettingsImported}
             profile={profilesContext.activeProfile}
             onGlobalStateChanged={handleGlobalStateChanged}
             {...profilesContext}
