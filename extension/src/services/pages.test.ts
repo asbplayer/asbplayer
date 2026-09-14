@@ -54,6 +54,22 @@ it('uses an explicit integration instead of the generic fallback', () => {
     expect(page.config.generic).not.toBe(true);
 });
 
+it('uses the rutube integration instead of the generic fallback', () => {
+    const rutube = pagesConfig.pages.find((page) => page.key === 'rutube')!;
+    const page = pageDelegateForUrl(
+        pagesConfig.pages,
+        new URL('https://rutube.ru/video/3eac3b4561676c17df9132a9a1e62e3e/'),
+        {
+            tutorial: false,
+            genericSubtitleParser: 'off',
+        }
+    );
+
+    expect(page.config).toMatchObject(rutube);
+    expect(page.config.generic).not.toBe(true);
+    expect(page.isVideoPage()).toBe(true);
+});
+
 it('uses the tutorial integration instead of the generic fallback', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://example.com/tutorial'), {
         tutorial: true,
