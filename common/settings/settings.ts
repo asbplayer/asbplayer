@@ -597,6 +597,7 @@ export interface PageSettings {
     urplay: Page;
     archive: Page;
     crunchyroll: Page;
+    rutube: Page;
 }
 
 export interface StreamingVideoSettings {
