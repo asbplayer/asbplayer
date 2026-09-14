@@ -242,6 +242,15 @@
             "key": "archive",
             "host": "archive\\.org",
             "searchShadowRootsForVideoElements": true
+        },
+        {
+            "key": "okru",
+            "host": "(www\\.)?ok\\.ru",
+            "pageScript": "okru-page.js",
+            "syncAllowedAtPath": "video",
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }
