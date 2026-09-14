@@ -944,6 +944,7 @@ const tokenComparators: TokenComparators = {
     status: (a, b) => a === b,
     readings: (a, b) => arrayEquals(a, b, areTokenReadingsEqual),
     frequency: (a, b) => a === b,
+    gloss: (a, b) => a === b,
     pitchAccent: (a, b) => a === b,
     groupingKey: (a, b) => a === b,
     lemmasGroupingKey: (a, b) => a === b,

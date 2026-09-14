@@ -10,6 +10,7 @@ import {
 } from '@project/common/settings';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import type {
+    TermDefinition,
     TermDictionaryEntry,
     TermEntriesResult,
     TermHeadword,
@@ -98,10 +99,30 @@ const makeEntry = (overrides: Partial<TermDictionaryEntry> = {}): TermDictionary
     headwords: [makeHeadword()],
     frequencies: [makeFrequency()],
     pronunciations: [],
+    definitions: [],
     ...overrides,
 });
 
-const makePitchPronunciation = (positions: number | string, headwordIndex = 0) => ({
+const makeDefinition = (overrides: Partial<TermDefinition> = {}): TermDefinition => ({
+    index: 0,
+    headwordIndices: [0],
+    dictionary: 'Test Dictionary',
+    dictionaryIndex: 0,
+    dictionaryAlias: 'Test Dictionary',
+    id: 0,
+    score: 0,
+    frequencyOrder: 0,
+    sequences: [-1],
+    isPrimary: true,
+    tags: [],
+    entries: ['definition'],
+    ...overrides,
+});
+
+const makePitchPronunciation = (
+    positions: number | string,
+    headwordIndex = 0
+): TermDictionaryEntry['pronunciations'][number] => ({
     index: 0,
     headwordIndex,
     dictionary: 'pitch',
@@ -193,7 +214,7 @@ describe('Yomitan', () => {
         await expect(yomitan.lemmatize('alpha')).rejects.toThrow('Unexpected Yomitan termEntries response');
     });
 
-    it('reports bulk frequency support after negotiating parser-specific capabilities', async () => {
+    it('reports parser-specific bulk annotation support after capability negotiation', async () => {
         const scanningFetcher = new MockFetcher();
         scanningFetcher.fetch.mockResolvedValue({ version: '26.4.6' });
         const scanning = new Yomitan(testDictionaryTrack(), scanningFetcher);
@@ -207,7 +228,9 @@ describe('Yomitan', () => {
         await mecab.version();
 
         expect(scanning.getSupportsBulkFrequency()).toBe(true);
+        expect(scanning.getSupportsBulkGloss()).toBe(false);
         expect(mecab.getSupportsBulkFrequency()).toBe(true);
+        expect(mecab.getSupportsBulkGloss()).toBe(true);
     });
 
     it('reports bulk frequency support as false before the bulk API version', async () => {
@@ -224,7 +247,9 @@ describe('Yomitan', () => {
         await mecab.version();
 
         expect(scanning.getSupportsBulkFrequency()).toBe(false);
+        expect(scanning.getSupportsBulkGloss()).toBe(false);
         expect(mecab.getSupportsBulkFrequency()).toBe(false);
+        expect(mecab.getSupportsBulkGloss()).toBe(false);
     });
 
     it('reports bulk pitch accent support after negotiating parser-specific capabilities', async () => {
@@ -824,6 +849,312 @@ describe('Yomitan', () => {
         expect(fetcher.fetch).toHaveBeenCalledTimes(1);
     });
 
+    it('preserves markup-like text and entities in a plain-text gloss', async () => {
+        const fetcher = new MockFetcher();
+        const longGloss = `a <b>literal</b> &amp;<br> gloss ${'continued '.repeat(40)}`.trim();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [makeDefinition({ entries: [`  ${longGloss}\n`] })],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe(longGloss);
+    });
+
+    it('prefers text definition entries over image metadata', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [
+                        makeDefinition({
+                            entries: [
+                                { type: 'image', path: 'image.png', description: 'image description' },
+                                { type: 'text', text: '  concise\ntext  ' },
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('concise text');
+    });
+
+    it('keeps only the first Yomitan glossary entry', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [
+                        makeDefinition({
+                            entries: ['first | literal pipe', { type: 'text', text: 'second entry' }],
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('first | literal pipe');
+    });
+
+    it.each([
+        [
+            { type: 'image' as const, path: 'image.png', description: ' description ', alt: 'alt', title: 'title' },
+            'description',
+        ],
+        [{ type: 'image' as const, path: 'image.png', description: '  ', alt: ' alt ', title: 'title' }, 'alt'],
+        [{ type: 'image' as const, path: 'image.png', title: ' title ' }, 'title'],
+    ])('uses image metadata as a fallback gloss according to priority', async (image, expected) => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [makeEntry({ definitions: [makeDefinition({ entries: [image] })] })],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe(expected);
+    });
+
+    it('uses nested structured-content image metadata when no textual gloss exists', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [
+                        makeDefinition({
+                            entries: [
+                                {
+                                    type: 'structured-content',
+                                    content: {
+                                        tag: 'div',
+                                        content: [
+                                            { tag: 'img', path: 'image.png', description: 'diagram description' },
+                                        ],
+                                    },
+                                },
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('diagram description');
+    });
+
+    it('keeps only the first semantic glossary item in dictionary-authored order', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [
+                        makeDefinition({
+                            entries: [
+                                {
+                                    type: 'structured-content',
+                                    content: [
+                                        {
+                                            tag: 'ul',
+                                            data: { content: 'glossary' },
+                                            content: [
+                                                {
+                                                    tag: 'li',
+                                                    content: [
+                                                        'best',
+                                                        {
+                                                            tag: 'ruby',
+                                                            content: [' choice', { tag: 'rt', content: 'ignored' }],
+                                                        },
+                                                    ],
+                                                },
+                                                { tag: 'li', content: 'second gloss' },
+                                            ],
+                                        },
+                                        {
+                                            tag: 'ul',
+                                            data: { content: 'examples' },
+                                            content: [{ tag: 'li', content: 'unrelated example' }],
+                                        },
+                                    ],
+                                },
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('best choice');
+    });
+
+    it('falls back to block-aware flattening for generic structured content', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [
+                        makeDefinition({
+                            entries: [
+                                {
+                                    type: 'structured-content',
+                                    content: {
+                                        tag: 'div',
+                                        content: [
+                                            { tag: 'span', content: 'First' },
+                                            { tag: 'span', content: 'block' },
+                                            { tag: 'img', path: 'image.png' },
+                                            { tag: 'div', content: 'Second block' },
+                                        ],
+                                    },
+                                },
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('First block Second block');
+    });
+
+    it('uses exact primary headword matches and dictionary priority when selecting a gloss', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [makeDefinition({ dictionaryIndex: 4, entries: ['lower priority'] })],
+                }),
+                makeEntry({
+                    headwords: [
+                        makeHeadword({
+                            headwordIndex: 0,
+                            sources: [makeSource({ matchType: 'prefix' })],
+                        }),
+                        makeHeadword({ headwordIndex: 1 }),
+                    ],
+                    definitions: [
+                        makeDefinition({ dictionaryIndex: 0, headwordIndices: [0], entries: ['wrong headword'] }),
+                        makeDefinition({ dictionaryIndex: 1, headwordIndices: [1], entries: ['preferred'] }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('preferred');
+    });
+
+    it.each([
+        ['行った', '行く', 'いく', 'to go', '行う', 'おこなう', 'to perform'],
+        ['生物', '生物', 'せいぶつ', 'living organism', '生物', 'なまもの', 'raw food'],
+    ])(
+        'keeps the gloss for %s consistent with the selected term and reading',
+        async (token, term, reading, gloss, otherTerm, otherReading, otherGloss) => {
+            const fetcher = new MockFetcher();
+            fetcher.fetch.mockResolvedValue({
+                dictionaryEntries: [
+                    makeEntry({
+                        headwords: [
+                            makeHeadword({
+                                term,
+                                reading,
+                                sources: [
+                                    makeSource({
+                                        originalText: token,
+                                        deinflectedText: term,
+                                    }),
+                                ],
+                            }),
+                        ],
+                        definitions: [makeDefinition({ dictionaryIndex: 1, entries: [gloss] })],
+                    }),
+                    makeEntry({
+                        headwords: [
+                            makeHeadword({
+                                term: otherTerm,
+                                reading: otherReading,
+                                sources: [
+                                    makeSource({
+                                        originalText: token,
+                                        deinflectedText: otherTerm,
+                                    }),
+                                ],
+                            }),
+                        ],
+                        definitions: [makeDefinition({ dictionaryIndex: 0, entries: [otherGloss] })],
+                    }),
+                ],
+            });
+            const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+            await expect(yomitan.lemmatize(token)).resolves.toEqual([term, reading]);
+            await expect(yomitan.gloss(token)).resolves.toBe(gloss);
+        }
+    );
+
+    it('preserves Yomitan definition ranking within the same dictionary', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [
+                        makeDefinition({ index: 2, entries: ['ranked first by Yomitan'] }),
+                        makeDefinition({ index: 1, entries: ['earlier original index'] }),
+                    ],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBe('ranked first by Yomitan');
+    });
+
+    it('caches null when there is no usable gloss', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [
+                makeEntry({
+                    definitions: [makeDefinition({ entries: [{ type: 'image', path: 'image.png' }] })],
+                }),
+            ],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).resolves.toBeNull();
+        await expect(yomitan.gloss('alpha')).resolves.toBeNull();
+        expect(fetcher.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects term entries that omit the required definitions array instead of caching a fallback', async () => {
+        const fetcher = new MockFetcher();
+        const malformedEntry: Partial<TermDictionaryEntry> = makeEntry();
+        delete malformedEntry.definitions;
+        fetcher.fetch.mockResolvedValue({ dictionaryEntries: [malformedEntry] });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.gloss('alpha')).rejects.toThrow();
+    });
+
+    it('reuses glosses primed by other term entry lookups', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue({
+            dictionaryEntries: [makeEntry({ definitions: [makeDefinition({ entries: ['primed gloss'] })] })],
+        });
+        const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
+
+        await expect(yomitan.lemmatize('alpha')).resolves.toEqual(['alpha']);
+        await expect(yomitan.gloss('alpha')).resolves.toBe('primed gloss');
+        expect(fetcher.fetch).toHaveBeenCalledTimes(1);
+    });
+
     it('caches pitch accents from tokenize headword pronunciations when supported', async () => {
         const fetcher = new MockFetcher();
         fetcher.fetch.mockResolvedValueOnce({ version: '26.7.21' }).mockResolvedValueOnce([
@@ -843,7 +1174,7 @@ describe('Yomitan', () => {
                                             makePitchPronunciation(2),
                                             makePitchPronunciation(2),
                                             makePitchPronunciation(0),
-                                        ] as any,
+                                        ],
                                     }),
                                 ],
                             ],
@@ -873,7 +1204,7 @@ describe('Yomitan', () => {
                             sources: [makeSource({ originalText: 'alpha', deinflectedText: 'alpha' })],
                         }),
                     ],
-                    pronunciations: [makePitchPronunciation(1), makePitchPronunciation('LH')] as any,
+                    pronunciations: [makePitchPronunciation(1), makePitchPronunciation('LH')],
                 }),
             ],
         });
@@ -913,6 +1244,78 @@ describe('Yomitan', () => {
         expect(modified).toEqual(['beta']);
         await expect(yomitan.frequency('beta')).resolves.toBe(6);
         await expect(yomitan.lemmatize('beta')).resolves.toEqual(['beta']);
+    });
+
+    describe.each(['frequency', 'gloss', 'pitchAccent'] as const)('deferred %s lookups', (method) => {
+        it.each(['network', 'response', 'extraction'] as const)(
+            'notifies and recovers after a %s failure',
+            async (failure) => {
+                jest.useFakeTimers();
+                jest.spyOn(console, 'error').mockImplementation(() => undefined);
+                const fetcher = new MockFetcher();
+                if (failure === 'network') {
+                    fetcher.fetch.mockRejectedValueOnce(new Error('Yomitan unavailable'));
+                } else if (failure === 'response') {
+                    fetcher.fetch.mockResolvedValueOnce({ dictionaryEntries: null });
+                } else {
+                    // Frequency extraction succeeds before gloss extraction encounters invalid data.
+                    fetcher.fetch.mockResolvedValueOnce({ dictionaryEntries: [{ ...makeEntry(), definitions: null }] });
+                }
+                fetcher.fetch.mockResolvedValue({
+                    dictionaryEntries: [
+                        makeEntry({
+                            definitions: [makeDefinition({ entries: ['recovered gloss'] })],
+                            pronunciations: [makePitchPronunciation(2)],
+                        }),
+                    ],
+                });
+                const modified: string[] = [];
+                const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+                    lemmaTokenFallback: false,
+                    tokensWereModified: (token) => modified.push(token),
+                });
+
+                await expect(yomitan[method]('alpha')).resolves.toBeUndefined();
+                await jest.advanceTimersByTimeAsync(10);
+                expect(modified).toEqual(['alpha']);
+
+                await expect(yomitan[method]('alpha')).resolves.toBeUndefined();
+                await jest.advanceTimersByTimeAsync(10);
+                expect(modified).toEqual(['alpha', 'alpha']);
+                await expect(yomitan.frequency('alpha')).resolves.toBe(10);
+                await expect(yomitan.gloss('alpha')).resolves.toBe('recovered gloss');
+                await expect(yomitan.pitchAccent('alpha')).resolves.toBe(2);
+                await expect(yomitan.lemmatize('alpha')).resolves.toEqual(['alpha']);
+            }
+        );
+
+        it('contains notification errors without discarding a successful lookup', async () => {
+            jest.useFakeTimers();
+            jest.spyOn(console, 'error').mockImplementation(() => undefined);
+            const fetcher = new MockFetcher();
+            fetcher.fetch.mockResolvedValue({
+                dictionaryEntries: [
+                    makeEntry({
+                        definitions: [makeDefinition({ entries: ['definition'] })],
+                        pronunciations: [makePitchPronunciation(2)],
+                    }),
+                ],
+            });
+            const notify = jest.fn(() => {
+                throw new Error('Notification failed');
+            });
+            const yomitan = new Yomitan(testDictionaryTrack(), fetcher, {
+                lemmaTokenFallback: false,
+                tokensWereModified: notify,
+            });
+
+            await expect(yomitan[method]('alpha')).resolves.toBeUndefined();
+            await jest.advanceTimersByTimeAsync(10);
+            await expect(yomitan.frequency('alpha')).resolves.toBe(10);
+            await expect(yomitan.gloss('alpha')).resolves.toBe('definition');
+            await expect(yomitan.pitchAccent('alpha')).resolves.toBe(2);
+            expect(notify).toHaveBeenCalledTimes(1);
+        });
     });
 
     it('notifies without fetching when resetCache cancels async frequency updates', async () => {
@@ -1076,7 +1479,7 @@ describe('Yomitan', () => {
             tokenOccurrences.set(token, index < 10 ? 100 - index : 20 - index);
         }
 
-        await yomitan.termEntriesBulk(tokens, false);
+        await yomitan.termEntriesBulk(tokens, { triggerTokensWereModified: false });
         await expect(yomitan.frequency('word0')).resolves.toBeNull();
 
         yomitan.inferFrequencyModesFromTokenOccurrences(new Map([[0, tokenOccurrences]]));
@@ -1091,7 +1494,7 @@ describe('Yomitan', () => {
         const fetcher = new MockFetcher();
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
 
-        await yomitan.termEntriesBulk([], false);
+        await yomitan.termEntriesBulk([], { triggerTokensWereModified: false });
 
         expect(fetcher.fetch).not.toHaveBeenCalled();
     });
@@ -1109,6 +1512,7 @@ describe('Yomitan', () => {
                         }),
                     ],
                     frequencies: [makeFrequency({ frequency: 2 })],
+                    definitions: [makeDefinition({ entries: ['first gloss'] })],
                 }),
             ]),
             makeTermEntriesResult(1, [
@@ -1121,18 +1525,22 @@ describe('Yomitan', () => {
                         }),
                     ],
                     frequencies: [makeFrequency({ frequency: 5 })],
+                    definitions: [makeDefinition({ entries: ['second gloss'] })],
                 }),
             ]),
         ]);
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
 
-        await yomitan.termEntriesBulk(['alpha', '!', 'beta'], false);
+        await yomitan.termEntriesBulk(['alpha', '!', 'beta'], { triggerTokensWereModified: false });
 
         await expect(yomitan.lemmatize('alpha')).resolves.toEqual(['alpha']);
         await expect(yomitan.frequency('alpha')).resolves.toEqual(2);
+        await expect(yomitan.gloss('alpha')).resolves.toBe('first gloss');
         await expect(yomitan.lemmatize('beta')).resolves.toEqual(['beta']);
         await expect(yomitan.frequency('beta')).resolves.toEqual(5);
+        await expect(yomitan.gloss('beta')).resolves.toBe('second gloss');
         await expect(yomitan.frequency('!')).resolves.toBeNull();
+        await expect(yomitan.gloss('!')).resolves.toBeNull();
         expect(fetcher.fetch).toHaveBeenCalledTimes(1);
     });
 
@@ -1168,10 +1576,10 @@ describe('Yomitan', () => {
         ]);
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
 
-        await yomitan.termEntriesBulk(['alpha'], false);
+        await yomitan.termEntriesBulk(['alpha'], { triggerTokensWereModified: false });
         fetcher.fetch.mockClear();
 
-        await yomitan.termEntriesBulk(['alpha', '!', 'beta'], false);
+        await yomitan.termEntriesBulk(['alpha', '!', 'beta'], { triggerTokensWereModified: false });
 
         expect(fetcher.fetch).toHaveBeenCalledTimes(1);
         expect(fetcher.fetch).toHaveBeenCalledWith('http://127.0.0.1:50500/termEntries', { term: ['beta'] });
@@ -1208,10 +1616,10 @@ describe('Yomitan', () => {
         ]);
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
 
-        await yomitan.termEntriesBulk(['alpha', 'beta'], false);
+        await yomitan.termEntriesBulk(['alpha', 'beta'], { triggerTokensWereModified: false });
         fetcher.fetch.mockClear();
 
-        await yomitan.termEntriesBulk(['alpha', '!', 'beta'], false);
+        await yomitan.termEntriesBulk(['alpha', '!', 'beta'], { triggerTokensWereModified: false });
 
         expect(fetcher.fetch).not.toHaveBeenCalled();
     });
@@ -1273,7 +1681,7 @@ describe('Yomitan', () => {
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
         const terms = Array.from({ length: 11 }, (_, index) => `term${index}`);
 
-        await yomitan.termEntriesBulk(terms, false);
+        await yomitan.termEntriesBulk(terms, { triggerTokensWereModified: false });
 
         expect(fetcher.fetch.mock.calls.map((call) => (call[1] as { term: string[] }).term.length)).toEqual([
             10, 5, 3, 2, 2, 2, 2, 2, 1,
@@ -1282,7 +1690,7 @@ describe('Yomitan', () => {
         fetcher.fetch.mockClear();
         await yomitan.termEntriesBulk(
             Array.from({ length: 12 }, (_, index) => `fresh${index}`),
-            false
+            { triggerTokensWereModified: false }
         );
         expect(fetcher.fetch.mock.calls.map((call) => (call[1] as { term: string[] }).term.length)).toEqual([5, 5, 2]);
     });
@@ -1310,7 +1718,11 @@ describe('Yomitan', () => {
         await new Yomitan(testDictionaryTrack(), fetcher).tokenize('alpha', overrideUrl);
         await new Yomitan(testDictionaryTrack(), fetcher).lemmatize('alpha', overrideUrl);
         await new Yomitan(testDictionaryTrack(), fetcher).frequency('alpha', overrideUrl);
-        await new Yomitan(testDictionaryTrack(), fetcher).termEntriesBulk(['alpha'], false, overrideUrl);
+        await new Yomitan(testDictionaryTrack(), fetcher).termEntriesBulk(
+            ['alpha'],
+            { triggerTokensWereModified: false },
+            overrideUrl
+        );
         await new Yomitan(testDictionaryTrack(), fetcher).version(overrideUrl);
 
         expect(fetcher.fetch.mock.calls.map((call) => call[0])).toEqual([
@@ -1344,7 +1756,7 @@ describe('Yomitan', () => {
         const yomitan = new Yomitan(testDictionaryTrack(), fetcher);
         const terms = Array.from({ length: 11 }, (_, index) => `term${index}`);
 
-        await yomitan.termEntriesBulk(terms, false);
+        await yomitan.termEntriesBulk(terms, { triggerTokensWereModified: false });
 
         expect(fetcher.fetch).toHaveBeenCalledTimes(2);
         expect((fetcher.fetch.mock.calls[0][1] as { term: string[] }).term).toHaveLength(10);
@@ -1363,7 +1775,7 @@ describe('Yomitan', () => {
 
         const blocker = yomitan.lemmatize('blocker');
         await flushMicrotasks();
-        const promise = yomitan.termEntriesBulk(['alpha'], false);
+        const promise = yomitan.termEntriesBulk(['alpha'], { triggerTokensWereModified: false });
         jest.setSystemTime(1001);
         yomitan.resetCache();
         blockerResponse.resolve({ dictionaryEntries: [] });

@@ -60,23 +60,25 @@ function makeDefaultDictionaryTokenAnnotationConfigs() {
             color: { onHoverEnabled: false, size: 1 },
             reading: { onHoverEnabled: false, size: 0.5 },
             frequency: { onHoverEnabled: false, size: 0.3 },
+            gloss: { onHoverEnabled: true, size: 0.5 },
             pitchAccent: { onHoverEnabled: true, size: 0.1 },
         },
         subtitlePlayer: {
             color: { onHoverEnabled: false, size: 1 },
             reading: { onHoverEnabled: false, size: 0.5 },
             frequency: { onHoverEnabled: false, size: 0.5 },
+            gloss: { onHoverEnabled: true, size: 0.5 },
             pitchAccent: { onHoverEnabled: true, size: 0.1 },
         },
         onStatuses: [
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
         ],
-        onStates: [{ reading: false, frequency: false, pitchAccent: false }],
+        onStates: [{ reading: false, frequency: false, gloss: false, pitchAccent: false }],
     };
 }
 
@@ -611,11 +613,28 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenAnnotationConfig.colorizeEnabled = dt.dictionaryColorizeSubtitles;
         }
 
+        for (const [target, defaultTarget] of [
+            [dt.dictionaryTokenAnnotationConfig.video, defaultTrack.dictionaryTokenAnnotationConfig.video],
+            [
+                dt.dictionaryTokenAnnotationConfig.subtitlePlayer,
+                defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer,
+            ],
+        ] as const) {
+            if (target.gloss === undefined) (target as any).gloss = { ...defaultTarget.gloss };
+        }
+        for (const trigger of [
+            ...dt.dictionaryTokenAnnotationConfig.onStatuses,
+            ...dt.dictionaryTokenAnnotationConfig.onStates,
+        ]) {
+            if (trigger.gloss === undefined) (trigger as any).gloss = false;
+        }
+
         // Ensure dictionaryTokenAnnotationConfig has the correct length
         while (dt.dictionaryTokenAnnotationConfig.onStatuses.length < NUM_TOKEN_STATUSES) {
             dt.dictionaryTokenAnnotationConfig.onStatuses.push({
                 reading: false,
                 frequency: false,
+                gloss: false,
                 pitchAccent: false,
             });
         }
@@ -626,6 +645,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenAnnotationConfig.onStates.push({
                 reading: false,
                 frequency: false,
+                gloss: false,
                 pitchAccent: false,
             });
         }

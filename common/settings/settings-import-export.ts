@@ -150,6 +150,11 @@ const dictionaryTrackSchema = {
                             properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
                             required: ['onHoverEnabled', 'size'],
                         },
+                        gloss: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
+                        },
                         pitchAccent: {
                             type: 'object',
                             properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
@@ -176,6 +181,11 @@ const dictionaryTrackSchema = {
                             properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
                             required: ['onHoverEnabled', 'size'],
                         },
+                        gloss: {
+                            type: 'object',
+                            properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
+                            required: ['onHoverEnabled', 'size'],
+                        },
                         pitchAccent: {
                             type: 'object',
                             properties: { onHoverEnabled: { type: 'boolean' }, size: { type: 'number' } },
@@ -191,6 +201,7 @@ const dictionaryTrackSchema = {
                         properties: {
                             reading: { type: 'boolean' },
                             frequency: { type: 'boolean' },
+                            gloss: { type: 'boolean' },
                             pitchAccent: { type: 'boolean' },
                         },
                         required: ['reading', 'frequency', 'pitchAccent'],
@@ -203,6 +214,7 @@ const dictionaryTrackSchema = {
                         properties: {
                             reading: { type: 'boolean' },
                             frequency: { type: 'boolean' },
+                            gloss: { type: 'boolean' },
                             pitchAccent: { type: 'boolean' },
                         },
                         required: ['reading', 'frequency', 'pitchAccent'],

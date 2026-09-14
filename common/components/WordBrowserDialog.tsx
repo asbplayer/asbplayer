@@ -95,7 +95,7 @@ interface WordBrowserRow {
     selectable: boolean;
     token: string;
     tokenSearchTerms: string[];
-    lemmas: string[];
+    lemmas: readonly string[];
     lemmasDisplay: string;
     lemmaSearchTerms: string[];
     source: DictionaryTokenSource;
@@ -223,7 +223,7 @@ function dedupeNumbers(values: number[]) {
     return Array.from(new Set(values)).sort((lhs, rhs) => lhs - rhs);
 }
 
-function formatList(values: Array<string | number>) {
+function formatList(values: readonly (string | number)[]) {
     return values.join(' · ');
 }
 

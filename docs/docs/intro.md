@@ -21,6 +21,7 @@ sidebar_position: 1
     - **Reading annotation** for reading displayed above each word or based on status.
     - **Accent annotation** such as pitch accent.
     - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
+    - **Glossary annotation** for a short definition or explanation of the word.
     - **Statistics and Comprehension** on your known words for the current media.
     - **Word browser** to manage local and view words synced from external sources.
     - Many more features for future releases! Some planned features include:
