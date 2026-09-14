@@ -515,6 +515,40 @@ describe('CachingElementOverlay fullscreen transitions', () => {
         overlay.dispose();
     });
 
+    it('keeps document.body as the fallback when it is inside the fullscreen element', () => {
+        const videoParent = document.createElement('div');
+        const targetElement = document.createElement('video');
+        videoParent.appendChild(targetElement);
+        document.body.appendChild(videoParent);
+
+        targetElement.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 500 }) as DOMRect;
+
+        Object.defineProperty(document, 'elementFromPoint', {
+            configurable: true,
+            value: () => null,
+        });
+
+        const overlay = new CachingElementOverlay({
+            targetElement,
+            nonFullscreenContainerClassName: 'non-fullscreen-container',
+            nonFullscreenContentClassName: 'non-fullscreen-content',
+            fullscreenContainerClassName: 'fullscreen-container',
+            fullscreenContentClassName: 'fullscreen-content',
+            offsetAnchor: OffsetAnchor.bottom,
+            onMouseOver: () => {},
+            onMouseOut: () => {},
+        });
+
+        overlay.setHtml([{ key: 'subtitle', html: () => '<span>subtitle</span>' }]);
+
+        fullscreenElement = document.documentElement;
+        document.dispatchEvent(new Event('fullscreenchange'));
+
+        expect(document.querySelector('.fullscreen-container')?.parentElement).toBe(document.body);
+
+        overlay.dispose();
+    });
+
     it('resizes responsive cached content when the video width changes', () => {
         const targetElement = document.createElement('video');
         let videoWidth = 640;
