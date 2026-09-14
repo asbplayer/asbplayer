@@ -100,7 +100,7 @@ export interface PlaybackEngineCallbacks {
 export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly settingsProvider: SettingsProvider;
     readonly appIntegration: boolean;
-    readonly autoPauseCorrectionSuppressed: boolean;
+    readonly autoPauseCorrectionDisabled: boolean;
     readonly subtitles: readonly T[];
     readonly playbackModesDisabled: boolean;
     readonly playbackModesSuppressed: boolean;
@@ -137,7 +137,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
     private readonly appIntegration: boolean;
-    private readonly autoPauseCorrectionSuppressed: boolean;
+    private readonly autoPauseCorrectionDisabled: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
     private lastSubtitleEndMs?: number;
@@ -152,7 +152,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly autoPauseController: AutoPauseController;
     private readonly subtitleVisibilityController: SubtitleVisibilityController;
     private readonly playbackStateController: PlaybackStateController<T>;
-    private autoPauseShowingSubtitlesSnapshot?: readonly T[];
+    private autoPauseTimestampMs?: number;
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
     private settingsChangedOperationId = 0;
@@ -165,7 +165,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     constructor({
         settingsProvider,
         appIntegration,
-        autoPauseCorrectionSuppressed,
+        autoPauseCorrectionDisabled,
         subtitles,
         playbackModesDisabled,
         playbackModesSuppressed,
@@ -175,7 +175,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }: PlaybackEngineOptions<T>) {
         this.settings = defaultSettings;
         this.appIntegration = appIntegration;
-        this.autoPauseCorrectionSuppressed = autoPauseCorrectionSuppressed;
+        this.autoPauseCorrectionDisabled = autoPauseCorrectionDisabled;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
         this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
@@ -196,7 +196,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             play: callbacks.play,
             resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
             autoResumeFailed: () => {
-                const snapshotCleared = this.clearAutoPauseShowingSubtitlesSnapshot();
+                const snapshotCleared = this.clearAutoPauseTimestamp();
                 this.subtitleVisibilityController.autoPauseCancelled(this.timingDriver.paused());
                 if (snapshotCleared && this.timingDriver.bound) {
                     this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: false });
@@ -209,8 +209,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
             play: callbacks.play,
             paused: () => this.timingDriver.paused(),
-            pause: ({ playbackModeSubtitlesAtPause, showingSubtitlesAtPause }) => {
-                this.autoPauseShowingSubtitlesSnapshot = [...showingSubtitlesAtPause];
+            pause: ({ timestampMs, playbackModeSubtitlesAtPause }) => {
+                this.autoPauseTimestampMs = timestampMs;
                 this.subtitleVisibilityController.autoPaused();
                 this.autoPauseController.autoPaused(playbackModeSubtitlesAtPause);
                 callbacks.pause();
@@ -261,8 +261,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.playbackStateController = new PlaybackStateController({
             paused: () => this.timingDriver.paused(),
             showingSubtitlesAt: (timestampMs) =>
-                this.autoPauseShowingSubtitlesSnapshot ?? this.executor.showingSubtitlesAt(timestampMs),
+                this.executor.showingSubtitlesAt(this.autoPauseTimestampMs ?? timestampMs),
             subtitlesVisible: () => this.subtitleVisibilityController.subtitlesVisible,
+            invisibleSubtitlesAt: (timestampMs) =>
+                this.executor.invisibleSubtitlesAt(this.autoPauseTimestampMs ?? timestampMs),
             playbackStateChanged: callbacks.playbackStateChanged,
             now: () => performance.now(),
         });
@@ -294,7 +296,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
                 const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
                 if (cause !== 'internal-seek') {
-                    this.clearAutoPauseShowingSubtitlesSnapshot();
+                    this.clearAutoPauseTimestamp();
                     this.autoPauseController.userSeeked();
                     this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
                 }
@@ -302,7 +304,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             },
             onCancel: (options) => this.executor.cancelPendingOperations(options),
             onPlaybackStarted: async () => {
-                this.clearAutoPauseShowingSubtitlesSnapshot();
+                this.clearAutoPauseTimestamp();
                 this.autoPauseController.playbackStarted();
                 this.subtitleVisibilityController.playbackStarted();
                 await this.executor.playbackStarted();
@@ -431,7 +433,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private teardown({ saveSettings }: { readonly saveSettings: boolean }): void {
         ++this.unbindOperationId;
-        this.clearAutoPauseShowingSubtitlesSnapshot();
+        this.clearAutoPauseTimestamp();
         this.autoPauseController.cancel();
         this.subtitleVisibilityController.cancel();
         if (!saveSettings) this.playbackPositionController.profileChanged();
@@ -492,7 +494,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     subtitlesChanged(subtitles: readonly T[]): void {
         const hadSubtitles = this.ready.subtitles;
-        const snapshotCleared = this.clearAutoPauseShowingSubtitlesSnapshot();
+        const snapshotCleared = this.clearAutoPauseTimestamp();
         this.subtitles = subtitles;
         this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
         if (subtitles.length) {
@@ -626,7 +628,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
         const { cause } = this.executor.handleDiscontinuity(timestampMs);
         if (cause !== 'internal-seek') {
-            this.clearAutoPauseShowingSubtitlesSnapshot();
+            this.clearAutoPauseTimestamp();
             this.autoPauseController.userSeeked();
             this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
         }
@@ -645,7 +647,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private seekStartedWithCause(cause: PlaybackTimelineTransitionCause): void {
         if (cause === 'internal-seek') return;
-        const snapshotCleared = this.clearAutoPauseShowingSubtitlesSnapshot();
+        const snapshotCleared = this.clearAutoPauseTimestamp();
         this.autoPauseController.userSeeked();
         this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
         if (snapshotCleared && this.timingDriver.bound) {
@@ -709,7 +711,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             const subtitleVisibilityChanged = this.plan.subtitleVisibility !== plan.subtitleVisibility;
             this.plan = plan;
             const autoPauseResumeChanged = this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
-            if (autoPauseResumeChanged || subtitleVisibilityChanged) this.clearAutoPauseShowingSubtitlesSnapshot();
+            if (autoPauseResumeChanged || subtitleVisibilityChanged) this.clearAutoPauseTimestamp();
             this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
             if (autoPauseResumeChanged) {
                 this.subtitleVisibilityController.autoPauseCancelled(this.timingDriver.paused());
@@ -726,9 +728,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         return planChanged;
     }
 
-    private clearAutoPauseShowingSubtitlesSnapshot(): boolean {
-        if (this.autoPauseShowingSubtitlesSnapshot === undefined) return false;
-        this.autoPauseShowingSubtitlesSnapshot = undefined;
+    private clearAutoPauseTimestamp(): boolean {
+        if (this.autoPauseTimestampMs === undefined) return false;
+        this.autoPauseTimestampMs = undefined;
         return true;
     }
 
@@ -758,7 +760,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         timestampMs: number,
         warningCommand: 'pause-correction'
     ): Promise<{ seekIssued: boolean }> {
-        if (this.autoPauseCorrectionSuppressed) return { seekIssued: false };
+        if (this.autoPauseCorrectionDisabled) return { seekIssued: false };
         const targetTimestampMs = this.clampTimestamp(timestampMs);
         if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
             return { seekIssued: false };

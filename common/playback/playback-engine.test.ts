@@ -164,7 +164,7 @@ async function makePlaybackEngine(
         settingsReady: boolean;
         emitInitialDiscontinuity?: boolean;
         appIntegration?: boolean;
-        autoPauseCorrectionSuppressed?: boolean;
+        autoPauseCorrectionDisabled?: boolean;
         playbackModesDisabled?: boolean;
         playbackPositionKeys?: readonly string[];
         profile?: string;
@@ -223,7 +223,7 @@ async function makePlaybackEngine(
     const playbackEngine = new PlaybackEngine({
         settingsProvider,
         appIntegration: overrides.appIntegration ?? true,
-        autoPauseCorrectionSuppressed: overrides.autoPauseCorrectionSuppressed ?? false,
+        autoPauseCorrectionDisabled: overrides.autoPauseCorrectionDisabled ?? false,
         subtitles,
         playbackModesDisabled: overrides.playbackModesDisabled ?? false,
         playbackModesSuppressed: false,
@@ -665,7 +665,7 @@ describe('PlaybackEngine', () => {
                 activeProfile: async () => undefined,
             } as unknown as SettingsProvider,
             appIntegration: true,
-            autoPauseCorrectionSuppressed: false,
+            autoPauseCorrectionDisabled: false,
             subtitles: [],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
@@ -978,6 +978,82 @@ describe('PlaybackEngine', () => {
         });
     });
 
+    it('publishes changing invisible placeholders as showing membership changes within an overlap group', async () => {
+        const firstTrack = { ...subtitle, end: 5000, originalEnd: 5000, track: 0, index: 0 };
+        const secondTrack = {
+            ...secondSubtitle,
+            start: 3000,
+            originalStart: 3000,
+            end: 4000,
+            originalEnd: 4000,
+            track: 1,
+            index: 1,
+        };
+        const harness = await makePlaybackEngine([PlayMode.normal], 1500, [firstTrack, secondTrack]);
+
+        harness.playbackEngine.bind();
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            paused: false,
+        });
+
+        await harness.driver.time(3500);
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 3500,
+            showingSubtitleIndexes: [0, 1],
+            paused: false,
+        });
+
+        await harness.driver.time(4500);
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 4500,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            paused: false,
+        });
+    });
+
+    it('stops rendering layout placeholders when subtitles become hidden', async () => {
+        const firstTrack = { ...subtitle, end: 5000, originalEnd: 5000, track: 0, index: 0 };
+        const secondTrack = {
+            ...secondSubtitle,
+            start: 3000,
+            originalStart: 3000,
+            end: 4000,
+            originalEnd: 4000,
+            track: 1,
+            index: 1,
+        };
+        const harness = await makePlaybackEngine([PlayMode.normal], 1500, [firstTrack, secondTrack], {
+            paused: true,
+            settings: { subtitleVisibility: SubtitleVisibility.whilePaused },
+        });
+
+        harness.playbackEngine.bind();
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            paused: true,
+        });
+
+        await harness.driver.start();
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 1500,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            hiddenSubtitleIndexes: [0, 1],
+            paused: false,
+        });
+    });
+
     it('retains a live playback rate across every post-ready settings change', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], 1500, [subtitle], {
             settings: { rememberPlaybackRate: true },
@@ -1214,9 +1290,9 @@ describe('PlaybackEngine', () => {
         expect(harness.seeks).toEqual([1999]);
     });
 
-    it('auto-pauses without correcting the timestamp when correction is suppressed', async () => {
+    it('auto-pauses without correcting the timestamp when correction is disabled', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
         });
 
         await harness.driver.time(2100);
@@ -1239,9 +1315,43 @@ describe('PlaybackEngine', () => {
         });
     });
 
+    it('preserves layout placeholders from the auto-pause timestamp when correction is disabled', async () => {
+        const first = { ...subtitle, index: 0 };
+        const connecting = {
+            ...subtitle,
+            start: 1500,
+            originalStart: 1500,
+            end: 2500,
+            originalEnd: 2500,
+            track: 1,
+            index: 1,
+        };
+        const future = {
+            ...subtitle,
+            start: 2200,
+            originalStart: 2200,
+            end: 3000,
+            originalEnd: 3000,
+            track: 2,
+            index: 2,
+        };
+        const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [first, connecting, future], {
+            autoPauseCorrectionDisabled: true,
+        });
+
+        await harness.driver.time(3100);
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 3100,
+            showingSubtitleIndexes: [0, 1],
+            invisibleSubtitleIndexes: [2],
+            paused: true,
+        });
+    });
+
     it('releases the automatic-pause subtitle snapshot on a user seek', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
         });
 
         await harness.driver.time(2100);
@@ -1256,7 +1366,7 @@ describe('PlaybackEngine', () => {
 
     it('publishes the released automatic-pause subtitle snapshot when a user seek is canceled', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
         });
 
         await harness.driver.time(2100);
@@ -1272,7 +1382,7 @@ describe('PlaybackEngine', () => {
 
     it('releases the automatic-pause subtitle snapshot when subtitles are replaced', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
         });
 
         await harness.driver.time(2100);
@@ -1287,7 +1397,7 @@ describe('PlaybackEngine', () => {
 
     it('publishes the released automatic-pause subtitle snapshot for an equivalent subtitle replacement', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
         });
 
         await harness.driver.time(2100);
@@ -1302,7 +1412,7 @@ describe('PlaybackEngine', () => {
 
     it('preserves an empty subtitle snapshot from the intended automatic-pause timestamp', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle, secondSubtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
             settings: { subtitleTriggerEndOffset: 500 },
         });
 
@@ -1317,7 +1427,7 @@ describe('PlaybackEngine', () => {
 
     it('releases the automatic-pause subtitle snapshot when subtitle visibility changes', async () => {
         const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-            autoPauseCorrectionSuppressed: true,
+            autoPauseCorrectionDisabled: true,
         });
 
         await harness.driver.time(2100);
@@ -1490,7 +1600,7 @@ describe('PlaybackEngine', () => {
                 activeProfile: async () => undefined,
             } as unknown as SettingsProvider,
             appIntegration: true,
-            autoPauseCorrectionSuppressed: false,
+            autoPauseCorrectionDisabled: false,
             subtitles: [subtitle],
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
@@ -2058,7 +2168,7 @@ describe('PlaybackEngine', () => {
         try {
             const error = new Error('play failed');
             const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-                autoPauseCorrectionSuppressed: true,
+                autoPauseCorrectionDisabled: true,
                 settings: {
                     ...resumingAutoPauseSettings,
                     autoPausePreference: AutoPausePreference.atEnd,
@@ -2090,7 +2200,7 @@ describe('PlaybackEngine', () => {
 
         try {
             const harness = await makePlaybackEngine([PlayMode.autoPause], 1500, [subtitle], {
-                autoPauseCorrectionSuppressed: true,
+                autoPauseCorrectionDisabled: true,
                 settings: {
                     ...resumingAutoPauseSettings,
                     autoPausePreference: AutoPausePreference.atEnd,

@@ -18,8 +18,8 @@ export type PlaybackTimelineTransitionCause = 'user-seek' | 'internal-seek' | 'f
 export const maximumInternalSeekMismatchMs = 3000;
 
 export interface PlaybackPlanPause<T extends IndexedSubtitleModel> {
+    readonly timestampMs: number;
     readonly playbackModeSubtitlesAtPause: readonly T[];
-    readonly showingSubtitlesAtPause: readonly T[];
 }
 
 export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
@@ -112,6 +112,10 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     showingSubtitlesAt(timestampMs: number): readonly T[] {
         return this.timeline.showingSubtitlesAt(timestampMs);
+    }
+
+    invisibleSubtitlesAt(timestampMs: number): readonly T[] {
+        return this.timeline.invisibleSubtitlesAt(timestampMs);
     }
 
     replacePlan(
@@ -287,8 +291,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         }
 
         this.callbacks.pause({
+            timestampMs: event.timestampMs,
             playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
-            showingSubtitlesAtPause: this.showingSubtitlesAt(event.timestampMs),
         });
         return { autoPaused: true };
     }
@@ -306,8 +310,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
         if (action.pause && !options.alreadyAutoPaused) {
             this.callbacks.pause({
+                timestampMs: event.timestampMs,
                 playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
-                showingSubtitlesAtPause: this.showingSubtitlesAt(event.timestampMs),
             });
         }
         if (repeat) {
@@ -365,8 +369,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
             const pause = {
+                timestampMs: target,
                 playbackModeSubtitlesAtPause: this.pauseSubtitlesFor(this.timeline.startActionsAt(target)),
-                showingSubtitlesAtPause: this.showingSubtitlesAt(target),
             };
             if (shouldPause) this.callbacks.pause(pause);
             await seek;

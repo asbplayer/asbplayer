@@ -41,6 +41,7 @@ import {
     subtitleTimestampWithDelay,
     errorMessageFromVideo,
     formatAsSignedMs,
+    mapSubtitlesForDisplay,
     timeDurationDisplay,
 } from '@project/common/util';
 import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
@@ -190,6 +191,7 @@ const showingSubtitleHtml = (
 
 interface CachedShowingSubtitleProps {
     subtitle: IndexedSubtitleModel;
+    visible: boolean;
     domCache: OffscreenDomCache;
     renderHtml: (subtitle: IndexedSubtitleModel) => string;
     className?: string;
@@ -199,6 +201,7 @@ interface CachedShowingSubtitleProps {
 
 const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
     subtitle,
+    visible,
     domCache,
     renderHtml,
     className,
@@ -208,6 +211,8 @@ const CachedShowingSubtitle = React.memo(function CachedShowingSubtitle({
     return (
         <div
             className={className ? className : ''}
+            aria-hidden={!visible}
+            style={visible ? { pointerEvents: 'auto' } : { visibility: 'hidden', pointerEvents: 'none' }}
             onMouseOver={onMouseOver}
             onMouseOut={onMouseOut}
             ref={(ref) => {
@@ -260,6 +265,7 @@ const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProp
                     : { top: subtitleSettings.topSubtitlePositionOffset + baseOffset }),
                 ...(subtitleSettings.subtitlesWidth === -1 ? {} : { width: `${subtitleSettings.subtitlesWidth}%` }),
                 zIndex: subtitleZIndex ? 12 : 0,
+                pointerEvents: 'none',
             }}
         >
             {children}
@@ -382,6 +388,7 @@ export default function VideoPlayer({
     const subtitlesRef = useRef(subtitles);
     subtitlesRef.current = subtitles;
     const [showSubtitles, setShowSubtitles] = useState<IndexedSubtitleModel[]>([]);
+    const [invisibleSubtitles, setInvisibleSubtitles] = useState<IndexedSubtitleModel[]>([]);
     const [miscSettings, setMiscSettings] = useState<MiscSettings>(settings);
     const miscSettingsRef = useRef(miscSettings);
     miscSettingsRef.current = miscSettings;
@@ -410,7 +417,10 @@ export default function VideoPlayer({
     const [, setTopSubtitlePositionOffset] = useState<number>(subtitleSettings.topSubtitlePositionOffset);
     const showSubtitlesRef = useRef<IndexedSubtitleModel[]>([]);
     showSubtitlesRef.current = showSubtitles;
+    const invisibleSubtitlesRef = useRef<IndexedSubtitleModel[]>([]);
+    invisibleSubtitlesRef.current = invisibleSubtitles;
     const showingSubtitleIndexesRef = useRef<readonly number[]>([]);
+    const invisibleSubtitleIndexesRef = useRef<readonly number[]>([]);
     const playbackStateChangedRef = useRef<(state: PlaybackState) => void>(() => {});
     const clock = useMemo<Clock>(() => new Clock(() => performance.now()), []);
     const mousePositionRef = useRef<Point | undefined>(undefined);
@@ -620,7 +630,7 @@ export default function VideoPlayer({
         const playbackEngine = new PlaybackEngine({
             settingsProvider,
             appIntegration: extension.supportsAppIntegration,
-            autoPauseCorrectionSuppressed: false,
+            autoPauseCorrectionDisabled: false,
             subtitles: subtitlesRef.current,
             playbackModesDisabled: false,
             playbackModesSuppressed: false,
@@ -850,6 +860,7 @@ export default function VideoPlayer({
             playerChannel.offset(offset);
 
             setShowSubtitles([]);
+            setInvisibleSubtitles([]);
         });
         playerChannel.onSubtitlesUpdated((updatedSubtitles) => {
             updateSubtitleDomCacheRef.current?.(updatedSubtitles);
@@ -1049,27 +1060,46 @@ export default function VideoPlayer({
         playerChannel.loadSubtitles();
     }, [playerChannel]);
 
-    const updateShowingSubtitles = useCallback((showingSubtitleIndexes: readonly number[]) => {
-        const showingSubtitles = showingSubtitleIndexes
-            .map((index) => subtitlesRef.current[index])
-            .filter(
-                (subtitle): subtitle is IndexedSubtitleModel =>
-                    subtitle !== undefined && !disabledSubtitleTracksRef.current[subtitle.track]
-            )
-            .slice()
-            .sort(compareSubtitlesForDisplay);
-        if (arrayEquals(showingSubtitles, showSubtitlesRef.current, (left, right) => left === right)) {
-            return;
-        }
+    const updateShowingSubtitles = useCallback(
+        (showingSubtitleIndexes: readonly number[], invisibleSubtitleIndexes: readonly number[]) => {
+            const subtitlesForIndexes = (indexes: readonly number[]) =>
+                indexes
+                    .map((index) => subtitlesRef.current[index])
+                    .filter(
+                        (subtitle): subtitle is IndexedSubtitleModel =>
+                            subtitle !== undefined && !disabledSubtitleTracksRef.current[subtitle.track]
+                    )
+                    .slice()
+                    .sort(compareSubtitlesForDisplay);
+            const showingSubtitles = subtitlesForIndexes(showingSubtitleIndexes);
+            const nextInvisibleSubtitles = subtitlesForIndexes(invisibleSubtitleIndexes);
+            const showingChanged = !arrayEquals(showingSubtitles, showSubtitlesRef.current);
+            const invisibleChanged = !arrayEquals(nextInvisibleSubtitles, invisibleSubtitlesRef.current);
+            if (!showingChanged && !invisibleChanged) return;
 
-        showSubtitlesRef.current = showingSubtitles;
-        setShowSubtitles(showingSubtitles);
-        if (showingSubtitles.length > 0 && miscSettingsRef.current.autoCopyCurrentSubtitle && document.hasFocus()) {
-            navigator.clipboard.writeText(showingSubtitles.map((subtitle) => subtitle.text).join('\n')).catch(() => {
-                // ignore
-            });
-        }
-    }, []);
+            if (showingChanged) {
+                showSubtitlesRef.current = showingSubtitles;
+                setShowSubtitles(showingSubtitles);
+            }
+            if (invisibleChanged) {
+                invisibleSubtitlesRef.current = nextInvisibleSubtitles;
+                setInvisibleSubtitles(nextInvisibleSubtitles);
+            }
+            if (
+                showingChanged &&
+                showingSubtitles.length > 0 &&
+                miscSettingsRef.current.autoCopyCurrentSubtitle &&
+                document.hasFocus()
+            ) {
+                navigator.clipboard
+                    .writeText(showingSubtitles.map((subtitle) => subtitle.text).join('\n'))
+                    .catch(() => {
+                        // ignore
+                    });
+            }
+        },
+        []
+    );
 
     playbackStateChangedRef.current = (state) => {
         const hiddenSubtitleIndexes = state.hiddenSubtitleIndexes ?? [];
@@ -1077,11 +1107,15 @@ export default function VideoPlayer({
             (index) => !hiddenSubtitleIndexes.includes(index)
         );
         showingSubtitleIndexesRef.current = visibleSubtitleIndexes;
-        updateShowingSubtitles(visibleSubtitleIndexes);
+        const invisibleSubtitleIndexes = (state.invisibleSubtitleIndexes ?? []).filter(
+            (index) => !hiddenSubtitleIndexes.includes(index)
+        );
+        invisibleSubtitleIndexesRef.current = invisibleSubtitleIndexes;
+        updateShowingSubtitles(visibleSubtitleIndexes, invisibleSubtitleIndexes);
     };
 
     useEffect(() => {
-        updateShowingSubtitles(showingSubtitleIndexesRef.current);
+        updateShowingSubtitles(showingSubtitleIndexesRef.current, invisibleSubtitleIndexesRef.current);
     }, [disabledSubtitleTracks, updateShowingSubtitles]);
 
     const handleOffsetChange = useCallback(
@@ -2002,11 +2036,11 @@ export default function VideoPlayer({
         parent?.document?.body !== undefined &&
         parent.document.body.clientWidth === document.body.clientWidth;
 
-    const subtitleAlignmentForTrack = (track: number) => subtitleAlignments[track] ?? subtitleAlignments[0];
-    const elementForSubtitle = (subtitle: IndexedSubtitleModel) => (
+    const elementForSubtitle = (subtitle: IndexedSubtitleModel, visible: boolean) => (
         <CachedShowingSubtitle
             key={subtitle.index}
             subtitle={subtitle}
+            visible={visible}
             domCache={domCacheRef.current ?? getSubtitleDomCache()}
             renderHtml={getSubtitleHtml}
             onMouseOver={handleSubtitleMouseOver}
@@ -2014,8 +2048,14 @@ export default function VideoPlayer({
         />
     );
 
-    const subtitleElementsWithAlignment = (alignment: SubtitleAlignment) =>
-        showSubtitles.filter((s) => subtitleAlignmentForTrack(s.track) === alignment).map(elementForSubtitle);
+    const subtitleAlignmentForTrack = (track: number) => subtitleAlignments[track] ?? subtitleAlignments[0];
+    const subtitleElementsWithAlignment = (alignment: SubtitleAlignment) => {
+        const showing = showSubtitles.filter((subtitle) => subtitleAlignmentForTrack(subtitle.track) === alignment);
+        const invisible = invisibleSubtitles.filter(
+            (subtitle) => subtitleAlignmentForTrack(subtitle.track) === alignment
+        );
+        return mapSubtitlesForDisplay(showing, invisible, elementForSubtitle);
+    };
     const topSubtitleElements = displaySubtitles ? subtitleElementsWithAlignment('top') : [];
     const bottomSubtitleElements = displaySubtitles ? subtitleElementsWithAlignment('bottom') : [];
     const mobileOverlayModel = () => {

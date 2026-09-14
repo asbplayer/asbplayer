@@ -20,6 +20,7 @@ import {
     hex2ToPercent,
     hexToRgb,
     humanReadableTime,
+    mapSubtitlesForDisplay,
     inBatches,
     isKanaOnly,
     isKanaMoraPitchHigh,
@@ -1172,5 +1173,23 @@ it('sorts subtitles by track first, regardless of source index', () => {
     expect([...cues].sort(compareSubtitlesForDisplay)).toEqual([
         { track: 0, index: 1 },
         { track: 1, index: 0 },
+    ]);
+});
+
+it('maps showing and invisible subtitles in display order with their visibility', () => {
+    const showing = [
+        { track: 0, index: 1 },
+        { track: 2, index: 0 },
+    ];
+    const invisible = [
+        { track: 1, index: 3 },
+        { track: 2, index: 2 },
+    ];
+
+    expect(mapSubtitlesForDisplay(showing, invisible, (subtitle, visible) => ({ ...subtitle, visible }))).toEqual([
+        { track: 0, index: 1, visible: true },
+        { track: 1, index: 3, visible: false },
+        { track: 2, index: 0, visible: true },
+        { track: 2, index: 2, visible: false },
     ]);
 });
