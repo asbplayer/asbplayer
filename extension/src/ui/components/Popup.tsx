@@ -3,6 +3,7 @@ import type { Command, HttpPostMessage, OpenStatisticsOverlayMessage, PopupToExt
 import type { AsbplayerSettings, Profile } from '@project/common/settings';
 import { chromeCommandBindsToKeyBinds, dictionaryTrackEnabled } from '@project/common/settings';
 import SettingsForm from '@project/common/components/SettingsForm';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 import PanelIcon from '@project/common/components/PanelIcon';
 import LaunchIcon from '@mui/icons-material/Launch';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -234,6 +235,7 @@ const Popup = ({
                             extensionSupportsAutoCopyableTrackSetting
                             extensionSupportsDictionaryTokenStatusDisplayAlpha
                             extensionSupportsDictionaryYomitanMecab
+                            extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
                             forceVerticalTabs={false}

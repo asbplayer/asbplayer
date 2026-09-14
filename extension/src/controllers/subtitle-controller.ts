@@ -732,6 +732,27 @@ export default class SubtitleController {
         }, autoHideDuration);
     }
 
+    // Like notification(), but stays up until hideNotification() is called (e.g. while a clip is
+    // being processed).
+    persistentNotification(locKey: string, replacements?: { [key: string]: string }) {
+        const text = i18n.t(locKey, replacements ?? {});
+        this.notificationElementOverlay.setHtml([{ html: () => this._buildTextHtml(text) }]);
+
+        if (this.notificationElementOverlayHideTimeout) {
+            clearTimeout(this.notificationElementOverlayHideTimeout);
+            this.notificationElementOverlayHideTimeout = undefined;
+        }
+    }
+
+    hideNotification() {
+        if (this.notificationElementOverlayHideTimeout) {
+            clearTimeout(this.notificationElementOverlayHideTimeout);
+            this.notificationElementOverlayHideTimeout = undefined;
+        }
+
+        this.notificationElementOverlay.hide();
+    }
+
     showLoadedMessage(nonEmptyTrackIndex: number[]) {
         if (!this.subtitleFileNames) {
             return;
