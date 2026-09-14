@@ -6,6 +6,9 @@ import { dictionaryTrackEnabled } from '@project/common/settings';
 import type { DictionaryTrack } from '@project/common/settings';
 import { normalizedLookupTerms, normalizeSearchText } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
+import { findTokenContainingSearch } from '@project/common/annotations/token-navigation';
+import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
+import type { TokenSelectionRequestOptions } from '@project/common/app/hooks/use-token-selection';
 
 const findDelayMs = 300;
 
@@ -41,6 +44,8 @@ interface UseSubtitleFindParams {
     virtuosoRef: RefObject<TableVirtuosoHandle | null>;
     visibleRangeRef: MutableRefObject<ListRange>;
     setHighlightedJumpToSubtitleIndex: (index: number | undefined) => void;
+    requestTokenSelection?: (target: TokenSelectionLocation, options?: TokenSelectionRequestOptions) => void;
+    clearTokenSelection?: () => void;
 }
 
 export const useSubtitleFind = ({
@@ -53,6 +58,8 @@ export const useSubtitleFind = ({
     virtuosoRef,
     visibleRangeRef,
     setHighlightedJumpToSubtitleIndex,
+    requestTokenSelection,
+    clearTokenSelection,
 }: UseSubtitleFindParams) => {
     const [open, setOpen] = useState<boolean>(false);
     const [query, setQuery] = useState<string>('');
@@ -166,6 +173,28 @@ export const useSubtitleFind = ({
     const matchesRef = useRef(matches);
     matchesRef.current = matches;
 
+    const findSearchTerms = useMemo(() => {
+        const trimmed = query.trim();
+        if (!trimmed || parseRegexQuery(query) !== undefined) return [];
+        return normalizedLookupTerms(trimmed).concat(expansion.query === trimmed ? expansion.terms : []);
+    }, [query, expansion]);
+
+    const highlightTokenIfPresent = useCallback(
+        (subtitleIndex: number) => {
+            if (!requestTokenSelection) return;
+            const subtitle = subtitleListRef.current?.[subtitleIndex];
+            const tokenSelection = findTokenContainingSearch(subtitle, findSearchTerms, parseRegexQuery(query));
+
+            if (tokenSelection) {
+                requestTokenSelection(tokenSelection, { focusContainer: false, claimOwner: true });
+                return;
+            }
+
+            clearTokenSelection?.();
+        },
+        [clearTokenSelection, findSearchTerms, query, requestTokenSelection, subtitleListRef]
+    );
+
     const scrollToMatch = useCallback(
         (subtitleIndex: number) => {
             lastScrollTimestampRef.current = Date.now();
@@ -177,8 +206,9 @@ export const useSubtitleFind = ({
                 });
             }
             setHighlightedJumpToSubtitleIndex(subtitleIndex);
+            highlightTokenIfPresent(subtitleIndex);
         },
-        [hiddenRef, lastScrollTimestampRef, setHighlightedJumpToSubtitleIndex, virtuosoRef]
+        [hiddenRef, highlightTokenIfPresent, lastScrollTimestampRef, setHighlightedJumpToSubtitleIndex, virtuosoRef]
     );
 
     useEffect(() => {
@@ -190,6 +220,7 @@ export const useSubtitleFind = ({
         if (!matches.length) {
             setHighlightedJumpToSubtitleIndex(undefined);
             setCurrentMatchPosition(0);
+            clearTokenSelection?.();
             return;
         }
         const firstVisibleIndex = visibleRangeRef.current.startIndex;
@@ -206,6 +237,7 @@ export const useSubtitleFind = ({
         expansion.query,
         yomitans.length,
         scrollToMatch,
+        clearTokenSelection,
         setHighlightedJumpToSubtitleIndex,
         visibleRangeRef,
     ]);
@@ -231,7 +263,8 @@ export const useSubtitleFind = ({
         setQuery('');
         setCurrentMatchPosition(0);
         setHighlightedJumpToSubtitleIndex(undefined);
-    }, [setHighlightedJumpToSubtitleIndex]);
+        clearTokenSelection?.();
+    }, [clearTokenSelection, setHighlightedJumpToSubtitleIndex]);
 
     useEffect(() => {
         const handleGlobalKeyDown = (event: KeyboardEvent) => {
