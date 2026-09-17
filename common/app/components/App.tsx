@@ -1756,14 +1756,12 @@ function App({
                         }
                     }
                     if (handleFiles({ files })) {
-                        void promoteBufferedHandlesInFileSession(files.map((f) => f.id));
-                        void saveCachedSubtitleFilesToFileSession(cachedSubtitleFiles).catch((e) => {
-                            asbError('app/session', 'Failed to cache online subtitles:', e);
-                            handleError(e);
-                        });
+                        await saveCachedSubtitleFilesToFileSession(cachedSubtitleFiles);
+                        await promoteBufferedHandlesInFileSession(files.map((f) => f.id));
                         closeSubtitleTrackSelector();
                     }
                 } catch (e) {
+                    asbError('app/session', 'Failed to cache online subtitles:', e);
                     handleError(e);
                 } finally {
                     setSubtitleTrackSelectorDisabled(false);

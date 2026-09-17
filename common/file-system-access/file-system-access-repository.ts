@@ -65,6 +65,13 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
     private readonly _db = new FileSessionDatabase();
     private readonly _semaphore = new AsyncSemaphore({ permits: 1 });
 
+    private async _replace(record: FileSessionRecord) {
+        await this._db.transaction('rw', this._db.sessions, async () => {
+            await this._db.sessions.clear();
+            await this._db.sessions.add(record);
+        });
+    }
+
     async fetch(): Promise<FileSessionRecord | undefined> {
         const records = await this._db.sessions.orderBy('timestamp').reverse().limit(1).toArray();
         return records.length > 0 ? records[0] : undefined;
@@ -87,8 +94,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 ],
                 cachedSubtitleFiles: incoming.cachedSubtitleFiles ?? existing?.cachedSubtitleFiles,
             };
-            await this._db.sessions.clear();
-            await this._db.sessions.add({ ...merged, id: 1, timestamp: Date.now() });
+            await this._replace({ ...merged, id: 1, timestamp: Date.now() });
         } finally {
             void this._semaphore.release(permit);
         }
@@ -105,8 +111,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             }
 
             const { videoHandle, subtitleHandles, bufferedSubtitleHandles, cachedSubtitleFiles } = existing;
-            await this._db.sessions.clear();
-            await this._db.sessions.add({
+            await this._replace({
                 videoHandle: videoHandle !== undefined && ids.includes(videoHandle.id) ? videoHandle : undefined,
                 subtitleHandles: subtitleHandles.filter((h) => ids.includes(h.id)),
                 bufferedSubtitleHandles: bufferedSubtitleHandles?.filter((h) => ids.includes(h.id)),
@@ -139,8 +144,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 ...existing.subtitleHandles,
                 ...bufferedSubtitleHandles.filter((h) => ids.includes(h.id)),
             ];
-            await this._db.sessions.clear();
-            await this._db.sessions.add({
+            await this._replace({
                 videoHandle: existing.videoHandle,
                 subtitleHandles,
                 cachedSubtitleFiles: existing.cachedSubtitleFiles,
@@ -163,8 +167,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
             }
 
             const { videoHandle, subtitleHandles, cachedSubtitleFiles } = existing;
-            await this._db.sessions.clear();
-            await this._db.sessions.add({
+            await this._replace({
                 videoHandle,
                 subtitleHandles,
                 cachedSubtitleFiles,
@@ -186,8 +189,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 return;
             }
 
-            await this._db.sessions.clear();
-            await this._db.sessions.add({
+            await this._replace({
                 videoHandle: existing?.videoHandle,
                 subtitleHandles: existing?.subtitleHandles ?? [],
                 bufferedSubtitleHandles: existing?.bufferedSubtitleHandles,
