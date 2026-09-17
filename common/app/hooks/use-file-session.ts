@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { FileWithId } from '@project/common/file-selector';
 import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
 import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '@project/common/file-system-access';
 
@@ -17,21 +18,26 @@ export const useFileSession = () => {
     useEffect(() => {
         if (!fileSessionRepository) return;
         void fileSessionRepository.fetch().then((record) => {
-            if (record && (record.videoHandle || record.subtitleHandles.length > 0)) {
+            if (
+                record &&
+                (record.videoHandle ||
+                    record.subtitleHandles.length > 0 ||
+                    (record.cachedSubtitleFiles?.length ?? 0) > 0)
+            ) {
                 setCanRestoreLastSession(true);
             }
         });
     }, [fileSessionRepository]);
 
     const saveSession = useCallback(
-        async ({ videoHandle, subtitleHandles }: Omit<FileSessionRecord, 'id' | 'timestamp'>) => {
+        async ({ videoHandle, subtitleHandles, cachedSubtitleFiles }: Omit<FileSessionRecord, 'id' | 'timestamp'>) => {
             if (!fileSessionRepository) return;
 
-            if (!videoHandle && subtitleHandles.length === 0) {
+            if (!videoHandle && subtitleHandles.length === 0 && (cachedSubtitleFiles?.length ?? 0) === 0) {
                 return;
             }
 
-            await fileSessionRepository.merge({ videoHandle, subtitleHandles });
+            await fileSessionRepository.merge({ videoHandle, subtitleHandles, cachedSubtitleFiles });
             setCanRestoreLastSession(true);
         },
         [fileSessionRepository]
@@ -64,6 +70,16 @@ export const useFileSession = () => {
         await fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
 
+    const saveCachedSubtitleFilesToSession = useCallback(
+        async (files: FileWithId[]) => {
+            await fileSessionRepository?.setCachedSubtitleFiles(files);
+            if (files.length > 0) {
+                setCanRestoreLastSession(true);
+            }
+        },
+        [fileSessionRepository]
+    );
+
     useEffect(() => {
         void fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
@@ -83,6 +99,7 @@ export const useFileSession = () => {
         saveBufferedHandlesToSession,
         promoteBufferedHandlesInSession,
         clearBufferedHandlesInSession,
+        saveCachedSubtitleFilesToSession,
         retainHandlesInSession,
     };
 };
