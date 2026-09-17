@@ -41,6 +41,22 @@ it('retains only cached online subtitles that are still loaded', async () => {
     expect(record?.cachedSubtitleFiles?.map((f) => f.id)).toEqual(['selected']);
 });
 
+it('preserves cached online subtitles while merging local file handles', async () => {
+    const repository = new IndexedDBFileSessionRepository();
+    await repository.setCachedSubtitleFiles([{ id: 'online', file: new File(['online'], 'online.srt') }]);
+
+    await repository.merge({
+        videoHandle: { id: 'video', handle: { kind: 'file', name: 'video.mp4' } as FileSystemFileHandle },
+        subtitleHandles: [{ id: 'local', handle: { kind: 'file', name: 'local.srt' } as FileSystemFileHandle }],
+    });
+
+    const record = await repository.fetch();
+    expect(record?.videoHandle?.handle.name).toEqual('video.mp4');
+    expect(record?.subtitleHandles.map((f) => f.handle.name)).toEqual(['local.srt']);
+    expect(record?.cachedSubtitleFiles?.map((f) => f.id)).toEqual(['online']);
+    expect(await readFile(record!.cachedSubtitleFiles![0].file)).toEqual('online');
+});
+
 it('preserves cached online subtitles while clearing buffered local subtitle handles', async () => {
     const repository = new IndexedDBFileSessionRepository();
     await repository.setCachedSubtitleFiles([{ id: 'online', file: new File(['online'], 'online.ass') }]);

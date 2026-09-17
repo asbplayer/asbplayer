@@ -56,7 +56,9 @@ class FileSessionDatabase extends Dexie {
 export interface FileSessionRepository {
     fetch: () => Promise<FileSessionRecord | undefined>;
     /** Merge new handles into the existing record, mirroring handleFiles' source-merge logic. */
-    merge: (incoming: Omit<FileSessionRecord, 'id' | 'timestamp'>) => Promise<void>;
+    merge: (
+        incoming: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles' | 'bufferedSubtitleHandles'>
+    ) => Promise<void>;
     setCachedSubtitleFiles: (files: FileWithId[]) => Promise<void>;
     clear: () => Promise<void>;
 }
@@ -77,7 +79,9 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
         return records.length > 0 ? records[0] : undefined;
     }
 
-    async merge(incoming: Omit<FileSessionRecord, 'id' | 'timestamp'>): Promise<void> {
+    async merge(
+        incoming: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles' | 'bufferedSubtitleHandles'>
+    ): Promise<void> {
         const permit = await this._semaphore.acquire();
 
         try {
@@ -92,7 +96,7 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                     ...(existing?.bufferedSubtitleHandles ?? []),
                     ...(incoming?.bufferedSubtitleHandles ?? []),
                 ],
-                cachedSubtitleFiles: incoming.cachedSubtitleFiles ?? existing?.cachedSubtitleFiles,
+                cachedSubtitleFiles: existing?.cachedSubtitleFiles,
             };
             await this._replace({ ...merged, id: 1, timestamp: Date.now() });
         } finally {

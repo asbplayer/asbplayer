@@ -30,14 +30,14 @@ export const useFileSession = () => {
     }, [fileSessionRepository]);
 
     const saveSession = useCallback(
-        async ({ videoHandle, subtitleHandles, cachedSubtitleFiles }: Omit<FileSessionRecord, 'id' | 'timestamp'>) => {
+        async ({ videoHandle, subtitleHandles }: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles'>) => {
             if (!fileSessionRepository) return;
 
-            if (!videoHandle && subtitleHandles.length === 0 && (cachedSubtitleFiles?.length ?? 0) === 0) {
+            if (!videoHandle && subtitleHandles.length === 0) {
                 return;
             }
 
-            await fileSessionRepository.merge({ videoHandle, subtitleHandles, cachedSubtitleFiles });
+            await fileSessionRepository.merge({ videoHandle, subtitleHandles });
             setCanRestoreLastSession(true);
         },
         [fileSessionRepository]
