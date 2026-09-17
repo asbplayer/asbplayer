@@ -24,6 +24,7 @@ import type {
 } from '@project/common/settings';
 import {
     changeForTextSubtitleSetting,
+    subtitlesWidthCssValue,
     textSubtitleSettingsForTrack,
     PauseOnHoverMode,
     allTextSubtitleSettings,
@@ -250,6 +251,7 @@ const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProp
     ref
 ) {
     const classes = useSubtitleContainerStyles();
+    const width = subtitlesWidthCssValue(subtitleSettings);
     return (
         <div
             ref={ref}
@@ -258,7 +260,7 @@ const SubtitleContainer = React.forwardRef<HTMLDivElement, SubtitleContainerProp
                 ...(alignment === 'bottom'
                     ? { bottom: subtitleSettings.subtitlePositionOffset + baseOffset }
                     : { top: subtitleSettings.topSubtitlePositionOffset + baseOffset }),
-                ...(subtitleSettings.subtitlesWidth === -1 ? {} : { width: `${subtitleSettings.subtitlesWidth}%` }),
+                ...(width === undefined ? {} : { width }),
                 zIndex: subtitleZIndex ? 12 : 0,
             }}
         >

@@ -153,6 +153,7 @@ export const defaultSettings: AsbplayerSettings = {
     thumbnailPreview: false,
     subtitleTracksV2: [],
     subtitlesWidth: -1,
+    subtitlesWidthUnit: '%',
     audioPaddingStart: 0,
     audioPaddingEnd: 500,
     maxImageWidth: 0,

@@ -1,4 +1,4 @@
-import type { SubtitleAlignment } from '@project/common/settings';
+import type { SubtitlesWidthUnit, SubtitleAlignment } from '@project/common/settings';
 import {
     SettingsProvider,
     SubtitleListTimestampDisplay,
@@ -130,6 +130,7 @@ const subtitleSettings = {
     subtitlePositionOffset: 70,
     topSubtitlePositionOffset: 70,
     subtitlesWidth: 100,
+    subtitlesWidthUnit: '%' as SubtitlesWidthUnit,
     subtitleTracksV2: [
         {
             subtitleSize: 36,
