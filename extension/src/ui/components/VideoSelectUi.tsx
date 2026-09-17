@@ -94,6 +94,9 @@ export default function VideoSelectUi({ bridge }: Props) {
         bridge.sendMessageFromServer(message);
     }, [bridge]);
 
+    const selectedVideoElementImageDataUrl = selectedVideoElementSrc
+        ? videoElements.find((v) => v.src === selectedVideoElementSrc)!.imageDataUrl
+        : undefined;
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
@@ -130,7 +133,12 @@ export default function VideoSelectUi({ bridge }: Props) {
                                     >
                                         {videoElements.map((v) => (
                                             <MenuItem value={v.src} key={v.src}>
-                                                <img style={{ maxWidth: 20, marginRight: 12 }} src={v.imageDataUrl} />
+                                                {v.imageDataUrl && (
+                                                    <img
+                                                        style={{ maxWidth: 20, marginRight: 12 }}
+                                                        src={v.imageDataUrl}
+                                                    />
+                                                )}
                                                 {v.preferred && '* '}
                                                 {v.src}
                                             </MenuItem>
@@ -138,14 +146,8 @@ export default function VideoSelectUi({ bridge }: Props) {
                                     </TextField>
                                 </Grid>
                                 <Grid item style={{ maxWidth: '100%' }}>
-                                    {selectedVideoElementSrc !== '' && (
-                                        <img
-                                            style={{ width: '100%' }}
-                                            src={
-                                                videoElements.find((v) => v.src === selectedVideoElementSrc)!
-                                                    .imageDataUrl
-                                            }
-                                        />
+                                    {selectedVideoElementImageDataUrl && (
+                                        <img style={{ width: '100%' }} src={selectedVideoElementImageDataUrl} />
                                     )}
                                 </Grid>
                             </Grid>

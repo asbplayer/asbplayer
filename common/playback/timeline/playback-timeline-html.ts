@@ -34,6 +34,13 @@ export const buildPlaybackTimelineExportPlan = <T extends IndexedSubtitleModel>(
         playbackRate,
         fastForwardModePlaybackRate: settings.fastForwardModePlaybackRate,
         fastForwardPlaybackMinimumSkipIntervalMs: settings.fastForwardPlaybackMinimumSkipIntervalMs,
+        autoPauseResumeMode: settings.autoPauseResumeMode,
+        autoPauseResumeDelayMs: settings.autoPauseResumeDelayMs,
+        autoPauseFixedDurationMs: settings.autoPauseFixedDurationMs,
+        autoPauseMinimumDurationMs: settings.autoPauseMinimumDurationMs,
+        autoPauseMaximumDurationMs: settings.autoPauseMaximumDurationMs,
+        autoPauseTimePerCharacterMs: settings.autoPauseTimePerCharacterMs,
+        subtitleVisibility: settings.subtitleVisibility,
     });
 
     return plan;

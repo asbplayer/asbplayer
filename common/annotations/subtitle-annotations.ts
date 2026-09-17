@@ -37,6 +37,7 @@ import type {
 } from '@project/common/settings';
 import {
     areDictionaryTracksEqual,
+    areDictionaryTracksRenderOnly,
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
     dictionaryTrackEnabled,
@@ -249,6 +250,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
     private profile: string | undefined | null;
     private anki: Anki | undefined;
+    private lastAnkiSettings?: { url: string; apiKey: string };
     private ankiConnectionError = false;
     private readonly fetcher?: Fetcher;
     private trackStates: TrackState[];
@@ -277,11 +279,16 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     private annotationsBuilding: boolean;
     private annotationsBuildingCurrentIndexes: Set<number>;
     private shouldCancelBuild: boolean; // Set to true to stop current build, checked after each async calls
+    private pendingBuild?: {
+        annotationsStartIndex: number;
+        annotationsEndIndex: number;
+        init?: boolean;
+    };
     private tokenRequestFailedForTracks: Set<number>;
 
     private readonly subtitleAnnotationsUpdated: (
-        updatedSubtitles: IndexedSubtitleModel[],
-        dt: DictionaryTrack[]
+        updatedSubtitles: readonly IndexedSubtitleModel[],
+        dt: readonly DictionaryTrack[]
     ) => void;
     private readonly getMediaTimeMs?: () => number;
 
@@ -296,7 +303,10 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         settingsProvider: SettingsProvider,
         options: SubtitleCollectionOptions,
         mediaId: string,
-        subtitleAnnotationsUpdated: (updatedSubtitles: IndexedSubtitleModel[], dt: DictionaryTrack[]) => void,
+        subtitleAnnotationsUpdated: (
+            updatedSubtitles: readonly IndexedSubtitleModel[],
+            dt: readonly DictionaryTrack[]
+        ) => void,
         getMediaTimeMs?: () => number,
         fetcher?: Fetcher
     ) {
@@ -397,6 +407,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
 
     private _resetCache() {
         if (this.annotationsBuilding) this.shouldCancelBuild = true;
+        this.pendingBuild = undefined;
         this.profile = null;
         this.anki = undefined;
         this.trackStates.forEach((ts) => ts.resetYomitan());
@@ -429,18 +440,39 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     settingsUpdated(settings: AsbplayerSettings) {
-        let settingsAreEqual =
-            (!this.anki ||
-                (this.anki.ankiConnectUrl === settings.ankiConnectUrl &&
-                    this.anki.ankiConnectApiKey === settings.ankiConnectApiKey)) &&
-            this.trackStates.length === settings.dictionaryTracks.length;
+        const ankiSettingsChanged =
+            this.lastAnkiSettings === undefined ||
+            this.lastAnkiSettings.url !== settings.ankiConnectUrl ||
+            this.lastAnkiSettings.apiKey !== settings.ankiConnectApiKey;
+        this.lastAnkiSettings = {
+            url: settings.ankiConnectUrl,
+            apiKey: settings.ankiConnectApiKey,
+        };
+        let settingsAreEqual = !ankiSettingsChanged && this.trackStates.length === settings.dictionaryTracks.length;
+        let renderSettingsChanged = false;
         for (const [index, dt] of settings.dictionaryTracks.entries()) {
             const ts = this.trackStates[index];
             if (ts && areDictionaryTracksEqual(ts.dt, dt)) continue;
+            if (ts && areDictionaryTracksRenderOnly(ts.dt, dt)) {
+                renderSettingsChanged = true;
+                continue;
+            }
             settingsAreEqual = false;
             break;
         }
-        if (settingsAreEqual) return;
+        if (settingsAreEqual) {
+            if (renderSettingsChanged) {
+                for (const [index, dt] of settings.dictionaryTracks.entries()) {
+                    const ts = this.trackStates[index];
+                    if (ts && !areDictionaryTracksEqual(ts.dt, dt)) ts.updateDictionaryTrack(dt);
+                }
+                const tokenizedSubtitles = this._subtitles.filter((s) => s.tokenization);
+                if (tokenizedSubtitles.length) {
+                    this.subtitleAnnotationsUpdated(tokenizedSubtitles, settings.dictionaryTracks);
+                }
+            }
+            return;
+        }
 
         this._updateGenerateStatistics(
             this.trackStates.map((ts) => ts.dt),
@@ -463,7 +495,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         }
         this._resetCache();
         const { annotationsStartIndex, annotationsEndIndex } = this._getAnnotationsIndexes(true);
-        void this._buildAnnotations(annotationsStartIndex, annotationsEndIndex, true);
+        if (this.annotationsBuilding) {
+            this.pendingBuild = { annotationsStartIndex, annotationsEndIndex, init: true };
+        } else {
+            void this._buildAnnotations(annotationsStartIndex, annotationsEndIndex, true);
+        }
     }
 
     tokensWereModified(modifiedTokens: string[]) {
@@ -585,6 +621,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             if (!this.anki) {
                 try {
                     const settings = await this.settingsProvider.getAll();
+                    if (this.lastAnkiSettings === undefined) {
+                        this.lastAnkiSettings = { url: settings.ankiConnectUrl, apiKey: settings.ankiConnectApiKey };
+                    }
                     this.anki = new Anki(settings, this.fetcher);
                     const permission = (await this.anki.requestPermission()).permission;
                     if (permission !== 'granted') throw new Error(`permission ${permission}`);
@@ -782,6 +821,13 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         this.subtitlesInterval = setInterval(() => {
             if (!this.subtitles.length) return;
 
+            if (this.pendingBuild && !this.annotationsBuilding) {
+                const { annotationsStartIndex, annotationsEndIndex, init } = this.pendingBuild;
+                this.pendingBuild = undefined;
+                void this._buildAnnotations(annotationsStartIndex, annotationsEndIndex, init);
+                return;
+            }
+
             if (
                 this.generateStatistics === true &&
                 this.statisticsBatchProcessedIndex < this.subtitles.length &&
@@ -877,8 +923,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         annotationsEndIndex: number,
         init?: boolean
     ): Promise<boolean> {
-        if (!this.subtitles.length) return true;
+        if (!this.subtitles.length) {
+            this.pendingBuild = undefined;
+            return true;
+        }
         if (this.annotationsBuilding) return false;
+        this.pendingBuild = undefined;
         let tokensRefreshed: string[] = [];
         const skipTracks: number[] = [];
         let buildWasCancelled = false;

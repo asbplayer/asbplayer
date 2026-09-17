@@ -1,3 +1,4 @@
+import { AutoPauseResumeMode, SubtitleVisibility } from '@project/common/settings';
 import { emptyTimingDriverCallbacks, makeTimeline } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
@@ -118,6 +119,23 @@ const timingDriver = (
 };
 
 describe('VideoFrameTimingDriver', () => {
+    it('classifies internal and user seek starts', async () => {
+        const video = new FakeVideo();
+        const seekStarts: string[] = [];
+        const driver = timingDriver(videoSource(video), {
+            onSeekStarted: (cause) => seekStarts.push(cause),
+        });
+        driver.bind();
+
+        const internalSeeked = driver.beginInternalSeek();
+        video.seek(3);
+        await internalSeeked;
+        video.dispatchEvent(new Event('seeking'));
+
+        expect(seekStarts).toEqual(['internal-seek', 'user-seek']);
+        driver.unbind();
+    });
+
     it('resolves internal seek completion from the native seeked event', async () => {
         const video = new FakeVideo();
         const driver = timingDriver(videoSource(video), {});
@@ -721,6 +739,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const repeatSeeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};
@@ -794,6 +819,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -884,6 +916,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const pauses: number[] = [];
@@ -960,6 +999,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const repeatSeeks: number[] = [];
         const discontinuities: number[] = [];
@@ -1047,6 +1093,13 @@ describe('VideoFrameTimingDriver', () => {
             playbackRate: 1,
             fastForwardModePlaybackRate: 2.5,
             fastForwardPlaybackMinimumSkipIntervalMs: 500,
+            autoPauseResumeMode: AutoPauseResumeMode.manual,
+            autoPauseResumeDelayMs: 300,
+            autoPauseFixedDurationMs: 2000,
+            autoPauseMinimumDurationMs: 500,
+            autoPauseMaximumDurationMs: 2000,
+            autoPauseTimePerCharacterMs: 100,
+            subtitleVisibility: SubtitleVisibility.whenDue,
         });
         const seeks: number[] = [];
         const driverRef: { current?: VideoFrameTimingDriver } = {};

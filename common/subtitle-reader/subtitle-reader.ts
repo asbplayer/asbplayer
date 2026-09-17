@@ -1,6 +1,7 @@
 import { compile as parseAss } from 'ass-compiler';
 import SrtParser from '@qgustavor/srt-parser';
 import { subtitlesToSrt } from '@project/common/subtitle-reader/subtitles-to-srt';
+import { removeSubtitleHtml } from '@project/common/util';
 import { WebVTT } from 'videojs-vtt.js';
 import { XMLParser } from 'fast-xml-parser';
 import type { SubtitleTextImage, Token, Tokenization } from '@project/common';
@@ -39,8 +40,6 @@ const netflixRubyRegex = new RegExp(
 // always consumed.
 const netflixRubyBaseRegex = new RegExp(`^[${netflixRubyBaseClass}]+$`, 'u');
 const netflixRubyReadingRegex = new RegExp(`^[^)]*[${netflixRubyKanaClass}]`, 'u');
-const helperElement = document.createElement('div');
-
 interface SubtitleNode {
     start: number;
     end: number;
@@ -346,7 +345,7 @@ export default class SubtitleReader {
                 const subtitle = {
                     start: Math.floor(start * 1000),
                     end: Math.floor((start + parseFloat(elm['@_dur'])) * 1000),
-                    text: this._filterText(this._decodeHTML(String(elm['#text']))),
+                    text: this._filterText(removeSubtitleHtml(String(elm['#text']))),
                     track,
                 };
 
@@ -409,7 +408,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                const text = this._decodeHTML(elm.innerHTML.replaceAll(/<br(\s[^\s]+)?(\/)?>/g, '\n'));
+                const text = removeSubtitleHtml(elm.innerHTML);
                 subtitles.push({
                     text: this._filterText(text),
                     start,
@@ -758,17 +757,6 @@ export default class SubtitleReader {
         return line;
     }
 
-    private _decodeHTML(text: string): string {
-        helperElement.innerHTML = text;
-
-        const rubyTextElements = [...helperElement.getElementsByTagName('rt')];
-        for (const rubyTextElement of rubyTextElements) {
-            rubyTextElement.remove();
-        }
-
-        return helperElement.textContent ?? helperElement.innerText;
-    }
-
     private _convertNetflixRubyToHtml(node: SubtitleNode) {
         if (!node.text) {
             return;
@@ -811,7 +799,7 @@ export default class SubtitleReader {
                 : text.replace(this._textFilter.regex, this._textFilter.replacement).trim();
 
         if (this._removeXml) {
-            text = this._decodeHTML(text);
+            text = removeSubtitleHtml(text);
         }
 
         return text;

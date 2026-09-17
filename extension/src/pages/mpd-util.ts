@@ -1,5 +1,6 @@
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { inferTracks, trackId } from '@project/extension/src/pages/util';
+import type { InferHooks } from '@project/extension/src/pages/util';
 import { inheritAttributes, stringToMpdXml, toM3u8, toPlaylists } from 'mpd-parser';
 
 export interface Segment {
@@ -12,9 +13,20 @@ export interface Playlist {
     segments: Segment[];
 }
 
+interface InferTracksFromMpdOptions {
+    onJson?: InferHooks['onJson'];
+    basename?: () => string;
+}
+
 export interface MpdTrackMetadata {
     mimeType?: string;
 }
+
+type MpdTrackExtractor = (
+    playlist: Playlist,
+    language: string,
+    metadata?: MpdTrackMetadata
+) => VideoDataSubtitleTrackDef | undefined;
 
 function parseMpdManifest(manifest: string, manifestUri: string) {
     const parsedManifestInfo = inheritAttributes(stringToMpdXml(manifest), { manifestUri });
@@ -38,11 +50,7 @@ function parseMpdManifest(manifest: string, manifestUri: string) {
 export const subtitleTracksFromMpdManifest = (
     mpdUrl: string,
     manifest: string,
-    trackExtractor: (
-        playlist: Playlist,
-        language: string,
-        metadata?: MpdTrackMetadata
-    ) => VideoDataSubtitleTrackDef | undefined
+    trackExtractor: MpdTrackExtractor
 ): VideoDataSubtitleTrack[] => {
     const { manifest: parsedManifest, metadata: metadataByRepresentationId } = parseMpdManifest(manifest, mpdUrl);
     const subGroups = parsedManifest.mediaGroups?.SUBTITLES?.subs ?? {};
@@ -68,7 +76,7 @@ export const subtitleTracksFromMpdManifest = (
 const tryExtractSubtitleTracks = async (
     mpdUrl: string,
     originalFetch: typeof window.fetch,
-    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
+    trackExtractor: MpdTrackExtractor
 ): Promise<VideoDataSubtitleTrack[]> => {
     const manifest = await (await originalFetch(mpdUrl)).text();
     return subtitleTracksFromMpdManifest(mpdUrl, manifest, trackExtractor);
@@ -76,16 +84,51 @@ const tryExtractSubtitleTracks = async (
 
 export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
     mpdUrlRegex: RegExp,
-    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
+    trackExtractor: MpdTrackExtractor,
+    options: InferTracksFromMpdOptions = {}
 ) => {
     let lastManifestUrl: string | undefined;
+    let lastManifestText: string | undefined;
 
     const originalXhrOpen = window.XMLHttpRequest.prototype.open;
+
     window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
         const url = args[1];
 
         if (typeof url === 'string' && mpdUrlRegex.test(url)) {
-            lastManifestUrl = url;
+            const requestedManifestUrl = url;
+
+            lastManifestUrl = requestedManifestUrl;
+            lastManifestText = undefined;
+
+            this.addEventListener(
+                'load',
+                () => {
+                    let manifestText: string | undefined;
+
+                    try {
+                        if (typeof this.responseText === 'string') {
+                            manifestText = this.responseText;
+                        }
+                    } catch {
+                        // responseText is unavailable for some response types.
+                    }
+
+                    if (manifestText === undefined && typeof this.response === 'string') {
+                        manifestText = this.response;
+                    }
+
+                    if (manifestText === undefined && this.responseXML !== null) {
+                        manifestText = new XMLSerializer().serializeToString(this.responseXML);
+                    }
+
+                    if (manifestText !== undefined && manifestText !== '') {
+                        lastManifestUrl = this.responseURL || requestedManifestUrl;
+                        lastManifestText = manifestText;
+                    }
+                },
+                { once: true }
+            );
         }
 
         // @ts-expect-error: forwarding original XHR arguments
@@ -93,14 +136,24 @@ export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
     };
 
     inferTracks({
+        onJson: options.onJson,
         onRequest: async (addTrack, setBasename) => {
-            setBasename(document.title);
+            setBasename(options.basename?.() ?? document.title);
 
-            if (lastManifestUrl !== undefined) {
-                const tracks = await tryExtractSubtitleTracks(lastManifestUrl, window.fetch, trackExtractor);
-                for (const track of tracks) {
-                    addTrack(track);
-                }
+            if (lastManifestUrl === undefined) {
+                return;
+            }
+
+            let tracks: VideoDataSubtitleTrack[];
+
+            if (lastManifestText !== undefined) {
+                tracks = subtitleTracksFromMpdManifest(lastManifestUrl, lastManifestText, trackExtractor);
+            } else {
+                tracks = await tryExtractSubtitleTracks(lastManifestUrl, window.fetch, trackExtractor);
+            }
+
+            for (const track of tracks) {
+                addTrack(track);
             }
         },
         waitForBasename: false,
@@ -109,7 +162,8 @@ export const inferTracksFromInterceptedMpdViaXMLHTTPRequest = (
 
 export const inferTracksFromInterceptedMpd = (
     mpdUrlRegex: RegExp,
-    trackExtractor: (playlist: Playlist, language: string) => VideoDataSubtitleTrackDef | undefined
+    trackExtractor: MpdTrackExtractor,
+    options: InferTracksFromMpdOptions = {}
 ) => {
     const originalFetch = window.fetch;
 
@@ -126,11 +180,13 @@ export const inferTracksFromInterceptedMpd = (
     };
 
     inferTracks({
+        onJson: options.onJson,
         onRequest: async (addTrack, setBasename) => {
-            setBasename(document.title);
+            setBasename(options.basename?.() ?? document.title);
 
             if (lastManifestUrl !== undefined) {
                 const tracks = await tryExtractSubtitleTracks(lastManifestUrl, window.fetch, trackExtractor);
+
                 for (const track of tracks) {
                     addTrack(track);
                 }

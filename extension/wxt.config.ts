@@ -95,6 +95,7 @@ export default defineConfig({
                         'asbplayer-locales/*',
                         'icon/image.png',
                         'netflix-page.js',
+                        'crunchyroll-page.js',
                         'youtube-page.js',
                         'stremio-page.js',
                         'tver-page.js',

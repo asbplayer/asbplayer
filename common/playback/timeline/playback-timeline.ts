@@ -32,6 +32,8 @@ export interface PlaybackTimelineEndAction {
 
 export interface PlaybackTimelineBlock {
     readonly id: string;
+    /** Subtitle indexes that formed this playback-mode block. */
+    readonly subtitleIndexes: readonly number[];
     readonly playbackModeStartMs: number;
     /** Final included timestamp for end actions such as auto-pause and repeat. */
     readonly playbackModeEndMs: number;

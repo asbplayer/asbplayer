@@ -1,4 +1,5 @@
 import type { VideoDataSubtitleTrack } from '@project/common';
+import { detectedSubtitleLabel, genericSubtitleDisplayLabel } from '@project/extension/src/pages/subtitle-discovery';
 import { Parser } from 'm3u8-parser';
 import {
     extractExtension,
@@ -105,9 +106,10 @@ export async function subtitleTrackSegmentsFromM3U8Manifest(
                                     (segment: any) => new URL(segment.uri, loadedManifest.url).href
                                 );
                                 const rawExtension = extractExtension(urls[0], 'vtt').toLowerCase();
+                                const language = typeof track.language === 'string' ? track.language : undefined;
                                 return trackFromDef({
-                                    label: label,
-                                    language: typeof track.language === 'string' ? track.language : undefined,
+                                    label: genericSubtitleDisplayLabel(label, language, detectedSubtitleLabel),
+                                    language,
                                     url: urls,
                                     extension:
                                         // A best-effort heuristic to treat XML subtitle segments in HLS as TTML

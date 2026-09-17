@@ -136,7 +136,8 @@ Thank you to all those who have contributed to asbplayer:
 [@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
 [@aramrw](https://github.com/aramrw),
 [@steckums](https://github.com/steckums),
-[@eXaminator](https://github.com/eXaminator)
+[@eXaminator](https://github.com/eXaminator),
+[@rajpiskala](https://github.com/rajpiskala)
 
 Thank you to all those who have translated asbplayer:
 

@@ -77,6 +77,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
             onTime: async () => {},
             onPlaybackStarted: async () => {},
             onPlaybackPaused: () => {},
+            onSeekStarted: () => {},
             onDiscontinuity: () => {},
             onCancel: () => {},
             onError: () => {},
@@ -247,6 +248,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private readonly onSeeking = () => {
         this.seeking = true;
         const preserveExpectedDiscontinuity = this.expectedInternalSeek || this.pendingSeekCompletion !== undefined;
+        this.callbacks.onSeekStarted(preserveExpectedDiscontinuity ? 'internal-seek' : 'user-seek');
         this.expectedInternalSeek = false;
         this.cancelScheduledUpdate();
         this.updates.clear({ preserveExpectedDiscontinuity });

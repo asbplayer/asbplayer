@@ -24,13 +24,14 @@ const subtitles: readonly IndexedSubtitleModel[] = [
 ];
 
 const makeController = () => {
-    const state = { currentTimeMs: 500, paused: false };
+    const state = { currentTimeMs: 500, paused: false, subtitlesVisible: true };
     let nowMs = 0;
     const playbackStates: PlaybackState[] = [];
     const controller = new PlaybackStateController({
         paused: () => state.paused,
         showingSubtitlesAt: (timestampMs) =>
             subtitles.filter(({ start, end }) => timestampMs >= start && timestampMs < end),
+        subtitlesVisible: () => state.subtitlesVisible,
         playbackStateChanged: (playbackState) => playbackStates.push(playbackState),
         now: () => nowMs,
     });
@@ -170,6 +171,21 @@ describe('PlaybackStateController', () => {
         expect(harness.playbackStates.at(-1)).toEqual({
             timestampMs: 1500,
             showingSubtitleIndexes: [1],
+            paused: false,
+        });
+    });
+
+    it('publishes active subtitles as hidden when visibility changes', () => {
+        const harness = makeController();
+
+        harness.controller.notify(500, { force: false });
+        harness.state.subtitlesVisible = false;
+        harness.controller.notify(500, { force: false });
+
+        expect(harness.playbackStates.at(-1)).toEqual({
+            timestampMs: 500,
+            showingSubtitleIndexes: [0],
+            hiddenSubtitleIndexes: [0],
             paused: false,
         });
     });

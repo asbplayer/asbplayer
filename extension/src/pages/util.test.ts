@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
+    canonicalLanguageTag,
     extractExtension,
+    getLocale,
     inferTracks,
+    languageDisplayName,
     mediaSourceIdentity,
     mediaSourceUrl,
     poll,
@@ -49,6 +52,40 @@ describe('subtitleFileExtensionForUrl', () => {
     it('preserves the declared format when a segment suffix is not independently supported', () => {
         expect(subtitleFileExtensionForUrl('https://example.com/subtitle.xml', 'ttml2')).toBe('ttml2');
         expect(subtitleFileExtensionForUrl('https://example.com/subtitle', 'dfxp')).toBe('dfxp');
+    });
+});
+
+describe('language names', () => {
+    it('parses normalized locales and rejects invalid language tags', () => {
+        expect(getLocale(' PT_br ')?.baseName).toBe('pt-BR');
+        expect(getLocale('ja-JP-u-ca-japanese')?.language).toBe('ja');
+        expect(getLocale('invalid!')).toBeUndefined();
+    });
+
+    it('canonicalizes whitespace and underscore-separated BCP-47 language tags', () => {
+        expect(canonicalLanguageTag(' PT_br ')).toBe('pt-BR');
+    });
+
+    it('removes Unicode locale extensions from canonical language tags', () => {
+        expect(canonicalLanguageTag('ja-JP-u-ca-japanese')).toBe('ja-JP');
+        const locale = getLocale('ja-JP-u-ca-japanese');
+        expect(locale).toBeDefined();
+        if (locale) expect(canonicalLanguageTag(locale)).toBe('ja-JP');
+    });
+
+    it('returns undefined for invalid language tags', () => {
+        expect(canonicalLanguageTag('invalid!')).toBeUndefined();
+    });
+
+    it('uses each canonical language autonym with standard language display', () => {
+        expect(languageDisplayName('ja')).toBe('日本語');
+        expect(languageDisplayName('es-419')).toBe('Español (Latinoamérica)');
+        expect(languageDisplayName(' JA_jp-u-ca-japanese ')).toBe('日本語 (日本)');
+    });
+
+    it('preserves valid unknown and invalid language tags', () => {
+        expect(languageDisplayName('qaa')).toBe('qaa');
+        expect(languageDisplayName('invalid!')).toBe('invalid!');
     });
 });
 

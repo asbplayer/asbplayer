@@ -111,6 +111,7 @@ export default function SettingsDialog({
                     extensionSupportsSubtitlesWidthSetting={extension.supportsSubtitlesWidthSetting}
                     extensionSupportsPauseOnHover={extension.supportsPauseOnHover}
                     extensionSupportsPlaybackEngine={extension.supportsPlaybackEngine}
+                    extensionSupportsAutoPauseResume={extension.supportsAutoPauseResume}
                     extensionSupportsExportCardBind={extension.supportsExportCardBind}
                     extensionSupportsPageSettings={extension.supportsPageSettings}
                     extensionSupportsDictionary={extension.supportsDictionary}

@@ -14,10 +14,18 @@
     pointer-events: auto !important;
 }
 
-.asbplayer-subtitles {
+.asbplayer-subtitles,
+.asbplayer-fullscreen-subtitles {
     text-align: center !important;
     color: white;
-    font-size: 24px;
+    text-shadow: none;
+    font-family: sans-serif;
+    font-size: 36px;
+    font-style: normal;
+    font-stretch: normal;
+    font-variant: normal;
+    letter-spacing: normal;
+    text-transform: none;
     padding-left: 10px;
     padding-right: 10px;
     user-select: text !important;
@@ -30,7 +38,9 @@
    size inheriting from the subtitle so the host page's element styles can't
    resize them. */
 .asbplayer-subtitles > span span,
-.asbplayer-subtitles > span ruby {
+.asbplayer-subtitles > span ruby,
+.asbplayer-fullscreen-subtitles > span span,
+.asbplayer-fullscreen-subtitles > span ruby {
     font-size: inherit !important;
 }
 
@@ -96,23 +106,6 @@
     white-space: pre-wrap !important;
     user-select: none;
     pointer-events: none;
-}
-
-.asbplayer-fullscreen-subtitles {
-    text-align: center !important;
-    color: white;
-    text-shadow:
-        0 0 2px black,
-        0 0 2px black,
-        0 0 2px black,
-        0 0 2px black;
-    font-size: 36px;
-    padding-left: 10px;
-    padding-right: 10px;
-    user-select: text !important;
-    cursor: text !important;
-    line-height: normal !important;
-    white-space: pre-wrap !important;
 }
 
 .asb-reading {

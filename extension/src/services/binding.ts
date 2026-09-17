@@ -364,6 +364,24 @@ export default class Binding {
         this.subtitleController.notification(options.notification);
     }
 
+    cycleAutoPauseResumeMode(): void {
+        const notification = this.playbackEngine.cycleAutoPauseResumeMode();
+        if (notification === undefined) return;
+        this.subtitleController.notification({
+            locKey: notification.locKey,
+            replacements: { value: i18n.t(notification.valueLocKey) },
+        });
+    }
+
+    toggleSubtitleVisibility(): void {
+        const notification = this.playbackEngine.toggleSubtitleVisibility();
+        if (notification === undefined) return;
+        this.subtitleController.notification({
+            locKey: notification.locKey,
+            replacements: { value: i18n.t(notification.valueLocKey) },
+        });
+    }
+
     private _handlePlaybackModesChanged(
         transition: PlayModeTransition,
         options: Omit<PlaybackModeNotificationFormatOptions, 'summarySeparator'> = {}
@@ -412,6 +430,7 @@ export default class Binding {
         return new PlaybackEngine({
             settingsProvider: this.settings,
             appIntegration: true,
+            autoPauseCorrectionSuppressed: disneyPlus,
             subtitles,
             playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
@@ -590,9 +609,7 @@ export default class Binding {
             sender: 'asbplayer-video',
             message: {
                 command: 'playbackState',
-                timestampMs: state.timestampMs,
-                showingSubtitleIndexes: [...state.showingSubtitleIndexes],
-                paused: state.paused,
+                ...state,
             },
             src: this._registeredVideoSrc,
         };

@@ -1,4 +1,5 @@
 export * from './settings';
+export * from './settings-dictionary';
 export * from './settings-provider';
 export * from './settings-import-export';
 export * from './test-card';

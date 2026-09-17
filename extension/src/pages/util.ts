@@ -1,6 +1,45 @@
 import { asbError } from '@project/common/util';
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
+export function getLocale(language: string): Intl.Locale | undefined {
+    try {
+        return new Intl.Locale(language.trim().replace(/_/g, '-'));
+    } catch {
+        return;
+    }
+}
+
+export function canonicalLanguageTag(language: Intl.Locale): string;
+export function canonicalLanguageTag(language: string): string | undefined;
+export function canonicalLanguageTag(language: string | Intl.Locale): string | undefined {
+    const locale = typeof language === 'string' ? getLocale(language) : language;
+    return locale?.baseName; // baseName normalizes for Intl.DisplayNames
+}
+
+function capitalizeFirstLetter(value: string, locale: string): string {
+    const firstCodePoint = value.codePointAt(0);
+    if (firstCodePoint === undefined) return value;
+    const firstCharacter = String.fromCodePoint(firstCodePoint);
+    return firstCharacter.toLocaleUpperCase(locale) + value.slice(firstCharacter.length);
+}
+
+export function languageDisplayName(language: string, locale: Intl.Locale | undefined = getLocale(language)): string {
+    const canonical = canonicalLanguageTag(language);
+    if (canonical === undefined || locale === undefined) return language;
+
+    try {
+        const displayLocale = canonicalLanguageTag(locale);
+        const displayName = new Intl.DisplayNames([displayLocale], {
+            type: 'language',
+            languageDisplay: 'standard',
+            fallback: 'none',
+        }).of(canonical);
+        return displayName === undefined ? language : capitalizeFirstLetter(displayName, displayLocale);
+    } catch {
+        return language;
+    }
+}
+
 export function extractExtension(url: string, fallback: string) {
     const path = url.split(/[?#]/)[0];
     const dotIndex = path.lastIndexOf('.');
