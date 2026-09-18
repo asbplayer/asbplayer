@@ -2,6 +2,7 @@
     "private": true,
     "name": "@project/common",
     "version": "0.1.0",
+    "license": "AGPL-3.0-or-later",
     "dependencies": {
         "@flatten-js/interval-tree": "^1.0.19",
         "@plausible-analytics/tracker": "^0.4.5",
