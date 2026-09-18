@@ -7,6 +7,7 @@ import {
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import type { DictionaryTrack } from '@project/common/settings';
+import type { InternalToken } from '@project/common/annotations/render-annotations';
 import {
     computeRichText,
     emptyRichTextWindow,
@@ -56,8 +57,10 @@ const renderToken = (
     return rendered;
 };
 
-const makeInternalToken = (overrides: Parameters<typeof makeToken>[0] = {}) =>
-    ({ ...makeToken(overrides), __internal: true }) as ReturnType<typeof makeToken> & { __internal: true };
+const makeInternalToken = (overrides: Partial<InternalToken> = {}): InternalToken => ({
+    ...makeToken(overrides),
+    __internal: true,
+});
 
 const makeAnnotationTrack = (toggles: AnnotationToggles, overrides: Partial<DictionaryTrack> = {}) => {
     const dt = makeDictionaryTrack(overrides);
@@ -594,6 +597,33 @@ describe('rich text rendering', () => {
         expect(rendered?.richTextOnHover).toBe(
             '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #33445566 3px;">語学</span>'
         );
+    });
+
+    it.each([
+        ['MIU', 'ミウ'],
+        ['007', 'ゼロゼロセブン'],
+    ])('renders reused subtitle readings for %s even when dictionary readings are disabled', (text, reading) => {
+        const rendered = renderToken(
+            text,
+            makeInternalToken({
+                pos: [0, text.length],
+                readings: [{ pos: [0, text.length], reading }],
+                __usingExternalReadings: true,
+            }),
+            makeAnnotationTrack({})
+        );
+
+        expect(rendered).toBe(`<ruby class="asb-reading">${text}<rt>${reading}</rt></ruby>`);
+    });
+
+    it('keeps dictionary-generated numeric readings hidden', () => {
+        expect(
+            renderToken(
+                '007',
+                makeInternalToken({ pos: [0, 3], readings: [{ pos: [0, 3], reading: 'ゼロゼロセブン' }] }),
+                makeAnnotationTrack({ reading: true })
+            )
+        ).toBe('007');
     });
 
     it('keeps coloring on hover for ASCII text without a rendered reading', () => {

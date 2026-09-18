@@ -1694,6 +1694,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 const externalReadings = this.externalTokenReadings.get(tokenText);
                 if (externalReadings) {
                     token.readings = externalReadings.get(ts.track) ?? externalReadings.values().next().value!;
+                    token.__usingExternalReadings = true;
                 } else {
                     let currentPartOffset = 0;
                     for (const part of tokenParts) {
