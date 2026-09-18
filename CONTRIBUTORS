@@ -1,6 +1,20 @@
+asbplayer is licensed under AGPL-3.0-or-later, you are free to redistribute
+and/or modify it under the terms of the AGPL-3.0-or-later.
+
+If you would like to contribute code to asbplayer, add your name,
+GitHub profile, email address, or another identifying description on its own
+line below in a commit authored by you.
+
+By doing so, you agree to license your contributions to asbplayer under the
+MIT License below. You retain copyright ownership of your contributions.
+This allows distributing asbplayer across various platforms.
+
+<!-- BEGIN CONTRIBUTORS -->
+<!-- END CONTRIBUTORS -->
+
 MIT License
 
-Copyright (c) 2020-2026 asbplayer authors
+Copyright (c) 2026-present asbplayer contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

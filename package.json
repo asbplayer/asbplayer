@@ -1,6 +1,7 @@
 {
     "name": "root",
     "private": true,
+    "license": "AGPL-3.0-or-later",
     "workspaces": {
         "packages": [
             "client",
@@ -21,6 +22,7 @@
         "yarn-upgrade-all": "^0.7.5"
     },
     "scripts": {
+        "check:contributors": "node --experimental-strip-types scripts/check-contributors.ts",
         "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && yarn workspace @project/common run test && yarn workspace @project/client run test && yarn workspace @project/extension run test && yarn run eslint common extension/src client/src && yarn run pretty:check",
         "pretty": "yarn prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)'",
         "pretty:check": "yarn prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)'"
