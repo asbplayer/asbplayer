@@ -6,7 +6,7 @@
 
 [![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/asbplayer/asbplayer/verify.yml)](https://github.com/asbplayer/asbplayer/actions/workflows/verify.yml)
 [![Github All Releases](https://img.shields.io/github/downloads/asbplayer/asbplayer/total.svg)](https://github.com/asbplayer/asbplayer/releases)
-[![GitHub License](https://img.shields.io/github/license/asbplayer/asbplayer)](https://github.com/asbplayer/asbplayer?tab=MIT-1-ov-file)
+[![GitHub License](https://img.shields.io/github/license/asbplayer/asbplayer)](LICENSE)
 [![Discord](https://img.shields.io/discord/962412001810849814?color=%237785cc)](https://discord.gg/ad7VAQru7m)
 
 </div>
@@ -212,3 +212,7 @@ yarn workspace @project/extension run wxt zip -b firefox
 # Builds Firefox for Android extension to extension/.output/asbplayer-<version>-firefox-android.zip
 yarn workspace @project/extension run wxt zip -b firefox-android --mv2
 ```
+
+## License
+
+asbplayer is licensed under the GNU Affero General Public License version 3 or later (AGPL-3.0-or-later). Portions of this software are licensed under the MIT License.
