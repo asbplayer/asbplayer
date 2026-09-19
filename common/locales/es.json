@@ -330,6 +330,7 @@
             "progressCompleted": "Exportado {{current}} de {{total}}"
         },
         "playbackRate": "Velocidad de Reproducción: {{rate}}",
+        "processingClip": "Processing clip…",
         "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "Guardado: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
@@ -439,6 +440,9 @@
         "mediaFragmentCaptureFormat": "Formato de captura",
         "mediaFragmentFormatScreenshot": "Captura de pantalla",
         "mediaFragmentFormatVideoClip": "Clip de video (solo para videos locales)",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality",
         "mediaFragmentMaxClipLength": "Duración máxima de clip",
         "mediaFragmentTrimEnd": "Recorte final del clip",
         "mediaFragmentTrimStart": "Recorte incicio de corte",

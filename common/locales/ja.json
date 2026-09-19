@@ -330,6 +330,7 @@
             "progressCompleted": "{{current}} / {{total}} をエクスポートしました"
         },
         "playbackRate": "再生速度：{{rate}}",
+        "processingClip": "Processing clip…",
         "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
         "savedTimestamp": "保存しました：{{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
@@ -439,6 +440,9 @@
         "mediaFragmentCaptureFormat": "キャプチャ形式",
         "mediaFragmentFormatScreenshot": "スクリーンショット",
         "mediaFragmentFormatVideoClip": "ビデオクリップ（ローカルビデオのみ）",
+        "mediaFragmentFormatAnimatedWebp": "Animated WebP",
+        "animatedImageFps": "Animated image FPS",
+        "animatedImageQuality": "Animated image quality",
         "mediaFragmentMaxClipLength": "クリップの最大時間",
         "mediaFragmentTrimEnd": "開始時のカット時間",
         "mediaFragmentTrimStart": "終了時のカット時間",

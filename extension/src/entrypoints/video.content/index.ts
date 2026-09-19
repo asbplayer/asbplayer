@@ -6,10 +6,16 @@ import VideoSelectController from '@/controllers/video-select-controller';
 import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
+    RecordAnimatedWebpMessage,
     TabToExtensionCommand,
     ToggleSidePanelMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
+import {
+    armAnimatedWebpCapture,
+    finishAnimatedWebpCapture,
+    takeArmedAnimatedWebpCapture,
+} from '@/services/animated-webp-capture';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
@@ -254,6 +260,72 @@ export default defineContentScript({
                             rect,
                             cropAndResizeMessage.dataUrl
                         ).then((dataUrl) => sendResponse({ dataUrl }));
+                        return true;
+                    }
+                    case 'record-animated-webp': {
+                        const recordAnimatedWebpMessage = request.message as RecordAnimatedWebpMessage;
+                        let animatedRect = recordAnimatedWebpMessage.rect;
+
+                        if (recordAnimatedWebpMessage.frameId !== undefined) {
+                            const iframe = frameInfoListener?.iframesById?.[recordAnimatedWebpMessage.frameId];
+
+                            if (iframe !== undefined) {
+                                const iframeRect = iframe.getBoundingClientRect();
+                                animatedRect = {
+                                    left: animatedRect.left + iframeRect.left,
+                                    top: animatedRect.top + iframeRect.top,
+                                    width: animatedRect.width,
+                                    height: animatedRect.height,
+                                };
+                            }
+                        }
+
+                        const animatedBinding =
+                            bindings.find((b) => b.registeredVideoSrc === request.src) ?? bindings[0];
+                        const onAnimatedRecordingStopped = () => {
+                            animatedBinding?.pause();
+                            animatedBinding?.subtitleController.persistentNotification('info.processingClip');
+                            return () => animatedBinding?.subtitleController.hideNotification();
+                        };
+
+                        (async () => {
+                            // Prefer a capture that was already armed (getUserMedia negotiated) before the
+                            // mining seek happened, so we don't lose the start of the clip to that
+                            // negotiation's latency. Fall back to arming it now if none is available.
+                            let capture = takeArmedAnimatedWebpCapture();
+
+                            if (!capture) {
+                                if (
+                                    recordAnimatedWebpMessage.streamId === undefined ||
+                                    recordAnimatedWebpMessage.fps === undefined ||
+                                    recordAnimatedWebpMessage.quality === undefined
+                                ) {
+                                    throw new Error('No armed animated WebP capture and no stream to arm one from');
+                                }
+
+                                await armAnimatedWebpCapture(
+                                    recordAnimatedWebpMessage.streamId,
+                                    recordAnimatedWebpMessage.fps,
+                                    recordAnimatedWebpMessage.quality,
+                                    recordAnimatedWebpMessage.recordAudio
+                                );
+                                capture = takeArmedAnimatedWebpCapture()!;
+                            }
+
+                            return finishAnimatedWebpCapture(
+                                capture,
+                                recordAnimatedWebpMessage.durationMs,
+                                animatedRect,
+                                recordAnimatedWebpMessage.maxWidth,
+                                recordAnimatedWebpMessage.maxHeight,
+                                onAnimatedRecordingStopped
+                            );
+                        })()
+                            .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
+                            .catch((e) => {
+                                asbError('recording/animated-webp', e);
+                                sendResponse({ base64: '', error: String(e?.message ?? e) });
+                            });
                         return true;
                     }
                     case 'show-anki-ui':

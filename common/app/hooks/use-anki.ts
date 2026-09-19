@@ -94,6 +94,12 @@ class SettingsAccessor {
     get mediaFragmentMaxClipLength() {
         return this.settings.mediaFragmentMaxClipLength;
     }
+    get animatedImageFps() {
+        return this.settings.animatedImageFps;
+    }
+    get animatedImageQuality() {
+        return this.settings.animatedImageQuality;
+    }
     get surroundingSubtitlesCountRadius() {
         return this.settings.surroundingSubtitlesCountRadius;
     }

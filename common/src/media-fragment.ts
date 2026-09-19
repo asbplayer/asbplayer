@@ -18,7 +18,7 @@ const webmMimeTypeCandidates = [
 
 export const minWebmMediaFragmentDurationMs = 300;
 
-export type MediaFragmentFormat = 'jpeg' | 'webm';
+export type MediaFragmentFormat = 'jpeg' | 'webm' | 'webp';
 
 export const makeMediaFragmentFileName = (prefix: string, timestamp: number) => {
     return `${prefix.replaceAll(' ', '_').substring(0, Math.min(prefix.length, maxPrefixLength))}_${Math.floor(
@@ -381,8 +381,8 @@ export default class MediaFragment {
     }
 
     async pngBlob() {
-        if (this.extension === 'webm') {
-            throw new Error('Cannot convert WebM media fragment to PNG');
+        if (this.extension === 'webm' || this.extension === 'webp') {
+            throw new Error('Cannot convert animated media fragment to PNG');
         }
 
         const sourceBlob = await this.blob();

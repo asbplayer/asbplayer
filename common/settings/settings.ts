@@ -202,7 +202,7 @@ export type AnkiSettingsFieldKey =
     | 'track2Field'
     | 'track3Field';
 
-export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
+export type MediaFragmentFormatSetting = 'jpeg' | 'webm' | 'webp';
 
 export interface AnkiSettings {
     readonly ankiConnectUrl: string;
@@ -232,6 +232,8 @@ export interface AnkiSettings {
     readonly mediaFragmentTrimStart: number;
     readonly mediaFragmentTrimEnd: number;
     readonly mediaFragmentMaxClipLength: number;
+    readonly animatedImageFps: number;
+    readonly animatedImageQuality: number;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -286,6 +288,8 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     mediaFragmentTrimStart: true,
     mediaFragmentTrimEnd: true,
     mediaFragmentMaxClipLength: true,
+    animatedImageFps: true,
+    animatedImageQuality: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,

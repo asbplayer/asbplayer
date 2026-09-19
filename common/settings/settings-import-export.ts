@@ -439,6 +439,12 @@ const settingsSchema = {
         mediaFragmentMaxClipLength: {
             type: 'number',
         },
+        animatedImageFps: {
+            type: 'number',
+        },
+        animatedImageQuality: {
+            type: 'number',
+        },
         surroundingSubtitlesCountRadius: {
             type: 'number',
         },

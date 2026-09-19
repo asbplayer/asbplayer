@@ -192,6 +192,7 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
+    extensionSupportsAnimatedMediaFragment?: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
     insideApp?: boolean;
@@ -248,6 +249,7 @@ export default function SettingsForm({
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
+    extensionSupportsAnimatedMediaFragment,
     insideApp,
     appVersion,
     scrollToId,
@@ -514,6 +516,7 @@ export default function SettingsForm({
                         settings={settings}
                         onSettingChanged={handleSettingChanged}
                         showWebmMediaFragmentSettings={Boolean(insideApp)}
+                        animatedMediaFragmentSupported={Boolean(extensionSupportsAnimatedMediaFragment)}
                     />
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['annotation']} tabsOrientation={tabsOrientation}>
