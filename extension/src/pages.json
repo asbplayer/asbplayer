@@ -242,6 +242,15 @@
             "key": "archive",
             "host": "archive\\.org",
             "searchShadowRootsForVideoElements": true
+        },
+        {
+            "key": "rutube",
+            "host": "(www\\.)?rutube\\.ru",
+            "pageScript": "rutube-page.js",
+            "syncAllowedAtPath": "video",
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }
