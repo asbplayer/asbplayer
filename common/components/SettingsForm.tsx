@@ -6,7 +6,7 @@ import { createTheme, ThemeProvider, useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import type { Theme } from '@mui/material';
 import type { CardModel } from '@project/common';
-import type { AsbplayerSettings, PageConfig, PageSettings, Profile } from '@project/common/settings';
+import type { AsbplayerSettings, PageConfig, PageSettings, Profile, SettingsProvider } from '@project/common/settings';
 import { isMobile } from 'react-device-detect';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
@@ -194,10 +194,12 @@ interface Props {
     extensionSupportsDictionaryYomitanMecab: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
+    extensionSupportsSettingsProfileImportExport: boolean;
     insideApp?: boolean;
     appVersion?: string;
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     profiles: Profile[];
     activeProfile?: string;
     pageConfigs?: PageConfigMap;
@@ -214,6 +216,7 @@ interface Props {
     heightConstrained?: boolean;
     testCard?: () => Promise<CardModel>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     onOpenChromeExtensionShortcuts: () => void;
     onUnlockLocalFonts: () => void;
 }
@@ -222,6 +225,7 @@ export default function SettingsForm({
     anki,
     dictionaryProvider,
     settings,
+    settingsProvider,
     profiles,
     activeProfile,
     pageConfigs,
@@ -248,6 +252,7 @@ export default function SettingsForm({
     extensionSupportsAutoCopyableTrackSetting,
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
+    extensionSupportsSettingsProfileImportExport,
     insideApp,
     appVersion,
     scrollToId,
@@ -263,6 +268,7 @@ export default function SettingsForm({
     heightConstrained,
     testCard,
     onSettingsChanged,
+    onSettingsImported,
     onOpenChromeExtensionShortcuts,
     onUnlockLocalFonts,
 }: Props) {
@@ -274,6 +280,7 @@ export default function SettingsForm({
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
     const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
+    const supportsSettingsProfileImportExport = !extensionInstalled || extensionSupportsSettingsProfileImportExport;
     const supportsSubtitleListCustomization = !extensionInstalled || extensionSupportsSubtitleListCustomization;
     const supportsAutoPauseResume = !extensionInstalled || extensionSupportsAutoPauseResume;
     const theme = useTheme();
@@ -584,8 +591,10 @@ export default function SettingsForm({
                 <TabPanel value={tabIndex} index={tabIndicesById['misc-settings']} tabsOrientation={tabsOrientation}>
                     <MiscSettingsTab
                         settings={settings}
+                        settingsProvider={settingsProvider}
                         onSettingChanged={handleSettingChanged}
                         onSettingsChanged={onSettingsChanged}
+                        onSettingsImported={onSettingsImported}
                         supportedLanguages={supportedLanguages}
                         insideApp={insideApp}
                         extensionInstalled={extensionInstalled}
@@ -594,6 +603,7 @@ export default function SettingsForm({
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
                         supportsSubtitleListCustomization={supportsSubtitleListCustomization}
                         supportsPlaybackEngine={supportsPlaybackEngine}
+                        supportsSettingsProfileImportExport={supportsSettingsProfileImportExport}
                         supportsAutoPauseResume={supportsAutoPauseResume}
                         onViewPlaybackModeKeyboardShortcuts={() => viewKeyboardShortcutSection('playback')}
                         onViewPlaybackRateKeyboardShortcuts={() => viewKeyboardShortcutSection('playbackRate')}

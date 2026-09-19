@@ -108,6 +108,13 @@ export function PopupUi({ commands }: Props) {
         settingsProvider,
         onProfileChanged: handleProfileChanged,
     });
+    const { refreshProfileContext } = profilesContext;
+
+    const handleSettingsImported = useCallback(() => {
+        void settingsProvider.getAll().then(setSettings);
+        refreshProfileContext();
+        notifySettingsUpdated();
+    }, [settingsProvider, refreshProfileContext]);
 
     if (!settings || !theme || requestingActiveTabPermission === undefined) {
         return null;
@@ -132,7 +139,9 @@ export function PopupUi({ commands }: Props) {
                             commands={commands}
                             dictionaryProvider={dictionaryProvider}
                             settings={settings}
+                            settingsProvider={settingsProvider}
                             onSettingsChanged={handleSettingsChanged}
+                            onSettingsImported={handleSettingsImported}
                             onOpenApp={handleOpenApp}
                             onOpenSidePanel={handleOpenSidePanel}
                             onOpenExtensionShortcuts={handleOpenExtensionShortcuts}

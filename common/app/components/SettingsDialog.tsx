@@ -8,7 +8,7 @@ import type ChromeExtension from '@project/common/app/services/chrome-extension'
 import SettingsForm from '@project/common/components/SettingsForm';
 import { useLocalFontFamilies } from '@project/common/hooks';
 import type { Anki } from '@project/common/anki';
-import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import type { AsbplayerSettings, Profile, SettingsProvider } from '@project/common/settings';
 import { supportedLanguages, testCard } from '@project/common/settings';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
 import Toolbar from '@mui/material/Toolbar';
@@ -50,8 +50,10 @@ interface Props {
     open: boolean;
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     scrollToId?: string;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     onClose: () => void;
     profiles: Profile[];
     activeProfile?: string;
@@ -66,8 +68,10 @@ export default function SettingsDialog({
     open,
     dictionaryProvider,
     settings,
+    settingsProvider,
     scrollToId,
     onSettingsChanged,
+    onSettingsImported,
     onClose,
     ...profilesContext
 }: Props) {
@@ -125,6 +129,7 @@ export default function SettingsDialog({
                     }
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
+                    extensionSupportsSettingsProfileImportExport={extension.supportsSettingsProfileImportExport}
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
                     pageConfigs={extension.pageConfig}
                     insideApp
@@ -132,8 +137,10 @@ export default function SettingsDialog({
                     chromeKeyBinds={extension.extensionCommands}
                     onOpenChromeExtensionShortcuts={extension.openShortcuts}
                     onSettingsChanged={onSettingsChanged}
+                    onSettingsImported={onSettingsImported}
                     dictionaryProvider={dictionaryProvider}
                     settings={settings}
+                    settingsProvider={settingsProvider}
                     profiles={profilesContext.profiles}
                     activeProfile={profilesContext.activeProfile}
                     scrollToId={scrollToId}

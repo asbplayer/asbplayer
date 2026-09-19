@@ -56,6 +56,13 @@ export const useSettings = () => {
         settingsProvider,
         onProfileChanged: handleProfileChanged,
     });
+    const { refreshProfileContext } = profileContext;
 
-    return { dictionaryProvider, settings, onSettingsChanged, profileContext };
+    const onSettingsImported = useCallback(() => {
+        void refreshSettings();
+        refreshProfileContext();
+        notifySettingsUpdated();
+    }, [refreshSettings, refreshProfileContext, notifySettingsUpdated]);
+
+    return { dictionaryProvider, settings, settingsProvider, onSettingsChanged, onSettingsImported, profileContext };
 };

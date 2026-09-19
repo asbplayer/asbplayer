@@ -714,6 +714,10 @@ export class SettingsProvider {
         this._storage = storage;
     }
 
+    targetingProfile(name: string | undefined): SettingsProvider {
+        return new SettingsProvider(this._storage.targetingProfile(name));
+    }
+
     async getAll(): Promise<AsbplayerSettings> {
         return this.get(Object.keys(defaultSettings) as SettingsKey[]);
     }
@@ -853,9 +857,33 @@ export interface Profile {
     name: string;
 }
 
+// The profile a storage reads/writes: undefined targets the active profile, null the default
+// profile, and a string a named profile.
+export type TargetProfile = string | null | undefined;
+
+// The default profile, which is stored without the profile prefix
+export const defaultProfile = null;
+
+// Resolves a TargetProfile into a profile name. Undefined means the default profile, which
+// corresponds to unprefixed storage keys.
+export const targetProfileName = async (
+    target: TargetProfile,
+    getActiveProfile: () => Profile | undefined | Promise<Profile | undefined>
+): Promise<string | undefined> => {
+    if (target === undefined) {
+        return (await getActiveProfile())?.name;
+    }
+
+    return target ?? undefined;
+};
+
 export interface SettingsStorage {
     get: (keysAndDefaults: Partial<AsbplayerSettings>) => Promise<Partial<AsbplayerSettings>>;
     set: (settings: Partial<AsbplayerSettings>) => Promise<void>;
+
+    // Returns a storage that reads/writes the named profile instead of the active one, without
+    // changing the active profile. Undefined targets the default profile.
+    targetingProfile: (name: string | undefined) => SettingsStorage;
 
     activeProfile: () => Promise<Profile | undefined>;
     setActiveProfile: (name: string | undefined) => Promise<void>;
