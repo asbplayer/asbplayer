@@ -1,6 +1,8 @@
 {
     "common": {
-        "info.toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display"
+        "info.toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display",
+        "settings.trimBlackBars": "Trim black bars from screenshots",
+        "settings.trimBlackBarsHelperText": "Automatically crops letterbox/pillarbox bars detected around the video frame. Only applies to screenshots, not video clips."
     },
     "extension": {},
     "external": {}

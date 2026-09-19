@@ -247,6 +247,7 @@ it('validates exported settings', () => {
         maxImageWidth: 480,
         maxImageHeight: 0,
         mediaFragmentMaxClipLength: 10000,
+        trimBlackBars: false,
         surroundingSubtitlesCountRadius: 2,
         surroundingSubtitlesTimeRadius: 10000,
         autoPausePreference: 2,

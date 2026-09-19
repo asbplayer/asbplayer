@@ -439,6 +439,9 @@ const settingsSchema = {
         mediaFragmentMaxClipLength: {
             type: 'number',
         },
+        trimBlackBars: {
+            type: 'boolean',
+        },
         surroundingSubtitlesCountRadius: {
             type: 'number',
         },

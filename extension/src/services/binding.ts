@@ -222,6 +222,7 @@ export default class Binding {
     private audioPaddingEnd: number;
     private maxImageWidth: number;
     private maxImageHeight: number;
+    private trimBlackBars = false;
     private imageDelay = 0;
     private pauseOnHoverMode: PauseOnHoverMode = PauseOnHoverMode.disabled;
     private _disablePauseOnHover: boolean;
@@ -411,6 +412,7 @@ export default class Binding {
         return {
             maxWidth: this.maxImageWidth,
             maxHeight: this.maxImageHeight,
+            trimBlackBars: this.trimBlackBars,
             rect: {
                 left: rect.left,
                 top: rect.top,
@@ -1277,6 +1279,7 @@ export default class Binding {
         this.clickToMineDefaultAction = currentSettings.clickToMineDefaultAction;
         this.maxImageWidth = currentSettings.maxImageWidth;
         this.maxImageHeight = currentSettings.maxImageHeight;
+        this.trimBlackBars = currentSettings.trimBlackBars;
         this.copyToClipboardOnMine = currentSettings.copyToClipboardOnMine;
         this.alwaysPlayOnSubtitleRepeat = currentSettings.alwaysPlayOnSubtitleRepeat;
         this.pauseOnHoverMode = currentSettings.pauseOnHoverMode;

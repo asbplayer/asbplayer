@@ -2,6 +2,7 @@ import TextField from '@project/common/components/SettingsTextField';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import FormLabel from '@mui/material/FormLabel';
+import FormHelperText from '@mui/material/FormHelperText';
 import InputAdornment from '@mui/material/InputAdornment';
 import MenuItem from '@mui/material/MenuItem';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
@@ -34,6 +35,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
         mediaFragmentTrimStart,
         mediaFragmentTrimEnd,
         mediaFragmentMaxClipLength,
+        trimBlackBars,
         streamingScreenshotDelay,
         surroundingSubtitlesCountRadius,
         surroundingSubtitlesTimeRadius,
@@ -271,6 +273,17 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                     },
                 }}
             />
+            <SwitchLabelWithHoverEffect
+                control={
+                    <Switch
+                        checked={trimBlackBars}
+                        onChange={(event) => onSettingChanged('trimBlackBars', event.target.checked)}
+                    />
+                }
+                label={t('settings.trimBlackBars')}
+                labelPlacement="start"
+            />
+            <FormHelperText>{t('settings.trimBlackBarsHelperText')}</FormHelperText>
             {showWebmMediaFragmentSettings && mediaFragmentFormat === 'webm' && webmCaptureSupported && (
                 <>
                     <NumericSettingInput

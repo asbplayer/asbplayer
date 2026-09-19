@@ -232,6 +232,7 @@ export interface AnkiSettings {
     readonly mediaFragmentTrimStart: number;
     readonly mediaFragmentTrimEnd: number;
     readonly mediaFragmentMaxClipLength: number;
+    readonly trimBlackBars: boolean;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -286,6 +287,7 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     mediaFragmentTrimStart: true,
     mediaFragmentTrimEnd: true,
     mediaFragmentMaxClipLength: true,
+    trimBlackBars: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,
