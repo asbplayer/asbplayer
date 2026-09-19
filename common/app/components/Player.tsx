@@ -438,7 +438,7 @@ function PlayerComponent(
         const playbackEngine = new PlaybackEngine({
             settingsProvider,
             appIntegration: extension.supportsAppIntegration,
-            autoPauseCorrectionSuppressed: false,
+            autoPauseCorrectionDisabled: false,
             subtitles: subtitlesRef.current ?? [],
             playbackModesDisabled: true,
             playbackModesSuppressed: false,

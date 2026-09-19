@@ -52,6 +52,8 @@ export interface PlaybackTimelineBlock {
 export interface PlaybackTimelineSegment<T extends IndexedSubtitleModel> {
     readonly startMs: number;
     readonly showingSubtitles: readonly T[];
+    /** Invisible placeholders mounted to keep overlapping tracks stable. */
+    readonly invisibleSubtitles: readonly T[];
     readonly condensedTarget?: number;
     readonly nextStartActionTimestamp?: number;
 }
@@ -136,6 +138,10 @@ export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
 
     showingSubtitlesAt(timestampMs: number): readonly T[] {
         return this.lookupAt(timestampMs).segment.showingSubtitles;
+    }
+
+    invisibleSubtitlesAt(timestampMs: number): readonly T[] {
+        return this.lookupAt(timestampMs).segment.invisibleSubtitles;
     }
 
     blockById(blockId: string): PlaybackTimelineBlock | undefined {

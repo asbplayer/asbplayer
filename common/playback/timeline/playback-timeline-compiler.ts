@@ -169,6 +169,66 @@ type DisplayEdge<T extends IndexedSubtitleModel> = {
     readonly order: number;
 };
 
+type DisplayInterval<T extends IndexedSubtitleModel> = {
+    readonly startMs: number;
+    readonly endMs: number;
+    readonly subtitle: T;
+    readonly order: number;
+};
+
+type DisplayGroup<T extends IndexedSubtitleModel> = {
+    readonly startMs: number;
+    endMs: number;
+    readonly intervals: DisplayInterval<T>[];
+    readonly subtitles: T[];
+};
+
+const maxRenderedSubtitleGroupSize = 4;
+const invisibleSubtitleOverlapToleranceMs = 1;
+
+const overlapsForInvisibleSubtitleGroup = (startMs: number, endMs: number): boolean =>
+    startMs < endMs - invisibleSubtitleOverlapToleranceMs;
+
+const newDisplayGroup = <T extends IndexedSubtitleModel>(
+    startMs: number,
+    intervals: readonly DisplayInterval<T>[]
+): DisplayGroup<T> => ({
+    startMs,
+    endMs: Math.max(...intervals.map(({ endMs }) => endMs)),
+    intervals: [...intervals],
+    subtitles: intervals.map(({ subtitle }) => subtitle),
+});
+
+/** Bounded layout epochs of connected half-open subtitle intervals, ordered by time. */
+const displayGroups = <T extends IndexedSubtitleModel>(
+    intervals: readonly DisplayInterval<T>[]
+): readonly DisplayGroup<T>[] => {
+    const sorted = [...intervals].sort(
+        (left, right) => left.startMs - right.startMs || left.endMs - right.endMs || left.order - right.order
+    );
+    const groups: DisplayGroup<T>[] = [];
+    for (const interval of sorted) {
+        const group = groups.at(-1);
+        if (group === undefined || !overlapsForInvisibleSubtitleGroup(interval.startMs, group.endMs)) {
+            groups.push(newDisplayGroup(interval.startMs, [interval]));
+            continue;
+        }
+
+        const activeIntervals = group.intervals.filter(({ endMs }) =>
+            overlapsForInvisibleSubtitleGroup(interval.startMs, endMs)
+        );
+        if (group.intervals.length < maxRenderedSubtitleGroupSize) {
+            group.endMs = Math.max(group.endMs, interval.endMs);
+            group.intervals.push(interval);
+            group.subtitles.push(interval.subtitle);
+        } else {
+            group.endMs = interval.startMs;
+            groups.push(newDisplayGroup(interval.startMs, [...activeIntervals, interval]));
+        }
+    }
+    return groups;
+};
+
 const eventsFromBlocks = (blocks: readonly PlaybackTimelineBlock[]): readonly PlaybackTimelineEvent[] => {
     const events = blocks.flatMap<PlaybackTimelineEvent>((block) => [
         {
@@ -224,6 +284,7 @@ const compileSegments = <T extends IndexedSubtitleModel>(
     states: readonly PlaybackTimelineState[];
 } => {
     const displayEdges: DisplayEdge<T>[] = [];
+    const displayIntervals: DisplayInterval<T>[] = [];
     const subtitleOrder = new Map<T, number>();
     for (const [order, subtitle] of displaySubtitles.entries()) {
         if (!Number.isFinite(subtitle.start) || !Number.isFinite(subtitle.end) || subtitle.end <= subtitle.start) {
@@ -233,6 +294,7 @@ const compileSegments = <T extends IndexedSubtitleModel>(
         const endMs = clamp(subtitle.end, 0, durationMs);
         if (endMs <= startMs) continue;
         subtitleOrder.set(subtitle, order);
+        displayIntervals.push({ startMs, endMs, subtitle, order });
         displayEdges.push({ timestampMs: startMs, edge: 'start', subtitle, order });
         displayEdges.push({ timestampMs: endMs, edge: 'end', subtitle, order });
     }
@@ -265,6 +327,11 @@ const compileSegments = <T extends IndexedSubtitleModel>(
         displayEdgesByTimestamp.set(edge.timestampMs, values);
     }
 
+    const groups = displayGroups(displayIntervals);
+    for (const group of groups) {
+        group.subtitles.sort((left, right) => (subtitleOrder.get(left) ?? 0) - (subtitleOrder.get(right) ?? 0));
+    }
+    let groupIndex = 0;
     const active = new Set<T>();
     const segments = sortedTimestamps.map<PlaybackTimelineSegment<T>>((startMs) => {
         for (const edge of displayEdgesByTimestamp.get(startMs) ?? []) {
@@ -275,7 +342,13 @@ const compileSegments = <T extends IndexedSubtitleModel>(
         const showingSubtitles = [...active].sort(
             (left, right) => (subtitleOrder.get(left) ?? 0) - (subtitleOrder.get(right) ?? 0)
         );
-        return { startMs, showingSubtitles };
+        while (groupIndex < groups.length && groups[groupIndex].endMs <= startMs) groupIndex++;
+        const group = groups[groupIndex];
+        const invisibleSubtitles =
+            group !== undefined && group.startMs <= startMs && startMs < group.endMs
+                ? group.subtitles.filter((subtitle) => !active.has(subtitle))
+                : [];
+        return { startMs, showingSubtitles, invisibleSubtitles };
     });
 
     let blockIndex = 0;
