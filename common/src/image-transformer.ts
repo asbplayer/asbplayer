@@ -1,5 +1,31 @@
 import { asbError } from '@project/common/util';
 import type { RectModel } from '@project/common/src/model';
+import { detectBlackBars } from '@project/common/src/black-bars';
+
+// Crops detected letterbox/pillarbox bars out of the canvas in place. Returns true if the canvas was cropped.
+export const trimBlackBarsFromCanvas = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): boolean => {
+    if (canvas.width <= 0 || canvas.height <= 0) {
+        return false;
+    }
+
+    try {
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const crop = detectBlackBars(pixels);
+
+        if (!crop) {
+            return false;
+        }
+
+        const cropped = ctx.getImageData(crop.x, crop.y, crop.width, crop.height);
+        canvas.width = crop.width;
+        canvas.height = crop.height;
+        ctx.putImageData(cropped, 0, 0);
+        return true;
+    } catch (e) {
+        asbError('image', 'Failed to trim black bars: ' + e);
+        return false;
+    }
+};
 
 export const resizeCanvas = (
     canvas: HTMLCanvasElement,
@@ -33,7 +59,8 @@ export const cropAndResize = async (
     maxWidth: number,
     maxHeight: number,
     rect: RectModel,
-    imageDataUrl: string
+    imageDataUrl: string,
+    trimBlackBars: boolean = false
 ): Promise<string> => {
     return new Promise((resolve, reject) => {
         const image = new Image();
@@ -47,6 +74,10 @@ export const cropAndResize = async (
             canvas.height = height;
             const ctx = canvas.getContext('2d')!;
             ctx.drawImage(image, rect.left * r, rect.top * r, width, height, 0, 0, width, height);
+
+            if (trimBlackBars) {
+                trimBlackBarsFromCanvas(canvas, ctx);
+            }
 
             if (maxWidth > 0 || maxHeight > 0) {
                 try {
