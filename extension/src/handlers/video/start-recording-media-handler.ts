@@ -73,6 +73,7 @@ export default class StartRecordingMediaHandler {
                     maxHeight,
                     rect,
                     frameId,
+                    trimBlackBars: startRecordingCommand.message.trimBlackBars,
                 });
                 imageModel = {
                     base64: imageBase64,

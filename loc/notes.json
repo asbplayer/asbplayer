@@ -333,6 +333,8 @@
         "settings.mediaFragmentMaxClipLength": "Setting that caps the duration of a mined video clip after trim is applied. The capped clip stays centered on the trimmed interval.",
         "settings.mediaFragmentTrimEnd": "Setting that trims time from the end of a mined video clip before max clip length is applied.",
         "settings.mediaFragmentTrimStart": "Setting that trims time from the start of a mined video clip before max clip length is applied.",
+        "settings.trimBlackBars": "Setting that enables automatically cropping black letterbox/pillarbox bars out of screenshots.",
+        "settings.trimBlackBarsHelperText": "Helper text under the \"trim black bars\" setting. \"Letterbox\" and \"pillarbox\" refer to horizontal and vertical black bars around a video. \"Video clips\" refers to the short video clip capture format, as opposed to still screenshots.",
         "settings.mining": "Section heading for settings related to mining.",
         "settings.miningHistoryStorageLimit": "The maximum number of cards in the user's mining history that will be preserved across asbplayer page reloads.",
         "settings.misc": "Section heading for misc settings.",

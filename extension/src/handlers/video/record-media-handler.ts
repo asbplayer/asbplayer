@@ -89,6 +89,7 @@ export default class RecordMediaHandler {
                 maxHeight,
                 rect,
                 frameId,
+                trimBlackBars: recordMediaCommand.message.trimBlackBars,
             });
             void imagePromise.finally(() => {
                 const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
