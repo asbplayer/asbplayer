@@ -1,4 +1,4 @@
-import { asbError, ensureStoragePersisted } from '@project/common/util';
+import { asbError, ensureStoragePersisted, retryWithAnimationFrame } from '@project/common/util';
 import type {
     OpenStatisticsMessage,
     SettingsUpdatedMessage,
@@ -10,6 +10,8 @@ import { PlayMode } from '@project/common';
 import type { KeyBindSet } from '@project/common/settings';
 import { ApplyStrategy, TokenState } from '@project/common/settings';
 import { DefaultKeyBinder } from '@project/common/key-binder';
+import { findAdjacentTokenJumpMatch } from '@project/common/annotations/token-navigation';
+import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import type Binding from '@project/extension/src/services/binding';
 
 type Unbinder = (() => void) | false;
@@ -37,9 +39,11 @@ export default class KeyBindings {
     private _unbindToggleSubtitleVisibility: Unbinder = false;
     private _unbindAdjustSubtitlePositionOffset: Unbinder = false;
     private _unbindAdjustTopSubtitlePositionOffset: Unbinder = false;
+    private _unbindOpenStatistics?: Unbinder = false;
     private _unbindMarkHoveredToken?: Unbinder = false;
     private _unbindToggleHoveredTokenIgnored?: Unbinder = false;
-    private _unbindOpenStatistics?: Unbinder = false;
+    private _unbindJumpToToken?: Unbinder = false;
+    private _cancelTokenSelectionRetry?: () => void;
 
     private _bound: boolean;
 
@@ -220,6 +224,25 @@ export default class KeyBindings {
             true
         );
 
+        this._unbindOpenStatistics = this._keyBinder.bindOpenStatistics(
+            (event) => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const command: VideoToExtensionCommand<OpenStatisticsMessage> = {
+                    sender: 'asbplayer-video',
+                    message: {
+                        command: 'open-statistics',
+                    },
+                    src: context.registeredVideoSrc,
+                };
+
+                void browser.runtime.sendMessage(command);
+            },
+            () => false,
+            true
+        );
+
         this._unbindMarkHoveredToken = this._keyBinder.bindMarkHoveredToken(
             (event, tokenStatus) => {
                 const res = context.hoveredToken.parse();
@@ -258,22 +281,26 @@ export default class KeyBindings {
             true
         );
 
-        this._unbindOpenStatistics = this._keyBinder.bindOpenStatistics(
-            (event) => {
+        this._unbindJumpToToken = this._keyBinder.bindJumpToToken(
+            (event, target, forward) => {
+                const subtitles = context.subtitleController.subtitles;
+                const match = findAdjacentTokenJumpMatch(
+                    subtitles,
+                    target,
+                    forward,
+                    context.currentTimeMs,
+                    context.seekableTracks,
+                    context.subtitleController.currentTokenSelectionLocation()
+                );
+                if (!match) return false;
+
                 event.preventDefault();
                 event.stopImmediatePropagation();
-
-                const command: VideoToExtensionCommand<OpenStatisticsMessage> = {
-                    sender: 'asbplayer-video',
-                    message: {
-                        command: 'open-statistics',
-                    },
-                    src: context.registeredVideoSrc,
-                };
-
-                void browser.runtime.sendMessage(command);
+                void context.seek(match.subtitle.start);
+                this._requestTokenSelection(context, match);
+                return true;
             },
-            () => false,
+            () => context.subtitleController.subtitles.length === 0,
             true
         );
 
@@ -497,6 +524,11 @@ export default class KeyBindings {
             this._unbindAdjustTopSubtitlePositionOffset = false;
         }
 
+        if (this._unbindOpenStatistics) {
+            this._unbindOpenStatistics();
+            this._unbindOpenStatistics = false;
+        }
+
         if (this._unbindMarkHoveredToken) {
             this._unbindMarkHoveredToken();
             this._unbindMarkHoveredToken = false;
@@ -507,11 +539,23 @@ export default class KeyBindings {
             this._unbindToggleHoveredTokenIgnored = false;
         }
 
-        if (this._unbindOpenStatistics) {
-            this._unbindOpenStatistics();
-            this._unbindOpenStatistics = false;
+        if (this._unbindJumpToToken) {
+            this._unbindJumpToToken();
+            this._unbindJumpToToken = false;
         }
 
+        this._cancelTokenSelectionRetry?.();
+        this._cancelTokenSelectionRetry = undefined;
+
         this._bound = false;
+    }
+
+    private _requestTokenSelection(context: Binding, target: TokenSelectionLocation) {
+        this._cancelTokenSelectionRetry?.();
+        this._cancelTokenSelectionRetry = retryWithAnimationFrame(
+            () => context.subtitleController.selectToken(target, { focusContainer: false }),
+            60,
+            { runImmediately: true }
+        );
     }
 }

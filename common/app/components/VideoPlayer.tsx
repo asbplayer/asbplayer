@@ -43,7 +43,13 @@ import {
     formatAsSignedMs,
     timeDurationDisplay,
 } from '@project/common/util';
-import { HoveredToken, renderRichTextOntoSubtitles, getAnnotationsHtml } from '@project/common/annotations';
+import {
+    HoveredToken,
+    renderRichTextOntoSubtitles,
+    getAnnotationsHtml,
+    ASB_SUBTITLE_INDEX_ATTRIBUTE,
+} from '@project/common/annotations';
+import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
 import Clock from '@project/common/playback/timing/clock';
 import {
     formatPlaybackModeNotifications,
@@ -75,6 +81,7 @@ import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-p
 import type { MiningContext } from '@project/common/app/services/mining-context';
 import useSnackbar from '@project/common/hooks/use-snackbar';
 import { useStableDictionaryTracks, useSubtitleStyles } from '@project/common/app/hooks/use-subtitle-styles';
+import { useTokenSelection } from '@project/common/app/hooks/use-token-selection';
 import { useFullscreen } from '@project/common/app/hooks/use-fullscreen';
 import MobileVideoOverlay from '@project/common/components/MobileVideoOverlay';
 import BlurOverlay from '@project/common/app/components/BlurOverlay';
@@ -181,7 +188,7 @@ const showingSubtitleHtml = (
     }
     const allSubtitleClasses = subtitleClasses ? `${subtitleClasses} asbplayer-subtitles` : 'asbplayer-subtitles';
     const rendered = renderRichTextOntoSubtitles([subtitle], 'video', dictionaryTracks)?.get(subtitle.index);
-    return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}">${getAnnotationsHtml(
+    return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${subtitle.index}">${getAnnotationsHtml(
         subtitle.text,
         rendered?.richText,
         rendered?.richTextOnHover
@@ -1004,6 +1011,28 @@ export default function VideoPlayer({
         },
         [playerChannel]
     );
+
+    const tokenSelectionCurrentTime = useCallback(() => clock.time({ maxMs: lengthMs }), [clock, lengthMs]);
+    const tokenSelectionSeekableTracks = useCallback(() => miscSettings.seekableTracks, [miscSettings.seekableTracks]);
+    const tokenSelectionDisabled = useCallback(() => false, []);
+    const handleTokenSelectionMatch = useCallback(
+        (match: TokenJumpMatch) => {
+            handleSeekByTimestamp(match.subtitle.start);
+        },
+        [handleSeekByTimestamp]
+    );
+
+    useTokenSelection({
+        rootRef: containerRef,
+        maxAttempts: 60,
+        keyBinder,
+        subtitles,
+        getCurrentTime: tokenSelectionCurrentTime,
+        getSeekableTracks: tokenSelectionSeekableTracks,
+        onMatch: handleTokenSelectionMatch,
+        onTokenSelectionClaimed: playerChannel.tokenSelectionFocus,
+        disabledGetter: tokenSelectionDisabled,
+    });
 
     useEffect(() => {
         if (seekRequest !== undefined) {
