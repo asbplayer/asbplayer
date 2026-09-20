@@ -6,8 +6,10 @@ GitHub profile, email address, or another identifying description on its own
 line below in a commit authored by you.
 
 By doing so, you agree to license your contributions to asbplayer under the
-MIT License below. You retain copyright ownership of your contributions.
-This allows distributing asbplayer across various platforms.
+MIT License below. You retain copyright ownership of your contributions. If
+your contributions contain code you do not own the copyright to, you agree
+to make those portions clear when contributing. This allows distributing
+asbplayer across various platforms.
 
 <!-- BEGIN CONTRIBUTORS -->
 <!-- END CONTRIBUTORS -->
