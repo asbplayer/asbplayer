@@ -369,6 +369,8 @@ export type SubtitlesWidthUnit = '%' | 'px';
 
 export const subtitlesWidthUnits: readonly SubtitlesWidthUnit[] = ['%', 'px'];
 
+export const maxSubtitlesWidth = (unit: SubtitlesWidthUnit): number => (unit === '%' ? 100 : 10000);
+
 export const subtitlesWidthCssValue = (
     settings: Pick<SubtitleSettings, 'subtitlesWidth' | 'subtitlesWidthUnit'>
 ): string | undefined => {
@@ -376,7 +378,7 @@ export const subtitlesWidthCssValue = (
         return undefined;
     }
 
-    return `${settings.subtitlesWidth}%`;
+    return `${settings.subtitlesWidth}${settings.subtitlesWidthUnit}`;
 };
 
 export interface SubtitleSettings extends TextSubtitleSettings {

@@ -149,7 +149,7 @@ Preview and edit the subtitle text used to show the effect of the appearance set
 | Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
 | Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
 | Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
-| Subtitles width                      | Width of subtitle container. Unit is chosen with the adjacent dropdown.      |
+| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
 
 ## [Keyboard shortcuts](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts)
 

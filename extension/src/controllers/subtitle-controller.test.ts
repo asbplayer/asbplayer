@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from '@jest/globals';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { defaultSettings } from '@project/common/settings';
-import type { SettingsProvider } from '@project/common/settings';
+import type { SettingsProvider, SubtitlesWidthUnit } from '@project/common/settings';
 import SubtitleController from '@project/extension/src/controllers/subtitle-controller';
 import type Binding from '@project/extension/src/services/binding';
 
@@ -131,5 +131,40 @@ describe('SubtitleController appearance rendering', () => {
         expect(document.querySelector('.asbplayer-subtitles-container-top span')?.getAttribute('style')).toContain(
             'color: #0000ff'
         );
+    });
+
+    // The video is 640px wide and the viewport is 1024px wide in these tests
+    const containerWidthFor = (width: number, unit: SubtitlesWidthUnit) => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings({ ...defaultSettings, subtitlesWidth: width, subtitlesWidthUnit: unit });
+        controller.setSubtitlesWidth(width, unit);
+        controller.subtitles = [
+            {
+                text: 'subtitle',
+                start: 0,
+                end: 1000,
+                originalStart: 0,
+                originalEnd: 1000,
+                track: 0,
+                index: 0,
+            },
+        ];
+        controller.playbackStateChanged({ timestampMs: 0, showingSubtitleIndexes: [0], paused: false });
+        controller.refresh();
+
+        const containers = document.querySelectorAll<HTMLElement>('.asbplayer-subtitles-container-bottom');
+        return containers[containers.length - 1]?.style.width;
+    };
+
+    it('applies the subtitle width as a percentage of the video', () => {
+        expect(containerWidthFor(50, '%')).toBe('320px');
+    });
+
+    it('applies the subtitle width in pixels', () => {
+        expect(containerWidthFor(800, 'px')).toBe('800px');
+    });
+
+    it('caps the subtitle width at the viewport width', () => {
+        expect(containerWidthFor(2000, 'px')).toBe(`${Math.min(window.innerWidth, 2000)}px`);
     });
 });

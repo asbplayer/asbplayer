@@ -22,6 +22,7 @@ import type {
 } from '@project/common/settings';
 import {
     changeForTextSubtitleSetting,
+    maxSubtitlesWidth,
     subtitlesWidthUnits,
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
@@ -596,10 +597,18 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 label={t('settings.subtitlesWidth')}
                                 value={subtitlesWidth}
                                 normalizeValue={(value) =>
-                                    value >= 0 && value <= 100 && Number.isFinite(value) ? value : undefined
+                                    value >= 0 &&
+                                    value <= maxSubtitlesWidth(subtitlesWidthUnit) &&
+                                    Number.isFinite(value)
+                                        ? value
+                                        : undefined
                                 }
                                 onValueChange={(value) => void onSettingChanged('subtitlesWidth', value)}
                                 slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        max: maxSubtitlesWidth(subtitlesWidthUnit),
+                                    },
                                     input: {
                                         endAdornment: (
                                             <>

@@ -15,6 +15,7 @@ import type {
     DictionaryTrack,
     SettingsProvider,
     SubtitleAlignment,
+    SubtitlesWidthUnit,
     SubtitleSettings,
     TextSubtitleSettings,
 } from '@project/common/settings';
@@ -221,9 +222,11 @@ export default class SubtitleController {
         this.topSubtitlesElementOverlay.contentPositionOffset = value;
     }
 
-    set subtitlesWidth(value: number) {
-        this.bottomSubtitlesElementOverlay.contentWidthPercentage = value;
-        this.topSubtitlesElementOverlay.contentWidthPercentage = value;
+    setSubtitlesWidth(value: number, unit: SubtitlesWidthUnit) {
+        for (const overlay of [this.bottomSubtitlesElementOverlay, this.topSubtitlesElementOverlay]) {
+            overlay.contentWidth = value;
+            overlay.contentWidthUnit = unit;
+        }
     }
 
     setSubtitleSettings(newSubtitleSettings: SubtitleSettings) {
@@ -330,7 +333,7 @@ export default class SubtitleController {
             fullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.bottom,
-            contentWidthPercentage: -1,
+            contentWidth: -1,
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
@@ -341,7 +344,7 @@ export default class SubtitleController {
             fullscreenContainerClassName: 'asbplayer-subtitles-container-top',
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.top,
-            contentWidthPercentage: -1,
+            contentWidth: -1,
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
@@ -354,7 +357,7 @@ export default class SubtitleController {
                       fullscreenContainerClassName: 'asbplayer-notification-container-top',
                       fullscreenContentClassName: 'asbplayer-notification',
                       offsetAnchor: OffsetAnchor.top,
-                      contentWidthPercentage: -1,
+                      contentWidth: -1,
                       onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
                       onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
                   }
@@ -365,7 +368,7 @@ export default class SubtitleController {
                       fullscreenContainerClassName: 'asbplayer-notification-container-bottom',
                       fullscreenContentClassName: 'asbplayer-notification',
                       offsetAnchor: OffsetAnchor.bottom,
-                      contentWidthPercentage: -1,
+                      contentWidth: -1,
                       onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
                       onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
                   };

@@ -63,6 +63,14 @@ describe('SubtitleAppearanceSettingsTab subtitles width', () => {
 
     const unitSelect = () => subtitlesWidthControl()?.querySelector<HTMLElement>('.MuiSelect-select');
 
+    const widthInput = () => subtitlesWidthControl()!.querySelector('input') as HTMLInputElement;
+
+    const setInputValue = (input: HTMLInputElement, value: string) => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        setter?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
     const openUnitMenu = () => {
         act(() => {
             unitSelect()!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -110,5 +118,33 @@ describe('SubtitleAppearanceSettingsTab subtitles width', () => {
 
         expect(subtitlesWidthControl()?.querySelector('input')?.value).toBe('auto');
         expect(unitSelect()).toBeNull();
+    });
+
+    it('limits percentages to 100', () => {
+        const onSettingChanged = renderTab({ subtitlesWidth: 80, subtitlesWidthUnit: '%' });
+        const input = widthInput();
+
+        expect(input.getAttribute('max')).toBe('100');
+
+        act(() => setInputValue(input, '150'));
+
+        expect(onSettingChanged).not.toHaveBeenCalled();
+    });
+
+    it('limits pixels to 10000', () => {
+        const onSettingChanged = renderTab({ subtitlesWidth: 1280, subtitlesWidthUnit: 'px' });
+        const input = widthInput();
+
+        expect(input.getAttribute('max')).toBe('10000');
+
+        act(() => setInputValue(input, '9000'));
+
+        expect(onSettingChanged).toHaveBeenCalledWith('subtitlesWidth', 9000);
+
+        onSettingChanged.mockClear();
+
+        act(() => setInputValue(input, '12000'));
+
+        expect(onSettingChanged).not.toHaveBeenCalled();
     });
 });
