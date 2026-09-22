@@ -68,47 +68,23 @@ function getContributorLinesAtRevision(revision: string): string[] | undefined {
     return content === undefined ? undefined : readContributorLines(content);
 }
 
-function verifyContributorSectionIsAppendOnly(
-    previousLines: string[] | undefined,
-    currentLines: string[] | undefined
-): void {
+function verifyExistingContributorEntriesPreserved(baseSha: string, headSha: string): void {
+    const mergeBase = git('merge-base', baseSha, headSha).trim();
+    const previousLines = getContributorLinesAtRevision(mergeBase);
     if (previousLines === undefined) return;
-    if (currentLines === undefined) throw new Error('CONTRIBUTORS may not be removed');
-    if (currentLines.length < previousLines.length) {
-        throw new Error('Existing CONTRIBUTORS entries may not be removed');
-    }
 
-    for (let i = 0; i < previousLines.length; ++i) {
-        if (currentLines[i] !== previousLines[i]) {
-            throw new Error('Existing CONTRIBUTORS entries may not be modified or reordered');
-        }
-    }
-}
+    const content = getContributorContentAtRevision(headSha);
+    if (content === undefined) throw new Error('CONTRIBUTORS may not be removed');
 
-function verifyContributorHistoryIsAppendOnly(baseSha: string, headSha: string, range: string): void {
-    const baseLines = getContributorLinesAtRevision(baseSha);
-    const commits = git('rev-list', range)
-        .trim()
-        .split(/\r?\n/)
-        .filter(Boolean);
+    const { start, end } = getContributorSectionLines(content);
+    const blamedLines = getBlamedLines(headSha, start, end);
+    if (blamedLines.length !== end - start - 1) throw new Error('Unexpected git blame output for CONTRIBUTORS');
 
-    if (!commits.length) {
-        verifyContributorSectionIsAppendOnly(baseLines, getContributorLinesAtRevision(headSha));
-        return;
-    }
+    const rangeCommits = new Set(git('rev-list', `${mergeBase}..${headSha}`).trim().split('\n').filter(Boolean));
+    const preservedLines = blamedLines.filter(({ commit }) => !rangeCommits.has(commit)).map(({ content }) => content);
 
-    for (const commit of commits) {
-        const currentLines = getContributorLinesAtRevision(commit);
-        const parents = git('rev-list', '--parents', '-n', '1', commit).trim().split(/\s+/).slice(1);
-
-        if (!parents.length) {
-            verifyContributorSectionIsAppendOnly(undefined, currentLines);
-            continue;
-        }
-
-        for (const parent of parents) {
-            verifyContributorSectionIsAppendOnly(getContributorLinesAtRevision(parent), currentLines);
-        }
+    if (preservedLines.length !== previousLines.length || preservedLines.some((line, i) => line !== previousLines[i])) {
+        throw new Error('Existing CONTRIBUTORS entries may not be modified, reordered, or removed');
     }
 }
 
@@ -116,11 +92,7 @@ function fileExistsAtRevision(revision: string, path: string): boolean {
     return git('ls-tree', '--name-only', revision, '--', path).trim() === path;
 }
 
-function getBlamedLines(
-    revision: string,
-    start: number,
-    end: number
-): Array<{ commit: string; content: string }> {
+function getBlamedLines(revision: string, start: number, end: number): Array<{ commit: string; content: string }> {
     const firstLine = start + 2;
     const lastLine = end;
     if (firstLine > lastLine) return [];
@@ -165,6 +137,11 @@ function isContributorEntry(line: string): boolean {
     return content.length > 0 && !content.startsWith('#') && !content.startsWith('<!--');
 }
 
+function normalizeEmail(email: string): string {
+    const match = email.match(/^(?:\d+\+)?(.+@users\.noreply\.github\.com)$/i);
+    return match ? match[1].toLowerCase() : email;
+}
+
 function getContributorEmails(revision: string): Set<string> {
     const content = getContributorContentAtRevision(revision);
     if (content === undefined) throw new Error(`CONTRIBUTORS does not exist at ${revision}`);
@@ -172,7 +149,7 @@ function getContributorEmails(revision: string): Set<string> {
     return new Set(
         getBlamedLines(revision, start, end)
             .filter(({ content }) => isContributorEntry(content))
-            .map(({ commit }) => getAuthorEmail(commit))
+            .map(({ commit }) => normalizeEmail(getAuthorEmail(commit)))
             .filter(Boolean)
     );
 }
@@ -181,6 +158,7 @@ function getBypassedEmails(): Set<string> {
     return new Set(
         (process.env.CONTRIBUTORS_BYPASS ?? '')
             .split(',')
+            .map((e) => normalizeEmail(e.trim()))
             .filter(Boolean)
     );
 }
@@ -208,11 +186,13 @@ function getCommits(range: string): Array<{ hash: string; email: string; subject
 
 function checkContributors(): void {
     const { range, baseSha, headSha } = getCommitRange();
-    if (baseSha) verifyContributorHistoryIsAppendOnly(baseSha, headSha, range);
+    if (baseSha) verifyExistingContributorEntriesPreserved(baseSha, headSha);
 
     const registeredEmails = getContributorEmails(headSha);
     const bypassedEmails = getBypassedEmails();
-    const missing = getCommits(range).filter(({ email }) => !registeredEmails.has(email) && !bypassedEmails.has(email));
+    const missing = getCommits(range).filter(
+        ({ email }) => !registeredEmails.has(normalizeEmail(email)) && !bypassedEmails.has(normalizeEmail(email))
+    );
     if (!missing.length) return;
 
     console.error('Contributor check failed. The following commit authors are not registered:');
