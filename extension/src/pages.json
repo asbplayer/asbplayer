@@ -242,6 +242,15 @@
             "key": "archive",
             "host": "archive\\.org",
             "searchShadowRootsForVideoElements": true
+        },
+        {
+            "key": "vkvideo",
+            "host": "(?:(?:m|new|vksport)\\.)?vk(?:video)?\\.(?:ru|com)",
+            "pageScript": "vkvideo-page.js",
+            "syncAllowedAtPath": "video|clip",
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }

@@ -54,6 +54,18 @@ it('uses an explicit integration instead of the generic fallback', () => {
     expect(page.config.generic).not.toBe(true);
 });
 
+it('uses the vkvideo integration instead of the generic fallback', () => {
+    const vkvideo = pagesConfig.pages.find((page) => page.key === 'vkvideo')!;
+    const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://vkvideo.ru/video-18403220_456239696'), {
+        tutorial: false,
+        genericSubtitleParser: 'off',
+    });
+
+    expect(page.config).toMatchObject(vkvideo);
+    expect(page.config.generic).not.toBe(true);
+    expect(page.isVideoPage()).toBe(true);
+});
+
 it('uses the tutorial integration instead of the generic fallback', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://example.com/tutorial'), {
         tutorial: true,
