@@ -54,6 +54,18 @@ it('uses an explicit integration instead of the generic fallback', () => {
     expect(page.config.generic).not.toBe(true);
 });
 
+it('uses the okru integration instead of the generic fallback', () => {
+    const okru = pagesConfig.pages.find((page) => page.key === 'okru')!;
+    const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://ok.ru/video/15519730633427'), {
+        tutorial: false,
+        genericSubtitleParser: 'off',
+    });
+
+    expect(page.config).toMatchObject(okru);
+    expect(page.config.generic).not.toBe(true);
+    expect(page.isVideoPage()).toBe(true);
+});
+
 it('uses the tutorial integration instead of the generic fallback', () => {
     const page = pageDelegateForUrl(pagesConfig.pages, new URL('https://example.com/tutorial'), {
         tutorial: true,
