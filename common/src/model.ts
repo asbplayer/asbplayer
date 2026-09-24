@@ -119,7 +119,7 @@ export enum MediaFragmentErrorCode {
 
 export interface MediaFragmentModel {
     readonly base64: string;
-    readonly extension: 'jpeg' | 'webm';
+    readonly extension: 'jpeg' | 'webm' | 'webp';
     readonly error?: MediaFragmentErrorCode;
 }
 

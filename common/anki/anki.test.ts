@@ -39,6 +39,8 @@ const testAnkiSettings: AnkiSettings = {
     mediaFragmentTrimStart: 200,
     mediaFragmentTrimEnd: 200,
     mediaFragmentMaxClipLength: 10000,
+    animatedImageFps: 10,
+    animatedImageQuality: 0.85,
     surroundingSubtitlesCountRadius: 0,
     surroundingSubtitlesTimeRadius: 0,
     ankiFieldSettings: {

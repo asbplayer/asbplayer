@@ -4,6 +4,7 @@ import TabRegistry from '@/services/tab-registry';
 import ImageCapturer from '@/services/image-capturer';
 import VideoHeartbeatHandler from '@/handlers/video/video-heartbeat-handler';
 import RecordMediaHandler from '@/handlers/video/record-media-handler';
+import PrepareAnimatedWebpRecordingHandler from '@/handlers/video/prepare-animated-webp-recording-handler';
 import RerecordMediaHandler from '@/handlers/video/rerecord-media-handler';
 import StartRecordingMediaHandler from '@/handlers/video/start-recording-media-handler';
 import StopRecordingMediaHandler from '@/handlers/video/stop-recording-media-handler';
@@ -176,6 +177,7 @@ export default defineBackground(() => {
     const handlers: CommandHandler[] = [
         new VideoHeartbeatHandler(tabRegistry),
         new RecordMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
+        new PrepareAnimatedWebpRecordingHandler(settings),
         new RerecordMediaHandler(settings, audioRecorder, cardPublisher),
         new StartRecordingMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
         new StopRecordingMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
