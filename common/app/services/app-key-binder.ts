@@ -383,6 +383,30 @@ export default class AppKeyBinder implements KeyBinder {
         return this.defaultKeyBinder.bindToggleRepeat(onToggleRepeat, disabledGetter, useCapture);
     }
 
+    bindCycleAutoPauseResumeMode(
+        onCycleAutoPauseResumeMode: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        return this.defaultKeyBinder.bindCycleAutoPauseResumeMode(
+            onCycleAutoPauseResumeMode,
+            disabledGetter,
+            useCapture
+        );
+    }
+
+    bindToggleSubtitleVisibility(
+        onToggleSubtitleVisibility: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        return this.defaultKeyBinder.bindToggleSubtitleVisibility(
+            onToggleSubtitleVisibility,
+            disabledGetter,
+            useCapture
+        );
+    }
+
     bindAdjustSubtitlePositionOffset(
         onAdjustSubtitlePositionOffset: (event: KeyboardEvent, increase: boolean) => void,
         disabledGetter: () => boolean,

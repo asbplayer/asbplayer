@@ -120,6 +120,7 @@ const SettingsPage = ({
                         extensionSupportsSubtitlesWidthSetting
                         extensionSupportsPauseOnHover
                         extensionSupportsPlaybackEngine
+                        extensionSupportsAutoPauseResume
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
                         extensionSupportsDictionary

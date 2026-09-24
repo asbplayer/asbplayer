@@ -9,16 +9,31 @@ import {
     playbackPlanCorrectionToleranceMs,
 } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
-import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
-import type { PlaybackPlanExecutorCallbacks } from '@project/common/playback/plan/playback-plan-executor';
+import PlaybackPlanExecutor, {
+    maximumInternalSeekMismatchMs,
+} from '@project/common/playback/plan/playback-plan-executor';
+import type {
+    PlaybackPlanExecutorCallbacks,
+    PlaybackTimelineTransitionCause,
+} from '@project/common/playback/plan/playback-plan-executor';
 import PlaybackModeController, {
     minimumPlaybackRate,
     normalizePlaybackRate,
     playbackModesFromSettings,
 } from '@project/common/playback/controllers/playback-mode-controller';
 import type { PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
+import AutoPauseController, {
+    formatAutoPauseResumeModeNotification,
+    nextAutoPauseResumeMode,
+} from '@project/common/playback/controllers/auto-pause-controller';
+import type { AutoPauseResumeModeNotification } from '@project/common/playback/controllers/auto-pause-controller';
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
+import SubtitleVisibilityController, {
+    formatSubtitleVisibilityNotification,
+    nextSubtitleVisibility,
+} from '@project/common/playback/controllers/subtitle-visibility-controller';
+import type { SubtitleVisibilityNotification } from '@project/common/playback/controllers/subtitle-visibility-controller';
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 
@@ -85,6 +100,7 @@ export interface PlaybackEngineCallbacks {
 export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
     readonly settingsProvider: SettingsProvider;
     readonly appIntegration: boolean;
+    readonly autoPauseCorrectionSuppressed: boolean;
     readonly subtitles: readonly T[];
     readonly playbackModesDisabled: boolean;
     readonly playbackModesSuppressed: boolean;
@@ -105,8 +121,11 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  * └── PlaybackEngine
  *     ├── VideoFrameTimingDriver (Player: AnimationFrameTimingDriver)
  *     │   └── TimingUpdateQueue
+ *     ├── PlaybackStateController
  *     ├── PlaybackModeController
  *     ├── PlaybackPositionController
+ *     ├── AutoPauseController
+ *     ├── SubtitleVisibilityController
  *     ├── PlaybackPlan
  *     └── PlaybackPlanExecutor
  *         ├── PlaybackTimeline
@@ -118,6 +137,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
     private readonly appIntegration: boolean;
+    private readonly autoPauseCorrectionSuppressed: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
     private subtitles: readonly T[];
     private lastSubtitleEndMs?: number;
@@ -129,7 +149,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly callbacks: PlaybackEngineCallbacks;
     private readonly timingDriver: TimingDriver;
     private readonly playbackPositionController: PlaybackPositionController<T>;
+    private readonly autoPauseController: AutoPauseController;
+    private readonly subtitleVisibilityController: SubtitleVisibilityController;
     private readonly playbackStateController: PlaybackStateController<T>;
+    private autoPauseShowingSubtitlesSnapshot?: readonly T[];
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
     private settingsChangedOperationId = 0;
@@ -142,6 +165,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     constructor({
         settingsProvider,
         appIntegration,
+        autoPauseCorrectionSuppressed,
         subtitles,
         playbackModesDisabled,
         playbackModesSuppressed,
@@ -151,6 +175,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }: PlaybackEngineOptions<T>) {
         this.settings = defaultSettings;
         this.appIntegration = appIntegration;
+        this.autoPauseCorrectionSuppressed = autoPauseCorrectionSuppressed;
         this.settingsProvider = settingsProvider;
         this.subtitles = subtitles;
         this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
@@ -160,11 +185,34 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.callbacks = callbacks;
         this.timingDriver = timingDriver;
         this.plan = this.buildPlan();
+        this.subtitleVisibilityController = new SubtitleVisibilityController({
+            visibilityChanged: () => {
+                if (!this.timingDriver.bound) return;
+                this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
+            },
+        });
+        this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
+        this.autoPauseController = new AutoPauseController({
+            play: callbacks.play,
+            resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
+            autoResumeFailed: () => {
+                const snapshotCleared = this.clearAutoPauseShowingSubtitlesSnapshot();
+                this.subtitleVisibilityController.autoPauseCancelled(this.timingDriver.paused());
+                if (snapshotCleared && this.timingDriver.bound) {
+                    this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: false });
+                }
+            },
+            onError: callbacks.onError,
+        });
+        this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
 
-        const executorCallbacks: PlaybackPlanExecutorCallbacks = {
+        const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
             play: callbacks.play,
             paused: () => this.timingDriver.paused(),
-            pause: () => {
+            pause: ({ playbackModeSubtitlesAtPause, showingSubtitlesAtPause }) => {
+                this.autoPauseShowingSubtitlesSnapshot = [...showingSubtitlesAtPause];
+                this.subtitleVisibilityController.autoPaused();
+                this.autoPauseController.autoPaused(playbackModeSubtitlesAtPause);
                 callbacks.pause();
                 void this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
             },
@@ -212,7 +260,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         });
         this.playbackStateController = new PlaybackStateController({
             paused: () => this.timingDriver.paused(),
-            showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
+            showingSubtitlesAt: (timestampMs) =>
+                this.autoPauseShowingSubtitlesSnapshot ?? this.executor.showingSubtitlesAt(timestampMs),
+            subtitlesVisible: () => this.subtitleVisibilityController.subtitlesVisible,
             playbackStateChanged: callbacks.playbackStateChanged,
             now: () => performance.now(),
         });
@@ -228,6 +278,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 }
             },
             onPlaybackPaused: () => {
+                this.subtitleVisibilityController.playbackPaused();
                 this.playbackPositionController.playbackPaused();
                 const timestampMs = this.timingDriver.currentTimeMs();
                 this.playbackStateController.reconcileAndNotify(
@@ -238,13 +289,22 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     { force: true }
                 );
             },
+            onSeekStarted: (cause) => this.seekStartedWithCause(cause),
             onDiscontinuity: (currentTimestampMs) => {
                 this.playbackPositionController.discontinuity(currentTimestampMs);
-                this.executor.handleDiscontinuity(currentTimestampMs);
+                const { cause } = this.executor.handleDiscontinuity(currentTimestampMs);
+                if (cause !== 'internal-seek') {
+                    this.clearAutoPauseShowingSubtitlesSnapshot();
+                    this.autoPauseController.userSeeked();
+                    this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
+                }
                 this.playbackStateController.notify(currentTimestampMs, { force: true });
             },
             onCancel: (options) => this.executor.cancelPendingOperations(options),
             onPlaybackStarted: async () => {
+                this.clearAutoPauseShowingSubtitlesSnapshot();
+                this.autoPauseController.playbackStarted();
+                this.subtitleVisibilityController.playbackStarted();
                 await this.executor.playbackStarted();
                 this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
             },
@@ -371,6 +431,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private teardown({ saveSettings }: { readonly saveSettings: boolean }): void {
         ++this.unbindOperationId;
+        this.clearAutoPauseShowingSubtitlesSnapshot();
+        this.autoPauseController.cancel();
+        this.subtitleVisibilityController.cancel();
         if (!saveSettings) this.playbackPositionController.profileChanged();
         if (!this.timingDriver.bound) return;
         this.playbackPositionController.unbind();
@@ -429,12 +492,18 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     subtitlesChanged(subtitles: readonly T[]): void {
         const hadSubtitles = this.ready.subtitles;
+        const snapshotCleared = this.clearAutoPauseShowingSubtitlesSnapshot();
         this.subtitles = subtitles;
         this.lastSubtitleEndMs = this.calculateLastSubtitleEndMs(subtitles);
         if (subtitles.length) {
             this.ready.subtitles = true;
             this.bind();
-            if (hadSubtitles) this.rebuildPlan();
+            if (hadSubtitles) {
+                const planChanged = this.rebuildPlan();
+                if (!planChanged && snapshotCleared && this.timingDriver.bound) {
+                    this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: false });
+                }
+            }
         } else if (hadSubtitles) {
             this.ready.subtitles = false;
             this.applyPlaybackModeTransition(this.playbackModeController.setModes(new Set([PlayMode.normal])), {
@@ -523,6 +592,24 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.applyPlaybackModeTransition(transition, { savePlaybackModes: true, rebuildWhenUnchanged: false });
     }
 
+    cycleAutoPauseResumeMode(): AutoPauseResumeModeNotification | undefined {
+        if (!this.timingDriver.bound) return;
+        const autoPauseResumeMode = nextAutoPauseResumeMode(this.settings.autoPauseResumeMode);
+        this.settings = { ...this.settings, autoPauseResumeMode };
+        this.rebuildPlan();
+        this.callbacks.saveSettings({ autoPauseResumeMode });
+        return formatAutoPauseResumeModeNotification(autoPauseResumeMode);
+    }
+
+    toggleSubtitleVisibility(): SubtitleVisibilityNotification | undefined {
+        if (!this.timingDriver.bound) return;
+        const subtitleVisibility = nextSubtitleVisibility(this.settings.subtitleVisibility);
+        this.settings = { ...this.settings, subtitleVisibility };
+        this.rebuildPlan();
+        this.callbacks.saveSettings({ subtitleVisibility });
+        return formatSubtitleVisibilityNotification(subtitleVisibility);
+    }
+
     dismissPlaybackPosition(): void {
         this.playbackPositionController.dismissPlaybackPosition();
     }
@@ -537,7 +624,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.timingDriver.externalSeeked!(timestampMs);
             return;
         }
-        this.executor.handleDiscontinuity(timestampMs);
+        const { cause } = this.executor.handleDiscontinuity(timestampMs);
+        if (cause !== 'internal-seek') {
+            this.clearAutoPauseShowingSubtitlesSnapshot();
+            this.autoPauseController.userSeeked();
+            this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
+        }
         this.playbackStateController.notify(timestampMs, { force: true });
     }
 
@@ -547,7 +639,18 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.timingDriver.externalSeekStarted!();
             return;
         }
+        this.seekStartedWithCause('user-seek');
         this.executor.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
+    }
+
+    private seekStartedWithCause(cause: PlaybackTimelineTransitionCause): void {
+        if (cause === 'internal-seek') return;
+        const snapshotCleared = this.clearAutoPauseShowingSubtitlesSnapshot();
+        this.autoPauseController.userSeeked();
+        this.subtitleVisibilityController.userSeeked(this.timingDriver.paused());
+        if (snapshotCleared && this.timingDriver.bound) {
+            this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: false });
+        }
     }
 
     /** Reports that a seek operation has been canceled from a non-standard media adapter, such as Disney+'s page-script seek event. */
@@ -583,6 +686,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             playbackRate: this.settings.playbackRate,
             fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
             fastForwardPlaybackMinimumSkipIntervalMs: this.settings.fastForwardPlaybackMinimumSkipIntervalMs,
+            autoPauseResumeMode: this.settings.autoPauseResumeMode,
+            autoPauseResumeDelayMs: this.settings.autoPauseResumeDelayMs,
+            autoPauseFixedDurationMs: this.settings.autoPauseFixedDurationMs,
+            autoPauseMinimumDurationMs: this.settings.autoPauseMinimumDurationMs,
+            autoPauseMaximumDurationMs: this.settings.autoPauseMaximumDurationMs,
+            autoPauseTimePerCharacterMs: this.settings.autoPauseTimePerCharacterMs,
+            subtitleVisibility: this.settings.subtitleVisibility,
         });
     }
 
@@ -596,7 +706,14 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const plan = this.buildPlan();
         const planChanged = !playbackPlansEqual(this.plan, plan);
         if (planChanged) {
+            const subtitleVisibilityChanged = this.plan.subtitleVisibility !== plan.subtitleVisibility;
             this.plan = plan;
+            const autoPauseResumeChanged = this.autoPauseController.replacePlan(this.plan.autoPause?.resume);
+            if (autoPauseResumeChanged || subtitleVisibilityChanged) this.clearAutoPauseShowingSubtitlesSnapshot();
+            this.subtitleVisibilityController.replacePlan(this.plan.subtitleVisibility, this.timingDriver.paused());
+            if (autoPauseResumeChanged) {
+                this.subtitleVisibilityController.autoPauseCancelled(this.timingDriver.paused());
+            }
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,
             });
@@ -607,6 +724,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.executor.initializePlaybackRate(this.timingDriver.currentTimeMs());
         }
         return planChanged;
+    }
+
+    private clearAutoPauseShowingSubtitlesSnapshot(): boolean {
+        if (this.autoPauseShowingSubtitlesSnapshot === undefined) return false;
+        this.autoPauseShowingSubtitlesSnapshot = undefined;
+        return true;
     }
 
     private applyPlaybackModeTransition(
@@ -635,6 +758,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         timestampMs: number,
         warningCommand: 'pause-correction'
     ): Promise<{ seekIssued: boolean }> {
+        if (this.autoPauseCorrectionSuppressed) return { seekIssued: false };
         const targetTimestampMs = this.clampTimestamp(timestampMs);
         if (Math.abs(this.timingDriver.currentTimeMs() - targetTimestampMs) < playbackPlanCorrectionToleranceMs) {
             return { seekIssued: false };
@@ -660,7 +784,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             await this.callbacks.seek(targetTimestampMs);
             if ((await Promise.race([seekCompletion, watchdog])) !== 'completed') return;
             this.warnIfTimestampMismatch(warningCommand, targetTimestampMs);
-            void this.playbackPositionController.savePlaybackPosition(targetTimestampMs);
+            const actualTimestampMs = this.timingDriver.currentTimeMs();
+            const playbackPositionTimestampMs =
+                Math.abs(actualTimestampMs - targetTimestampMs) > maximumInternalSeekMismatchMs
+                    ? actualTimestampMs
+                    : targetTimestampMs;
+            void this.playbackPositionController.savePlaybackPosition(playbackPositionTimestampMs);
         } catch (error) {
             this.timingDriver.cancelExpectedInternalSeek();
             throw error;

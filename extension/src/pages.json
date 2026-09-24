@@ -10,6 +10,15 @@
             }
         },
         {
+            "key": "crunchyroll",
+            "host": "(www\\.)?crunchyroll\\.com",
+            "pageScript": "crunchyroll-page.js",
+            "syncAllowedAtPath": "watch",
+            "autoSync": {
+                "enabled": true
+            }
+        },
+        {
             "key": "youtube",
             "host": "(m|www)\\.youtube\\.com",
             "pageScript": "youtube-page.js",

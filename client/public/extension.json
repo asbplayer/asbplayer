@@ -7,67 +7,67 @@
         {
             "code": "en",
             "url": "/locales/en.json",
-            "version": 26
+            "version": 27
         },
         {
             "code": "es",
             "url": "/locales/es.json",
-            "version": 23
+            "version": 24
         },
         {
             "code": "ja",
             "url": "/locales/ja.json",
-            "version": 31
+            "version": 32
         },
         {
             "code": "de",
             "url": "/locales/de.json",
-            "version": 24
+            "version": 25
         },
         {
             "code": "pl",
             "url": "/locales/pl.json",
-            "version": 24
+            "version": 25
         },
         {
             "code": "pt_BR",
             "url": "/locales/pt_BR.json",
-            "version": 23
+            "version": 24
         },
         {
             "code": "zh_CN",
             "url": "/locales/zh_CN.json",
-            "version": 23
+            "version": 24
         },
         {
             "code": "ru",
             "url": "/locales/ru.json",
-            "version": 22
+            "version": 23
         },
         {
             "code": "fi",
             "url": "/locales/fi.json",
-            "version": 15
+            "version": 16
         },
         {
             "code": "fr",
             "url": "/locales/fr.json",
-            "version": 15
+            "version": 16
         },
         {
             "code": "ko",
             "url": "/locales/ko.json",
-            "version": 15
+            "version": 16
         },
         {
             "code": "id",
             "url": "/locales/id.json",
-            "version": 14
+            "version": 15
         },
         {
             "code": "it",
             "url": "/locales/it.json",
-            "version": 5
+            "version": 6
         }
     ]
 }

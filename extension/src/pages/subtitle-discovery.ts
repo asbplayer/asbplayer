@@ -1,5 +1,12 @@
 import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
-import { extractExtension, normalizeSubtitleExtension, trackFromDef } from '@project/extension/src/pages/util';
+import {
+    canonicalLanguageTag,
+    extractExtension,
+    getLocale,
+    languageDisplayName,
+    normalizeSubtitleExtension,
+    trackFromDef,
+} from '@project/extension/src/pages/util';
 
 export interface VideoDataProvider {
     videoData(video: HTMLVideoElement, reset?: boolean): Promise<VideoData>;
@@ -29,6 +36,8 @@ const subtitleContainerHint =
 const subtitleSourceHint =
     /"(?:baseurl|file|src|source|url)"\s*:\s*"[^"]*(?:caption|subtit|texttrack|timedtext|transcript|\.ass(?:[?#]|$)|\.dfxp(?:[?#]|$)|\.srt(?:[?#]|$)|\.ssa(?:[?#]|$)|\.ttml(?:[?#]|$)|\.vtt(?:[?#]|$))/i;
 const subtitleKindHint = /"kind"\s*:\s*"(?:captions?|subtitles?)"/i;
+const regexSpecialCharacters = /[.*+?^${}()|[\]\\]/g;
+const nonLanguageSubtitleLabels = new Set(['SDH', 'HI', 'OC', 'VI', 'ALT', 'FAN']);
 
 export const subtitleExtensionsByContentType: Readonly<Record<string, string>> = {
     'application/dfxp+xml': 'dfxp',
@@ -51,6 +60,86 @@ export const subtitleExtensionsByContentType: Readonly<Record<string, string>> =
     'text/x-srt': 'srt',
     'text/x-ssa': 'ass',
 };
+
+/** Matches a localized language name inside a subtitle label so it can be detected or replaced literally. */
+function caseInsensitivePattern(value: string) {
+    return new RegExp(value.replace(regexSpecialCharacters, '\\$&'), 'iu');
+}
+
+function isNonLanguageSubtitleLabel(label: string) {
+    return nonLanguageSubtitleLabels.has(label.toUpperCase());
+}
+
+function combineLanguageDisplayAndLabel(languageDisplay: string, label: string, languageInLabel?: RegExp) {
+    const detail = languageInLabel ? label.replace(languageInLabel, '').trim() : label;
+    return detail ? `${languageDisplay} · ${detail}` : languageDisplay;
+}
+
+function localizedLanguagePatterns(locale: Intl.Locale): readonly RegExp[] {
+    const displayLocales = new Map<string, Intl.Locale>();
+    for (const displayLanguage of [locale.baseName, 'en', ...navigator.languages]) {
+        const displayLocale = getLocale(displayLanguage);
+        if (displayLocale) displayLocales.set(displayLocale.baseName, displayLocale);
+    }
+
+    const languageTags = new Set([locale.baseName, locale.language]);
+    const names = new Set<string>();
+
+    for (const displayLocale of displayLocales.values()) {
+        for (const languageTag of languageTags) {
+            names.add(languageDisplayName(languageTag, displayLocale));
+        }
+    }
+
+    return [...names].sort((a, b) => b.length - a.length).map(caseInsensitivePattern);
+}
+
+/**
+ * Generates a display label for a subtitle track by combining the language display name and the parsed label.
+ * See the test cases for examples of how labels are combined with language display names.
+ */
+export function genericSubtitleDisplayLabel(
+    parsedLabel: string | undefined,
+    language: string | undefined,
+    fallback: string
+): string {
+    const label = parsedLabel?.trim();
+    const normalizedLanguage = language?.trim();
+
+    const locale = normalizedLanguage ? getLocale(normalizedLanguage) : undefined;
+    const languageDisplay = normalizedLanguage ? languageDisplayName(normalizedLanguage, locale) : undefined;
+    const languageResolved = languageDisplay !== undefined && languageDisplay !== normalizedLanguage;
+
+    if (label && normalizedLanguage) {
+        if (!languageResolved) return `${label} · ${normalizedLanguage}`;
+
+        const labelLocale = isNonLanguageSubtitleLabel(label) ? undefined : getLocale(label);
+        const canonicalLabel = labelLocale ? canonicalLanguageTag(labelLocale) : undefined;
+        if (
+            locale &&
+            canonicalLabel &&
+            (canonicalLabel === canonicalLanguageTag(locale) || canonicalLabel === locale.language)
+        ) {
+            return languageDisplay;
+        }
+
+        if (locale) {
+            const languageInLabel = localizedLanguagePatterns(locale).find((pattern) => pattern.test(label));
+            if (languageInLabel) return combineLanguageDisplayAndLabel(languageDisplay, label, languageInLabel);
+        }
+
+        return combineLanguageDisplayAndLabel(languageDisplay, label);
+    }
+
+    if (label) {
+        if (isNonLanguageSubtitleLabel(label)) return label;
+        const labelDisplay = languageDisplayName(label);
+        return labelDisplay !== label ? labelDisplay : label;
+    }
+    if (languageResolved) return languageDisplay;
+    if (normalizedLanguage) return `${fallback} · ${normalizedLanguage}`;
+    return fallback;
+}
 
 export function normalizedContentType(contentType: unknown) {
     return typeof contentType === 'string' ? contentType.split(';', 1)[0].trim().toLowerCase() : undefined;
@@ -186,7 +275,7 @@ function trackDefinitionFromMetadata(
     if (extension === undefined) return;
 
     const normalizedLanguage = metadataLanguage(value) ?? inheritedLanguage;
-    const label = metadataLabel(value) ?? normalizedLanguage ?? detectedSubtitleLabel;
+    const label = genericSubtitleDisplayLabel(metadataLabel(value), normalizedLanguage, detectedSubtitleLabel);
 
     return { label, language: normalizedLanguage, url, extension };
 }
@@ -293,7 +382,11 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                     extractExtension(url, '') === '' &&
                     !extensionlessTracks.some((track) => track.url === url)
                 ) {
-                    extensionlessTracks.push({ label: label ?? language ?? detectedSubtitleLabel, language, url });
+                    extensionlessTracks.push({
+                        label: genericSubtitleDisplayLabel(label, language, detectedSubtitleLabel),
+                        language,
+                        url,
+                    });
                 }
             }
 
@@ -317,7 +410,12 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                     else if (referenceUrl !== undefined && referenceExtension !== undefined) {
                         tracks.push(
                             trackFromDef({
-                                label: inheritedLanguage ?? normalizedMetadataKey(key),
+                                label: genericSubtitleDisplayLabel(
+                                    normalizedMetadataKey(key),
+                                    inheritedLanguage,
+                                    detectedSubtitleLabel
+                                ),
+                                language: inheritedLanguage,
                                 url: referenceUrl,
                                 extension: referenceExtension,
                             })
@@ -327,7 +425,14 @@ export function tracksFromJson(value: unknown, baseUrl: string, options: JsonDis
                     const url = absoluteSubtitleUrl(child, baseUrl);
                     const extension = url === undefined ? undefined : subtitleExtensionForUrl(url);
                     if (url !== undefined && extension !== undefined) {
-                        tracks.push(trackFromDef({ label: key || detectedSubtitleLabel, url, extension }));
+                        tracks.push(
+                            trackFromDef({
+                                label: genericSubtitleDisplayLabel(key, inheritedLanguage, detectedSubtitleLabel),
+                                language: inheritedLanguage,
+                                url,
+                                extension,
+                            })
+                        );
                     }
                 }
             }

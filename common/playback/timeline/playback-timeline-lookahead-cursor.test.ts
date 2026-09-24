@@ -27,7 +27,7 @@ describe('PlaybackTimelineLookaheadCursor', () => {
         expect(cursor.advance(1200, { lookaheadTimestampMs: 1300, includeStateChanges: true })).toEqual({});
     });
 
-    it('resets its compiled indexes when playback moves backward', () => {
+    it('reconciles state without replaying actions when playback moves backward', () => {
         const plan = buildPlaybackPlan(
             makePlaybackPlanInput([makeSubtitle(1000, 2000, 0)], {
                 playModes: new Set([PlayMode.autoPause]),
@@ -42,7 +42,6 @@ describe('PlaybackTimelineLookaheadCursor', () => {
             stateChangeTimestamp: 2000,
         });
         expect(cursor.advance(500, { lookaheadTimestampMs: 1500, includeStateChanges: true })).toEqual({
-            actionTimestamp: 1000,
             stateChangeTimestamp: 999,
         });
     });

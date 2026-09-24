@@ -147,7 +147,7 @@ export default class VideoSelectController {
         const videoElementPromises: Promise<VideoElement>[] = this._bindings.map(async (b, index) => {
             return {
                 src: b.registeredVideoSrc,
-                imageDataUrl: await b.cropAndResize(tabImageDataUrl),
+                imageDataUrl: tabImageDataUrl ? await b.cropAndResize(tabImageDataUrl) : '',
                 preferred: this._isBindingsSorted && index === 0,
             };
         });

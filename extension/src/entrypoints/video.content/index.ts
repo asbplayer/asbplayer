@@ -295,14 +295,14 @@ export default defineContentScript({
             });
         };
 
-        if (document.readyState === 'complete') {
-            bind().catch((error) => asbError('video', error));
-        } else {
-            document.addEventListener('readystatechange', () => {
-                if (document.readyState === 'complete') {
-                    bind().catch((error) => asbError('video', error));
-                }
-            });
-        }
+        let bindingStarted = false;
+        const bindOnceDocumentComplete = () => {
+            if (bindingStarted || document.readyState !== 'complete') return;
+            bindingStarted = true;
+            document.removeEventListener('readystatechange', bindOnceDocumentComplete);
+            void bind().catch((error) => asbError('video', error));
+        };
+        bindOnceDocumentComplete();
+        if (!bindingStarted) document.addEventListener('readystatechange', bindOnceDocumentComplete);
     },
 });

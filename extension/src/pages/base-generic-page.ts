@@ -12,6 +12,7 @@ import {
     bindVideoDataDiscovery,
     deduplicateTracks,
     detectedSubtitleLabel,
+    genericSubtitleDisplayLabel,
     isJsonContentType,
     nonEmptyString,
     normalizedContentType,
@@ -88,7 +89,7 @@ function directSubtitleTracksFromPerformance(): VideoDataSubtitleTrack[] {
 
             tracks.push(
                 trackFromDef({
-                    label: language ?? detectedSubtitleLabel,
+                    label: genericSubtitleDisplayLabel(undefined, language, detectedSubtitleLabel),
                     language,
                     url,
                     extension,
@@ -235,7 +236,11 @@ export function nativeSubtitleTracks(
         const language = element.getAttribute('srclang')?.trim().toLowerCase() || undefined;
         tracks.push(
             trackFromDef({
-                label: element.getAttribute('label')?.trim() || language || `Subtitle ${index + 1}`,
+                label: genericSubtitleDisplayLabel(
+                    element.getAttribute('label') ?? undefined,
+                    language,
+                    `Subtitle ${index + 1}`
+                ),
                 language,
                 url,
                 // HTML track resources are WebVTT even when served by an extensionless endpoint.
@@ -260,9 +265,11 @@ export function nativeSubtitleTracks(
             const language = textTrack.language.trim().toLowerCase() || undefined;
             tracks.push(
                 trackFromDef({
-                    label: `${textTrack.label.trim() || language || `Subtitle ${trackElements.length + index + 1}`}${
-                        accumulated.capturedOverTime ? capturedDuringPlaybackLabelSuffix : ''
-                    }`,
+                    label: `${genericSubtitleDisplayLabel(
+                        textTrack.label,
+                        language,
+                        `Subtitle ${trackElements.length + index + 1}`
+                    )}${accumulated.capturedOverTime ? capturedDuringPlaybackLabelSuffix : ''}`,
                     language,
                     url: `data:application/x-subrip;charset=utf-8,${encodeURIComponent(text)}`,
                     extension: 'srt',

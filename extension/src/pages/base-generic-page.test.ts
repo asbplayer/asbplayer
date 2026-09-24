@@ -100,7 +100,7 @@ afterEach(() => {
 it('returns only native subtitle and caption tracks from the requested video', () => {
     const requestedVideo = appendVideo();
     requestedVideo.innerHTML = `
-        <track kind="subtitles" src="/subs/en.vtt" srclang="en" label="English">
+        <track kind="subtitles" src="/subs/en.vtt" srclang="en" label="en">
         <track kind="captions" src="/subs/ja" srclang="ja">
         <track kind="chapters" src="/chapters.vtt" label="Chapters">
         <track kind="subtitles" src="" label="Empty">
@@ -116,7 +116,7 @@ it('returns only native subtitle and caption tracks from the requested video', (
             extension: 'vtt',
         },
         {
-            label: 'ja',
+            label: '日本語',
             language: 'ja',
             url: 'http://localhost/subs/ja',
             extension: 'vtt',
@@ -145,7 +145,7 @@ it('serializes a populated programmatic text track without changing its mode', (
     const tracks = nativeSubtitleTracks(video);
 
     expect(tracks).toHaveLength(1);
-    expect(tracks[0]).toMatchObject({ label: 'English', language: 'en-us', extension: 'srt' });
+    expect(tracks[0]).toMatchObject({ label: 'English (United States)', language: 'en-us', extension: 'srt' });
     expect((tracks[0].url as string).split(',', 1)[0]).toBe('data:application/x-subrip;charset=utf-8');
     expect(decodeURIComponent((tracks[0].url as string).split(',', 2)[1])).toBe(
         '0\r\n00:00:01,250 --> 00:00:03,500\r\nFirst line\r\nSecond line\r\n\r\n' +
@@ -211,8 +211,8 @@ it('discovers strict subtitle metadata from small explicitly typed inline JSON',
     await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
         subtitles: [
             { label: 'English', language: 'en', url: 'http://localhost/subs/en.vtt', extension: 'vtt' },
-            { label: 'Japanese', language: 'ja', url: 'http://localhost/subs/ja.ass?token=x', extension: 'ass' },
-            { label: 'es', language: 'es', url: 'http://localhost/subs/es', extension: 'vtt' },
+            { label: '日本語', language: 'ja', url: 'http://localhost/subs/ja.ass?token=x', extension: 'ass' },
+            { label: 'Español', language: 'es', url: 'http://localhost/subs/es', extension: 'vtt' },
         ],
     });
 });
@@ -319,7 +319,7 @@ it('discovers direct subtitle resources from the bounded performance timeline', 
         await expect(new BaseGenericPageDiscovery().videoData(video)).resolves.toMatchObject({
             subtitles: [
                 {
-                    label: 'en',
+                    label: 'English',
                     language: 'en',
                     url: 'https://cdn.example/subtitles/en.srt?token=x',
                     extension: 'srt',

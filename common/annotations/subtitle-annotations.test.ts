@@ -8,9 +8,12 @@ import {
 import {
     ApplyStrategy,
     DictionaryTokenSource,
+    TokenStyling,
     TokenMatchStrategy,
     TokenState,
     TokenStatus,
+    areDictionaryTracksRenderOnly,
+    dictionaryStatusCollectionEnabled,
 } from '@project/common/settings';
 import { Anki } from '@project/common/anki';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
@@ -113,6 +116,109 @@ describe('SubtitleAnnotations', () => {
             )
         ).toBe(true);
         expect(needsReset([], previous)).toBe(true);
+    });
+
+    it('does not reset annotations on repeated settings updates when Anki is unavailable', () => {
+        const settings = makeSettings();
+        const { subtitleAnnotations } = makeSubtitleAnnotations(settings);
+        const runtime = privateAnnotations(subtitleAnnotations);
+        const buildAnnotations = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+
+        subtitleAnnotations.setSubtitles([makeSubtitle()]);
+        runtime.trackStates = settings.dictionaryTracks.map((dt, track) => new TrackState(track, dt));
+
+        // Establish the last observed Anki settings. The first update may reset while the cache is initializing.
+        subtitleAnnotations.settingsUpdated(settings);
+        buildAnnotations.mockClear();
+        runtime.trackStates = settings.dictionaryTracks.map((dt, track) => new TrackState(track, dt));
+
+        const tokenization = { tokens: [makeToken()] };
+        const subtitle = subtitleAnnotations.subtitles[0] as any;
+        subtitle.text = 'annotated';
+        subtitle.tokenization = tokenization;
+
+        subtitleAnnotations.settingsUpdated(settings);
+
+        expect(buildAnnotations).not.toHaveBeenCalled();
+        expect(subtitleAnnotations.subtitles[0].text).toBe('annotated');
+        expect(subtitleAnnotations.subtitles[0].tokenization).toBe(tokenization);
+
+        buildAnnotations.mockClear();
+        subtitleAnnotations.settingsUpdated({ ...settings, ankiConnectUrl: 'http://different-anki:8765' });
+
+        expect(buildAnnotations).toHaveBeenCalled();
+        expect(subtitleAnnotations.subtitles[0].text).toBe('word');
+        expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).not.toHaveProperty('status');
+    });
+
+    it('updates render-only settings without rebuilding annotation data', () => {
+        const initialTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: false });
+        initialTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].reading = true;
+        const settings = makeSettings(makeDictionaryTracks(initialTrack));
+        const { subtitleAnnotations, subtitleAnnotationsUpdated } = makeSubtitleAnnotations(settings);
+        const runtime = privateAnnotations(subtitleAnnotations);
+        const buildAnnotations = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+        const tokenization = { tokens: [makeToken()] };
+
+        subtitleAnnotations.setSubtitles([makeSubtitle({ text: 'annotated', tokenization })]);
+        runtime.trackStates = settings.dictionaryTracks.map((dt, index) => new TrackState(index, dt));
+        runtime.lastAnkiSettings = {
+            url: settings.ankiConnectUrl,
+            apiKey: settings.ankiConnectApiKey,
+        };
+        buildAnnotations.mockClear();
+        subtitleAnnotationsUpdated.mockClear();
+
+        const renderOnlyTrack = makeDictionaryTrack({
+            dictionaryColorizeSubtitles: true,
+            dictionaryTokenStyling: TokenStyling.BACKGROUND,
+        });
+        renderOnlyTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].reading = true;
+        renderOnlyTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.MATURE].reading = true;
+        const renderOnlySettings = makeSettings(makeDictionaryTracks(renderOnlyTrack));
+
+        subtitleAnnotations.settingsUpdated(renderOnlySettings);
+
+        expect(buildAnnotations).not.toHaveBeenCalled();
+        expect(subtitleAnnotations.subtitles[0].tokenization).toBe(tokenization);
+        expect(runtime.trackStates[0].dt.dictionaryTokenStyling).toBe(TokenStyling.BACKGROUND);
+        expect(subtitleAnnotationsUpdated).toHaveBeenCalledWith(
+            [expect.objectContaining({ tokenization })],
+            renderOnlySettings.dictionaryTracks
+        );
+    });
+
+    it('rebuilds when a setting changes whether status data must be collected', () => {
+        const initialTrack = makeDictionaryTrack({
+            dictionaryColorizeSubtitles: false,
+        });
+        initialTrack.dictionaryTokenAnnotationConfig.onStates[0].reading = true;
+        const settings = makeSettings(makeDictionaryTracks(initialTrack));
+        const { subtitleAnnotations } = makeSubtitleAnnotations(settings);
+        const runtime = privateAnnotations(subtitleAnnotations);
+        const buildAnnotations = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+
+        subtitleAnnotations.setSubtitles([makeSubtitle({ tokenization: { tokens: [makeToken()] } })]);
+        runtime.trackStates = settings.dictionaryTracks.map((dt, index) => new TrackState(index, dt));
+        runtime.lastAnkiSettings = {
+            url: settings.ankiConnectUrl,
+            apiKey: settings.ankiConnectApiKey,
+        };
+        buildAnnotations.mockClear();
+
+        const dataTrack = makeDictionaryTrack({
+            dictionaryColorizeSubtitles: false,
+        });
+        dataTrack.dictionaryTokenAnnotationConfig.onStates[0].reading = true;
+        dataTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].reading = true;
+
+        expect(dictionaryStatusCollectionEnabled(initialTrack, { includeStates: false })).toBe(false);
+        expect(dictionaryStatusCollectionEnabled(dataTrack, { includeStates: false })).toBe(true);
+        expect(areDictionaryTracksRenderOnly(initialTrack, dataTrack)).toBe(false);
+
+        subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(dataTrack)));
+
+        expect(buildAnnotations).toHaveBeenCalled();
     });
 
     it('defaults originalText, clones subtitles, preserves cached tokenization, and stores external readings', () => {
@@ -436,7 +542,8 @@ describe('SubtitleAnnotations', () => {
             dictionaryColorizeSubtitles: true,
             dictionaryAnkiWordFields: ['Word'],
         });
-        const { subtitleAnnotations, storage } = makeSubtitleAnnotations();
+        const settings = makeSettings();
+        const { subtitleAnnotations, storage } = makeSubtitleAnnotations(settings);
         const runtime = privateAnnotations(subtitleAnnotations);
         const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         const permission = jest
@@ -455,6 +562,10 @@ describe('SubtitleAnnotations', () => {
 
         expect(permission).toHaveBeenCalledTimes(1);
         expect(runtime.anki).toBeUndefined();
+        expect(runtime.lastAnkiSettings).toEqual({
+            url: settings.ankiConnectUrl,
+            apiKey: settings.ankiConnectApiKey,
+        });
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
         expect(checkRecentlyModified).toHaveBeenCalledWith('Profile', ['Word'], []);
         expect(runtime.ankiState.refreshing).toBe(false);
@@ -719,6 +830,34 @@ describe('SubtitleAnnotations', () => {
         expect(refreshWaniKani).toHaveBeenCalledTimes(1);
     });
 
+    it('coalesces settings rebuilds requested while another build is active', () => {
+        jest.useFakeTimers();
+        const settings = makeSettings();
+        const { subtitleAnnotations } = makeSubtitleAnnotations(settings);
+        const runtime = privateAnnotations(subtitleAnnotations);
+        const initialBuild = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+        subtitleAnnotations.setSubtitles([makeSubtitle()]);
+        initialBuild.mockRestore();
+
+        runtime.annotationsBuilding = true;
+        subtitleAnnotations.settingsUpdated({ ...settings, ankiConnectUrl: 'http://first-anki:8765' });
+        subtitleAnnotations.settingsUpdated({ ...settings, ankiConnectUrl: 'http://latest-anki:8765' });
+
+        expect(runtime.shouldCancelBuild).toBe(true);
+        expect(runtime.pendingBuild).toEqual({ annotationsStartIndex: 0, annotationsEndIndex: 1, init: true });
+
+        runtime.annotationsBuilding = false;
+        const buildAnnotations = jest.spyOn(runtime, '_buildAnnotations').mockResolvedValue(true);
+        subtitleAnnotations.bind();
+        jest.advanceTimersByTime(100);
+
+        expect(buildAnnotations).toHaveBeenCalledTimes(1);
+        expect(buildAnnotations).toHaveBeenCalledWith(0, 1, true);
+        expect(runtime.pendingBuild).toBeUndefined();
+
+        subtitleAnnotations.unbind();
+    });
+
     it('executes the annotation pipeline and publishes a tokenized subtitle', async () => {
         const track = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
         const { subtitleAnnotations, storage, subtitleAnnotationsUpdated } = makeSubtitleAnnotations();
@@ -786,6 +925,7 @@ describe('SubtitleAnnotations', () => {
         runtime.annotationsBuilding = true;
         await expect(runtime._buildAnnotations(0, 1, true)).resolves.toBe(false);
         runtime.annotationsBuilding = false;
+        runtime.shouldCancelBuild = false;
 
         await expect(runtime._buildAnnotations(0, 1, true)).resolves.toBe(true);
 

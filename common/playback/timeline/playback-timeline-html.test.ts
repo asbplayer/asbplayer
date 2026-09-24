@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel } from '@project/common';
-import { defaultSettings } from '@project/common/settings';
+import { AutoPauseResumeMode, defaultSettings, SubtitleVisibility } from '@project/common/settings';
 import { makeTextSubtitle } from '@project/common/playback/playback-test-utils';
 import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
 import {
@@ -74,6 +74,13 @@ const plan = (subtitles: IndexedSubtitleModel[], playModes: PlayMode[] = [PlayMo
         playbackRate: 1,
         fastForwardModePlaybackRate: 2,
         fastForwardPlaybackMinimumSkipIntervalMs: 500,
+        autoPauseResumeMode: AutoPauseResumeMode.manual,
+        autoPauseResumeDelayMs: 300,
+        autoPauseFixedDurationMs: 2000,
+        autoPauseMinimumDurationMs: 500,
+        autoPauseMaximumDurationMs: 2000,
+        autoPauseTimePerCharacterMs: 100,
+        subtitleVisibility: SubtitleVisibility.whenDue,
     });
 
 describe('playbackTimelineToHtml', () => {
@@ -396,6 +403,13 @@ describe('playbackTimelineToHtml', () => {
                 playbackRate: 1,
                 fastForwardModePlaybackRate: 2,
                 fastForwardPlaybackMinimumSkipIntervalMs: paritySettings.fastForwardMinimumSkipIntervalMs,
+                autoPauseResumeMode: AutoPauseResumeMode.manual,
+                autoPauseResumeDelayMs: 300,
+                autoPauseFixedDurationMs: 2000,
+                autoPauseMinimumDurationMs: 500,
+                autoPauseMaximumDurationMs: 2000,
+                autoPauseTimePerCharacterMs: 100,
+                subtitleVisibility: SubtitleVisibility.whenDue,
             });
             return {
                 ...parityPlan,
@@ -512,6 +526,13 @@ describe('playbackTimelineToHtml', () => {
                 playbackRate: 1.25,
                 fastForwardModePlaybackRate: 2.5,
                 fastForwardPlaybackMinimumSkipIntervalMs: effectiveSettings.fastForwardMinimumSkipIntervalMs,
+                autoPauseResumeMode: AutoPauseResumeMode.manual,
+                autoPauseResumeDelayMs: 300,
+                autoPauseFixedDurationMs: 2000,
+                autoPauseMinimumDurationMs: 500,
+                autoPauseMaximumDurationMs: 2000,
+                autoPauseTimePerCharacterMs: 100,
+                subtitleVisibility: SubtitleVisibility.whenDue,
             });
 
             // The production export intentionally shows condensed and repeat layers together.
