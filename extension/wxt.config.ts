@@ -31,14 +31,14 @@ const extName = 'asbplayer';
 export default defineConfig({
     modules: ['@wxt-dev/module-react'],
     srcDir: 'src',
-    // The shared `@project/common` package is framework-agnostic and must not receive WXT's
-    // auto-imports. Without this, unimport mis-scans files like common/settings/settings-provider.ts
-    // (a `storage` constructor param) and injects a spurious `import { storage } from 'wxt/utils/storage'`,
-    // which pnpm's strict node_modules can't resolve from common/. (Yarn's hoisting masked this.)
+    // WXT auto-imports globals like `browser` and `storage` via unimport, which scans source files
+    // for bare identifiers matching those names and injects a matching `import` statement. This should
+    // only happen in the extension's own source, not other packages like `common` that don't have wxt
+    // installed. Scanning those too can inject unresolvable imports and break the build.
     imports: {
-        // `exclude` is consumed by unimport's unplugin but missing from WXT's type.
+        // `include` is consumed by unimport's unplugin but missing from WXT's type.
         // @ts-expect-error -- honored at runtime
-        exclude: [/[\\/]node_modules[\\/]/, /[\\/]\.git[\\/]/, /[\\/]common[\\/]/],
+        include: [/extension\/src\//],
     },
     vite: () => ({
         plugins: [
