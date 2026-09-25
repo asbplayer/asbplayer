@@ -31,6 +31,7 @@ import {
     ApplyStrategy,
 } from '@project/common/settings';
 import {
+    adjacentSubtitle,
     arrayEquals,
     compareSubtitlesForDisplay,
     surroundingSubtitles,
@@ -70,7 +71,6 @@ import '@project/common/app/components/subtitles.css';
 import i18n from 'i18next';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { adjacentSubtitle } from '@project/common/key-binder';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
 import type { MiningContext } from '@project/common/app/services/mining-context';
 import useSnackbar from '@project/common/hooks/use-snackbar';

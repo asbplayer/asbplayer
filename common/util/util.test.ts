@@ -1,6 +1,7 @@
 import {
     areSubtitleModelsEqual,
     areTokenizationsEqual,
+    adjacentSubtitle,
     arrayEquals,
     AsyncSemaphore,
     buildSubtitleTracks,
@@ -50,6 +51,7 @@ import {
     clampMediaTimestamp,
 } from '@project/common/util';
 import type { TextSubtitleSettings } from '@project/common/settings';
+import { calculateSeekableTracksValue } from '@project/common/settings';
 import type { Progress } from '@project/common';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
@@ -363,6 +365,41 @@ describe('clampMediaTimestamp', () => {
         expect(clampMediaTimestamp(100, -1)).toBe(100);
         expect(clampMediaTimestamp(100, Number.NaN)).toBe(100);
         expect(clampMediaTimestamp(100, Number.POSITIVE_INFINITY)).toBe(100);
+    });
+});
+
+describe('adjacentSubtitle', () => {
+    const subtitles = [
+        subtitle('189', 439_560, 440_580),
+        subtitle('190', 440_580, 441_360),
+        subtitle('191', 441_360, 446_059),
+        subtitle('192', 446_059, 448_459),
+    ];
+
+    it('returns cue 190 at the exact boundary where cue 191 starts', () => {
+        expect(adjacentSubtitle(false, 441_360, subtitles, 1)?.text).toBe('190');
+    });
+
+    it('returns cue 191 at the exact boundary where cue 192 starts', () => {
+        expect(adjacentSubtitle(false, 446_059, subtitles, 1)?.text).toBe('191');
+    });
+
+    it('skips an unseekable cue when selecting the previous seekable cue', () => {
+        const subtitles = [
+            subtitle('previous', 1_000, 2_000, 0),
+            subtitle('unseekable', 3_000, 4_000, 1),
+            subtitle('current', 5_000, 6_000, 0),
+        ];
+        const seekableTracks = calculateSeekableTracksValue([0]);
+
+        expect(adjacentSubtitle(false, 5_500, subtitles, seekableTracks)).toEqual(subtitles[0]);
+    });
+
+    it('returns null when only unseekable cues precede the current cue', () => {
+        const subtitles = [subtitle('unseekable', 3_000, 4_000, 1), subtitle('current', 5_000, 6_000, 0)];
+        const seekableTracks = calculateSeekableTracksValue([0]);
+
+        expect(adjacentSubtitle(false, 5_500, subtitles, seekableTracks)).toBeNull();
     });
 });
 
