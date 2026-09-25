@@ -442,6 +442,8 @@
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
+        "trimBlackBars": "Trim black bars from screenshots",
+        "trimBlackBarsHelperText": "Automatically crops letterbox/pillarbox bars detected around the video frame. Only applies to screenshots, not video clips.",
         "mining": "자막 추출",
         "miningHistoryStorageLimit": "추출 기록 최대 저장 수",
         "clickToMineDefaultAction": "자막 추출 버튼 기본 설정",

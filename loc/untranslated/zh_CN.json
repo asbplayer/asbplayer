@@ -36,7 +36,9 @@
         "settings.unlockLocalFonts": "Click to unlock font menu",
         "settings.webSocketClientEnabled": "Enable WebSocket client",
         "settings.webSocketServerUrl": "WebSocket Server URL",
-        "settings.firefoxExtensionShortcutHelp": "Edit this shortcut from the Plugin manager at about:addons."
+        "settings.firefoxExtensionShortcutHelp": "Edit this shortcut from the Plugin manager at about:addons.",
+        "settings.trimBlackBars": "Trim black bars from screenshots",
+        "settings.trimBlackBarsHelperText": "Automatically crops letterbox/pillarbox bars detected around the video frame. Only applies to screenshots, not video clips."
     },
     "extension": {},
     "external": {}

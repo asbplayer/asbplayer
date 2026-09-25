@@ -442,6 +442,8 @@
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
+        "trimBlackBars": "Trim black bars from screenshots",
+        "trimBlackBarsHelperText": "Automatically crops letterbox/pillarbox bars detected around the video frame. Only applies to screenshots, not video clips.",
         "mining": "Extraktion",
         "miningHistoryStorageLimit": "Extraktions-Historie Speicherlimit",
         "clickToMineDefaultAction": "Mining button default action",

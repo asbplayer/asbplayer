@@ -74,6 +74,7 @@ export default class StopRecordingMediaHandler {
                         maxHeight,
                         rect,
                         frameId,
+                        trimBlackBars: stopRecordingCommand.message.trimBlackBars,
                     });
                 }
 

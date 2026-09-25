@@ -497,7 +497,8 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     settings.mediaFragmentFormat,
                     settings.mediaFragmentTrimStart,
                     settings.mediaFragmentTrimEnd,
-                    settings.mediaFragmentMaxClipLength
+                    settings.mediaFragmentMaxClipLength,
+                    settings.trimBlackBars
                 );
 
                 if (image) {
