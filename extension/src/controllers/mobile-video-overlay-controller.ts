@@ -63,7 +63,7 @@ export class MobileVideoOverlayController {
             fullscreenContentClassName: 'asbplayer-mobile-video-overlay',
             offsetAnchor,
             contentPositionOffset: 8,
-            contentWidthPercentage: -1,
+            contentWidth: -1,
             onMouseOver: () => {},
             onMouseOut: () => {},
         });

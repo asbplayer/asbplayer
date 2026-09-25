@@ -1283,7 +1283,7 @@ export default class Binding {
         this.subtitleController.displaySubtitles = currentSettings.streamingDisplaySubtitles;
         this.subtitleController.bottomSubtitlePositionOffset = currentSettings.subtitlePositionOffset;
         this.subtitleController.topSubtitlePositionOffset = currentSettings.topSubtitlePositionOffset;
-        this.subtitleController.subtitlesWidth = currentSettings.subtitlesWidth;
+        this.subtitleController.setSubtitlesWidth(currentSettings.subtitlesWidth, currentSettings.subtitlesWidthUnit);
         this.subtitleController.surroundingSubtitlesCountRadius = currentSettings.surroundingSubtitlesCountRadius;
         this.subtitleController.surroundingSubtitlesTimeRadius = currentSettings.surroundingSubtitlesTimeRadius;
         this.subtitleController.autoCopyCurrentSubtitle = currentSettings.autoCopyCurrentSubtitle;

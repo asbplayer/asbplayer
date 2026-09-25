@@ -319,7 +319,7 @@ export class StatisticsOverlayController {
             fullscreenContainerClassName: 'asbplayer-statistics-overlay-container',
             fullscreenContentClassName: 'asbplayer-statistics-overlay-content',
             offsetAnchor: OffsetAnchor.bottom,
-            contentWidthPercentage: undefined,
+            contentWidth: undefined,
             onMouseOut: () => {},
             onMouseOver: () => {},
             onContainerStyles: (container) => {
