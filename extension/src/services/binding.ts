@@ -1,4 +1,5 @@
 import {
+    adjacentSubtitle,
     asbError,
     buildSubtitleTracks,
     clampMediaTimestamp,
@@ -72,7 +73,6 @@ import {
     StopRecordingErrorCode,
     VideoDataUiOpenReason,
 } from '@project/common';
-import { adjacentSubtitle } from '@project/common/key-binder';
 import type { SeekableTracks } from '@project/common/settings';
 import {
     calculateSeekableTracksValue,
