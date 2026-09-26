@@ -186,8 +186,8 @@ type DisplayGroup<T extends IndexedSubtitleModel> = {
 const maxRenderedSubtitleGroupSize = 4;
 const invisibleSubtitleOverlapToleranceMs = 1;
 
-const overlapsForInvisibleSubtitleGroup = (startMs: number, endMs: number): boolean =>
-    startMs < endMs - invisibleSubtitleOverlapToleranceMs;
+const overlapsForInvisibleSubtitleGroup = (nextSubtitleStartMs: number, previousSubtitleEndMs: number): boolean =>
+    nextSubtitleStartMs < previousSubtitleEndMs - invisibleSubtitleOverlapToleranceMs;
 
 const newDisplayGroup = <T extends IndexedSubtitleModel>(
     startMs: number,
@@ -199,29 +199,26 @@ const newDisplayGroup = <T extends IndexedSubtitleModel>(
     subtitles: intervals.map(({ subtitle }) => subtitle),
 });
 
-/** Bounded layout epochs of connected half-open subtitle intervals, ordered by time. */
+/** Bounded layout epochs of connected half-open subtitle intervals; input must be ordered by start time. */
 const displayGroups = <T extends IndexedSubtitleModel>(
     intervals: readonly DisplayInterval<T>[]
 ): readonly DisplayGroup<T>[] => {
-    const sorted = [...intervals].sort(
-        (left, right) => left.startMs - right.startMs || left.endMs - right.endMs || left.order - right.order
-    );
     const groups: DisplayGroup<T>[] = [];
-    for (const interval of sorted) {
+    for (const interval of intervals) {
         const group = groups.at(-1);
         if (group === undefined || !overlapsForInvisibleSubtitleGroup(interval.startMs, group.endMs)) {
             groups.push(newDisplayGroup(interval.startMs, [interval]));
             continue;
         }
 
-        const activeIntervals = group.intervals.filter(({ endMs }) =>
-            overlapsForInvisibleSubtitleGroup(interval.startMs, endMs)
-        );
         if (group.intervals.length < maxRenderedSubtitleGroupSize) {
             group.endMs = Math.max(group.endMs, interval.endMs);
             group.intervals.push(interval);
             group.subtitles.push(interval.subtitle);
         } else {
+            const activeIntervals = group.intervals.filter(({ endMs: previousSubtitleEndMs }) =>
+                overlapsForInvisibleSubtitleGroup(interval.startMs, previousSubtitleEndMs)
+            );
             group.endMs = interval.startMs;
             groups.push(newDisplayGroup(interval.startMs, [...activeIntervals, interval]));
         }
