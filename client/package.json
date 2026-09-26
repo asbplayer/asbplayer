@@ -32,6 +32,7 @@
         "verify": "../scripts/loc/loc-keys-match && tsc && jest",
         "build": "pnpm run verify && VITE_APP_VERSION_REPO_PATH=\"commit/$(git rev-parse --short HEAD)\" vite build",
         "buildFast": "VITE_APP_VERSION_REPO_PATH=\"commit/$(git rev-parse --short HEAD)\" vite build",
+        "buildProduction": "vite build",
         "buildStaging": "pnpm run verify && VITE_APP_VERSION_REPO_PATH=\"commit/$(git rev-parse --short HEAD)\" VITE_APP_BASE_PATH=\"/asbplayer-staging\" vite build",
         "preview": "vite preview",
         "deploy": "gh-pages -d dist",
