@@ -16,6 +16,10 @@ URL to the AnkiConnect server running as on addon inside Anki.
 
 API key configured in AnkiConnect when API key protection is enabled.
 
+### Refresh Anki Card Browser after updating cards
+
+When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+
 ### Deck
 
 Anki deck where cards are sent.

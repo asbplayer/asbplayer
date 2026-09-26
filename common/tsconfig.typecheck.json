@@ -1,0 +1,11 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "include": ["./**/*"],
+    // `app/` is the asbplayer web-app UI. It depends on Vite-only ambient types
+    // (`?worker`, `virtual:pwa-register`) and is fully type-checked by both
+    // `client` (tsc) and `extension` (tsc --noEmit), so it is excluded here.
+    "exclude": ["dist", "coverage", "node_modules", "app"]
+}

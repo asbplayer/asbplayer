@@ -30,8 +30,17 @@
     padding-right: 10px;
     user-select: text !important;
     cursor: text !important;
-    line-height: normal !important;
     white-space: pre-wrap !important;
+}
+
+div.asbplayer-subtitles,
+div.asbplayer-fullscreen-subtitles {
+    line-height: 0 !important;
+}
+
+div.asbplayer-subtitles > span,
+div.asbplayer-fullscreen-subtitles > span {
+    line-height: normal !important;
 }
 
 /* Subtitle annotations wrap text in extra token/ruby elements; keep their font

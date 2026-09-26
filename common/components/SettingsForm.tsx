@@ -195,7 +195,7 @@ interface Props {
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
     insideApp?: boolean;
-    appVersion?: string;
+    appVersionRepoPath?: string;
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
     profiles: Profile[];
@@ -249,7 +249,7 @@ export default function SettingsForm({
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
     insideApp,
-    appVersion,
+    appVersionRepoPath,
     scrollToId,
     chromeKeyBinds,
     localFontsAvailable,
@@ -602,7 +602,7 @@ export default function SettingsForm({
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>
                     <About
-                        appVersion={insideApp ? appVersion : undefined}
+                        appVersionRepoPath={insideApp ? appVersionRepoPath : undefined}
                         extensionVersion={extensionInstalled ? extensionVersion : undefined}
                     />
                 </TabPanel>

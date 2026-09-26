@@ -132,4 +132,143 @@ describe('SubtitleController appearance rendering', () => {
             'color: #0000ff'
         );
     });
+
+    it('renders layout placeholders invisibly and supports playback states from older clients', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        controller.subtitles = [
+            {
+                text: 'primary',
+                start: 0,
+                end: 3000,
+                originalStart: 0,
+                originalEnd: 3000,
+                track: 0,
+                index: 0,
+            },
+            {
+                text: 'secondary',
+                start: 1000,
+                end: 2000,
+                originalStart: 1000,
+                originalEnd: 2000,
+                track: 1,
+                index: 1,
+            },
+        ];
+        controller.cacheHtml();
+
+        controller.playbackStateChanged({
+            timestampMs: 0,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            paused: false,
+        });
+
+        const secondary = document.querySelector<HTMLElement>('span[data-track="1"]')?.parentElement;
+        const container = document.querySelector<HTMLElement>('.asbplayer-subtitles-container-bottom');
+        const primary = document.querySelector<HTMLElement>('span[data-track="0"]')?.parentElement;
+        expect(container?.style.getPropertyValue('pointer-events')).toBe('none');
+        expect(primary?.style.pointerEvents).toBe('auto');
+        expect(secondary?.style.visibility).toBe('hidden');
+        expect(secondary?.style.pointerEvents).toBe('none');
+        expect(secondary?.getAttribute('aria-hidden')).toBe('true');
+
+        controller.playbackStateChanged({ timestampMs: 1000, showingSubtitleIndexes: [0, 1], paused: false });
+
+        expect(document.querySelector<HTMLElement>('span[data-track="1"]')?.parentElement?.style.visibility).toBe('');
+    });
+
+    it('excludes invisible layout placeholders from hover hit testing', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        controller.subtitles = [
+            {
+                text: 'visible',
+                start: 0,
+                end: 3000,
+                originalStart: 0,
+                originalEnd: 3000,
+                track: 0,
+                index: 0,
+            },
+            {
+                text: 'placeholder',
+                start: 1000,
+                end: 2000,
+                originalStart: 1000,
+                originalEnd: 2000,
+                track: 1,
+                index: 1,
+            },
+        ];
+        controller.cacheHtml();
+        controller.playbackStateChanged({
+            timestampMs: 0,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            paused: false,
+        });
+
+        const container = document.querySelector<HTMLElement>('.asbplayer-subtitles-container-bottom')!;
+        const visible = document.querySelector<HTMLElement>('span[data-track="0"]')!.parentElement!;
+        const placeholder = document.querySelector<HTMLElement>('span[data-track="1"]')!.parentElement!;
+        container.getBoundingClientRect = () => ({ x: 100, y: 100, width: 100, height: 80 }) as DOMRect;
+        visible.getBoundingClientRect = () => ({ x: 100, y: 100, width: 100, height: 20 }) as DOMRect;
+        placeholder.getBoundingClientRect = () => ({ x: 100, y: 140, width: 100, height: 20 }) as DOMRect;
+
+        expect(controller.intersects(110, 110)).toBe(true);
+        expect(controller.intersects(110, 155)).toBe(false);
+    });
+
+    it('filters hidden subtitles without removing unhidden layout placeholders', () => {
+        const controller = controllerForVideo();
+        controller.setSubtitleSettings(defaultSettings);
+        controller.subtitles = [
+            {
+                text: 'primary',
+                start: 0,
+                end: 3000,
+                originalStart: 0,
+                originalEnd: 3000,
+                track: 0,
+                index: 0,
+            },
+            {
+                text: 'placeholder',
+                start: 1000,
+                end: 2000,
+                originalStart: 1000,
+                originalEnd: 2000,
+                track: 1,
+                index: 1,
+            },
+        ];
+        controller.cacheHtml();
+
+        controller.playbackStateChanged({
+            timestampMs: 0,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            hiddenSubtitleIndexes: [0],
+            paused: false,
+        });
+
+        const container = document.querySelector('.asbplayer-subtitles-container-bottom');
+        expect(container?.querySelector('span[data-track="0"]')).toBeNull();
+        expect(container?.querySelector<HTMLElement>('span[data-track="1"]')?.parentElement?.style.visibility).toBe(
+            'hidden'
+        );
+
+        controller.playbackStateChanged({
+            timestampMs: 0,
+            showingSubtitleIndexes: [0],
+            invisibleSubtitleIndexes: [1],
+            hiddenSubtitleIndexes: [0, 1],
+            paused: false,
+        });
+
+        expect(container?.querySelector('span[data-track="0"]')).toBeNull();
+        expect(container?.querySelector('span[data-track="1"]')).toBeNull();
+    });
 });
