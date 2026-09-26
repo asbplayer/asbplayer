@@ -129,6 +129,7 @@ document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 const disneyPlus = /www\.disneyplus\..+/.test(window.location.host);
+const crunchyroll = /(www\.)?crunchyroll\.com/.test(window.location.host);
 
 interface DisneyPlaybackEventDetail {
     readonly timestampMs: number;
@@ -1678,9 +1679,16 @@ export default class Binding {
                     })
                 );
             });
-        } else {
+        } else if (!(crunchyroll && this._seekCrunchyroll(clampedTimestampMs / 1000))) {
             seekWithNudge(this.video, clampedTimestampMs / 1000);
         }
+    }
+
+    private _seekCrunchyroll(timestampSeconds: number) {
+        // Crunchyroll stalls on backward video.currentTime writes. The page script cancels the event if it seeked.
+        return !document.dispatchEvent(
+            new CustomEvent('asbplayer-crunchyroll-seek', { detail: timestampSeconds, cancelable: true })
+        );
     }
 
     async play() {
