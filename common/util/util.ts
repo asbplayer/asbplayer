@@ -18,6 +18,40 @@ import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
 
+export interface AnimationFrameRetryOptions {
+    runImmediately?: boolean;
+}
+
+/** Runs an operation until it succeeds or its animation-frame attempt limit is reached. */
+export const retryWithAnimationFrame = (
+    operation: () => boolean,
+    maxAttempts: number,
+    { runImmediately = false }: AnimationFrameRetryOptions = {}
+): (() => void) => {
+    let animationFrame: number | undefined;
+    let attempts = 0;
+    let cancelled = false;
+
+    const attempt = () => {
+        animationFrame = undefined;
+        if (cancelled || operation() || ++attempts >= maxAttempts) return;
+        animationFrame = requestAnimationFrame(attempt);
+    };
+
+    if (maxAttempts > 0) {
+        if (runImmediately) attempt();
+        else animationFrame = requestAnimationFrame(attempt);
+    }
+
+    return () => {
+        cancelled = true;
+        if (animationFrame !== undefined) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = undefined;
+        }
+    };
+};
+
 let subtitleHtmlHelperElement: HTMLDivElement | undefined;
 const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
@@ -887,6 +921,19 @@ export function iterateOverStringInBlocks<B extends Block>(
         callback(left, right);
     }
 }
+
+/** Combines a token's readings with any unannotated spans into one searchable/displayable reading. */
+export const getContiguousReading = (tokenText: string, token: Pick<Token, 'readings'>): string => {
+    let readingText = '';
+    iterateOverStringInBlocks(
+        tokenText,
+        (_, blockIndex) => token.readings[blockIndex],
+        (left, right, reading) => {
+            readingText += reading === undefined ? tokenText.substring(left, right) : reading.reading;
+        }
+    );
+    return readingText;
+};
 
 type DimensionsComparators = {
     [K in keyof DimensionsModel]: (a: DimensionsModel[K], b: DimensionsModel[K]) => boolean;

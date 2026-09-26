@@ -25,7 +25,17 @@ import {
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
-import { renderRichTextOntoSubtitles, getAnnotationsHtml, SubtitleAnnotations } from '@project/common/annotations';
+import {
+    ASB_SUBTITLE_INDEX_ATTRIBUTE,
+    clearTokenSelectionInRoot,
+    currentTokenSelectionLocation,
+    renderRichTextOntoSubtitles,
+    getAnnotationsHtml,
+    selectTokenInRoot,
+    SubtitleAnnotations,
+} from '@project/common/annotations';
+import type { SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
+import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     arrayEquals,
     compareSubtitlesForDisplay,
@@ -175,6 +185,31 @@ export default class SubtitleController {
 
     set subtitles(subtitles) {
         this.subtitleAnnotations.setSubtitles(subtitles);
+    }
+
+    currentTokenSelectionLocation(): TokenSelectionLocation | undefined {
+        for (const root of this._tokenSelectionRoots()) {
+            const location = currentTokenSelectionLocation(this.subtitles, root);
+            if (location) return location;
+        }
+    }
+
+    selectToken(location: TokenSelectionLocation, options?: SelectTokenInRootOptions): boolean {
+        const roots = this._tokenSelectionRoots();
+        for (const root of roots) {
+            if (!selectTokenInRoot(root, location, options)) continue;
+            for (const otherRoot of roots) {
+                if (otherRoot !== root) clearTokenSelectionInRoot(otherRoot);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private _tokenSelectionRoots(): HTMLElement[] {
+        return [this.bottomSubtitlesElementOverlay.containerElement, this.topSubtitlesElementOverlay.containerElement]
+            .filter((root): root is HTMLElement => root !== undefined)
+            .filter((root, index, roots) => roots.indexOf(root) === index);
     }
 
     reset() {
@@ -479,6 +514,8 @@ export default class SubtitleController {
         }
         if (!subtitlesAreNew && !shouldRenderOffset && !this.refreshCurrentSubtitle) return;
 
+        const tokenSelection = this.currentTokenSelectionLocation();
+
         this.refreshCurrentSubtitle = false;
         this._resetUnblurState();
         if (this.shouldRenderBottomOverlay) {
@@ -502,6 +539,8 @@ export default class SubtitleController {
         } else {
             this.showingOffset = undefined;
         }
+
+        if (tokenSelection) this.selectToken(tokenSelection, { focusContainer: false });
     }
 
     private _renderSubtitles(
@@ -598,7 +637,8 @@ export default class SubtitleController {
                             subtitle.text,
                             subtitle.track,
                             rendered?.richText,
-                            rendered?.richTextOnHover
+                            rendered?.richTextOnHover,
+                            subtitle.index
                         );
                     }
                 },
@@ -607,10 +647,17 @@ export default class SubtitleController {
         });
     }
 
-    private _buildTextHtml(text: string, track?: number, richText?: string, richTextOnHover?: string) {
-        return `<span data-track="${track ?? 0}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(
+    private _buildTextHtml(
+        text: string,
+        track?: number,
+        richText?: string,
+        richTextOnHover?: string,
+        subtitleIndex?: number
+    ) {
+        const indexAttribute = subtitleIndex === undefined ? '' : ` ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${subtitleIndex}"`;
+        return `<span data-track="${track ?? 0}"${indexAttribute} class="${this._subtitleClasses(
             track
-        )}">${getAnnotationsHtml(text, richText, richTextOnHover)}</span>`;
+        )}" style="${this._subtitleStyles(track)}">${getAnnotationsHtml(text, richText, richTextOnHover)}</span>`;
     }
 
     unbind() {
