@@ -1,5 +1,7 @@
-import type { AsbplayerSettings, SettingsStorage, Profile } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsStorage, Profile, TargetProfile } from '@project/common/settings';
 import {
+    defaultProfile,
+    targetProfileName,
     unprefixedSettings,
     prefixedSettings,
     defaultSettings,
@@ -19,31 +21,35 @@ export interface StorageArea {
 
 export class ExtensionSettingsStorage implements SettingsStorage {
     private readonly _storage: StorageArea;
+    private _profileTarget: TargetProfile = undefined;
 
     constructor(storage?: StorageArea) {
         this._storage = storage ?? browser.storage.local;
     }
 
-    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
-        const activeProfile = await this.activeProfile();
+    targetingProfile(name: string | undefined): ExtensionSettingsStorage {
+        const copy = new ExtensionSettingsStorage(this._storage);
+        copy._profileTarget = name ?? defaultProfile;
+        return copy;
+    }
 
-        if (activeProfile === undefined) {
+    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
+        const name = await targetProfileName(this._profileTarget, () => this.activeProfile());
+
+        if (name === undefined) {
             return this._storage.get(keysAndDefaults);
         }
 
-        return unprefixedSettings(
-            await this._storage.get(prefixedSettings(keysAndDefaults, activeProfile.name)),
-            activeProfile.name
-        );
+        return unprefixedSettings(await this._storage.get(prefixedSettings(keysAndDefaults, name)), name);
     }
 
     async set(settings: Partial<AsbplayerSettings>) {
-        const activeProfile = await this.activeProfile();
+        const name = await targetProfileName(this._profileTarget, () => this.activeProfile());
 
-        if (activeProfile === undefined) {
+        if (name === undefined) {
             await this._storage.set(settings);
         } else {
-            await this._storage.set(prefixedSettings(settings, activeProfile.name));
+            await this._storage.set(prefixedSettings(settings, name));
         }
     }
 

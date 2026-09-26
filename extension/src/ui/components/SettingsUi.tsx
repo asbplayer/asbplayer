@@ -13,7 +13,8 @@ const inTutorial = searchParams.get('tutorial') === 'true';
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
 const SettingsUi = () => {
-    const { dictionaryProvider, settings, onSettingsChanged, profileContext } = useSettings();
+    const { dictionaryProvider, settings, settingsProvider, onSettingsChanged, onSettingsImported, profileContext } =
+        useSettings();
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
     const { handleAnnotationTutorialSeen, inAnnotationTutorial } = useAnnotationTutorial({ globalStateProvider });
 
@@ -28,7 +29,9 @@ const SettingsUi = () => {
                 <SettingsPage
                     dictionaryProvider={dictionaryProvider}
                     settings={settings}
+                    settingsProvider={settingsProvider}
                     onSettingsChanged={onSettingsChanged}
+                    onSettingsImported={onSettingsImported}
                     inTutorial={inTutorial}
                     inAnnotationTutorial={inAnnotationTutorial}
                     onAnnotationTutorialSeen={handleAnnotationTutorialSeen}

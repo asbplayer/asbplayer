@@ -331,6 +331,7 @@ interface Props {
     fetcher: Fetcher;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     profile?: string;
+    onSettingsImported: () => void;
     profiles: Profile[];
     activeProfile?: string;
     onNewProfile: (name: string) => void;
@@ -350,6 +351,7 @@ function App({
     fetcher,
     onSettingsChanged,
     profile,
+    onSettingsImported,
     onGlobalStateChanged,
     ...profilesContext
 }: Props) {
@@ -1916,9 +1918,11 @@ function App({
                                 extension={extension}
                                 open={settingsDialogOpen}
                                 onSettingsChanged={onSettingsChanged}
+                                onSettingsImported={onSettingsImported}
                                 onClose={handleCloseSettings}
                                 dictionaryProvider={dictionaryProvider}
                                 settings={settings}
+                                settingsProvider={settingsProvider}
                                 activeProfile={profilesContext.activeProfile}
                                 scrollToId={settingsDialogScrollToId}
                                 {...profilesContext}

@@ -15,7 +15,7 @@ import Paper from '@mui/material/Paper';
 import { Anki } from '@project/common/anki';
 import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-supported-languages';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
-import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import type { AsbplayerSettings, Profile, SettingsProvider } from '@project/common/settings';
 import { testCard } from '@project/common/settings';
 import { useTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
@@ -41,7 +41,9 @@ const useStyles = makeStyles<Theme>((theme) => ({
 interface Props {
     dictionaryProvider: DictionaryProvider;
     settings: AsbplayerSettings;
+    settingsProvider: SettingsProvider;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsImported: () => void;
     profiles: Profile[];
     activeProfile?: string;
     inTutorial?: boolean;
@@ -62,10 +64,12 @@ const extensionTestCard: () => Promise<CardModel> = () => {
 const SettingsPage = ({
     dictionaryProvider,
     settings,
+    settingsProvider,
     inTutorial,
     inAnnotationTutorial,
     onAnnotationTutorialSeen,
     onSettingsChanged,
+    onSettingsImported,
     ...profileContext
 }: Props) => {
     const { t } = useTranslation();
@@ -132,12 +136,15 @@ const SettingsPage = ({
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         extensionSupportsDictionaryYomitanMecab
                         extensionSupportsSubtitleTrackSelectorInWebApp
+                        extensionSupportsSettingsProfileImportExport
                         extensionSupportsSubtitleListCustomization
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}
+                        onSettingsImported={onSettingsImported}
                         dictionaryProvider={dictionaryProvider}
                         settings={settings}
+                        settingsProvider={settingsProvider}
                         profiles={profileContext.profiles}
                         activeProfile={profileContext.activeProfile}
                         pageConfigs={settingsPageConfigs}

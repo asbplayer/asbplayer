@@ -31,6 +31,7 @@ import type {
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
+import type { TargetProfile } from '@project/common/settings';
 
 const matches = ['*://app.asbplayer.dev/*'];
 
@@ -55,6 +56,8 @@ export default defineContentScript({
         const dictionaryStorage = new ExtensionDictionaryStorage();
         const settingsStorage = new ExtensionSettingsStorage();
         const globalStateProvider = new ExtensionGlobalStateProvider();
+        const settingsStorageFor = (profile: TargetProfile | undefined) =>
+            profile === undefined ? settingsStorage : settingsStorage.targetingProfile(profile ?? undefined);
 
         window.addEventListener('message', (event) => {
             void (async () => {
@@ -69,14 +72,16 @@ export default defineContentScript({
                         case 'get-settings': {
                             const getSettingsMessage = command.message as GetSettingsMessage;
                             sendMessageToPlayer({
-                                response: await settingsStorage.get(getSettingsMessage.keysAndDefaults),
+                                response: await settingsStorageFor(getSettingsMessage.profile).get(
+                                    getSettingsMessage.keysAndDefaults
+                                ),
                                 messageId: command.message.messageId,
                             });
                             break;
                         }
                         case 'set-settings': {
                             const setSettingsMessage = command.message as SetSettingsMessage;
-                            await settingsStorage.set(setSettingsMessage.settings);
+                            await settingsStorageFor(setSettingsMessage.profile).set(setSettingsMessage.settings);
                             sendMessageToPlayer({
                                 messageId: command.message.messageId,
                             });

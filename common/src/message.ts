@@ -6,6 +6,7 @@ import type {
     PageSettings,
     SettingsFormPageConfig,
     SubtitleSettings,
+    TargetProfile,
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
@@ -725,11 +726,13 @@ export interface CloseSidePanelMessage extends Message {
 export interface GetSettingsMessage extends MessageWithId {
     readonly command: 'get-settings';
     readonly keysAndDefaults: Partial<AsbplayerSettings>;
+    readonly profile?: TargetProfile;
 }
 
 export interface SetSettingsMessage extends MessageWithId {
     readonly command: 'set-settings';
     readonly settings: Partial<AsbplayerSettings>;
+    readonly profile?: TargetProfile;
 }
 
 export interface GetActiveProfileMessage extends MessageWithId {

@@ -34,3 +34,24 @@ it('changes separate keys for different profiles', async () => {
     // Default profile still has default value 'en'
     expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
 });
+
+it('changes keys for a profile other than the active one', async () => {
+    await settingsStorage.addProfile('new profile');
+    await settingsStorage.targetingProfile('new profile').set({ language: 'es' });
+
+    // Active (default) profile still has default value 'en'
+    expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
+    expect(await settingsStorage.targetingProfile('new profile').get({ language: 'en' })).toEqual({
+        language: 'es',
+    });
+});
+
+it('changes keys for the default profile while another profile is active', async () => {
+    await settingsStorage.addProfile('new profile');
+    await settingsStorage.setActiveProfile('new profile');
+    await settingsStorage.targetingProfile(undefined).set({ language: 'es' });
+
+    // Active profile still has default value 'en'
+    expect(await settingsStorage.get({ language: 'en' })).toEqual({ language: 'en' });
+    expect(await settingsStorage.targetingProfile(undefined).get({ language: 'en' })).toEqual({ language: 'es' });
+});

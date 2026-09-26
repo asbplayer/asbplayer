@@ -1,5 +1,6 @@
 import { Validator } from 'jsonschema';
 import type { AsbplayerSettings } from '@project/common/settings/settings';
+import type { SettingsProvider } from '@project/common/settings/settings-provider';
 import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
 import { download, getCurrentTimeString } from '@project/common/util';
 
@@ -833,11 +834,109 @@ export const mergeImportedSettings = (
         importedSettings
     );
 
-export const exportSettings = (settings: AsbplayerSettings) => {
+export interface ExportedSettingsProfile {
+    // Undefined for the default profile
+    name?: string;
+    // Complete when exported, but may be missing keys when read from a file written by an older version of asbplayer
+    settings: Partial<AsbplayerSettings>;
+}
+
+export interface ExportedSettings {
+    profiles: ExportedSettingsProfile[];
+}
+
+export interface ImportableSettings extends ExportedSettings {
+    // Never written to a settings file: true when the file contained no profile information at all,
+    // in which case its settings belong to whichever profile is active
+    forActiveProfile?: boolean;
+}
+
+export const exportedSettings = async (
+    settingsProvider: SettingsProvider,
+    profiles: (string | undefined)[]
+): Promise<ExportedSettings> => {
+    const exportedProfiles: ExportedSettingsProfile[] = [];
+
+    for (const name of profiles) {
+        exportedProfiles.push({
+            ...(name === undefined ? {} : { name }),
+            settings: settingsForExport(await settingsProvider.targetingProfile(name).getAll()),
+        });
+    }
+
+    return {
+        profiles: exportedProfiles,
+    };
+};
+
+export const exportSettings = async (settingsProvider: SettingsProvider, profiles: (string | undefined)[]) => {
+    const exported = await exportedSettings(settingsProvider, profiles);
     download(
-        new Blob([JSON.stringify(settingsForExport(settings))], { type: 'application/json' }),
+        new Blob([JSON.stringify(exported)], { type: 'application/json' }),
         `asbplayer-settings-${getCurrentTimeString()}.json`
     );
+};
+
+const isExportedSettings = (parsed: any): boolean => {
+    return typeof parsed === 'object' && parsed !== null && Array.isArray(parsed.profiles);
+};
+
+export const validateExportedSettings = (parsed: any): ImportableSettings => {
+    if (!isExportedSettings(parsed)) {
+        // Settings file from an older version of asbplayer containing only one profile's settings
+        return { profiles: [{ settings: validateSettings(parsed) }], forActiveProfile: true };
+    }
+
+    const profiles = parsed.profiles.map((profile: any) => {
+        // Profile names end up in storage keys, so make sure they are actually names
+        if (profile.name !== undefined && typeof profile.name !== 'string') {
+            throw new Error(`Invalid profile name '${profile.name}'`);
+        }
+
+        return { name: profile.name, settings: validateSettings(profile.settings) };
+    });
+
+    return { profiles };
+};
+
+export const importSettings = async (
+    settingsProvider: SettingsProvider,
+    imported: ImportableSettings,
+    profiles: (string | undefined)[] | undefined
+) => {
+    const activeProfile = (await settingsProvider.activeProfile())?.name;
+
+    if (profiles === undefined) {
+        const profile =
+            imported.profiles.find((p) => p.name === activeProfile) ??
+            imported.profiles.find((p) => p.name === undefined) ??
+            imported.profiles[0];
+
+        if (profile !== undefined) {
+            const currentSettings = await settingsProvider.getAll();
+            await settingsProvider.set(mergeImportedSettings(profile.settings, currentSettings));
+        }
+
+        return;
+    }
+
+    const existingProfiles = new Set((await settingsProvider.profiles()).map((p) => p.name));
+
+    for (const name of profiles) {
+        const profile = imported.profiles.find((p) => p.name === name);
+
+        if (profile === undefined) {
+            continue;
+        }
+
+        if (name !== undefined && !existingProfiles.has(name)) {
+            await settingsProvider.addProfile(name);
+        }
+
+        const targetedProvider = settingsProvider.targetingProfile(name);
+        const currentSettings = await targetedProvider.getAll();
+        await targetedProvider.set(mergeImportedSettings(profile.settings, currentSettings));
+    }
 };
 
 export const validateSettings = (settings: any) => {
