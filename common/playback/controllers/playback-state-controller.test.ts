@@ -32,6 +32,7 @@ const makeController = () => {
         showingSubtitlesAt: (timestampMs) =>
             subtitles.filter(({ start, end }) => timestampMs >= start && timestampMs < end),
         subtitlesVisible: () => state.subtitlesVisible,
+        invisibleSubtitlesAt: () => [],
         playbackStateChanged: (playbackState) => playbackStates.push(playbackState),
         now: () => nowMs,
     });
@@ -41,6 +42,32 @@ const makeController = () => {
 };
 
 describe('PlaybackStateController', () => {
+    it('publishes invisible indexes for layout placeholders', () => {
+        const playbackStates: PlaybackState[] = [];
+        const controller = new PlaybackStateController({
+            paused: () => false,
+            showingSubtitlesAt: () => [subtitles[0]],
+            subtitlesVisible: () => true,
+            invisibleSubtitlesAt: (timestampMs) => (timestampMs < 600 ? [] : [subtitles[1]]),
+            playbackStateChanged: (state) => playbackStates.push(state),
+            now: () => 0,
+        });
+        controller.bind();
+
+        controller.notify(500, { force: false });
+        controller.notify(600, { force: false });
+
+        expect(playbackStates).toEqual([
+            { timestampMs: 500, showingSubtitleIndexes: [0], paused: false },
+            {
+                timestampMs: 600,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [1],
+                paused: false,
+            },
+        ]);
+    });
+
     it('publishes one coherent state snapshot', () => {
         const harness = makeController();
         harness.state.currentTimeMs = 1500;
@@ -188,6 +215,31 @@ describe('PlaybackStateController', () => {
             hiddenSubtitleIndexes: [0],
             paused: false,
         });
+    });
+
+    it('publishes invisible placeholders while hidden and sorts all hidden indexes', () => {
+        const playbackStates: PlaybackState[] = [];
+        const controller = new PlaybackStateController({
+            paused: () => false,
+            showingSubtitlesAt: () => [subtitles[1]],
+            invisibleSubtitlesAt: () => [subtitles[0]],
+            subtitlesVisible: () => false,
+            playbackStateChanged: (state) => playbackStates.push(state),
+            now: () => 0,
+        });
+        controller.bind();
+
+        controller.notify(1500, { force: false });
+
+        expect(playbackStates).toEqual([
+            {
+                timestampMs: 1500,
+                showingSubtitleIndexes: [1],
+                invisibleSubtitleIndexes: [0],
+                hiddenSubtitleIndexes: [0, 1],
+                paused: false,
+            },
+        ]);
     });
 
     it('publishes a forced unchanged state during the throttle interval', () => {

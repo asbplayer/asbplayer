@@ -2,63 +2,7 @@ import type { SubtitleModel } from '@project/common/src/model';
 import hotkeys from 'hotkeys-js';
 import type { KeyBindSet, SeekableTracks, TokenStatus } from '@project/common/settings';
 import { isTrackSeekable } from '@project/common/settings';
-
-export function adjacentSubtitle(
-    forward: boolean,
-    time: number,
-    subtitles: SubtitleModel[],
-    seekableTracks: SeekableTracks
-) {
-    const now = time;
-    let adjacentSubtitleIndex = -1;
-    let minDiff = Number.MAX_SAFE_INTEGER;
-
-    if (forward) {
-        for (let i = 0; i < subtitles.length; ++i) {
-            const s = subtitles[i];
-
-            if (!isTrackSeekable(seekableTracks, s.track)) {
-                continue;
-            }
-
-            const diff = s.start - now;
-
-            if (minDiff <= diff) {
-                continue;
-            }
-
-            if (now < s.start) {
-                minDiff = diff;
-                adjacentSubtitleIndex = i;
-            }
-        }
-    } else {
-        for (let i = subtitles.length - 1; i >= 0; --i) {
-            const s = subtitles[i];
-
-            if (!isTrackSeekable(seekableTracks, s.track)) {
-                continue;
-            }
-
-            const diff = now - s.end;
-
-            if (minDiff <= diff) {
-                continue;
-            }
-
-            if (now > s.end) {
-                minDiff = diff;
-                adjacentSubtitleIndex = i;
-            }
-        }
-    }
-
-    if (adjacentSubtitleIndex !== -1) {
-        return subtitles[adjacentSubtitleIndex];
-    }
-
-    return null;
-}
+import { adjacentSubtitle } from '@project/common/util';
 
 export interface KeyBinder {
     bindCopy<T extends SubtitleModel = SubtitleModel>(

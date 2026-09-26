@@ -12,8 +12,8 @@ import type {
     Tokenization,
     TokenReading,
 } from '@project/common/src/model';
-import type { TextSubtitleSettings } from '@project/common/settings';
-import { TokenStatus } from '@project/common/settings';
+import type { SeekableTracks, TextSubtitleSettings } from '@project/common/settings';
+import { isTrackSeekable, TokenStatus } from '@project/common/settings';
 import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
@@ -49,6 +49,32 @@ export function compareSubtitlesForDisplay(
     s2: Pick<SubtitleModel, 'track' | 'index'>
 ): number {
     return s1.track - s2.track || (s1.index ?? 0) - (s2.index ?? 0);
+}
+
+/** Maps separately sorted showing and invisible subtitles into canonical display order. */
+export function mapSubtitlesForDisplay<T extends Pick<SubtitleModel, 'track' | 'index'>, R>(
+    showingSubtitles: readonly T[],
+    invisibleSubtitles: readonly T[],
+    map: (subtitle: T, visible: boolean, sourceIndex: number) => R
+): R[] {
+    const result: R[] = [];
+    let showingIndex = 0;
+    let invisibleIndex = 0;
+    while (showingIndex < showingSubtitles.length || invisibleIndex < invisibleSubtitles.length) {
+        const showingSubtitle = showingSubtitles[showingIndex];
+        const invisibleSubtitle = invisibleSubtitles[invisibleIndex];
+        if (
+            invisibleSubtitle === undefined ||
+            (showingSubtitle !== undefined && compareSubtitlesForDisplay(showingSubtitle, invisibleSubtitle) < 0)
+        ) {
+            result.push(map(showingSubtitle, true, showingIndex));
+            showingIndex++;
+        } else {
+            result.push(map(invisibleSubtitle, false, invisibleIndex));
+            invisibleIndex++;
+        }
+    }
+    return result;
 }
 
 export function keysAreEqual(a: any, b: any) {
@@ -171,6 +197,48 @@ export const normalizeNonPositive = (value: number): number => Math.min(0, norma
 export function getCurrentTimeString(): string {
     const now = new Date();
     return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}`;
+}
+
+export function adjacentSubtitle(
+    forward: boolean,
+    time: number,
+    subtitles: SubtitleModel[],
+    seekableTracks: SeekableTracks
+) {
+    const now = time;
+    let adjacentSubtitleIndex = -1;
+    let minDiff = Number.MAX_SAFE_INTEGER;
+
+    if (forward) {
+        for (let i = 0; i < subtitles.length; ++i) {
+            const s = subtitles[i];
+            if (!isTrackSeekable(seekableTracks, s.track)) continue;
+
+            const diff = s.start - now;
+            if (minDiff <= diff) continue;
+
+            if (now < s.start) {
+                minDiff = diff;
+                adjacentSubtitleIndex = i;
+            }
+        }
+    } else {
+        for (let i = subtitles.length - 1; i >= 0; --i) {
+            const s = subtitles[i];
+            if (!isTrackSeekable(seekableTracks, s.track)) continue;
+
+            const diff = now - s.end;
+            if (minDiff <= diff) continue;
+
+            if (now >= s.end) {
+                minDiff = diff;
+                adjacentSubtitleIndex = i;
+            }
+        }
+    }
+
+    if (adjacentSubtitleIndex !== -1) return subtitles[adjacentSubtitleIndex];
+    return null;
 }
 
 export function surroundingSubtitles(

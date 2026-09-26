@@ -14,7 +14,7 @@ on:
         required: true
         type: string
 
-model: gpt-5.6-luna
+model: gpt-6-luna
 max-ai-credits: -1 # Bypass built-in pricing table
 engine:
   id: codex
@@ -30,6 +30,7 @@ network:
 permissions: read-all
 
 safe-outputs:
+  threat-detection: false
   add-comment:
   set-issue-type:
     allowed: [Bug, Feature, Task]
@@ -40,7 +41,7 @@ tools:
   bash: false
   web-fetch:
   github:
-    toolsets: [issues]
+    toolsets: [issues, repos]
     min-integrity: none # This workflow is allowed to examine and comment on any issues
 
 timeout-minutes: 10
@@ -51,17 +52,17 @@ timeout-minutes: 10
 Analyze issue #${{ github.event.issue.number || inputs.issue-number }}, and:
 
 1. Find similar issues in this repository.
-2. Find relevant documentation under docs.
+2. Find relevant documentation under docs using the `get_file_contents` tool.
 3. Determine and set the issue type.
 
 Do not make assumptions beyond what the issue content supports. Do not invent missing context.
 
 ## Step 1: Gather context
 
-1. Retrieve the issue content using the `get_issue` tool.
-2. Fetch any comments on the issue using the `get_issue_comments` tool.
+1. Retrieve the issue content using the `issue_read` tool.
+2. Fetch any comments on the issue using the `issue_read` tool.
 3. Search for similar issues using the `search_issues` tool.
-4. Find relevant documentation under docs.
+4. List the `docs/docs` directory using the `get_file_contents` tool, then read the relevant documentation files that match the issue topic.
 
 ## Step 2: Triage and assist
 
@@ -77,7 +78,7 @@ Do not make assumptions beyond what the issue content supports. Do not invent mi
 Use this structure for your duplicate issues comment
 
 ```markdown
-### 🔗 Similar issues
+### Similar issues
 
 - issue-url (duplicate/related) — [brief explanation]
 

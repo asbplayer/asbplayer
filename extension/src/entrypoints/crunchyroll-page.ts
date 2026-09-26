@@ -204,5 +204,56 @@ export default defineUnlistedScript(() => {
         }
     );
 
+    // The timeline component's seekTo(seconds) seeks through the player, unlike video.currentTime writes
+    function findTimelineSeekTo(): ((timestampSeconds: number) => void) | undefined {
+        const roots = new Set<any>();
+
+        for (const element of document.querySelectorAll('*')) {
+            const key = Object.keys(element).find((k) => k.startsWith('__reactFiber'));
+            if (key === undefined) continue;
+            let fiber = (element as any)[key];
+            while (fiber?.return) fiber = fiber.return;
+            roots.add(fiber);
+        }
+
+        for (const root of roots) {
+            const stack = [root];
+
+            while (stack.length > 0) {
+                const fiber = stack.pop();
+                if (!fiber) continue;
+                const props = fiber.memoizedProps;
+
+                if (
+                    props !== null &&
+                    typeof props === 'object' &&
+                    typeof props.seekTo === 'function' &&
+                    typeof props.duration === 'number'
+                ) {
+                    return props.seekTo;
+                }
+
+                if (fiber.sibling) stack.push(fiber.sibling);
+                if (fiber.child) stack.push(fiber.child);
+            }
+        }
+
+        return undefined;
+    }
+
+    document.addEventListener('asbplayer-crunchyroll-seek', (e) => {
+        const timestampSeconds = (e as CustomEvent).detail;
+        if (typeof timestampSeconds !== 'number') return;
+
+        try {
+            const seekTo = findTimelineSeekTo();
+            if (seekTo === undefined) return;
+            seekTo(timestampSeconds);
+            e.preventDefault();
+        } catch {
+            // Uncancelled event falls back to seeking the video element
+        }
+    });
+
     interceptResponses();
 });
