@@ -59,7 +59,8 @@ We epecially acknowledge the wonderful humans below.
 [@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
 [@aramrw](https://github.com/aramrw),
 [@steckums](https://github.com/steckums),
-[@eXaminator](https://github.com/eXaminator)
+[@eXaminator](https://github.com/eXaminator),
+[@rajpiskala](https://github.com/rajpiskala)
 
 ## Translators
 

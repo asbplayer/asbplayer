@@ -66,7 +66,11 @@ export interface IndexedSubtitleModel extends SubtitleModel {
 
 export interface PlaybackState {
     readonly timestampMs: number;
+    /** Indexes of subtitles currently being shown on the screen. */
     readonly showingSubtitleIndexes: readonly number[];
+    /** Indexes of invisible layout placeholders. Absent when empty. */
+    readonly invisibleSubtitleIndexes?: readonly number[];
+    /** Indexes suppressed from rendering by user preference. Absent when empty. */
     readonly hiddenSubtitleIndexes?: readonly number[];
     readonly paused: boolean;
 }

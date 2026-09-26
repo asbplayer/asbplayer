@@ -20,7 +20,7 @@ Misconfiguration:
 Or bugs:
 
 - As of this writing enabling experimental web platform features is known to cause this issue. Try disabling this flag from `chrome://flags`.
-- On later versions of macOS, AnkiConnect will not respond when Anki is backgrounded. See "Notes for MacOS Users" on the [AnkiConnect developer's website](https://foosoft.net/projects/anki-connect/).
+- On later versions of macOS, AnkiConnect will not respond when Anki is in the background ([Notes for MacOS Users](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
 
 ### When using the 'update last card' feature, the card does not update in Anki.
 

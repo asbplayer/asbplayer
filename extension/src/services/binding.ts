@@ -1,4 +1,5 @@
 import {
+    adjacentSubtitle,
     asbError,
     buildSubtitleTracks,
     clampMediaTimestamp,
@@ -72,7 +73,6 @@ import {
     StopRecordingErrorCode,
     VideoDataUiOpenReason,
 } from '@project/common';
-import { adjacentSubtitle } from '@project/common/key-binder';
 import type { SeekableTracks } from '@project/common/settings';
 import {
     calculateSeekableTracksValue,
@@ -129,6 +129,7 @@ document.dispatchEvent(new CustomEvent('asbplayer-query-netflix'));
 
 const youtube = /(m|www)\.youtube\.com/.test(window.location.host);
 const disneyPlus = /www\.disneyplus\..+/.test(window.location.host);
+const crunchyroll = /(www\.)?crunchyroll\.com/.test(window.location.host);
 
 interface DisneyPlaybackEventDetail {
     readonly timestampMs: number;
@@ -430,7 +431,7 @@ export default class Binding {
         return new PlaybackEngine({
             settingsProvider: this.settings,
             appIntegration: true,
-            autoPauseCorrectionSuppressed: disneyPlus,
+            autoPauseCorrectionDisabled: disneyPlus,
             subtitles,
             playbackModesDisabled: false,
             playbackModesSuppressed: this.recordingMedia,
@@ -1678,9 +1679,16 @@ export default class Binding {
                     })
                 );
             });
-        } else {
+        } else if (!(crunchyroll && this._seekCrunchyroll(clampedTimestampMs / 1000))) {
             seekWithNudge(this.video, clampedTimestampMs / 1000);
         }
+    }
+
+    private _seekCrunchyroll(timestampSeconds: number) {
+        // Crunchyroll stalls on backward video.currentTime writes. The page script cancels the event if it seeked.
+        return !document.dispatchEvent(
+            new CustomEvent('asbplayer-crunchyroll-seek', { detail: timestampSeconds, cancelable: true })
+        );
     }
 
     async play() {
