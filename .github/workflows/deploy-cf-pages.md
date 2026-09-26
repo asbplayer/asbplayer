@@ -127,7 +127,7 @@ safe-outputs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             gh auth setup-git # The compiler forces persist-credentials: false on checkout; use gh as the git credential helper
 
-            pr_body=$(cat "$GH_AW_AGENT_OUTPUT" | jq -r '.items[] | select(.type == "finalize_deploy") | .pr_body' | head -n 1)
+            pr_body=$(cat "$GH_AW_AGENT_OUTPUT" | jq -r '.items[] | select(.type == "finalize_deploy") | (.pr_body // ."pr-body")' | head -n 1)
             if [ -z "$pr_body" ] || [ "$pr_body" = "null" ]; then
               echo "No finalize_deploy item found in agent output"
               exit 1
@@ -202,6 +202,7 @@ Rules:
 4. `Contributors` lists each unique contributor across all bullets, sorted by contribution count descending. Count each bullet the contributor authored.
 5. Never invent PR numbers, handles, or links — only use data present in `deploy-authors.md` or git output. If the deploy range contains no `common/` or `client/` changes, the release notes should be a single line: "No web app changes in this deploy." — still call the tool with it.
 6. A change that spans multiple commits (including its merge commit) must appear as exactly one bullet, attributed once to its contributor — never count duplicate commits of the same PR separately.
-7. Keep the entire document under 60 lines.
+7. Render handles as plain `@handle` links without code formatting, backticks, or escaping — including bot handles like `@dependabot[bot]`.
+8. Keep the entire document under 60 lines.
 
 You must call the `finalize_deploy` tool exactly once with the composed release notes; this is the only way the deploy PR is finalized. Do not use any commands other than the allowed read-only git commands. Do not attempt to push branches, create PRs via other means, or run any other commands.
