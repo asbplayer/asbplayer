@@ -28,6 +28,8 @@ import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import Toolbar from '@mui/material/Toolbar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { asbError, asbWarn } from '@project/common/util';
 
 interface OnlineSubtitleImportCandidate {
@@ -53,6 +55,8 @@ const MAX_RECENT_WORKS = 10;
 
 const isSupportedSubtitleFile = (name: string) =>
     SUPPORTED_JIMAKU_EXTENSIONS.some((ext) => name.toLowerCase().endsWith(ext));
+
+const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
 
 const FilterTextField: React.FC<{ filterString: string; onChange: (s: string) => void }> = ({
     filterString,
@@ -102,6 +106,7 @@ export default function OnlineSubtitleSourceDialog({
     const [loadingJimakuFiles, setLoadingJimakuFiles] = useState(false);
     const [detectedEpisode, setDetectedEpisode] = useState<number | undefined>(undefined);
     const [activeEpisodeFilter, setActiveEpisodeFilter] = useState<number | undefined>(undefined);
+    const [showJimakuApiKey, setShowJimakuApiKey] = useState(false);
     const resultsCache = useRef<Map<string, { anime: JimakuEntry[]; drama: JimakuEntry[] }>>(new Map());
 
     // Ref to avoid stale closure in upsertRecentWork
@@ -126,6 +131,7 @@ export default function OnlineSubtitleSourceDialog({
         [detectedTitleHint]
     );
     const isApiKeyMissing = jimakuApiKey.trim().length === 0;
+    const jimakuApiKeyVisible = showJimakuApiKey || !jimakuApiKey;
     const isSearchDisabled =
         searching ||
         loadingJimakuFiles ||
@@ -144,6 +150,7 @@ export default function OnlineSubtitleSourceDialog({
         setLastQuery(undefined);
         setLastSearchCategory(undefined);
         setActiveEpisodeFilter(undefined);
+        setShowJimakuApiKey(false);
         selectedEntryIdRef.current = undefined;
         fileLoadRequestIdRef.current += 1;
     }, []);
@@ -381,8 +388,27 @@ export default function OnlineSubtitleSourceDialog({
 
                     <TextField
                         label={t('onlineSubtitleSources.jimakuApiKey')}
-                        value={jimakuApiKey}
-                        onChange={(e) => onJimakuApiKeyChange(e.target.value)}
+                        value={jimakuApiKeyVisible ? jimakuApiKey : maskApiToken(jimakuApiKey)}
+                        onChange={(e) => {
+                            // Keep a key being typed into an empty field visible
+                            if (!jimakuApiKey) setShowJimakuApiKey(true);
+                            onJimakuApiKeyChange(e.target.value);
+                        }}
+                        slotProps={{
+                            input: {
+                                disabled: !jimakuApiKeyVisible,
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            onClick={() => setShowJimakuApiKey((showKey) => !showKey)}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                        >
+                                            {jimakuApiKeyVisible ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            },
+                        }}
                         helperText={
                             <Trans
                                 i18nKey="onlineSubtitleSources.jimakuApiKeyAutosaveHint"
