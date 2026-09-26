@@ -144,7 +144,9 @@ safe-outputs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             gh auth setup-git # The compiler forces persist-credentials: false on checkout; use gh as the git credential helper
 
-            pr_body=$(cat "$GH_AW_AGENT_OUTPUT" | jq -r '.items[] | select(.type == "finalize_deploy") | (.pr_body // ."pr-body")' | head -n 1)
+            # Select the last finalize_deploy item's full body (multi-line; jq -r emits real
+            # newlines, so line-based filtering like `head -n 1` would truncate the body)
+            pr_body=$(cat "$GH_AW_AGENT_OUTPUT" | jq -r '[.items[] | select(.type == "finalize_deploy")] | last | (.pr_body // ."pr-body")')
             if [ -z "$pr_body" ] || [ "$pr_body" = "null" ]; then
               echo "No finalize_deploy item found in agent output"
               exit 1
