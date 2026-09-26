@@ -71,3 +71,7 @@ node ./merge-loc-from-en.js
 ```
 
 Translations are later pulled from the [Crowdin project](https://crowdin.com/project/asbplayer).
+
+## License
+
+Please review the contribution licensing terms in [CONTRIBUTORS](./CONTRIBUTORS) before contributing.

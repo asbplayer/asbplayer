@@ -2,6 +2,7 @@
     "private": true,
     "name": "@project/common",
     "version": "0.1.0",
+    "license": "AGPL-3.0-or-later",
     "dependencies": {
         "@project/common": "workspace:^",
         "@flatten-js/interval-tree": "^1.0.19",
@@ -14,7 +15,7 @@
         "ass-compiler": "0.1.1",
         "clsx": "^2.1.1",
         "dexie": "^4.0.11",
-        "dompurify": "^3.4.12",
+        "dompurify": "^3.4.13",
         "fast-xml-parser": "^4.0.7",
         "hotkeys-js": "^3.10.0",
         "i18next": "^25.3.2",

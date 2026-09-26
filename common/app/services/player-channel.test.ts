@@ -59,6 +59,30 @@ describe('PlayerChannel playback state', () => {
         channel.close();
     });
 
+    it('sends optional invisible subtitle indexes', () => {
+        const channel = new PlayerChannel('test-channel');
+        const broadcastChannel = TestBroadcastChannel.instance!;
+
+        channel.playbackState({
+            timestampMs: 1234,
+            showingSubtitleIndexes: [2],
+            invisibleSubtitleIndexes: [5],
+            paused: false,
+        });
+
+        expect(broadcastChannel.sent).toEqual([
+            {
+                command: 'playbackState',
+                timestampMs: 1234,
+                showingSubtitleIndexes: [2],
+                invisibleSubtitleIndexes: [5],
+                paused: false,
+            },
+        ]);
+
+        channel.close();
+    });
+
     it('delivers playback states in transport order', () => {
         const channel = new PlayerChannel('test-channel');
         const broadcastChannel = TestBroadcastChannel.instance!;

@@ -86,6 +86,110 @@ describe('PlaybackTimeline', () => {
         expect(result.lookupAt(4000).segment.showingSubtitles).toEqual([]);
     });
 
+    it('provides the inactive members of a fixed connected group as invisible placeholders', () => {
+        const primary = makeSubtitle(1000, 10000, 0, { track: 0 });
+        const firstSecondary = makeSubtitle(2000, 4000, 1, { track: 1 });
+        const secondSecondary = makeSubtitle(6000, 8000, 2, { track: 1 });
+        const result = timeline([], { displaySubtitles: [primary, firstSecondary, secondSecondary] });
+
+        expect(result.invisibleSubtitlesAt(500)).toEqual([]);
+        expect(result.invisibleSubtitlesAt(1000)).toEqual([firstSecondary, secondSecondary]);
+        expect(result.showingSubtitlesAt(1000)).toEqual([primary]);
+        expect(result.invisibleSubtitlesAt(2500)).toEqual([secondSecondary]);
+        expect(result.showingSubtitlesAt(2500)).toEqual([primary, firstSecondary]);
+        expect(result.invisibleSubtitlesAt(4500)).toEqual([firstSecondary, secondSecondary]);
+        expect(result.showingSubtitlesAt(4500)).toEqual([primary]);
+        expect(result.invisibleSubtitlesAt(6500)).toEqual([firstSecondary]);
+        expect(result.showingSubtitlesAt(6500)).toEqual([primary, secondSecondary]);
+        expect(result.invisibleSubtitlesAt(8500)).toEqual([firstSecondary, secondSecondary]);
+        expect(result.showingSubtitlesAt(8500)).toEqual([primary]);
+        expect(result.invisibleSubtitlesAt(10000)).toEqual([]);
+    });
+
+    it('does not create placeholders for temporally disjoint subtitles', () => {
+        const firstTrack = makeSubtitle(1000, 3000, 0, { track: 0 });
+        const secondTrack = makeSubtitle(5000, 7000, 1, { track: 1 });
+        const result = timeline([], { displaySubtitles: [firstTrack, secondTrack] });
+
+        expect(result.showingSubtitlesAt(2000)).toEqual([firstTrack]);
+        expect(result.invisibleSubtitlesAt(2000)).toEqual([]);
+        expect(result.invisibleSubtitlesAt(4000)).toEqual([]);
+        expect(result.showingSubtitlesAt(6000)).toEqual([secondTrack]);
+        expect(result.invisibleSubtitlesAt(6000)).toEqual([]);
+    });
+
+    it('uses the same fixed-group rule for overlapping subtitles on one track', () => {
+        const first = makeSubtitle(2000, 4000, 0, { text: 'ONE', track: 0 });
+        const second = makeSubtitle(3000, 5000, 1, { text: 'HALF', track: 0 });
+        const result = timeline([], { displaySubtitles: [first, second] });
+
+        expect(result.invisibleSubtitlesAt(2500)).toEqual([second]);
+        expect(result.showingSubtitlesAt(2500)).toEqual([first]);
+        expect(result.invisibleSubtitlesAt(3500)).toEqual([]);
+        expect(result.showingSubtitlesAt(3500)).toEqual([first, second]);
+        expect(result.invisibleSubtitlesAt(4500)).toEqual([first]);
+        expect(result.showingSubtitlesAt(4500)).toEqual([second]);
+    });
+
+    it('forms one fixed group through transitive overlaps across multiple tracks', () => {
+        const first = makeSubtitle(1000, 4000, 0, { track: 0 });
+        const second = makeSubtitle(3000, 6000, 1, { track: 1 });
+        const third = makeSubtitle(5000, 8000, 2, { track: 2 });
+        const result = timeline([], { displaySubtitles: [first, second, third] });
+        expect(result.invisibleSubtitlesAt(1500)).toEqual([second, third]);
+        expect(result.showingSubtitlesAt(1500)).toEqual([first]);
+        expect(result.invisibleSubtitlesAt(4500)).toEqual([first, third]);
+        expect(result.showingSubtitlesAt(4500)).toEqual([second]);
+        expect(result.invisibleSubtitlesAt(6500)).toEqual([first, second]);
+        expect(result.showingSubtitlesAt(6500)).toEqual([third]);
+    });
+
+    it('does not form a fixed group through transitive 1 ms overlaps', () => {
+        const subtitles = Array.from({ length: 20 }, (_, index) =>
+            makeSubtitle(index * 999, index * 999 + 1000, index)
+        );
+        const result = timeline([], { durationMs: 20_000, displaySubtitles: subtitles });
+
+        expect(result.invisibleSubtitlesAt(500)).toEqual([]);
+        expect(result.showingSubtitlesAt(999)).toEqual(subtitles.slice(0, 2));
+        expect(result.invisibleSubtitlesAt(1500)).toEqual([]);
+        expect(result.invisibleSubtitlesAt(19_000)).toEqual([]);
+    });
+
+    it('starts a canonically ordered layout epoch when a fifth transitive subtitle enters', () => {
+        const subtitles = Array.from({ length: 5 }, (_, index) =>
+            makeSubtitle(1000 + index * 1000, 3000 + index * 1000, index, { track: index % 2 })
+        );
+        const result = timeline([], { displaySubtitles: subtitles });
+
+        expect(result.invisibleSubtitlesAt(4500)).toEqual(subtitles.slice(0, 2));
+        expect(result.showingSubtitlesAt(4500)).toEqual(subtitles.slice(2, 4));
+        expect(result.invisibleSubtitlesAt(5000)).toEqual([]);
+        expect(result.showingSubtitlesAt(5000)).toEqual(subtitles.slice(3, 5));
+    });
+
+    it('renders every subtitle when more than four are genuinely visible simultaneously', () => {
+        const subtitles = Array.from({ length: 5 }, (_, index) =>
+            makeSubtitle(1000, 3000, index, { track: index % 2 })
+        );
+        const result = timeline([], { displaySubtitles: subtitles });
+
+        expect(result.invisibleSubtitlesAt(1500)).toEqual([]);
+        expect(result.showingSubtitlesAt(1500)).toEqual(subtitles);
+    });
+
+    it('bounds future placeholders when four persistent subtitles remain active', () => {
+        const persistent = Array.from({ length: 4 }, (_, index) => makeSubtitle(0, 60000, index));
+        const sequential = Array.from({ length: 100 }, (_, index) =>
+            makeSubtitle(1000 + index * 500, 1400 + index * 500, persistent.length + index)
+        );
+        const result = timeline([], { displaySubtitles: [...persistent, ...sequential] });
+
+        expect(result.showingSubtitlesAt(10)).toEqual(persistent);
+        expect(result.invisibleSubtitlesAt(10)).toEqual([]);
+        expect(Math.max(...result.segments.map(({ invisibleSubtitles }) => invisibleSubtitles.length))).toBe(1);
+    });
+
     it('uses the state after the terminal boundary at the exact media duration', () => {
         const visible = makeSubtitle(9000, 10000, 0);
         const result = timeline([visible]);

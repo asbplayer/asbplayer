@@ -1,6 +1,7 @@
 {
     "name": "root",
     "private": true,
+    "license": "AGPL-3.0-or-later",
     "devDependencies": {
         "@eslint/js": "^9.32.0",
         "@typescript-eslint/parser": "^8.38.0",
@@ -24,8 +25,9 @@
         }
     },
     "scripts": {
+        "check:contributors": "node --experimental-strip-types scripts/check-contributors.ts",
         "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && pnpm --filter @project/common run typecheck && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm eslint common extension/src client/src && pnpm run pretty:check",
-        "pretty": "pnpm prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)'",
-        "pretty:check": "pnpm prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)'"
+        "pretty": "pnpm prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)' './scripts/*.ts'",
+        "pretty:check": "pnpm prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)' './scripts/*.ts'"
     }
 }

@@ -2,6 +2,7 @@
     "name": "@project/client",
     "version": "0.1.0",
     "private": true,
+    "license": "AGPL-3.0-or-later",
     "type": "module",
     "dependencies": {
         "@emotion/react": "^11.14.0",
