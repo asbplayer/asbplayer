@@ -1,8 +1,5 @@
 minimumReleaseAge: 720
 
-catalog:
-    typescript: ^5.8.3
-
 packages:
     - 'client'
     - 'common'
@@ -10,11 +7,14 @@ packages:
     - 'docs'
     - 'scripts/loc'
 
+catalog:
+    typescript: ^5.8.3
+
+patchedDependencies:
+    'lamejs@1.2.0': patches/lamejs-npm-1.2.0-b0315d05aa.patch
+
 allowBuilds:
     core-js: true
     core-js-pure: true
     esbuild: true
     unrs-resolver: true
-
-patchedDependencies:
-    'lamejs@1.2.0': patches/lamejs-npm-1.2.0-b0315d05aa.patch
