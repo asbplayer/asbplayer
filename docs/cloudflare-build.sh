@@ -1,4 +1,4 @@
 set -euo pipefail
 
-cd docs
-yarn && yarn run build
+pnpm install --frozen-lockfile --filter asbplayer-docs
+pnpm --filter asbplayer-docs build
