@@ -197,6 +197,7 @@ export default class Binding {
     private pausedDueToHover = false;
     private _seekDurationMs = 3000;
     private _speedChangeStep = 0.1;
+    private _lastProfile?: string;
 
     readonly video: HTMLMediaElement;
     readonly hasPageScript: boolean;
@@ -1262,6 +1263,8 @@ export default class Binding {
 
     async _refreshSettings() {
         const activeProfile = (await this.settings.activeProfile())?.name;
+        const profileChanged = this._lastProfile !== activeProfile;
+        this._lastProfile = activeProfile;
         this.playbackEngine.profileChanged(activeProfile);
         const currentSettings = await this.settings.getAll();
         this.playbackEngine.settingsChanged(currentSettings);
@@ -1298,7 +1301,11 @@ export default class Binding {
         const subtitleHtmlChanged = this.subtitleController.subtitleHtml !== currentSettings.subtitleHtml;
         this.subtitleController.subtitleHtml = currentSettings.subtitleHtml;
 
-        this.subtitleController.subtitleAnnotations.settingsUpdated(currentSettings);
+        if (profileChanged) {
+            this.subtitleController.subtitleAnnotations.profileChanged(currentSettings);
+        } else {
+            this.subtitleController.subtitleAnnotations.settingsUpdated(currentSettings, { force: false });
+        }
         this.subtitleController.setSubtitleSettings(currentSettings);
 
         if (convertNetflixRubyChanged || subtitleHtmlChanged) {

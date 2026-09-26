@@ -33,7 +33,7 @@ import Typography from '@mui/material/Typography';
 
 interface ImportClipboardToken {
     token: string;
-    lemmas: string[];
+    lemmas: readonly string[];
 }
 
 interface Props {

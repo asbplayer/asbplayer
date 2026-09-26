@@ -138,7 +138,7 @@ export class ExtensionDictionaryStorage implements DictionaryStorage {
 
     saveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ) {
         const message: DictionaryDBCommand<DictionarySaveRecordLocalBulkMessage> = {

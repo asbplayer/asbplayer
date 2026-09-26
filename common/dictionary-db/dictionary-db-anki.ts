@@ -800,7 +800,7 @@ export async function _buildTokensForTracks(
 
             const partialTokenRecordsByTrack = new Map<
                 number,
-                Map<DictionaryTokenSource, Map<string, { lemmas: string[]; cardIds: Set<number> }>>
+                Map<DictionaryTokenSource, Map<string, { lemmas: readonly string[]; cardIds: Set<number> }>>
             >();
             const ankiFieldsMap = new Map<number, Map<DictionaryTokenSource, string[]>>();
             for (const [track, ts] of trackStates.entries()) {
@@ -937,7 +937,7 @@ export async function _saveTokensForDB(
     modifiedCardsBatch: CardsForDB,
     partialTokenRecordsByTrack: Map<
         number,
-        Map<DictionaryTokenSource, Map<string, { lemmas: string[]; cardIds: Set<number> }>>
+        Map<DictionaryTokenSource, Map<string, { lemmas: readonly string[]; cardIds: Set<number> }>>
     >,
     modifiedTokens: Set<string>
 ): Promise<void> {

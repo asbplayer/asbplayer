@@ -880,7 +880,7 @@ export interface DictionaryGetByLemmaBulkMessage extends MessageWithId {
 export interface DictionarySaveRecordLocalBulkMessage extends MessageWithId {
     readonly command: 'dictionary-save-record-local-bulk';
     readonly profile: string | undefined;
-    readonly localTokenInputs: DictionaryLocalTokenInput[];
+    readonly localTokenInputs: readonly DictionaryLocalTokenInput[];
     readonly applyStates: ApplyStrategy;
 }
 
