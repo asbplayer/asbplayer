@@ -128,7 +128,7 @@ export default function SettingsDialog({
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
                     pageConfigs={extension.pageConfig}
                     insideApp
-                    appVersion={import.meta.env.VITE_APP_GIT_COMMIT}
+                    appVersionRepoPath={import.meta.env.VITE_APP_VERSION_REPO_PATH}
                     chromeKeyBinds={extension.extensionCommands}
                     onOpenChromeExtensionShortcuts={extension.openShortcuts}
                     onSettingsChanged={onSettingsChanged}

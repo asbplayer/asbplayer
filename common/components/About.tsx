@@ -713,7 +713,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`;
 
 interface Props {
-    appVersion?: string;
+    appVersionRepoPath?: string;
     extensionVersion?: string;
     insideExtension?: boolean;
 }
@@ -908,7 +908,7 @@ for (const dep of dependencies) {
     dependencyPurposeCounts[dep.purpose] = count + 1;
 }
 
-const About = ({ appVersion, extensionVersion }: Props) => {
+const About = ({ appVersionRepoPath, extensionVersion }: Props) => {
     const theme = useTheme<Theme>();
     const { t } = useTranslation();
     const renderedPurpose: { [key: string]: boolean } = {};
@@ -921,12 +921,12 @@ const About = ({ appVersion, extensionVersion }: Props) => {
                     asbplayer
                 </Link>
                 <br />
-                {appVersion && (
+                {appVersionRepoPath && (
                     <>
                         <Typography variant="caption">
                             {t('about.appVersion')}{' '}
-                            <Link href={`https://github.com/asbplayer/asbplayer/commit/${appVersion}`}>
-                                {appVersion}
+                            <Link href={`https://github.com/asbplayer/asbplayer/${appVersionRepoPath}`}>
+                                {appVersionRepoPath.split('/').at(-1)}
                             </Link>
                         </Typography>
                         <br />

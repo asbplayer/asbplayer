@@ -90,7 +90,8 @@ interface AlertNotificationValue {
 
 const messageToReactNode = (children: Message, t: TFunction): React.ReactNode => {
     if (typeof children === 'object' && children !== null && 'locKey' in children) {
-        return t(children.locKey, children.replacements);
+        // Dynamic (non-literal) key + loose options bag widens i18next's return type; it's a string here.
+        return t(children.locKey, children.replacements) as string;
     }
     if (typeof children === 'function') {
         return children(t);

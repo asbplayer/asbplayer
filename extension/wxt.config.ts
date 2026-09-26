@@ -1,5 +1,5 @@
 import { defineConfig } from 'wxt';
-import type { ResolvedPublicFile, UserManifest, Wxt } from 'wxt';
+import type { PublicPathEntry, ResolvedPublicFile, UserManifest, Wxt } from 'wxt';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -12,13 +12,13 @@ const moveToPublicAssets = (srcPath: string, destPath: string, files: ResolvedPu
     const srcFiles = fs.readdirSync(srcPath);
     for (const file of srcFiles) {
         files.push({
-            absoluteSrc: path.resolve(srcPath, file) as string,
+            absoluteSrc: path.resolve(srcPath, file),
             relativeDest: `${destPath}/${file}`,
         });
     }
 };
 
-const addToPublicPathsType = (srcPath: string, destPath: string, paths: string[]) => {
+const addToPublicPathsType = (srcPath: string, destPath: string, paths: PublicPathEntry[]) => {
     const srcFiles = fs.readdirSync(srcPath);
     for (const file of srcFiles) {
         paths.push(`${destPath}/${file}`);
@@ -31,6 +31,15 @@ const extName = 'asbplayer';
 export default defineConfig({
     modules: ['@wxt-dev/module-react'],
     srcDir: 'src',
+    // WXT auto-imports globals like `browser` and `storage` via unimport, which scans source files
+    // for bare identifiers matching those names and injects a matching `import` statement. This should
+    // only happen in the extension's own source, not other packages like `common` that don't have wxt
+    // installed. Scanning those too can inject unresolvable imports and break the build.
+    imports: {
+        // `include` is consumed by unimport's unplugin but missing from WXT's type.
+        // @ts-expect-error -- honored at runtime
+        include: [/extension\/src\//],
+    },
     vite: () => ({
         plugins: [
             {
@@ -43,7 +52,7 @@ export default defineConfig({
     }),
     zip: {
         sourcesRoot: '..',
-        includeSources: ['.yarn/patches/**'],
+        includeSources: ['patches/**'],
         artifactTemplate: `${extName}-{{version}}-{{browser}}.zip`,
         sourcesTemplate: `${extName}-{{version}}-sources.zip`,
     },
@@ -53,7 +62,7 @@ export default defineConfig({
                 moveToPublicAssets(srcDir, destDir, files);
             }
         },
-        'prepare:publicPaths': (wxt: Wxt, paths: string[]) => {
+        'prepare:publicPaths': (wxt: Wxt, paths: PublicPathEntry[]) => {
             for (const { srcDir, destDir } of commonAssets) {
                 addToPublicPathsType(srcDir, destDir, paths);
             }

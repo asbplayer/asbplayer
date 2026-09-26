@@ -24,7 +24,7 @@
             packages =
               (with pkgs; [
                 nodejs_24
-                yarn-berry
+                pnpm
                 python313
                 go
               ])

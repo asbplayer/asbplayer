@@ -352,11 +352,11 @@ describe('PlaybackPlanExecutor', () => {
         expect(harness.seeks).toEqual([1000]);
     });
 
-    it('separates playback-mode subtitles from all display subtitles showing at an automatic pause', async () => {
+    it('reports playback-mode subtitles and the timestamp for querying all display subtitles', async () => {
         const playbackSubtitle = makeSubtitle({ text: 'read me', track: 0, index: 0 });
         const displayOnlySubtitle = makeSubtitle({ text: 'translation', track: 1, index: 1 });
         const pausedWith: (readonly IndexedSubtitleModel[])[] = [];
-        const showingAtPause: (readonly IndexedSubtitleModel[])[] = [];
+        const pauseTimestamps: number[] = [];
         const harness = executorHarness(
             [PlayMode.autoPause],
             0,
@@ -366,9 +366,9 @@ describe('PlaybackPlanExecutor', () => {
                 autoPausePreference: AutoPausePreference.atStart,
             },
             {
-                pause: ({ playbackModeSubtitlesAtPause, showingSubtitlesAtPause }) => {
+                pause: ({ timestampMs, playbackModeSubtitlesAtPause }) => {
                     pausedWith.push(playbackModeSubtitlesAtPause);
-                    showingAtPause.push(showingSubtitlesAtPause);
+                    pauseTimestamps.push(timestampMs);
                 },
             }
         );
@@ -376,7 +376,11 @@ describe('PlaybackPlanExecutor', () => {
         await harness.executor.update(1000, {});
 
         expect(pausedWith).toEqual([[playbackSubtitle]]);
-        expect(showingAtPause).toEqual([[playbackSubtitle, displayOnlySubtitle]]);
+        expect(pauseTimestamps).toEqual([1000]);
+        expect(harness.executor.showingSubtitlesAt(pauseTimestamps[0])).toEqual([
+            playbackSubtitle,
+            displayOnlySubtitle,
+        ]);
     });
 
     it.each([

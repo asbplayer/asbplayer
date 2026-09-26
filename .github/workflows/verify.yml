@@ -2,9 +2,9 @@ name: Verify
 
 on:
     push:
-        branches: main
+        branches: [main]
     pull_request:
-        branches: main
+        branches: [main]
 
 jobs:
     build:
@@ -14,15 +14,9 @@ jobs:
         steps:
             - uses: actions/checkout@v7
 
-            - name: Use Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: npm
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
 
-            - run: npm install --global yarn
-            - run: yarn set version 3.2.0
-            - run: yarn install
-            - run: yarn workspace @project/extension run zip
-            - run: yarn workspace @project/client run build
-
+            - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
+            - run: pnpm --filter @project/extension run zip
+            - run: pnpm --filter @project/client run build
