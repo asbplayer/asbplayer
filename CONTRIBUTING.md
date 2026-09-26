@@ -34,6 +34,8 @@ Documentation is under the `docs` folder in this repository. When adding new fea
 
 ## Development
 
+Use the Node version specified in `.nvmrc`, either via a node version manager (e.g. `nvm use`) or via nix, which has it locked down in `flake.lock`.
+
 Below are useful commands for development.
 
 ```bash
