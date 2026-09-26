@@ -25,7 +25,7 @@ const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
-const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶ`;
+const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶA-Za-z0-9`;
 // Invisible sentinel placed before a ruby base so netflixRubyRegex cannot capture back
 // into preceding kanji or kana. U+2063 is an invisible separator that in practice never
 // appears in subtitle text and is a valid scalar, so extension loaders accept it in
