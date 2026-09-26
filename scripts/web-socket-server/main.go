@@ -31,8 +31,9 @@ type (
 	}
 	forwarder struct {
 		WebsocketClients map[*wsClient]bool
-		ResponseChannel  chan clientResponse
+		Broker           *requestBroker
 		Mutex            *sync.Mutex
+		RequestTimeout   time.Duration
 		AnkiConnectUrl   string
 		PostMineAction   int
 		InterceptField   string
@@ -95,6 +96,18 @@ func (forwarder forwarder) removeClient(client *wsClient) {
 	fmt.Printf("Client disconnected: %s\n", client.conn.RemoteAddr())
 }
 
+func (forwarder forwarder) clients() []*wsClient {
+	forwarder.Mutex.Lock()
+	defer forwarder.Mutex.Unlock()
+	clients := make([]*wsClient, 0, len(forwarder.WebsocketClients))
+
+	for client := range forwarder.WebsocketClients {
+		clients = append(clients, client)
+	}
+
+	return clients
+}
+
 func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
@@ -120,7 +133,7 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 		} else {
 			response := clientResponse{}
 			if err := json.Unmarshal(msg, &response); err == nil {
-				forwarder.ResponseChannel <- response
+				forwarder.Broker.deliver(response)
 			}
 		}
 	}
@@ -129,41 +142,39 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 }
 
 func (forwarder forwarder) publishMessage(command clientCommand) error {
-	forwarder.Mutex.Lock()
-	defer forwarder.Mutex.Unlock()
 	bytes, err := json.Marshal(command)
 
 	if err != nil {
 		return err
 	}
 
-	for client := range forwarder.WebsocketClients {
+	for _, client := range forwarder.clients() {
 		client.send(websocket.TextMessage, bytes)
 	}
 
 	return nil
 }
 
-func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand, c chan clientResponse) {
-	err := forwarder.publishMessage(command)
-
-	if err != nil {
-		close(c)
-		return
+func (forwarder forwarder) publishMessageAndAwaitResponse(command clientCommand) (clientResponse, bool) {
+	if len(forwarder.clients()) == 0 {
+		return clientResponse{}, false
 	}
 
-	for {
-		select {
-		case response := <-forwarder.ResponseChannel:
-			if response.MessageId == command.MessageId {
-				c <- response
-				close(c)
-				return
-			}
-		case <-time.After(5 * time.Second):
-			close(c)
-			return
-		}
+	request := forwarder.Broker.register(command.MessageId)
+
+	if err := forwarder.publishMessage(command); err != nil {
+		forwarder.Broker.cancel(command.MessageId, request)
+		return clientResponse{}, false
+	}
+
+	select {
+	case response, ok := <-request.result:
+		return response, ok
+	case <-time.After(forwarder.RequestTimeout):
+		forwarder.Broker.cancel(command.MessageId, request)
+		// A response may have landed just as the timeout fired.
+		response, ok := <-request.result
+		return response, ok
 	}
 }
 
@@ -236,7 +247,7 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 
 	c.Set("ankiConnectAction", request.Action)
 
-	if request.Action != "addNote" || len(forwarder.WebsocketClients) == 0 || !shouldInterceptAddNote(request, forwarder.InterceptField, forwarder.InterceptValue) {
+	if request.Action != "addNote" || len(forwarder.clients()) == 0 || !shouldInterceptAddNote(request, forwarder.InterceptField, forwarder.InterceptValue) {
 		_, err := forwarder.forwardToAnkiConnect(buf, c, "POST")
 		return err
 	}
@@ -264,10 +275,7 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 		return responseErr
 	}
 
-	responseChannel := make(chan clientResponse)
-
-	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
-	response, ok := <-responseChannel
+	response, ok := forwarder.publishMessageAndAwaitResponse(command)
 	if !ok {
 		return echo.NewHTTPError(http.StatusInternalServerError, nil)
 	}
@@ -326,10 +334,7 @@ func (forwarder forwarder) handleAsbplayerLoadSubtitlesRequest(c echo.Context) e
 	command := clientCommand{Command: "load-subtitles", MessageId: uuid.NewString(), Body: map[string]interface{}{
 		"files": request.Files,
 	}}
-	responseChannel := make(chan clientResponse)
-
-	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
-	_, ok := <-responseChannel
+	_, ok := forwarder.publishMessageAndAwaitResponse(command)
 	if !ok {
 		return echo.NewHTTPError(http.StatusInternalServerError, nil)
 	}
@@ -357,10 +362,7 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 	}
 
 	command := clientCommand{Command: "seek-timestamp", MessageId: uuid.NewString(), Body: body}
-	responseChannel := make(chan clientResponse)
-
-	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
-	_, ok := <-responseChannel
+	_, ok := forwarder.publishMessageAndAwaitResponse(command)
 	if !ok {
 		return echo.NewHTTPError(http.StatusInternalServerError, nil)
 	}
@@ -371,10 +373,7 @@ func (forwarder forwarder) handleAsbplayerSeekRequest(c echo.Context) error {
 
 func (forwarder forwarder) handleAsbplayerBoundMediaRequest(c echo.Context) error {
 	command := clientCommand{Command: "get-bound-media", MessageId: uuid.NewString(), Body: map[string]interface{}{}}
-	responseChannel := make(chan clientResponse)
-
-	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
-	response, ok := <-responseChannel
+	response, ok := forwarder.publishMessageAndAwaitResponse(command)
 	if !ok {
 		return echo.NewHTTPError(http.StatusInternalServerError, nil)
 	}
@@ -399,15 +398,24 @@ func (forwarder forwarder) handleAsbplayerSubtitlesRequest(c echo.Context) error
 		}
 	}
 	command := clientCommand{Command: "get-subtitles", MessageId: uuid.NewString(), Body: body}
-	responseChannel := make(chan clientResponse)
-
-	go forwarder.publishMessageAndAwaitResponse(command, responseChannel)
-	response, ok := <-responseChannel
+	response, ok := forwarder.publishMessageAndAwaitResponse(command)
 	if !ok {
 		return echo.NewHTTPError(http.StatusInternalServerError, nil)
 	}
 
 	return c.JSONBlob(http.StatusOK, response.Body)
+}
+
+func (forwarder forwarder) registerRoutes(e *echo.Echo) {
+	e.GET("/ws", forwarder.handleWebsocketClient)
+	e.POST("/disconnect-ws-clients", forwarder.disconnectWebsocketClients)
+	e.GET("/", forwarder.handleGetRequest)
+	e.POST("/", forwarder.handlePostRequest)
+	e.POST("/asbplayer/load-subtitles", forwarder.handleAsbplayerLoadSubtitlesRequest)
+	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
+	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
+	e.GET("/asbplayer/subtitles", forwarder.handleAsbplayerSubtitlesRequest)
+	e.OPTIONS("/", forwarder.handleOptionsRequest)
 }
 
 func (forwarder forwarder) disconnectWebsocketClients(c echo.Context) error {
@@ -453,19 +461,12 @@ func main() {
 	forwarder := forwarder{
 		Mutex:            &sync.Mutex{},
 		WebsocketClients: make(map[*wsClient]bool),
-		ResponseChannel:  make(chan clientResponse),
+		Broker:           newRequestBroker(),
+		RequestTimeout:   5 * time.Second,
 		AnkiConnectUrl:   ankiConnectUrl,
 		PostMineAction:   postMineAction,
 		InterceptField:   interceptField,
 		InterceptValue:   interceptValue}
-	e.GET("/ws", forwarder.handleWebsocketClient)
-	e.POST("/disconnect-ws-clients", forwarder.disconnectWebsocketClients)
-	e.GET("/", forwarder.handleGetRequest)
-	e.POST("/", forwarder.handlePostRequest)
-	e.POST("/asbplayer/load-subtitles", forwarder.handleAsbplayerLoadSubtitlesRequest)
-	e.POST("/asbplayer/seek", forwarder.handleAsbplayerSeekRequest)
-	e.GET("/asbplayer/bound-media", forwarder.handleAsbplayerBoundMediaRequest)
-	e.GET("/asbplayer/subtitles", forwarder.handleAsbplayerSubtitlesRequest)
-	e.OPTIONS("/", forwarder.handleOptionsRequest)
+	forwarder.registerRoutes(e)
 	e.Logger.Fatal(e.Start(":" + port))
 }

@@ -21,7 +21,7 @@ The server was originally written to enable a one-click mining flow that enriche
 
    ```
    cd asbplayer/scripts/web-socket-server
-   go run main.go
+   go run .
    ```
 
 The proxy is very lightweight, so it's fine to leave it running in the background. On Windows, [RBTray](https://github.com/benbuck/rbtray) can be used to minimise it to the taskbar.
