@@ -38,7 +38,7 @@ jobs:
       pull-requests: read
     outputs:
       should_run: ${{ steps.deploy.outputs.should_run }}
-      pr_number: ${{ steps.deploy.outputs.pr_number }}
+      branch_name: ${{ steps.deploy.outputs.branch_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,22 +54,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           gh auth setup-git # The compiler forces persist-credentials: false on checkout; use gh as the git credential helper
 
-          # Fetch all relevant branches; deploy/cf-pages may not exist yet on the first run
           git fetch origin main cf-pages --no-tags
-          if git ls-remote --exit-code --heads origin deploy/cf-pages >/dev/null 2>&1; then
-            git fetch origin deploy/cf-pages --no-tags
-            base=origin/deploy/cf-pages
-          else
-            base=origin/cf-pages
-          fi
-          git checkout -B deploy/cf-pages "$base"
 
-          # Skip if the deploy branch already contains main (deploy already prepared)
-          if git merge-base --is-ancestor origin/main deploy/cf-pages; then
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-            echo "deploy/cf-pages already contains main; nothing to do."
-            exit 0
-          fi
+          # If an open deploy PR's branch already contains the tip of main, there is
+          # nothing new to deploy; the existing PR stands
+          while read -r head_ref; do
+            [ -z "$head_ref" ] && continue
+            git fetch origin "$head_ref" --no-tags
+            if git merge-base --is-ancestor origin/main "refs/remotes/origin/$head_ref"; then
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "Open deploy PR branch $head_ref already contains main; nothing to do."
+              exit 0
+            fi
+          done < <(gh pr list --base cf-pages --state open --json headRefName -q '.[] | select(.headRefName | startswith("deploy/cf-pages")) | .headRefName')
 
           commit_count=$(git rev-list --count origin/cf-pages..origin/main)
           if [ "$commit_count" -eq 0 ]; then
@@ -77,22 +74,22 @@ jobs:
             echo "No new commits on main since the last cf-pages deploy; nothing to do."
             exit 0
           fi
-          echo "should_run=true" >> "$GITHUB_OUTPUT"
-          echo "Deploying $commit_count new commit(s) from main"
 
-          # Merge incrementally so pushes fast-forward: first catch up with cf-pages (loc
-          # bumps etc. may have landed there directly), then merge the new main commits
-          if ! git merge origin/cf-pages --no-edit || ! git merge origin/main --no-edit; then
-            echo "Merge conflicts while preparing deploy branch. Conflicting files:"
+          # Unique branch per deploy cycle; a fresh branch never needs a force push
+          branch_name="deploy/cf-pages-$(date +%Y%m%d-%H%M%S)"
+          echo "branch_name=$branch_name" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "Deploying $commit_count new commit(s) from main to $branch_name"
+
+          git checkout -B "$branch_name" origin/cf-pages
+          if ! git merge origin/main --no-edit; then
+            echo "Merge conflicts between main and cf-pages. Conflicting files:"
             git diff --name-only --diff-filter=U || true
-            git merge --abort 2>/dev/null || true
+            git merge --abort
             exit 1
           fi
 
-          existing=$(gh pr list --head deploy/cf-pages --base cf-pages --state open --json number -q '.[0].number // empty')
-          echo "pr_number=$existing" >> "$GITHUB_OUTPUT"
-
-          git push origin deploy/cf-pages
+          git push origin "$branch_name"
 
   agent:
     needs: [prepare]
@@ -100,23 +97,25 @@ jobs:
 
 pre-agent-steps:
   - name: Fetch deploy refs
+    env:
+      DEPLOY_BRANCH: ${{ needs.prepare.outputs.branch_name }}
     run: |
       set -euo pipefail
-      git fetch --no-tags origin main cf-pages deploy/cf-pages
+      git fetch --no-tags origin main cf-pages "$DEPLOY_BRANCH"
   - name: Collect commit authors
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEPLOY_BRANCH: ${{ needs.prepare.outputs.branch_name }}
     run: |
-      bash scripts/release-notes/collect-authors.sh origin/cf-pages origin/deploy/cf-pages deploy-authors.md
+      bash scripts/release-notes/collect-authors.sh origin/cf-pages "origin/$DEPLOY_BRANCH" deploy-authors.md
       echo "--- deploy-authors.md ---"
       cat deploy-authors.md
 
 safe-outputs:
-  threat-detection: false
   jobs:
     finalize-deploy:
       description: >-
-        Create or update the cf-pages deploy pull request with the generated release notes and
+        Create the cf-pages deploy pull request with the generated release notes and
         push a follow-up commit linking the app version to the deploy PR. Call this tool exactly
         once, after composing the release notes.
       runs-on: ubuntu-latest
@@ -130,10 +129,23 @@ safe-outputs:
           required: true
           type: string
       steps:
+        - name: Determine deploy branch
+          env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_REPO: ${{ github.repository }}
+          run: |
+            # The deploy branch is unique per deploy cycle (deploy/cf-pages-<timestamp>);
+            # the newest one is the current deploy
+            branch=$(gh api "repos/$GH_REPO/git/matching-refs/heads/deploy/cf-pages-" --jq '[.[].ref | sub("refs/heads/"; "")] | sort | last // empty' 2>/dev/null || true)
+            if [ -z "$branch" ]; then
+              echo "No deploy/cf-pages-* branch found on origin"
+              exit 1
+            fi
+            echo "DEPLOY_BRANCH=$branch" >> "$GITHUB_ENV"
         - name: Checkout deploy branch
           uses: actions/checkout@v4
           with:
-            ref: deploy/cf-pages
+            ref: ${{ env.DEPLOY_BRANCH }}
             fetch-depth: 0
         - name: Finalize deploy PR
           env:
@@ -153,16 +165,29 @@ safe-outputs:
             fi
             echo "$pr_body" > release-notes.md
 
-            existing=$(gh pr list --head deploy/cf-pages --base cf-pages --state open --json number -q '.[0].number // empty')
+            existing=$(gh pr list --head "$DEPLOY_BRANCH" --base cf-pages --state open --json number -q '.[0].number // empty')
             if [ -n "$existing" ]; then
               gh pr edit "$existing" --body-file release-notes.md
               echo "Updated deploy PR #$existing"
               pr_number="$existing"
             else
-              pr_url=$(gh pr create --base cf-pages --head deploy/cf-pages --title "Deploy cf-pages ($(date +%F))" --body-file release-notes.md)
+              pr_url=$(gh pr create --base cf-pages --head "$DEPLOY_BRANCH" --title "Deploy cf-pages ($(date +%F))" --body-file release-notes.md)
               pr_number="${pr_url##*/}"
               echo "Created deploy PR #$pr_number"
             fi
+
+            # Close superseded open deploy PRs so at most one deploy PR is open at a time
+            gh pr list --base cf-pages --state open --json number,headRefName -q '.[] | select((.headRefName | startswith("deploy/cf-pages")) and .number != '"$pr_number"') | .number' | while read -r stale_pr; do
+              [ -z "$stale_pr" ] && continue
+              gh pr close "$stale_pr" --comment "Superseded by #$pr_number"
+            done
+
+            # Clean up stale deploy branches (their PRs are closed or merged)
+            git ls-remote --heads origin 'refs/heads/deploy/cf-pages-*' | awk -F' refs/heads/' '{print $2}' | while read -r stale_branch; do
+              [ -z "$stale_branch" ] && continue
+              [ "$stale_branch" = "$DEPLOY_BRANCH" ] && continue
+              git push origin --delete "$stale_branch"
+            done
 
             echo "VITE_APP_VERSION_REPO_PATH=pull/$pr_number" > client/.env.production
             git add client/.env.production
@@ -170,27 +195,25 @@ safe-outputs:
               echo "Env file unchanged; skipping commit."
             else
               git commit -m "chore: link app version to deploy PR #$pr_number"
-              git push origin deploy/cf-pages
+              git push origin "$DEPLOY_BRANCH"
             fi
 
 ---
 
 # Deploy cf-pages release notes
 
-You are generating release notes for an asbplayer webapp deploy. The deploy branch `deploy/cf-pages` merges `main` into `cf-pages`. Your release notes will become the body of the deploy pull request from `deploy/cf-pages` to `cf-pages`, which deploys the web app.
-
-The existing deploy PR number is ${{ needs.prepare.outputs.pr_number || 'not yet created' }}.
+You are generating release notes for an asbplayer webapp deploy. The deploy branch `${{ needs.prepare.outputs.branch_name }}` merges `main` into `cf-pages`. Your release notes will become the body of the deploy pull request from `${{ needs.prepare.outputs.branch_name }}` to `cf-pages`, which deploys the web app.
 
 ## Input data
 
 - `deploy-authors.md` in the workspace root: one line per commit, formatted `short-sha|pr-number-or-dash|author-handle-or-name|subject`, covering all commits in the deploy range.
-- The full git history is available locally. The deploy range is `origin/cf-pages..origin/deploy/cf-pages`.
+- The full git history is available locally. The deploy range is `origin/cf-pages..origin/${{ needs.prepare.outputs.branch_name }}`.
 
 ## Investigation
 
 Use the allowed read-only git commands to examine the changes in the deploy range. You may look at commit subjects, per-commit diffs, and combined diffs.
 
-IMPORTANT: Only changes under `common/` and `client/` are relevant. The web app is built from those directories; `extension/`, `docs/`, `scripts/`, `loc/`, and other paths are NOT deployed to the web app and must not appear in the release notes. Use `git diff --stat origin/cf-pages..origin/deploy/cf-pages -- common client` and per-commit path filtering to scope your analysis. Commits that touch only excluded paths must be omitted entirely. For mixed commits, describe only the portion relevant to `common/` and `client/`.
+IMPORTANT: Only changes under `common/` and `client/` are relevant. The web app is built from those directories; `extension/`, `docs/`, `scripts/`, `loc/`, and other paths are NOT deployed to the web app and must not appear in the release notes. Use `git diff --stat origin/cf-pages..origin/${{ needs.prepare.outputs.branch_name }} -- common client` and per-commit path filtering to scope your analysis. Commits that touch only excluded paths must be omitted entirely. For mixed commits, describe only the portion relevant to `common/` and `client/`.
 
 ## Output
 
