@@ -52,6 +52,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git # The compiler forces persist-credentials: false on checkout; use gh as the git credential helper
 
           git fetch origin main cf-pages --no-tags
           git checkout -B deploy/cf-pages origin/cf-pages
@@ -124,6 +125,7 @@ safe-outputs:
             set -euo pipefail
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            gh auth setup-git # The compiler forces persist-credentials: false on checkout; use gh as the git credential helper
 
             pr_body=$(cat "$GH_AW_AGENT_OUTPUT" | jq -r '.items[] | select(.type == "finalize_deploy") | .pr_body' | head -n 1)
             if [ -z "$pr_body" ] || [ "$pr_body" = "null" ]; then
