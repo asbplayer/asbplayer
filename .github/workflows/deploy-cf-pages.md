@@ -54,8 +54,22 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           gh auth setup-git # The compiler forces persist-credentials: false on checkout; use gh as the git credential helper
 
+          # Fetch all relevant branches; deploy/cf-pages may not exist yet on the first run
           git fetch origin main cf-pages --no-tags
-          git checkout -B deploy/cf-pages origin/cf-pages
+          if git ls-remote --exit-code --heads origin deploy/cf-pages >/dev/null 2>&1; then
+            git fetch origin deploy/cf-pages --no-tags
+            base=origin/deploy/cf-pages
+          else
+            base=origin/cf-pages
+          fi
+          git checkout -B deploy/cf-pages "$base"
+
+          # Skip if the deploy branch already contains main (deploy already prepared)
+          if git merge-base --is-ancestor origin/main deploy/cf-pages; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "deploy/cf-pages already contains main; nothing to do."
+            exit 0
+          fi
 
           commit_count=$(git rev-list --count origin/cf-pages..origin/main)
           if [ "$commit_count" -eq 0 ]; then
@@ -66,10 +80,12 @@ jobs:
           echo "should_run=true" >> "$GITHUB_OUTPUT"
           echo "Deploying $commit_count new commit(s) from main"
 
-          if ! git merge origin/main --no-edit; then
-            echo "Merge conflicts between main and cf-pages. Conflicting files:"
+          # Merge incrementally so pushes fast-forward: first catch up with cf-pages (loc
+          # bumps etc. may have landed there directly), then merge the new main commits
+          if ! git merge origin/cf-pages --no-edit || ! git merge origin/main --no-edit; then
+            echo "Merge conflicts while preparing deploy branch. Conflicting files:"
             git diff --name-only --diff-filter=U || true
-            git merge --abort
+            git merge --abort 2>/dev/null || true
             exit 1
           fi
 
