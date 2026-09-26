@@ -98,7 +98,13 @@ export class JimakuClient {
 
     async searchEntries(query: string, anime?: boolean): Promise<JimakuResponse<JimakuEntry[]>> {
         const searchParams = new URLSearchParams();
-        searchParams.set('query', query);
+        // Jimaku only matches an apostrophe or dash of the same kind (' vs ’, - vs –), but ignores them when omitted
+        const normalizedQuery = query
+            .replace(/['’‘`´]/g, '')
+            .replace(/[-–—]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        searchParams.set('query', normalizedQuery);
         if (anime !== undefined) {
             searchParams.set('anime', `${anime}`);
         }
