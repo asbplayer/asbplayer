@@ -112,6 +112,7 @@ pre-agent-steps:
       cat deploy-authors.md
 
 safe-outputs:
+  threat-detection: false
   jobs:
     finalize-deploy:
       description: >-
