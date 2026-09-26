@@ -2,63 +2,7 @@ import type { SubtitleModel } from '@project/common/src/model';
 import hotkeys from 'hotkeys-js';
 import type { KeyBindSet, SeekableTracks, TokenJumpTarget } from '@project/common/settings';
 import { isTrackSeekable, TokenState, TokenStatus } from '@project/common/settings';
-
-export function adjacentSubtitle(
-    forward: boolean,
-    time: number,
-    subtitles: SubtitleModel[],
-    seekableTracks: SeekableTracks
-) {
-    const now = time;
-    let adjacentSubtitleIndex = -1;
-    let minDiff = Number.MAX_SAFE_INTEGER;
-
-    if (forward) {
-        for (let i = 0; i < subtitles.length; ++i) {
-            const s = subtitles[i];
-
-            if (!isTrackSeekable(seekableTracks, s.track)) {
-                continue;
-            }
-
-            const diff = s.start - now;
-
-            if (minDiff <= diff) {
-                continue;
-            }
-
-            if (now < s.start) {
-                minDiff = diff;
-                adjacentSubtitleIndex = i;
-            }
-        }
-    } else {
-        for (let i = subtitles.length - 1; i >= 0; --i) {
-            const s = subtitles[i];
-
-            if (!isTrackSeekable(seekableTracks, s.track)) {
-                continue;
-            }
-
-            const diff = now - s.end;
-
-            if (minDiff <= diff) {
-                continue;
-            }
-
-            if (now > s.end) {
-                minDiff = diff;
-                adjacentSubtitleIndex = i;
-            }
-        }
-    }
-
-    if (adjacentSubtitleIndex !== -1) {
-        return subtitles[adjacentSubtitleIndex];
-    }
-
-    return null;
-}
+import { adjacentSubtitle } from '@project/common/util';
 
 export interface KeyBinder {
     bindCopy<T extends SubtitleModel = SubtitleModel>(
@@ -1166,80 +1110,54 @@ export class DefaultKeyBinder implements KeyBinder {
         disabledGetter: () => boolean,
         capture = false
     ) {
-        const anyTokenKeyBinds: [string, string] = [
-            this.keyBindSet.jumpToPreviousToken.keys,
-            this.keyBindSet.jumpToNextToken.keys,
-        ];
-        const statusKeyBinds: [TokenStatus, string, string][] = [
+        const tokenKeyBinds: [TokenJumpTarget, string, string][] = [
+            [{ kind: 'any' }, this.keyBindSet.jumpToPreviousToken.keys, this.keyBindSet.jumpToNextToken.keys],
             [
-                TokenStatus.UNCOLLECTED,
+                { kind: 'status', value: TokenStatus.UNCOLLECTED },
                 this.keyBindSet.jumpToPreviousTokenStatus0.keys,
                 this.keyBindSet.jumpToNextTokenStatus0.keys,
             ],
             [
-                TokenStatus.UNKNOWN,
+                { kind: 'status', value: TokenStatus.UNKNOWN },
                 this.keyBindSet.jumpToPreviousTokenStatus1.keys,
                 this.keyBindSet.jumpToNextTokenStatus1.keys,
             ],
             [
-                TokenStatus.LEARNING,
+                { kind: 'status', value: TokenStatus.LEARNING },
                 this.keyBindSet.jumpToPreviousTokenStatus2.keys,
                 this.keyBindSet.jumpToNextTokenStatus2.keys,
             ],
             [
-                TokenStatus.GRADUATED,
+                { kind: 'status', value: TokenStatus.GRADUATED },
                 this.keyBindSet.jumpToPreviousTokenStatus3.keys,
                 this.keyBindSet.jumpToNextTokenStatus3.keys,
             ],
             [
-                TokenStatus.YOUNG,
+                { kind: 'status', value: TokenStatus.YOUNG },
                 this.keyBindSet.jumpToPreviousTokenStatus4.keys,
                 this.keyBindSet.jumpToNextTokenStatus4.keys,
             ],
             [
-                TokenStatus.MATURE,
+                { kind: 'status', value: TokenStatus.MATURE },
                 this.keyBindSet.jumpToPreviousTokenStatus5.keys,
                 this.keyBindSet.jumpToNextTokenStatus5.keys,
             ],
-        ];
-        const stateKeyBinds: [TokenState, string, string][] = [
             [
-                TokenState.IGNORED,
+                { kind: 'state', value: TokenState.IGNORED },
                 this.keyBindSet.jumpToPreviousTokenState0.keys,
                 this.keyBindSet.jumpToNextTokenState0.keys,
             ],
         ];
         const bindings: { shortcut: string; target: TokenJumpTarget; forward: boolean }[] = [];
 
-        if (anyTokenKeyBinds[0]) {
-            bindings.push({ shortcut: anyTokenKeyBinds[0], target: { kind: 'any' }, forward: false });
-        }
-        if (anyTokenKeyBinds[1]) {
-            bindings.push({ shortcut: anyTokenKeyBinds[1], target: { kind: 'any' }, forward: true });
-        }
-
-        for (const [status, previousShortcut, nextShortcut] of statusKeyBinds) {
+        for (const [target, previousShortcut, nextShortcut] of tokenKeyBinds) {
             if (previousShortcut) {
-                bindings.push({
-                    shortcut: previousShortcut,
-                    target: { kind: 'status', value: status },
-                    forward: false,
-                });
+                bindings.push({ shortcut: previousShortcut, target, forward: false });
             }
             if (nextShortcut) {
-                bindings.push({ shortcut: nextShortcut, target: { kind: 'status', value: status }, forward: true });
+                bindings.push({ shortcut: nextShortcut, target, forward: true });
             }
         }
-
-        for (const [state, previousShortcut, nextShortcut] of stateKeyBinds) {
-            if (previousShortcut) {
-                bindings.push({ shortcut: previousShortcut, target: { kind: 'state', value: state }, forward: false });
-            }
-            if (nextShortcut) {
-                bindings.push({ shortcut: nextShortcut, target: { kind: 'state', value: state }, forward: true });
-            }
-        }
-
         if (!bindings.length) return () => {};
 
         const delegate = (event: KeyboardEvent, target: TokenJumpTarget, forward: boolean) => {

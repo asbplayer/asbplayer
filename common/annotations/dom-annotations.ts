@@ -15,11 +15,18 @@ export const ASB_PITCH_ACCENT_MORA_CLASS = 'asb-pitch-accent-mora';
 export const ASB_PITCH_ACCENT_MORA_HIGH_CLASS = 'asb-pitch-accent-mora-high';
 export const ASB_PITCH_ACCENT_MORA_LOW_CLASS = 'asb-pitch-accent-mora-low';
 export const ASB_PITCH_ACCENT_LINE_CLASS = 'asb-pitch-accent-line';
+export const ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS = 'asbplayer-subtitles-container-bottom';
+export const ASB_SUBTITLE_CONTAINER_TOP_CLASS = 'asbplayer-subtitles-container-top';
+export const ASB_TOKEN_CONTAINER_CLASS = 'asbplayer-token-container';
+
+const tokenSelectionScopeSelector = [
+    `.${ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS}`,
+    `.${ASB_SUBTITLE_CONTAINER_TOP_CLASS}`,
+    `.${ASB_TOKEN_CONTAINER_CLASS}`,
+].join(', ');
 
 const tokenSelectionScopeFor = (element: Element): ParentNode =>
-    element.closest(
-        '.asbplayer-subtitles-container-bottom, .asbplayer-subtitles-container-top, .asbplayer-token-container'
-    ) ?? element.ownerDocument;
+    element.closest(tokenSelectionScopeSelector) ?? element.ownerDocument;
 
 export class HoveredToken {
     private _hoveredElement: HTMLElement | null;

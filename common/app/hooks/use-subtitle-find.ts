@@ -186,13 +186,18 @@ export const useSubtitleFind = ({
             const tokenSelection = findTokenContainingSearch(subtitle, findSearchTerms, parseRegexQuery(query));
 
             if (tokenSelection) {
-                requestTokenSelection(tokenSelection, { focusContainer: false, claimOwner: true });
+                const findInputIsFocused = inputRef.current?.ownerDocument.activeElement === inputRef.current;
+                requestTokenSelection(tokenSelection, {
+                    focusContainer: false,
+                    selectText: !findInputIsFocused, // Using the browser's native text selection steals focus
+                    claimOwner: true,
+                });
                 return;
             }
 
             clearTokenSelection?.();
         },
-        [clearTokenSelection, findSearchTerms, query, requestTokenSelection, subtitleListRef]
+        [clearTokenSelection, findSearchTerms, inputRef, query, requestTokenSelection, subtitleListRef]
     );
 
     const scrollToMatch = useCallback(

@@ -178,7 +178,7 @@
         "jumpToPreviousTokenAny": "Jump to previous word",
         "jumpToNextToken": "Jump to next {{type}} word",
         "jumpToPreviousToken": "Jump to previous {{type}} word",
-        "jumpToTokenHelperText": "Combine with the hover shortcuts and Yomitan's 'Scan selected text' shortcut for keyboard only control and lookups.",
+        "jumpToTokenHelperText": "Use these shortcuts with Yomitan's 'Scan selected text' shortcut for keyboard only control and lookups.",
         "openStatistics": "Buka statistik"
     },
     "controls": {

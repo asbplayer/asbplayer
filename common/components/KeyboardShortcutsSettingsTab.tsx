@@ -112,7 +112,6 @@ const keyBindSectionByName: { [key in KeyBindName]: KeyboardShortcutSection } = 
 interface KeyBindProperties {
     label: string;
     boundViaBrowser: boolean;
-    helperText?: string;
     hide?: boolean;
     additionalControl?: React.ReactNode;
 }
@@ -140,20 +139,12 @@ const useKeyBindFieldStyles = makeStyles<Theme>((theme) => ({
 interface KeyBindFieldProps {
     label: string;
     keys: string;
-    helperText?: string;
     boundViaChrome: boolean;
     onKeysChange: (keys: string) => void;
     onOpenExtensionShortcuts: () => void;
 }
 
-function KeyBindField({
-    label,
-    keys,
-    helperText,
-    boundViaChrome,
-    onKeysChange,
-    onOpenExtensionShortcuts,
-}: KeyBindFieldProps) {
+function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensionShortcuts }: KeyBindFieldProps) {
     const { t } = useTranslation();
     const theme = useTheme<Theme>();
     const classes = useKeyBindFieldStyles();
@@ -302,11 +293,6 @@ function KeyBindField({
                         }}
                     />
                 </Grid2>
-                {keys && helperText && (
-                    <Grid2 size={12}>
-                        <FormHelperText>{helperText}</FormHelperText>
-                    </Grid2>
-                )}
             </Grid2>
         </Grid2>
     );
@@ -327,12 +313,14 @@ interface Props {
 interface KeyboardShortcutSectionProps {
     id: string;
     label: string;
+    description?: string;
 }
 
-function KeyboardShortcutSection({ id, label }: KeyboardShortcutSectionProps) {
+function KeyboardShortcutSection({ id, label, description }: KeyboardShortcutSectionProps) {
     return (
         <div id={id}>
             <SettingsSection>{label}</SettingsSection>
+            {description && <FormHelperText>{description}</FormHelperText>}
         </div>
     );
 }
@@ -354,6 +342,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
         (): {
             [key in KeyboardShortcutSection]: {
                 label: string;
+                description?: string;
             };
         } => ({
             subtitles: {
@@ -376,6 +365,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             },
             annotation: {
                 label: t('settings.annotation'),
+                description: t('binds.jumpToTokenHelperText'),
             },
         }),
         [t]
@@ -561,12 +551,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextToken: {
                 label: t('binds.jumpToNextTokenAny'),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousToken: {
                 label: t('binds.jumpToPreviousTokenAny'),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken5: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus5') }),
@@ -575,12 +563,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenStatus5: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus5') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenStatus5: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus5') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken4: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus4') }),
@@ -589,12 +575,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenStatus4: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus4') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenStatus4: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus4') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken3: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus3') }),
@@ -603,12 +587,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenStatus3: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus3') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenStatus3: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus3') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken2: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus2') }),
@@ -617,12 +599,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenStatus2: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus2') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenStatus2: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus2') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken1: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus1') }),
@@ -631,12 +611,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenStatus1: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus1') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenStatus1: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus1') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             markHoveredToken0: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus0') }),
@@ -645,12 +623,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenStatus0: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus0') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenStatus0: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus0') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             toggleHoveredTokenIgnored: {
                 label: t('binds.toggleHoveredTokenIgnored'),
@@ -659,12 +635,10 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             jumpToNextTokenState0: {
                 label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStateIgnored') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
             jumpToPreviousTokenState0: {
                 label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStateIgnored') }),
                 boundViaBrowser: false,
-                helperText: t('binds.jumpToTokenHelperText'),
             },
         }),
         [
@@ -707,6 +681,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     key={`${section}-section`}
                     id={keyboardShortcutSectionId(section)}
                     label={sectionPropertiesForKey.label}
+                    description={sectionPropertiesForKey.description}
                 />
             );
             previousSection = section;
@@ -716,7 +691,6 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             <div key={keyBindName}>
                 <KeyBindField
                     label={properties.label}
-                    helperText={properties.helperText}
                     keys={
                         extensionInstalled && properties.boundViaBrowser
                             ? (chromeKeyBinds[keyBindName] ?? '')

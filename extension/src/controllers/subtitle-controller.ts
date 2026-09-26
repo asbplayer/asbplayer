@@ -26,6 +26,8 @@ import {
 } from '@project/common/settings';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
 import {
+    ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
+    ASB_SUBTITLE_CONTAINER_TOP_CLASS,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
     clearTokenSelectionInRoot,
     currentTokenSelectionLocation,
@@ -374,9 +376,9 @@ export default class SubtitleController {
     private _elementOverlayParams() {
         const subtitleOverlayParams: ElementOverlayParams = {
             targetElement: this.context.video,
-            nonFullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
+            nonFullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
             nonFullscreenContentClassName: 'asbplayer-subtitles',
-            fullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
+            fullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.bottom,
             contentWidthPercentage: -1,
@@ -385,9 +387,9 @@ export default class SubtitleController {
         };
         const topSubtitleOverlayParams: ElementOverlayParams = {
             targetElement: this.context.video,
-            nonFullscreenContainerClassName: 'asbplayer-subtitles-container-top',
+            nonFullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_TOP_CLASS,
             nonFullscreenContentClassName: 'asbplayer-subtitles',
-            fullscreenContainerClassName: 'asbplayer-subtitles-container-top',
+            fullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_TOP_CLASS,
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.top,
             contentWidthPercentage: -1,

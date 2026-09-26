@@ -812,7 +812,7 @@ export default function SubtitlePlayer({
                 virtuosoRef.current?.scrollToIndex({
                     index: match.subtitleArrayIndex,
                     align: 'center',
-                    behavior: 'auto',
+                    behavior: 'smooth',
                 });
             }
         },
