@@ -195,8 +195,8 @@ Submit bugs or feature requests from the [issues page](https://github.com/asbpla
 
 ### Environment
 
-node 24.19.0
-pnpm 11.21.0
+node 24.21.0
+pnpm 11.27.0
 
 ### Building
 

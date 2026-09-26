@@ -40,7 +40,7 @@ Below are useful commands for development.
 
 ```bash
 # Install pnpm (if not using nix). Other ways to install: https://pnpm.io/installation
-curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.21.0 sh -
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.27.0 sh -
 
 # Install dependencies
 pnpm i
