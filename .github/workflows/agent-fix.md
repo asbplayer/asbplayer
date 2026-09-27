@@ -71,6 +71,15 @@ pre-agent-steps:
     run: |
       pnpm install --filter @project/extension --filter @project/common --filter @project/client
 
+  - name: Vendor pnpm for the agent sandbox
+    run: |
+      # The AWF container does not inherit the runner's PATH, so pnpm (and corepack)
+      # are unavailable inside the sandbox even though node_modules are mounted.
+      # Vendor a pnpm matching devEngines.packageManager into the workspace so the
+      # agent can invoke it by path.
+      VERSION=$(node -p "require('./package.json').devEngines.packageManager.version")
+      npm install --prefix .agent-tooling --no-save "pnpm@${VERSION}"
+
   - name: Capture requesting maintainer
     env:
       AW_COMMENT_ID: ${{ github.event.comment.id }}
@@ -134,26 +143,41 @@ Propose a change only if **all** of these hold. If any fail, go to "Decline":
 
 Edit the minimum required files.
 
-Verify offline (dependencies are pre-installed in `node_modules`). Run the
-relevant subset of the repo's `verify` script. Match the tool(s) you changed:
+### Sandbox tool limits (read first)
+
+- Your shell runs inside a restricted container at `/github/workspace`.
+  Dependencies are pre-installed in `node_modules`, but **`pnpm` is not on
+  PATH**. Invoke it by its vendored path instead:
+  `./.agent-tooling/node_modules/.bin/pnpm`. Substitute `pnpm` with that path
+  in every command below.
+- Never install packages, never enable corepack, never modify `.agent-tooling`.
+- Never read, edit, or commit anything under `.github/` — the PR tool refuses
+  patches touching it, and workflow files are outside your scope entirely.
+- Do not commit `.agent-requesting-maintainer.json` or anything under
+  `.agent-tooling/`.
+
+### Verification commands
+
+Verify offline. Run the relevant subset of the repo's `verify` script — match
+the tool(s) you changed:
 
 ```sh
-pnpm --filter @project/common run typecheck
-pnpm --filter @project/common run test
-pnpm --filter @project/client run typecheck
-pnpm --filter @project/client run test
-pnpm --filter @project/extension run typecheck
-pnpm --filter @project/extension run test
-pnpm eslint common extension/src client/src
-pnpm run pretty:check
+./.agent-tooling/node_modules/.bin/pnpm --filter @project/common run typecheck
+./.agent-tooling/node_modules/.bin/pnpm --filter @project/common run test
+./.agent-tooling/node_modules/.bin/pnpm --filter @project/client run typecheck
+./.agent-tooling/node_modules/.bin/pnpm --filter @project/client run test
+./.agent-tooling/node_modules/.bin/pnpm --filter @project/extension run typecheck
+./.agent-tooling/node_modules/.bin/pnpm --filter @project/extension run test
+./.agent-tooling/node_modules/.bin/pnpm eslint common extension/src client/src
+./.agent-tooling/node_modules/.bin/pnpm run pretty:check
 ```
 
 Rules:
 
-- Network access is blocked in this environment. Dependencies are already
-  installed; don't install anything else. If a check fails due to the sandbox
-  (e.g. it requires network), record it as "not verified" instead of trying to
-  work around it.
+- Network access is blocked in this environment. If a check fails due to the
+  sandbox (e.g. it requires network), record it as "not verified" instead of
+  trying to work around it — in particular, do not edit workflow files,
+  tool configs, or open your own permissions.
 - Only run checks relevant to the files you changed; prefer running full checks
   when affordable.
 - If a verification failure reveals your fix is not low-risk or you cannot make
