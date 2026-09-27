@@ -158,10 +158,12 @@ Edit the minimum required files.
 
 - Your shell runs inside a restricted container at `/github/workspace`.
   Dependencies are pre-installed in `node_modules`, but **`pnpm` is not on
-  PATH**. Invoke it by its vendored path instead:
-  `./.agent-tooling/node_modules/.bin/pnpm`. Substitute `pnpm` with that path
-  in every command below.
-- Never install packages, never enable corepack, never modify `.agent-tooling`.
+  PATH**. It is vendored at `./.agent-tooling/node_modules/.bin/pnpm`. Prefix
+  every verification command with
+  `PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH"` — package scripts (like
+  `pretty:check`) call bare `pnpm` internally, and the prefix makes those nested
+  calls resolve too. Do not modify `.agent-tooling`.
+- Never install packages, never enable corepack.
 - Never read, edit, or commit anything under `.github/` — the PR tool refuses
   patches touching it, and workflow files are outside your scope entirely.
 - Do not commit `.agent-requesting-maintainer.json` or anything under
@@ -173,14 +175,14 @@ Verify offline. Run the relevant subset of the repo's `verify` script — match
 the tool(s) you changed:
 
 ```sh
-./.agent-tooling/node_modules/.bin/pnpm --filter @project/common run typecheck
-./.agent-tooling/node_modules/.bin/pnpm --filter @project/common run test
-./.agent-tooling/node_modules/.bin/pnpm --filter @project/client run typecheck
-./.agent-tooling/node_modules/.bin/pnpm --filter @project/client run test
-./.agent-tooling/node_modules/.bin/pnpm --filter @project/extension run typecheck
-./.agent-tooling/node_modules/.bin/pnpm --filter @project/extension run test
-./.agent-tooling/node_modules/.bin/pnpm eslint common extension/src client/src
-./.agent-tooling/node_modules/.bin/pnpm run pretty:check
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/common run typecheck
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/common run test
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run typecheck
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run test
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run typecheck
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run test
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm eslint common extension/src client/src
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm run pretty:check
 ```
 
 Rules:
