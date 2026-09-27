@@ -19,17 +19,15 @@ import {
     autoPausePreferenceForCheckboxChange,
     AutoPauseResumeMode,
     SubtitleVisibility,
-    exportSettings,
     isTrackAutoCopyable,
     isTrackSeekable,
-    mergeImportedSettings,
     PauseOnHoverMode,
     SubtitleListTimestampDisplay,
     updateAutoCopyableTracksValue,
     updateSeekableTracksValue,
-    validateSettings,
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings';
+import { exportSettings, mergeImportedSettings, validateSettings } from '@project/common/settings/import-export';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AutoPausePreference, SubtitleHtml } from '..';

@@ -11,7 +11,7 @@ import {
     omitPath,
     settingsForExport,
     validateSettings,
-} from '@project/common/settings/settings-import-export';
+} from '@project/common/settings/import-export';
 import { defaultSettings } from '@project/common/settings/settings-provider';
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
