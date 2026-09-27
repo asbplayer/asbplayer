@@ -25,8 +25,18 @@ engine:
   env:
     OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
     OPENAI_API_KEY: ${{ secrets.OPENCODE_GO_API_KEY }}
+  # OpenCode Zen rejects model query-suffix params (model "gpt-6-luna?effort=high"
+  # yields ModelError "not supported"), so attach reasoning effort as a codex
+  # config override instead.
+  args:
+    - '-c model_reasoning_effort="high"'
 
 timeout-minutes: 60
+
+checkout:
+  # Full history: the create_pull_request merge-base computation needs origin/main
+  # ancestry; shallow clones (.git/shallow) break it.
+  fetch-depth: 0
 
 network:
   allowed:
