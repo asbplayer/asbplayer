@@ -71,6 +71,11 @@ import { createTheme } from '@project/common/theme/theme';
 import Alert from '@project/common/app/components/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
 import useSnackbar from '@project/common/hooks/use-snackbar';
+import {
+    claimTokenSelectionFocus,
+    releaseTokenSelectionFocus,
+    restoreClaimedTokenSelectionFocus,
+} from '@project/common/app/hooks/use-token-selection';
 
 const minVideoPlayerWidth = 300;
 const subtitleCollectionOptions = { returnLastShown: true, returnNextToShow: true, showingCheckRadiusMs: 150 };
@@ -639,6 +644,27 @@ function PlayerComponent(
             channel.close();
         };
     }, [clock, videoPopOut, videoFile, tab, extension, videoChannelRef, onLoaded]);
+
+    useEffect(() => {
+        if (!channel || !videoFrameRef) return;
+
+        const frame = videoFrameRef.current;
+        if (!frame) return;
+
+        channel.onTokenSelectionFocus = () => claimTokenSelectionFocus(frame);
+        const restoreVideoFocus = () => {
+            requestAnimationFrame(() => {
+                if (restoreClaimedTokenSelectionFocus(frame)) frame.contentWindow?.focus();
+            });
+        };
+        window.addEventListener('focus', restoreVideoFocus);
+
+        return () => {
+            channel.onTokenSelectionFocus = null;
+            window.removeEventListener('focus', restoreVideoFocus);
+            releaseTokenSelectionFocus(frame);
+        };
+    }, [channel, videoFrameRef]);
 
     useEffect(() => {
         async function init() {

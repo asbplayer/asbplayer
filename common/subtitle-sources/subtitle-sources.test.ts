@@ -88,6 +88,20 @@ describe('JimakuClient', () => {
         expect(response.data[0].name).toBe('Some Drama');
     });
 
+    it('strips apostrophes and dashes from search queries', async () => {
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(createResponse({ jsonData: [] }));
+        global.fetch = fetchMock;
+        const client = new JimakuClient({ apiKey: 'test-key', minRequestIntervalMs: 0 });
+
+        await client.searchEntries("Frieren: Beyond Journey's End");
+        await client.searchEntries('Chainsaw Man – The Movie');
+
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+            'https://jimaku.cc/api/entries/search?query=Frieren%3A+Beyond+Journeys+End',
+            'https://jimaku.cc/api/entries/search?query=Chainsaw+Man+The+Movie',
+        ]);
+    });
+
     it('requests files with optional filters', async () => {
         const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(createResponse({ jsonData: [] }));
         global.fetch = fetchMock;

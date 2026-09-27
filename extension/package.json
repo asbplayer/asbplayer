@@ -46,7 +46,7 @@
         "regenerator-runtime": "^0.14.1",
         "semver": "^7.7.2",
         "typescript": "catalog:",
-        "uuid": "^11.1.0"
+        "uuid": "^11.1.1"
     },
     "devDependencies": {
         "@jest/globals": "^30.0.5",

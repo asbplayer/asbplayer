@@ -7,6 +7,7 @@ import { useOutsideClickListener } from '@project/common/hooks';
 import hotkeys from 'hotkeys-js';
 import Grid2 from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
+import FormHelperText from '@mui/material/FormHelperText';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -82,14 +83,30 @@ const keyBindSectionByName: { [key in KeyBindName]: KeyboardShortcutSection } = 
     resetOffset: 'subtitleOffset',
     increasePlaybackRate: 'playbackRate',
     decreasePlaybackRate: 'playbackRate',
-    markHoveredToken5: 'annotation',
-    markHoveredToken4: 'annotation',
-    markHoveredToken3: 'annotation',
-    markHoveredToken2: 'annotation',
-    markHoveredToken1: 'annotation',
-    markHoveredToken0: 'annotation',
-    toggleHoveredTokenIgnored: 'annotation',
     openStatistics: 'annotation',
+    jumpToNextToken: 'annotation',
+    jumpToPreviousToken: 'annotation',
+    markHoveredToken5: 'annotation',
+    jumpToNextTokenStatus5: 'annotation',
+    jumpToPreviousTokenStatus5: 'annotation',
+    markHoveredToken4: 'annotation',
+    jumpToNextTokenStatus4: 'annotation',
+    jumpToPreviousTokenStatus4: 'annotation',
+    markHoveredToken3: 'annotation',
+    jumpToNextTokenStatus3: 'annotation',
+    jumpToPreviousTokenStatus3: 'annotation',
+    markHoveredToken2: 'annotation',
+    jumpToNextTokenStatus2: 'annotation',
+    jumpToPreviousTokenStatus2: 'annotation',
+    markHoveredToken1: 'annotation',
+    jumpToNextTokenStatus1: 'annotation',
+    jumpToPreviousTokenStatus1: 'annotation',
+    markHoveredToken0: 'annotation',
+    jumpToNextTokenStatus0: 'annotation',
+    jumpToPreviousTokenStatus0: 'annotation',
+    toggleHoveredTokenIgnored: 'annotation',
+    jumpToNextTokenState0: 'annotation',
+    jumpToPreviousTokenState0: 'annotation',
 };
 
 interface KeyBindProperties {
@@ -296,12 +313,14 @@ interface Props {
 interface KeyboardShortcutSectionProps {
     id: string;
     label: string;
+    description?: string;
 }
 
-function KeyboardShortcutSection({ id, label }: KeyboardShortcutSectionProps) {
+function KeyboardShortcutSection({ id, label, description }: KeyboardShortcutSectionProps) {
     return (
         <div id={id}>
             <SettingsSection>{label}</SettingsSection>
+            {description && <FormHelperText>{description}</FormHelperText>}
         </div>
     );
 }
@@ -323,6 +342,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
         (): {
             [key in KeyboardShortcutSection]: {
                 label: string;
+                description?: string;
             };
         } => ({
             subtitles: {
@@ -345,6 +365,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
             },
             annotation: {
                 label: t('settings.annotation'),
+                description: t('binds.jumpToTokenHelperText'),
             },
         }),
         [t]
@@ -523,36 +544,100 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 label: t('binds.moveTopSubtitlesDown'),
                 boundViaBrowser: false,
             },
+            openStatistics: {
+                label: t('binds.openStatistics'),
+                boundViaBrowser: false,
+            },
+            jumpToNextToken: {
+                label: t('binds.jumpToNextTokenAny'),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousToken: {
+                label: t('binds.jumpToPreviousTokenAny'),
+                boundViaBrowser: false,
+            },
             markHoveredToken5: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus5') }),
+                boundViaBrowser: false,
+            },
+            jumpToNextTokenStatus5: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus5') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenStatus5: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus5') }),
                 boundViaBrowser: false,
             },
             markHoveredToken4: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus4') }),
                 boundViaBrowser: false,
             },
+            jumpToNextTokenStatus4: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus4') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenStatus4: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus4') }),
+                boundViaBrowser: false,
+            },
             markHoveredToken3: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus3') }),
+                boundViaBrowser: false,
+            },
+            jumpToNextTokenStatus3: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus3') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenStatus3: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus3') }),
                 boundViaBrowser: false,
             },
             markHoveredToken2: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus2') }),
                 boundViaBrowser: false,
             },
+            jumpToNextTokenStatus2: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus2') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenStatus2: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus2') }),
+                boundViaBrowser: false,
+            },
             markHoveredToken1: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus1') }),
+                boundViaBrowser: false,
+            },
+            jumpToNextTokenStatus1: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus1') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenStatus1: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus1') }),
                 boundViaBrowser: false,
             },
             markHoveredToken0: {
                 label: t('binds.markHoveredToken', { tokenStatus: t('settings.dictionaryTokenStatus0') }),
                 boundViaBrowser: false,
             },
+            jumpToNextTokenStatus0: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStatus0') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenStatus0: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStatus0') }),
+                boundViaBrowser: false,
+            },
             toggleHoveredTokenIgnored: {
                 label: t('binds.toggleHoveredTokenIgnored'),
                 boundViaBrowser: false,
             },
-            openStatistics: {
-                label: t('binds.openStatistics'),
+            jumpToNextTokenState0: {
+                label: t('binds.jumpToNextToken', { type: t('settings.dictionaryTokenStateIgnored') }),
+                boundViaBrowser: false,
+            },
+            jumpToPreviousTokenState0: {
+                label: t('binds.jumpToPreviousToken', { type: t('settings.dictionaryTokenStateIgnored') }),
                 boundViaBrowser: false,
             },
         }),
@@ -596,6 +681,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                     key={`${section}-section`}
                     id={keyboardShortcutSectionId(section)}
                     label={sectionPropertiesForKey.label}
+                    description={sectionPropertiesForKey.description}
                 />
             );
             previousSection = section;

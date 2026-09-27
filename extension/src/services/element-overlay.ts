@@ -1,4 +1,5 @@
 import { OffscreenDomCache } from '@project/common';
+import { ASB_TOKEN_CONTAINER_CLASS } from '@project/common/annotations/dom-annotations';
 
 export enum OffsetAnchor {
     bottom,
@@ -99,7 +100,7 @@ export class CachingElementOverlay implements ElementOverlay {
         this.onContainerStyles = onContainerStyles;
 
         // Necessary for token highlighting on hover
-        document.body.classList.add('asbplayer-token-container');
+        document.body.classList.add(ASB_TOKEN_CONTAINER_CLASS);
         document.body.tabIndex = -1;
     }
 
