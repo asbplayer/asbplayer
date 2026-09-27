@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 
 export function getLocale(language: string): Intl.Locale | undefined {
