@@ -11,6 +11,12 @@ on:
     events: [issue_comment]
   roles: [admin, maintain]
   reaction: eyes
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: Issue to fix (manual/test runs)
+        required: false
+        type: string
 
 model: gpt-6-luna
 max-ai-credits: -1 # Bypass built-in pricing table
@@ -60,7 +66,7 @@ pre-agent-steps:
       AW_FALLBACK_LOGIN: ${{ github.actor }}
     run: |
       # Comment-triggered runs: the /agent commenter. Manual dispatch runs: the actor.
-      jq -b '{login: .comment.user.login // "", id: .comment.user.id // 0}'
+      jq '(.comment.user) as $u | {login: ($u.login // ""), id: ($u.id // 0)}'
         "$GITHUB_EVENT_PATH" > .agent-requesting-maintainer.json
       if [ ! -s .agent-requesting-maintainer.json ] || ! jq -e '.login' .agent-requesting-maintainer.json > /dev/null; then
         echo "{\"login\": \"$AW_FALLBACK_LOGIN\", \"id\": 0}" > .agent-requesting-maintainer.json
@@ -70,7 +76,7 @@ pre-agent-steps:
 
 # Bug-fix agent
 
-You were invoked by the `/agent` command on issue #${{ github.event.issue.number }}.
+You were invoked by the `/agent` command on issue #${{ github.event.issue.number || inputs.issue-number }}.
 
 Commented by: the maintainer who invoked `/agent`. Their login/id are in
 `.agent-requesting-maintainer.json` at the repo root (do not commit this file).
