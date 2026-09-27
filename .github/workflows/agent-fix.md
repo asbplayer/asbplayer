@@ -63,12 +63,21 @@ pre-agent-steps:
 
   - name: Capture requesting maintainer
     env:
+      AW_COMMENT_ID: ${{ github.event.comment.id }}
+      AW_REPO: ${{ github.repository }}
       AW_FALLBACK_LOGIN: ${{ github.actor }}
+      GH_TOKEN: ${{ github.token }}
     run: |
-      # Comment-triggered runs: the /agent commenter. Manual dispatch runs: the actor.
-      jq '(.comment.user) as $u | {login: ($u.login // ""), id: ($u.id // 0)}'
-        "$GITHUB_EVENT_PATH" > .agent-requesting-maintainer.json
-      if [ ! -s .agent-requesting-maintainer.json ] || ! jq -e '.login' .agent-requesting-maintainer.json > /dev/null; then
+      # Comment-triggered runs: resolve the /agent commenter via the API
+      # (the raw event payload is not accessible in this job on gh-aw).
+      # Manual dispatch runs: fall back to the actor.
+      ok=0
+      if [ -n "$AW_COMMENT_ID" ]; then
+        gh api "repos/$AW_REPO/issues/comments/$AW_COMMENT_ID" \
+          --jq '(.user) as $u | {login: ($u.login // ""), id: ($u.id // 0)}' \
+          > .agent-requesting-maintainer.json && ok=1
+      fi
+      if [ "$ok" = "0" ] || [ ! -s .agent-requesting-maintainer.json ]; then
         echo "{\"login\": \"$AW_FALLBACK_LOGIN\", \"id\": 0}" > .agent-requesting-maintainer.json
       fi
       cat .agent-requesting-maintainer.json
