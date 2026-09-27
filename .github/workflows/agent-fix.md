@@ -141,6 +141,17 @@ Propose a change only if **all** of these hold. If any fail, go to "Decline":
 
 ## Step 3: Implement and verify
 
+Before making any edits, snapshot the requester file and create the PR branch
+**from the base branch** — never from whatever ref the run started on:
+
+```sh
+git switch -c agent/<short> origin/main
+```
+
+Full history is available locally (fetch-depth 0), so this works offline. This
+keeps the PR patch limited to your own commit even when the run was dispatched
+from another branch. Do not merge or cherry-pick anything else.
+
 Edit the minimum required files.
 
 ### Sandbox tool limits (read first)
@@ -189,8 +200,7 @@ Rules:
 When `create-pull-request` is configured, git commands (`branch`, `switch`,
 `add`, `commit`) are automatically available to you.
 
-1. Commit your change on a new branch with a conventional-commit style message:
-   imperative subject like `fix: prevent word wrap on double-width glyphs`, and
+1. Commit with a conventional-commit style message: imperative subject like `fix: prevent word wrap on double-width glyphs`, and
    in the message footer:
 
 ```text
