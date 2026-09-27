@@ -177,9 +177,9 @@ the tool(s) you changed:
 ```sh
 PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/common run typecheck
 PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/common run test
-PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run typecheck
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run compile
 PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run test
-PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run typecheck
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run compile
 PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run test
 PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm eslint common extension/src client/src
 PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm run pretty:check

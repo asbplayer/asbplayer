@@ -36,7 +36,8 @@
         "buildStaging": "pnpm run verify && VITE_APP_VERSION_REPO_PATH=\"commit/$(git rev-parse --short HEAD)\" VITE_APP_BASE_PATH=\"/asbplayer-staging\" vite build",
         "preview": "vite preview",
         "deploy": "gh-pages -d dist",
-        "test": "jest"
+        "test": "jest",
+        "compile": "tsc --noEmit"
     },
     "eslintConfig": {
         "extends": [
