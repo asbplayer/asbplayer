@@ -2,7 +2,7 @@ import { asbError } from '@project/common/util';
 import type { CopySubtitleMessage, SubtitleModel } from '@project/common';
 import { PostMineAction } from '@project/common';
 import type { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';
-import type { SeekableTracks, TokenStatus } from '@project/common/settings';
+import type { SeekableTracks, TokenJumpTarget, TokenStatus } from '@project/common/settings';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 
@@ -307,6 +307,14 @@ export default class AppKeyBinder implements KeyBinder {
         return this.defaultKeyBinder.bindUnblurTrack(onUnblurTrack, disabledGetter, useCapture);
     }
 
+    bindOpenStatistics(
+        onOpenStatistics: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        useCapture?: boolean | undefined
+    ): () => void {
+        return this.defaultKeyBinder.bindOpenStatistics(onOpenStatistics, disabledGetter, useCapture);
+    }
+
     bindMarkHoveredToken(
         onMarkHoveredToken: (event: KeyboardEvent, tokenStatus: TokenStatus) => void,
         disabledGetter: () => boolean,
@@ -327,12 +335,12 @@ export default class AppKeyBinder implements KeyBinder {
         );
     }
 
-    bindOpenStatistics(
-        onOpenStatistics: (event: KeyboardEvent) => void,
+    bindJumpToToken(
+        onJumpToToken: (event: KeyboardEvent, target: TokenJumpTarget, forward: boolean) => boolean,
         disabledGetter: () => boolean,
         useCapture?: boolean | undefined
     ): () => void {
-        return this.defaultKeyBinder.bindOpenStatistics(onOpenStatistics, disabledGetter, useCapture);
+        return this.defaultKeyBinder.bindJumpToToken(onJumpToToken, disabledGetter, useCapture);
     }
 
     bindPlay(

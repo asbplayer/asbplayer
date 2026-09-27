@@ -39,7 +39,7 @@ const renderToken = (
     allowAsciiReading = false
 ) => {
     const annotations = getAnnotationsForRender(dt, 'video');
-    return computeRichText(
+    const rendered = computeRichText(
         fullText,
         { tokens: [token] },
         {
@@ -48,6 +48,10 @@ const renderToken = (
             allowAsciiReading,
         }
     );
+    if (!annotations.richTextEnabledAnnotations.color) {
+        return rendered?.replace(/^<span data-asb-token-start="\d+">([\s\S]*)<\/span>$/, '$1');
+    }
+    return rendered;
 };
 
 const makeInternalToken = (overrides: Parameters<typeof makeToken>[0] = {}) =>
@@ -113,8 +117,10 @@ const expectedAnnotationCombinationHtml = ({
         tokenText = `<ruby class="asb-frequency">${tokenText}<rt>7</rt></ruby>`;
     }
     if (!color) return tokenText;
-    if (pitchAccent && reading) return `<span class="asb-token asb-token-highlight">${tokenText}</span>`;
-    return `<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE ${colorValue} 3px;">${tokenText}</span>`;
+    if (pitchAccent && reading) {
+        return `<span class="asb-token asb-token-highlight" data-asb-token-start="0">${tokenText}</span>`;
+    }
+    return `<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE ${colorValue} 3px;">${tokenText}</span>`;
 };
 
 const annotationCombinations: Required<AnnotationToggles>[] = [];
@@ -166,8 +172,28 @@ describe('rich text rendering', () => {
 
     it('renders null token statuses with error styling', () => {
         expect(renderToken('語学', makeToken({ pos: [0, 2], status: null }))).toBe(
-            '<span style="text-decoration: line-through red 3px;">語学</span>'
+            '<span data-asb-token-start="0" style="text-decoration: line-through red 3px;">語学</span>'
         );
+    });
+
+    it('wraps letter tokens even when color annotations are disabled', () => {
+        const dt = makeAnnotationTrack({});
+        const rendered = renderRichTextOntoSubtitles(
+            [
+                makeSubtitle({
+                    text: '語。',
+                    tokenization: {
+                        tokens: [
+                            makeToken({ pos: [0, 1], status: TokenStatus.UNKNOWN }),
+                            makeToken({ pos: [1, 2], status: TokenStatus.UNKNOWN }),
+                        ],
+                    },
+                }),
+            ],
+            'video',
+            makeDictionaryTracks(dt)
+        );
+        expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語</span>。');
     });
 
     it('separates hover-only annotations into richTextOnHover', () => {
@@ -184,7 +210,7 @@ describe('rich text rendering', () => {
             )
         );
 
-        expect(rendered.get(0)?.richText).toBeUndefined();
+        expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語学</span>');
         expect(rendered.get(0)?.richTextOnHover).toContain('asb-token');
     });
 
@@ -247,7 +273,7 @@ describe('rich text rendering', () => {
         setUnknownTokenColor(dt, '#123456', '80');
 
         expect(renderToken('語学', makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN }), dt)).toBe(
-            `<span class="asb-token" style="${expectedStyle}">語学</span>`
+            `<span class="asb-token" data-asb-token-start="0" style="${expectedStyle}">語学</span>`
         );
     });
 
@@ -275,7 +301,12 @@ describe('rich text rendering', () => {
 
         expect(
             renderToken('かな', makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 }), dt)
-        ).toBe(`<span class="asb-token asb-token-highlight">${pitchAccentHtml(['か', 'な'], '#33445566')}</span>`);
+        ).toBe(
+            `<span class="asb-token asb-token-highlight" data-asb-token-start="0">${pitchAccentHtml(
+                ['か', 'な'],
+                '#33445566'
+            )}</span>`
+        );
     });
 
     it('keeps coloring on hover when pitch accent data has no renderable kana text', () => {
@@ -297,9 +328,9 @@ describe('rich text rendering', () => {
             makeDictionaryTracks(dt)
         ).get(0);
 
-        expect(rendered?.richText).toBeUndefined();
+        expect(rendered?.richText).toBe('<span data-asb-token-start="0">語学</span>');
         expect(rendered?.richTextOnHover).toBe(
-            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">語学</span>'
+            '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #33445566 3px;">語学</span>'
         );
     });
 
@@ -330,7 +361,7 @@ describe('rich text rendering', () => {
         ).get(0);
 
         expect(rendered?.richTextOnHover).toBe(
-            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">RAIN</span>'
+            '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #33445566 3px;">RAIN</span>'
         );
     });
 
@@ -383,8 +414,9 @@ describe('rich text rendering', () => {
                 }
             )
         ).toBe(
-            '学校<span class="asb-pitch-accent" style="--asb-pitch-accent-color: currentColor;">' +
-                '<span class="asb-pitch-accent-mora asb-pitch-accent-mora-low">は</span></span>'
+            '<span data-asb-token-start="0">学校</span>' +
+                '<span data-asb-token-start="2"><span class="asb-pitch-accent" style="--asb-pitch-accent-color: currentColor;">' +
+                '<span class="asb-pitch-accent-mora asb-pitch-accent-mora-low">は</span></span></span>'
         );
     });
 
@@ -399,7 +431,7 @@ describe('rich text rendering', () => {
         expect(
             renderToken('かな', makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN, pitchAccent: 1 }), dt)
         ).toBe(
-            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #33445566 3px;">かな</span>'
+            '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #33445566 3px;">かな</span>'
         );
     });
 
@@ -409,7 +441,7 @@ describe('rich text rendering', () => {
             '語学',
             { color: true },
             makeInternalToken({ pos: [0, 2], status: TokenStatus.UNKNOWN }),
-            '<span class="asb-token asb-token-highlight" style="text-decoration: UNDERLINE #FFA500FF 3px;">語学</span>',
+            '<span class="asb-token asb-token-highlight" data-asb-token-start="0" style="text-decoration: UNDERLINE #FFA500FF 3px;">語学</span>',
         ],
         [
             'reading',
@@ -447,8 +479,10 @@ describe('rich text rendering', () => {
                 makeDictionaryTracks(dt)
             ).get(0);
 
-            expect(rendered?.richText).toBeUndefined();
-            expect(rendered?.richTextOnHover).toBe(html);
+            expect(rendered?.richText).toBe('<span data-asb-token-start="0">' + text + '</span>');
+            expect(rendered?.richTextOnHover).toBe(
+                toggles.color ? html : `<span data-asb-token-start="0">${html}</span>`
+            );
         }
     );
 
@@ -476,9 +510,13 @@ describe('rich text rendering', () => {
             makeDictionaryTracks(dt)
         ).get(0);
 
-        expect(videoRendered?.richText).toBeUndefined();
-        expect(videoRendered?.richTextOnHover).toBe('<ruby class="asb-reading">語学<rt>ごがく</rt></ruby>');
-        expect(subtitlePlayerRendered?.richText).toBe('<ruby class="asb-reading">語学<rt>ごがく</rt></ruby>');
+        expect(videoRendered?.richText).toBe('<span data-asb-token-start="0">語学</span>');
+        expect(videoRendered?.richTextOnHover).toBe(
+            '<span data-asb-token-start="0"><ruby class="asb-reading">語学<rt>ごがく</rt></ruby></span>'
+        );
+        expect(subtitlePlayerRendered?.richText).toBe(
+            '<span data-asb-token-start="0"><ruby class="asb-reading">語学<rt>ごがく</rt></ruby></span>'
+        );
         expect(subtitlePlayerRendered?.richTextOnHover).toBeUndefined();
     });
 

@@ -20,6 +20,7 @@ import {
     isKanaMoraPitchHigh,
     isAttachedParticlePitchHigh,
     clearPitchAccentContext,
+    getContiguousReading,
 } from '@project/common/util';
 import {
     ASB_FREQUENCY_CLASS,
@@ -31,6 +32,7 @@ import {
     ASB_READING_CLASS,
     ASB_TOKEN_CLASS,
     ASB_TOKEN_HIGHLIGHT_CLASS,
+    ASB_TOKEN_START_ATTRIBUTE,
 } from '@project/common/annotations';
 
 // Subtitles with rich text are ~5KB per subtitle and so is not worth using a render window.
@@ -116,18 +118,12 @@ export const renderRichTextOntoSubtitles = (
     for (const subtitle of subtitles) {
         if (!subtitle.tokenization) continue;
         const ta = trackAnnotations[subtitle.track];
-        const hasExternalReading = subtitle.tokenization.tokens.some(
-            (token) => !(token as InternalToken).__internal && token.readings.length > 0
-        ); // Display external readings even if no annotations are enabled, unnecessary for richTextOnHover
 
-        const richText =
-            ta.isRichTextEnabled || hasExternalReading
-                ? computeRichText(subtitle.text, subtitle.tokenization, {
-                      dt: ta.dt,
-                      enabledAnnotations: ta.richTextEnabledAnnotations,
-                      allowAsciiReading,
-                  })
-                : undefined;
+        const richText = computeRichText(subtitle.text, subtitle.tokenization, {
+            dt: ta.dt,
+            enabledAnnotations: ta.richTextEnabledAnnotations,
+            allowAsciiReading,
+        });
         const richTextOnHover = ta.isRichTextOnHoverEnabled
             ? computeRichText(subtitle.text, subtitle.tokenization, {
                   dt: ta.dt,
@@ -235,6 +231,18 @@ export const computeRichText = (fullText: string, tokenization: Tokenization, ss
 const ERROR_STYLE = `style="text-decoration: line-through red 3px;"`;
 const LOGIC_ERROR_STYLE = `style="text-decoration: line-through red 3px double;"`;
 
+const addressableTokenWrapper = (tokenText: string, token: Token, style?: string) => {
+    return `<span ${ASB_TOKEN_START_ATTRIBUTE}="${token.pos[0]}"${style ? ` ${style}` : ''}>${tokenText}</span>`;
+};
+
+const collectibleTokenWrapper = (tokenText: string, token: Token, ss: TokenStyleState, style?: string) => {
+    const highlightClass =
+        ss.enabledAnnotations.color && ss.dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : '';
+    return `<span class="${ASB_TOKEN_CLASS}${highlightClass}" ${ASB_TOKEN_START_ATTRIBUTE}="${token.pos[0]}"${
+        style ? ` ${style}` : ''
+    }>${tokenText}</span>`;
+};
+
 const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentContext, ss: TokenStyleState) => {
     const rawTokenText = fullText.substring(token.pos[0], token.pos[1]);
     if (!HAS_LETTER_REGEX.test(rawTokenText)) {
@@ -242,36 +250,40 @@ const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentC
         return rawTokenText;
     }
     const tokenText = applyFrequencyAnnotation(applyReadingAnnotation(rawTokenText, token, prevPitch, ss), token, ss);
-    if (token.status === null) return `<span ${ERROR_STYLE}>${tokenText}</span>`;
+    if (token.status === null) return addressableTokenWrapper(tokenText, token, ERROR_STYLE);
     if (token.status === undefined && dictionaryTrackEnabled(ss.dt))
-        return `<span ${LOGIC_ERROR_STYLE}>${tokenText}</span>`; // External tokens may flash this on initial load
-    if (!ss.enabledAnnotations.color) return tokenText;
+        return addressableTokenWrapper(tokenText, token, LOGIC_ERROR_STYLE); // External tokens may flash this on initial load
+    if (!ss.enabledAnnotations.color) return addressableTokenWrapper(tokenText, token);
 
-    const s = `<span class="${ASB_TOKEN_CLASS}${ss.dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : ''}"`; // Only allow collection and highlighting if colors is enabled so that user has feedback
     const config = ss.dt.dictionaryTokenStatusConfig[token.status!];
-    if (!config.display) return `${s}>${tokenText}</span>`;
+    if (!config.display) return collectibleTokenWrapper(tokenText, token, ss);
     if (
         token.pitchAccent != null &&
         ss.enabledAnnotations.pitchAccent &&
         tokenText.includes(`class="${ASB_PITCH_ACCENT_CLASS}"`)
     ) {
-        return `${s}>${tokenText}</span>`; // Only colorize the pitch accent when pitch accent is being shown
+        return collectibleTokenWrapper(tokenText, token, ss); // Only colorize the pitch accent when pitch accent is being shown
     }
 
     const c = `${config.color}${config.alpha}`;
     const t = ss.dt.dictionaryTokenStylingThickness;
     switch (ss.dt.dictionaryTokenStyling) {
         case TokenStyling.TEXT:
-            return `${s} style="-webkit-text-fill-color: ${c};">${tokenText}</span>`;
+            return collectibleTokenWrapper(tokenText, token, ss, `style="-webkit-text-fill-color: ${c};"`);
         case TokenStyling.BACKGROUND:
-            return `${s} style="background-color: ${c};">${tokenText}</span>`;
+            return collectibleTokenWrapper(tokenText, token, ss, `style="background-color: ${c};"`);
         case TokenStyling.UNDERLINE:
         case TokenStyling.OVERLINE:
-            return `${s} style="text-decoration: ${ss.dt.dictionaryTokenStyling} ${c} ${t}px;">${tokenText}</span>`;
+            return collectibleTokenWrapper(
+                tokenText,
+                token,
+                ss,
+                `style="text-decoration: ${ss.dt.dictionaryTokenStyling} ${c} ${t}px;"`
+            );
         case TokenStyling.OUTLINE:
-            return `${s} style="-webkit-text-stroke: ${t}px ${c};">${tokenText}</span>`;
+            return collectibleTokenWrapper(tokenText, token, ss, `style="-webkit-text-stroke: ${t}px ${c};"`);
         default:
-            return `${s} ${LOGIC_ERROR_STYLE}>${tokenText}</span>`;
+            return collectibleTokenWrapper(tokenText, token, ss, LOGIC_ERROR_STYLE);
     }
 };
 
@@ -325,19 +337,6 @@ const applyReadingAnnotation = (
         }
     );
     return parts.join('');
-};
-
-const getContiguousReading = (tokenText: string, token: Token) => {
-    let readingText = '';
-    iterateOverStringInBlocks(
-        tokenText,
-        (_, blockIndex) => token.readings[blockIndex],
-        (left, right, reading?: TokenReading) => {
-            if (reading === undefined) readingText += tokenText.substring(left, right);
-            else readingText += reading.reading;
-        }
-    );
-    return readingText;
 };
 
 const preservePitchAccentContext = (
