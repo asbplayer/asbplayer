@@ -54,6 +54,10 @@ describe('detectBlackBars', () => {
         expect(detectBlackBars(makeFrame(1280, 720))).toBeUndefined();
     });
 
+    it('does not crop odd-sized frames without bars', () => {
+        expect(detectBlackBars(makeFrame(127, 71))).toBeUndefined();
+    });
+
     it('does not crop when the bars are negligible', () => {
         // ~0.6% of the area
         expect(detectBlackBars(makeFrame(1280, 720, { top: 2, bottom: 2 }))).toBeUndefined();

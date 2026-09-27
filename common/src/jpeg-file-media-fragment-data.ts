@@ -37,7 +37,7 @@ export class JpegFileMediaFragmentData implements MediaFragmentData {
         timestamp: number,
         maxWidth: number,
         maxHeight: number,
-        trimBlackBars: boolean = false,
+        trimBlackBars: boolean,
         jpegCompressionQuality: number = defaultJpegCompressionQuality,
         video?: HTMLVideoElement,
         canvas?: HTMLCanvasElement

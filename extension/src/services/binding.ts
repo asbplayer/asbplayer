@@ -1798,7 +1798,8 @@ export default class Binding {
         const rect = this.video.getBoundingClientRect();
         const maxWidth = this.maxImageWidth;
         const maxHeight = this.maxImageHeight;
-        return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl);
+        // Thumbnail for identifying the video, not a card image, so bars are left as-is
+        return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl, false);
     }
 
     async loadSubtitles(files: File[], flatten: boolean, syncWithAsbplayerId?: string) {

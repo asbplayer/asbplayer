@@ -60,7 +60,7 @@ export const cropAndResize = async (
     maxHeight: number,
     rect: RectModel,
     imageDataUrl: string,
-    trimBlackBars: boolean = false
+    trimBlackBars: boolean
 ): Promise<string> => {
     return new Promise((resolve, reject) => {
         const image = new Image();

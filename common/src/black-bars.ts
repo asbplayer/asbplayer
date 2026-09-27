@@ -116,15 +116,15 @@ export const detectBlackBars = (
         --right;
     }
 
+    if (left === 0 && top === 0 && right === width && bottom === height) {
+        return undefined;
+    }
+
     // Like cropdetect's round=2, keep even dimensions
     const cropWidth = roundDownToEven(right - left);
     const cropHeight = roundDownToEven(bottom - top);
 
     if (cropWidth <= 0 || cropHeight <= 0) {
-        return undefined;
-    }
-
-    if (cropWidth === width && cropHeight === height) {
         return undefined;
     }
 

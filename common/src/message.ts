@@ -130,7 +130,7 @@ export interface ImageCaptureParams {
     readonly maxHeight: number;
     readonly rect: RectModel;
     readonly frameId?: string;
-    readonly trimBlackBars?: boolean;
+    readonly trimBlackBars: boolean;
 }
 
 export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextFieldValues, ImageCaptureParams {

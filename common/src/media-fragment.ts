@@ -281,7 +281,7 @@ export default class MediaFragment {
         mediaFragmentTrimStart: number,
         mediaFragmentTrimEnd: number,
         mediaFragmentMaxClipLength: number,
-        trimBlackBars?: boolean
+        trimBlackBars: boolean
     ): MediaFragment | undefined;
     static fromCard(
         card: CardModel,
@@ -340,13 +340,7 @@ export default class MediaFragment {
         return new MediaFragment(new Base64MediaFragmentData(mediaFragmentName, timestamp, base64, extension, error));
     }
 
-    static fromFile(
-        file: FileModel,
-        timestamp: number,
-        maxWidth: number,
-        maxHeight: number,
-        trimBlackBars: boolean = false
-    ) {
+    static fromFile(file: FileModel, timestamp: number, maxWidth: number, maxHeight: number, trimBlackBars: boolean) {
         return new MediaFragment(new JpegFileMediaFragmentData(file, timestamp, maxWidth, maxHeight, trimBlackBars));
     }
 
