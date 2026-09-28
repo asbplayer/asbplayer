@@ -161,103 +161,103 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 
 ### [Subtitles](https://app.asbplayer.dev/?view=settings#subtitle-appearance) keyboard shortcuts
 
-| Behavior                             | Website shortcut? | Extension shortcut? |
-| ------------------------------------ | :---------------: | :-----------------: |
-| Select subtitle tracks to load.      |                   |          ✓          |
-| Toggle subtitles                     |         ✓         |          ✓          |
-| Toggle subtitle track 1 in video     |         ✓         |          ✓          |
-| Toggle subtitle track 2 in video     |         ✓         |          ✓          |
-| Toggle subtitle track 3 in video     |         ✓         |          ✓          |
-| Toggle subtitle track 1 in asbplayer |         ✓         |          ✓          |
-| Toggle subtitle track 2 in asbplayer |         ✓         |          ✓          |
-| Toggle subtitle track 3 in asbplayer |         ✓         |          ✓          |
-| Unblur subtitle track 1 in asbplayer |         ✓         |          ✓          |
-| Unblur subtitle track 2 in asbplayer |         ✓         |          ✓          |
-| Unblur subtitle track 3 in asbplayer |         ✓         |          ✓          |
-| Move bottom subtitles up             |         ✓         |          ✓          |
-| Move bottom subtitles down           |         ✓         |          ✓          |
-| Move top subtitles up                |         ✓         |          ✓          |
-| Move top subtitles down              |         ✓         |          ✓          |
+| Behavior                             | Default shortcut |
+| ------------------------------------ | ---------------- |
+| Select subtitle tracks to load.      | Ctrl + Shift + F |
+| Toggle subtitles                     | ↓                |
+| Toggle subtitle track 1 in video     | 1                |
+| Toggle subtitle track 2 in video     | 2                |
+| Toggle subtitle track 3 in video     | 3                |
+| Toggle subtitle track 1 in asbplayer | W + 1            |
+| Toggle subtitle track 2 in asbplayer | W + 2            |
+| Toggle subtitle track 3 in asbplayer | W + 3            |
+| Unblur subtitle track 1 in asbplayer | B + 1            |
+| Unblur subtitle track 2 in asbplayer | B + 2            |
+| Unblur subtitle track 3 in asbplayer | B + 3            |
+| Move bottom subtitles up             |                  |
+| Move bottom subtitles down           |                  |
+| Move top subtitles up                |                  |
+| Move top subtitles down              |                  |
 
 ### [Mining](https://app.asbplayer.dev/?view=settings#mining-settings) keyboard shortcuts
 
-| Behavior                                                                             | Website shortcut? | Extension shortcut? |
-| ------------------------------------------------------------------------------------ | :---------------: | :-----------------: |
-| Mine current subtitle                                                                |         ✓         |          ✓          |
-| Mine current subtitle and open Anki dialog                                           |         ✓         |          ✓          |
-| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        |         ✓         |          ✓          |
-| Export card to Anki, bypassing dialog.                                               |         ✓         |          ✓          |
-| Manually take screenshot, overriding the one that is automatically taken when mining |         ✓         |          ✓          |
-| Manually start/stop audio recording, even when a subtitle file is loaded.            |         ✓         |          ✓          |
+| Behavior                                                                             | Default shortcut |
+| ------------------------------------------------------------------------------------ | ---------------- |
+| Mine current subtitle                                                                | Ctrl + Shift + Z |
+| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X |
+| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U |
+| Export card to Anki, bypassing dialog.                                               |                  |
+| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V |
+| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R |
 
 ### [Playback](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
-| Behavior                        | Website shortcut? | Extension shortcut? |
-| ------------------------------- | :---------------: | :-----------------: |
-| Toggle side panel               |         ✓         |          ✓          |
-| Play/pause                      |         ✓         |          ✓          |
-| Toggle auto-pause               |         ✓         |          ✓          |
-| Toggle condensed playback       |         ✓         |          ✓          |
-| Toggle fast forward playback    |         ✓         |          ✓          |
-| Toggle repeat mode              |         ✓         |          ✓          |
-| Toggle when subtitles are shown |         ✓         |          ✓          |
-| Cycle auto-pause resume mode    |         ✓         |          ✓          |
+| Behavior                        | Default shortcut |
+| ------------------------------- | ---------------- |
+| Toggle side panel               | \`               |
+| Play/pause                      | Space            |
+| Toggle auto-pause               | Shift + P        |
+| Toggle condensed playback       | Shift + O        |
+| Toggle fast forward playback    | Shift + F        |
+| Toggle repeat mode              | Shift + R        |
+| Toggle when subtitles are shown |                  |
+| Cycle auto-pause resume mode    |                  |
 
 ### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
-| Behavior                                       | Website shortcut? | Extension shortcut? |
-| ---------------------------------------------- | :---------------: | :-----------------: |
-| Seek backward 10 seconds                       |         ✓         |          ✓          |
-| Seek forward 10 seconds                        |         ✓         |          ✓          |
-| Seek to previous subtitle                      |         ✓         |          ✓          |
-| Seek to next subtitle                          |         ✓         |          ✓          |
-| Seek to beginning of current/previous subtitle |         ✓         |          ✓          |
+| Behavior                                       | Default shortcut |
+| ---------------------------------------------- | ---------------- |
+| Seek backward 10 seconds                       | A                |
+| Seek forward 10 seconds                        | D                |
+| Seek to previous subtitle                      | ←                |
+| Seek to next subtitle                          | →                |
+| Seek to beginning of current/previous subtitle | ↑                |
 
 ### [Playback rate](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
-| Behavior               | Website shortcut? | Extension shortcut? |
-| ---------------------- | :---------------: | :-----------------: |
-| Increase playback rate |         ✓         |          ✓          |
-| Decrease playback rate |         ✓         |          ✓          |
+| Behavior               | Default shortcut |
+| ---------------------- | ---------------- |
+| Increase playback rate | Ctrl + Shift + ] |
+| Decrease playback rate | Ctrl + Shift + [ |
 
 ### [Subtitle offset](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
-| Behavior                                                                 | Website shortcut? | Extension shortcut? |
-| ------------------------------------------------------------------------ | :---------------: | :-----------------: |
-| Adjust subtitle offset so that previous subtitle is at current timestamp |         ✓         |          ✓          |
-| Adjust subtitle offset so that next subtitle is at current timestamp     |         ✓         |          ✓          |
-| Adjust subtitle offset by +100ms                                         |         ✓         |          ✓          |
-| Adjust subtitle offset by -100ms                                         |         ✓         |          ✓          |
-| Reset subtitle offset                                                    |         ✓         |          ✓          |
+| Behavior                                                                 | Default shortcut |
+| ------------------------------------------------------------------------ | ---------------- |
+| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
+| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
+| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
+| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
+| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
 
 ### [Annotation](https://app.asbplayer.dev/?view=settings#annotation) keyboard shortcuts
 
-| Behavior                          | Website shortcut? | Extension shortcut? |
-| --------------------------------- | :---------------: | :-----------------: |
-| Open statistics                   |         ✓         |          ✓          |
-| Jump to next word                 |         ✓         |          ✓          |
-| Jump to previous word             |         ✓         |          ✓          |
-| Mark hovered word as Mature       |         ✓         |          ✓          |
-| Jump to next Mature word          |         ✓         |          ✓          |
-| Jump to previous Mature word      |         ✓         |          ✓          |
-| Mark hovered word as Young        |         ✓         |          ✓          |
-| Jump to next Young word           |         ✓         |          ✓          |
-| Jump to previous Young word       |         ✓         |          ✓          |
-| Mark hovered word as Graduated    |         ✓         |          ✓          |
-| Jump to next Graduated word       |         ✓         |          ✓          |
-| Jump to previous Graduated word   |         ✓         |          ✓          |
-| Mark hovered word as Learning     |         ✓         |          ✓          |
-| Jump to next Learning word        |         ✓         |          ✓          |
-| Jump to previous Learning word    |         ✓         |          ✓          |
-| Mark hovered word as Unknown      |         ✓         |          ✓          |
-| Jump to next Unknown word         |         ✓         |          ✓          |
-| Jump to previous Unknown word     |         ✓         |          ✓          |
-| Mark hovered word as Uncollected  |         ✓         |          ✓          |
-| Jump to next Uncollected word     |         ✓         |          ✓          |
-| Jump to previous Uncollected word |         ✓         |          ✓          |
-| Toggle hovered word as Ignored    |         ✓         |          ✓          |
-| Jump to next Ignored word         |         ✓         |          ✓          |
-| Jump to previous Ignored word     |         ✓         |          ✓          |
+| Behavior                          | Default shortcut |
+| --------------------------------- | ---------------- |
+| Open statistics                   | Q + S            |
+| Jump to next word                 | Q + E            |
+| Jump to previous word             | Q + W            |
+| Mark hovered word as Mature       | Q + 5            |
+| Jump to next Mature word          |                  |
+| Jump to previous Mature word      |                  |
+| Mark hovered word as Young        | Q + 4            |
+| Jump to next Young word           |                  |
+| Jump to previous Young word       |                  |
+| Mark hovered word as Graduated    | Q + 3            |
+| Jump to next Graduated word       |                  |
+| Jump to previous Graduated word   |                  |
+| Mark hovered word as Learning     | Q + 2            |
+| Jump to next Learning word        |                  |
+| Jump to previous Learning word    |                  |
+| Mark hovered word as Unknown      | Q + 1            |
+| Jump to next Unknown word         |                  |
+| Jump to previous Unknown word     |                  |
+| Mark hovered word as Uncollected  | Q + 0            |
+| Jump to next Uncollected word     |                  |
+| Jump to previous Uncollected word |                  |
+| Toggle hovered word as Ignored    | Q + I            |
+| Jump to next Ignored word         |                  |
+| Jump to previous Ignored word     |                  |
 
 ### Seek interval (seconds)
 
@@ -273,7 +273,7 @@ Increment to use when using the "increase/decrease playback rate" [keyboard shor
 
 ### Extension shortcuts
 
-Some shortcut behaviors require privileged browser extension APIs, requiring the extension to implement the shortcut as a browser command rather than using vanilla key event listeners. Furthermore, when the browser extension is installed, settings are shared between the extension and the website, and so even on the website, some keyboard shortcuts are marked as "extension shortcuts." These shortcuts can only be edited in the browser's extension shortcuts editor.
+When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
 
 - Chrome: `chrome://extensions/shortcuts`
 - Firefox: `about:addons` → `Manage Extension Shortcuts`
