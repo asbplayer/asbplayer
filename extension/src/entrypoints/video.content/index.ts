@@ -223,8 +223,10 @@ export default defineContentScript({
                                         );
                                     }
                                 } else {
+                                    const type = blob.type.split(';', 1)[0];
+                                    const clipboardBlob = type === blob.type ? blob : new Blob([blob], { type });
                                     navigator.clipboard
-                                        .write([new ClipboardItem({ [blob.type]: blob })])
+                                        .write([new ClipboardItem({ [type]: clipboardBlob })])
                                         .catch((error) => asbError('video/clipboard', error));
                                 }
                             });
