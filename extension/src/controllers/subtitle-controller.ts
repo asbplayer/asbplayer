@@ -595,7 +595,7 @@ export default class SubtitleController {
                     sender: 'asbplayer-video',
                     message: {
                         command: 'copy-to-clipboard',
-                        dataUrl: `data:,${encodeURIComponent(text)}`,
+                        dataUrl: `data:text/plain,${encodeURIComponent(text)}`,
                     },
                     src: this.context.registeredVideoSrc,
                 };
