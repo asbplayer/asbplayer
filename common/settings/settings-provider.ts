@@ -4,6 +4,7 @@ import type {
     AnkiSettings,
     AsbplayerSettings,
     KeyBindName,
+    PageSettings,
     SubtitleSettings,
     TextSubtitleSettings,
 } from '@project/common/settings/settings';
@@ -653,8 +654,41 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
     }
 };
 
+const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) => {
+    const streamingPages = settings.streamingPages;
+
+    if (streamingPages === undefined) {
+        return;
+    }
+
+    const newStreamingPages: any = {};
+    let streamingPagesModified = false;
+
+    for (const key of Object.keys(defaultSettings.streamingPages)) {
+        const pageName = key as keyof PageSettings;
+
+        if (
+            streamingPages[pageName] === null ||
+            streamingPages[pageName] === undefined ||
+            typeof streamingPages[pageName] !== 'object'
+        ) {
+            newStreamingPages[pageName] = defaultSettings.streamingPages[pageName];
+            streamingPagesModified = true;
+        } else {
+            newStreamingPages[pageName] = streamingPages[pageName];
+        }
+    }
+
+    if (!streamingPagesModified) {
+        return;
+    }
+
+    (settings as any).streamingPages = newStreamingPages;
+};
+
 export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) => {
     ensureDictionaryTracksConsistency(settings);
+    ensureStreamingPagesConsistency(settings);
 
     let keyBindSetModified = false;
     const newKeyBindSet: any = {};
