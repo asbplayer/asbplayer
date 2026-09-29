@@ -204,6 +204,7 @@ export type AnkiSettingsFieldKey =
 
 export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
 
+// Any setting being added here also needs to be added to SettingsAccessor in use-anki.ts
 export interface AnkiSettings {
     readonly ankiConnectUrl: string;
     readonly ankiConnectApiKey: string;

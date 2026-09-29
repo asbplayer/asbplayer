@@ -777,7 +777,7 @@ export default class ChromeExtension {
 
     async dictionarySaveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ): Promise<DictionarySaveRecordLocalResult> {
         const messageId = uuidv4();

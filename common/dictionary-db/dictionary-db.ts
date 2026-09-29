@@ -82,7 +82,7 @@ export interface DictionaryTokenRecord {
     source: DictionaryTokenSource;
     token: string;
     status: TokenStatus | null;
-    lemmas: string[];
+    lemmas: readonly string[];
     states: TokenState[];
     cardIds: number[]; // externalIds: used to match tokens with Anki cards or WaniKani subjects (and any future external sources)
 }
@@ -90,7 +90,7 @@ export interface DictionaryTokenRecord {
 export interface DictionaryLocalTokenInput {
     token: string;
     status: TokenStatus | null;
-    lemmas: string[];
+    lemmas: readonly string[];
     states: TokenState[];
 }
 
@@ -764,7 +764,7 @@ export class DictionaryDB {
 
     async saveRecordLocalBulk(
         inputProfile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ): Promise<DictionarySaveRecordLocalResult> {
         if (!localTokenInputs.length) return { savedTokens: [], deletedTokens: [] };
@@ -789,26 +789,24 @@ export class DictionaryDB {
                     continue;
                 }
                 const existingRecord = tokenRecordMap.get(localTokenInput.token); // Ignore existing lemmas as they should be re-calculated
+                let status = localTokenInput.status;
+                let states = localTokenInput.states;
                 if (existingRecord) {
-                    if (localTokenInput.status == null) localTokenInput.status = existingRecord.status;
-                    localTokenInput.states = _applyStrategyToStates(
-                        existingRecord.states,
-                        localTokenInput.states,
-                        applyStates
-                    );
-                } else if (localTokenInput.status == null) {
-                    localTokenInput.status = TokenStatus.UNCOLLECTED;
+                    if (status == null) status = existingRecord.status;
+                    states = _applyStrategyToStates(existingRecord.states, states, applyStates);
+                } else if (status == null) {
+                    status = TokenStatus.UNCOLLECTED;
                 }
-                localTokenInput.states = Array.from(new Set(localTokenInput.states)).sort((lhs, rhs) => lhs - rhs);
-                localTokenInput.lemmas = localTokenInput.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
-                if (!localTokenInput.lemmas.length) {
+                states = Array.from(new Set(states)).sort((lhs, rhs) => lhs - rhs);
+                const lemmas = localTokenInput.lemmas.filter((lemma) => HAS_LETTER_REGEX.test(lemma));
+                if (!lemmas.length) {
                     asbError(
                         'dictionary',
                         `Cannot save local token with no lemmas: ${JSON.stringify(localTokenInput)}`
                     );
                     continue;
                 }
-                if (localTokenInput.status === TokenStatus.UNCOLLECTED && !localTokenInput.states.length) {
+                if (status === TokenStatus.UNCOLLECTED && !states.length) {
                     if (existingRecord) {
                         tokensToDelete.push(localTokenInput.token);
                         continue;
@@ -825,9 +823,9 @@ export class DictionaryDB {
                     track: LOCAL_TOKEN_TRACK,
                     source: DictionaryTokenSource.LOCAL,
                     token: localTokenInput.token,
-                    status: localTokenInput.status,
-                    lemmas: localTokenInput.lemmas,
-                    states: localTokenInput.states,
+                    status,
+                    lemmas,
+                    states,
                     cardIds: [],
                 });
             }

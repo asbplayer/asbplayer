@@ -82,7 +82,7 @@ export class LocalDictionaryStorage implements DictionaryStorage {
 
     saveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ) {
         return this.dictionaryDB.saveRecordLocalBulk(profile, localTokenInputs, applyStates);

@@ -25,7 +25,7 @@ export interface DictionaryStorage {
     getByLemmaBulk: (profile: string | undefined, track: number, lemmas: string[]) => Promise<LemmaResults>;
     saveRecordLocalBulk: (
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ) => Promise<DictionarySaveRecordLocalResult>;
     deleteRecordLocalBulk: (
@@ -88,7 +88,7 @@ export class DictionaryProvider {
 
     saveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ) {
         return this._storage.saveRecordLocalBulk(profile, localTokenInputs, applyStates);
