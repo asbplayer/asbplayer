@@ -1,4 +1,5 @@
 import { asbError } from '@project/common/util';
+import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 import type {
     StartRecordingAudioWithTimeoutMessage,
     StopRecordingAudioMessage,
@@ -14,6 +15,8 @@ import AudioRecorder, { TimedRecordingInProgressError, NoRecordingInProgressErro
 import { Mp3Encoder } from '@project/common/audio-clip';
 import { base64ToBlob, bufferToBase64 } from '@project/common/base64';
 import { mp3WorkerFactory } from '@/services/mp3-worker-factory';
+
+configureExtensionLogProvider();
 
 const audioRecorder = new AudioRecorder();
 

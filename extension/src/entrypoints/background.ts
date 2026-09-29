@@ -1,4 +1,6 @@
-import { asbError } from '@project/common/util';
+import { asbError, configureLogProvider, LogProvider } from '@project/common/util';
+import { SessionLogStorage } from '@/services/session-log-storage';
+import { handleLogMessage } from '@/services/log-message-handler';
 import type { Asbplayer } from '@/services/tab-registry';
 import TabRegistry from '@/services/tab-registry';
 import ImageCapturer from '@/services/image-capturer';
@@ -81,6 +83,14 @@ import StatisticsOverlayForwarderHandler from '@/handlers/statistics-overlay/sta
 import OpenStatisticsOverlayHandler from '@/handlers/open-statistics-overlay-handler';
 
 export default defineBackground(() => {
+    const logStore = new SessionLogStorage();
+    const logProvider = new LogProvider(logStore);
+    void configureLogProvider(logProvider);
+
+    browser.runtime.onMessage.addListener((request, _sender, sendResponse) =>
+        handleLogMessage(request, sendResponse, logStore, logProvider)
+    );
+
     if (!isFirefoxBuild) {
         void browser.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_AND_UNTRUSTED_CONTEXTS' });
     }

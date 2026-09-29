@@ -6,8 +6,11 @@ import { AppExtensionDictionaryStorage } from '@project/common/app/services/app-
 import { AppExtensionSettingsStorage } from '@project/common/app/services/app-extension-settings-storage';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 import { SettingsProvider } from '@project/common/settings';
+import { configureLogProvider, LogProvider } from '@project/common/util';
 import { LocalDictionaryStorage } from '@project/client/src/local-dictionary-storage';
 import { LocalSettingsStorage } from '@project/client/src/local-settings-storage';
+import { LocalLogStorage } from '@project/client/src/local-log-storage';
+import { AppExtensionLogStorage } from '@project/common/app/services/app-extension-log-storage';
 
 interface Props {
     origin: string;
@@ -25,6 +28,14 @@ const WebsiteApp = (props: Props) => {
         if (extension.version) window.plausible?.('extension_version', { props: { version: extension.version } });
     }, [extension.version]);
     const settingsProvider = useMemo(() => new SettingsProvider(settingsStorage), [settingsStorage]);
+    const logStorage = useMemo(() => {
+        if (extension.supportsLogs) return new AppExtensionLogStorage(extension);
+        return new LocalLogStorage();
+    }, [extension]);
+    const logProvider = useMemo(() => new LogProvider(logStorage), [logStorage]);
+    useEffect(() => {
+        void configureLogProvider(logProvider);
+    }, [logProvider]);
     const dictionaryStorage = useMemo(() => {
         if (extension.supportsDictionary) return new AppExtensionDictionaryStorage(extension);
         return new LocalDictionaryStorage(settingsProvider);
@@ -38,6 +49,7 @@ const WebsiteApp = (props: Props) => {
             settingsStorage={settingsStorage}
             settingsProvider={settingsProvider}
             globalStateProvider={globalStateProvider}
+            logProvider={logProvider}
         />
     );
 };

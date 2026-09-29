@@ -118,13 +118,34 @@ export function keysAreEqual(a: any, b: any) {
     return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key));
 }
 
-export const localizedDate = (timestamp: number, locales: Intl.LocalesArgument = [], timeZone?: string) => {
-    return new Date(timestamp).toLocaleTimeString(locales, {
+export interface LocalizeDateTimeOptions {
+    locales?: Intl.LocalesArgument;
+    timeZone?: string;
+    hour12?: boolean;
+    includeMilliseconds?: boolean;
+    includeDate?: boolean;
+}
+
+export const localizeDateTime = (timestamp: number, options: LocalizeDateTimeOptions = {}) => {
+    const date = new Date(timestamp);
+    const locales = options.locales ?? [];
+    const time = date.toLocaleTimeString(locales, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone,
+        hour12: options.hour12,
+        fractionalSecondDigits: options.includeMilliseconds ? 3 : undefined,
+        timeZone: options.timeZone,
     });
+    if (!options.includeDate) return time;
+
+    const calendarDate = date.toLocaleDateString(locales, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: options.timeZone,
+    });
+    return calendarDate + ' ' + time;
 };
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;

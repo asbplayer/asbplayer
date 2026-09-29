@@ -3,7 +3,7 @@ import {
     ensureStoragePersisted,
     HAS_LETTER_REGEX,
     humanReadableTime,
-    localizedDate,
+    localizeDateTime,
 } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,7 +123,7 @@ const DictionaryImport: React.FC<Props> = ({
                 yomitan.resetCache();
                 const rate = progress.current / (Date.now() - progress.startedAt);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
-                const msg = `${progress.current.toLocaleString('en-US')} / ${progress.total.toLocaleString('en-US')} [ETA: ${localizedDate(Date.now() + eta)} (${humanReadableTime(eta)})]`;
+                const msg = `${progress.current.toLocaleString('en-US')} / ${progress.total.toLocaleString('en-US')} [ETA: ${localizeDateTime(Date.now() + eta)} (${humanReadableTime(eta)})]`;
                 setImportClipboardMessageSeverity('info');
                 setImportClipboardMessage(msg);
             })) {

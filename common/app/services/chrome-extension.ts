@@ -10,7 +10,10 @@ import type {
     DictionaryStatisticsMessage,
     ExtensionToAsbPlayerCommand,
     ExtensionToAsbPlayerCommandTabsCommand,
+    AppendLogsMessage,
     GetSettingsMessage,
+    GetLogsMessage,
+    GetLogsResponse,
     Message,
     MessageWithId,
     ToggleSidePanelMessage,
@@ -87,6 +90,7 @@ import type {
 import { isSaveOnlySettings } from '@project/common/settings';
 import type { GlobalState } from '@project/common/global-state';
 import { v4 as uuidv4 } from 'uuid';
+import type { LogLine, LogSnapshot } from '@project/common/util/log';
 import gte from 'semver/functions/gte';
 import gt from 'semver/functions/gt';
 import { isFirefox } from '@project/common/browser-detection';
@@ -197,6 +201,10 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsLogs() {
+        return this.installed && gte(this.version, '1.22.0');
     }
 
     get supportsSubtitlesWidthInPixels() {
@@ -630,6 +638,36 @@ export default class ChromeExtension {
         window.postMessage(command);
         return this._createResponsePromise(messageId).then(() => {
             if (!isSaveOnlySettings(settings)) this.notifySettingsUpdated();
+        });
+    }
+
+    appendLogs(lines: readonly LogLine[]): Promise<void> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<AppendLogsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'append-logs',
+                lines,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise<void>(messageId);
+    }
+
+    getLogs(): Promise<LogSnapshot> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<GetLogsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'get-logs',
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise<GetLogsResponse>(messageId).then((response) => {
+            if ('error' in response) throw new Error(response.error);
+            return response;
         });
     }
 

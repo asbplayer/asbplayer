@@ -1,4 +1,5 @@
 import { currentPageDelegate } from '@/services/pages';
+import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 
 const excludeGlobs = ['*://app.asbplayer.dev/*'];
 
@@ -14,6 +15,7 @@ export default defineContentScript({
     runAt: 'document_start',
 
     main() {
+        configureExtensionLogProvider();
         void currentPageDelegate().then((pageDelegate) => pageDelegate.loadScripts());
     },
 });

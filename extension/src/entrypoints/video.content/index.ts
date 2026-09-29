@@ -19,6 +19,7 @@ import { DefaultKeyBinder } from '@project/common/key-binder';
 import { incrementallyFindShadowRoots, shadowRootHosts } from '@/services/shadow-roots';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { mediaSourceIdentity } from '@/pages/util';
+import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 
 import './video.css';
 
@@ -36,6 +37,8 @@ export default defineContentScript({
     runAt: 'document_idle',
 
     main() {
+        configureExtensionLogProvider();
+
         const extensionSettingsStorage = new ExtensionSettingsStorage();
         const settingsProvider = new SettingsProvider(extensionSettingsStorage);
 

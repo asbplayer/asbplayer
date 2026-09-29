@@ -538,7 +538,7 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.ankiState.recentlyModifiedFirstCheck).toBe(false);
         expect(storage.buildAnkiCache).not.toHaveBeenCalled();
         expect(consoleError).toHaveBeenCalledWith(
-            '[asbplayer][annotations/anki]',
+            expect.stringContaining('[asbplayer][annotations/anki]'),
             'Error checking Anki recently modified cards:',
             expect.any(Error)
         );
@@ -622,7 +622,7 @@ describe('SubtitleAnnotations', () => {
         expect(checkRecentlyModified).toHaveBeenCalledWith('Profile', ['Word'], []);
         expect(runtime.ankiState.refreshing).toBe(false);
         expect(consoleWarn).toHaveBeenCalledWith(
-            '[asbplayer][annotations/anki]',
+            expect.stringContaining('[asbplayer][annotations/anki]'),
             'Anki permission request failed:',
             expect.any(Error)
         );
@@ -653,7 +653,7 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.ankiState.refreshed).toBe(false);
         expect(runtime.ankiState.refreshing).toBe(false);
         expect(consoleWarn).toHaveBeenCalledWith(
-            '[asbplayer][annotations/anki]',
+            expect.stringContaining('[asbplayer][annotations/anki]'),
             'Anki refresh failed:',
             expect.any(Error)
         );
@@ -748,7 +748,7 @@ describe('SubtitleAnnotations', () => {
             dueCards: {},
         });
         expect(consoleError).toHaveBeenCalledWith(
-            '[asbplayer][annotations/anki]',
+            expect.stringContaining('[asbplayer][annotations/anki]'),
             'Error refreshing Anki for statistics:',
             expect.any(Error)
         );
@@ -811,7 +811,7 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.waniKaniState.refreshed).toBe(false);
         expect(runtime.waniKaniState.refreshing).toBe(false);
         expect(consoleWarn).toHaveBeenCalledWith(
-            '[asbplayer][annotations/wanikani]',
+            expect.stringContaining('[asbplayer][annotations/wanikani]'),
             'WaniKani refresh failed:',
             expect.any(Error)
         );
@@ -848,7 +848,7 @@ describe('SubtitleAnnotations', () => {
         });
         expect(runtime.waniKaniState.statisticsRefreshed).toBe(true);
         expect(consoleError).toHaveBeenCalledWith(
-            '[asbplayer][annotations/wanikani]',
+            expect.stringContaining('[asbplayer][annotations/wanikani]'),
             'Error refreshing WaniKani for Track2 statistics:',
             expect.any(Error)
         );
@@ -998,7 +998,7 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.annotationsBuilding).toBe(false);
         expect(runtime.tokenRequestFailedForTracks).toEqual(new Set());
         expect(consoleError).toHaveBeenCalledWith(
-            '[asbplayer][annotations/tokenization]',
+            expect.stringContaining('[asbplayer][annotations/tokenization]'),
             'Error annotating subtitle text for Track1:',
             expect.any(Error)
         );

@@ -703,6 +703,9 @@
             }
         },
         "ui": "UI",
+        "logs": "Logs",
+        "lines": "Lines",
+        "traceLogging": "Show trace logging",
         "webSocketInterface": "Interfaccia WebSocket",
         "yomitanHelperText": "Le istruzioni per configurare l'API Yomitan sono <0>qui</0>.",
         "seekableTracks": "Tracce dei sottotitoli influenzate dalle modalità di riproduzione e dalle scorciatoie da tastiera",

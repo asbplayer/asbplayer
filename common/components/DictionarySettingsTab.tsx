@@ -4,7 +4,7 @@ import {
     ensureStoragePersisted,
     hex2ToPercent,
     humanReadableTime,
-    localizedDate,
+    localizeDateTime,
     percentToHex2,
 } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
@@ -313,7 +313,7 @@ const useBuildAnkiCacheState: () => {
                 switch (error.code) {
                     case DictionaryBuildAnkiCacheStateErrorCode.concurrentBuild:
                         msg = t('settings.dictionaryBuildInProgress', {
-                            time: localizedDate(
+                            time: localizeDateTime(
                                 (error.data as DictionaryBuildAnkiCacheStateErrorBuildExpirationData).expiration
                             ),
                         });
@@ -341,7 +341,7 @@ const useBuildAnkiCacheState: () => {
                 const progress = state.body as DictionaryBuildAnkiCacheProgress;
                 const rate = progress.current / (receivedAt - progress.buildTimestamp);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
-                msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(receivedAt + eta)} (${humanReadableTime(eta)})]`;
+                msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizeDateTime(receivedAt + eta)} (${humanReadableTime(eta)})]`;
                 break;
             }
             case DictionaryBuildAnkiCacheStateType.stats: {
@@ -426,7 +426,7 @@ const useBuildWaniKaniCacheState: () => {
                     case DictionaryBuildWaniKaniCacheStateErrorCode.concurrentBuild:
                         return withTrack(
                             t('settings.dictionaryBuildInProgress', {
-                                time: localizedDate(
+                                time: localizeDateTime(
                                     (error.data as DictionaryBuildAnkiCacheStateErrorBuildExpirationData).expiration
                                 ),
                             })
@@ -453,7 +453,7 @@ const useBuildWaniKaniCacheState: () => {
                 const rate = progress.current / (receivedAt - progress.buildTimestamp);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
                 return withTrack(
-                    `${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildWaniKaniSubjects', { numSubjects: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(receivedAt + eta)} (${humanReadableTime(eta)})]`
+                    `${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildWaniKaniSubjects', { numSubjects: progress.total.toLocaleString('en-US') })} [ETA: ${localizeDateTime(receivedAt + eta)} (${humanReadableTime(eta)})]`
                 );
             }
             case DictionaryBuildWaniKaniCacheStateType.stats: {

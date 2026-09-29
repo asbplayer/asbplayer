@@ -9,6 +9,7 @@ import type ChromeExtension from '@project/common/app/services/chrome-extension'
 import type { GlobalState, GlobalStateProvider } from '@project/common/global-state';
 import type { DictionaryStorage } from '@project/common/dictionary-db';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { LogProvider } from '@project/common/util';
 
 interface Props {
     origin: string;
@@ -19,6 +20,7 @@ interface Props {
     settingsProvider: SettingsProvider;
     globalStateProvider: GlobalStateProvider;
     extension: ChromeExtension;
+    logProvider: LogProvider;
 }
 
 const RootApp = ({
@@ -30,6 +32,7 @@ const RootApp = ({
     settingsProvider,
     globalStateProvider,
     fetcher,
+    logProvider,
 }: Props) => {
     const dictionaryProvider = useMemo(() => new DictionaryProvider(dictionaryStorage), [dictionaryStorage]);
     const [settings, setSettings] = useState<AsbplayerSettings>();
@@ -90,6 +93,7 @@ const RootApp = ({
             origin={origin}
             logoUrl={logoUrl}
             dictionaryProvider={dictionaryProvider}
+            logProvider={logProvider}
             settingsProvider={settingsProvider}
             settings={settings}
             globalState={globalState}

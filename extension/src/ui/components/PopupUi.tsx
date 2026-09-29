@@ -21,6 +21,7 @@ import { StyledEngineProvider } from '@mui/material/styles';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { isFirefoxBuild } from '@/services/build-flags';
+import { extensionLogProvider } from '@/services/extension-log-provider';
 
 interface Props {
     commands: any;
@@ -131,6 +132,7 @@ export function PopupUi({ commands }: Props) {
                         <Popup
                             commands={commands}
                             dictionaryProvider={dictionaryProvider}
+                            logProvider={extensionLogProvider}
                             settings={settings}
                             onSettingsChanged={handleSettingsChanged}
                             onOpenApp={handleOpenApp}
