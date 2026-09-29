@@ -619,6 +619,8 @@ export interface PageSettings {
     archive: Page;
     crunchyroll: Page;
     rutube: Page;
+    okru: Page;
+    vkvideo: Page;
 }
 
 export interface StreamingVideoSettings {

@@ -251,6 +251,30 @@
             "autoSync": {
                 "enabled": true
             }
+        },
+        {
+            "key": "okru",
+            "host": "ok\\.ru",
+            "pageScript": "okru-page.js",
+            "subtitleDiscoveryRequestTarget": "video",
+            "syncAllowedAtPath": "video",
+            "refreshSubtitleDataOnPickerOpen": true,
+            "searchShadowRootsForVideoElements": true,
+            "autoSync": {
+                "enabled": true
+            }
+        },
+        {
+            "key": "vkvideo",
+            "host": "vkvideo\\.ru",
+            "pageScript": "vkvideo-page.js",
+            "subtitleDiscoveryRequestTarget": "video",
+            "syncAllowedAtPath": "video|clip",
+            "refreshSubtitleDataOnPickerOpen": true,
+            "searchShadowRootsForVideoElements": true,
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }

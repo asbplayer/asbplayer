@@ -121,6 +121,8 @@ export default defineConfig({
                         'ur-play-page.js',
                         'hulu-jp-page.js',
                         'rutube-page.js',
+                        'okru-page.js',
+                        'vkvideo-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',
