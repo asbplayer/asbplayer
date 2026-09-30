@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     AudioModel,
@@ -73,6 +73,7 @@ export default class StartRecordingMediaHandler {
                     maxHeight,
                     rect,
                     frameId,
+                    trimBlackBars: startRecordingCommand.message.trimBlackBars,
                 });
                 imageModel = {
                     base64: imageBase64,

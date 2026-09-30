@@ -25,6 +25,7 @@ import type { KeyboardShortcutSection } from '@project/common/components/Keyboar
 import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
 import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { LogProvider } from '@project/common/util/log';
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import type { TutorialBubbleProps } from '@project/common/components/TutorialBubble';
 
@@ -179,6 +180,7 @@ interface Props {
     extensionSupportsOrderableAnkiFields: boolean;
     extensionSupportsTrackSpecificSettings: boolean;
     extensionSupportsSubtitlesWidthSetting: boolean;
+    extensionSupportsSubtitlesWidthInPixels: boolean;
     extensionSupportsPauseOnHover: boolean;
     extensionSupportsPlaybackEngine: boolean;
     extensionSupportsAutoPauseResume: boolean;
@@ -197,6 +199,7 @@ interface Props {
     insideApp?: boolean;
     appVersionRepoPath?: string;
     dictionaryProvider: DictionaryProvider;
+    logProvider: LogProvider;
     settings: AsbplayerSettings;
     profiles: Profile[];
     activeProfile?: string;
@@ -221,6 +224,7 @@ interface Props {
 export default function SettingsForm({
     anki,
     dictionaryProvider,
+    logProvider,
     settings,
     profiles,
     activeProfile,
@@ -235,6 +239,7 @@ export default function SettingsForm({
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
+    extensionSupportsSubtitlesWidthInPixels,
     extensionSupportsPauseOnHover,
     extensionSupportsPlaybackEngine,
     extensionSupportsAutoPauseResume,
@@ -545,6 +550,7 @@ export default function SettingsForm({
                         extensionInstalled={extensionInstalled}
                         extensionSupportsTrackSpecificSettings={extensionSupportsTrackSpecificSettings}
                         extensionSupportsSubtitlesWidthSetting={extensionSupportsSubtitlesWidthSetting}
+                        extensionSupportsSubtitlesWidthInPixels={extensionSupportsSubtitlesWidthInPixels}
                         localFontsAvailable={localFontsAvailable}
                         localFontsPermission={localFontsPermission}
                         localFontFamilies={localFontFamilies}
@@ -586,6 +592,7 @@ export default function SettingsForm({
                         settings={settings}
                         onSettingChanged={handleSettingChanged}
                         onSettingsChanged={onSettingsChanged}
+                        logProvider={logProvider}
                         supportedLanguages={supportedLanguages}
                         insideApp={insideApp}
                         extensionInstalled={extensionInstalled}

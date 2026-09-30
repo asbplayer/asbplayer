@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
@@ -99,6 +99,7 @@ export default class VideoChannel {
 
     readyState: number;
     oncanplay: ((ev: Event) => void) | null = null;
+    onTokenSelectionFocus: (() => void) | null = null;
     audioTracks?: AudioTrackModel[];
     selectedAudioTrack?: string;
     playModes: Set<PlayMode>;
@@ -337,6 +338,10 @@ export default class VideoChannel {
                     for (const callback of this.cardExportedDialogCallbacks) {
                         callback();
                     }
+                    break;
+                }
+                case 'tokenSelectionFocus': {
+                    this.onTokenSelectionFocus?.();
                     break;
                 }
                 default:
@@ -578,6 +583,7 @@ export default class VideoChannel {
             subtitlePositionOffset: bottomSubtitlePositionOffset,
             topSubtitlePositionOffset,
             subtitlesWidth,
+            subtitlesWidthUnit,
         } = settings;
         const message: SubtitleSettingsToVideoMessage = {
             command: 'subtitleSettings',
@@ -600,6 +606,7 @@ export default class VideoChannel {
                 subtitlePositionOffset: bottomSubtitlePositionOffset,
                 topSubtitlePositionOffset,
                 subtitlesWidth,
+                subtitlesWidthUnit,
             },
         };
         this.protocol.postMessage(message);
@@ -665,6 +672,7 @@ export default class VideoChannel {
             mediaFragmentTrimStart,
             mediaFragmentTrimEnd,
             mediaFragmentMaxClipLength,
+            trimBlackBars,
             surroundingSubtitlesCountRadius,
             surroundingSubtitlesTimeRadius,
             ankiFieldSettings,
@@ -700,6 +708,7 @@ export default class VideoChannel {
                 mediaFragmentTrimStart,
                 mediaFragmentTrimEnd,
                 mediaFragmentMaxClipLength,
+                trimBlackBars,
                 surroundingSubtitlesCountRadius,
                 surroundingSubtitlesTimeRadius,
                 ankiFieldSettings,
@@ -869,6 +878,7 @@ export default class VideoChannel {
         this.playModesCallbacks = [];
         this.cardUpdatedDialogCallbacks = [];
         this.cardExportedDialogCallbacks = [];
+        this.onTokenSelectionFocus = null;
     }
 
     _remove<T>(callback: T, callbacks: T[]) {

@@ -1,5 +1,6 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import type { AsbplayerSettings, SettingsProvider, PlaybackPosition } from '@project/common/settings';
+import { asbTrace } from '@project/common/util/log';
 
 export const minimumPlaybackPositionMs = 30_000;
 export const playbackPositionSaveIntervalMs = 10_000;
@@ -87,6 +88,9 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
 
     bind(): void {
         if (this.playbackPositionSaveTimer !== undefined) return;
+        asbTrace('playback/position', 'Bound playback position controller', {
+            restoreKeyCount: this.restoreKeys.length,
+        });
         this.playbackPositionSaveTimer = setInterval(() => {
             void this.savePlaybackPosition(this.currentTimeMs());
         }, playbackPositionSaveIntervalMs);
@@ -95,6 +99,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
 
     unbind(): void {
         if (this.playbackPositionSaveTimer === undefined) return;
+        asbTrace('playback/position', 'Unbound playback position controller');
         clearInterval(this.playbackPositionSaveTimer);
         this.playbackPositionSaveTimer = undefined;
         this.skipInitialDiscontinuity = true;
@@ -105,6 +110,7 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
     }
 
     profileChanged(): void {
+        asbTrace('playback/position', 'Resetting playback position controller for profile change');
         this.cancelPendingSaves();
         this.dismissPlaybackPosition();
         this.hasOfferedRestorePosition = false;
@@ -113,10 +119,12 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
 
     setSettings(settings: AsbplayerSettings): void {
         this.settings = settings;
+        asbTrace('playback/position', 'Initialized playback position settings');
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
         this.settings = settings;
+        asbTrace('playback/position', 'Updated playback position settings');
         this.restorePlaybackPosition();
     }
 
@@ -124,6 +132,9 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         const restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
         if (this.samePlaybackPositionKeys(this.restoreKeys, restoreKeys)) return;
 
+        asbTrace('playback/position', 'Changed playback position restore keys', {
+            keyCount: restoreKeys.length,
+        });
         this.dismissPlaybackPosition();
         this.restoreKeys = restoreKeys;
         this.hasOfferedRestorePosition = false;
@@ -176,6 +187,9 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
 
     dismissPlaybackPosition(): void {
         if (this.pendingTimestampMs === undefined) return;
+        asbTrace('playback/position', 'Dismissed remembered playback position', {
+            timestampMs: this.pendingTimestampMs,
+        });
         this.pendingTimestampMs = undefined;
         this.callbacks.playbackPositionChanged(undefined);
     }
@@ -184,9 +198,14 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         const position = this.pendingTimestampMs;
         if (position === undefined) return;
 
+        asbTrace('playback/position', 'Resuming remembered playback position from controller', {
+            timestampMs: position,
+        });
         this.dismissPlaybackPosition();
         const subtitle = this.callbacks.showingSubtitlesAt(position)[0];
-        await this.callbacks.seek(subtitle?.start ?? position);
+        const targetTimestampMs = subtitle?.start ?? position;
+        asbTrace('playback/position', 'Seeking to remembered playback position', { targetTimestampMs });
+        await this.callbacks.seek(targetTimestampMs);
         await this.callbacks.play();
     }
 
@@ -205,6 +224,9 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
             ({ fileName }) => !restoreKeys.includes(fileName)
         );
         if (lastPlaybackPositions.length === this.settings.lastPlaybackPositions.length) return Promise.resolve();
+        asbTrace('playback/position', 'Removing remembered playback positions', {
+            restoreKeyCount: restoreKeys.length,
+        });
         this.settings = {
             ...this.settings,
             lastPlaybackPositions,
@@ -245,7 +267,10 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
                 this.callbacks.playbackPositionsChanged(lastPlaybackPositions);
                 this.callbacks.saveSettings({ lastPlaybackPositions });
             });
-        void this.saveOperation.catch((error) => this.callbacks.onError(error));
+        void this.saveOperation.catch((error) => {
+            asbTrace('playback/error', 'Failed to persist playback positions', { error });
+            this.callbacks.onError(error);
+        });
         return this.saveOperation;
     }
 
@@ -261,17 +286,27 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
 
         const position = playbackPositionFromSettings(this.settings, this.restoreKeys);
         this.hasOfferedRestorePosition = true;
-        if (position === undefined) return;
+        if (position === undefined) {
+            asbTrace('playback/position', 'No remembered playback position found', {
+                restoreKeyCount: this.restoreKeys.length,
+            });
+            return;
+        }
         if (position < minimumPlaybackPositionMs) {
+            asbTrace('playback/position', 'Discarding remembered playback position below restore threshold', {
+                position,
+            });
             void this.removeRememberedPlaybackPositions();
             return;
         }
         if (this.isAtOrBeyondLastSubtitleEnd(position)) {
+            asbTrace('playback/position', 'Discarding remembered playback position at subtitle end', { position });
             void this.removeRememberedPlaybackPositions();
             return;
         }
 
         this.pendingTimestampMs = position;
+        asbTrace('playback/position', 'Offered remembered playback position', { position });
         this.callbacks.playbackPositionChanged(position);
     }
 

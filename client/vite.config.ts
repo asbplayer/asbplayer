@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
         resolve: {
             tsconfigPaths: true,
         },
+        build: {
+            sourcemap: true,
+        },
         plugins: [
             react(),
             createHtmlPlugin({

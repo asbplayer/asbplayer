@@ -1,3 +1,5 @@
+import { asbTrace } from '@project/common/util/log';
+
 export type ClockEvent = 'stop' | 'start' | 'settime' | 'timeupdate';
 
 type ClockSetTimeOptions = {
@@ -35,6 +37,11 @@ export default class Clock {
 
     set rate(rate: number) {
         if (rate === this.playbackRate) return;
+        asbTrace('playback/clock', 'Changed playback clock rate', {
+            previousRate: this.playbackRate,
+            rate,
+            running: this.started,
+        });
         if (this.started) {
             this.accumulatedMs += this.elapsedMs();
             this.startedAtMs = this.now();

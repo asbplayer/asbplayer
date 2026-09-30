@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { ensureOffscreenAudioServiceDocument } from '@/services/offscreen-document';
 import type {

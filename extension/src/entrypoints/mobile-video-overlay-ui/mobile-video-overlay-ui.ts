@@ -1,4 +1,7 @@
 import { renderMobileVideoOverlay } from '@/ui/mobile-video-overlay';
+import { configureExtensionLogProvider } from '@/services/extension-log-provider';
+
+configureExtensionLogProvider();
 
 const params = new URLSearchParams(location.search);
 

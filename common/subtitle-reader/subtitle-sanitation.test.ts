@@ -17,7 +17,6 @@ jest.mock('ass-compiler', () => ({
         };
     },
 }));
-jest.mock('videojs-vtt.js', () => ({ WebVTT: {} }));
 import SubtitleReader, { sanitizeSubtitleHtml } from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
 
@@ -54,6 +53,88 @@ const assertSafeSink = (text: string) => {
 const srt = (text: string) => file('attack.srt', `1\n00:00:00,000 --> 00:00:01,000\nsafe${text}`);
 
 describe('subtitle reader security', () => {
+    const errorEvent = 'subtitle-html-error';
+    const image = `<img src="data:image/png;base64,AA==" onerror="window.dispatchEvent(new Event('${errorEvent}'))">`;
+    const escapedImage = image.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    const vtt = (text: string) => file('attack.vtt', `WEBVTT\n\n00:00.000 --> 00:01.000\nsafe${text}\n\n`);
+    const dfxp = (text: string) =>
+        file('attack.dfxp', `<tt><body><div><p begin="0s" end="1s">safe${text}</p></div></body></tt>`);
+
+    it.each([
+        { scenario: 'raw SRT text', input: srt(image), options: { subtitleHtml: SubtitleHtml.remove } },
+        { scenario: 'raw VTT text', input: vtt(image), options: { subtitleHtml: SubtitleHtml.remove } },
+        {
+            scenario: 'VTT markup formed by timestamp removal',
+            input: vtt(image.replace('<img', '<im<00:00.500>g')),
+            options: { subtitleHtml: SubtitleHtml.remove },
+        },
+        {
+            scenario: 'regex replacement',
+            input: srt('REPLACE'),
+            options: { subtitleHtml: SubtitleHtml.remove, regexFilter: 'REPLACE', replacement: image },
+        },
+        {
+            scenario: 'YouTube XML entity decoding',
+            input: file(
+                'attack.ytxml',
+                `<transcript><text start="0" dur="1">safe${escapedImage}</text><text start="1" dur="1">safe${escapedImage}</text></transcript>`
+            ),
+            options: { subtitleHtml: SubtitleHtml.render },
+        },
+        {
+            scenario: 'DFXP markup',
+            input: dfxp(image.replace('>', '/>')),
+            options: { subtitleHtml: SubtitleHtml.render },
+        },
+        {
+            scenario: 'DFXP entity decoding followed by HTML removal',
+            input: dfxp(escapedImage),
+            options: { subtitleHtml: SubtitleHtml.remove },
+        },
+    ])('prevents event-handler execution while parsing $scenario', async ({ input, options }) => {
+        const onError = jest.fn();
+        const activeImages: HTMLImageElement[] = [];
+        window.addEventListener(errorEvent, onError);
+        const setHtml = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML')!.set!;
+        const htmlSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set').mockImplementation(function (
+            this: Element,
+            value: string
+        ) {
+            setHtml.call(this, value);
+            // jsdom does not load images. Dispatch their error event at the active DOM
+            // boundary to exercise handlers before inspecting the returned subtitle.
+            if (this.ownerDocument === document) {
+                for (const image of this.querySelectorAll('img')) {
+                    activeImages.push(image);
+                    image.dispatchEvent(new Event('error'));
+                }
+            }
+        });
+
+        try {
+            const subtitles = await reader(options).subtitles([input]);
+
+            expect(activeImages).toEqual([]);
+            expect(onError).not.toHaveBeenCalled();
+            expect(subtitles.length).toBeGreaterThan(0);
+            for (const subtitle of subtitles) expect(assertSafeSink(subtitle.text).textContent).toBe('safe');
+        } finally {
+            htmlSetter.mockRestore();
+            window.removeEventListener(errorEvent, onError);
+        }
+    });
+
+    it('preserves line breaks, entities, and ruby base text when safely removing HTML', async () => {
+        const [subtitle] = await reader({ subtitleHtml: SubtitleHtml.remove }).subtitles([
+            file(
+                'formatting.vtt',
+                'WEBVTT\n\n00:00.000 --> 00:01.000\n<b>Hello</b><br> &amp; <ruby>語<rt>ご</rt><rp>(ご)</rp></ruby>\n\n'
+            ),
+        ]);
+
+        expect(subtitle).toEqual({ start: 0, end: 1000, text: 'Hello\n & 語', track: 0 });
+    });
+
     it.each([
         '<img src=x onerror=alert(1)>',
         '&lt;img src=x onerror=alert(1)&gt;',

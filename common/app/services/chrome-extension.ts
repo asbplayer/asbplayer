@@ -10,7 +10,10 @@ import type {
     DictionaryStatisticsMessage,
     ExtensionToAsbPlayerCommand,
     ExtensionToAsbPlayerCommandTabsCommand,
+    AppendLogsMessage,
     GetSettingsMessage,
+    GetLogsMessage,
+    GetLogsResponse,
     Message,
     MessageWithId,
     ToggleSidePanelMessage,
@@ -57,6 +60,7 @@ import type {
     AckTabsMessage,
     BrowserFeatures,
 } from '@project/common';
+import { asbError } from '@project/common/util/log';
 import { buildSubtitleTracks } from '@project/common/util';
 import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
 import type {
@@ -87,6 +91,7 @@ import type {
 import { isSaveOnlySettings } from '@project/common/settings';
 import type { GlobalState } from '@project/common/global-state';
 import { v4 as uuidv4 } from 'uuid';
+import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import gte from 'semver/functions/gte';
 import gt from 'semver/functions/gt';
 import { isFirefox } from '@project/common/browser-detection';
@@ -197,6 +202,14 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsLogs() {
+        return this.installed && gte(this.version, '1.22.0');
+    }
+
+    get supportsSubtitlesWidthInPixels() {
+        return this.installed && gte(this.version, '1.22.0');
     }
 
     get supportsAutoPauseResume() {
@@ -418,7 +431,9 @@ export default class ChromeExtension {
                 src: src,
             };
             window.postMessage(command);
-            void this._createResponsePromise(messageId).then(callback);
+            void this._createResponsePromise(messageId)
+                .then(callback)
+                .catch((error) => asbError('app/extension', 'Failed to receive a video response:', error));
         }
     }
 
@@ -629,6 +644,36 @@ export default class ChromeExtension {
         });
     }
 
+    appendLogs(lines: readonly LogLine[]): Promise<void> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<AppendLogsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'append-logs',
+                lines,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise<void>(messageId);
+    }
+
+    getLogs(): Promise<LogSnapshot> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<GetLogsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'get-logs',
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise<GetLogsResponse>(messageId).then((response) => {
+            if ('error' in response) throw new Error(response.error);
+            return response;
+        });
+    }
+
     getGlobalState(): Promise<GlobalState> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<GetGlobalStateMessage> = {
@@ -773,7 +818,7 @@ export default class ChromeExtension {
 
     async dictionarySaveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ): Promise<DictionarySaveRecordLocalResult> {
         const messageId = uuidv4();

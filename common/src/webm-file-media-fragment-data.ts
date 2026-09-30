@@ -1,4 +1,5 @@
-import { asbInfo, clamp } from '@project/common/util';
+import { asbInfo } from '@project/common/util/log';
+import { clamp } from '@project/common/util';
 import {
     CancelledMediaFragmentDataRenderingError,
     createVideoElement,

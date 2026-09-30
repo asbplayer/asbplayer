@@ -1,4 +1,4 @@
-import type { SubtitleAlignment } from '@project/common/settings';
+import type { SubtitlesWidthUnit, PageSettings, SubtitleAlignment } from '@project/common/settings';
 import {
     SettingsProvider,
     SubtitleListTimestampDisplay,
@@ -9,7 +9,7 @@ import {
     saveOnlySettings,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
-import { expect, it } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 
@@ -27,6 +27,8 @@ it('starts at default settings', async () => {
     expect(initialSettings.lastPlaybackPositions).toEqual([]);
     expect(initialSettings.showSubtitleListMiningButton).toBe(true);
     expect(initialSettings.subtitleListTimestampDisplay).toBe(SubtitleListTimestampDisplay.startAndEnd);
+    expect(initialSettings.keyBindSet.jumpToPreviousToken).toEqual({ keys: 'Q+W' });
+    expect(initialSettings.keyBindSet.jumpToNextToken).toEqual({ keys: 'Q+E' });
 });
 
 it('keeps playback-owned settings separate from UI settings', () => {
@@ -130,6 +132,7 @@ const subtitleSettings = {
     subtitlePositionOffset: 70,
     topSubtitlePositionOffset: 70,
     subtitlesWidth: 100,
+    subtitlesWidthUnit: '%' as SubtitlesWidthUnit,
     subtitleTracksV2: [
         {
             subtitleSize: 36,
@@ -243,5 +246,68 @@ it('targets correct values for text subtitle ', () => {
         subtitleBlur: true,
         subtitleAlignment: 'bottom',
         subtitleCustomStyles: [],
+    });
+});
+
+describe('streamingPages consistency', () => {
+    it('back-fills page settings missing from the stored blob', async () => {
+        const storage = new MockSettingsStorage();
+        const storedStreamingPages: Partial<PageSettings> = { ...defaultSettings.streamingPages };
+        delete (storedStreamingPages as any).crunchyroll;
+        delete (storedStreamingPages as any).youtube;
+        storage.setData({ streamingPages: storedStreamingPages });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages.crunchyroll).toEqual(defaultSettings.streamingPages.crunchyroll);
+        expect(streamingPages.youtube).toEqual(defaultSettings.streamingPages.youtube);
+        expect(streamingPages.netflix).toEqual(defaultSettings.streamingPages.netflix);
+    });
+
+    it('preserves user modifications to existing page settings', async () => {
+        const storage = new MockSettingsStorage();
+        const storedStreamingPages: Partial<PageSettings> = { ...defaultSettings.streamingPages };
+        delete (storedStreamingPages as any).crunchyroll;
+        storage.setData({
+            streamingPages: {
+                ...storedStreamingPages,
+                youtube: { targetLanguages: ['ja'] },
+            },
+        });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages.youtube).toEqual({ targetLanguages: ['ja'] });
+        expect(streamingPages.crunchyroll).toEqual(defaultSettings.streamingPages.crunchyroll);
+    });
+
+    it('replaces malformed page settings values', async () => {
+        const storage = new MockSettingsStorage();
+        storage.setData({
+            streamingPages: {
+                ...defaultSettings.streamingPages,
+                netflix: null,
+                youtube: 'not-an-object',
+            },
+        });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages.netflix).toEqual(defaultSettings.streamingPages.netflix);
+        expect(streamingPages.youtube).toEqual(defaultSettings.streamingPages.youtube);
+    });
+
+    it('leaves complete page settings untouched', async () => {
+        const storage = new MockSettingsStorage();
+        const storedStreamingPages = { ...defaultSettings.streamingPages };
+        storage.setData({ streamingPages: storedStreamingPages });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages).toEqual(defaultSettings.streamingPages);
     });
 });

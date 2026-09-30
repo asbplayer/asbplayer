@@ -1,4 +1,5 @@
 import type TabRegistry from '@project/extension/src/services/tab-registry';
+import { asbError } from '@project/common/util/log';
 import { setExtensionRequestedLocation } from '@/services/side-panel';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { createStatisticsPopup } from '@/services/statistics-util';
@@ -20,7 +21,9 @@ export default class OpenStatisticsHandler {
 
     handle() {
         if (isFirefoxBuild) {
-            void setExtensionRequestedLocation('statistics');
+            void setExtensionRequestedLocation('statistics').catch((error) =>
+                asbError('statistics', 'Failed to save the requested panel location:', error)
+            );
 
             void this._tabRegistry
                 .findAsbplayer({
@@ -35,13 +38,18 @@ export default class OpenStatisticsHandler {
                     }
                     // Else, a side panel was showing, and setExtensionRequestedLocation would have
                     // loaded the statistics into the side panel.
-                });
+                })
+                .catch((error) => asbError('statistics', 'Failed to find the statistics side panel:', error));
         } else if (browser.sidePanel !== undefined) {
-            void setExtensionRequestedLocation('statistics');
+            void setExtensionRequestedLocation('statistics').catch((error) =>
+                asbError('statistics', 'Failed to save the requested panel location:', error)
+            );
 
             browser.windows.getLastFocused((w) => {
                 const windowId = w.id;
-                void browser.sidePanel.open({ windowId: windowId! });
+                void browser.sidePanel
+                    .open({ windowId: windowId! })
+                    .catch((error) => asbError('statistics', 'Failed to open the statistics side panel:', error));
             });
         } else {
             createStatisticsPopup();

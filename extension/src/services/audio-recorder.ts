@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { bufferToBase64 } from '@project/common/base64';
 
 export class TimedRecordingInProgressError extends Error {}

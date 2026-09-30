@@ -6,6 +6,14 @@ sidebar_position: 5
 
 ## General
 
+### Subtitles aren't showing up
+
+It's possible to hide the subtitles in asbplayer through a few ways:
+
+- The [`Toggle subtitles`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcut.
+- The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
+- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Misc > Playback Modes`
+
 ### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.'
 
 This can happen due to ad blockers:
@@ -80,6 +88,7 @@ Annotation is considered disabled if the following settings are set to these val
 - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
 - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
 - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
+- [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
 
 To enable annotation for a track, set at least one of the above settings to a value other than the disabled value. Certain annotations may only show on hover if they are [configured to do so](./reference/settings.md#only-display-word-color-on-hover).
 

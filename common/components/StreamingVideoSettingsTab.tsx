@@ -28,6 +28,11 @@ const pageSettingsHasModifications = (page: Page) => {
     );
 };
 
+const sortedPageKeys = (pageConfigs: PageConfigMap) =>
+    Object.keys(pageConfigs)
+        .filter((key): key is keyof PageSettings => key in pageMetadata) // Can happen if extension supports more pages than this version of the app
+        .sort((a, b) => pageMetadata[a].title.localeCompare(pageMetadata[b].title));
+
 interface Props {
     settings: AsbplayerSettings;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -208,15 +213,10 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                         <TableContainer variant="outlined" component={Paper} style={{ height: 'auto' }}>
                             <Table>
                                 <TableBody>
-                                    {Object.keys(pageConfigs).map((key) => {
-                                        const pageKey = key as keyof PageSettings;
+                                    {sortedPageKeys(pageConfigs).map((key) => {
+                                        const pageKey = key;
                                         const metadata = pageMetadata[pageKey];
                                         const page = settings.streamingPages[pageKey];
-
-                                        if (metadata === undefined || page === undefined) {
-                                            // Can happen if extension supports more pages than this version of the app
-                                            return null;
-                                        }
 
                                         return (
                                             <TableRowWithHoverEffect

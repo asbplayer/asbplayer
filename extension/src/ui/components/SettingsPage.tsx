@@ -21,6 +21,7 @@ import { useTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { LogProvider } from '@project/common/util/log';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
 
 const useStyles = makeStyles<Theme>((theme) => ({
@@ -40,6 +41,7 @@ const useStyles = makeStyles<Theme>((theme) => ({
 
 interface Props {
     dictionaryProvider: DictionaryProvider;
+    logProvider: LogProvider;
     settings: AsbplayerSettings;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     profiles: Profile[];
@@ -61,6 +63,7 @@ const extensionTestCard: () => Promise<CardModel> = () => {
 
 const SettingsPage = ({
     dictionaryProvider,
+    logProvider,
     settings,
     inTutorial,
     inAnnotationTutorial,
@@ -118,6 +121,7 @@ const SettingsPage = ({
                         extensionSupportsOrderableAnkiFields
                         extensionSupportsTrackSpecificSettings
                         extensionSupportsSubtitlesWidthSetting
+                        extensionSupportsSubtitlesWidthInPixels
                         extensionSupportsPauseOnHover
                         extensionSupportsPlaybackEngine
                         extensionSupportsAutoPauseResume
@@ -137,6 +141,7 @@ const SettingsPage = ({
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}
                         dictionaryProvider={dictionaryProvider}
+                        logProvider={logProvider}
                         settings={settings}
                         profiles={profileContext.profiles}
                         activeProfile={profileContext.activeProfile}

@@ -1,4 +1,5 @@
 import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
+import { asbTrace } from '@project/common/util/log';
 import type {
     InternalSeekCompletion,
     TimingDriver,
@@ -95,6 +96,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
 
     bind(): void {
         if (this._bound) return;
+        asbTrace('playback/timing', 'Binding animation-frame timing driver', {
+            timestampMs: this.currentTimeMs(),
+        });
         this._bound = true;
         this.clock.addEventListener('play', this.onStart);
         this.clock.addEventListener('pause', this.onStop);
@@ -110,6 +114,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
 
     unbind(): void {
         if (!this._bound) return;
+        asbTrace('playback/timing', 'Unbinding animation-frame timing driver', {
+            timestampMs: this.currentTimeMs(),
+        });
         this._bound = false;
         this.clock.removeEventListener('play', this.onStart);
         this.clock.removeEventListener('pause', this.onStop);
@@ -165,6 +172,9 @@ export default class AnimationFrameTimingDriver implements TimingDriver {
      * To work around this, we listen for 'timeupdate' events while the document is hidden to keep the timing driver updated.
      */
     private readonly onVisibilityChange = () => {
+        asbTrace('playback/timing', 'Animation-frame timing visibility changed', {
+            hidden: document.hidden,
+        });
         if (document.hidden) {
             this.cancelScheduledUpdate();
             if (this.timeUpdatesBound) return;

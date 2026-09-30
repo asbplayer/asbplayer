@@ -15,6 +15,7 @@ import type {
     DictionaryTrack,
     SettingsProvider,
     SubtitleAlignment,
+    SubtitlesWidthUnit,
     SubtitleSettings,
     TextSubtitleSettings,
 } from '@project/common/settings';
@@ -25,7 +26,19 @@ import {
     tokenAnnotationStyleValues,
 } from '@project/common/settings';
 import type { SubtitleCollectionOptions } from '@project/common/subtitle-collection';
-import { renderRichTextOntoSubtitles, getAnnotationsHtml, SubtitleAnnotations } from '@project/common/annotations';
+import {
+    ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
+    ASB_SUBTITLE_CONTAINER_TOP_CLASS,
+    ASB_SUBTITLE_INDEX_ATTRIBUTE,
+    clearTokenSelectionInRoot,
+    currentTokenSelectionLocation,
+    renderRichTextOntoSubtitles,
+    getAnnotationsHtml,
+    selectTokenInRoot,
+    SubtitleAnnotations,
+} from '@project/common/annotations';
+import type { SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
+import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     arrayEquals,
     compareSubtitlesForDisplay,
@@ -177,6 +190,31 @@ export default class SubtitleController {
         this.subtitleAnnotations.setSubtitles(subtitles);
     }
 
+    currentTokenSelectionLocation(): TokenSelectionLocation | undefined {
+        for (const root of this._tokenSelectionRoots()) {
+            const location = currentTokenSelectionLocation(this.subtitles, root);
+            if (location) return location;
+        }
+    }
+
+    selectToken(location: TokenSelectionLocation, options?: SelectTokenInRootOptions): boolean {
+        const roots = this._tokenSelectionRoots();
+        for (const root of roots) {
+            if (!selectTokenInRoot(root, location, options)) continue;
+            for (const otherRoot of roots) {
+                if (otherRoot !== root) clearTokenSelectionInRoot(otherRoot);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private _tokenSelectionRoots(): HTMLElement[] {
+        return [this.bottomSubtitlesElementOverlay.containerElement, this.topSubtitlesElementOverlay.containerElement]
+            .filter((root): root is HTMLElement => root !== undefined)
+            .filter((root, index, roots) => roots.indexOf(root) === index);
+    }
+
     reset() {
         this.subtitles = [];
         this.subtitleFileNames = undefined;
@@ -235,9 +273,11 @@ export default class SubtitleController {
         this.topSubtitlesElementOverlay.contentPositionOffset = value;
     }
 
-    set subtitlesWidth(value: number) {
-        this.bottomSubtitlesElementOverlay.contentWidthPercentage = value;
-        this.topSubtitlesElementOverlay.contentWidthPercentage = value;
+    setSubtitlesWidth(value: number, unit: SubtitlesWidthUnit) {
+        for (const overlay of [this.bottomSubtitlesElementOverlay, this.topSubtitlesElementOverlay]) {
+            overlay.contentWidth = value;
+            overlay.contentWidthUnit = unit;
+        }
     }
 
     setSubtitleSettings(newSubtitleSettings: SubtitleSettings) {
@@ -339,23 +379,23 @@ export default class SubtitleController {
     private _elementOverlayParams() {
         const subtitleOverlayParams: ElementOverlayParams = {
             targetElement: this.context.video,
-            nonFullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
+            nonFullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
             nonFullscreenContentClassName: 'asbplayer-subtitles',
-            fullscreenContainerClassName: 'asbplayer-subtitles-container-bottom',
+            fullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.bottom,
-            contentWidthPercentage: -1,
+            contentWidth: -1,
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
         const topSubtitleOverlayParams: ElementOverlayParams = {
             targetElement: this.context.video,
-            nonFullscreenContainerClassName: 'asbplayer-subtitles-container-top',
+            nonFullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_TOP_CLASS,
             nonFullscreenContentClassName: 'asbplayer-subtitles',
-            fullscreenContainerClassName: 'asbplayer-subtitles-container-top',
+            fullscreenContainerClassName: ASB_SUBTITLE_CONTAINER_TOP_CLASS,
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.top,
-            contentWidthPercentage: -1,
+            contentWidth: -1,
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
@@ -368,7 +408,7 @@ export default class SubtitleController {
                       fullscreenContainerClassName: 'asbplayer-notification-container-top',
                       fullscreenContentClassName: 'asbplayer-notification',
                       offsetAnchor: OffsetAnchor.top,
-                      contentWidthPercentage: -1,
+                      contentWidth: -1,
                       onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
                       onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
                   }
@@ -379,7 +419,7 @@ export default class SubtitleController {
                       fullscreenContainerClassName: 'asbplayer-notification-container-bottom',
                       fullscreenContentClassName: 'asbplayer-notification',
                       offsetAnchor: OffsetAnchor.bottom,
-                      contentWidthPercentage: -1,
+                      contentWidth: -1,
                       onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
                       onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
                   };
@@ -479,6 +519,8 @@ export default class SubtitleController {
         }
         if (!subtitlesAreNew && !shouldRenderOffset && !this.refreshCurrentSubtitle) return;
 
+        const tokenSelection = this.currentTokenSelectionLocation();
+
         this.refreshCurrentSubtitle = false;
         this._resetUnblurState();
         if (this.shouldRenderBottomOverlay) {
@@ -502,6 +544,8 @@ export default class SubtitleController {
         } else {
             this.showingOffset = undefined;
         }
+
+        if (tokenSelection) this.selectToken(tokenSelection, { focusContainer: false });
     }
 
     private _renderSubtitles(
@@ -554,7 +598,7 @@ export default class SubtitleController {
                     sender: 'asbplayer-video',
                     message: {
                         command: 'copy-to-clipboard',
-                        dataUrl: `data:,${encodeURIComponent(text)}`,
+                        dataUrl: `data:text/plain,${encodeURIComponent(text)}`,
                     },
                     src: this.context.registeredVideoSrc,
                 };
@@ -598,7 +642,8 @@ export default class SubtitleController {
                             subtitle.text,
                             subtitle.track,
                             rendered?.richText,
-                            rendered?.richTextOnHover
+                            rendered?.richTextOnHover,
+                            subtitle.index
                         );
                     }
                 },
@@ -607,10 +652,17 @@ export default class SubtitleController {
         });
     }
 
-    private _buildTextHtml(text: string, track?: number, richText?: string, richTextOnHover?: string) {
-        return `<span data-track="${track ?? 0}" class="${this._subtitleClasses(track)}" style="${this._subtitleStyles(
+    private _buildTextHtml(
+        text: string,
+        track?: number,
+        richText?: string,
+        richTextOnHover?: string,
+        subtitleIndex?: number
+    ) {
+        const indexAttribute = subtitleIndex === undefined ? '' : ` ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${subtitleIndex}"`;
+        return `<span data-track="${track ?? 0}"${indexAttribute} class="${this._subtitleClasses(
             track
-        )}">${getAnnotationsHtml(text, richText, richTextOnHover)}</span>`;
+        )}" style="${this._subtitleStyles(track)}">${getAnnotationsHtml(text, richText, richTextOnHover)}</span>`;
     }
 
     unbind() {
