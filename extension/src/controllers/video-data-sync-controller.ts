@@ -231,7 +231,7 @@ export default class VideoDataSyncController {
         asbTrace('subtitle/request', 'Dispatching site subtitle data request', {
             page: pageDelegate.config.key ?? (pageDelegate.config.generic ? 'generic' : 'unmatched'),
             genericPage: pageDelegate.config.generic === true,
-            eventTarget: pageDelegate.config.generic ? 'video-element' : 'document',
+            eventTarget: eventTargetIsVideo ? 'video-element' : 'document',
         });
         if (pageDelegate.config.key === 'youtube') {
             const targetTranslationLanguageCodes =
