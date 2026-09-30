@@ -133,6 +133,8 @@ Champ,
 marcman3001,
 [@vladysor](https://github.com/vladysor),
 [@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
-[@Ayase-the-Dark](https://github.com/Ayase-the-Dark)
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
+shiki,
+kansha-gratitude
 
 and those who have donated privately.
