@@ -109,6 +109,7 @@ export default function SettingsDialog({
                     extensionSupportsOrderableAnkiFields={extension.supportsOrderableAnkiFields}
                     extensionSupportsTrackSpecificSettings={extension.supportsTrackSpecificSettings}
                     extensionSupportsSubtitlesWidthSetting={extension.supportsSubtitlesWidthSetting}
+                    extensionSupportsSubtitlesWidthInPixels={extension.supportsSubtitlesWidthInPixels}
                     extensionSupportsPauseOnHover={extension.supportsPauseOnHover}
                     extensionSupportsPlaybackEngine={extension.supportsPlaybackEngine}
                     extensionSupportsAutoPauseResume={extension.supportsAutoPauseResume}

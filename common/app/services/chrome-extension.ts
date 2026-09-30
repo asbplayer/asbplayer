@@ -199,6 +199,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsSubtitlesWidthInPixels() {
+        return this.installed && gte(this.version, '1.22.0');
+    }
+
     get supportsAutoPauseResume() {
         return this.installed && gte(this.version, '1.21.0');
     }

@@ -70,7 +70,7 @@ export default defineConfig({
         },
     },
     manifest: ({ browser, mode }) => {
-        const version = '1.21.0';
+        const version = '1.22.0';
         const isDev = mode === 'development';
         const devLabel = isDev ? ' (Dev)' : '';
         const title = `${extName}${devLabel}`;
@@ -120,6 +120,9 @@ export default defineConfig({
                         'svt-play-page.js',
                         'ur-play-page.js',
                         'hulu-jp-page.js',
+                        'rutube-page.js',
+                        'okru-page.js',
+                        'vkvideo-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',

@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "자막 추출",
         "miningHistoryStorageLimit": "추출 기록 최대 저장 수",
         "clickToMineDefaultAction": "자막 추출 버튼 기본 설정",

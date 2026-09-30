@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "挖掘设定",
         "miningHistoryStorageLimit": "挖掘历史存储上限",
         "clickToMineDefaultAction": "点击挖掘按钮默认动作",

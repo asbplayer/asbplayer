@@ -232,6 +232,7 @@ export interface AnkiSettings {
     readonly mediaFragmentTrimStart: number;
     readonly mediaFragmentTrimEnd: number;
     readonly mediaFragmentMaxClipLength: number;
+    readonly trimBlackBars: boolean;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -286,6 +287,7 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     mediaFragmentTrimStart: true,
     mediaFragmentTrimEnd: true,
     mediaFragmentMaxClipLength: true,
+    trimBlackBars: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,
@@ -333,6 +335,7 @@ const subtitleSettingsKeysObject: { [key in keyof SubtitleSettings]: boolean } =
     subtitleAlignment: true,
     subtitleTracksV2: true,
     subtitlesWidth: true,
+    subtitlesWidthUnit: true,
 };
 
 export const subtitleSettingsKeys: (keyof SubtitleSettings)[] = Object.keys(
@@ -364,6 +367,22 @@ export interface TextSubtitleSettings {
     readonly subtitleAlignment: SubtitleAlignment;
 }
 
+export type SubtitlesWidthUnit = '%' | 'px';
+
+export const subtitlesWidthUnits: readonly SubtitlesWidthUnit[] = ['%', 'px'];
+
+export const maxSubtitlesWidth = (unit: SubtitlesWidthUnit): number => (unit === '%' ? 100 : 10000);
+
+export const subtitlesWidthCssValue = (
+    settings: Pick<SubtitleSettings, 'subtitlesWidth' | 'subtitlesWidthUnit'>
+): string | undefined => {
+    if (settings.subtitlesWidth === -1) {
+        return undefined;
+    }
+
+    return `${settings.subtitlesWidth}${settings.subtitlesWidthUnit}`;
+};
+
 export interface SubtitleSettings extends TextSubtitleSettings {
     readonly imageBasedSubtitleScaleFactor: number;
     readonly subtitlePositionOffset: number;
@@ -374,8 +393,9 @@ export interface SubtitleSettings extends TextSubtitleSettings {
     // Track 0 continues to be configured from the top-level settings object.
     readonly subtitleTracksV2: TextSubtitleSettings[];
 
-    // Percentage of containing video width; -1 means 'auto'
+    // Expressed in subtitlesWidthUnit; -1 means 'auto'
     readonly subtitlesWidth: number;
+    readonly subtitlesWidthUnit: SubtitlesWidthUnit;
 }
 
 const textSubtitleSettingsComparators: {
@@ -406,6 +426,7 @@ const subtitleSettingsComparators: {
     topSubtitlePositionOffset: (a, b) => a === b,
     subtitleTracksV2: (a, b) => arrayEquals(a, b, areTextSubtitleSettingsEqual),
     subtitlesWidth: (a, b) => a === b,
+    subtitlesWidthUnit: (a, b) => a === b,
 };
 
 function areTextSubtitleSettingsEqual(
@@ -597,6 +618,9 @@ export interface PageSettings {
     urplay: Page;
     archive: Page;
     crunchyroll: Page;
+    rutube: Page;
+    okru: Page;
+    vkvideo: Page;
 }
 
 export interface StreamingVideoSettings {

@@ -222,6 +222,7 @@ export default class Binding {
     private audioPaddingEnd: number;
     private maxImageWidth: number;
     private maxImageHeight: number;
+    private trimBlackBars = false;
     private imageDelay = 0;
     private pauseOnHoverMode: PauseOnHoverMode = PauseOnHoverMode.disabled;
     private _disablePauseOnHover: boolean;
@@ -411,6 +412,7 @@ export default class Binding {
         return {
             maxWidth: this.maxImageWidth,
             maxHeight: this.maxImageHeight,
+            trimBlackBars: this.trimBlackBars,
             rect: {
                 left: rect.left,
                 top: rect.top,
@@ -1277,6 +1279,7 @@ export default class Binding {
         this.clickToMineDefaultAction = currentSettings.clickToMineDefaultAction;
         this.maxImageWidth = currentSettings.maxImageWidth;
         this.maxImageHeight = currentSettings.maxImageHeight;
+        this.trimBlackBars = currentSettings.trimBlackBars;
         this.copyToClipboardOnMine = currentSettings.copyToClipboardOnMine;
         this.alwaysPlayOnSubtitleRepeat = currentSettings.alwaysPlayOnSubtitleRepeat;
         this.pauseOnHoverMode = currentSettings.pauseOnHoverMode;
@@ -1284,7 +1287,7 @@ export default class Binding {
         this.subtitleController.displaySubtitles = currentSettings.streamingDisplaySubtitles;
         this.subtitleController.bottomSubtitlePositionOffset = currentSettings.subtitlePositionOffset;
         this.subtitleController.topSubtitlePositionOffset = currentSettings.topSubtitlePositionOffset;
-        this.subtitleController.subtitlesWidth = currentSettings.subtitlesWidth;
+        this.subtitleController.setSubtitlesWidth(currentSettings.subtitlesWidth, currentSettings.subtitlesWidthUnit);
         this.subtitleController.surroundingSubtitlesCountRadius = currentSettings.surroundingSubtitlesCountRadius;
         this.subtitleController.surroundingSubtitlesTimeRadius = currentSettings.surroundingSubtitlesTimeRadius;
         this.subtitleController.autoCopyCurrentSubtitle = currentSettings.autoCopyCurrentSubtitle;
@@ -1795,7 +1798,8 @@ export default class Binding {
         const rect = this.video.getBoundingClientRect();
         const maxWidth = this.maxImageWidth;
         const maxHeight = this.maxImageHeight;
-        return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl);
+        // Thumbnail for identifying the video, not a card image, so bars are left as-is
+        return cropAndResize(maxWidth, maxHeight, rect, tabImageDataUrl, false);
     }
 
     async loadSubtitles(files: File[], flatten: boolean, syncWithAsbplayerId?: string) {

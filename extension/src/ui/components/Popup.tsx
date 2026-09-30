@@ -221,6 +221,7 @@ const Popup = ({
                             extensionSupportsOrderableAnkiFields
                             extensionSupportsTrackSpecificSettings
                             extensionSupportsSubtitlesWidthSetting
+                            extensionSupportsSubtitlesWidthInPixels
                             extensionSupportsPauseOnHover
                             extensionSupportsPlaybackEngine
                             extensionSupportsAutoPauseResume

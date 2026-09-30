@@ -179,6 +179,7 @@ interface Props {
     extensionSupportsOrderableAnkiFields: boolean;
     extensionSupportsTrackSpecificSettings: boolean;
     extensionSupportsSubtitlesWidthSetting: boolean;
+    extensionSupportsSubtitlesWidthInPixels: boolean;
     extensionSupportsPauseOnHover: boolean;
     extensionSupportsPlaybackEngine: boolean;
     extensionSupportsAutoPauseResume: boolean;
@@ -235,6 +236,7 @@ export default function SettingsForm({
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
+    extensionSupportsSubtitlesWidthInPixels,
     extensionSupportsPauseOnHover,
     extensionSupportsPlaybackEngine,
     extensionSupportsAutoPauseResume,
@@ -545,6 +547,7 @@ export default function SettingsForm({
                         extensionInstalled={extensionInstalled}
                         extensionSupportsTrackSpecificSettings={extensionSupportsTrackSpecificSettings}
                         extensionSupportsSubtitlesWidthSetting={extensionSupportsSubtitlesWidthSetting}
+                        extensionSupportsSubtitlesWidthInPixels={extensionSupportsSubtitlesWidthInPixels}
                         localFontsAvailable={localFontsAvailable}
                         localFontsPermission={localFontsPermission}
                         localFontFamilies={localFontFamilies}

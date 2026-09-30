@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "Duración máxima de clip",
         "mediaFragmentTrimEnd": "Recorte final del clip",
         "mediaFragmentTrimStart": "Recorte incicio de corte",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "Minado",
         "miningHistoryStorageLimit": "Límite de almacenamiento del historial de minado",
         "clickToMineDefaultAction": "Acción por defecto del botón de minado",

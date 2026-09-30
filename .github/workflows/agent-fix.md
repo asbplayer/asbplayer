@@ -11,6 +11,7 @@ on:
     events: [issue_comment]
   roles: [admin, maintain]
   reaction: eyes
+  status-comment: false # Keep the `edited` issue_comment event out of the compiled lock file to halve command-gated skipped runs
   workflow_dispatch:
     inputs:
       issue-number:
@@ -25,8 +26,18 @@ engine:
   env:
     OPENAI_BASE_URL: https://opencode.ai/zen/go/v1
     OPENAI_API_KEY: ${{ secrets.OPENCODE_GO_API_KEY }}
+  # OpenCode Zen rejects model query-suffix params (model "gpt-6-luna?effort=high"
+  # yields ModelError "not supported"), so attach reasoning effort as a codex
+  # config override instead.
+  args:
+    - '-c model_reasoning_effort="high"'
 
 timeout-minutes: 60
+
+checkout:
+  # Full history: the create_pull_request merge-base computation needs origin/main
+  # ancestry; shallow clones (.git/shallow) break it.
+  fetch-depth: 0
 
 network:
   allowed:
@@ -61,14 +72,32 @@ pre-agent-steps:
     run: |
       pnpm install --filter @project/extension --filter @project/common --filter @project/client
 
+  - name: Vendor pnpm for the agent sandbox
+    run: |
+      # The AWF container does not inherit the runner's PATH, so pnpm (and corepack)
+      # are unavailable inside the sandbox even though node_modules are mounted.
+      # Vendor a pnpm matching devEngines.packageManager into the workspace so the
+      # agent can invoke it by path.
+      VERSION=$(node -p "require('./package.json').devEngines.packageManager.version")
+      npm install --prefix .agent-tooling --no-save "pnpm@${VERSION}"
+
   - name: Capture requesting maintainer
     env:
+      AW_COMMENT_ID: ${{ github.event.comment.id }}
+      AW_REPO: ${{ github.repository }}
       AW_FALLBACK_LOGIN: ${{ github.actor }}
+      GH_TOKEN: ${{ github.token }}
     run: |
-      # Comment-triggered runs: the /agent commenter. Manual dispatch runs: the actor.
-      jq '(.comment.user) as $u | {login: ($u.login // ""), id: ($u.id // 0)}'
-        "$GITHUB_EVENT_PATH" > .agent-requesting-maintainer.json
-      if [ ! -s .agent-requesting-maintainer.json ] || ! jq -e '.login' .agent-requesting-maintainer.json > /dev/null; then
+      # Comment-triggered runs: resolve the /agent commenter via the API
+      # (the raw event payload is not accessible in this job on gh-aw).
+      # Manual dispatch runs: fall back to the actor.
+      ok=0
+      if [ -n "$AW_COMMENT_ID" ]; then
+        gh api "repos/$AW_REPO/issues/comments/$AW_COMMENT_ID" \
+          --jq '(.user) as $u | {login: ($u.login // ""), id: ($u.id // 0)}' \
+          > .agent-requesting-maintainer.json && ok=1
+      fi
+      if [ "$ok" = "0" ] || [ ! -s .agent-requesting-maintainer.json ]; then
         echo "{\"login\": \"$AW_FALLBACK_LOGIN\", \"id\": 0}" > .agent-requesting-maintainer.json
       fi
       cat .agent-requesting-maintainer.json
@@ -113,28 +142,56 @@ Propose a change only if **all** of these hold. If any fail, go to "Decline":
 
 ## Step 3: Implement and verify
 
-Edit the minimum required files.
-
-Verify offline (dependencies are pre-installed in `node_modules`). Run the
-relevant subset of the repo's `verify` script. Match the tool(s) you changed:
+Before making any edits, snapshot the requester file and create the PR branch
+**from the base branch** — never from whatever ref the run started on:
 
 ```sh
-pnpm --filter @project/common run typecheck
-pnpm --filter @project/common run test
-pnpm --filter @project/client run typecheck
-pnpm --filter @project/client run test
-pnpm --filter @project/extension run typecheck
-pnpm --filter @project/extension run test
-pnpm eslint common extension/src client/src
-pnpm run pretty:check
+git switch -c agent/<short> origin/main
+```
+
+Full history is available locally (fetch-depth 0), so this works offline. This
+keeps the PR patch limited to your own commit even when the run was dispatched
+from another branch. Do not merge or cherry-pick anything else.
+
+Edit the minimum required files.
+
+### Sandbox tool limits (read first)
+
+- Your shell runs inside a restricted container at `/github/workspace`.
+  Dependencies are pre-installed in `node_modules`, but **`pnpm` is not on
+  PATH**. It is vendored at `./.agent-tooling/node_modules/.bin/pnpm`. Prefix
+  every verification command with
+  `PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH"` — package scripts (like
+  `pretty:check`) call bare `pnpm` internally, and the prefix makes those nested
+  calls resolve too. Do not modify `.agent-tooling`.
+- Never install packages, never enable corepack.
+- Never read, edit, or commit anything under `.github/` — the PR tool refuses
+  patches touching it, and workflow files are outside your scope entirely.
+- Do not commit `.agent-requesting-maintainer.json` or anything under
+  `.agent-tooling/`.
+
+### Verification commands
+
+Verify offline. Run the relevant subset of the repo's `verify` script — match
+the tool(s) you changed:
+
+```sh
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/common run typecheck
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/common run test
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run compile
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/client run test
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run compile
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm --filter @project/extension run test
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm eslint common extension/src client/src
+PATH="$PWD/.agent-tooling/node_modules/.bin:$PATH" pnpm run pretty:check
 ```
 
 Rules:
 
-- Network access is blocked in this environment. Dependencies are already
-  installed; don't install anything else. If a check fails due to the sandbox
-  (e.g. it requires network), record it as "not verified" instead of trying to
-  work around it.
+- Network access is blocked in this environment. If a check fails due to the
+  sandbox (e.g. it requires network), record it as "not verified" instead of
+  trying to work around it — in particular, do not edit workflow files,
+  tool configs, or open your own permissions.
 - Only run checks relevant to the files you changed; prefer running full checks
   when affordable.
 - If a verification failure reveals your fix is not low-risk or you cannot make
@@ -146,8 +203,7 @@ Rules:
 When `create-pull-request` is configured, git commands (`branch`, `switch`,
 `add`, `commit`) are automatically available to you.
 
-1. Commit your change on a new branch with a conventional-commit style message:
-   imperative subject like `fix: prevent word wrap on double-width glyphs`, and
+1. Commit with a conventional-commit style message: imperative subject like `fix: prevent word wrap on double-width glyphs`, and
    in the message footer:
 
 ```text

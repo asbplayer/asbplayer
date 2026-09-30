@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "クリップの最大時間",
         "mediaFragmentTrimEnd": "開始時のカット時間",
         "mediaFragmentTrimStart": "終了時のカット時間",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "マイニング",
         "miningHistoryStorageLimit": "マイニング履歴の保存数上限",
         "clickToMineDefaultAction": "ボタンでマイニングした際のデフォルト動作",

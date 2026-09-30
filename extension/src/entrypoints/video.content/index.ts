@@ -252,7 +252,8 @@ export default defineContentScript({
                             cropAndResizeMessage.maxWidth,
                             cropAndResizeMessage.maxHeight,
                             rect,
-                            cropAndResizeMessage.dataUrl
+                            cropAndResizeMessage.dataUrl,
+                            cropAndResizeMessage.trimBlackBars
                         ).then((dataUrl) => sendResponse({ dataUrl }));
                         return true;
                     }

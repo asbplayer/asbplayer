@@ -118,6 +118,7 @@ const SettingsPage = ({
                         extensionSupportsOrderableAnkiFields
                         extensionSupportsTrackSpecificSettings
                         extensionSupportsSubtitlesWidthSetting
+                        extensionSupportsSubtitlesWidthInPixels
                         extensionSupportsPauseOnHover
                         extensionSupportsPlaybackEngine
                         extensionSupportsAutoPauseResume

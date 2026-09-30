@@ -439,6 +439,9 @@ const settingsSchema = {
         mediaFragmentMaxClipLength: {
             type: 'number',
         },
+        trimBlackBars: {
+            type: 'boolean',
+        },
         surroundingSubtitlesCountRadius: {
             type: 'number',
         },
@@ -698,6 +701,9 @@ const settingsSchema = {
         },
         subtitlesWidth: {
             type: 'number',
+        },
+        subtitlesWidthUnit: {
+            type: 'string',
         },
         streamingAppUrl: {
             type: 'string',

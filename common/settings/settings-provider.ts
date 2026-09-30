@@ -4,6 +4,7 @@ import type {
     AnkiSettings,
     AsbplayerSettings,
     KeyBindName,
+    PageSettings,
     SubtitleSettings,
     TextSubtitleSettings,
 } from '@project/common/settings/settings';
@@ -153,6 +154,7 @@ export const defaultSettings: AsbplayerSettings = {
     thumbnailPreview: false,
     subtitleTracksV2: [],
     subtitlesWidth: -1,
+    subtitlesWidthUnit: '%',
     audioPaddingStart: 0,
     audioPaddingEnd: 500,
     maxImageWidth: 0,
@@ -161,6 +163,7 @@ export const defaultSettings: AsbplayerSettings = {
     mediaFragmentTrimStart: 200,
     mediaFragmentTrimEnd: 200,
     mediaFragmentMaxClipLength: 10000,
+    trimBlackBars: false,
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
@@ -319,6 +322,9 @@ export const defaultSettings: AsbplayerSettings = {
         urplay: {},
         archive: {},
         crunchyroll: {},
+        rutube: {},
+        okru: {},
+        vkvideo: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
@@ -669,8 +675,41 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
     }
 };
 
+const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) => {
+    const streamingPages = settings.streamingPages;
+
+    if (streamingPages === undefined) {
+        return;
+    }
+
+    const newStreamingPages: any = {};
+    let streamingPagesModified = false;
+
+    for (const key of Object.keys(defaultSettings.streamingPages)) {
+        const pageName = key as keyof PageSettings;
+
+        if (
+            streamingPages[pageName] === null ||
+            streamingPages[pageName] === undefined ||
+            typeof streamingPages[pageName] !== 'object'
+        ) {
+            newStreamingPages[pageName] = defaultSettings.streamingPages[pageName];
+            streamingPagesModified = true;
+        } else {
+            newStreamingPages[pageName] = streamingPages[pageName];
+        }
+    }
+
+    if (!streamingPagesModified) {
+        return;
+    }
+
+    (settings as any).streamingPages = newStreamingPages;
+};
+
 export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) => {
     ensureDictionaryTracksConsistency(settings);
+    ensureStreamingPagesConsistency(settings);
 
     let keyBindSetModified = false;
     const newKeyBindSet: any = {};

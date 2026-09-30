@@ -44,6 +44,7 @@ export default class TakeScreenshotHandler {
                 maxHeight,
                 rect,
                 frameId,
+                trimBlackBars: takeScreenshotCommand.message.trimBlackBars,
             });
             imageModel = {
                 base64: imageBase64,

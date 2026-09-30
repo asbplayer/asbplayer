@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "Kopanie",
         "miningHistoryStorageLimit": "Limit przechowywania historii kopania",
         "clickToMineDefaultAction": "Domyślna akcja przycisku kopania",

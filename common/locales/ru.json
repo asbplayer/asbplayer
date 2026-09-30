@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "Max clip length",
         "mediaFragmentTrimEnd": "Clip trim end",
         "mediaFragmentTrimStart": "Clip trim start",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "Майнинг",
         "miningHistoryStorageLimit": "Лимит хранения истории майнинга",
         "clickToMineDefaultAction": "Действие кнопки майнинга по умолчанию",

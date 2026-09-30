@@ -1,4 +1,4 @@
-import pagesConfig from '@project/extension/src/pages.json';
+import rawPagesConfig from '@project/extension/src/pages.json';
 import type { PublicPath } from 'wxt/browser';
 import { isOnTutorialPage } from '@project/extension/src/services/tutorial';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
@@ -11,6 +11,8 @@ import { genericSubtitleParserOptionsForHost } from '@project/extension/src/serv
 interface PageConfigFile {
     pages: PageConfig[];
 }
+
+const pagesConfig = rawPagesConfig as PageConfigFile; // JSON imports widen string literals, including subtitleDiscoveryRequestTarget.
 
 const baseGenericPageScript = 'base-generic-page.js';
 const aggressiveGenericPageScript = 'aggressive-generic-page.js';
@@ -30,6 +32,10 @@ export interface PageConfig {
 
     // Whether this is the generic fallback used for otherwise unsupported pages
     generic?: boolean;
+
+    // Where subtitle discovery requests should originate. Generic discovery uses
+    // the active video element so its event path identifies the video to inspect.
+    subtitleDiscoveryRequestTarget?: 'document' | 'video';
 
     // Whether to refresh available subtitle tracks when the subtitle picker opens
     refreshSubtitleDataOnPickerOpen?: boolean;

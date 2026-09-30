@@ -447,6 +447,7 @@
         "mediaFragmentMaxClipLength": "Lunghezza massima della clip",
         "mediaFragmentTrimEnd": "Fine taglio clip",
         "mediaFragmentTrimStart": "Inizio taglio clip",
+        "trimBlackBars": "Trim black bars from screenshots",
         "mining": "Estrazione",
         "miningHistoryStorageLimit": "Limite archiviazione cronologia estrazione",
         "clickToMineDefaultAction": "Azione predefinita del pulsante di estrazione",

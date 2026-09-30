@@ -115,7 +115,7 @@ it('retries rendering after createVideoElement failure', async () => {
     createVideoElementMock.mockResolvedValue(video as unknown as HTMLVideoElement);
     mockCanvasCreation();
 
-    const data = new JpegFileMediaFragmentData(file, 2_000, 0, 0);
+    const data = new JpegFileMediaFragmentData(file, 2_000, 0, 0, false);
 
     await expect(data.dataUrl()).rejects.toThrow('create video failed');
 
@@ -134,7 +134,7 @@ it('cancels in-flight rendering on timestamp change and allows old instance retr
     createVideoElementMock.mockResolvedValue(video as unknown as HTMLVideoElement);
     mockCanvasCreation();
 
-    const data = new JpegFileMediaFragmentData(file, 1_000, 0, 0);
+    const data = new JpegFileMediaFragmentData(file, 1_000, 0, 0, false);
 
     const inFlightPromise = data.dataUrl();
     await flushAsync();
@@ -159,7 +159,7 @@ it('registers seek listeners before seeking and clears listeners after render se
     createVideoElementMock.mockResolvedValue(video as unknown as HTMLVideoElement);
     mockCanvasCreation();
 
-    const data = new JpegFileMediaFragmentData(file, 1_500, 0, 0);
+    const data = new JpegFileMediaFragmentData(file, 1_500, 0, 0, false);
 
     const renderPromise = data.dataUrl();
     await flushAsync();

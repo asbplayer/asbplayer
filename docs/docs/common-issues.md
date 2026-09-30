@@ -6,6 +6,14 @@ sidebar_position: 5
 
 ## General
 
+### Subtitles aren't showing up
+
+It's possible to hide the subtitles in asbplayer through a few ways:
+
+- The [`Toggle subtitles`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcut.
+- The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
+- The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Misc > Playback Modes`
+
 ### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.'
 
 This can happen due to ad blockers:
