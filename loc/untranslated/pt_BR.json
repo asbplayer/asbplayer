@@ -1,7 +1,6 @@
 {
     "common": {
-        "info.toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display",
-        "settings.trimBlackBars": "Trim black bars from screenshots"
+        "info.toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display"
     },
     "extension": {},
     "external": {}

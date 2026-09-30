@@ -85,8 +85,7 @@
         "settings.webSocketServerUrl": "WebSocket Server URL",
         "settings.firefoxExtensionShortcutHelp": "Edit this shortcut from the Plugin manager at about:addons.",
         "settings.postMinePlayback": "Post-mining playback state",
-        "subtitlePlayer.multiSubtitleSelectHelp": "Click, hold, and drag to mine multiple subtitles",
-        "settings.trimBlackBars": "Trim black bars from screenshots"
+        "subtitlePlayer.multiSubtitleSelectHelp": "Click, hold, and drag to mine multiple subtitles"
     },
     "extension": {},
     "external": {}

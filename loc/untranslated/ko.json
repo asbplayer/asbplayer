@@ -1,7 +1,5 @@
 {
-    "common": {
-        "settings.trimBlackBars": "Trim black bars from screenshots"
-    },
+    "common": {},
     "extension": {},
     "external": {}
 }

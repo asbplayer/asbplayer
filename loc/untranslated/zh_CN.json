@@ -36,8 +36,7 @@
         "settings.unlockLocalFonts": "Click to unlock font menu",
         "settings.webSocketClientEnabled": "Enable WebSocket client",
         "settings.webSocketServerUrl": "WebSocket Server URL",
-        "settings.firefoxExtensionShortcutHelp": "Edit this shortcut from the Plugin manager at about:addons.",
-        "settings.trimBlackBars": "Trim black bars from screenshots"
+        "settings.firefoxExtensionShortcutHelp": "Edit this shortcut from the Plugin manager at about:addons."
     },
     "extension": {},
     "external": {}
