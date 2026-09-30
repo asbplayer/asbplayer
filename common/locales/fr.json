@@ -452,6 +452,7 @@
         "miningHistoryStorageLimit": "Limite de stockage de l'historique du minage",
         "clickToMineDefaultAction": "Action par défaut du bouton de minage",
         "misc": "Divers",
+        "tools": "Tools",
         "mp3Preference": "Réencoder l'audio en mp3 (plus lent)",
         "noteType": "Type de note",
         "pages": "Pages",

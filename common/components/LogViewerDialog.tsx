@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
@@ -14,6 +13,12 @@ import { download, getCurrentTimeString } from '@project/common/util';
 import { formatLogLine } from '@project/common/util/log-utils';
 import type { LogLevel, LogLine } from '@project/common/util/log-utils';
 import type { LogProvider } from '@project/common/util/log';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import DownloadIcon from '@mui/icons-material/Download';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CloseIcon from '@mui/icons-material/Close';
+import IconButton from '@mui/material/IconButton';
 
 interface Props {
     open: boolean;
@@ -89,19 +94,37 @@ const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider }) => {
             maxWidth="md"
             open={open}
             onClose={onClose}
+            aria-label={t('settings.logs')}
             slotProps={{ transition: { onEntered: scrollLogLines } }}
         >
-            <DialogTitle
-                component="div"
-                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
-            >
-                <span>{t('settings.logs')}</span>
+            <Toolbar sx={{ gap: 1 }}>
+                <Typography
+                    variant="h6"
+                    noWrap
+                    sx={{ minWidth: 0, flexGrow: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                >
+                    {t('settings.logs')}
+                </Typography>
                 <FormControlLabel
-                    sx={{ m: 0 }}
+                    sx={{ mx: 0, minWidth: 0 }}
+                    slotProps={{
+                        typography: {
+                            noWrap: true,
+                            component: 'span',
+                            sx: {
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                minWidth: 0,
+                            },
+                        },
+                    }}
                     control={<Switch checked={showTrace} onChange={(event) => setShowTrace(event.target.checked)} />}
                     label={t('settings.traceLogging')}
                 />
-            </DialogTitle>
+                <IconButton aria-label={t('action.close')} onClick={onClose}>
+                    <CloseIcon />
+                </IconButton>
+            </Toolbar>
             <DialogContent dividers>
                 {loadError && <Alert severity="error">{loadError}</Alert>}
                 <Box
@@ -133,33 +156,33 @@ const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider }) => {
                     ))}
                 </Box>
             </DialogContent>
-            <DialogActions sx={{ justifyContent: 'space-between', gap: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <TextField
-                        size="small"
-                        type="number"
-                        label={t('settings.lines')}
-                        value={numberOfLines}
-                        onChange={(event) => {
-                            const value = Math.max(1, Math.floor(Number(event.target.value)));
-                            if (Number.isFinite(value)) {
-                                setNumberOfLines(value);
-                            }
-                        }}
-                        slotProps={{
-                            htmlInput: {
-                                min: 1,
-                                step: 1,
-                            },
-                        }}
-                        sx={{ width: 100 }}
-                    />
-                    <Button onClick={() => void reloadLogLines('top')}>{t('action.reload')}</Button>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button onClick={() => void handleExportLogs()}>{t('ankiDialog.export')}</Button>
-                    <Button onClick={onClose}>{t('action.close')}</Button>
-                </Box>
+            <DialogActions>
+                <TextField
+                    size="small"
+                    type="number"
+                    label={t('settings.lines')}
+                    value={numberOfLines}
+                    onChange={(event) => {
+                        const value = Math.max(1, Math.floor(Number(event.target.value)));
+                        if (Number.isFinite(value)) {
+                            setNumberOfLines(value);
+                        }
+                    }}
+                    slotProps={{
+                        htmlInput: {
+                            min: 1,
+                            step: 1,
+                        },
+                    }}
+                    sx={{ width: 100 }}
+                />
+                <div style={{ display: 'flex', flexGrow: 1 }} />
+                <Button startIcon={<DownloadIcon />} onClick={() => void handleExportLogs()}>
+                    {t('ankiDialog.export')}
+                </Button>
+                <Button startIcon={<RefreshIcon />} onClick={() => void reloadLogLines('top')}>
+                    {t('action.reload')}
+                </Button>
             </DialogActions>
         </Dialog>
     );

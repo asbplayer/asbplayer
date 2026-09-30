@@ -452,6 +452,7 @@
         "miningHistoryStorageLimit": "Mining history storage limit",
         "clickToMineDefaultAction": "Mining button default action",
         "misc": "Misc",
+        "tools": "Tools",
         "mp3Preference": "Re-encode audio as mp3 (slower)",
         "noteType": "Note Type",
         "pages": "Pages",

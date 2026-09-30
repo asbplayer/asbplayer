@@ -452,6 +452,7 @@
         "miningHistoryStorageLimit": "Лимит хранения истории майнинга",
         "clickToMineDefaultAction": "Действие кнопки майнинга по умолчанию",
         "misc": "Разное",
+        "tools": "Tools",
         "mp3Preference": "Перекодировать аудио в MP3 (медленнее)",
         "noteType": "Тип Anki-записи",
         "pages": "Pages",

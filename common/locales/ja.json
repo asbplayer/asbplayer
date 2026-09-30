@@ -452,6 +452,7 @@
         "miningHistoryStorageLimit": "マイニング履歴の保存数上限",
         "clickToMineDefaultAction": "ボタンでマイニングした際のデフォルト動作",
         "misc": "その他",
+        "tools": "Tools",
         "mp3Preference": "音声を mp3 形式で再録音（低速）",
         "noteType": "メモタイプ",
         "pages": "ページ",

@@ -452,6 +452,7 @@
         "miningHistoryStorageLimit": "추출 기록 최대 저장 수",
         "clickToMineDefaultAction": "자막 추출 버튼 기본 설정",
         "misc": "기타",
+        "tools": "Tools",
         "mp3Preference": "오디오를 MP3로 다시 인코딩 (속도 느림)",
         "noteType": "노트 유형",
         "pages": "Pages",

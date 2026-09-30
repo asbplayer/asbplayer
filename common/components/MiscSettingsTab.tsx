@@ -1,6 +1,5 @@
 import { asbError } from '@project/common/util/log';
 import type { LogProvider } from '@project/common/util/log';
-import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -43,6 +42,13 @@ import { normalizeAutoPauseDurationBounds } from '@project/common/playback/plan/
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 import LogViewerDialog from '@project/common/components/LogViewerDialog';
+import BuildIcon from '@mui/icons-material/Build';
+import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import NoWrapButton from '@project/common/components/NoWrapButton';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 function regexIsValid(regex: string) {
     try {
@@ -218,21 +224,25 @@ const MiscSettingTab: React.FC<Props> = ({
     const handleExportSettings = useCallback(() => {
         exportSettings(settings);
     }, [settings]);
+    const theme = useTheme();
+    const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
     return (
         <>
             <Stack spacing={1}>
-                <Stack direction="row" spacing={1}>
-                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleImportSettings}>
+                <SettingsSection>{t('settings.tools')}</SettingsSection>
+                <ButtonGroup size="small" variant="contained" orientation={isSmallScreen ? 'vertical' : 'horizontal'}>
+                    <NoWrapButton fullWidth startIcon={<UploadIcon />} onClick={handleImportSettings}>
                         {t('action.importSettings')}
-                    </Button>
-                    <Button variant="contained" color="primary" style={{ flex: 1 }} onClick={handleExportSettings}>
+                    </NoWrapButton>
+                    <NoWrapButton fullWidth startIcon={<DownloadIcon />} onClick={handleExportSettings}>
                         {t('action.exportSettings')}
-                    </Button>
-                </Stack>
-                <Button fullWidth variant="contained" color="primary" onClick={() => setLogViewerOpen(true)}>
-                    {t('settings.logs')}
-                </Button>
+                    </NoWrapButton>
+                    <NoWrapButton fullWidth startIcon={<BuildIcon />} onClick={() => setLogViewerOpen(true)}>
+                        {t('settings.logs')}
+                    </NoWrapButton>
+                </ButtonGroup>
+
                 <SettingsSection>{t('settings.ui')}</SettingsSection>
                 <FormControl>
                     <FormLabel>{t('settings.theme')}</FormLabel>

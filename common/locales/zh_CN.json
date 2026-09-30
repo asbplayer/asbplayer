@@ -452,6 +452,7 @@
         "miningHistoryStorageLimit": "挖掘历史存储上限",
         "clickToMineDefaultAction": "点击挖掘按钮默认动作",
         "misc": "杂项设置",
+        "tools": "Tools",
         "mp3Preference": "将音频重新编码为 MP3（耗时较长）",
         "noteType": "笔记类型",
         "pages": "网页规则",
