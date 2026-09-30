@@ -11,6 +11,7 @@ on:
     events: [issue_comment]
   roles: [admin, maintain]
   reaction: eyes
+  status-comment: false # Keep the `edited` issue_comment event out of the compiled lock file to halve command-gated skipped runs
   workflow_dispatch:
     inputs:
       issue-number:
