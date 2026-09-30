@@ -2279,7 +2279,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 }
                                             />
                                         </div>
-                                        <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'center' }}>
+                                        <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'end' }}>
                                             <TextField
                                                 type="color"
                                                 sx={{ width: '50%' }}
