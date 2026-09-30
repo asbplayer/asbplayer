@@ -1,4 +1,4 @@
-import { asbError, asbInfo } from '@project/common/util';
+import { asbError, asbInfo } from '@project/common/util/log';
 import Binding from '@/services/binding';
 import type { PageDelegate } from '@/services/pages';
 import { currentPageDelegate } from '@/services/pages';

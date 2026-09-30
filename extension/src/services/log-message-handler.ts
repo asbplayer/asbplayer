@@ -1,4 +1,5 @@
-import type { LogLine, LogProvider, LogStorage } from '@project/common/util/log';
+import type { LogProvider } from '@project/common/util/log';
+import type { LogLine, LogStorage } from '@project/common/util/log-utils';
 
 type LogRequest = {
     sender?: string;

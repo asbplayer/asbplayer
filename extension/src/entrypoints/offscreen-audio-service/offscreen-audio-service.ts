@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 import type {
     StartRecordingAudioWithTimeoutMessage,

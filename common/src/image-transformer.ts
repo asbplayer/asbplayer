@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { RectModel } from '@project/common/src/model';
 import { detectBlackBars } from '@project/common/src/black-bars';
 

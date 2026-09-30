@@ -1,5 +1,5 @@
-import type { LogLine, LogSnapshot, LogStorage } from '@project/common/util/log';
-import { LOG_LINES_KEY, trimLogLines } from '@project/common/util/log';
+import type { LogLine, LogSnapshot, LogStorage } from '@project/common/util/log-utils';
+import { LOG_LINES_KEY, trimLogLines } from '@project/common/util/log-utils';
 import type { StorageArea } from '@project/extension/src/services/extension-settings-storage';
 
 export class SessionLogStorage implements LogStorage {

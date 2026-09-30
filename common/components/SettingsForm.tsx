@@ -25,7 +25,7 @@ import type { KeyboardShortcutSection } from '@project/common/components/Keyboar
 import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
 import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
-import type { LogProvider } from '@project/common/util';
+import type { LogProvider } from '@project/common/util/log';
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import type { TutorialBubbleProps } from '@project/common/components/TutorialBubble';
 

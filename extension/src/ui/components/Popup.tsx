@@ -25,7 +25,7 @@ import TutorialIcon from '@project/common/components/TutorialIcon';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import Paper from '@mui/material/Paper';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
-import type { LogProvider } from '@project/common/util';
+import type { LogProvider } from '@project/common/util/log';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { uiTabRegistry, useMediaId, useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';

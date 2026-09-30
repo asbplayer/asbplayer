@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { PlaybackTimelineTransitionCause } from '@project/common/playback/plan/playback-plan-executor';
 
 export interface TimingDriverCallbacks {

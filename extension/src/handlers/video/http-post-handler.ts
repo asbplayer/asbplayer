@@ -1,5 +1,5 @@
 import type { Command, HttpPostMessage, Message } from '@project/common';
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 
 const allowedKeys = ['version', 'action', 'params', 'key', 'text', 'scanLength', 'parser', 'term'];
 const allowedActions = [

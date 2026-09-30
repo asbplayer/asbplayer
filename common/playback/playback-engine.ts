@@ -2,7 +2,8 @@ import { defaultSettings, isTrackSeekable } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { PlayMode } from '@project/common';
-import { asbWarn, formatAsSignedMs } from '@project/common/util';
+import { asbWarn } from '@project/common/util/log';
+import { formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
     playbackPlansEqual,

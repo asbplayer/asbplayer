@@ -1,4 +1,5 @@
-import { asbError, surroundingSubtitlesAroundInterval } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { surroundingSubtitlesAroundInterval } from '@project/common/util';
 import type { CardExportedMessage, CopySubtitleMessage, Message } from '@project/common';
 import { PostMineAction } from '@project/common';
 import type Binding from '@project/extension/src/services/binding';

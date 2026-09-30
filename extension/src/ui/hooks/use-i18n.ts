@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { ReadCallback } from 'i18next';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';

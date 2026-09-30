@@ -5,7 +5,6 @@ import {
     MAX_LOG_MESSAGE_LENGTH,
 } from '@project/common/util/log-utils';
 import type { LogLevel, LogLine, LogStorage } from '@project/common/util/log-utils';
-export * from '@project/common/util/log-utils';
 
 export class LogProvider {
     private writeQueue: Promise<void> = Promise.resolve();

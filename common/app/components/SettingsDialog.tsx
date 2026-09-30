@@ -17,7 +17,7 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Theme } from '@mui/material';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
-import type { LogProvider } from '@project/common/util';
+import type { LogProvider } from '@project/common/util/log';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 

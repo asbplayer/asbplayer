@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import { renderPopupUi } from '@/ui/popup';
 import { SettingsProvider } from '@project/common/settings';

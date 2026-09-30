@@ -1,7 +1,7 @@
 import type { VideoDataSubtitleTrack, VideoData } from '@project/common';
 import { trackFromDef } from '@/pages/util';
 import { v4 as uuidv4 } from 'uuid';
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 
 const SUBTITLE_IMAGE_CODECS = ['pgs', 'vobsub']; // Plex will only burn in these subtitles
 

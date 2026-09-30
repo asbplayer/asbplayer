@@ -1,5 +1,5 @@
 import type { AppendLogsMessage, AsbPlayerCommand, GetLogsMessage, GetLogsResponse } from '@project/common';
-import type { LogLine, LogSnapshot, LogStorage } from '@project/common/util/log';
+import type { LogLine, LogSnapshot, LogStorage } from '@project/common/util/log-utils';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ExtensionLogStorage implements LogStorage {

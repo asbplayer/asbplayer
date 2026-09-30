@@ -6,7 +6,7 @@ import { AppExtensionDictionaryStorage } from '@project/common/app/services/app-
 import { AppExtensionSettingsStorage } from '@project/common/app/services/app-extension-settings-storage';
 import { AppExtensionGlobalStateProvider } from '@project/common/app/services/app-extension-global-state-provider';
 import { SettingsProvider } from '@project/common/settings';
-import { configureLogProvider, LogProvider } from '@project/common/util';
+import { configureLogProvider, LogProvider } from '@project/common/util/log';
 import { LocalDictionaryStorage } from '@project/client/src/local-dictionary-storage';
 import { LocalSettingsStorage } from '@project/client/src/local-settings-storage';
 import { LocalLogStorage } from '@project/client/src/local-log-storage';

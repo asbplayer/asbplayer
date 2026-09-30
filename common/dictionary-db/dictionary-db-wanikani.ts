@@ -1,4 +1,5 @@
-import { asbError, HAS_LETTER_REGEX, inBatches } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { HAS_LETTER_REGEX, inBatches } from '@project/common/util';
 import type {
     DictionaryBuildWaniKaniCacheProgress,
     DictionaryBuildWaniKaniCacheStart,

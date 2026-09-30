@@ -1,4 +1,4 @@
-import { asbError, configureLogProvider, LogProvider } from '@project/common/util';
+import { asbError, configureLogProvider, LogProvider } from '@project/common/util/log';
 import { SessionLogStorage } from '@/services/session-log-storage';
 import { handleLogMessage } from '@/services/log-message-handler';
 import type { Asbplayer } from '@/services/tab-registry';

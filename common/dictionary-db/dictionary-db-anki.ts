@@ -1,4 +1,5 @@
-import { asbError, HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { HAS_LETTER_REGEX, inBatches, mapAsync } from '@project/common/util';
 import type { NoteInfo } from '@project/common/anki';
 import { Anki, escapeAnkiDeckQuery, escapeAnkiQuery } from '@project/common/anki';
 import type {

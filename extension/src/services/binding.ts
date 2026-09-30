@@ -1,6 +1,5 @@
 import {
     adjacentSubtitle,
-    asbError,
     buildSubtitleTracks,
     clampMediaTimestamp,
     errorMessageFromVideo,
@@ -11,6 +10,7 @@ import {
     surroundingSubtitlesAroundInterval,
     timeDurationDisplay,
 } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type {
     AckMessage,
     AnkiUiSavedState,

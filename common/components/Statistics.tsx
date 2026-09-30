@@ -55,7 +55,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import Tooltip from '@mui/material/Tooltip';
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { timeDurationDisplay } from '@project/common/util/util';
 import type { SxProps, Theme } from '@mui/material/styles';
 import Stack from '@mui/material/Stack';

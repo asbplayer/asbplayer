@@ -10,8 +10,10 @@ import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { download, formatLogLine, getCurrentTimeString } from '@project/common/util';
-import type { LogLevel, LogLine, LogProvider } from '@project/common/util';
+import { download, getCurrentTimeString } from '@project/common/util';
+import { formatLogLine } from '@project/common/util/log-utils';
+import type { LogLevel, LogLine } from '@project/common/util/log-utils';
+import type { LogProvider } from '@project/common/util/log';
 
 interface Props {
     open: boolean;

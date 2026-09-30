@@ -7,11 +7,9 @@ import {
     asbWarn,
     configureLogProvider,
     LogProvider,
-    MAX_LOG_MESSAGE_LENGTH,
-    MAX_NON_TRACE_LOG_COUNT,
-    MAX_TRACE_LOG_COUNT,
-} from '@project/common/util';
-import type { LogLine, LogStorage } from '@project/common/util/log';
+} from '@project/common/util/log';
+import { MAX_LOG_MESSAGE_LENGTH, MAX_NON_TRACE_LOG_COUNT, MAX_TRACE_LOG_COUNT } from '@project/common/util/log-utils';
+import type { LogLine, LogStorage } from '@project/common/util/log-utils';
 
 const createLogStorage = (): LogStorage => {
     const lines: LogLine[] = [];

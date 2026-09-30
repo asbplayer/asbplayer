@@ -58,7 +58,8 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { asbError, getTokenStatus, normalizedLookupTerms } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { getTokenStatus, normalizedLookupTerms } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import Box from '@mui/material/Box';
 

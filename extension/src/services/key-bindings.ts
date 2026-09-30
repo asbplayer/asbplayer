@@ -1,4 +1,5 @@
-import { asbError, ensureStoragePersisted, retryWithAnimationFrame } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { ensureStoragePersisted, retryWithAnimationFrame } from '@project/common/util';
 import type {
     OpenStatisticsMessage,
     SettingsUpdatedMessage,

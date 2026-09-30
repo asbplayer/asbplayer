@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { GlobalState, GlobalStateProvider } from '@project/common/global-state';
 import { initialGlobalState } from '@project/common/global-state';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';

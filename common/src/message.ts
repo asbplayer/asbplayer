@@ -31,7 +31,7 @@ import type {
     IndexedSubtitleModel,
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
-import type { LogLine, LogSnapshot } from '@project/common/util/log';
+import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,

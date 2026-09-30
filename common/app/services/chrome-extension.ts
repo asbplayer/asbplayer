@@ -90,7 +90,7 @@ import type {
 import { isSaveOnlySettings } from '@project/common/settings';
 import type { GlobalState } from '@project/common/global-state';
 import { v4 as uuidv4 } from 'uuid';
-import type { LogLine, LogSnapshot } from '@project/common/util/log';
+import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import gte from 'semver/functions/gte';
 import gt from 'semver/functions/gt';
 import { isFirefox } from '@project/common/browser-detection';

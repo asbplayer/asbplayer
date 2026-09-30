@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     Command,

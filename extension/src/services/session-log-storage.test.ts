@@ -1,6 +1,6 @@
 import { expect, it, jest } from '@jest/globals';
-import { MAX_NON_TRACE_LOG_COUNT, MAX_TRACE_LOG_COUNT } from '@project/common/util/log';
-import type { LogLine } from '@project/common/util/log';
+import { MAX_NON_TRACE_LOG_COUNT, MAX_TRACE_LOG_COUNT } from '@project/common/util/log-utils';
+import type { LogLine } from '@project/common/util/log-utils';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import { SessionLogStorage } from '@project/extension/src/services/session-log-storage';
 

@@ -1,4 +1,4 @@
-import { configureLogProvider, LogProvider } from '@project/common/util';
+import { configureLogProvider, LogProvider } from '@project/common/util/log';
 import { ExtensionLogStorage } from '@/services/extension-log-storage';
 
 export const extensionLogProvider = new LogProvider(new ExtensionLogStorage());

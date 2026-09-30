@@ -1,4 +1,5 @@
-import { asbError, download, timeDurationDisplay } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { download, timeDurationDisplay } from '@project/common/util';
 import { MediaFragment } from '@project/common';
 import type {
     AsbplayerInstance,

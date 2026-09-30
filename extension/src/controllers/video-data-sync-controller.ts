@@ -1,4 +1,5 @@
-import { arrayEquals, asbError } from '@project/common/util';
+import { arrayEquals } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,

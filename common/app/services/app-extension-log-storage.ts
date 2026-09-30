@@ -1,5 +1,5 @@
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import type { LogLine, LogSnapshot, LogStorage } from '@project/common/util/log';
+import type { LogLine, LogSnapshot, LogStorage } from '@project/common/util/log-utils';
 
 export class AppExtensionLogStorage implements LogStorage {
     constructor(private readonly extension: ChromeExtension) {}

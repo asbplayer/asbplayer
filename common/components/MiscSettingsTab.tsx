@@ -1,5 +1,5 @@
-import { asbError } from '@project/common/util';
-import type { LogProvider } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import type { LogProvider } from '@project/common/util/log';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';

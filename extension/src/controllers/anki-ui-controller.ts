@@ -1,4 +1,5 @@
-import { asbError, sourceString } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { sourceString } from '@project/common/util';
 import type {
     ActiveProfileMessage,
     AnkiDialogSettings,

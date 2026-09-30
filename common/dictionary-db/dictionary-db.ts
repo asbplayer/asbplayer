@@ -1,4 +1,5 @@
-import { asbError, asbWarn, getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
+import { asbError, asbWarn } from '@project/common/util/log';
+import { getTokenStatus, HAS_LETTER_REGEX, normalizeToken } from '@project/common/util';
 import type { DictionaryBuildAnkiCacheState, DictionaryBuildWaniKaniCacheState } from '@project/common';
 import type {
     AsbplayerSettings,
