@@ -60,7 +60,9 @@ We epecially acknowledge the wonderful humans below.
 [@aramrw](https://github.com/aramrw),
 [@steckums](https://github.com/steckums),
 [@eXaminator](https://github.com/eXaminator),
-[@rajpiskala](https://github.com/rajpiskala)
+[@rajpiskala](https://github.com/rajpiskala),
+[@gpressutto5](https://github.com/gpressutto5),
+[@chadzimmerman](https://github.com/chadzimmerman)
 
 ## Translators
 
@@ -72,6 +74,7 @@ We epecially acknowledge the wonderful humans below.
 **senorli** (Simplified Chinese),
 **Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
 **Leo Gonzalez** (Spanish),
+**[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
 **Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russian),
 **Kellen (kputuhuk)** (Russian),
 **Vladislav Kochetkov (vakochetkov)** (Russian),
