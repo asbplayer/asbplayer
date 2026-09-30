@@ -34,8 +34,8 @@ permissions: {}
 env:
     RELEASE_PREFIX: ''
     APP_DEPLOY_PREFIX: ''
-    ISSUE_PREFIX: "Issue opened\n"
-    PULL_REQUEST_PREFIX: "Merged\n"
+    ISSUE_PREFIX: "Issue opened:"
+    PULL_REQUEST_PREFIX: "Merged:"
 
 jobs:
     extension-release:
