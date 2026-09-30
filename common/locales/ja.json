@@ -803,6 +803,8 @@
         "noFiles": "ファイルはありません",
         "searchCategory": "Search category",
         "categoryAnime": "Anime",
-        "categoryDrama": "Drama"
+        "categoryDrama": "Drama",
+        "episodeRegex": "カスタム話数正規表現",
+        "episodeRegexHint": "ページタイトルから話数を検出し、ファイルを自動で絞り込みます。1番目のキャプチャグループが話数で、一致しない場合は組み込みルールを使用します。Enterで適用。"
     }
 }
