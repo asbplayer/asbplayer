@@ -82,7 +82,11 @@ ags,
 Vannde3,
 Champ,
 marcman3001,
-[@vladysor](https://github.com/vladysor)
+[@vladysor](https://github.com/vladysor),
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
+shiki,
+kansha-gratitude
 
 and to those who have donated privately.
 
@@ -138,7 +142,9 @@ Thank you to all those who have contributed to asbplayer:
 [@aramrw](https://github.com/aramrw),
 [@steckums](https://github.com/steckums),
 [@eXaminator](https://github.com/eXaminator),
-[@rajpiskala](https://github.com/rajpiskala)
+[@rajpiskala](https://github.com/rajpiskala),
+[@gpressutto5](https://github.com/gpressutto5),
+[@chadzimmerman](https://github.com/chadzimmerman)
 
 Thank you to all those who have translated asbplayer:
 
