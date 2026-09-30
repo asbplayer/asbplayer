@@ -1,6 +1,6 @@
 import { expect, it } from '@jest/globals';
-import { localizeDateTime } from '@project/common/util/util';
 import {
+    formatConsoleLogLine,
     formatLogLine,
     trimLogLines,
     MAX_NON_TRACE_LOG_COUNT,
@@ -9,18 +9,22 @@ import {
 import type { LogLine } from '@project/common/util/log-utils';
 
 const validLine: LogLine = {
-    timestamp: Date.UTC(2026, 0, 1, 13, 2, 3, 123),
+    timestamp: new Date(2026, 0, 1, 13, 2, 3, 123).getTime(),
     label: 'playback',
     level: 'info',
     msg: 'ready',
 };
 
-it('formats the date, time, severity, prefix, and message', () => {
-    expect(formatLogLine(validLine)).toBe(
-        `[${localizeDateTime(validLine.timestamp, { hour12: false, includeMilliseconds: true, includeDate: true })}][info] [asbplayer][playback] ready`
-    );
-    expect(formatLogLine({ ...validLine, label: '', msg: '' })).toBe(
-        `[${localizeDateTime(validLine.timestamp, { hour12: false, includeMilliseconds: true, includeDate: true })}][info] [asbplayer]`
+it('formats stored lines with a local timestamp and without the console prefix', () => {
+    expect(formatLogLine(validLine)).toBe('2026-01-01 13:02:03.123 info: [playback] ready');
+    expect(formatLogLine({ ...validLine, label: '', msg: '' })).toBe('2026-01-01 13:02:03.123 info:');
+    expect(formatLogLine({ ...validLine, label: '' })).toBe('2026-01-01 13:02:03.123 info: ready');
+});
+
+it('adds the app prefix only for console lines', () => {
+    expect(formatConsoleLogLine(validLine)).toBe('2026-01-01 13:02:03.123 info: [asbplayer][playback] ready');
+    expect(formatConsoleLogLine({ ...validLine, label: '', msg: '' })).toBe(
+        '2026-01-01 13:02:03.123 info: [asbplayer]'
     );
 });
 

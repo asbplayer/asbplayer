@@ -1,5 +1,3 @@
-import { localizeDateTime } from '@project/common/util/util';
-
 // 10K total logs ~1.5MB, need to watch for anything else needing session storage
 export const MAX_TRACE_LOG_COUNT = 9000;
 export const MAX_NON_TRACE_LOG_COUNT = 1000;
@@ -35,13 +33,24 @@ export function trimLogLines(lines: readonly LogLine[]): LogLine[] {
         .reverse();
 }
 
-export function formatLogLine(logLine: LogLine): string {
-    const timestamp = localizeDateTime(logLine.timestamp, {
-        hour12: false,
-        includeMilliseconds: true,
-        includeDate: true,
-    });
-    const prefix = logLine.label.length ? '[asbplayer][' + logLine.label + ']' : '[asbplayer]';
+function pad(value: number, width = 2): string {
+    return String(value).padStart(width, '0');
+}
+
+function formatLine(logLine: LogLine, consolePrefix: string): string {
+    const date = new Date(logLine.timestamp);
+    const timestamp = `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
+        date.getHours()
+    )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+    const prefix = consolePrefix + (logLine.label.length ? '[' + logLine.label + ']' : '');
     const msg = logLine.msg.length ? ' ' + logLine.msg : '';
-    return '[' + timestamp + '][' + logLine.level + '] ' + prefix + msg;
+    return timestamp + ' ' + logLine.level + ':' + (prefix.length ? ' ' + prefix : '') + msg;
+}
+
+export function formatLogLine(logLine: LogLine): string {
+    return formatLine(logLine, '');
+}
+
+export function formatConsoleLogLine(logLine: LogLine): string {
+    return formatLine(logLine, '[asbplayer]');
 }

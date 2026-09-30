@@ -6,7 +6,6 @@ import {
     asbTrace,
     asbWarn,
     configureLogProvider,
-    localizeDateTime,
     LogProvider,
     MAX_NON_TRACE_LOG_COUNT,
     MAX_TRACE_LOG_COUNT,
@@ -23,8 +22,7 @@ const createLogStorage = (): LogStorage => {
     };
 };
 const createLogProvider = () => new LogProvider(createLogStorage());
-const logTimestamp = (timestamp: number) =>
-    localizeDateTime(timestamp, { hour12: false, includeMilliseconds: true, includeDate: true });
+const logTimestamp = '2026-09-21 18:00:00.000';
 
 afterEach(() => {
     jest.restoreAllMocks();
@@ -37,7 +35,7 @@ describe('log provider configuration', () => {
         asbLog('startup-buffer', 'message');
         await configureLogProvider(initialProvider);
 
-        await expect(initialProvider.getLogText()).resolves.toContain('[asbplayer][startup-buffer] message');
+        await expect(initialProvider.getLogText()).resolves.toContain('[startup-buffer] message');
 
         const previousBackendLine = {
             timestamp: 1,
@@ -90,54 +88,50 @@ describe('asb logging', () => {
     it('prepends the label while preserving all message arguments', () => {
         const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
         const details = { durationMs: 10 };
-        const timestamp = Date.parse('2026-09-21T18:00:00.000Z');
+        const timestamp = new Date(2026, 8, 21, 18, 0, 0, 0).getTime();
         jest.spyOn(Date, 'now').mockReturnValue(timestamp);
 
         asbLog('playback', 'message', details);
 
-        expect(log).toHaveBeenCalledWith(`[${logTimestamp(timestamp)}][log] [asbplayer][playback]`, 'message', details);
+        expect(log).toHaveBeenCalledWith(`${logTimestamp} log: [asbplayer][playback]`, 'message', details);
     });
 
     it('supports warning logging', () => {
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         const error = new Error('failed');
-        const timestamp = Date.parse('2026-09-21T18:00:00.000Z');
+        const timestamp = new Date(2026, 8, 21, 18, 0, 0, 0).getTime();
         jest.spyOn(Date, 'now').mockReturnValue(timestamp);
 
         asbWarn('playback/timing', 'message', error);
 
-        expect(warn).toHaveBeenCalledWith(
-            `[${logTimestamp(timestamp)}][warning] [asbplayer][playback/timing]`,
-            'message',
-            error
-        );
+        expect(warn).toHaveBeenCalledWith(`${logTimestamp} warning: [asbplayer][playback/timing]`, 'message', error);
     });
 
     it('preserves informational logging', () => {
         const info = jest.spyOn(console, 'info').mockImplementation(() => undefined);
-        const timestamp = Date.parse('2026-09-21T18:00:00.000Z');
+        const timestamp = new Date(2026, 8, 21, 18, 0, 0, 0).getTime();
         jest.spyOn(Date, 'now').mockReturnValue(timestamp);
 
         asbInfo('media-fragment', 'message');
 
-        expect(info).toHaveBeenCalledWith(`[${logTimestamp(timestamp)}][info] [asbplayer][media-fragment]`, 'message');
+        expect(info).toHaveBeenCalledWith(`${logTimestamp} info: [asbplayer][media-fragment]`, 'message');
     });
 
     it('supports error logging', () => {
         const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
         const error = new Error('failed');
-        const timestamp = Date.parse('2026-09-21T18:00:00.000Z');
+        const timestamp = new Date(2026, 8, 21, 18, 0, 0, 0).getTime();
         jest.spyOn(Date, 'now').mockReturnValue(timestamp);
 
         asbError('yomitan/mecab', error);
 
-        expect(errorSpy).toHaveBeenCalledWith(`[${logTimestamp(timestamp)}][error] [asbplayer][yomitan/mecab]`, error);
+        expect(errorSpy).toHaveBeenCalledWith(`${logTimestamp} error: [asbplayer][yomitan/mecab]`, error);
     });
 
     it('records normal logs for the viewer and export', async () => {
         asbLog('viewer', 'message', { durationMs: 10 });
 
-        await expect(logProvider.getLogText()).resolves.toContain('[asbplayer][viewer] message {"durationMs":10}');
+        await expect(logProvider.getLogText()).resolves.toContain('[viewer] message {"durationMs":10}');
     });
 
     it('keeps nested error details in exported logs', async () => {
@@ -164,11 +158,11 @@ describe('asb logging', () => {
             value,
             'still recorded'
         );
-        await expect(logProvider.getLogText()).resolves.toContain('[Unserializable] still recorded');
+        await expect(logProvider.getLogText()).resolves.toContain('<unserializable> still recorded');
     });
 
     it('records severity and timestamp for each log level', async () => {
-        const timestamp = Date.parse('2026-09-21T18:00:00.000Z');
+        const timestamp = new Date(2026, 8, 21, 18, 0, 0, 0).getTime();
         jest.spyOn(Date, 'now').mockReturnValue(timestamp);
         jest.spyOn(console, 'error').mockImplementation(() => undefined);
         jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -197,7 +191,7 @@ describe('asb logging', () => {
 
         expect(log).not.toHaveBeenCalled();
         expect(trace).not.toHaveBeenCalled();
-        await expect(logProvider.getLogText()).resolves.toContain('[trace] [asbplayer][trace] details');
+        await expect(logProvider.getLogText()).resolves.toContain('trace: [trace] details');
     });
 });
 
@@ -206,21 +200,24 @@ describe('independent log providers', () => {
         const first = createLogProvider();
         const second = createLogProvider();
 
-        const timestamp = Date.parse('2026-09-21T18:00:00.000Z');
+        const timestamp = new Date(2026, 8, 21, 18, 0, 0, 0).getTime();
         await first.append([{ timestamp, label: 'test', level: 'info', msg: 'first' }]);
 
-        await expect(first.getLogText()).resolves.toBe(`[${logTimestamp(timestamp)}][info] [asbplayer][test] first`);
+        await expect(first.getLogText()).resolves.toBe(`${logTimestamp} info: [test] first`);
         await expect(second.getLogText()).resolves.toBe('');
     });
 
-    it('includes dates and times in exported log text', async () => {
+    it('includes ISO dates and times without an app prefix in every exported line', async () => {
         const provider = createLogProvider();
-        const timestamp = Date.parse('2026-09-21T18:01:02.003Z');
+        const timestamp = new Date(2026, 8, 21, 18, 1, 2, 3).getTime();
 
-        await provider.append([{ timestamp, label: 'test', level: 'warning', msg: 'warning' }]);
+        await provider.append([
+            { timestamp, label: 'test', level: 'warning', msg: 'warning' },
+            { timestamp: timestamp + 1000, label: 'test', level: 'info', msg: 'next' },
+        ]);
 
         await expect(provider.getLogText()).resolves.toBe(
-            `[${logTimestamp(timestamp)}][warning] [asbplayer][test] warning`
+            '2026-09-21 18:01:02.003 warning: [test] warning\n' + '2026-09-21 18:01:03.003 info: [test] next'
         );
     });
 });

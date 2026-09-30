@@ -1,4 +1,4 @@
-import { formatLogLine, trimLogLines } from '@project/common/util/log-utils';
+import { formatConsoleLogLine, formatLogLine, trimLogLines } from '@project/common/util/log-utils';
 import type { LogLevel, LogLine, LogStorage } from '@project/common/util/log-utils';
 export * from '@project/common/util/log-utils';
 
@@ -72,7 +72,7 @@ function formatLogArg(arg: unknown): string {
         try {
             return String(arg);
         } catch {
-            return '[Unserializable]';
+            return '<unserializable>';
         }
     }
 }
@@ -104,7 +104,7 @@ function addLogLine(logLine: LogLine): void {
 
 function writeLog(method: (...args: unknown[]) => void, level: LogLevel, label: string, ...args: LogArgs): void {
     const logLine = createLogLine(label, level, logLineText(args));
-    method.apply(console, [formatLogLine({ ...logLine, msg: '' }), ...args]);
+    method.apply(console, [formatConsoleLogLine({ ...logLine, msg: '' }), ...args]);
     addLogLine(logLine);
 }
 
