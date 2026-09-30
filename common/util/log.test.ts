@@ -7,6 +7,7 @@ import {
     asbWarn,
     configureLogProvider,
     LogProvider,
+    MAX_LOG_MESSAGE_LENGTH,
     MAX_NON_TRACE_LOG_COUNT,
     MAX_TRACE_LOG_COUNT,
 } from '@project/common/util';
@@ -132,6 +133,20 @@ describe('asb logging', () => {
         asbLog('viewer', 'message', { durationMs: 10 });
 
         await expect(logProvider.getLogText()).resolves.toContain('[viewer] message {"durationMs":10}');
+    });
+
+    it('limits stored messages while preserving console arguments', async () => {
+        const log = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+        const exactLength = 'x'.repeat(MAX_LOG_MESSAGE_LENGTH);
+        const overLimit = exactLength + 'y';
+
+        asbLog('limit', overLimit);
+        asbTrace('limit', exactLength);
+
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('[asbplayer][limit]'), overLimit);
+        const messages = (await logProvider.getLogLines()).slice(-2).map((line) => line.msg);
+        expect(messages).toEqual([exactLength.slice(0, MAX_LOG_MESSAGE_LENGTH - 3) + '...', exactLength]);
+        expect(messages[0]).toHaveLength(MAX_LOG_MESSAGE_LENGTH);
     });
 
     it('keeps nested error details in exported logs', async () => {

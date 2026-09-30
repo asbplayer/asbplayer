@@ -1,4 +1,9 @@
-import { formatConsoleLogLine, formatLogLine, trimLogLines } from '@project/common/util/log-utils';
+import {
+    formatConsoleLogLine,
+    formatLogLine,
+    trimLogLines,
+    MAX_LOG_MESSAGE_LENGTH,
+} from '@project/common/util/log-utils';
 import type { LogLevel, LogLine, LogStorage } from '@project/common/util/log-utils';
 export * from '@project/common/util/log-utils';
 
@@ -78,10 +83,12 @@ function formatLogArg(arg: unknown): string {
 }
 
 function logLineText(args: LogArgs): string {
-    return args
+    const message = args
         .map(formatLogArg)
         .join(' ')
         .replace(/[\r\n]+/g, '\\n');
+    if (message.length <= MAX_LOG_MESSAGE_LENGTH) return message;
+    return message.slice(0, MAX_LOG_MESSAGE_LENGTH - 3) + '...';
 }
 
 function createLogLine(label: string, level: LogLevel, msg: string): LogLine {

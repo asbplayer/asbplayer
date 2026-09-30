@@ -1,6 +1,6 @@
-// 10K total logs ~1.5MB, need to watch for anything else needing session storage
 export const MAX_TRACE_LOG_COUNT = 9000;
 export const MAX_NON_TRACE_LOG_COUNT = 1000;
+export const MAX_LOG_MESSAGE_LENGTH = 8192;
 export const LOG_LINES_KEY = 'asbplayer-log-lines';
 
 export type LogLevel = 'error' | 'warning' | 'info' | 'log' | 'trace';
