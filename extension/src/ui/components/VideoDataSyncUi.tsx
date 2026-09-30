@@ -328,6 +328,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                     profiles={profiles}
                     activeProfile={activeProfile}
                     onlineSubtitleSourceConfig={onlineSubtitleSourceConfig}
+                    clientId="asbplayer-extension"
                     hasSeenFtue={hasSeenFtue}
                     hideRememberTrackPreferenceToggle={hideRememberTrackPreferenceToggle}
                     isGenericPage={isGenericPage}
