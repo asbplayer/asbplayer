@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util/log';
+import { asbError, asbTrace } from '@project/common/util/log';
 import type { PlaybackTimelineTransitionCause } from '@project/common/playback/plan/playback-plan-executor';
 
 export interface TimingDriverCallbacks {
@@ -152,12 +152,14 @@ export default class TimingUpdateQueue {
         }
         if (!this.invalidTimestampReported) {
             this.invalidTimestampReported = true;
+            asbTrace('playback/error', 'Rejected invalid playback timestamp', { timestampMs });
             this.reportError(new Error(`Invalid playback timestamp: ${String(timestampMs)}`));
         }
         return false;
     }
 
     private reportError(error: unknown): void {
+        asbTrace('playback/error', 'Timing update queue failed', { error });
         try {
             this.callbacks.onError(error);
         } catch (callbackError) {

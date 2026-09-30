@@ -2,6 +2,7 @@ import type { SubtitleModel } from '@project/common';
 import { AutoPauseResumeMode } from '@project/common/settings';
 import { playbackPlanAutoPauseResumesEqual } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlanAutoPauseResume } from '@project/common/playback/plan/playback-plan';
+import { asbTrace } from '@project/common/util/log';
 import { readableCharacterCount } from '@project/common/util';
 
 export const autoPauseResumeModeNotificationKey = 'auto-pause-resume-mode';
@@ -72,6 +73,10 @@ export default class AutoPauseController {
 
     replacePlan(resume: PlaybackPlanAutoPauseResume | undefined): boolean {
         if (playbackPlanAutoPauseResumesEqual(this.resume, resume)) return false;
+        asbTrace('playback/auto-pause', 'Replaced auto-pause resume plan', {
+            previousMode: this.resume?.mode,
+            mode: resume?.mode,
+        });
         this.clearTimeout();
         this.resume = resume;
         return true;

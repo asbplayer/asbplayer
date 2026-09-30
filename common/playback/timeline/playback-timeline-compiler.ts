@@ -8,6 +8,7 @@ import type {
     PlaybackTimelineSegment,
     PlaybackTimelineState,
 } from '@project/common/playback/timeline/playback-timeline';
+import { asbTrace } from '@project/common/util/log';
 import { clamp, normalizeFinite, normalizeNonNegative, normalizeNonPositive } from '@project/common/util';
 
 export interface PlaybackTimelineSubtitles<T extends IndexedSubtitleModel> {
@@ -136,7 +137,7 @@ export const compilePlaybackTimelineSubtitles = <T extends IndexedSubtitleModel>
     const durationMs = Number.isFinite(options.durationMs)
         ? Math.max(0, options.durationMs)
         : Math.max(0, inferredDurationMs);
-    return {
+    const compiled = {
         durationMs,
         blocks: blocksFromSubtitles(
             subtitles,
@@ -148,6 +149,13 @@ export const compilePlaybackTimelineSubtitles = <T extends IndexedSubtitleModel>
         ),
         displaySubtitles: [...displaySubtitles],
     };
+    asbTrace('playback/timeline', 'Compiled playback timeline subtitles', {
+        blockCount: compiled.blocks.length,
+        displaySubtitleCount: compiled.displaySubtitles.length,
+        durationMs: compiled.durationMs,
+        subtitleCount: subtitles.length,
+    });
+    return compiled;
 };
 
 export interface PlaybackTimelineCompilation<T extends IndexedSubtitleModel> {
@@ -427,7 +435,7 @@ export const compilePlaybackTimeline = <T extends IndexedSubtitleModel>(
         };
     });
 
-    return {
+    const compilation = {
         durationMs: subtitles.durationMs,
         blocks: subtitles.blocks,
         boundaries: compiledSegments.boundaries,
@@ -438,4 +446,12 @@ export const compilePlaybackTimeline = <T extends IndexedSubtitleModel>(
         condensedGaps,
         states: compiledSegments.states,
     };
+    asbTrace('playback/timeline', 'Compiled playback timeline indexes', {
+        actionBoundaryCount: compilation.actionIndex.actionBoundaries.length,
+        boundaryCount: compilation.boundaries.length,
+        condensedGapCount: compilation.condensedGaps.length,
+        segmentCount: compilation.segments.length,
+        stateChangeCount: compilation.stateChangeTimestamps.length,
+    });
+    return compilation;
 };

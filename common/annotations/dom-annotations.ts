@@ -1,6 +1,7 @@
 import type { IndexedSubtitleModel } from '@project/common';
 import { tokenAtLocation } from '@project/common/annotations/token-navigation';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
+import { asbTrace } from '@project/common/util/log';
 
 export const ASB_TOKEN_CLASS = 'asb-token';
 export const ASB_TOKEN_HIGHLIGHT_CLASS = 'asb-token-highlight';
@@ -65,16 +66,36 @@ export class HoveredToken {
         const tokenEl = selectedTokenEl?.classList.contains(ASB_TOKEN_SELECTED_CLASS)
             ? selectedTokenEl
             : closestCollectableTokenElement(this._hoveredElement);
-        if (!tokenEl) return null;
+        if (!tokenEl) {
+            asbTrace('annotations/parse', 'Failed to find token element from hovered element', {
+                hoveredElement: this._hoveredElement?.tagName,
+            });
+            return null;
+        }
 
         const trackStr = tokenEl.closest('[data-track]')?.getAttribute('data-track');
-        if (!trackStr) return null;
+        if (!trackStr) {
+            asbTrace('annotations/parse', 'Failed to parse track from hovered token element', {
+                tagName: tokenEl.tagName,
+            });
+            return null;
+        }
 
         let token = '';
         for (const child of tokenEl.childNodes) token += this._extractTokenFromNode(child);
         token = token.trim();
-        if (!token.length) return null;
-        return { token, track: parseInt(trackStr) };
+        if (!token.length) {
+            asbTrace('annotations/parse', 'Failed to parse token from hovered token element', {
+                tagName: tokenEl.tagName,
+            });
+            return null;
+        }
+        const track = parseInt(trackStr);
+        asbTrace('annotations/parse', 'Parsed token and track from hovered token element', {
+            token,
+            track,
+        });
+        return { token, track };
     }
 
     private _extractTokenFromNode(node: Node): string {

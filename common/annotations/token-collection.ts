@@ -9,6 +9,7 @@ import {
     TokenMatchStrategyPriority,
 } from '@project/common/settings';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import { asbTrace } from '@project/common/util/log';
 import { getTokenStatus, dedupeTokenStatusInfos, isKanaOnly, normalizeToken } from '@project/common/util';
 import type { TrackState } from '@project/common/annotations';
 
@@ -309,7 +310,13 @@ export async function resolveTokenStatus(
 ): Promise<ResolvedTokenStatusResult | null> {
     if (!ts.yt) throw new Error('Yomitan uninitialized - cannot calculate token status');
     const lemmas = await ts.lemmatizeForScript(trimmedToken);
-    if (!lemmas) return null;
+    if (!lemmas) {
+        asbTrace('annotations/status', 'Unable to resolve token status because lemma resolution was unavailable', {
+            token: trimmedToken,
+            track: ts.track,
+        });
+        return null;
+    }
 
     let tokenStatusResult: ResolvedTokenStatusResult | null;
     switch (ts.dt.dictionaryTokenMatchStrategyPriority) {

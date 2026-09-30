@@ -1,4 +1,5 @@
 import TimingUpdateQueue from '@project/common/playback/timing/timing-driver';
+import { asbTrace } from '@project/common/util/log';
 import type {
     InternalSeekCompletion,
     TimingDriver,
@@ -130,16 +131,19 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     externalSeekStarted(): void {
         if (!this._bound || !this.externalSeekEvents) return;
+        asbTrace('playback/seek', 'Video-frame external seek started');
         this.onSeeking();
     }
 
     externalSeeked(timestampMs: number): void {
         if (!this._bound || !this.externalSeekEvents) return;
+        asbTrace('playback/seek', 'Video-frame external seek completed', { timestampMs });
         this.handleSeeked(timestampMs);
     }
 
     externalSeekCanceled(): void {
         if (!this._bound || !this.externalSeekEvents) return;
+        asbTrace('playback/seek', 'Video-frame external seek cancelled');
         this.seeking = false;
         this.expectedInternalSeek = false;
         this.cancelScheduledUpdate();
@@ -171,6 +175,10 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     bind(): void {
         if (this._bound) return;
+        asbTrace('playback/timing', 'Binding video-frame timing driver', {
+            externalSeekEvents: this.externalSeekEvents,
+            timestampMs: this.currentTimeMs(),
+        });
         this._bound = true;
         this.video.addEventListener('play', this.onPlay);
         this.video.addEventListener('pause', this.onPause);
@@ -198,6 +206,9 @@ export default class VideoFrameTimingDriver implements TimingDriver {
 
     unbind(): void {
         if (!this._bound) return;
+        asbTrace('playback/timing', 'Unbinding video-frame timing driver', {
+            timestampMs: this.currentTimeMs(),
+        });
         this._bound = false;
         this.video.removeEventListener('play', this.onPlay);
         this.video.removeEventListener('pause', this.onPause);
@@ -278,7 +289,16 @@ export default class VideoFrameTimingDriver implements TimingDriver {
      * To work around both cases, listen for 'timeupdate' events whenever there is no usable video frame source.
      */
     private readonly onMetadataChange = () => {
-        this.videoFrameCallbacksEligible = !document.hidden && this.video.hasVideoTrack();
+        const previousEligibility = this.videoFrameCallbacksEligible;
+        const hasVideoTrack = this.video.hasVideoTrack();
+        this.videoFrameCallbacksEligible = !document.hidden && hasVideoTrack;
+        if (previousEligibility !== this.videoFrameCallbacksEligible) {
+            asbTrace('playback/timing', 'Updated video-frame timing source availability', {
+                hasVideoTrack,
+                hidden: document.hidden,
+                videoFrameCallbacksEligible: this.videoFrameCallbacksEligible,
+            });
+        }
         if (!this.videoFrameCallbacksEligible) {
             this.cancelScheduledUpdate();
             this.previousFrame = undefined;
@@ -300,15 +320,20 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private readonly onRateChange = () => {
         const playbackRate = this.video.playbackRate();
         if (!playbackRate && this.seeking) return; // Some videos may report a playback rate of 0 during seeking
+        asbTrace('playback/rate', 'Video-frame media rate changed', { playbackRate });
         this.eventCallbacks.onPlaybackRateChanged(playbackRate);
     };
 
     readonly onDurationChange = () => {
-        this.eventCallbacks.onDurationChanged(this.video.durationMs());
+        const durationMs = this.video.durationMs();
+        asbTrace('playback/timing', 'Video-frame media duration changed', { durationMs });
+        this.eventCallbacks.onDurationChanged(durationMs);
     };
 
     private readonly onError = () => {
-        this.failPendingSeek(new Error('Media seek failed'));
+        const error = new Error('Media seek failed');
+        asbTrace('playback/error', 'Video-frame media error', { error });
+        this.failPendingSeek(error);
         this.eventCallbacks.onError();
     };
 
@@ -379,6 +404,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         if (!this.timeUpdatesBound) {
             this.video.addEventListener('timeupdate', this.onTimeUpdate);
             this.timeUpdatesBound = true;
+            asbTrace('playback/timing', 'Enabled video time-update fallback');
         }
         this.startTimeUpdatePolling();
     }
@@ -388,6 +414,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
         this.video.removeEventListener('timeupdate', this.onTimeUpdate);
         this.timeUpdatesBound = false;
         this.stopTimeUpdatePolling();
+        asbTrace('playback/timing', 'Disabled video time-update fallback');
     }
 
     private startVideoFrameCallbackHealthCheck(): void {
@@ -408,10 +435,14 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     private readonly checkVideoFrameCallbackHealth = () => {
         if (!this.shouldProcess() || !this.videoFrameCallbacksEligible) return;
         if (this.lastRequestVideoFrameCallbackTime === this.lastCheckedRequestVideoFrameCallbackTime) {
+            if (!this.timeUpdatesBound) {
+                asbTrace('playback/timing', 'Video-frame callback stalled; enabling time-update fallback');
+            }
             this.startTimeUpdateFallback();
             return;
         }
         this.lastCheckedRequestVideoFrameCallbackTime = this.lastRequestVideoFrameCallbackTime;
+        if (this.timeUpdatesBound) asbTrace('playback/timing', 'Video-frame callbacks recovered');
         this.stopTimeUpdateFallback();
     };
 
@@ -427,6 +458,7 @@ export default class VideoFrameTimingDriver implements TimingDriver {
     }
 
     private failPendingSeek(error: Error): void {
+        asbTrace('playback/error', 'Failing pending video-frame seek', { error });
         this.pendingSeekCompletion?.reject(error);
         this.pendingSeekCompletion = undefined;
         this.expectedInternalSeek = false;

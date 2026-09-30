@@ -1,6 +1,5 @@
-import { asbError, asbInfo } from '@project/common/util/log';
+import { asbError, asbInfo, asbTrace } from '@project/common/util/log';
 import Binding from '@/services/binding';
-import type { PageDelegate } from '@/services/pages';
 import { currentPageDelegate } from '@/services/pages';
 import VideoSelectController from '@/controllers/video-select-controller';
 import type {
@@ -71,19 +70,17 @@ export default defineContentScript({
                 .catch((error) => asbError('video', 'Failed to load key bindings:', error));
         };
 
-        const hasValidVideoSource = (videoElement: HTMLVideoElement, page: PageDelegate) => {
-            if (page.config.allowVideoElementsWithBlankSrc) {
-                return true;
-            }
-
-            if (mediaSourceIdentity(videoElement) !== undefined) {
-                return true;
-            }
-
-            return false;
-        };
-
         const shadowRootsWithBindings: ShadowRoot[] = [];
+        const candidateIds = new WeakMap<HTMLMediaElement, number>();
+        let nextCandidateId = 0;
+        const candidateIdFor = (video: HTMLMediaElement) => {
+            let candidateId = candidateIds.get(video);
+            if (candidateId === undefined) {
+                candidateId = ++nextCandidateId;
+                candidateIds.set(video, candidateId);
+            }
+            return candidateId;
+        };
 
         const injectStylesIntoShadowRoot = async (shadowRoot: ShadowRoot, cssPath: string) => {
             for (const s of shadowRootsWithBindings) {
@@ -132,46 +129,53 @@ export default defineContentScript({
                     }
                 }
 
-                for (let i = 0; i < videoElements.length; ++i) {
-                    const videoElement = videoElements[i];
-                    const bindingExists = bindings.filter((b) => b.video.isSameNode(videoElement)).length > 0;
+                const candidates = videoElements.map((video) => ({
+                    video,
+                    hasValidSource:
+                        page.config.allowVideoElementsWithBlankSrc === true || mediaSourceIdentity(video) !== undefined,
+                    ignored: page.shouldIgnore(video),
+                    bindingExists: bindings.some((binding) => binding.video.isSameNode(video)),
+                }));
 
-                    if (!bindingExists && hasValidVideoSource(videoElement, page) && !page.shouldIgnore(videoElement)) {
-                        const b = new Binding(videoElement, {
+                for (const candidate of candidates) {
+                    const { video, hasValidSource, ignored, bindingExists } = candidate;
+                    if (!bindingExists && hasValidSource && !ignored) {
+                        const binding = new Binding(video, {
                             hasPageScript,
                             frameId: frameInfoBroadcaster?.frameId,
                             videoSrcChangesIndicateNewVideo: page.config.videoSrcChangesIndicateNewVideo ?? false,
                         });
-                        b.bind();
-                        bindings.push(b);
+                        binding.bind();
+                        bindings.push(binding);
+                        asbTrace('video/discovery', 'Bound video element candidate', {
+                            page: page.config.key ?? (page.config.generic ? 'generic' : 'unmatched'),
+                            candidateId: candidateIdFor(video),
+                            readyState: video.readyState,
+                            preferred: page.videoElementPreference(video) === 0,
+                        });
                     }
                 }
 
                 for (let i = bindings.length - 1; i >= 0; --i) {
-                    const b = bindings[i];
-                    let videoElementExists = false;
-
-                    for (let j = 0; j < videoElements.length; ++j) {
-                        const videoElement = videoElements[j];
-
-                        if (
-                            videoElement.isSameNode(b.video) &&
-                            hasValidVideoSource(videoElement, page) &&
-                            !page.shouldIgnore(videoElement)
-                        ) {
-                            videoElementExists = true;
-                            break;
-                        }
-                    }
-
-                    if (!videoElementExists) {
+                    const binding = bindings[i];
+                    const candidate = candidates.find(({ video }) => video.isSameNode(binding.video));
+                    if (candidate === undefined || !candidate.hasValidSource || candidate.ignored) {
                         bindings.splice(i, 1);
-                        b.unbind();
+                        binding.unbind();
+                        asbTrace('video/discovery', 'Unbound video element candidate', {
+                            page: page.config.key ?? (page.config.generic ? 'generic' : 'unmatched'),
+                            candidateId: candidateIdFor(binding.video),
+                            reason:
+                                candidate === undefined
+                                    ? 'removed-from-document'
+                                    : candidate.ignored
+                                      ? 'matched-ignore-rule'
+                                      : 'source-unavailable',
+                        });
                     }
                 }
 
                 bindings.sort((a, b) => page.videoElementPreference(a.video) - page.videoElementPreference(b.video));
-
                 if (bindings.length === 0) {
                     frameInfoBroadcaster?.unbind();
                 } else {

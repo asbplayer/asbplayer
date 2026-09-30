@@ -10,7 +10,7 @@ import {
     surroundingSubtitlesAroundInterval,
     timeDurationDisplay,
 } from '@project/common/util';
-import { asbError } from '@project/common/util/log';
+import { asbError, asbTrace } from '@project/common/util/log';
 import type {
     AckMessage,
     AnkiUiSavedState,
@@ -301,6 +301,14 @@ export default class Binding {
         this._synced = false;
         this.recordingMediaWithScreenshot = false;
         this.frameId = options.frameId;
+
+        asbTrace('playback/binding', 'Created media binding', {
+            hasPageScript: this.hasPageScript,
+            hasFrameId: this.frameId !== undefined,
+            videoSrcChangesIndicateNewVideo: this._videoSrcChangesIndicateNewVideo,
+            hasVideoSrc: video.src.length > 0,
+            readyState: video.readyState,
+        });
     }
 
     get registeredVideoSrc() {
@@ -316,6 +324,12 @@ export default class Binding {
     }
 
     set recordingState(recordingState: RecordingState) {
+        if (this._recordingState !== recordingState) {
+            asbTrace('playback/binding', 'Recording state changed', {
+                previousState: this._recordingState,
+                state: recordingState,
+            });
+        }
         this._recordingState = recordingState;
         this.playbackEngine.playbackModesSuppressedChanged(this.recordingMedia);
     }
@@ -431,6 +445,13 @@ export default class Binding {
     private _createPlaybackEngine(): PlaybackEngine<IndexedSubtitleModel> {
         const video = this.video as HTMLVideoElement;
         const subtitles = this.subtitleController.subtitles;
+        asbTrace('playback/binding', 'Creating media playback owner', {
+            subtitleCount: subtitles.length,
+            appIntegration: true,
+            externalSeekEvents: disneyPlus,
+            netflix,
+            disneyPlus,
+        });
         return new PlaybackEngine({
             settingsProvider: this.settings,
             appIntegration: true,
@@ -549,6 +570,11 @@ export default class Binding {
                     if (notification) this.subtitleController.notification({ text: notification });
                 },
                 initialPlaybackSettingsChanged: (settings) => {
+                    asbTrace('playback/binding', 'Applying initial playback settings to media owner', {
+                        subtitleOffset: settings.subtitleOffset,
+                        playbackRate: settings.playbackRate,
+                        playbackModes: [...settings.playbackModeTransition.modes],
+                    });
                     this._notifySubtitleOffset(settings.subtitleOffset);
                     const notifications = settings.notifications.offsetAndRate.map((notification) =>
                         notification.type === 'message'
@@ -621,6 +647,10 @@ export default class Binding {
     }
 
     bind() {
+        asbTrace('playback/binding', 'Binding media owner', {
+            readyState: this.video.readyState,
+            hasVideoSrc: this.video.src.length > 0,
+        });
         let bound = false;
 
         if (this.video.readyState === 4) {
@@ -628,6 +658,7 @@ export default class Binding {
             bound = true;
         } else {
             this.canPlayListener = () => {
+                asbTrace('playback/binding', 'Media became playable', { readyState: this.video.readyState });
                 if (!bound) {
                     this._bind();
                     bound = true;
@@ -649,6 +680,7 @@ export default class Binding {
     }
 
     private _bind() {
+        asbTrace('playback/binding', 'Starting media-owner bind');
         this._notifyReady();
         this._subscribe();
         void this._refreshSettings()
@@ -683,9 +715,17 @@ export default class Binding {
 
         this.mobileGestureController.onSwipeLeft = () => seek(false);
         this.mobileGestureController.onSwipeRight = () => seek(true);
+        asbTrace('playback/binding', 'Media-owner bind finished');
     }
 
     _notifyReady() {
+        asbTrace('playback/binding', 'Sending media-ready state', {
+            durationMs: this.video.duration * 1000,
+            currentTimeMs: this.currentTimeMs,
+            paused: this.video.paused,
+            playbackRate: this.video.playbackRate,
+            readyState: this.video.readyState,
+        });
         const command: VideoToExtensionCommand<ReadyFromVideoMessage> = {
             sender: 'asbplayer-video',
             message: {
@@ -741,6 +781,10 @@ export default class Binding {
                 const detail = (e as CustomEvent<DisneyPlaybackEventDetail>).detail;
                 if (detail === undefined || !Number.isFinite(detail.timestampMs)) return;
                 this.disneyPlusTimeListener?.(new CustomEvent('asbplayer-disney-plus-time', { detail }));
+                asbTrace('playback/binding', 'Observed Disney+ seek start', {
+                    timestampMs: detail.timestampMs,
+                    hasRequestId: detail.requestId !== undefined,
+                });
                 this.playbackEngine.seekStarted();
             };
             document.addEventListener('asbplayer-disney-plus-seek-started', this.disneyPlusSeekStartedListener);
@@ -749,6 +793,10 @@ export default class Binding {
                 const detail = (e as CustomEvent<DisneyPlaybackEventDetail>).detail;
                 if (detail === undefined || !Number.isFinite(detail.timestampMs)) return;
                 this.disneyPlusTimeListener?.(new CustomEvent('asbplayer-disney-plus-time', { detail }));
+                asbTrace('playback/binding', 'Observed Disney+ seek completion', {
+                    timestampMs: detail.timestampMs,
+                    hasRequestId: detail.requestId !== undefined,
+                });
                 this.playbackEngine.seeked(detail.timestampMs);
                 if (detail.requestId !== undefined) {
                     const pending = this.disneyPlusPendingSeeks.get(detail.requestId);
@@ -765,6 +813,7 @@ export default class Binding {
                 const requestId = (e as CustomEvent<string>).detail;
                 const pending = this.disneyPlusPendingSeeks.get(requestId);
                 if (pending === undefined) return;
+                asbTrace('playback/binding', 'Cancelled pending Disney+ seek', { hasRequestId: true });
                 this.playbackEngine.seekCanceled();
                 this.disneyPlusPendingSeeks.delete(requestId);
                 pending.resolve();
@@ -773,7 +822,10 @@ export default class Binding {
         }
 
         if (netflix) {
-            this.netflixSeekCancelledListener = () => this.playbackEngine.seekCanceled();
+            this.netflixSeekCancelledListener = () => {
+                asbTrace('playback/binding', 'Observed Netflix seek cancellation');
+                this.playbackEngine.seekCanceled();
+            };
             document.addEventListener('asbplayer-netflix-seek-cancelled', this.netflixSeekCancelledListener);
         }
 
@@ -822,6 +874,13 @@ export default class Binding {
                 const videoSrc = this.video.src || this._fallbackVideoSrc;
                 this._updateRegisteredVideoSrc(videoSrc);
                 const sameLocationVideoChanged = this._videoSrcChangesIndicateNewVideo && sourceChanged;
+
+                asbTrace('playback/binding', 'Observed media metadata load', {
+                    sourceChanged,
+                    sameLocationVideoChanged,
+                    pickerVisible: this.videoDataSyncController.pickerVisible,
+                    alreadySynced: this._synced,
+                });
 
                 // Player events (e.g. Hulu blob URL rotation) can fire loadedmetadata
                 // without an actual video change. Skip refresh when the picker is open
@@ -1272,6 +1331,7 @@ export default class Binding {
     }
 
     async _refreshSettings() {
+        asbTrace('playback/binding', 'Refreshing media-owner settings');
         const activeProfile = (await this.settings.activeProfile())?.name;
         const profileChanged = this._lastProfile !== activeProfile;
         this._lastProfile = activeProfile;
@@ -1351,9 +1411,21 @@ export default class Binding {
         }
 
         await i18nInit(currentSettings.language);
+        asbTrace('playback/binding', 'Media-owner settings refreshed', {
+            activeProfile,
+            seekDurationMs: this._seekDurationMs,
+            speedChangeStep: this._speedChangeStep,
+            displaySubtitles: currentSettings.streamingDisplaySubtitles,
+            disabledSubtitleTracks: this.subtitleController.disabledSubtitleTracks,
+            pauseOnHoverMode: this.pauseOnHoverMode,
+        });
     }
 
     unbind() {
+        asbTrace('playback/binding', 'Unbinding media owner', {
+            subscribed: this.subscribed,
+            pendingDisneyPlusSeeks: this.disneyPlusPendingSeeks.size,
+        });
         if (this.canPlayListener) {
             this.video.removeEventListener('canplay', this.canPlayListener);
             this.canPlayListener = undefined;
@@ -1431,6 +1503,7 @@ export default class Binding {
         this._notifyVideoDisappeared(this._registeredVideoSrc);
         this._registeredVideoSrc = '';
         this._lastSyncedLocation = undefined;
+        asbTrace('playback/binding', 'Media-owner unbind finished');
     }
 
     async _takeScreenshot() {
@@ -1664,6 +1737,12 @@ export default class Binding {
     async seek(timestampMs: number): Promise<void> {
         const clampedTimestampMs = clampMediaTimestamp(timestampMs, this.video.duration * 1000);
 
+        asbTrace('playback/binding', 'Seeking media owner', {
+            requestedTimestampMs: timestampMs,
+            clampedTimestampMs,
+            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : 'video-element',
+        });
+
         if (netflix) {
             document.dispatchEvent(
                 new CustomEvent('asbplayer-netflix-seek', {
@@ -1682,6 +1761,7 @@ export default class Binding {
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-disney-plus-seek-cancelled', { detail: requestId })
                     );
+                    asbTrace('playback/binding', 'Disney+ seek timed out', { clampedTimestampMs });
                     resolve();
                 }, disneyPlusSeekTimeoutMs);
                 this.disneyPlusPendingSeeks.set(requestId, {
@@ -1710,6 +1790,11 @@ export default class Binding {
     }
 
     async play() {
+        asbTrace('playback/binding', 'Requesting media playback', {
+            currentTimeMs: this.currentTimeMs,
+            paused: this.video.paused,
+            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : 'video-element',
+        });
         if (netflix) {
             await this._playNetflix();
             return;
@@ -1789,6 +1874,11 @@ export default class Binding {
     }
 
     pause() {
+        asbTrace('playback/binding', 'Requesting media pause', {
+            currentTimeMs: this.currentTimeMs,
+            paused: this.video.paused,
+            route: netflix ? 'netflix' : disneyPlus ? 'disney-plus' : 'video-element',
+        });
         if (netflix) {
             document.dispatchEvent(new CustomEvent('asbplayer-netflix-pause'));
             return;
@@ -1904,6 +1994,11 @@ export default class Binding {
     }
 
     private _updateSubtitles(subtitles: IndexedSubtitleModel[], subtitleFileNames: string[]) {
+        asbTrace('playback/binding', 'Updating media-owner subtitles', {
+            subtitleCount: subtitles.length,
+            trackCount: this._nonEmptyTrackIndexes(subtitles).length,
+            fileCount: subtitleFileNames.length,
+        });
         this.subtitleController.subtitles = subtitles;
         this.subtitleController.subtitleFileNames = subtitleFileNames;
         this.subtitleController.cacheHtml();
@@ -1964,6 +2059,9 @@ export default class Binding {
     }
 
     private _resetSubtitles() {
+        asbTrace('playback/binding', 'Resetting media-owner subtitles', {
+            previousSubtitleCount: this.subtitleController.subtitles.length,
+        });
         this.subtitleController.reset();
         this.playbackEngine.playbackPositionKeysChanged([]);
         this.playbackEngine.subtitlesChanged([]);
@@ -1976,12 +2074,19 @@ export default class Binding {
 
     private _updateRegisteredVideoSrc(src: string) {
         if (src === this._registeredVideoSrc) return;
+        asbTrace('playback/binding', 'Media source identity changed', {
+            hadPreviousSource: this._registeredVideoSrc.length > 0,
+            hasNextSource: src.length > 0,
+        });
         this._notifyVideoDisappeared(this._registeredVideoSrc);
         this._registeredVideoSrc = src;
     }
 
     private _notifyVideoDisappeared(src: string | undefined) {
         if (src === undefined) return;
+        asbTrace('playback/binding', 'Notifying media source disappearance', {
+            hasSource: src.length > 0,
+        });
         const command: VideoToExtensionCommand<VideoDisappearedMessage> = {
             sender: 'asbplayer-video',
             message: {

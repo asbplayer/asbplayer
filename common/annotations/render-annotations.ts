@@ -10,6 +10,7 @@ import {
     shouldUseAnnotation,
 } from '@project/common/settings';
 import type { PitchAccentContext } from '@project/common/util';
+import { asbTrace } from '@project/common/util/log';
 import {
     HAS_LETTER_REGEX,
     iterateOverStringInBlocks,
@@ -116,7 +117,14 @@ export const renderRichTextOntoSubtitles = (
     dictionaryTracks: DictionaryTrack[] | undefined
 ): Map<number, RenderedRichText> => {
     const rendered = new Map<number, RenderedRichText>();
-    if (dictionaryTracks?.length !== defaultSettings.dictionaryTracks.length) return rendered;
+    if (dictionaryTracks?.length !== defaultSettings.dictionaryTracks.length) {
+        asbTrace('annotations/render', 'Skipping annotation rendering because track settings are incomplete', {
+            expectedTrackCount: defaultSettings.dictionaryTracks.length,
+            receivedTrackCount: dictionaryTracks?.length ?? 0,
+            target: tokenAnnotationTarget,
+        });
+        return rendered;
+    }
 
     const trackAnnotations = dictionaryTracks.map((dt) => getAnnotationsForRender(dt, tokenAnnotationTarget));
     const allowAsciiReading = false; // Allowing is only for preview purposes for status names to show reading

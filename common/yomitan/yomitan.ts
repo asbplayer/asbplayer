@@ -1,4 +1,4 @@
-import { asbError, asbLog, asbWarn } from '@project/common/util/log';
+import { asbError, asbLog, asbTrace, asbWarn } from '@project/common/util/log';
 import {
     AsyncSemaphore,
     fromBatches,
@@ -470,6 +470,12 @@ export class Yomitan {
     }
 
     resetCache() {
+        asbTrace('yomitan/cache', 'Resetting Yomitan caches', {
+            frequencyCount: this.frequencyCache.size,
+            lemmaCount: this.lemmatizeCache.size,
+            pitchAccentCount: this.pitchAccentCache.size,
+            tokenizeCount: this.tokenizeCache.size,
+        });
         this.tokenizeCache.clear();
         this.lemmatizeCache.clear();
         this.frequencyCache.clear();
@@ -519,8 +525,17 @@ export class Yomitan {
         batchSize = this.tokenizeBatchSize
     ): Promise<TokenizedText> {
         let batchError = false;
+        const startedAt = Date.now();
+        let cachedTextCount = 0;
+        let fetchedTextCount = 0;
+        let fetchedBatchCount = 0;
+        asbTrace('yomitan/tokenize', 'Starting bulk tokenization request', {
+            batchSize,
+            parser: this.dt.dictionaryYomitanParser,
+            textCount: allTexts.length,
+        });
         try {
-            return await fromBatches(
+            const tokens = await fromBatches(
                 allTexts,
                 async (texts) => {
                     const tokensByText: TokenizedText[] = [];
@@ -530,6 +545,7 @@ export class Yomitan {
                     for (const [index, text] of texts.entries()) {
                         const tokensForText = this.tokenizeCache.get(text);
                         if (tokensForText) {
+                            cachedTextCount++;
                             tokensByText[index] = tokensForText;
                             continue;
                         }
@@ -540,6 +556,8 @@ export class Yomitan {
                         newlinesByText.push(newlines);
                     }
                     if (!textsToFetch.length) return tokensByText.flat();
+                    fetchedBatchCount++;
+                    fetchedTextCount += textsToFetch.length;
 
                     if (this.dt.dictionaryYomitanParser === 'mecab' && !this.getSupportsMecab()) {
                         throw new Error('Yomitan is not configured to support MeCab');
@@ -590,7 +608,21 @@ export class Yomitan {
                 },
                 { batchSize, statusUpdates }
             );
+            asbTrace('yomitan/tokenize', 'Finished bulk tokenization request', {
+                cachedTextCount,
+                durationMs: Date.now() - startedAt,
+                fetchedBatchCount,
+                fetchedTextCount,
+                tokenCount: tokens.length,
+            });
+            return tokens;
         } catch (e) {
+            asbTrace('yomitan/tokenize', 'Bulk tokenization request failed', {
+                batchError,
+                batchSize,
+                error: e,
+                textCount: allTexts.length,
+            });
             if (!batchError || batchSize <= 1) throw e;
             ++this.tokenizeBatchFailCount;
             if (this.tokenizeBatchFailCount >= BATCH_FAIL_THRESHOLD) {
@@ -1119,6 +1151,12 @@ export class Yomitan {
         batchSize = this.termEntriesBatchSize
     ): Promise<void> {
         let batchError = false;
+        const startedAt = Date.now();
+        asbTrace('yomitan/termEntries', 'Starting bulk term entry request', {
+            batchSize,
+            tokenCount: tokens.length,
+            triggerTokensWereModified: options.triggerTokensWereModified,
+        });
         try {
             const tokensToFetch = new Set<string>();
             for (const token of tokens) {
@@ -1137,7 +1175,10 @@ export class Yomitan {
                 }
                 tokensToFetch.add(token);
             }
-            if (!tokensToFetch.size) return;
+            if (!tokensToFetch.size) {
+                asbTrace('yomitan/termEntries', 'Skipping bulk term entry request because all tokens are cached');
+                return;
+            }
 
             const now = Date.now();
             const semaphoreId = await this.asyncSemaphore.acquire(2);
@@ -1153,7 +1194,10 @@ export class Yomitan {
                         tokensToFetch.delete(token);
                     }
                 }
-                if (!tokensToFetch.size) return;
+                if (!tokensToFetch.size) {
+                    asbTrace('yomitan/termEntries', 'Skipping bulk term entry request after cache recheck');
+                    return;
+                }
 
                 await inBatches(
                     Array.from(tokensToFetch),
@@ -1199,13 +1243,24 @@ export class Yomitan {
             } finally {
                 this.asyncSemaphore.release(semaphoreId);
             }
+            asbTrace('yomitan/termEntries', 'Finished bulk term entry request', {
+                durationMs: Date.now() - startedAt,
+                tokenCount: tokens.length,
+                fetchedTokenCount: tokensToFetch.size,
+            });
         } catch (e) {
+            asbTrace('yomitan/termEntries', 'Bulk term entry request failed', {
+                batchError,
+                batchSize,
+                error: e,
+                tokenCount: tokens.length,
+            });
             if (!batchError || batchSize <= 1) throw e;
             ++this.termEntriesBatchFailCount;
             if (this.termEntriesBatchFailCount >= BATCH_FAIL_THRESHOLD) {
                 const newDefaultBatchSize = Math.ceil(this.termEntriesBatchSize / 2);
                 asbWarn(
-                    'yomitan/term-entries',
+                    'yomitan/termEntries',
                     `Yomitan termEntries failed due to batch size too many times, reducing batch size from ${this.termEntriesBatchSize} to ${newDefaultBatchSize}`
                 );
                 this.termEntriesBatchSize = newDefaultBatchSize;
@@ -1289,6 +1344,7 @@ export class Yomitan {
     }
 
     async version(yomitanUrl?: string) {
+        const startedAt = Date.now();
         const version: string = (await this._executeAction('yomitanVersion', {}, yomitanUrl)).version;
         if (version === '0.0.0.0') {
             if (this.dt.dictionaryYomitanParser === 'mecab') {
@@ -1300,6 +1356,15 @@ export class Yomitan {
             this.supportsTokenizeFrequency = true;
             this.supportsTermEntriesBulk = true;
             this.supportsTokenizePronunciations = true;
+            asbTrace('yomitan/version', 'Detected Yomitan capabilities', {
+                durationMs: Date.now() - startedAt,
+                supportsMecab: this.supportsMecab,
+                supportsMecabLemma: this.supportsMecabLemma,
+                supportsTermEntriesBulk: this.supportsTermEntriesBulk,
+                supportsTokenizeFrequency: this.supportsTokenizeFrequency,
+                supportsTokenizePronunciations: this.supportsTokenizePronunciations,
+                version,
+            });
             return version;
         }
         const semver = coerce(version)?.version;
@@ -1324,6 +1389,15 @@ export class Yomitan {
         } else {
             this.supportsTokenizePronunciations = false;
         }
+        asbTrace('yomitan/version', 'Detected Yomitan capabilities', {
+            durationMs: Date.now() - startedAt,
+            supportsMecab: this.supportsMecab,
+            supportsMecabLemma: this.supportsMecabLemma,
+            supportsTermEntriesBulk: this.supportsTermEntriesBulk,
+            supportsTokenizeFrequency: this.supportsTokenizeFrequency,
+            supportsTokenizePronunciations: this.supportsTokenizePronunciations,
+            version,
+        });
         return version;
     }
 
