@@ -18,6 +18,7 @@ import Link from '@mui/material/Link';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import type { AsbPlayerToVideoCommandV2, RequestSubtitlesMessage } from '@project/common';
 import TutorialBubble from '@project/common/components/TutorialBubble';
+import { asbError } from '@project/common/util/log';
 import { isFirefox } from '@project/common/browser-detection';
 
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
@@ -238,13 +239,16 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
 
     useEffect(() => {
         if (step == Step.overlay) {
-            void settingsProvider.getSingle('streamingEnableOverlay').then((overlayEnabled) => {
-                if (overlayEnabled) {
-                    videoRef.current?.pause();
-                } else {
-                    setStep(Step.almostDone);
-                }
-            });
+            void settingsProvider
+                .getSingle('streamingEnableOverlay')
+                .then((overlayEnabled) => {
+                    if (overlayEnabled) {
+                        videoRef.current?.pause();
+                    } else {
+                        setStep(Step.almostDone);
+                    }
+                })
+                .catch((error) => asbError('tutorial', 'Failed to load overlay settings:', error));
         }
     }, [step]);
 

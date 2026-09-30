@@ -1,6 +1,5 @@
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 import {
-    asbError,
-    asbWarn,
     arrayEquals,
     HAS_LETTER_REGEX,
     inBatches,
@@ -41,7 +40,9 @@ import {
     dictionaryStatusCollectionEnabled,
     DictionaryTokenSource,
     dictionaryTrackEnabled,
+    getEnabledAnnotations,
     getFullyKnownTokenStatus,
+    shouldUseAnnotation,
     TokenMatchStrategy,
     TokenState,
 } from '@project/common/settings';
@@ -145,7 +146,7 @@ export class TrackState {
      *   - Never match across scripts, downside is if kanji is collected kana will need to be collected too.
      *   - Essentially a strict mode where the user needs to collect all script forms of a word.
      */
-    private lemmasForScript(trimmedToken: string, lemmas: string[]): string[] {
+    private lemmasForScript(trimmedToken: string, lemmas: readonly string[]): readonly string[] {
         const tokenIsKanaOnly = isKanaOnly(trimmedToken);
         if (tokenIsKanaOnly && this.dt.dictionaryMatchAcrossScripts) return lemmas;
         return lemmas.filter((lemma) => isKanaOnly(lemma) === tokenIsKanaOnly);
@@ -160,7 +161,7 @@ export class TrackState {
 
     groupingKeysForToken(
         trimmedToken: string,
-        lemmas: string[],
+        lemmas: readonly string[],
         source: DictionaryTokenSource | undefined
     ): { groupingKey: string; lemmasGroupingKey?: string } {
         const groupingKey = trimmedToken;
@@ -255,6 +256,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     private readonly fetcher?: Fetcher;
     private trackStates: TrackState[];
     private refreshCache: Set<number>; // Re-processes these indexes on next build
+    private deferredRefreshCache: Set<number>; // Refresh after statistics and the current annotation window finish
     private erroredCache: Set<number>; // Re-processes these indexes if they are in the build threshold
     private tokenToIndexesCache: Map<string, Set<number>>;
     private tokensForRefresh: Set<string>;
@@ -329,6 +331,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         this.getMediaTimeMs = getMediaTimeMs;
         this.showingNeedsRefreshCount = 0;
         this.refreshCache = new Set();
+        this.deferredRefreshCache = new Set();
         this.erroredCache = new Set();
         this.tokenToIndexesCache = new Map();
         this.tokensForRefresh = new Set();
@@ -361,6 +364,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     override setSubtitles(subtitles: TokenizedSubtitleModel[]) {
+        const previousSubtitleCount = this._subtitles.length;
         for (const s of subtitles) {
             if (s.originalText === undefined) s.originalText = s.text;
         }
@@ -379,9 +383,19 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.totalSubtitlesPerTrack.set(s.track, (this.totalSubtitlesPerTrack.get(s.track) ?? 0) + 1);
         }
         super.setSubtitles(this._subtitles);
+        asbTrace('annotations/subtitles', 'Subtitle collection updated', {
+            previousSubtitleCount,
+            subtitleCount: subtitles.length,
+            trackCount: this.totalSubtitlesPerTrack.size,
+            shouldReset,
+        });
         if (shouldReset) {
+            asbTrace('annotations/subtitles', 'Resetting annotation cache for new subtitle source', {
+                subtitleCount: this._subtitles.length,
+            });
             this._resetCache();
             this.refreshCache.clear();
+            this.deferredRefreshCache.clear();
             this.erroredCache.clear();
             this.tokenToIndexesCache.clear();
             this.tokensForRefresh.clear();
@@ -406,6 +420,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     private _resetCache() {
+        asbTrace('annotations/cache', 'Resetting annotation cache', {
+            annotationsBuilding: this.annotationsBuilding,
+            subtitleCount: this._subtitles.length,
+            trackCount: this.trackStates.length,
+        });
         if (this.annotationsBuilding) this.shouldCancelBuild = true;
         this.pendingBuild = undefined;
         this.profile = null;
@@ -439,16 +458,33 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         this.setSubtitles([]);
     }
 
-    settingsUpdated(settings: AsbplayerSettings) {
+    profileChanged(settings?: AsbplayerSettings): void {
+        if (settings) {
+            this.settingsUpdated(settings, { force: true });
+        } else {
+            void this.settingsProvider
+                .getAll()
+                .then((settings) => this.settingsUpdated(settings, { force: true }))
+                .catch((error) => asbError('annotations/settings', 'Failed to refresh profile settings:', error));
+        }
+    }
+
+    settingsUpdated(settings: AsbplayerSettings, options: { readonly force: boolean }) {
         const ankiSettingsChanged =
             this.lastAnkiSettings === undefined ||
             this.lastAnkiSettings.url !== settings.ankiConnectUrl ||
             this.lastAnkiSettings.apiKey !== settings.ankiConnectApiKey;
+        asbTrace('annotations/settings', 'Annotation settings update received', {
+            ankiSettingsChanged,
+            configuredTrackCount: settings.dictionaryTracks.length,
+            initializedTrackCount: this.trackStates.length,
+        });
         this.lastAnkiSettings = {
             url: settings.ankiConnectUrl,
             apiKey: settings.ankiConnectApiKey,
         };
-        let settingsAreEqual = !ankiSettingsChanged && this.trackStates.length === settings.dictionaryTracks.length;
+        let settingsAreEqual =
+            !options.force && !ankiSettingsChanged && this.trackStates.length === settings.dictionaryTracks.length;
         let renderSettingsChanged = false;
         for (const [index, dt] of settings.dictionaryTracks.entries()) {
             const ts = this.trackStates[index];
@@ -462,6 +498,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         }
         if (settingsAreEqual) {
             if (renderSettingsChanged) {
+                asbTrace('annotations/settings', 'Applying render-only annotation settings', {
+                    trackCount: settings.dictionaryTracks.length,
+                });
                 for (const [index, dt] of settings.dictionaryTracks.entries()) {
                     const ts = this.trackStates[index];
                     if (ts && !areDictionaryTracksEqual(ts.dt, dt)) ts.updateDictionaryTrack(dt);
@@ -470,6 +509,8 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 if (tokenizedSubtitles.length) {
                     this.subtitleAnnotationsUpdated(tokenizedSubtitles, settings.dictionaryTracks);
                 }
+            } else {
+                asbTrace('annotations/settings', 'Ignoring unchanged annotation settings');
             }
             return;
         }
@@ -488,6 +529,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             ts.updateDictionaryTrack(newDt);
         }
         if (subtitlesToReset.length) {
+            asbTrace('annotations/settings', 'Clearing annotations for disabled tracks', {
+                subtitleCount: subtitlesToReset.length,
+            });
             for (const s of subtitlesToReset) {
                 untokenize(s);
             }
@@ -495,6 +539,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         }
         this._resetCache();
         const { annotationsStartIndex, annotationsEndIndex } = this._getAnnotationsIndexes(true);
+        asbTrace('annotations/settings', 'Scheduling annotation rebuild after settings update', {
+            annotationsStartIndex,
+            annotationsEndIndex,
+            building: this.annotationsBuilding,
+        });
         if (this.annotationsBuilding) {
             this.pendingBuild = { annotationsStartIndex, annotationsEndIndex, init: true };
         } else {
@@ -507,7 +556,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     buildAnkiCacheStateChange(state: DictionaryBuildAnkiCacheState) {
-        this.tokensWereModified(state.body?.modifiedTokens ?? []);
+        const modifiedTokens = state.body?.modifiedTokens ?? [];
+        asbTrace('annotations/anki', 'Anki cache state changed', {
+            modifiedTokenCount: modifiedTokens.length,
+            type: state.type,
+        });
+        this.tokensWereModified(modifiedTokens);
         if (state.type === DictionaryBuildAnkiCacheStateType.error) {
             const body = state.body as DictionaryBuildAnkiCacheStateError;
             if (
@@ -534,7 +588,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     buildWaniKaniCacheStateChange(state: DictionaryBuildWaniKaniCacheState) {
-        this.tokensWereModified(state.body.modifiedTokens ?? []);
+        const modifiedTokens = state.body.modifiedTokens ?? [];
+        asbTrace('annotations/wanikani', 'WaniKani cache state changed', {
+            modifiedTokenCount: modifiedTokens.length,
+            type: state.type,
+        });
+        this.tokensWereModified(modifiedTokens);
         if (state.type === DictionaryBuildWaniKaniCacheStateType.error) {
             const body = state.body as DictionaryBuildWaniKaniCacheStateError;
             if (
@@ -553,6 +612,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     ankiCardWasModified() {
+        asbTrace('annotations/anki', 'Anki card modification scheduled an annotation refresh');
         this.ankiState.triggerRefresh = true;
         this.ankiState.statisticsRefreshed = false;
     }
@@ -564,6 +624,13 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         states: TokenState[],
         applyStates: ApplyStrategy
     ): Promise<void> {
+        asbTrace('annotations/local-status', 'Saving local token status', {
+            applyStates,
+            stateCount: states.length,
+            status,
+            token,
+            track,
+        });
         if (this.profile === null) return;
         const profile = this.profile;
         const ts = this.trackStates[track];
@@ -574,9 +641,16 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         await this.dictionaryProvider.saveRecordLocalBulk(profile, [{ token, status, lemmas, states }], applyStates);
         this.tokensForRefresh.add(normalizeToken(token));
         for (const lemma of lemmas) this.tokensForRefresh.add(normalizeToken(lemma));
+        asbTrace('annotations/local-status', 'Local token status saved', {
+            token,
+            lemmas,
+            refreshTokenCount: this.tokensForRefresh.size,
+            track,
+        });
     }
 
     requestStatisticsGeneration() {
+        asbTrace('annotations/statistics', 'Statistics generation requested');
         this.generateStatistics = true;
     }
 
@@ -616,6 +690,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         const profile = this.profile;
 
         if (this.ankiState.refreshing) return;
+        const startedAt = Date.now();
+        asbTrace('annotations/anki', 'Starting Anki refresh', {
+            generateStatistics: this.generateStatistics === true,
+            trackCount: this.trackStates.length,
+        });
         try {
             this.ankiState.refreshing = true;
             if (!this.anki) {
@@ -670,6 +749,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.ankiState.refreshed = false;
         } finally {
             this.ankiState.refreshing = false;
+            asbTrace('annotations/anki', 'Finished Anki refresh', {
+                durationMs: Date.now() - startedAt,
+                refreshed: this.ankiState.refreshed,
+                statisticsRefreshed: this.ankiState.statisticsRefreshed,
+            });
         }
     }
 
@@ -738,6 +822,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         const profile = this.profile;
 
         if (this.waniKaniState.refreshing) return;
+        const startedAt = Date.now();
+        asbTrace('annotations/wanikani', 'Starting WaniKani refresh', {
+            generateStatistics: this.generateStatistics === true,
+            trackCount: this.trackStates.length,
+        });
         try {
             this.waniKaniState.refreshing = true;
             if (
@@ -759,6 +848,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             asbWarn('annotations/wanikani', 'WaniKani refresh failed:', e);
         } finally {
             this.waniKaniState.refreshing = false;
+            asbTrace('annotations/wanikani', 'Finished WaniKani refresh', {
+                durationMs: Date.now() - startedAt,
+                refreshed: this.waniKaniState.refreshed,
+                statisticsRefreshed: this.waniKaniState.statisticsRefreshed,
+            });
         }
     }
 
@@ -799,6 +893,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     bind() {
+        asbTrace('annotations/lifecycle', 'Binding annotation pipeline');
         if (this.removeBuildAnkiCacheStateChangeCB) this.removeBuildAnkiCacheStateChangeCB();
         this.removeBuildAnkiCacheStateChangeCB = this.dictionaryProvider.onBuildAnkiCacheStateChange((state) =>
             this.buildAnkiCacheStateChange(state)
@@ -874,6 +969,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             }
             if (
                 (this.tokensForRefresh.size || // Don't force a build for this.refreshCache.size as it may update too frequently for token.frequency
+                    (this.deferredRefreshCache.size &&
+                        this.initialized &&
+                        !(this.generateStatistics && this.statisticsBatchProcessedIndex < this.subtitles.length)) ||
                     Date.now() - this.annotationsLastRefresh >= tokenCacheRefreshInterval) &&
                 !this.showingNeedsRefreshCount
             ) {
@@ -924,22 +1022,43 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         init?: boolean
     ): Promise<boolean> {
         if (!this.subtitles.length) {
+            asbTrace('annotations/build', 'Skipping annotation build because there are no subtitles');
             this.pendingBuild = undefined;
             return true;
         }
         if (this.annotationsBuilding) return false;
         this.pendingBuild = undefined;
+        const requestedAnnotationsStartIndex = annotationsStartIndex;
+        const requestedAnnotationsEndIndex = annotationsEndIndex;
+        const startedAt = Date.now();
         let tokensRefreshed: string[] = [];
         const skipTracks: number[] = [];
         let buildWasCancelled = false;
+        let buildOutcome: 'completed' | 'cancelled' | 'retry' | 'skipped' = 'completed';
         let updateThresholds = false;
         let statisticsBatching = false;
         let builtNewTokenization = false;
+        let selectedSubtitleCount = 0;
+        let tokenizationAttemptCount = 0;
+        let tokenizationUpdateCount = 0;
+        let tokenizationErrorCount = 0;
         try {
             this.annotationsBuilding = true;
+            asbTrace('annotations/build', 'Starting annotation build', {
+                annotationsEndIndex,
+                annotationsStartIndex,
+                erroredCacheSize: this.erroredCache.size,
+                init: init === true,
+                refreshCacheSize: this.refreshCache.size,
+                subtitleCount: this.subtitles.length,
+                tokensForRefreshCount: this.tokensForRefresh.size,
+            });
             if (this.profile === null) {
                 const profile = (await this.settingsProvider.activeProfile())?.name;
                 if (this.profile === null) this.profile = profile;
+                asbTrace('annotations/build', 'Resolved active dictionary profile', {
+                    hasProfile: this.profile !== undefined && this.profile !== null,
+                });
             }
             const profile = this.profile;
             if (!this.trackStates.length) {
@@ -949,9 +1068,23 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 if (this.generateStatistics === undefined) {
                     this.generateStatistics = this._shouldAutoGenerateStatistics(this.trackStates.map((ts) => ts.dt));
                 }
+                asbTrace('annotations/build', 'Initialized annotation track state', {
+                    generateStatistics: this.generateStatistics === true,
+                    trackCount: this.trackStates.length,
+                    tracks: this.trackStates.map((ts) => ({
+                        enabled: dictionaryTrackEnabled(ts.dt),
+                        track: ts.track,
+                    })),
+                });
             }
-            if (this.trackStates.every((t) => !dictionaryTrackEnabled(t.dt))) return true;
-            if (this.shouldCancelBuild) return false;
+            if (this.trackStates.every((t) => !dictionaryTrackEnabled(t.dt))) {
+                buildOutcome = 'skipped';
+                return true;
+            }
+            if (this.shouldCancelBuild) {
+                buildOutcome = 'cancelled';
+                return false;
+            }
 
             for (const ts of this.trackStates) {
                 if (!dictionaryTrackEnabled(ts.dt) || ts.yt) continue;
@@ -967,8 +1100,13 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                             for (const index of indexes) this.refreshCache.add(index);
                         },
                     });
-                    await yt.version();
+                    const version = await yt.version();
                     ts.updateYomitan(yt);
+                    asbTrace('annotations/yomitan', 'Initialized Yomitan for annotation track', {
+                        parser: ts.dt.dictionaryYomitanParser,
+                        track: ts.track,
+                        version,
+                    });
                 } catch (e) {
                     asbError('annotations/yomitan', `YomitanTrack${ts.track + 1} version request failed:`, e);
                     ts.resetYomitan();
@@ -993,18 +1131,41 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                         this.dictionaryStatistics.init(ts.track, this.totalSubtitlesPerTrack.get(ts.track) ?? 0);
                         this.statisticsProcessedSubtitleIndexesByTrack.set(ts.track, new Set());
                     }
-                    void this.dictionaryStatistics.refreshDictionaryTokens(profile); // Init with dictionary token state
+                    void this.dictionaryStatistics.refreshDictionaryTokens(profile).catch((error) => {
+                        asbError('annotations/statistics', 'Failed to refresh dictionary statistics:', error);
+                    }); // Init with dictionary token state
                     this.ankiState.triggerRefresh = true;
                     this.waniKaniState.triggerRefresh = true;
                     tokenCacheRefreshInterval = TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL;
                 }
+                asbTrace('annotations/statistics', 'Preparing annotation statistics batch', {
+                    batching: statisticsBatching,
+                    endIndex: annotationsEndIndex,
+                    startIndex: annotationsStartIndex,
+                });
             }
             const subtitles = !skipTracks.length
                 ? this.subtitles.slice(annotationsStartIndex, annotationsEndIndex)
                 : this.subtitles
                       .slice(annotationsStartIndex, annotationsEndIndex)
                       .filter((s) => !skipTracks.includes(s.track));
-            if (!subtitles.length) return !skipTracks.length;
+            selectedSubtitleCount = subtitles.length;
+            if (!subtitles.length) {
+                buildOutcome = skipTracks.length ? 'retry' : 'skipped';
+                return !skipTracks.length;
+            }
+
+            if (
+                this.deferredRefreshCache.size &&
+                this.initialized &&
+                !this.generateStatisticsRequested &&
+                subtitles.every(
+                    (subtitle) => subtitle.__tokenized || !dictionaryTrackEnabled(this.trackStates[subtitle.track].dt)
+                )
+            ) {
+                for (const index of this.deferredRefreshCache) this.refreshCache.add(index);
+                this.deferredRefreshCache.clear();
+            }
 
             if (this.refreshCache.size || this.tokensForRefresh.size) {
                 const existingIndexes = new Set(subtitles.map((s) => s.index));
@@ -1022,6 +1183,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     annotationsStartIndex >= this.buildLowerThreshold &&
                     annotationsStartIndex < this.buildUpperThreshold
                 ) {
+                    buildOutcome = 'skipped';
                     return true;
                 }
                 updateThresholds = true;
@@ -1044,6 +1206,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                             if (alreadyTokenized && !this.refreshCache.has(index) && !this.erroredCache.has(index)) {
                                 return;
                             }
+                            tokenizationAttemptCount++;
                             const ts = this.trackStates[track];
                             if (!dictionaryTrackEnabled(ts.dt)) return;
                             const deletedFromRefreshCache = this.refreshCache.delete(index);
@@ -1077,6 +1240,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                                     subtitle.__tokenized = true;
                                     updatedSubtitles.push(subtitle);
                                     this._recordTokenOccurrences(index, reconstructedText, tokenization, ts);
+                                    tokenizationUpdateCount++;
                                     if (generatingStatistics) {
                                         const sentence = { ...subtitle };
                                         this.dictionaryStatistics.ingest(sentence); // Treat the entire source entry as a single sentence
@@ -1099,6 +1263,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                                     this.trackStates.map((ts) => ts.dt)
                                 );
                             } catch (e) {
+                                tokenizationErrorCount++;
                                 asbError(
                                     'annotations/tokenization',
                                     `Error building annotations for subtitle index ${index}:`,
@@ -1133,16 +1298,20 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 }
             }
             if (tokensRefreshed.length && generatingStatistics) {
-                void this.dictionaryStatistics.refreshDictionaryTokens(profile);
+                void this.dictionaryStatistics.refreshDictionaryTokens(profile).catch((error) => {
+                    asbError('annotations/statistics', 'Failed to refresh dictionary statistics:', error);
+                });
             }
 
             if (this.shouldCancelBuild || skipTracks.length) {
                 buildWasCancelled = true;
+                buildOutcome = 'cancelled';
                 tokensRefreshed = [];
                 updateThresholds = false;
             }
         } finally {
             if (this.tokenRequestFailedForTracks.size) {
+                buildOutcome = 'retry';
                 tokensRefreshed = [];
                 updateThresholds = false;
                 for (const track of this.tokenRequestFailedForTracks) this.trackStates[track].resetYomitan();
@@ -1170,6 +1339,23 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             }
             this.shouldCancelBuild = false;
             this.annotationsBuilding = false;
+            asbTrace('annotations/build', 'Finished annotation build', {
+                buildOutcome,
+                durationMs: Date.now() - startedAt,
+                effectiveAnnotationsEndIndex: annotationsEndIndex,
+                effectiveAnnotationsStartIndex: annotationsStartIndex,
+                erroredCacheSize: this.erroredCache.size,
+                init: init === true,
+                requestedAnnotationsEndIndex,
+                requestedAnnotationsStartIndex,
+                selectedSubtitleCount,
+                skipTracks,
+                subtitleCount: this.subtitles.length,
+                tokenizationAttemptCount,
+                tokenizationErrorCount,
+                tokenizationUpdateCount,
+                tokensRefreshedCount: tokensRefreshed.length,
+            });
         }
         return !buildWasCancelled;
     }
@@ -1210,10 +1396,50 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         for (const [track, texts] of eventsPerTrack.entries()) {
             const ts = this.trackStates[track];
             try {
-                if (!ts.yt) continue;
+                asbTrace('annotations/token-map', 'Building token and lemma map', {
+                    refreshTokenCount: this.tokensForRefresh.size,
+                    subtitleCount: texts.length,
+                    track,
+                });
+                if (!ts.yt) {
+                    asbTrace('annotations/token-map', 'Skipping token and lemma map because Yomitan is unavailable', {
+                        track,
+                    });
+                    continue;
+                }
+                const tokenizationStartedAt = Date.now();
                 const tokenizeBulkRes = await ts.yt.tokenizeBulk(texts);
-                if (!dictionaryStatusCollectionEnabled(ts.dt, { includeStates: true })) continue; // Still want to bulk tokenize if all statuses are enabled but no coloring
+                asbTrace('annotations/token-map', 'Tokenized subtitle batch', {
+                    durationMs: Date.now() - tokenizationStartedAt,
+                    track,
+                });
                 if (this.shouldCancelBuild) return;
+                if (
+                    getEnabledAnnotations(ts.dt).gloss &&
+                    !ts.yt.getSupportsBulkGloss() &&
+                    ts.yt.getSupportsTermEntriesBulk() &&
+                    this.initialized &&
+                    !this.generateStatisticsRequested
+                ) {
+                    const tokenTexts = tokenizeBulkRes.map((tokenParts) =>
+                        tokenParts
+                            .map((p) => p.text)
+                            .join('')
+                            .trim()
+                    );
+                    await ts.yt.termEntriesBulk(tokenTexts, { triggerTokensWereModified: true });
+                    if (this.shouldCancelBuild) return;
+                }
+                if (!dictionaryStatusCollectionEnabled(ts.dt, { includeStates: true })) {
+                    asbTrace(
+                        'annotations/token-map',
+                        'Skipping dictionary status queries because collection is disabled',
+                        {
+                            track,
+                        }
+                    );
+                    continue; // Still want to bulk tokenize if all statuses are enabled but no coloring
+                }
 
                 for (const token of this.tokensForRefresh) {
                     ts.tokenCollectionExact.delete(token);
@@ -1247,6 +1473,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 }
                 if (this.shouldCancelBuild) return;
 
+                asbTrace('annotations/token-map', 'Querying dictionary token statuses', {
+                    exactQueryCount: forExactFormQuery.size,
+                    lemmaQueryCount: forLemmaFormQuery.size,
+                    anyFormQueryCount: forAnyFormQuery.size,
+                    track,
+                });
                 const emptyTokenResults: TokenResults = {};
                 const [exactFormResultMap, lemmaFormResultMap, anyFormResultsMap] = await Promise.all([
                     forExactFormQuery.size
@@ -1273,6 +1505,14 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 ]);
                 if (this.shouldCancelBuild) return;
 
+                asbTrace('annotations/token-map', 'Loaded dictionary token statuses', {
+                    anyFormResultCount: Object.keys(anyFormResultsMap).length,
+                    durationMs: Date.now() - tokenizationStartedAt,
+                    exactResultCount: Object.keys(exactFormResultMap).length,
+                    lemmaResultCount: Object.keys(lemmaFormResultMap).length,
+                    track,
+                });
+
                 for (const [token, { states, statuses, externalCandidateStatuses, source }] of Object.entries(
                     exactFormResultMap
                 )) {
@@ -1288,7 +1528,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                         ts.tokenCollectionAny.add(statuses, source, externalCandidateStatuses, lemma, states, token);
                     }
                 }
+                asbTrace('annotations/token-map', 'Finished token and lemma map', { track });
             } catch (e) {
+                asbTrace('annotations/token-map', 'Token and lemma map failed', { error: e, track });
                 asbError('annotations/yomitan', `Error building token and lemma map for track ${track}:`, e);
                 ts.resetYomitan();
             }
@@ -1390,6 +1632,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                         }
                         if (token.status === null) this.erroredCache.add(index);
                         await this._updateFrequency(token, trimmedToken, index, ts);
+                        await this._updateGloss(token, trimmedToken, index, ts);
                         await this._updatePitchAccent(token, trimmedToken, index, ts);
                         if (this.shouldCancelBuild) return;
 
@@ -1493,6 +1736,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 }
                 if (token.status === null) this.erroredCache.add(index);
                 await this._updateFrequency(token, trimmedToken, index, ts);
+                await this._updateGloss(token, trimmedToken, index, ts);
                 await this._updatePitchAccent(token, trimmedToken, index, ts);
                 if (this.shouldCancelBuild) return;
             }
@@ -1511,7 +1755,17 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         if (this.initialized || ts.yt.getSupportsBulkFrequency()) {
             token.frequency = await ts.yt.frequency(trimmedToken);
         } else {
-            this.refreshCache.add(index);
+            this.deferredRefreshCache.add(index);
+        }
+    }
+
+    private async _updateGloss(token: Token, trimmedToken: string, index: number, ts: TrackState): Promise<void> {
+        if (!ts.yt) throw new Error('Yomitan uninitialized - cannot update token gloss');
+        if (token.status == null || !shouldUseAnnotation('gloss', token.status, token.states, ts.dt)) return; // gloss is not always in tokenize so prevent unnecessary requests
+        if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkGloss()) {
+            token.gloss = await ts.yt.gloss(trimmedToken);
+        } else {
+            this.deferredRefreshCache.add(index);
         }
     }
 
@@ -1520,11 +1774,12 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         if ((this.initialized && !this.generateStatisticsRequested) || ts.yt.getSupportsBulkPitchAccent()) {
             token.pitchAccent = await ts.yt.pitchAccent(trimmedToken);
         } else {
-            this.refreshCache.add(index);
+            this.deferredRefreshCache.add(index);
         }
     }
 
     unbind() {
+        asbTrace('annotations/lifecycle', 'Unbinding annotation pipeline');
         this.reset();
         if (this.removeBuildAnkiCacheStateChangeCB) {
             this.removeBuildAnkiCacheStateChangeCB();

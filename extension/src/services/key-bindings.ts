@@ -1,4 +1,5 @@
-import { asbError, ensureStoragePersisted, retryWithAnimationFrame } from '@project/common/util';
+import { asbError, asbTrace } from '@project/common/util/log';
+import { ensureStoragePersisted, retryWithAnimationFrame } from '@project/common/util';
 import type {
     OpenStatisticsMessage,
     SettingsUpdatedMessage,
@@ -208,6 +209,10 @@ export default class KeyBindings {
                 event.stopImmediatePropagation();
                 context.subtitleController.disabledSubtitleTracks[track] =
                     !context.subtitleController.disabledSubtitleTracks[track];
+                asbTrace('playback/subtitles', 'Toggled subtitle track display', {
+                    track,
+                    disabled: context.subtitleController.disabledSubtitleTracks[track],
+                });
                 context.subtitleController.refreshShowingSubtitles();
             },
             () => context.subtitleController.subtitles.length === 0,

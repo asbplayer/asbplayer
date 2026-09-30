@@ -1,13 +1,17 @@
+import { asbError } from '@project/common/util/log';
 import { useEffect, useCallback, useState } from 'react';
 
 export const useCurrentTabId = () => {
     const [currentTabId, setCurrentTabId] = useState<number>();
     const refresh = useCallback(() => {
-        void browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
-            if (tabs.length > 0) {
-                setCurrentTabId(tabs[0].id);
-            }
-        });
+        void browser.tabs
+            .query({ active: true, currentWindow: true })
+            .then((tabs) => {
+                if (tabs.length > 0) {
+                    setCurrentTabId(tabs[0].id);
+                }
+            })
+            .catch((error) => asbError('browser/tabs', 'Failed to query the active tab:', error));
     }, []);
 
     useEffect(() => {

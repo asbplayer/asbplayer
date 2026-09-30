@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { CopySubtitleMessage, SubtitleModel } from '@project/common';
 import { PostMineAction } from '@project/common';
 import type { DefaultKeyBinder, KeyBinder } from '@project/common/key-binder';

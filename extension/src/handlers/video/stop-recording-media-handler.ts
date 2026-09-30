@@ -1,4 +1,5 @@
-import { asbError, mockSurroundingSubtitles } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { mockSurroundingSubtitles } from '@project/common/util';
 import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     AudioModel,

@@ -1,4 +1,5 @@
-import { asbError, asbWarn, humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
+import { asbError, asbWarn } from '@project/common/util/log';
+import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import type { ComponentProps } from 'react';
 import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { makeStyles } from '@mui/styles';
@@ -80,6 +81,7 @@ import { StyledEngineProvider } from '@mui/material/styles';
 import { useServiceWorker } from '@project/common/app/hooks/use-service-worker';
 import NeedRefreshDialog from '@project/common/app/components/NeedRefreshDialog';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { LogProvider } from '@project/common/util/log';
 import { isFirefox } from '@project/common/browser-detection';
 import type { StatisticsOverlayProps } from '@project/common/components/StatisticsOverlay';
 import StatisticsOverlay from '@project/common/components/StatisticsOverlay';
@@ -325,6 +327,7 @@ interface Props {
     logoUrl: string;
     settingsProvider: SettingsProvider;
     dictionaryProvider: DictionaryProvider;
+    logProvider: LogProvider;
     settings: AsbplayerSettings;
     globalState?: GlobalState;
     extension: ChromeExtension;
@@ -343,6 +346,7 @@ function App({
     origin,
     logoUrl,
     dictionaryProvider,
+    logProvider,
     settingsProvider,
     settings,
     globalState,
@@ -1921,6 +1925,7 @@ function App({
                                 onSettingsChanged={onSettingsChanged}
                                 onClose={handleCloseSettings}
                                 dictionaryProvider={dictionaryProvider}
+                                logProvider={logProvider}
                                 settings={settings}
                                 activeProfile={profilesContext.activeProfile}
                                 scrollToId={settingsDialogScrollToId}

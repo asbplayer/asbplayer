@@ -1,5 +1,5 @@
 import type { Command, Message } from '@project/common';
-import { asbWarn } from '@project/common/util';
+import { asbWarn } from '@project/common/util/log';
 import { captureVisibleTab } from '@project/extension/src/services/capture-visible-tab';
 
 export default class CaptureVisibleTabHandler {

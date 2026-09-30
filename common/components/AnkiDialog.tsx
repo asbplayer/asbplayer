@@ -1,5 +1,5 @@
+import { asbInfo } from '@project/common/util/log';
 import {
-    asbInfo,
     humanReadableTime,
     surroundingSubtitlesAroundInterval,
     subtitleIntersectsTimeInterval,

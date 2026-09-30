@@ -1,4 +1,5 @@
 ---
+name: "Agent: Pull request triage"
 description: |
   Triage assistant for pull requests that scores pull request review priority based on useful metrics.
 

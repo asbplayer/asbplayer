@@ -1,4 +1,4 @@
-import { asbWarn } from '@project/common/util';
+import { asbWarn } from '@project/common/util/log';
 import type { CardModel, FileModel } from '@project/common/src/model';
 import { MediaFragmentErrorCode } from '@project/common/src/model';
 import { isActiveBlobUrl } from '@project/common/blob-url';

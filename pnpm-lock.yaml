@@ -316,9 +316,6 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
-      fake-indexeddb:
-        specifier: ^6.0.1
-        version: 6.0.1
       jest:
         specifier: ^30.0.5
         version: 30.0.5(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1)
@@ -452,6 +449,9 @@ importers:
       core-js:
         specifier: ^3.44.0
         version: 3.44.0
+      fake-indexeddb:
+        specifier: ^6.0.1
+        version: 6.0.1
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(node-notifier@10.0.1)(supports-color@8.1.1)

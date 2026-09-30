@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState } from 'react';
 import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
 import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '@project/common/file-system-access';
@@ -16,11 +17,16 @@ export const useFileSession = () => {
 
     useEffect(() => {
         if (!fileSessionRepository) return;
-        void fileSessionRepository.fetch().then((record) => {
-            if (record && (record.videoHandle || record.subtitleHandles.length > 0)) {
-                setCanRestoreLastSession(true);
-            }
-        });
+        void fileSessionRepository
+            .fetch()
+            .then((record) => {
+                if (record && (record.videoHandle || record.subtitleHandles.length > 0)) {
+                    setCanRestoreLastSession(true);
+                }
+            })
+            .catch((error) => {
+                asbError('app/session', 'Failed to inspect the last file session:', error);
+            });
     }, [fileSessionRepository]);
 
     const saveSession = useCallback(

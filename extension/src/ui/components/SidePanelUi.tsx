@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import SidePanel from '@project/extension/src/ui/components/SidePanel';
 import { createTheme } from '@project/common/theme';
+import { asbError } from '@project/common/util/log';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { SettingsProvider } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
@@ -22,13 +23,19 @@ const SidePanelUi = () => {
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
 
     useEffect(() => {
-        void settingsProvider.getAll().then(setSettings);
+        void settingsProvider
+            .getAll()
+            .then(setSettings)
+            .catch((error) => asbError('settings', 'Failed to load extension settings:', error));
     }, []);
 
     useEffect(() => {
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'settings-updated') {
-                void settingsProvider.getAll().then(setSettings);
+                void settingsProvider
+                    .getAll()
+                    .then(setSettings)
+                    .catch((error) => asbError('settings', 'Failed to load extension settings:', error));
             }
         });
     }, [extension]);

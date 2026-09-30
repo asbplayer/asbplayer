@@ -25,6 +25,7 @@ import TutorialIcon from '@project/common/components/TutorialIcon';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import Paper from '@mui/material/Paper';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { LogProvider } from '@project/common/util/log';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { uiTabRegistry, useMediaId, useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
@@ -38,6 +39,7 @@ const globalStateProvider = new ExtensionGlobalStateProvider();
 
 interface Props {
     dictionaryProvider: DictionaryProvider;
+    logProvider: LogProvider;
     settings: AsbplayerSettings;
     commands: any;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
@@ -93,6 +95,7 @@ const NavButton: React.FC<ButtonProps & { label: string }> = ({ label, ...button
 
 const Popup = ({
     dictionaryProvider,
+    logProvider,
     settings,
     commands,
     onOpenApp,
@@ -241,6 +244,7 @@ const Popup = ({
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
                             dictionaryProvider={dictionaryProvider}
+                            logProvider={logProvider}
                             settings={settings}
                             profiles={profilesContext.profiles}
                             activeProfile={profilesContext.activeProfile}

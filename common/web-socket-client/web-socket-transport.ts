@@ -1,4 +1,4 @@
-import { asbInfo, asbLog } from '@project/common/util';
+import { asbInfo, asbLog } from '@project/common/util/log';
 
 export class WebSocketTransport {
     private _socket?: WebSocket;

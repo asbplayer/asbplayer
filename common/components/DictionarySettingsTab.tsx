@@ -1,10 +1,10 @@
+import { asbError } from '@project/common/util/log';
 import {
-    asbError,
     computeStyles,
     ensureStoragePersisted,
     hex2ToPercent,
     humanReadableTime,
-    localizedDate,
+    localizeDateTime,
     percentToHex2,
 } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
@@ -153,16 +153,19 @@ const tokenAnnotationHoverOptions: { annotation: TokenAnnotationHoverKey; labelK
     { annotation: 'color', labelKey: 'settings.dictionaryTokenAnnotationHoverColor' },
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenAnnotationHoverReading' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenAnnotationHoverFrequency' },
+    { annotation: 'gloss', labelKey: 'settings.dictionaryTokenAnnotationHoverGloss' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationHoverPitchAccent' },
 ];
 const tokenAnnotationSizeOptions: { annotation: TokenAnnotationSizeKey; labelKey: string }[] = [
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenAnnotationReadingSize' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenAnnotationFrequencySize' },
+    { annotation: 'gloss', labelKey: 'settings.dictionaryTokenAnnotationGlossSize' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationPitchAccentSize' },
 ];
 const tokenAnnotationTriggerOptions: { annotation: TokenAnnotationTriggerKey; labelKey: string }[] = [
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenReadingAnnotation' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenFrequencyAnnotation' },
+    { annotation: 'gloss', labelKey: 'settings.dictionaryTokenGlossAnnotation' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenPitchAccentAnnotation' },
 ];
 
@@ -310,7 +313,7 @@ const useBuildAnkiCacheState: () => {
                 switch (error.code) {
                     case DictionaryBuildAnkiCacheStateErrorCode.concurrentBuild:
                         msg = t('settings.dictionaryBuildInProgress', {
-                            time: localizedDate(
+                            time: localizeDateTime(
                                 (error.data as DictionaryBuildAnkiCacheStateErrorBuildExpirationData).expiration
                             ),
                         });
@@ -338,7 +341,7 @@ const useBuildAnkiCacheState: () => {
                 const progress = state.body as DictionaryBuildAnkiCacheProgress;
                 const rate = progress.current / (receivedAt - progress.buildTimestamp);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
-                msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(receivedAt + eta)} (${humanReadableTime(eta)})]`;
+                msg = `${progress.forAnkiSync ? `${t('settings.dictionaryBuildAnkiStarted')}: ` : ''}${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildModifiedCards', { numCards: progress.total.toLocaleString('en-US') })} [ETA: ${localizeDateTime(receivedAt + eta)} (${humanReadableTime(eta)})]`;
                 break;
             }
             case DictionaryBuildAnkiCacheStateType.stats: {
@@ -423,7 +426,7 @@ const useBuildWaniKaniCacheState: () => {
                     case DictionaryBuildWaniKaniCacheStateErrorCode.concurrentBuild:
                         return withTrack(
                             t('settings.dictionaryBuildInProgress', {
-                                time: localizedDate(
+                                time: localizeDateTime(
                                     (error.data as DictionaryBuildAnkiCacheStateErrorBuildExpirationData).expiration
                                 ),
                             })
@@ -450,7 +453,7 @@ const useBuildWaniKaniCacheState: () => {
                 const rate = progress.current / (receivedAt - progress.buildTimestamp);
                 const eta = rate ? Math.ceil((progress.total - progress.current) / rate) : 0;
                 return withTrack(
-                    `${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildWaniKaniSubjects', { numSubjects: progress.total.toLocaleString('en-US') })} [ETA: ${localizedDate(receivedAt + eta)} (${humanReadableTime(eta)})]`
+                    `${progress.current.toLocaleString('en-US')} / ${t('settings.dictionaryBuildWaniKaniSubjects', { numSubjects: progress.total.toLocaleString('en-US') })} [ETA: ${localizeDateTime(receivedAt + eta)} (${humanReadableTime(eta)})]`
                 );
             }
             case DictionaryBuildWaniKaniCacheStateType.stats: {
@@ -2162,6 +2165,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     },
                                 ],
                                 frequency: statusFrequencies[tokenStatus],
+                                gloss: t('settings.dictionaryTokenGlossAnnotationPreview'),
                                 pitchAccent: readingPitchAccents[localizedReading] ?? statusPitchAccents[tokenStatus],
                                 __internal: true,
                             };
@@ -2190,6 +2194,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         },
                                     ],
                                     frequency: statusFrequencies[tokenStatus],
+                                    gloss: t('settings.dictionaryTokenGlossAnnotationPreview'),
                                     pitchAccent: readingPitchAccents[ignoredReading] ?? statusPitchAccents[tokenStatus],
                                     __internal: true,
                                 });
@@ -2206,6 +2211,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                           dt,
                                           enabledAnnotations: ta.richTextEnabledAnnotations,
                                           allowAsciiReading: true,
+                                          glossSize: ta.glossSize,
                                       }
                                   )
                                 : undefined;
@@ -2218,6 +2224,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                           dt,
                                           enabledAnnotations: ta.richTextOnHoverEnabledAnnotations,
                                           allowAsciiReading: true,
+                                          glossSize: ta.glossSize,
                                       }
                                   )
                                 : undefined;
@@ -2272,7 +2279,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 }
                                             />
                                         </div>
-                                        <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'center' }}>
+                                        <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'end' }}>
                                             <TextField
                                                 type="color"
                                                 sx={{ width: '50%' }}

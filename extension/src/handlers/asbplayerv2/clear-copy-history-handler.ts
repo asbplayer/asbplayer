@@ -1,4 +1,5 @@
 import type { Command, Message } from '@project/common';
+import { asbError } from '@project/common/util/log';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import type { SettingsProvider } from '@project/common/settings';
 
@@ -20,11 +21,9 @@ export default class ClearCopyHistoryHandler {
         void this._settings
             .getSingle('miningHistoryStorageLimit')
             .then((limit) => new IndexedDBCopyHistoryRepository(limit))
-            .then((copyHistoryRepository) => {
-                void copyHistoryRepository.clear().then(() => {
-                    sendResponse({});
-                });
-            });
+            .then((copyHistoryRepository) => copyHistoryRepository.clear())
+            .then(() => sendResponse({}))
+            .catch((error) => asbError('copy-history', 'Failed to clear copy history:', error));
 
         return true;
     }

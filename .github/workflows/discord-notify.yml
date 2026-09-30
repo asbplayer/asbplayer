@@ -1,0 +1,173 @@
+# Posts project activity to Discord incoming webhooks.
+#
+# Routing:
+#   - Release published / promoted (base repo)         -> #extension-releases
+#   - App deploy PR merged (base cf-pages, head
+#     deploy/cf-pages-*)                               -> #app-releases
+#   - Issue opened, or any other merged pull request   -> #github
+#
+# Webhook URLs are read from repository secrets. The optional message prefixes
+# are intentionally kept in this workflow so they can be edited here directly.
+#
+# Note: events triggered by the repository's own GITHUB_TOKEN do not trigger
+# workflows. Releases are published and pull requests are merged manually today,
+# so this workflow fires as expected; if release publishing becomes automated
+# with GITHUB_TOKEN, the release trigger will stop firing.
+#
+# pull_request_target (not pull_request) is used so secrets are available for
+# pull requests merged from forks. The workflow only reads the event payload and
+# never checks out or executes pull request code.
+
+name: Discord notify
+
+on:
+    release:
+        types: [published, released]
+    issues:
+        types: [opened]
+    pull_request_target:
+        types: [closed]
+    workflow_dispatch:
+
+permissions: {}
+
+env:
+    RELEASE_PREFIX: ''
+    APP_DEPLOY_PREFIX: ''
+    ISSUE_PREFIX: "Issue opened:"
+    PULL_REQUEST_PREFIX: "Merged:"
+
+jobs:
+    extension-release:
+        name: Extension release
+        if: github.event_name == 'release'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #extension-releases
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
+                  URL: ${{ github.event.release.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$RELEASE_PREFIX" ]; then
+                    content="$RELEASE_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    app-deploy:
+        name: App deploy
+        if: >-
+            github.event_name == 'pull_request_target' &&
+            github.event.pull_request.merged == true &&
+            github.event.pull_request.base.ref == 'cf-pages' &&
+            startsWith(github.event.pull_request.head.ref, 'deploy/cf-pages-')
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #app-releases
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_APP_RELEASES }}
+                  URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$APP_DEPLOY_PREFIX" ]; then
+                    content="$APP_DEPLOY_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    github-issue:
+        name: GitHub issue
+        if: github.event_name == 'issues'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #github of new issue
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+                  URL: ${{ github.event.issue.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$ISSUE_PREFIX" ]; then
+                    content="$ISSUE_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    github-pull-request:
+        name: GitHub pull request
+        if: >-
+            github.event_name == 'pull_request_target' &&
+            github.event.pull_request.merged == true &&
+            !(github.event.pull_request.base.ref == 'cf-pages' &&
+              startsWith(github.event.pull_request.head.ref, 'deploy/cf-pages-'))
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #github of merged pull request
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+                  URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$PULL_REQUEST_PREFIX" ]; then
+                    content="$PULL_REQUEST_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    test:
+        name: Test webhooks
+        if: github.event_name == 'workflow_dispatch'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Test #extension-releases
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
+              run: |
+                  set -euo pipefail
+                  jq -n --arg content "Test notification for #extension-releases" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+            - name: Test #app-releases
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_APP_RELEASES }}
+              run: |
+                  set -euo pipefail
+                  jq -n --arg content "Test notification for #app-releases" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+            - name: Test #github
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+              run: |
+                  set -euo pipefail
+                  jq -n --arg content "Test notification for #github" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"

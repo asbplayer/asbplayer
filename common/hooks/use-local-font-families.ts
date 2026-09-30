@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState } from 'react';
 
 // @ts-expect-error: queryLocalFonts is not yet in the TypeScript lib.dom.d.ts

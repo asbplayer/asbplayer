@@ -4,7 +4,7 @@ import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { ApplyStrategy, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
-import type { DictionaryTokenRecord } from '@project/common/dictionary-db/dictionary-db';
+import type { DictionaryLocalTokenInput, DictionaryTokenRecord } from '@project/common/dictionary-db/dictionary-db';
 import {
     DictionaryDB,
     LOCAL_TOKEN_TRACK,
@@ -252,6 +252,29 @@ describe('DictionaryDB', () => {
             },
         });
         expect((await allTokenRecords()).find((record) => record.token === 'alpha')?.lemmas).toEqual(['alpha']);
+    });
+
+    it('does not mutate local token inputs while preparing them for persistence', async () => {
+        await seedTokens(
+            makeTokenRecord({ token: 'alpha', status: TokenStatus.UNKNOWN, states: [TokenState.IGNORED] })
+        );
+        const input: DictionaryLocalTokenInput = {
+            token: 'alpha',
+            status: null,
+            lemmas: ['alpha', '123'],
+            states: [2 as TokenState, 1 as TokenState],
+        };
+
+        await dictionaryDB.saveRecordLocalBulk(profile, [input], ApplyStrategy.ADD);
+
+        expect(input).toEqual({ token: 'alpha', status: null, lemmas: ['alpha', '123'], states: [2, 1] });
+        await expect(allTokenRecords()).resolves.toContainEqual(
+            makeTokenRecord({
+                token: 'alpha',
+                lemmas: ['alpha'],
+                states: [TokenState.IGNORED, 1 as TokenState, 2 as TokenState],
+            })
+        );
     });
 
     it('applies state strategies and deletes local tokens that become uncollected with no states', async () => {

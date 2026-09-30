@@ -31,6 +31,7 @@ import type {
     IndexedSubtitleModel,
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
+import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
@@ -124,6 +125,17 @@ export interface EncodeMp3InServiceWorkerMessage extends Message {
 export interface SettingsUpdatedMessage extends Message {
     readonly command: 'settings-updated';
 }
+
+export interface AppendLogsMessage extends MessageWithId {
+    readonly command: 'append-logs';
+    readonly lines: readonly LogLine[];
+}
+
+export interface GetLogsMessage extends MessageWithId {
+    readonly command: 'get-logs';
+}
+
+export type GetLogsResponse = LogSnapshot | { readonly error: string };
 
 export interface ImageCaptureParams {
     readonly maxWidth: number;
@@ -881,7 +893,7 @@ export interface DictionaryGetByLemmaBulkMessage extends MessageWithId {
 export interface DictionarySaveRecordLocalBulkMessage extends MessageWithId {
     readonly command: 'dictionary-save-record-local-bulk';
     readonly profile: string | undefined;
-    readonly localTokenInputs: DictionaryLocalTokenInput[];
+    readonly localTokenInputs: readonly DictionaryLocalTokenInput[];
     readonly applyStates: ApplyStrategy;
 }
 

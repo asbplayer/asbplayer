@@ -24,7 +24,7 @@ import Stack from '@mui/material/Stack';
 import ListItem from '@mui/material/ListItem';
 import Tooltip from '@mui/material/Tooltip';
 import type { ButtonBaseActions } from '@mui/material';
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 
 interface Props {
     open: boolean;

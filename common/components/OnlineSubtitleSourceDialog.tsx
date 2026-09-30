@@ -30,7 +30,7 @@ import Toolbar from '@mui/material/Toolbar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { asbError, asbWarn } from '@project/common/util';
+import { asbError, asbWarn } from '@project/common/util/log';
 
 interface OnlineSubtitleImportCandidate {
     name: string;

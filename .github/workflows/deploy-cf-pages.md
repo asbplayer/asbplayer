@@ -1,4 +1,5 @@
 ---
+name: "Agent: Create app deploy branch"
 description: |
   Prepares a deploy pull request from main to cf-pages with LLM-generated release notes and a follow-up commit linking the app version to the deploy PR.
 
@@ -101,6 +102,12 @@ pre-agent-steps:
       DEPLOY_BRANCH: ${{ needs.prepare.outputs.branch_name }}
     run: |
       set -euo pipefail
+      # The compiled agent checkout is shallow (fetch-depth: 1); un-shallow it so the
+      # full ancestry of the deploy range is visible, otherwise collect-authors.sh
+      # only sees the tips and the release notes lose commits and attribution.
+      if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+        git fetch --unshallow --no-tags origin
+      fi
       git fetch --no-tags origin main cf-pages "$DEPLOY_BRANCH"
   - name: Collect commit authors
     env:
@@ -112,6 +119,7 @@ pre-agent-steps:
       cat deploy-authors.md
 
 safe-outputs:
+  threat-detection: false
   jobs:
     finalize-deploy:
       description: >-

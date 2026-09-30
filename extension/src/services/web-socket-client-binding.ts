@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import type { SettingsProvider } from '@project/common/settings';
 import { WebSocketClient } from '@project/common/web-socket-client';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
@@ -14,7 +15,9 @@ export const bindWebSocketClient = async (settings: SettingsProvider, tabRegistr
     }
 
     client = new WebSocketClient();
-    void client.bind(url);
+    void client.bind(url).catch((error) => {
+        asbError('web-socket', 'Failed to connect to the WebSocket server:', error);
+    });
     client.setHandlers(webSocketCommandHandlers(settings, tabRegistry));
 };
 

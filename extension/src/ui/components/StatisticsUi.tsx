@@ -7,6 +7,7 @@ import { DictionaryProvider } from '@project/common/dictionary-db';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { SettingsProvider } from '@project/common/settings';
 import { createTheme } from '@project/common/theme';
+import { asbError } from '@project/common/util/log';
 import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import Paper from '@mui/material/Paper';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
@@ -25,13 +26,19 @@ const StatisticsUi = () => {
     const extension = useChromeExtension({ component: 'statisticsPopup' });
 
     useEffect(() => {
-        void settingsProvider.getAll().then(setSettings);
+        void settingsProvider
+            .getAll()
+            .then(setSettings)
+            .catch((error) => asbError('settings', 'Failed to load extension settings:', error));
     }, []);
 
     useEffect(() => {
         return extension.subscribe((message: ExtensionMessage) => {
             if (message.data.command === 'settings-updated') {
-                void settingsProvider.getAll().then(setSettings);
+                void settingsProvider
+                    .getAll()
+                    .then(setSettings)
+                    .catch((error) => asbError('settings', 'Failed to load extension settings:', error));
             }
         });
     }, [extension]);

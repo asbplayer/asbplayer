@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import type { Command, SettingsUpdatedMessage } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { SettingsProvider } from '@project/common/settings';
@@ -14,7 +15,16 @@ export const useSettings = () => {
     );
     const settingsProvider = useMemo<SettingsProvider>(() => new SettingsProvider(new ExtensionSettingsStorage()), []);
     const [settings, setSettings] = useState<AsbplayerSettings>();
-    const refreshSettings = useCallback(() => settingsProvider.getAll().then(setSettings), [settingsProvider]);
+    const refreshSettings = useCallback(
+        () =>
+            settingsProvider
+                .getAll()
+                .then(setSettings)
+                .catch((error) => {
+                    asbError('settings', 'Failed to load settings:', error);
+                }),
+        [settingsProvider]
+    );
 
     useEffect(() => {
         void refreshSettings();
@@ -23,10 +33,10 @@ export const useSettings = () => {
     useEffect(() => {
         browser.runtime.onMessage.addListener((request) => {
             if (request.message?.command === 'settings-updated') {
-                void settingsProvider.getAll().then(setSettings);
+                void refreshSettings();
             }
         });
-    }, [settingsProvider]);
+    }, [refreshSettings]);
 
     const notifySettingsUpdated = useCallback(() => {
         const command: Command<SettingsUpdatedMessage> = {
@@ -41,7 +51,12 @@ export const useSettings = () => {
     const onSettingsChanged = useCallback(
         (settings: Partial<AsbplayerSettings>) => {
             setSettings((s) => ({ ...s!, ...settings }));
-            void settingsProvider.set(settings).then(() => notifySettingsUpdated());
+            void settingsProvider
+                .set(settings)
+                .then(() => notifySettingsUpdated())
+                .catch((error) => {
+                    asbError('settings', 'Failed to save settings:', error);
+                });
         },
         [settingsProvider, notifySettingsUpdated]
     );

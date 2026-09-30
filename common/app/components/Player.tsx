@@ -26,6 +26,7 @@ import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
 import type { SubtitleReader } from '@project/common/subtitle-reader';
 import type { KeyBinder } from '@project/common/key-binder';
+import { asbTrace } from '@project/common/util/log';
 import {
     clampMediaTimestamp,
     download,
@@ -284,8 +285,16 @@ function PlayerComponent(
     const hideSubtitlePlayerRef = useRef<boolean>(undefined);
     hideSubtitlePlayerRef.current = hideSubtitlePlayer;
     const [disabledSubtitleTracks, setDisabledSubtitleTracks] = useState<{ [track: number]: boolean }>({});
+    useEffect(() => {
+        asbTrace('playback/player', 'Subtitle list track display state', { disabledSubtitleTracks });
+    }, [disabledSubtitleTracks]);
     const mousePositionRef = useRef<Point>({ x: 0, y: 0 });
     const mediaAdapter = useMemo(() => {
+        asbTrace('playback/player', 'Creating media adapter', {
+            hasChannel: channel !== undefined,
+            hasVideoFileUrl: videoFileUrl !== undefined,
+            hasTab: tab !== undefined,
+        });
         if (videoFileUrl || tab) {
             return new MediaAdapter({ current: channel });
         }
@@ -440,6 +449,11 @@ function PlayerComponent(
             return;
         }
 
+        asbTrace('playback/player', 'Creating synthetic playback owner', {
+            subtitleCount: subtitlesRef.current?.length ?? 0,
+            hasPlaybackPositionKey: playbackPositionKey !== undefined,
+            appIntegration: extension.supportsAppIntegration,
+        });
         const playbackEngine = new PlaybackEngine({
             settingsProvider,
             appIntegration: extension.supportsAppIntegration,
@@ -509,6 +523,11 @@ function PlayerComponent(
                 },
                 playbackModesChanged: ({ modes }) => synchronizePlaybackModes(modes),
                 initialPlaybackSettingsChanged: (settings) => {
+                    asbTrace('playback/player', 'Applying initial synthetic playback settings', {
+                        subtitleOffset: settings.subtitleOffset,
+                        playbackRate: settings.playbackRate,
+                        playbackModes: [...settings.playbackModeTransition.modes],
+                    });
                     const notifications = settings.notifications.offsetAndRate.map((notification) =>
                         notification.type === 'message'
                             ? notification.message
@@ -527,13 +546,18 @@ function PlayerComponent(
                         ],
                     });
                 },
-                onError,
+                onError: (error) => {
+                    asbTrace('playback/player', 'Synthetic playback owner reported an error', { error });
+                    onError(error);
+                },
             },
         });
         syntheticPlaybackEngineRef.current = playbackEngine;
+        asbTrace('playback/player', 'Binding synthetic playback owner');
         playbackEngine.bind();
 
         return () => {
+            asbTrace('playback/player', 'Unbinding synthetic playback owner');
             playbackEngine.unbind();
             if (syntheticPlaybackEngineRef.current === playbackEngine) {
                 syntheticPlaybackEngineRef.current = undefined;
@@ -557,6 +581,9 @@ function PlayerComponent(
         if (profileRef.current === profile) return;
         profileRef.current = profile;
         syntheticPlaybackEngineRef.current?.profileChanged(profile);
+        if (subtitleCollectionRef.current instanceof SubtitleAnnotations) {
+            subtitleCollectionRef.current.profileChanged();
+        }
     }, [profile]);
 
     useEffect(() => {
@@ -622,6 +649,12 @@ function PlayerComponent(
         let channel: VideoChannel;
         setPlaybackState(undefined);
 
+        asbTrace('playback/player', 'Creating media channel', {
+            source: videoFile ? 'file' : 'tab',
+            hasVideoFile: videoFile !== undefined,
+            hasTab: tab !== undefined,
+        });
+
         if (videoFile) {
             const channelId = uuidv4();
             channel = new VideoChannel(new BroadcastChannelVideoProtocol(channelId));
@@ -639,6 +672,7 @@ function PlayerComponent(
         setChannel(channel);
 
         return () => {
+            asbTrace('playback/player', 'Closing media channel');
             setPlaybackState(undefined);
             clock.setTime(0, { paused: true });
             channel.close();
@@ -668,6 +702,10 @@ function PlayerComponent(
 
     useEffect(() => {
         async function init() {
+            asbTrace('playback/player', 'Loading player subtitles', {
+                subtitleFileCount: subtitleFiles?.length ?? 0,
+                flattenSubtitleFiles,
+            });
             const offset = syntheticPlaybackEngineRef.current?.lastSubtitleOffset ?? 0;
             let subtitles: DisplaySubtitleModel[] | undefined;
 
@@ -696,8 +734,13 @@ function PlayerComponent(
                     }));
 
                     setSubtitlesSentThroughChannel(false);
+                    asbTrace('playback/player', 'Loaded player subtitles', {
+                        subtitleCount: subtitles.length,
+                        offset,
+                    });
                     onSubtitles(subtitles);
                 } catch (e) {
+                    asbTrace('playback/player', 'Failed to load player subtitles', { error: e });
                     onError(e);
                     onSubtitles([]);
                 } finally {
@@ -708,7 +751,9 @@ function PlayerComponent(
             }
         }
 
-        void init().then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []));
+        void init()
+            .then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []))
+            .catch(onError);
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {
@@ -746,10 +791,15 @@ function PlayerComponent(
         );
         if (subtitlesRef.current) subtitleAnnotations.setSubtitles(subtitlesRef.current);
         subtitleAnnotations.bind();
+        asbTrace('playback/player', 'Bound subtitle annotation collection', {
+            subtitleCount: subtitlesRef.current?.length ?? 0,
+            hasMediaId: mediaId !== undefined,
+        });
         setSubtitleCollection(subtitleAnnotations);
         subtitleCollectionRef.current = subtitleAnnotations;
         return () => {
             if (!(subtitleCollectionRef.current instanceof SubtitleAnnotations)) return;
+            asbTrace('playback/player', 'Unbinding subtitle annotation collection');
             subtitleCollectionRef.current.unbind();
         };
     }, [channel, dictionaryProvider, settingsProvider, mediaId, tab, onSubtitles]);
@@ -761,7 +811,7 @@ function PlayerComponent(
 
     useEffect(() => {
         if (!(subtitleCollectionRef.current instanceof SubtitleAnnotations)) return;
-        subtitleCollectionRef.current.settingsUpdated(settings);
+        subtitleCollectionRef.current.settingsUpdated(settings, { force: false });
     }, [settings]);
 
     useEffect(() => {
@@ -916,6 +966,11 @@ function PlayerComponent(
     useEffect(
         () =>
             channel?.onReady(() => {
+                asbTrace('playback/player', 'Media channel reported ready', {
+                    durationMs: channel.duration * 1000,
+                    subtitleCount: subtitles.length,
+                    hasVideoFileName: videoFile?.file?.name !== undefined,
+                });
                 videoDurationRef.current = channel.duration;
                 return channel?.ready(calculateLengthMs(videoDurationRef, subtitles), videoFile?.file?.name);
             }),
@@ -934,13 +989,24 @@ function PlayerComponent(
 
         return channel.onReady(() => {
             setSubtitlesSentThroughChannel(true);
+            asbTrace('playback/player', 'Sending subtitles to media channel', {
+                subtitleCount: subtitles.length,
+                fileCount: flattenSubtitleFiles ? 1 : subtitleFiles.length,
+            });
             channel.subtitles(
                 subtitles,
                 flattenSubtitleFiles ? [subtitleFiles[0].file.name] : subtitleFiles.map((f) => f.file.name)
             );
         });
     }, [subtitles, channel, flattenSubtitleFiles, subtitleFiles, subtitlesSentThroughChannel]);
-    useEffect(() => channel?.onReady(() => channel?.subtitleSettings(settings)), [channel, settings]);
+    useEffect(
+        () =>
+            channel?.onReady(() => {
+                asbTrace('playback/player', 'Sending subtitle settings to media channel');
+                channel?.subtitleSettings(settings);
+            }),
+        [channel, settings]
+    );
     useEffect(
         () => channel?.onReady(() => channel?.hideSubtitlePlayerToggle(hideSubtitlePlayer)),
         [channel, hideSubtitlePlayer]
@@ -963,6 +1029,11 @@ function PlayerComponent(
     useEffect(
         () =>
             channel?.onReady((paused) => {
+                asbTrace('playback/player', 'Media channel initial playback state', {
+                    paused,
+                    currentTimeMs: channel.currentTime * 1000,
+                    playbackRate: channel.playbackRate,
+                });
                 if (channel) {
                     clock.setTime(channel.currentTime * 1000, { paused });
                 }
