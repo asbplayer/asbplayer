@@ -1,4 +1,5 @@
-import { arrayEquals, asbError } from '@project/common/util';
+import { arrayEquals } from '@project/common/util';
+import { asbError, asbTrace } from '@project/common/util/log';
 import type {
     ActiveProfileMessage,
     ConfirmedVideoDataSubtitleTrack,
@@ -145,10 +146,13 @@ export default class VideoDataSyncController {
         this._lastLanguagesSynced = streamingLastLanguagesSynced;
 
         if (this._frame.clientIfLoaded !== undefined) {
-            void this._context.settings.getSingle('themeType').then((themeType) => {
-                const profilesPromise = this._context.settings.profiles();
-                const activeProfilePromise = this._context.settings.activeProfile();
-                void Promise.all([profilesPromise, activeProfilePromise]).then(([profiles, activeProfile]) => {
+            void this._context.settings
+                .getSingle('themeType')
+                .then(async (themeType) => {
+                    const [profiles, activeProfile] = await Promise.all([
+                        this._context.settings.profiles(),
+                        this._context.settings.activeProfile(),
+                    ]);
                     this._frame.clientIfLoaded?.updateState({
                         settings: {
                             themeType,
@@ -156,8 +160,8 @@ export default class VideoDataSyncController {
                             activeProfile: activeProfile?.name,
                         },
                     });
-                });
-            });
+                })
+                .catch((error) => asbError('video/sync', 'Failed to update settings in the subtitle picker:', error));
         }
     }
 
@@ -181,6 +185,10 @@ export default class VideoDataSyncController {
         if (this.pickerVisible && request.kind === 'reload') {
             const locationChanged = this.openedLocation !== undefined && window.location.href !== this.openedLocation;
             if (locationChanged || request.videoChanged) {
+                asbTrace('subtitle/request', 'Closing stale subtitle picker before reloading tracks', {
+                    locationChanged,
+                    videoChanged: request.videoChanged,
+                });
                 this._hideAndResume();
             } else {
                 return;
@@ -201,7 +209,9 @@ export default class VideoDataSyncController {
             this._refreshingOpenPicker = false;
         }
 
-        const eventTarget = pageDelegate.config.generic ? this._context.video : document;
+        const eventTargetIsVideo =
+            pageDelegate.config.subtitleDiscoveryRequestTarget === 'video' || pageDelegate.config.generic === true;
+        const eventTarget = eventTargetIsVideo ? this._context.video : document;
         if (!this._dataReceivedListener || this._dataReceivedEventTarget !== eventTarget) {
             if (this._dataReceivedListener) {
                 this._dataReceivedEventTarget?.removeEventListener(
@@ -218,6 +228,11 @@ export default class VideoDataSyncController {
             eventTarget.addEventListener('asbplayer-synced-data', this._dataReceivedListener, false);
         }
 
+        asbTrace('subtitle/request', 'Dispatching site subtitle data request', {
+            page: pageDelegate.config.key ?? (pageDelegate.config.generic ? 'generic' : 'unmatched'),
+            genericPage: pageDelegate.config.generic === true,
+            eventTarget: eventTargetIsVideo ? 'video-element' : 'document',
+        });
         if (pageDelegate.config.key === 'youtube') {
             const targetTranslationLanguageCodes =
                 (await this._settings.getSingle('streamingPages')).youtube.targetLanguages ?? [];
@@ -229,8 +244,8 @@ export default class VideoDataSyncController {
         } else {
             eventTarget.dispatchEvent(
                 new CustomEvent('asbplayer-get-synced-data', {
-                    bubbles: pageDelegate.config.generic,
-                    composed: pageDelegate.config.generic,
+                    bubbles: eventTargetIsVideo,
+                    composed: eventTargetIsVideo,
                 })
             );
         }
@@ -417,15 +432,22 @@ export default class VideoDataSyncController {
         }
 
         const subs = this._matchLastSyncedWithAvailableTracks();
+        const shouldPrompt = subs.completeMatch
+            ? false
+            : await this._settings.getSingle('streamingAutoSyncPromptOnFailure');
+        asbTrace('subtitle/sync', 'Evaluated automatic subtitle selection', {
+            availableTrackCount: this._syncedData.subtitles.length,
+            rememberedLanguageCount: this.lastLanguagesSynced.length,
+            completeMatch: subs.completeMatch,
+            autoSelectedTrackCount: subs.autoSelectedTracks.length,
+            shouldPrompt,
+        });
+
         if (subs.completeMatch) {
             const autoSelectedTracks: VideoDataSubtitleTrack[] = subs.autoSelectedTracks;
             await this._syncData(autoSelectedTracks);
-        } else {
-            const shouldPrompt = await this._settings.getSingle('streamingAutoSyncPromptOnFailure');
-
-            if (shouldPrompt) {
-                await this.show({ reason: VideoDataUiOpenReason.failedToAutoLoadPreferredTrack });
-            }
+        } else if (shouldPrompt) {
+            await this.show({ reason: VideoDataUiOpenReason.failedToAutoLoadPreferredTrack });
         }
 
         return true;
@@ -525,7 +547,9 @@ export default class VideoDataSyncController {
                                 .filter((language) => language !== undefined);
                             await this._context.settings
                                 .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
-                                .catch(() => {});
+                                .catch((error) => {
+                                    asbError('video/sync', 'Failed to save remembered track choices:', error);
+                                });
                         }
 
                         const data = confirmMessage.data;
@@ -622,7 +646,10 @@ export default class VideoDataSyncController {
             // temporarily until the play() promise resolves. This became an issue with the addition of
             // PlaybackEngine which moved away from setIntervals() for playback semantics which exposed the core issue.
             const enablePauseOnHover = this._context.disablePauseOnHover();
-            void this._context.play().finally(enablePauseOnHover);
+            void this._context
+                .play()
+                .finally(enablePauseOnHover)
+                .catch((error) => asbError('video/sync', 'Failed to resume playback after subtitle selection:', error));
         }
 
         this._wasPaused = undefined;
@@ -695,7 +722,27 @@ export default class VideoDataSyncController {
         const files: File[] = await Promise.all(
             serializedFiles.map(async (f) => new File([base64ToBlob(f.base64, 'text/plain')], f.name))
         );
-        await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
+        const startedAt = performance.now();
+        const fileCount = files.length;
+        const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+        try {
+            await this._context.loadSubtitles(files, flatten, syncWithAsbplayerId);
+            asbTrace('subtitle/sync', 'Loaded retrieved subtitle files', {
+                fileCount,
+                totalBytes,
+                flatten,
+                durationMs: performance.now() - startedAt,
+            });
+        } catch (error) {
+            asbError('subtitle/error', 'Failed to load retrieved subtitle files', {
+                fileCount,
+                totalBytes,
+                flatten,
+                durationMs: performance.now() - startedAt,
+                errorName: error instanceof Error ? error.name : typeof error,
+            });
+            throw error;
+        }
     }
 
     private async _subtitlesForUrl(
@@ -705,6 +752,7 @@ export default class VideoDataSyncController {
         url: string | string[],
         localFile: boolean | undefined
     ): Promise<SerializedSubtitleFile[] | undefined> {
+        const startedAt = performance.now();
         if (url === '-') {
             return [
                 {
@@ -738,8 +786,18 @@ export default class VideoDataSyncController {
         }
 
         if (typeof url === 'string') {
+            const sourceKind = localFile ? 'local-object-url' : url.startsWith('data:') ? 'inline-data' : 'remote';
             const response = await fetch(url)
-                .catch((error) => this._reportError(error.message))
+                .catch(async (error) => {
+                    asbTrace('subtitle/error', 'Subtitle retrieval request failed', {
+                        extension,
+                        sourceKind,
+                        durationMs: performance.now() - startedAt,
+                        errorName: error instanceof Error ? error.name : typeof error,
+                    });
+                    await this._reportError(error.message);
+                    return undefined;
+                })
                 .finally(() => {
                     if (localFile) {
                         URL.revokeObjectURL(url);
@@ -751,6 +809,12 @@ export default class VideoDataSyncController {
             }
 
             if (!response.ok) {
+                asbError('subtitle/error', 'Subtitle retrieval returned an unsuccessful status', {
+                    extension,
+                    sourceKind,
+                    status: response.status,
+                    durationMs: performance.now() - startedAt,
+                });
                 throw new Error(`Subtitle Retrieval failed with Status ${response.status}/${response.statusText}...`);
             }
 
@@ -767,29 +831,56 @@ export default class VideoDataSyncController {
         const firstUri = url[0];
         const partExtension = subtitleFileExtensionForUrl(firstUri, extension);
         const fileName = `${name}.${partExtension}`;
+        const partCount = url.length;
         const promises = url.map((u) => fetch(u));
         const tracks = [];
-        const totalPromises = promises.length;
+        const responseStatusCounts: Record<string, number> = {};
         let finishedPromises = 0;
+        let responseBytes = 0;
 
-        for (const p of promises) {
-            const response = await p;
+        try {
+            for (const p of promises) {
+                const response = await p;
+                responseStatusCounts[response.status] = (responseStatusCounts[response.status] ?? 0) + 1;
 
-            if (!response.ok) {
-                throw new Error(`Subtitle Retrieval failed with Status ${response.status}/${response.statusText}...`);
+                if (!response.ok) {
+                    throw new Error(
+                        `Subtitle Retrieval failed with Status ${response.status}/${response.statusText}...`
+                    );
+                }
+
+                ++finishedPromises;
+                this._context.subtitleController.notification({
+                    text: `${fileName} (${Math.floor((finishedPromises / partCount) * 100)}%)`,
+                });
+
+                const body = await response.arrayBuffer();
+                responseBytes += body.byteLength;
+                tracks.push({
+                    name: fileName,
+                    base64: bufferToBase64(body),
+                });
             }
-
-            ++finishedPromises;
-            this._context.subtitleController.notification({
-                text: `${fileName} (${Math.floor((finishedPromises / totalPromises) * 100)}%)`,
+        } catch (error) {
+            asbError('subtitle/error', 'Segmented subtitle retrieval failed', {
+                extension: partExtension,
+                partCount,
+                completedPartCount: finishedPromises,
+                responseStatusCounts,
+                responseBytes,
+                durationMs: performance.now() - startedAt,
+                errorName: error instanceof Error ? error.name : typeof error,
             });
-
-            tracks.push({
-                name: fileName,
-                base64: bufferToBase64(await response.arrayBuffer()),
-            });
+            throw error;
         }
 
+        asbTrace('subtitle/fetch', 'Finished segmented subtitle retrieval', {
+            extension: partExtension,
+            partCount,
+            responseStatusCounts,
+            responseBytes,
+            durationMs: performance.now() - startedAt,
+        });
         return tracks;
     }
 

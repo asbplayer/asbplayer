@@ -15,6 +15,7 @@ import type {
     StatisticsOverlayToTabCommand,
 } from '@project/common';
 import type Binding from '@/services/binding';
+import { asbError } from '@project/common/util/log';
 
 type State = 'open' | 'fullscreen' | 'closed';
 
@@ -99,17 +100,19 @@ export class StatisticsOverlayController {
             case 'open-statistics-overlay-one-uncollected-dialog': {
                 const openDialogMessage = command.message as OpenStatisticsOverlayOneUncollectedDialogMessage;
                 const { entries, totalSentences, mediaId } = openDialogMessage;
-                void this._getOneUncollectedDialogFrame().then(async (frame) => {
-                    const state: UiState = {
-                        open: true,
-                        mediaId,
-                        entries,
-                        totalSentences,
-                    };
-                    const client = await frame.client();
-                    client.updateState(state);
-                    frame.show();
-                });
+                void this._getOneUncollectedDialogFrame()
+                    .then(async (frame) => {
+                        const state: UiState = {
+                            open: true,
+                            mediaId,
+                            entries,
+                            totalSentences,
+                        };
+                        const client = await frame.client();
+                        client.updateState(state);
+                        frame.show();
+                    })
+                    .catch((error) => asbError('statistics/overlay', 'Failed to open statistics details:', error));
                 break;
             }
             case 'open-statistics-overlay': {
@@ -319,7 +322,7 @@ export class StatisticsOverlayController {
             fullscreenContainerClassName: 'asbplayer-statistics-overlay-container',
             fullscreenContentClassName: 'asbplayer-statistics-overlay-content',
             offsetAnchor: OffsetAnchor.bottom,
-            contentWidthPercentage: undefined,
+            contentWidth: undefined,
             onMouseOut: () => {},
             onMouseOver: () => {},
             onContainerStyles: (container) => {

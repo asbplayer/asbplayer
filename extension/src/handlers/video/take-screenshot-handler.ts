@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     Command,
@@ -44,6 +44,7 @@ export default class TakeScreenshotHandler {
                 maxHeight,
                 rect,
                 frameId,
+                trimBlackBars: takeScreenshotCommand.message.trimBlackBars,
             });
             imageModel = {
                 base64: imageBase64,

@@ -7,11 +7,34 @@ export default defineUnlistedScript(() => {
     const playbackUrlRegex = /\/playback\/v3\/.*\/play(?:\?|$)/i;
     const mpdUrlRegex = /manifest\.mpd(?:\?|$)/i;
     const timedTextLanguagesUrlRegex = /timed_text_languages/i;
+    const cmsObjectsUrlRegex = /\/content\/v2\/cms\/objects\//i;
     const originalJsonParse = JSON.parse; // inferTracks may override JSON.parse
     const languageTitles = new Map<string, string>();
+    const episodeBasenames = new Map<string, string>();
 
     function currentBasename(): string {
-        return document.title.replace(/\s*-\s*Watch on Crunchyroll\s*$/i, '').trim();
+        const episodeId = /\/watch\/([^/?#]+)/.exec(window.location.pathname)?.[1];
+        const episodeBasename = episodeId === undefined ? undefined : episodeBasenames.get(episodeId);
+        return episodeBasename ?? document.title.replace(/\s*-\s*Watch on Crunchyroll\s*$/i, '').trim();
+    }
+
+    // "<series> SxxEyy - <episode title>" so the Jimaku search gets the series name and episode number
+    function captureEpisodeBasenames(value: unknown): void {
+        const data = recordFromUnknown(value)?.data;
+        if (!Array.isArray(data)) return;
+        for (const item of data) {
+            const object = recordFromUnknown(item);
+            const metadata = recordFromUnknown(object?.episode_metadata);
+            if (typeof object?.id !== 'string' || typeof metadata?.series_title !== 'string') continue;
+            let basename = metadata.series_title;
+            if (typeof metadata.episode_number === 'number') {
+                const season = typeof metadata.season_number === 'number' ? metadata.season_number : 1;
+                const pad = (n: number) => `${n}`.padStart(2, '0');
+                basename += ` S${pad(season)}E${pad(metadata.episode_number)}`;
+            }
+            if (typeof object.title === 'string' && object.title !== '') basename += ` - ${object.title}`;
+            episodeBasenames.set(object.id, basename);
+        }
     }
 
     function recordFromUnknown(value: unknown): Record<string, unknown> | undefined {
@@ -132,6 +155,15 @@ export default defineUnlistedScript(() => {
                 void responsePromise
                     .then((response) => response.clone().json())
                     .then(captureLanguageTitles)
+                    .catch(() => {
+                        // Subtitle detection must never interfere with playback.
+                    });
+            }
+
+            if (cmsObjectsUrlRegex.test(requestUrl)) {
+                void responsePromise
+                    .then((response) => response.clone().json())
+                    .then(captureEpisodeBasenames)
                     .catch(() => {
                         // Subtitle detection must never interfere with playback.
                     });

@@ -1,4 +1,5 @@
-import { asbError, sourceString } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { sourceString } from '@project/common/util';
 import type {
     AnkiUiInitialState,
     OpenAsbplayerSettingsMessage,
@@ -94,17 +95,20 @@ export class TabAnkiUiController {
         ]);
 
         if (this._frame.bound) {
-            void this._frame.client().then(async (client) => {
-                const profilesPromise = this._settings.profiles();
-                const activeProfilePromise = this._settings.activeProfile();
-                const message: AnkiDialogSettingsMessage = {
-                    command: 'settings',
-                    settings: ankiDialogSettings,
-                    profiles: await profilesPromise,
-                    activeProfile: (await activeProfilePromise)?.name,
-                };
-                client.sendMessage(message);
-            });
+            void this._frame
+                .client()
+                .then(async (client) => {
+                    const profilesPromise = this._settings.profiles();
+                    const activeProfilePromise = this._settings.activeProfile();
+                    const message: AnkiDialogSettingsMessage = {
+                        command: 'settings',
+                        settings: ankiDialogSettings,
+                        profiles: await profilesPromise,
+                        activeProfile: (await activeProfilePromise)?.name,
+                    };
+                    client.sendMessage(message);
+                })
+                .catch((error) => asbError('anki/ui', 'Failed to update Anki dialog settings:', error));
         }
     }
 
@@ -164,15 +168,18 @@ export class TabAnkiUiController {
                             return;
                         case 'activeProfile': {
                             const activeProfileMessage = message as ActiveProfileMessage;
-                            void this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
-                                const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
-                                    sender: 'asbplayer-video-tab',
-                                    message: {
-                                        command: 'settings-updated',
-                                    },
-                                };
-                                void browser.runtime.sendMessage(settingsUpdatedCommand);
-                            });
+                            void this._settings
+                                .setActiveProfile(activeProfileMessage.profile)
+                                .then(async () => {
+                                    const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                                        sender: 'asbplayer-video-tab',
+                                        message: {
+                                            command: 'settings-updated',
+                                        },
+                                    };
+                                    await browser.runtime.sendMessage(settingsUpdatedCommand);
+                                })
+                                .catch((error) => asbError('anki/ui', 'Failed to set the active profile:', error));
                             return;
                         }
                         case 'dismissedQuickSelectFtue':
@@ -182,15 +189,18 @@ export class TabAnkiUiController {
                             return;
                         case 'exported': {
                             const exportedMessage = message as AnkiUiBridgeExportedMessage;
-                            void this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
-                                const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
-                                    sender: 'asbplayer-video-tab',
-                                    message: {
-                                        command: 'settings-updated',
-                                    },
-                                };
-                                void browser.runtime.sendMessage(settingsUpdatedCommand);
-                            });
+                            void this._settings
+                                .set({ lastSelectedAnkiExportMode: exportedMessage.mode })
+                                .then(async () => {
+                                    const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                                        sender: 'asbplayer-video-tab',
+                                        message: {
+                                            command: 'settings-updated',
+                                        },
+                                    };
+                                    await browser.runtime.sendMessage(settingsUpdatedCommand);
+                                })
+                                .catch((error) => asbError('anki/ui', 'Failed to save Anki export settings:', error));
                             return;
                         }
                         case 'card-updated-dialog': {

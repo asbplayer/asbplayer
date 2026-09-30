@@ -1,4 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
+import { asbTrace } from '@project/common/util/log';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import type {
     PlaybackTimelineBlock,
@@ -67,6 +68,16 @@ type PlaybackRateReconciliationOptions = {
     readonly forcePlaybackRate: boolean;
 };
 
+const playbackPlanTraceDetails = <T extends IndexedSubtitleModel>(plan: PlaybackPlan<T>) => ({
+    durationMs: plan.timelineSubtitles.durationMs,
+    displaySubtitleCount: plan.timelineSubtitles.displaySubtitles.length,
+    timelineBlockCount: plan.timelineSubtitles.blocks.length,
+    playbackRate: plan.playbackRate,
+    condensed: plan.condensed !== undefined,
+    fastForwardPlaybackRate: plan.fastForward?.playbackRate,
+    autoPauseResumeMode: plan.autoPause?.resume.mode,
+});
+
 /**
  * Executes an already-resolved playback plan against a media adapter.
  */
@@ -88,6 +99,10 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     private deferredDiscontinuity?: DeferredDiscontinuity;
 
     constructor(plan: PlaybackPlan<T>, timestampMs: number, callbacks: PlaybackPlanExecutorCallbacks<T>) {
+        asbTrace('playback/executor', 'Creating playback plan executor', {
+            plan: playbackPlanTraceDetails(plan),
+            timestampMs,
+        });
         this.plan = plan;
         this._isFastForwarding = false;
         this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
@@ -123,6 +138,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         timestampMs: number,
         options: { readonly forcePlaybackRate?: boolean } = {}
     ): void {
+        asbTrace('playback/executor', 'Replacing playback plan in executor', {
+            forcePlaybackRate: options.forcePlaybackRate === true,
+            plan: playbackPlanTraceDetails(plan),
+            timestampMs,
+        });
         this.invalidatePendingOperations({ preserveExpectedDiscontinuity: true });
         const playbackRateChanged =
             this.plan.playbackRate !== plan.playbackRate ||
@@ -153,6 +173,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         if (resetPlaybackRate) {
             this.callbacks.setPlaybackRate(plan.playbackRate);
             this._isFastForwarding = false;
+            asbTrace('playback/executor', 'Reset playback rate while replacing plan', {
+                playbackRate: plan.playbackRate,
+            });
         }
         this.reconcileAt(timestampMs, {
             forcePlaybackRate: !resetPlaybackRate && (playbackRateChanged || options.forcePlaybackRate === true),
@@ -185,6 +208,12 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             cause: PlaybackTimelineTransitionCause;
         }
     ): void {
+        asbTrace('playback/executor', 'Resetting playback timeline', {
+            cause: options.cause,
+            includeAtTimestamp: options.includeAtTimestamp,
+            timestampMs,
+            timelineTimestampMs,
+        });
         if (options.cause !== 'internal-seek') {
             this.cancelPendingOperations({ preserveExpectedDiscontinuity: false });
             this.pendingTarget = undefined;
@@ -226,6 +255,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
                 cause: discontinuity.cause,
                 includeAtTimestamp: discontinuity.includeAtTimestamp,
             };
+            asbTrace('playback/executor', 'Deferred discontinuity until timeline update completed', {
+                cause: discontinuity.cause,
+                timestampMs,
+                timelineTimestampMs: discontinuity.timelineTimestampMs,
+            });
             return { cause: discontinuity.cause };
         }
         this.reset(timestampMs, discontinuity.timelineTimestampMs, {
@@ -264,6 +298,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.pendingTarget = undefined;
         if (target === undefined) return;
 
+        asbTrace('playback/executor', 'Resuming playback at pending timeline target', target);
+
         if (target.blockId !== undefined) {
             this.startPauseSuppression = {
                 blockId: target.blockId,
@@ -273,6 +309,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         try {
             await this.seek(target.timestampMs, { includeAtTimestamp: true });
         } catch (error) {
+            asbTrace('playback/error', 'Pending playback target seek failed', { error, target });
             if (this.startPauseSuppression?.blockId === target.blockId) this.startPauseSuppression = undefined;
             throw error;
         }
@@ -348,7 +385,15 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         const playbackRate = fastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate;
         const modeChanged = fastForwarding !== this._isFastForwarding;
         this._isFastForwarding = fastForwarding;
-        if (modeChanged || options.forcePlaybackRate) this.callbacks.setPlaybackRate(playbackRate);
+        if (modeChanged || options.forcePlaybackRate) {
+            asbTrace('playback/executor', 'Reconciled playback rate', {
+                fastForwarding,
+                forcePlaybackRate: options.forcePlaybackRate,
+                modeChanged,
+                playbackRate,
+            });
+            this.callbacks.setPlaybackRate(playbackRate);
+        }
     }
 
     private async onAfterState(timestampMs: number): Promise<{ stateChangedTimestampMs?: number }> {
@@ -460,6 +505,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         try {
             await this.callbacks.seek(timestampMs);
         } catch (error) {
+            asbTrace('playback/error', 'Executor seek failed', { error, timestampMs });
             if (this.expectedDiscontinuity === expectedDiscontinuity) this.expectedDiscontinuity = undefined;
             throw error;
         }
@@ -478,6 +524,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
                 this.expectedDiscontinuity = undefined;
             }
         } catch (error) {
+            asbTrace('playback/error', 'Auto-pause correction failed', { error, timestampMs });
             if (this.expectedDiscontinuity === expectedDiscontinuity) this.expectedDiscontinuity = undefined;
             throw error;
         }

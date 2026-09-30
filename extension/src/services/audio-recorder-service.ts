@@ -111,7 +111,8 @@ export default class AudioRecorderService {
     }
 
     async stop(encodeAsMp3: boolean, requester: Requester): Promise<string> {
-        if (this.audioBase64Promise === undefined) {
+        const audioBase64Promise = this.audioBase64Promise; // Audio delivery can clear the shared promise before the stop acknowledgment arrives.
+        if (audioBase64Promise === undefined) {
             // Benign no-op: If the user spams cancel on a bulk export,
             // we can get a cancel request on a non-recording state.
             this._notifyRecordingFinished(requester);
@@ -131,7 +132,7 @@ export default class AudioRecorderService {
         }
 
         this._notifyRecordingFinished(requester);
-        return this.audioBase64Promise;
+        return audioBase64Promise;
     }
 
     private _notifyRecordingStarted({ tabId, src }: Requester) {

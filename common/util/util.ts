@@ -18,6 +18,40 @@ import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
 
+export interface AnimationFrameRetryOptions {
+    runImmediately?: boolean;
+}
+
+/** Runs an operation until it succeeds or its animation-frame attempt limit is reached. */
+export const retryWithAnimationFrame = (
+    operation: () => boolean,
+    maxAttempts: number,
+    { runImmediately = false }: AnimationFrameRetryOptions = {}
+): (() => void) => {
+    let animationFrame: number | undefined;
+    let attempts = 0;
+    let cancelled = false;
+
+    const attempt = () => {
+        animationFrame = undefined;
+        if (cancelled || operation() || ++attempts >= maxAttempts) return;
+        animationFrame = requestAnimationFrame(attempt);
+    };
+
+    if (maxAttempts > 0) {
+        if (runImmediately) attempt();
+        else animationFrame = requestAnimationFrame(attempt);
+    }
+
+    return () => {
+        cancelled = true;
+        if (animationFrame !== undefined) {
+            cancelAnimationFrame(animationFrame);
+            animationFrame = undefined;
+        }
+    };
+};
+
 let subtitleHtmlHelperElement: HTMLDivElement | undefined;
 const subtitleGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const invisibleGraphemePattern = /^[\s\p{Default_Ignorable_Code_Point}]*$/u;
@@ -84,13 +118,34 @@ export function keysAreEqual(a: any, b: any) {
     return aKeys.every((key) => Object.prototype.hasOwnProperty.call(b, key));
 }
 
-export const localizedDate = (timestamp: number, locales: Intl.LocalesArgument = [], timeZone?: string) => {
-    return new Date(timestamp).toLocaleTimeString(locales, {
+export interface LocalizeDateTimeOptions {
+    locales?: Intl.LocalesArgument;
+    timeZone?: string;
+    hour12?: boolean;
+    includeMilliseconds?: boolean;
+    includeDate?: boolean;
+}
+
+export const localizeDateTime = (timestamp: number, options: LocalizeDateTimeOptions = {}) => {
+    const date = new Date(timestamp);
+    const locales = options.locales ?? [];
+    const time = date.toLocaleTimeString(locales, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZone,
+        hour12: options.hour12,
+        fractionalSecondDigits: options.includeMilliseconds ? 3 : undefined,
+        timeZone: options.timeZone,
     });
+    if (!options.includeDate) return time;
+
+    const calendarDate = date.toLocaleDateString(locales, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: options.timeZone,
+    });
+    return calendarDate + ' ' + time;
 };
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -888,6 +943,19 @@ export function iterateOverStringInBlocks<B extends Block>(
     }
 }
 
+/** Combines a token's readings with any unannotated spans into one searchable/displayable reading. */
+export const getContiguousReading = (tokenText: string, token: Pick<Token, 'readings'>): string => {
+    let readingText = '';
+    iterateOverStringInBlocks(
+        tokenText,
+        (_, blockIndex) => token.readings[blockIndex],
+        (left, right, reading) => {
+            readingText += reading === undefined ? tokenText.substring(left, right) : reading.reading;
+        }
+    );
+    return readingText;
+};
+
 type DimensionsComparators = {
     [K in keyof DimensionsModel]: (a: DimensionsModel[K], b: DimensionsModel[K]) => boolean;
 };
@@ -1012,6 +1080,7 @@ const tokenComparators: TokenComparators = {
     status: (a, b) => a === b,
     readings: (a, b) => arrayEquals(a, b, areTokenReadingsEqual),
     frequency: (a, b) => a === b,
+    gloss: (a, b) => a === b,
     pitchAccent: (a, b) => a === b,
     groupingKey: (a, b) => a === b,
     lemmasGroupingKey: (a, b) => a === b,

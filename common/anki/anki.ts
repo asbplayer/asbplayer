@@ -1,4 +1,5 @@
-import { asbError, asbInfo, extractText, fromBatches, sourceString } from '@project/common/util';
+import { asbError, asbInfo } from '@project/common/util/log';
+import { extractText, fromBatches, sourceString } from '@project/common/util';
 import { AudioClip } from '@project/common/audio-clip';
 import type { AnkiExportMode, CardModel, Progress, Fetcher } from '@project/common';
 import { MediaFragment, HttpFetcher } from '@project/common';

@@ -1,4 +1,11 @@
-const { execFileSync } = require('node:child_process');
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+
+export type Contributor = {
+    email: string;
+    githubUsername: string;
+};
 
 const contributorStartMarker = '<!-- BEGIN CONTRIBUTORS -->';
 const contributorEndMarker = '<!-- END CONTRIBUTORS -->';
@@ -138,20 +145,85 @@ function isContributorEntry(line: string): boolean {
 }
 
 function normalizeEmail(email: string): string {
-    const match = email.match(/^(?:\d+\+)?(.+@users\.noreply\.github\.com)$/i);
-    return match ? match[1].toLowerCase() : email;
+    return email.trim().toLowerCase();
 }
 
-function getContributorEmails(revision: string): Set<string> {
+export function parseContributorEntry(line: string): { githubUsername: string } {
+    const match = line.trim().match(/^\S(?:[^\r\n]*\S)? \(https:\/\/github\.com\/([a-z\d]+(?:-[a-z\d]+)*)\/?\)$/i);
+    if (!match || match[1].length > 39) {
+        throw new Error(`Invalid contributor entry: ${line}. Expected Name (https://github.com/USERNAME)`);
+    }
+    return { githubUsername: match[1].toLowerCase() };
+}
+
+export function parseGitHubNoreplyEmail(email: string): string | undefined {
+    const match = normalizeEmail(email).match(/^(?:\d+\+)?([a-z\d]+(?:-[a-z\d]+)*)@users\.noreply\.github\.com$/);
+    return match && match[1].length <= 39 ? match[1] : undefined;
+}
+
+export function validateNewContributorUsername(githubUsername: string, pullRequestAuthor: string | undefined): void {
+    if (!pullRequestAuthor) {
+        if (process.env.GITHUB_ACTIONS === 'true') {
+            throw new Error(
+                'Unable to validate new CONTRIBUTORS entries without the pull request author from GITHUB_EVENT_PATH'
+            );
+        }
+        return;
+    }
+    if (githubUsername.toLowerCase() !== pullRequestAuthor.toLowerCase()) {
+        throw new Error(
+            `New contributor username ${githubUsername} must match the pull request author ${pullRequestAuthor}`
+        );
+    }
+}
+
+export function isCommitAuthorRegistered(
+    email: string,
+    contributors: readonly Contributor[],
+    bypassedEmails: ReadonlySet<string>,
+    pullRequestAuthor: string | undefined
+): boolean {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) return false;
+    if (
+        contributors.some((contributor) => normalizeEmail(contributor.email) === normalizedEmail) ||
+        bypassedEmails.has(normalizedEmail)
+    ) {
+        return true;
+    }
+
+    const githubUsername = parseGitHubNoreplyEmail(normalizedEmail);
+    return (
+        githubUsername !== undefined &&
+        githubUsername === pullRequestAuthor?.toLowerCase() &&
+        contributors.some((contributor) => contributor.githubUsername.toLowerCase() === githubUsername)
+    );
+}
+
+function getPullRequestAuthor(): string | undefined {
+    const eventPath = process.env.GITHUB_EVENT_PATH;
+    if (!eventPath) return undefined;
+
+    const event = JSON.parse(readFileSync(eventPath, 'utf8'));
+    const login = event.pull_request?.user?.login;
+    return typeof login === 'string' && login.length > 0 ? login : undefined;
+}
+
+function getContributors(
+    revision: string,
+    rangeCommits: ReadonlySet<string>,
+    pullRequestAuthor: string | undefined
+): Contributor[] {
     const content = getContributorContentAtRevision(revision);
     if (content === undefined) throw new Error(`CONTRIBUTORS does not exist at ${revision}`);
-    const { lines, start, end } = getContributorSectionLines(content);
-    return new Set(
-        getBlamedLines(revision, start, end)
-            .filter(({ content }) => isContributorEntry(content))
-            .map(({ commit }) => normalizeEmail(getAuthorEmail(commit)))
-            .filter(Boolean)
-    );
+    const { start, end } = getContributorSectionLines(content);
+    return getBlamedLines(revision, start, end)
+        .filter(({ content }) => isContributorEntry(content))
+        .map(({ commit, content }) => {
+            const { githubUsername } = parseContributorEntry(content);
+            if (rangeCommits.has(commit)) validateNewContributorUsername(githubUsername, pullRequestAuthor);
+            return { email: normalizeEmail(getAuthorEmail(commit)), githubUsername };
+        });
 }
 
 function getBypassedEmails(): Set<string> {
@@ -188,17 +260,21 @@ function checkContributors(): void {
     const { range, baseSha, headSha } = getCommitRange();
     if (baseSha) verifyExistingContributorEntriesPreserved(baseSha, headSha);
 
-    const registeredEmails = getContributorEmails(headSha);
+    const pullRequestAuthor = getPullRequestAuthor();
+    const commits = getCommits(range);
+    const contributors = getContributors(headSha, new Set(commits.map(({ hash }) => hash)), pullRequestAuthor);
     const bypassedEmails = getBypassedEmails();
-    const missing = getCommits(range).filter(
-        ({ email }) => !registeredEmails.has(normalizeEmail(email)) && !bypassedEmails.has(normalizeEmail(email))
+    const missing = commits.filter(
+        ({ email }) => !isCommitAuthorRegistered(email, contributors, bypassedEmails, pullRequestAuthor)
     );
     if (!missing.length) return;
 
     console.error('Contributor check failed. The following commit authors are not registered:');
     for (const { hash, email, subject } of missing) console.error(`- ${email} (${hash.slice(0, 7)}) ${subject}`);
-    console.error('Add your name to CONTRIBUTORS in a commit authored with the same email.');
+    console.error(
+        'Add Name (https://github.com/YOUR_USERNAME) to CONTRIBUTORS in a commit authored with the same email.'
+    );
     process.exitCode = 1;
 }
 
-checkContributors();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) checkContributors();

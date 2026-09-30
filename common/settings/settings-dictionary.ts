@@ -181,6 +181,7 @@ export function areTokenStatusConfigsRenderOnly(a: TokenStatusConfig, b: TokenSt
 export interface TokenAnnotationTriggerOptions {
     reading: boolean;
     frequency: boolean;
+    gloss: boolean;
     pitchAccent: boolean;
 }
 
@@ -193,6 +194,7 @@ export interface TokenAnnotationConfig {
     color: TokenAnnotationConfigOptions;
     reading: TokenAnnotationConfigOptions;
     frequency: TokenAnnotationConfigOptions;
+    gloss: TokenAnnotationConfigOptions;
     pitchAccent: TokenAnnotationConfigOptions;
 }
 
@@ -202,6 +204,7 @@ export function tokenAnnotationStyleValues(config: TokenAnnotationConfig | undef
     return {
         '--asb-reading-size': `${config?.reading.size ?? 0.5}em`,
         '--asb-frequency-size': `${config?.frequency.size ?? 0.3}em`,
+        '--asb-gloss-size': `${config?.gloss.size ?? 0.5}em`,
         '--asb-pitch-accent-size': `${config?.pitchAccent.size ?? 0.1}em`,
     };
 }
@@ -224,6 +227,7 @@ const tokenAnnotationTriggerOptionsComparators: {
 } = {
     reading: (a, b) => a === b,
     frequency: (a, b) => a === b,
+    gloss: (a, b) => a === b,
     pitchAccent: (a, b) => a === b,
 };
 
@@ -310,6 +314,7 @@ const tokenAnnotationConfigComparators: {
     color: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
     reading: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
     frequency: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
+    gloss: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
     pitchAccent: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
 };
 
@@ -335,6 +340,7 @@ const tokenAnnotationConfigRenderOnlyComparators: {
     color: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
     reading: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
     frequency: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
+    gloss: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
     pitchAccent: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
 };
 
@@ -386,6 +392,7 @@ const tokenAnnotationTriggerOptionsRenderOnlyComparators: {
 } = {
     reading: () => true,
     frequency: () => true,
+    gloss: () => false,
     pitchAccent: () => true,
 };
 
@@ -486,6 +493,7 @@ export interface EnabledAnnotations {
     color: boolean;
     reading: boolean;
     frequency: boolean;
+    gloss: boolean;
     pitchAccent: boolean;
 }
 

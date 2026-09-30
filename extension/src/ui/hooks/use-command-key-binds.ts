@@ -1,4 +1,5 @@
 import { chromeCommandBindsToKeyBinds } from '@project/common/settings';
+import { asbError } from '@project/common/util/log';
 import { useEffect, useState } from 'react';
 
 export const useCommandKeyBinds = () => {
@@ -9,17 +10,20 @@ export const useCommandKeyBinds = () => {
             return;
         }
 
-        void browser.commands.getAll().then((commands) => {
-            const commandsObj: any = {};
+        void browser.commands
+            .getAll()
+            .then((commands) => {
+                const commandsObj: any = {};
 
-            for (const c of commands) {
-                if (c.name && c.shortcut) {
-                    commandsObj[c.name] = c.shortcut;
+                for (const c of commands) {
+                    if (c.name && c.shortcut) {
+                        commandsObj[c.name] = c.shortcut;
+                    }
                 }
-            }
 
-            setCommands(chromeCommandBindsToKeyBinds(commandsObj));
-        });
+                setCommands(chromeCommandBindsToKeyBinds(commandsObj));
+            })
+            .catch((error) => asbError('key-bindings', 'Failed to load browser shortcuts:', error));
     }, []);
     return commands;
 };

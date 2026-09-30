@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { WebSocketClientSettings } from '@project/common/settings';
 import type { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
 import { WebSocketClient } from '@project/common/web-socket-client';

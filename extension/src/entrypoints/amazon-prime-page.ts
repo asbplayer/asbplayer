@@ -1,6 +1,6 @@
 import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { extractExtension, poll, trackId } from '@/pages/util';
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 
 declare global {
     interface XMLHttpRequest {

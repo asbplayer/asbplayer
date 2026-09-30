@@ -1,7 +1,7 @@
 import type { SubtitleModel } from '@project/common/src/model';
 import hotkeys from 'hotkeys-js';
-import type { KeyBindSet, SeekableTracks, TokenStatus } from '@project/common/settings';
-import { isTrackSeekable } from '@project/common/settings';
+import type { KeyBindSet, SeekableTracks, TokenJumpTarget } from '@project/common/settings';
+import { isTrackSeekable, TokenState, TokenStatus } from '@project/common/settings';
 import { adjacentSubtitle } from '@project/common/util';
 
 export interface KeyBinder {
@@ -152,6 +152,11 @@ export interface KeyBinder {
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
+    bindOpenStatistics(
+        onOpenStatistics: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture?: boolean
+    ): () => void;
     bindMarkHoveredToken(
         onMarkHoveredToken: (event: KeyboardEvent, tokenStatus: TokenStatus) => void,
         disabledGetter: () => boolean,
@@ -162,8 +167,8 @@ export interface KeyBinder {
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
-    bindOpenStatistics(
-        onOpenStatistics: (event: KeyboardEvent) => void,
+    bindJumpToToken(
+        onJumpToToken: (event: KeyboardEvent, target: TokenJumpTarget, forward: boolean) => boolean,
         disabledGetter: () => boolean,
         capture?: boolean
     ): () => void;
@@ -1014,6 +1019,28 @@ export class DefaultKeyBinder implements KeyBinder {
         return this._bind(shortcut, capture, handler);
     }
 
+    bindOpenStatistics(
+        onOpenStatistics: (event: KeyboardEvent) => void,
+        disabledGetter: () => boolean,
+        capture = false
+    ) {
+        const shortcut = this.keyBindSet.openStatistics.keys;
+
+        if (!shortcut) {
+            return () => {};
+        }
+
+        const handler = (event: KeyboardEvent) => {
+            if (disabledGetter()) {
+                return false;
+            }
+
+            onOpenStatistics(event);
+            return true;
+        };
+        return this._bind(shortcut, capture, handler);
+    }
+
     bindMarkHoveredToken(
         onMarkHoveredToken: (event: KeyboardEvent, tokenStatus: TokenStatus) => void,
         disabledGetter: () => boolean,
@@ -1078,26 +1105,73 @@ export class DefaultKeyBinder implements KeyBinder {
         return this._bind(shortcut, capture, handler);
     }
 
-    bindOpenStatistics(
-        onOpenStatistics: (event: KeyboardEvent) => void,
+    bindJumpToToken(
+        onJumpToToken: (event: KeyboardEvent, target: TokenJumpTarget, forward: boolean) => boolean,
         disabledGetter: () => boolean,
         capture = false
     ) {
-        const shortcut = this.keyBindSet.openStatistics.keys;
+        const tokenKeyBinds: [TokenJumpTarget, string, string][] = [
+            [{ kind: 'any' }, this.keyBindSet.jumpToPreviousToken.keys, this.keyBindSet.jumpToNextToken.keys],
+            [
+                { kind: 'status', value: TokenStatus.UNCOLLECTED },
+                this.keyBindSet.jumpToPreviousTokenStatus0.keys,
+                this.keyBindSet.jumpToNextTokenStatus0.keys,
+            ],
+            [
+                { kind: 'status', value: TokenStatus.UNKNOWN },
+                this.keyBindSet.jumpToPreviousTokenStatus1.keys,
+                this.keyBindSet.jumpToNextTokenStatus1.keys,
+            ],
+            [
+                { kind: 'status', value: TokenStatus.LEARNING },
+                this.keyBindSet.jumpToPreviousTokenStatus2.keys,
+                this.keyBindSet.jumpToNextTokenStatus2.keys,
+            ],
+            [
+                { kind: 'status', value: TokenStatus.GRADUATED },
+                this.keyBindSet.jumpToPreviousTokenStatus3.keys,
+                this.keyBindSet.jumpToNextTokenStatus3.keys,
+            ],
+            [
+                { kind: 'status', value: TokenStatus.YOUNG },
+                this.keyBindSet.jumpToPreviousTokenStatus4.keys,
+                this.keyBindSet.jumpToNextTokenStatus4.keys,
+            ],
+            [
+                { kind: 'status', value: TokenStatus.MATURE },
+                this.keyBindSet.jumpToPreviousTokenStatus5.keys,
+                this.keyBindSet.jumpToNextTokenStatus5.keys,
+            ],
+            [
+                { kind: 'state', value: TokenState.IGNORED },
+                this.keyBindSet.jumpToPreviousTokenState0.keys,
+                this.keyBindSet.jumpToNextTokenState0.keys,
+            ],
+        ];
+        const bindings: { shortcut: string; target: TokenJumpTarget; forward: boolean }[] = [];
 
-        if (!shortcut) {
-            return () => {};
-        }
-
-        const handler = (event: KeyboardEvent) => {
-            if (disabledGetter()) {
-                return false;
+        for (const [target, previousShortcut, nextShortcut] of tokenKeyBinds) {
+            if (previousShortcut) {
+                bindings.push({ shortcut: previousShortcut, target, forward: false });
             }
+            if (nextShortcut) {
+                bindings.push({ shortcut: nextShortcut, target, forward: true });
+            }
+        }
+        if (!bindings.length) return () => {};
 
-            onOpenStatistics(event);
-            return true;
+        const delegate = (event: KeyboardEvent, target: TokenJumpTarget, forward: boolean) => {
+            if (disabledGetter()) return false;
+
+            return onJumpToToken(event, target, forward);
         };
-        return this._bind(shortcut, capture, handler);
+        const unbindHandlers = bindings.map(({ shortcut, target, forward }) =>
+            this._bind(shortcut, capture, (event) => delegate(event, target, forward))
+        );
+
+        return () => {
+            for (const unbindHandler of unbindHandlers) unbindHandler();
+        };
     }
 
     private _bind(shortcut: string, capture: boolean, handler: (event: KeyboardEvent) => boolean) {

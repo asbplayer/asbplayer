@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import type {
     Command,
     DictionaryBuildAnkiCacheMessage,
@@ -52,72 +53,87 @@ export default class DictionaryHandler {
                 const message = command.message as DictionaryGetBulkMessage;
                 void this.dictionaryDB
                     .getBulk(message.profile, message.track, message.tokens)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-get-all-tokens': {
                 const message = command.message as DictionaryGetAllTokensMessage;
                 void this.dictionaryDB
                     .getAllTokens(message.profile, message.track)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-get-by-lemma-bulk': {
                 const message = command.message as DictionaryGetByLemmaBulkMessage;
                 void this.dictionaryDB
                     .getByLemmaBulk(message.profile, message.track, message.lemmas)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-save-record-local-bulk': {
                 const message = command.message as DictionarySaveRecordLocalBulkMessage;
                 void this.dictionaryDB
                     .saveRecordLocalBulk(message.profile, message.localTokenInputs, message.applyStates)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-delete-record-local-bulk': {
                 const message = command.message as DictionaryDeleteRecordLocalBulkMessage;
                 void this.dictionaryDB
                     .deleteRecordLocalBulk(message.profile, message.tokens)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-delete-profile': {
                 const message = command.message as DictionaryDeleteProfileMessage;
-                void this.dictionaryDB.deleteProfile(message.profile).then((result) => sendResponse(result));
+                void this.dictionaryDB
+                    .deleteProfile(message.profile)
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-export-record-local-bulk': {
-                void this.dictionaryDB.exportRecordLocalBulk().then((result) => sendResponse(result));
+                void this.dictionaryDB
+                    .exportRecordLocalBulk()
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-import-record-local-bulk': {
                 const message = command.message as DictionaryImportRecordLocalBulkMessage;
                 void this.dictionaryDB
                     .importRecordLocalBulk(message.records, message.profiles)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-get-records': {
                 const message = command.message as DictionaryGetRecordsMessage;
                 void this.dictionaryDB
                     .getRecords(message.profile, message.track)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-update-records': {
                 const message = command.message as DictionaryUpdateRecordsMessage;
                 void this.dictionaryDB
                     .updateRecords(message.profile, message.updates, message.applyStates)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-delete-records': {
                 const message = command.message as DictionaryDeleteRecordsMessage;
                 void this.dictionaryDB
                     .deleteRecords(message.profile, message.tokenKeys)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-build-anki-cache': {
@@ -144,7 +160,8 @@ export default class DictionaryHandler {
                             } satisfies ExtensionToVideoCommand<DictionaryBuildAnkiCacheStateMessage>;
                         });
                     })
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-build-wanikani-cache': {
@@ -171,7 +188,8 @@ export default class DictionaryHandler {
                             } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
                         });
                     })
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-statistics':

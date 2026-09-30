@@ -1,4 +1,5 @@
-import { asbError, surroundingSubtitlesAroundInterval } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { surroundingSubtitlesAroundInterval } from '@project/common/util';
 import type { CardExportedMessage, CopySubtitleMessage, Message } from '@project/common';
 import { PostMineAction } from '@project/common';
 import type Binding from '@project/extension/src/services/binding';
@@ -194,7 +195,8 @@ export default class BulkExportController {
 
         this._inFlight = true;
         // Use Binding public wrapper to trigger the record-and-forward flow
-        this._context.copySubtitleForBulk(copyMsg).catch(() => {
+        this._context.copySubtitleForBulk(copyMsg).catch((error) => {
+            asbError('anki/export', 'Bulk export subtitle copy failed:', error);
             this._inFlight = false;
         });
     }

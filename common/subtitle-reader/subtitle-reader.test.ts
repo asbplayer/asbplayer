@@ -1,27 +1,30 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-// These deps ship as ESM that the repo's ts-jest setup does not transform, and the
-// IMSC path under test never uses them (they back the srt/ass/vtt branches).
+// These unrelated parsers ship as ESM that the repo's ts-jest setup does not transform.
+// WebVTT parsing and subtitle sanitation use their real implementations.
 jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} }));
 jest.mock('ass-compiler', () => ({ compile: () => ({ dialogues: [] }) }));
-jest.mock('videojs-vtt.js', () => ({ WebVTT: {} }));
 
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
 
-const createReader = (convertNetflixRuby = false) =>
+const createReader = (options: Partial<ConstructorParameters<typeof SubtitleReader>[0]> = {}) =>
     new SubtitleReader({
         regexFilter: '',
         regexFilterTextReplacement: '',
         subtitleHtml: SubtitleHtml.render,
-        convertNetflixRuby,
+        convertNetflixRuby: false,
         pgsParserWorkerFactory: () => Promise.reject(new Error('PGS worker is not used in these tests')),
+        ...options,
     });
+
+const vttFile = (text: string, extension = 'vtt', timings = '00:00:00.000 --> 999:59:59.999') =>
+    ({ name: `test.${extension}`, text: async () => `WEBVTT\n\n${timings}\n${text}\n\n` }) as unknown as File;
 
 const nfimscFile = (xml: string) => ({ name: 'test.nfimsc', text: async () => xml }) as unknown as File;
 
 const parse = (xml: string, convertNetflixRuby = false, flatten = false, fileCount = 1) =>
-    createReader(convertNetflixRuby).subtitles(
+    createReader({ convertNetflixRuby }).subtitles(
         Array.from({ length: fileCount }, () => nfimscFile(xml)),
         flatten
     );
@@ -283,5 +286,110 @@ describe('SubtitleReader dfxp timestamp handling', () => {
         const subtitles = await createReader().subtitles([file]);
 
         expect(subtitles).toHaveLength(0);
+    });
+});
+
+describe('SubtitleReader WebVTT timestamp stripping', () => {
+    // https://www.w3.org/TR/webvtt1/#webvtt-timestamp
+    it.each([
+        '00:00.001',
+        '59:59.999',
+        '00:00:00.001',
+        '01:02:03.004',
+        '60:00:00.000',
+        '123:45:56.789',
+        '000:00:00.001',
+    ])('strips a valid timestamp <%s> without changing cue timing or surrounding text', async (timestamp) => {
+        const subtitles = await createReader().subtitles([vttFile(`before<${timestamp}>after`)]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 3599999999, text: 'beforeafter', track: 0 }]);
+    });
+
+    it.each([
+        '60:00.000',
+        '00:60.000',
+        '99:59.999',
+        '59:99.999',
+        '00:60:00.000',
+        '00:00:60.000',
+        '01:99:99.999',
+        '1:02:03.004',
+        '1:02.003',
+        '01:2.003',
+        '01:02:3.004',
+        '01:02.00',
+        '01:02.0000',
+        '01:02',
+        '01:02,003',
+        '01:02x003',
+        '+01:02.003',
+        '０１:０２.００３',
+    ])('preserves timestamp-like text outside the timestamp grammar (%s)', async (timestamp) => {
+        const subtitles = await createReader().subtitles([
+            vttFile(`before<${timestamp}>after`),
+            vttFile(`before&lt;${timestamp}&gt;after`),
+        ]);
+
+        expect(subtitles.map((subtitle) => subtitle.text)).toEqual([
+            `before&lt;${timestamp}&gt;after`,
+            `before&lt;${timestamp}&gt;after`,
+        ]);
+    });
+
+    it.each([
+        '&lt;00:01.001&gt;',
+        '&#60;00:01.001&#62;',
+        '&#00060;00:01.001&#00062;',
+        '&#x3c;00:01.001&#x3e;',
+        '&#X0003C;00:01.001&#X0003E;',
+        '<00:01.001&gt;',
+        '&lt;00:01.001>',
+    ])('strips supported escaped timestamp delimiters (%s)', async (timestampTag) => {
+        const subtitles = await createReader().subtitles([vttFile(`before${timestampTag}after`)]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 3599999999, text: 'beforeafter', track: 0 }]);
+    });
+
+    it.each([
+        ['vtt', SubtitleHtml.render, '<b>Hello</b> <i>world</i>\nagain'],
+        ['vtt', SubtitleHtml.remove, 'Hello world\nagain'],
+        ['nfvtt', SubtitleHtml.render, '<b>Hello</b> <i>world</i>\nagain'],
+        ['nfvtt', SubtitleHtml.remove, 'Hello world\nagain'],
+    ])('strips multiple timestamps from %s with HTML mode %s', async (extension, subtitleHtml, expectedText) => {
+        const subtitles = await createReader({ subtitleHtml }).subtitles([
+            vttFile(
+                '<c.yellow><b>Hello</b></c> <00:01.001><i>world</i>\n&lt;00:02.002&gt;again',
+                extension,
+                '00:00.000 --> 00:03.000'
+            ),
+        ]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 3000, text: expectedText, track: 0 }]);
+    });
+
+    it('preserves ordinary text, formatting, entities, and untagged timestamps', async () => {
+        const text = '<c.yellow><b>Meet</b></c> at 00:01.000 &amp; <ruby>語<rt>ご</rt></ruby>.';
+        const subtitles = await createReader().subtitles([vttFile(text, 'vtt', '00:00.000 --> 00:03.000')]);
+
+        expect(subtitles).toEqual([
+            { start: 0, end: 3000, text: '<b>Meet</b> at 00:01.000 &amp; <ruby>語<rt>ご</rt></ruby>.', track: 0 },
+        ]);
+    });
+
+    it('removes timestamps before applying the configured text filter', async () => {
+        const subtitles = await createReader({
+            regexFilter: 'Hello world',
+            regexFilterTextReplacement: 'replaced',
+        }).subtitles([vttFile('Hello<00:01.001> world', 'vtt', '00:00.000 --> 00:03.000')]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 3000, text: 'replaced', track: 0 }]);
+    });
+
+    it('drops cues containing only timestamp tags', async () => {
+        const subtitles = await createReader().subtitles([
+            vttFile('<00:01.001>&lt;00:02.002&gt;', 'vtt', '00:00.000 --> 00:03.000'),
+        ]);
+
+        expect(subtitles).toEqual([]);
     });
 });

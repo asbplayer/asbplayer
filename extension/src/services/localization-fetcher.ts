@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { LocalizationConfig } from '@project/extension/src/services/extension-config';
 import { fetchExtensionConfig } from '@project/extension/src/services/extension-config';
 import { SettingsProvider, supportedLanguages as defaultSupportedLanguages } from '@project/common/settings';

@@ -8,6 +8,7 @@ import type {
     SettingsUpdatedMessage,
 } from '@project/common';
 import { createTheme } from '@project/common/theme';
+import { asbError } from '@project/common/util/log';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { SettingsProvider } from '@project/common/settings';
 import Box from '@mui/material/Box';
@@ -21,6 +22,7 @@ import { StyledEngineProvider } from '@mui/material/styles';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { isFirefoxBuild } from '@/services/build-flags';
+import { extensionLogProvider } from '@/services/extension-log-provider';
 
 interface Props {
     commands: any;
@@ -33,7 +35,9 @@ const notifySettingsUpdated = () => {
             command: 'settings-updated',
         },
     };
-    void browser.runtime.sendMessage(settingsUpdatedCommand);
+    void browser.runtime
+        .sendMessage(settingsUpdatedCommand)
+        .catch((error) => asbError('settings', 'Failed to notify the extension about updated settings:', error));
 };
 
 export function PopupUi({ commands }: Props) {
@@ -43,14 +47,21 @@ export function PopupUi({ commands }: Props) {
     const theme = useMemo(() => settings && createTheme(settings.themeType), [settings]);
 
     useEffect(() => {
-        void settingsProvider.getAll().then(setSettings);
+        void settingsProvider
+            .getAll()
+            .then(setSettings)
+            .catch((error) => asbError('settings', 'Failed to load extension settings:', error));
     }, [settingsProvider]);
 
     const handleSettingsChanged = useCallback(
         async (changed: Partial<AsbplayerSettings>) => {
             setSettings((old: any) => ({ ...old, ...changed }));
-            await settingsProvider.set(changed);
-            notifySettingsUpdated();
+            try {
+                await settingsProvider.set(changed);
+                notifySettingsUpdated();
+            } catch (error) {
+                asbError('settings', 'Failed to save extension settings:', error);
+            }
         },
         [settingsProvider]
     );
@@ -99,7 +110,10 @@ export function PopupUi({ commands }: Props) {
     }, [requestingActiveTabPermission, tabRequestingActiveTabPermission]);
 
     const handleProfileChanged = useCallback(() => {
-        void settingsProvider.getAll().then(setSettings);
+        void settingsProvider
+            .getAll()
+            .then(setSettings)
+            .catch((error) => asbError('settings', 'Failed to load extension settings:', error));
         notifySettingsUpdated();
     }, [settingsProvider]);
 
@@ -131,6 +145,7 @@ export function PopupUi({ commands }: Props) {
                         <Popup
                             commands={commands}
                             dictionaryProvider={dictionaryProvider}
+                            logProvider={extensionLogProvider}
                             settings={settings}
                             onSettingsChanged={handleSettingsChanged}
                             onOpenApp={handleOpenApp}

@@ -11,6 +11,7 @@ asbplayer can annotate subtitles to better assist with language learning. Annota
 - **Reading Annotation**: readings displayed above each word or based on status
 - **Frequency Annotation**: rank-based frequency displayed below each word or based on status (requires at least on rank-based frequency dictionary)
 - **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
+- **Glossary Annotation**: short definitions or explanations displayed for each word
 - **Many more features for future releases!**
 
 :::info

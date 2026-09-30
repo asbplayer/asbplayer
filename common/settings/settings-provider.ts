@@ -4,6 +4,7 @@ import type {
     AnkiSettings,
     AsbplayerSettings,
     KeyBindName,
+    PageSettings,
     SubtitleSettings,
     TextSubtitleSettings,
 } from '@project/common/settings/settings';
@@ -60,23 +61,25 @@ function makeDefaultDictionaryTokenAnnotationConfigs() {
             color: { onHoverEnabled: false, size: 1 },
             reading: { onHoverEnabled: false, size: 0.5 },
             frequency: { onHoverEnabled: false, size: 0.3 },
+            gloss: { onHoverEnabled: true, size: 0.5 },
             pitchAccent: { onHoverEnabled: true, size: 0.1 },
         },
         subtitlePlayer: {
             color: { onHoverEnabled: false, size: 1 },
             reading: { onHoverEnabled: false, size: 0.5 },
             frequency: { onHoverEnabled: false, size: 0.5 },
+            gloss: { onHoverEnabled: true, size: 0.5 },
             pitchAccent: { onHoverEnabled: true, size: 0.1 },
         },
         onStatuses: [
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
-            { reading: false, frequency: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
+            { reading: false, frequency: false, gloss: false, pitchAccent: false },
         ],
-        onStates: [{ reading: false, frequency: false, pitchAccent: false }],
+        onStates: [{ reading: false, frequency: false, gloss: false, pitchAccent: false }],
     };
 }
 
@@ -153,6 +156,7 @@ export const defaultSettings: AsbplayerSettings = {
     thumbnailPreview: false,
     subtitleTracksV2: [],
     subtitlesWidth: -1,
+    subtitlesWidthUnit: '%',
     audioPaddingStart: 0,
     audioPaddingEnd: 500,
     maxImageWidth: 0,
@@ -161,6 +165,7 @@ export const defaultSettings: AsbplayerSettings = {
     mediaFragmentTrimStart: 200,
     mediaFragmentTrimEnd: 200,
     mediaFragmentMaxClipLength: 10000,
+    trimBlackBars: false,
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
@@ -231,14 +236,30 @@ export const defaultSettings: AsbplayerSettings = {
         moveBottomSubtitlesDown: { keys: '' },
         moveTopSubtitlesUp: { keys: '' },
         moveTopSubtitlesDown: { keys: '' },
-        markHoveredToken5: { keys: 'Q+5' },
-        markHoveredToken4: { keys: 'Q+4' },
-        markHoveredToken3: { keys: 'Q+3' },
-        markHoveredToken2: { keys: 'Q+2' },
-        markHoveredToken1: { keys: 'Q+1' },
-        markHoveredToken0: { keys: 'Q+0' },
-        toggleHoveredTokenIgnored: { keys: 'Q+I' },
         openStatistics: { keys: 'Q+S' },
+        jumpToNextToken: { keys: 'Q+E' },
+        jumpToPreviousToken: { keys: 'Q+W' },
+        markHoveredToken5: { keys: 'Q+5' },
+        jumpToNextTokenStatus5: { keys: '' },
+        jumpToPreviousTokenStatus5: { keys: '' },
+        markHoveredToken4: { keys: 'Q+4' },
+        jumpToNextTokenStatus4: { keys: '' },
+        jumpToPreviousTokenStatus4: { keys: '' },
+        markHoveredToken3: { keys: 'Q+3' },
+        jumpToNextTokenStatus3: { keys: '' },
+        jumpToPreviousTokenStatus3: { keys: '' },
+        markHoveredToken2: { keys: 'Q+2' },
+        jumpToNextTokenStatus2: { keys: '' },
+        jumpToPreviousTokenStatus2: { keys: '' },
+        markHoveredToken1: { keys: 'Q+1' },
+        jumpToNextTokenStatus1: { keys: '' },
+        jumpToPreviousTokenStatus1: { keys: '' },
+        markHoveredToken0: { keys: 'Q+0' },
+        jumpToNextTokenStatus0: { keys: '' },
+        jumpToPreviousTokenStatus0: { keys: '' },
+        toggleHoveredTokenIgnored: { keys: 'Q+I' },
+        jumpToNextTokenState0: { keys: '' },
+        jumpToPreviousTokenState0: { keys: '' },
     },
     recordWithAudioPlayback: true,
     preferMp3: true,
@@ -303,6 +324,9 @@ export const defaultSettings: AsbplayerSettings = {
         urplay: {},
         archive: {},
         crunchyroll: {},
+        rutube: {},
+        okru: {},
+        vkvideo: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
@@ -611,11 +635,28 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenAnnotationConfig.colorizeEnabled = dt.dictionaryColorizeSubtitles;
         }
 
+        for (const [target, defaultTarget] of [
+            [dt.dictionaryTokenAnnotationConfig.video, defaultTrack.dictionaryTokenAnnotationConfig.video],
+            [
+                dt.dictionaryTokenAnnotationConfig.subtitlePlayer,
+                defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer,
+            ],
+        ] as const) {
+            if (target.gloss === undefined) (target as any).gloss = { ...defaultTarget.gloss };
+        }
+        for (const trigger of [
+            ...dt.dictionaryTokenAnnotationConfig.onStatuses,
+            ...dt.dictionaryTokenAnnotationConfig.onStates,
+        ]) {
+            if (trigger.gloss === undefined) (trigger as any).gloss = false;
+        }
+
         // Ensure dictionaryTokenAnnotationConfig has the correct length
         while (dt.dictionaryTokenAnnotationConfig.onStatuses.length < NUM_TOKEN_STATUSES) {
             dt.dictionaryTokenAnnotationConfig.onStatuses.push({
                 reading: false,
                 frequency: false,
+                gloss: false,
                 pitchAccent: false,
             });
         }
@@ -626,6 +667,7 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
             dt.dictionaryTokenAnnotationConfig.onStates.push({
                 reading: false,
                 frequency: false,
+                gloss: false,
                 pitchAccent: false,
             });
         }
@@ -653,8 +695,41 @@ const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<Asbplay
     }
 };
 
+const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) => {
+    const streamingPages = settings.streamingPages;
+
+    if (streamingPages === undefined) {
+        return;
+    }
+
+    const newStreamingPages: any = {};
+    let streamingPagesModified = false;
+
+    for (const key of Object.keys(defaultSettings.streamingPages)) {
+        const pageName = key as keyof PageSettings;
+
+        if (
+            streamingPages[pageName] === null ||
+            streamingPages[pageName] === undefined ||
+            typeof streamingPages[pageName] !== 'object'
+        ) {
+            newStreamingPages[pageName] = defaultSettings.streamingPages[pageName];
+            streamingPagesModified = true;
+        } else {
+            newStreamingPages[pageName] = streamingPages[pageName];
+        }
+    }
+
+    if (!streamingPagesModified) {
+        return;
+    }
+
+    (settings as any).streamingPages = newStreamingPages;
+};
+
 export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) => {
     ensureDictionaryTracksConsistency(settings);
+    ensureStreamingPagesConsistency(settings);
 
     let keyBindSetModified = false;
     const newKeyBindSet: any = {};

@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type {
     AlertMessage,
     AnkiSettingsToVideoMessage,
@@ -540,6 +540,10 @@ export default class PlayerChannel {
         };
         this.channel?.postMessage(message);
     }
+
+    tokenSelectionFocus = () => {
+        this.channel?.postMessage({ command: 'tokenSelectionFocus' });
+    };
 
     loadFiles() {
         this.channel?.postMessage({ command: 'loadFiles' });
