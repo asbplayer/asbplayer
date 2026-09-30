@@ -217,7 +217,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                                         const pageKey = key;
                                         const metadata = pageMetadata[pageKey];
                                         const page = settings.streamingPages[pageKey];
-                                        if (page === undefined) return null; // Likely unnecessary
 
                                         return (
                                             <TableRowWithHoverEffect
