@@ -34,6 +34,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
         mediaFragmentTrimStart,
         mediaFragmentTrimEnd,
         mediaFragmentMaxClipLength,
+        trimBlackBars,
         streamingScreenshotDelay,
         surroundingSubtitlesCountRadius,
         surroundingSubtitlesTimeRadius,
@@ -270,6 +271,16 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                         step: 1,
                     },
                 }}
+            />
+            <SwitchLabelWithHoverEffect
+                control={
+                    <Switch
+                        checked={trimBlackBars}
+                        onChange={(event) => onSettingChanged('trimBlackBars', event.target.checked)}
+                    />
+                }
+                label={t('settings.trimBlackBars')}
+                labelPlacement="start"
             />
             {showWebmMediaFragmentSettings && mediaFragmentFormat === 'webm' && webmCaptureSupported && (
                 <>

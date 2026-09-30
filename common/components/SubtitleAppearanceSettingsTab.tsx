@@ -13,9 +13,17 @@ import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffec
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Radio from '@mui/material/Radio';
-import type { AsbplayerSettings, TextSubtitleSettings, CustomStyle } from '@project/common/settings';
+import Select from '@mui/material/Select';
+import type {
+    AsbplayerSettings,
+    SubtitlesWidthUnit,
+    TextSubtitleSettings,
+    CustomStyle,
+} from '@project/common/settings';
 import {
     changeForTextSubtitleSetting,
+    maxSubtitlesWidth,
+    subtitlesWidthUnits,
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
@@ -119,6 +127,42 @@ function CustomStyleSetting({ customStyle, onCustomStyle, onDelete }: CustomStyl
     );
 }
 
+interface SubtitlesWidthUnitSelectProps {
+    value: SubtitlesWidthUnit;
+    onValueChange: (value: SubtitlesWidthUnit) => void;
+}
+
+function SubtitlesWidthUnitSelect({ value, onValueChange }: SubtitlesWidthUnitSelectProps) {
+    const { t } = useTranslation();
+
+    return (
+        <Select
+            variant="standard"
+            disableUnderline
+            value={value}
+            SelectDisplayProps={{ 'aria-label': t('settings.subtitlesWidth') }}
+            onChange={(event) => onValueChange(event.target.value as SubtitlesWidthUnit)}
+            sx={{
+                fontSize: 'inherit',
+                '& .MuiSelect-select': {
+                    padding: 0,
+                    paddingRight: 2,
+                },
+                '& .MuiSelect-icon': {
+                    right: 0,
+                    fontSize: 'inherit',
+                },
+            }}
+        >
+            {subtitlesWidthUnits.map((unit) => (
+                <MenuItem key={unit} value={unit}>
+                    {unit}
+                </MenuItem>
+            ))}
+        </Select>
+    );
+}
+
 interface Props {
     settings: AsbplayerSettings;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -126,6 +170,7 @@ interface Props {
     extensionInstalled?: boolean;
     extensionSupportsTrackSpecificSettings?: boolean;
     extensionSupportsSubtitlesWidthSetting?: boolean;
+    extensionSupportsSubtitlesWidthInPixels?: boolean;
     localFontsAvailable: boolean;
     localFontsPermission?: PermissionState;
     localFontFamilies: string[];
@@ -140,6 +185,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     extensionInstalled,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
+    extensionSupportsSubtitlesWidthInPixels,
     localFontsAvailable,
     localFontsPermission,
     localFontFamilies,
@@ -153,7 +199,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
         subtitlePositionOffset,
         topSubtitlePositionOffset,
         subtitlesWidth,
+        subtitlesWidthUnit,
     } = settings;
+    const supportsSubtitlesWidthInPixels = !extensionInstalled || extensionSupportsSubtitlesWidthInPixels;
+    const subtitlesWidthUnitForExtension: SubtitlesWidthUnit = supportsSubtitlesWidthInPixels
+        ? subtitlesWidthUnit
+        : '%';
     const [currentStyleKey, setCurrentStyleKey] = useState<string>(cssStyles[0]);
     const [selectedSubtitleAppearanceTrack, setSelectedSubtitleAppearanceTrack] = useState<number>();
     const {
@@ -552,14 +603,39 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 label={t('settings.subtitlesWidth')}
                                 value={subtitlesWidth}
                                 normalizeValue={(value) =>
-                                    value >= 0 && value <= 100 && Number.isFinite(value) ? value : undefined
+                                    value >= 0 &&
+                                    value <= maxSubtitlesWidth(subtitlesWidthUnitForExtension) &&
+                                    Number.isFinite(value)
+                                        ? value
+                                        : undefined
                                 }
                                 onValueChange={(value) => void onSettingChanged('subtitlesWidth', value)}
                                 slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        max: maxSubtitlesWidth(subtitlesWidthUnitForExtension),
+                                    },
                                     input: {
                                         endAdornment: (
                                             <>
-                                                <InputAdornment position="end">%</InputAdornment>
+                                                {supportsSubtitlesWidthInPixels ? (
+                                                    <InputAdornment position="end">
+                                                        <SubtitlesWidthUnitSelect
+                                                            value={subtitlesWidthUnit}
+                                                            onValueChange={(unit) =>
+                                                                onSettingsChanged({
+                                                                    subtitlesWidthUnit: unit,
+                                                                    subtitlesWidth: Math.min(
+                                                                        subtitlesWidth,
+                                                                        maxSubtitlesWidth(unit)
+                                                                    ),
+                                                                })
+                                                            }
+                                                        />
+                                                    </InputAdornment>
+                                                ) : (
+                                                    <InputAdornment position="end">%</InputAdornment>
+                                                )}
                                                 <InputAdornment position="end">
                                                     <IconButton
                                                         onClick={() => void onSettingChanged('subtitlesWidth', -1)}

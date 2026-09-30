@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import type {
     AsbPlayerToVideoCommandV2,
     Command,
@@ -24,9 +25,12 @@ export default class RequestCurrentSubtitleHandler {
                 command: 'request-current-subtitle',
             },
         };
-        void browser.tabs.sendMessage(tabId, requestCurrentSubtitleFromTabCommand).then((response) => {
-            sendResponse(response);
-        });
+        void browser.tabs
+            .sendMessage(tabId, requestCurrentSubtitleFromTabCommand)
+            .then(sendResponse)
+            .catch((error) =>
+                asbError('video/request', 'Failed to request the current subtitle from the video tab:', error)
+            );
         return true;
     }
 }

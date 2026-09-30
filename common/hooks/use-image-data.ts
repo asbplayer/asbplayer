@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { MediaFragment } from '@project/common';
 import { CancelledMediaFragmentDataRenderingError } from '@project/common';
 import { useEffect, useState } from 'react';

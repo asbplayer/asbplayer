@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { HttpPostMessage, Message, TabToExtensionCommand, VideoToExtensionCommand } from '@project/common';
 
 export interface FetchOptions {

@@ -21,7 +21,18 @@ export const sanitizeSubtitleHtml = (html: string) =>
         ALLOW_ARIA_ATTR: false,
     });
 
+// HTML removal assigns to innerHTML in the active document, so sanitize before parsing.
+// The final sanitization pass is still needed after entity decoding.
+const removeSubtitleHtmlSafely = (html: string) => removeSubtitleHtml(sanitizeSubtitleHtml(html));
+
+// https://www.w3.org/TR/webvtt1/#webvtt-timestamp: optional hours, minutes/seconds 00–59, three fractional digits.
+const vttTimestampValue = String.raw`(?:\d{2,}:)?[0-5]\d:[0-5]\d\.\d{3}`;
+const vttTimestampTagRegex = new RegExp(
+    `(?:<|&lt;|&#0*60;|&#x0*3c;)${vttTimestampValue}(?:>|&gt;|&#0*62;|&#x0*3e;)`,
+    'gi'
+);
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
+
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
@@ -186,7 +197,8 @@ export default class SubtitleReader {
                 let buffer: VTTCue[] = [];
 
                 parser.oncue = (c: VTTCue) => {
-                    c.text = this._filterText(c.text.replaceAll(vttClassRegex, ''));
+                    const cueText = c.text.replaceAll(vttClassRegex, '').replaceAll(vttTimestampTagRegex, '');
+                    c.text = this._filterText(cueText);
 
                     if (isFromNetflix) {
                         const lines = c.text.split('\n');
@@ -345,7 +357,7 @@ export default class SubtitleReader {
                 const subtitle = {
                     start: Math.floor(start * 1000),
                     end: Math.floor((start + parseFloat(elm['@_dur'])) * 1000),
-                    text: this._filterText(removeSubtitleHtml(String(elm['#text']))),
+                    text: this._filterText(removeSubtitleHtmlSafely(String(elm['#text']))),
                     track,
                 };
 
@@ -408,7 +420,7 @@ export default class SubtitleReader {
                     continue;
                 }
 
-                const text = removeSubtitleHtml(elm.innerHTML);
+                const text = removeSubtitleHtmlSafely(elm.innerHTML);
                 subtitles.push({
                     text: this._filterText(text),
                     start,
@@ -799,7 +811,7 @@ export default class SubtitleReader {
                 : text.replace(this._textFilter.regex, this._textFilter.replacement).trim();
 
         if (this._removeXml) {
-            text = removeSubtitleHtml(text);
+            text = removeSubtitleHtmlSafely(text);
         }
 
         return text;

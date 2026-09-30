@@ -1,4 +1,5 @@
-import { asbError, humanReadableTime } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { humanReadableTime } from '@project/common/util';
 import type {
     CardExportedMessage,
     CardModel,

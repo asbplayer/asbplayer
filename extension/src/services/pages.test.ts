@@ -1,10 +1,13 @@
 import { defaultSettings } from '@project/common/settings';
-import pagesConfig from '@project/extension/src/pages.json';
+import rawPagesConfig from '@project/extension/src/pages.json';
 import { afterEach, beforeAll, expect, it } from '@jest/globals';
 import type {
+    PageConfig,
     PageDelegate as PageDelegateClass,
     pageDelegateForUrl as PageDelegateForUrlFunction,
 } from '@project/extension/src/services/pages';
+
+const pagesConfig = rawPagesConfig as typeof rawPagesConfig & { pages: PageConfig[] }; // JSON imports widen string literals, including subtitleDiscoveryRequestTarget.
 
 let PageDelegate: typeof PageDelegateClass;
 let pageDelegateForUrl: typeof PageDelegateForUrlFunction;

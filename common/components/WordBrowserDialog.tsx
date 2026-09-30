@@ -58,7 +58,8 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { asbError, getTokenStatus, normalizedLookupTerms } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { getTokenStatus, normalizedLookupTerms } from '@project/common/util';
 import { Yomitan } from '@project/common/yomitan';
 import Box from '@mui/material/Box';
 
@@ -95,7 +96,7 @@ interface WordBrowserRow {
     selectable: boolean;
     token: string;
     tokenSearchTerms: string[];
-    lemmas: string[];
+    lemmas: readonly string[];
     lemmasDisplay: string;
     lemmaSearchTerms: string[];
     source: DictionaryTokenSource;
@@ -223,7 +224,7 @@ function dedupeNumbers(values: number[]) {
     return Array.from(new Set(values)).sort((lhs, rhs) => lhs - rhs);
 }
 
-function formatList(values: Array<string | number>) {
+function formatList(values: readonly (string | number)[]) {
     return values.join(' · ');
 }
 

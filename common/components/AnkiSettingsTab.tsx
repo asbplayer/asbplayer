@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import FormHelperText from '@mui/material/FormHelperText';
 import AnkiConnectTutorialBubble from '@project/common/components/AnkiConnectTutorialBubble';
 import DeckFieldTutorialBubble from '@project/common/components/DeckFieldTutorialBubble';

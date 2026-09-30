@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type { VideoData, VideoDataSubtitleTrack } from '@project/common';
 import { extractExtension, poll, trackFromDef } from '@/pages/util';
 

@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import { useEffect, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import Link from '@mui/material/Link';

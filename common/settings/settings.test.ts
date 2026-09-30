@@ -3,6 +3,8 @@ import {
     calculateSeekableTracksValue,
     effectiveSubtitleListCustomization,
     isTrackSeekable,
+    maxSubtitlesWidth,
+    subtitlesWidthCssValue,
     SubtitleListTimestampDisplay,
     updateSeekableTracksValue,
 } from '.';
@@ -123,4 +125,23 @@ it('can update seekable tracks correctly', () => {
     expect(updateSeekableTracksValue(calculateSeekableTracksValue([1, 2]), 0, true)).toEqual(
         calculateSeekableTracksValue([0, 1, 2])
     );
+});
+
+describe('subtitlesWidthCssValue', () => {
+    it('leaves the width automatic when it is -1', () => {
+        expect(subtitlesWidthCssValue({ subtitlesWidth: -1, subtitlesWidthUnit: '%' })).toBeUndefined();
+        expect(subtitlesWidthCssValue({ subtitlesWidth: -1, subtitlesWidthUnit: 'px' })).toBeUndefined();
+    });
+
+    it('renders percentages and pixels', () => {
+        expect(subtitlesWidthCssValue({ subtitlesWidth: 80, subtitlesWidthUnit: '%' })).toBe('80%');
+        expect(subtitlesWidthCssValue({ subtitlesWidth: 800, subtitlesWidthUnit: 'px' })).toBe('800px');
+    });
+});
+
+describe('subtitlesWidth bounds', () => {
+    it('caps percentages at 100 and pixels at a sanity limit', () => {
+        expect(maxSubtitlesWidth('%')).toBe(100);
+        expect(maxSubtitlesWidth('px')).toBe(10000);
+    });
 });

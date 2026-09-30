@@ -1,4 +1,4 @@
-import { asbError } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
 import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     AudioModel,
@@ -89,6 +89,7 @@ export default class RecordMediaHandler {
                 maxHeight,
                 rect,
                 frameId,
+                trimBlackBars: recordMediaCommand.message.trimBlackBars,
             });
             void imagePromise.finally(() => {
                 const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {

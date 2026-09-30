@@ -17,6 +17,7 @@ import {
     normalizeNonNegative,
     normalizeNonPositive,
 } from '@project/common/util';
+import { asbTrace } from '@project/common/util/log';
 
 export const playbackPlanCorrectionToleranceMs = 0.5;
 
@@ -172,7 +173,7 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
             : {}),
     }));
 
-    return {
+    const plan: PlaybackPlan<T> = {
         timelineSubtitles: {
             ...timeline,
             blocks,
@@ -228,6 +229,17 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>({
               }
             : {}),
     };
+    asbTrace('playback/plan', 'Built playback plan', {
+        autoPause: plan.autoPause?.resume.mode,
+        condensed: plan.condensed !== undefined,
+        displaySubtitleCount: timeline.displaySubtitles.length,
+        durationMs: timeline.durationMs,
+        fastForward: plan.fastForward?.playbackRate,
+        modes: [...playModes],
+        playbackRate,
+        timelineBlockCount: plan.timelineSubtitles.blocks.length,
+    });
+    return plan;
 };
 
 export const fastForwardingForPlanState = <T extends IndexedSubtitleModel>(

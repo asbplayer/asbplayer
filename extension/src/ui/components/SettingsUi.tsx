@@ -7,6 +7,7 @@ import { createTheme } from '@project/common/theme';
 import { StyledEngineProvider } from '@mui/material/styles';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
+import { extensionLogProvider } from '@/services/extension-log-provider';
 
 const searchParams = new URLSearchParams(window.location.search);
 const inTutorial = searchParams.get('tutorial') === 'true';
@@ -27,6 +28,7 @@ const SettingsUi = () => {
                 <CssBaseline />
                 <SettingsPage
                     dictionaryProvider={dictionaryProvider}
+                    logProvider={extensionLogProvider}
                     settings={settings}
                     onSettingsChanged={onSettingsChanged}
                     inTutorial={inTutorial}

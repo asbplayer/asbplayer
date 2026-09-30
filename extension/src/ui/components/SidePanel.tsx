@@ -1,4 +1,5 @@
-import { asbError, download, timeDurationDisplay } from '@project/common/util';
+import { asbError } from '@project/common/util/log';
+import { download, timeDurationDisplay } from '@project/common/util';
 import { MediaFragment } from '@project/common';
 import type {
     AsbplayerInstance,
@@ -446,7 +447,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     }, [refreshCopyHistory]);
     const handleCloseCopyHistory = useCallback(() => {
         setShowCopyHistory(false);
-        void clearExtensionRequestedLocation();
+        void clearExtensionRequestedLocation().catch((error) =>
+            asbError('side-panel', 'Failed to clear the requested panel location:', error)
+        );
     }, []);
     const handleClipAudio = useCallback(
         async (item: CopyHistoryItem) => {
@@ -497,7 +500,8 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
                     settings.mediaFragmentFormat,
                     settings.mediaFragmentTrimStart,
                     settings.mediaFragmentTrimEnd,
-                    settings.mediaFragmentMaxClipLength
+                    settings.mediaFragmentMaxClipLength,
+                    settings.trimBlackBars
                 );
 
                 if (image) {
@@ -589,7 +593,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     const handleShowStatistics = useCallback(() => setStatisticsOpen(true), []);
     const handleCloseStatistics = useCallback(() => {
         setStatisticsOpen(false);
-        void clearExtensionRequestedLocation();
+        void clearExtensionRequestedLocation().catch((error) =>
+            asbError('side-panel', 'Failed to clear the requested panel location:', error)
+        );
     }, []);
     const handleOpenStatisticsOverlay = useCallback(
         (mediaId: string) => {

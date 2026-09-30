@@ -34,6 +34,7 @@ export interface Token {
     status?: TokenStatus | null; // null means "error"
     readings: TokenReading[];
     frequency?: number | null; // null means no frequency data
+    gloss?: string | null; // null means no gloss data
     pitchAccent?: PitchAccentPosition | null; // null means no pitch accent data
     groupingKey?: string; // Stable key for equivalence aggregation
     lemmasGroupingKey?: string; // Stable key for equivalence aggregation based on lemmas (statistics)

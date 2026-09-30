@@ -1,4 +1,5 @@
 import type { Command, Message, SaveCopyHistoryMessage } from '@project/common';
+import { asbError } from '@project/common/util/log';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import type { SettingsProvider } from '@project/common/settings';
 
@@ -22,13 +23,13 @@ export default class SaveCopyHistoryHandler {
         void this._settings
             .getSingle('miningHistoryStorageLimit')
             .then((limit) => new IndexedDBCopyHistoryRepository(limit))
-            .then((copyHistoryRepository) => {
-                return Promise.all(
+            .then((copyHistoryRepository) =>
+                Promise.all(
                     message.copyHistoryItems.map((copyHistoryItem) => copyHistoryRepository.save(copyHistoryItem))
-                ).then(() => {
-                    sendResponse({});
-                });
-            });
+                )
+            )
+            .then(() => sendResponse({}))
+            .catch((error) => asbError('copy-history', 'Failed to save copy history items:', error));
 
         return true;
     }

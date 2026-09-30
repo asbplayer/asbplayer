@@ -105,7 +105,8 @@ export default class ImageCapturer {
     ): Promise<string> {
         const cropScreenshot = await this.settings.getSingle('streamingCropScreenshot');
 
-        if (!cropScreenshot) {
+        // Trimming black bars only makes sense on the video area, so it implies cropping to the video
+        if (!cropScreenshot && !imageCaptureParams.trimBlackBars) {
             return dataUrl;
         }
 
