@@ -146,10 +146,13 @@ export default class VideoDataSyncController {
         this._lastLanguagesSynced = streamingLastLanguagesSynced;
 
         if (this._frame.clientIfLoaded !== undefined) {
-            void this._context.settings.getSingle('themeType').then((themeType) => {
-                const profilesPromise = this._context.settings.profiles();
-                const activeProfilePromise = this._context.settings.activeProfile();
-                void Promise.all([profilesPromise, activeProfilePromise]).then(([profiles, activeProfile]) => {
+            void this._context.settings
+                .getSingle('themeType')
+                .then(async (themeType) => {
+                    const [profiles, activeProfile] = await Promise.all([
+                        this._context.settings.profiles(),
+                        this._context.settings.activeProfile(),
+                    ]);
                     this._frame.clientIfLoaded?.updateState({
                         settings: {
                             themeType,
@@ -157,8 +160,8 @@ export default class VideoDataSyncController {
                             activeProfile: activeProfile?.name,
                         },
                     });
-                });
-            });
+                })
+                .catch((error) => asbError('video/sync', 'Failed to update settings in the subtitle picker:', error));
         }
     }
 
@@ -528,7 +531,9 @@ export default class VideoDataSyncController {
                                 .filter((language) => language !== undefined);
                             await this._context.settings
                                 .set({ streamingLastLanguagesSynced: this._lastLanguagesSynced })
-                                .catch(() => {});
+                                .catch((error) => {
+                                    asbError('video/sync', 'Failed to save remembered track choices:', error);
+                                });
                         }
 
                         const data = confirmMessage.data;
@@ -625,7 +630,10 @@ export default class VideoDataSyncController {
             // temporarily until the play() promise resolves. This became an issue with the addition of
             // PlaybackEngine which moved away from setIntervals() for playback semantics which exposed the core issue.
             const enablePauseOnHover = this._context.disablePauseOnHover();
-            void this._context.play().finally(enablePauseOnHover);
+            void this._context
+                .play()
+                .finally(enablePauseOnHover)
+                .catch((error) => asbError('video/sync', 'Failed to resume playback after subtitle selection:', error));
         }
 
         this._wasPaused = undefined;

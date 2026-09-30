@@ -45,25 +45,30 @@ export default defineContentScript({
         let unbindToggleSidePanel: (() => void) | undefined;
 
         const bindToggleSidePanel = () => {
-            void settingsProvider.getSingle('keyBindSet').then((keyBindSet) => {
-                unbindToggleSidePanel?.();
-                unbindToggleSidePanel = new DefaultKeyBinder(keyBindSet).bindToggleSidePanel(
-                    (event) => {
-                        event.preventDefault();
-                        event.stopImmediatePropagation();
+            void settingsProvider
+                .getSingle('keyBindSet')
+                .then((keyBindSet) => {
+                    unbindToggleSidePanel?.();
+                    unbindToggleSidePanel = new DefaultKeyBinder(keyBindSet).bindToggleSidePanel(
+                        (event) => {
+                            event.preventDefault();
+                            event.stopImmediatePropagation();
 
-                        const command: TabToExtensionCommand<ToggleSidePanelMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'toggle-side-panel',
-                            },
-                        };
-                        void browser.runtime.sendMessage(command);
-                    },
-                    () => false,
-                    true
-                );
-            });
+                            const command: TabToExtensionCommand<ToggleSidePanelMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: {
+                                    command: 'toggle-side-panel',
+                                },
+                            };
+                            void browser.runtime
+                                .sendMessage(command)
+                                .catch((error) => asbError('video', 'Failed to toggle the side panel:', error));
+                        },
+                        () => false,
+                        true
+                    );
+                })
+                .catch((error) => asbError('video', 'Failed to load key bindings:', error));
         };
 
         const hasValidVideoSource = (videoElement: HTMLVideoElement, page: PageDelegate) => {

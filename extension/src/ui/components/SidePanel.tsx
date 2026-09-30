@@ -447,7 +447,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     }, [refreshCopyHistory]);
     const handleCloseCopyHistory = useCallback(() => {
         setShowCopyHistory(false);
-        void clearExtensionRequestedLocation();
+        void clearExtensionRequestedLocation().catch((error) =>
+            asbError('side-panel', 'Failed to clear the requested panel location:', error)
+        );
     }, []);
     const handleClipAudio = useCallback(
         async (item: CopyHistoryItem) => {
@@ -591,7 +593,9 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
     const handleShowStatistics = useCallback(() => setStatisticsOpen(true), []);
     const handleCloseStatistics = useCallback(() => {
         setStatisticsOpen(false);
-        void clearExtensionRequestedLocation();
+        void clearExtensionRequestedLocation().catch((error) =>
+            asbError('side-panel', 'Failed to clear the requested panel location:', error)
+        );
     }, []);
     const handleOpenStatisticsOverlay = useCallback(
         (mediaId: string) => {

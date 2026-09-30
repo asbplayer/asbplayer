@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import type { Fetcher } from '@project/common';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import { isSaveOnlySettings } from '@project/common/settings';
@@ -38,9 +39,18 @@ const RootApp = ({
     const [settings, setSettings] = useState<AsbplayerSettings>();
     const [globalState, setGlobalState] = useState<GlobalState>();
 
-    useEffect(() => {
-        void settingsProvider.getAll().then(setSettings);
+    const refreshSettings = useCallback(() => {
+        void settingsProvider
+            .getAll()
+            .then(setSettings)
+            .catch((error) => {
+                asbError('app/settings', 'Failed to load settings:', error);
+            });
     }, [settingsProvider]);
+
+    useEffect(() => {
+        refreshSettings();
+    }, [refreshSettings]);
 
     const handleSettingsChanged = useCallback(
         async (settings: Partial<AsbplayerSettings>) => {
@@ -51,8 +61,8 @@ const RootApp = ({
     );
 
     const handleProfileChanged = useCallback(() => {
-        void settingsProvider.getAll().then(setSettings);
-    }, [settingsProvider]);
+        refreshSettings();
+    }, [refreshSettings]);
     const { refreshProfileContext, ...profilesContext } = useSettingsProfileContext({
         dictionaryProvider,
         settingsProvider,
@@ -61,13 +71,18 @@ const RootApp = ({
 
     useEffect(() => {
         return settingsStorage.onSettingsUpdated(() => {
-            void settingsProvider.getAll().then(setSettings);
+            refreshSettings();
             refreshProfileContext();
         });
-    }, [extension, settingsProvider, settingsStorage, refreshProfileContext]);
+    }, [extension, refreshProfileContext, refreshSettings, settingsStorage]);
 
     useEffect(() => {
-        void globalStateProvider.getAll().then(setGlobalState);
+        void globalStateProvider
+            .getAll()
+            .then(setGlobalState)
+            .catch((error) => {
+                asbError('app/state', 'Failed to load global state:', error);
+            });
     }, [globalStateProvider]);
 
     const handleGlobalStateChanged = useCallback(
@@ -79,7 +94,9 @@ const RootApp = ({
 
                 return { ...s, ...state };
             });
-            void globalStateProvider.set(state);
+            void globalStateProvider.set(state).catch((error) => {
+                asbError('app/state', 'Failed to save global state:', error);
+            });
         },
         [globalStateProvider]
     );

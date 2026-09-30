@@ -447,7 +447,10 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         if (settings) {
             this.settingsUpdated(settings, { force: true });
         } else {
-            void this.settingsProvider.getAll().then((settings) => this.settingsUpdated(settings, { force: true }));
+            void this.settingsProvider
+                .getAll()
+                .then((settings) => this.settingsUpdated(settings, { force: true }))
+                .catch((error) => asbError('annotations/settings', 'Failed to refresh profile settings:', error));
         }
     }
 
@@ -1009,7 +1012,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                         this.dictionaryStatistics.init(ts.track, this.totalSubtitlesPerTrack.get(ts.track) ?? 0);
                         this.statisticsProcessedSubtitleIndexesByTrack.set(ts.track, new Set());
                     }
-                    void this.dictionaryStatistics.refreshDictionaryTokens(profile); // Init with dictionary token state
+                    void this.dictionaryStatistics.refreshDictionaryTokens(profile).catch((error) => {
+                        asbError('annotations/statistics', 'Failed to refresh dictionary statistics:', error);
+                    }); // Init with dictionary token state
                     this.ankiState.triggerRefresh = true;
                     this.waniKaniState.triggerRefresh = true;
                     tokenCacheRefreshInterval = TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL;
@@ -1161,7 +1166,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 }
             }
             if (tokensRefreshed.length && generatingStatistics) {
-                void this.dictionaryStatistics.refreshDictionaryTokens(profile);
+                void this.dictionaryStatistics.refreshDictionaryTokens(profile).catch((error) => {
+                    asbError('annotations/statistics', 'Failed to refresh dictionary statistics:', error);
+                });
             }
 
             if (this.shouldCancelBuild || skipTracks.length) {

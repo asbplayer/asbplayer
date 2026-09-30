@@ -1,3 +1,4 @@
+import { asbError } from '@project/common/util/log';
 import { currentPageDelegate } from '@/services/pages';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 
@@ -16,6 +17,8 @@ export default defineContentScript({
 
     main() {
         configureExtensionLogProvider();
-        void currentPageDelegate().then((pageDelegate) => pageDelegate.loadScripts());
+        void currentPageDelegate()
+            .then((pageDelegate) => pageDelegate.loadScripts())
+            .catch((error) => asbError('content', 'Failed to load page integration:', error));
     },
 });

@@ -7,6 +7,7 @@ import type {
 } from '@project/common';
 import type Binding from '@project/extension/src/services/binding';
 import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
+import { asbError } from '@project/common/util/log';
 import { adjacentSubtitle } from '@project/common/util';
 import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 import { v4 as uuidv4 } from 'uuid';
@@ -148,7 +149,9 @@ export class MobileVideoOverlayController {
                 if (this._overlayInstanceId !== message.message.overlayInstanceId) {
                     return;
                 }
-                void this._model().then(sendResponse);
+                void this._model()
+                    .then(sendResponse)
+                    .catch((error) => asbError('mobile-overlay', 'Failed to load the overlay model:', error));
                 this._uiInitialized = true;
                 return true;
             }

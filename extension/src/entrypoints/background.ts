@@ -115,11 +115,14 @@ export default defineBackground(() => {
         });
     };
 
-    void globalStateProvider.get(['ftueAnnotation']).then((s) => {
-        if (s.ftueAnnotation === AnnotationTutorialState.shouldSee) {
-            updateBadgeForAnnotationTutorial();
-        }
-    });
+    void globalStateProvider
+        .get(['ftueAnnotation'])
+        .then((s) => {
+            if (s.ftueAnnotation === AnnotationTutorialState.shouldSee) {
+                updateBadgeForAnnotationTutorial();
+            }
+        })
+        .catch((error) => asbError('background', 'Failed to load annotation tutorial state:', error));
 
     const installListener = async (details: Browser.runtime.InstalledDetails) => {
         if (details.reason === browser.runtime.OnInstalledReason.UPDATE) {
@@ -484,13 +487,16 @@ export default defineBackground(() => {
     }
 
     const updateWebSocketClientState = () => {
-        void settings.getSingle('webSocketClientEnabled').then((webSocketClientEnabled) => {
-            if (webSocketClientEnabled) {
-                void bindWebSocketClient(settings, tabRegistry);
-            } else {
-                unbindWebSocketClient();
-            }
-        });
+        void settings
+            .getSingle('webSocketClientEnabled')
+            .then(async (webSocketClientEnabled) => {
+                if (webSocketClientEnabled) {
+                    await bindWebSocketClient(settings, tabRegistry);
+                } else {
+                    unbindWebSocketClient();
+                }
+            })
+            .catch((error) => asbError('background', 'Failed to update WebSocket client state:', error));
     };
 
     updateWebSocketClientState();

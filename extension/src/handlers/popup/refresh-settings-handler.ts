@@ -1,4 +1,5 @@
 import type { ExtensionToAsbPlayerCommand, ExtensionToVideoCommand, SettingsUpdatedMessage } from '@project/common';
+import { asbError } from '@project/common/util/log';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type { SettingsProvider } from '@project/common/settings';
 import { primeLocalization } from '@project/extension/src/services/localization-fetcher';
@@ -30,14 +31,19 @@ export default class RefreshSettingsHandler {
         void this._settingsProvider
             .get(['language', 'webSocketClientEnabled'])
             .then(({ language, webSocketClientEnabled }) => {
-                void primeLocalization(language);
+                void primeLocalization(language).catch((error) =>
+                    asbError('localization', 'Failed to refresh localization:', error)
+                );
 
                 if (webSocketClientEnabled) {
-                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry);
+                    void bindWebSocketClient(this._settingsProvider, this._tabRegistry).catch((error) =>
+                        asbError('web-socket', 'Failed to update the WebSocket client:', error)
+                    );
                 } else {
                     unbindWebSocketClient();
                 }
-            });
+            })
+            .catch((error) => asbError('settings', 'Failed to refresh settings-dependent services:', error));
         void this._tabRegistry.publishCommandToVideoElements((videoElement) => {
             const settingsUpdatedCommand: ExtensionToVideoCommand<SettingsUpdatedMessage> = {
                 sender: 'asbplayer-extension-to-video',
@@ -59,17 +65,20 @@ export default class RefreshSettingsHandler {
                 return settingsUpdatedCommand;
             },
         });
-        void browser.tabs.query({ url: `${browser.runtime.getURL('/options.html')}` }).then((tabs) => {
-            for (const t of tabs) {
-                if (t.id !== undefined) {
-                    void browser.tabs.sendMessage(t.id, {
-                        message: {
-                            command: 'settings-updated',
-                        },
-                    });
+        void browser.tabs
+            .query({ url: `${browser.runtime.getURL('/options.html')}` })
+            .then((tabs) => {
+                for (const t of tabs) {
+                    if (t.id !== undefined) {
+                        void browser.tabs.sendMessage(t.id, {
+                            message: {
+                                command: 'settings-updated',
+                            },
+                        });
+                    }
                 }
-            }
-        });
+            })
+            .catch((error) => asbError('settings', 'Failed to find the settings page:', error));
         return false;
     }
 }

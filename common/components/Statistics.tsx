@@ -1907,7 +1907,11 @@ export default function Statistics({
 
                 if (mediaId === snapshot.mediaId) {
                     if (mediaInfoFetcher) {
-                        void mediaInfoFetcher(snapshot.mediaId).then(setMediaInfo);
+                        void mediaInfoFetcher(snapshot.mediaId)
+                            .then(setMediaInfo)
+                            .catch((error) =>
+                                asbError('dictionary/statistics', 'Failed to load media information:', error)
+                            );
                     } else {
                         setMediaInfo(undefined);
                     }
@@ -1920,7 +1924,9 @@ export default function Statistics({
             setGenerationRequested(true);
         });
         if (mediaId !== undefined) {
-            void dictionaryProvider.requestStatisticsSnapshot(mediaId);
+            void dictionaryProvider
+                .requestStatisticsSnapshot(mediaId)
+                .catch((error) => asbError('dictionary/statistics', 'Failed to request a statistics snapshot:', error));
         }
         return () => {
             unsubscribeStatistics();

@@ -1,3 +1,5 @@
+import { asbError } from '@project/common/util/log';
+
 export type FilesCallback = (files: FileWithId[]) => void;
 export type Unsubscriber = () => void;
 export type FileWithId = { file: File; id: string };
@@ -18,11 +20,15 @@ export class DefaultFileSelector {
     open() {
         const promiseOrVoid = this._opener();
         if (promiseOrVoid instanceof Promise) {
-            void promiseOrVoid.then((files) => {
-                if (files !== undefined) {
-                    this.publishFiles(files);
-                }
-            });
+            void promiseOrVoid
+                .then((files) => {
+                    if (files !== undefined) {
+                        this.publishFiles(files);
+                    }
+                })
+                .catch((error) => {
+                    asbError('app/files', 'File selection failed:', error);
+                });
         }
     }
 

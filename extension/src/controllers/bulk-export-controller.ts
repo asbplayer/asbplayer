@@ -195,7 +195,8 @@ export default class BulkExportController {
 
         this._inFlight = true;
         // Use Binding public wrapper to trigger the record-and-forward flow
-        this._context.copySubtitleForBulk(copyMsg).catch(() => {
+        this._context.copySubtitleForBulk(copyMsg).catch((error) => {
+            asbError('anki/export', 'Bulk export subtitle copy failed:', error);
             this._inFlight = false;
         });
     }

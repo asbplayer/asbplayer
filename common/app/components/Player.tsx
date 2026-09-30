@@ -711,7 +711,9 @@ function PlayerComponent(
             }
         }
 
-        void init().then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []));
+        void init()
+            .then(() => onLoaded(subtitleFiles?.map((f) => f.file) ?? []))
+            .catch(onError);
     }, [subtitleReader, onLoaded, onError, subtitleFiles, flattenSubtitleFiles, onSubtitles]);
 
     useEffect(() => {

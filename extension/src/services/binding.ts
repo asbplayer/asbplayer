@@ -651,9 +651,17 @@ export default class Binding {
     private _bind() {
         this._notifyReady();
         this._subscribe();
-        void this._refreshSettings().then(() => {
-            void this.videoDataSyncController.requestSubtitles({ kind: 'reload', videoChanged: false });
-        });
+        void this._refreshSettings()
+            .then(() => {
+                void this.videoDataSyncController
+                    .requestSubtitles({ kind: 'reload', videoChanged: false })
+                    .catch((error) => {
+                        asbError('video/binding', 'Failed to request subtitles while binding video:', error);
+                    });
+            })
+            .catch((error) => {
+                asbError('video/binding', 'Failed to refresh settings while binding video:', error);
+            });
         this.subtitleController.bind();
         this.playbackEngine.bind();
         this.dragController.bind(this);
@@ -1930,14 +1938,17 @@ export default class Binding {
                             },
                         });
                     }
-                });
+                })
+                .catch((error) => asbError('video/binding', 'Failed to check subtitle display settings:', error));
         }
 
-        void shouldShowUpdateAlert().then((shouldShowUpdateAlert) => {
-            if (shouldShowUpdateAlert) {
-                void this.notificationController.updateAlert(browser.runtime.getManifest().version);
-            }
-        });
+        void shouldShowUpdateAlert()
+            .then(async (shouldShowUpdateAlert) => {
+                if (shouldShowUpdateAlert) {
+                    await this.notificationController.updateAlert(browser.runtime.getManifest().version);
+                }
+            })
+            .catch((error) => asbError('video/binding', 'Failed to show the update alert:', error));
     }
 
     private _playbackPositionKeys(nonEmptyTrackIndexes: number[], subtitleFileNames: string[]): string[] {

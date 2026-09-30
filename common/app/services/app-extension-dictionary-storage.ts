@@ -199,7 +199,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {
+    async publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {
         this._extension.publishStatisticsSnapshot(mediaId, snapshot);
     }
 
@@ -224,7 +224,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    requestStatisticsSnapshot(mediaId?: string) {
+    async requestStatisticsSnapshot(mediaId?: string) {
         this._extension.requestStatisticsSnapshot(mediaId);
     }
 
@@ -253,7 +253,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    requestStatisticsGeneration(mediaId?: string) {
+    async requestStatisticsGeneration(mediaId?: string) {
         this._extension.requestStatisticsGeneration(mediaId);
     }
 
@@ -282,7 +282,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    requestStatisticsSeek(mediaId: string, timestamp: number) {
+    async requestStatisticsSeek(mediaId: string, timestamp: number) {
         this._extension.requestStatisticsSeek(mediaId, timestamp);
     }
 
@@ -307,7 +307,7 @@ export class AppExtensionDictionaryStorage implements DictionaryStorage {
         };
     }
 
-    requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
+    async requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
         this._extension.requestStatisticsMineSentences(mediaId, indexes);
     }
 

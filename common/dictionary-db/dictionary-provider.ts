@@ -54,15 +54,15 @@ export interface DictionaryStorage {
     onAnkiCardModified: (callback: () => void) => () => void;
     onBuildAnkiCacheStateChange: (callback: (message: DictionaryBuildAnkiCacheState) => void) => () => void;
     onBuildWaniKaniCacheStateChange: (callback: (message: DictionaryBuildWaniKaniCacheState) => void) => () => void;
-    publishStatisticsSnapshot: (mediaId: string, snapshot?: DictionaryStatisticsSnapshot) => Promise<void> | void;
+    publishStatisticsSnapshot: (mediaId: string, snapshot?: DictionaryStatisticsSnapshot) => Promise<void>;
     onStatisticsSnapshot: (callback: (snapshot?: DictionaryStatisticsSnapshot) => void) => () => void;
-    requestStatisticsSnapshot: (mediaId?: string) => Promise<void> | void;
+    requestStatisticsSnapshot: (mediaId?: string) => Promise<void>;
     onRequestStatisticsSnapshot: (callback: () => void) => () => void;
-    requestStatisticsGeneration: (mediaId?: string) => Promise<void> | void;
+    requestStatisticsGeneration: (mediaId?: string) => Promise<void>;
     onRequestStatisticsGeneration: (callback: () => void) => () => void;
-    requestStatisticsSeek: (mediaId: string, timestamp: number) => Promise<void> | void;
+    requestStatisticsSeek: (mediaId: string, timestamp: number) => Promise<void>;
     onRequestStatisticsSeek: (callback: (timestamp: number) => void) => () => void;
-    requestStatisticsMineSentences: (mediaId: string, indexes: number[]) => Promise<void> | void;
+    requestStatisticsMineSentences: (mediaId: string, indexes: number[]) => Promise<void>;
     onRequestStatisticsMineSentences: (callback: (mediaId: string, indexes: number[]) => void) => () => void;
     _removeCallback<T>(callback: T, callbacks: T[]): void;
 }
