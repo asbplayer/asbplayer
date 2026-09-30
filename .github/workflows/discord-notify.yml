@@ -18,7 +18,7 @@
 # pull requests merged from forks. The workflow only reads the event payload and
 # never checks out or executes pull request code.
 
-name: Discord Notify
+name: Discord notify
 
 on:
     release:
