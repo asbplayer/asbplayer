@@ -1,4 +1,5 @@
 ---
+name: "Agent: Docs drift audit"
 description: |
   Weekly docs drift audit that verifies documentation correctness against the code and cross-checks duplicated documentation, reporting findings as a GitHub issue.
 

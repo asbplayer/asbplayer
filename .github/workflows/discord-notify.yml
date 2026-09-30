@@ -18,7 +18,7 @@
 # pull requests merged from forks. The workflow only reads the event payload and
 # never checks out or executes pull request code.
 
-name: Discord Notify
+name: Discord notify
 
 on:
     release:
@@ -34,8 +34,8 @@ permissions: {}
 env:
     RELEASE_PREFIX: ''
     APP_DEPLOY_PREFIX: ''
-    ISSUE_PREFIX: "Issue opened\n"
-    PULL_REQUEST_PREFIX: "Merged\n"
+    ISSUE_PREFIX: "Issue opened:"
+    PULL_REQUEST_PREFIX: "Merged:"
 
 jobs:
     extension-release:
