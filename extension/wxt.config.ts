@@ -49,6 +49,9 @@ export default defineConfig({
                 },
             },
         ],
+        build: {
+            sourcemap: true,
+        },
     }),
     zip: {
         sourcesRoot: '..',
