@@ -10,7 +10,7 @@ import {
     surroundingSubtitlesAroundInterval,
     timeDurationDisplay,
 } from '@project/common/util';
-import { asbError, asbTrace } from '@project/common/util/log';
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 import type {
     AckMessage,
     AnkiUiSavedState,
@@ -1968,7 +1968,7 @@ export default class Binding {
                 try {
                     await syncWithAsbplayerTab(withSyncedAsbplayerOnly, syncWithAsbplayerId);
                 } catch (error) {
-                    asbError('video/binding', 'Failed to sync with asbplayer tab when loading subtitles:', error);
+                    asbWarn('video/binding', 'Failed to sync with asbplayer tab when loading subtitles:', error);
                 }
 
                 this._updateSubtitles(

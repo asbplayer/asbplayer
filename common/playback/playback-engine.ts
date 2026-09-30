@@ -2,7 +2,7 @@ import { defaultSettings, isTrackSeekable } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import { PlayMode } from '@project/common';
-import { asbTrace, asbWarn } from '@project/common/util/log';
+import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 import { formatAsSignedMs } from '@project/common/util';
 import {
     buildPlaybackPlan,
@@ -828,7 +828,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                 timestampMs: this.timingDriver.currentTimeMs(),
             });
         } catch (error) {
-            asbTrace('playback/error', 'Failed to resume remembered playback position', { error });
+            asbError('playback/error', 'Failed to resume remembered playback position', { error });
             throw error;
         }
     }

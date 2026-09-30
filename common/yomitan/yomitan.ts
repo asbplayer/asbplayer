@@ -1,4 +1,4 @@
-import { asbError, asbLog, asbTrace, asbWarn } from '@project/common/util/log';
+import { asbError, asbInfo, asbTrace, asbWarn } from '@project/common/util/log';
 import {
     AsyncSemaphore,
     fromBatches,
@@ -1313,7 +1313,7 @@ export class Yomitan {
                 rankBasedMatches >= FREQUENCY_MODE_INFERENCE_RANK_BASED_MATCHES ? 'rank-based' : 'occurrence-based';
 
             if (previousFrequencyMode === frequencyMode) continue;
-            asbLog(
+            asbInfo(
                 'yomitan/frequency',
                 `Inferred '${frequencyMode}' for the '${dictionary}' frequency dictionary (previously ${previousFrequencyMode}) based on:`,
                 {

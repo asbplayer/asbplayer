@@ -734,7 +734,7 @@ export default class VideoDataSyncController {
                 durationMs: performance.now() - startedAt,
             });
         } catch (error) {
-            asbTrace('subtitle/error', 'Failed to load retrieved subtitle files', {
+            asbError('subtitle/error', 'Failed to load retrieved subtitle files', {
                 fileCount,
                 totalBytes,
                 flatten,
@@ -809,7 +809,7 @@ export default class VideoDataSyncController {
             }
 
             if (!response.ok) {
-                asbTrace('subtitle/error', 'Subtitle retrieval returned an unsuccessful status', {
+                asbError('subtitle/error', 'Subtitle retrieval returned an unsuccessful status', {
                     extension,
                     sourceKind,
                     status: response.status,
@@ -862,7 +862,7 @@ export default class VideoDataSyncController {
                 });
             }
         } catch (error) {
-            asbTrace('subtitle/error', 'Segmented subtitle retrieval failed', {
+            asbError('subtitle/error', 'Segmented subtitle retrieval failed', {
                 extension: partExtension,
                 partCount,
                 completedPartCount: finishedPromises,
