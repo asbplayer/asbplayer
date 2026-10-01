@@ -220,6 +220,10 @@ export default class ChromeExtension {
         return this.installed && gte(this.version, '1.21.0');
     }
 
+    get supportsWebSocketClientOwnership() {
+        return this.installed && gte(this.version, '1.22.0');
+    }
+
     get supportsPlaybackEngine() {
         return this.installed && gte(this.version, '1.20.0');
     }

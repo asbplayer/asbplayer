@@ -48,7 +48,8 @@ type (
 		Base64 string `json:"base64"`
 	}
 	asbplayerLoadSubtitlesRequest struct {
-		Files []subtitleFile `json:"files"`
+		Files   []subtitleFile `json:"files"`
+		MediaId string         `json:"mediaId"`
 	}
 	asbplayerSeekRequest struct {
 		Timestamp float64 `json:"timestamp"`
@@ -331,9 +332,15 @@ func (forwarder forwarder) handleAsbplayerLoadSubtitlesRequest(c echo.Context) e
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
-	command := clientCommand{Command: "load-subtitles", MessageId: uuid.NewString(), Body: map[string]interface{}{
+	body := map[string]interface{}{
 		"files": request.Files,
-	}}
+	}
+
+	if request.MediaId != "" {
+		body["mediaId"] = request.MediaId
+	}
+
+	command := clientCommand{Command: "load-subtitles", MessageId: uuid.NewString(), Body: body}
 	_, ok := forwarder.publishMessageAndAwaitResponse(command)
 	if !ok {
 		return echo.NewHTTPError(http.StatusInternalServerError, nil)

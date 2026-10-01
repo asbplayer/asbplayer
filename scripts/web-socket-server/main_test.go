@@ -391,6 +391,17 @@ func TestCommandShapesAndResponses(t *testing.T) {
 		t.Fatalf("expected an empty 200, got %d %q", response.status, response.body)
 	}
 
+	if _, hasMediaId := command.Body["mediaId"]; hasMediaId {
+		t.Fatalf("expected no mediaId when none was given: %v", command.Body)
+	}
+
+	command, _ = exchange(http.MethodPost, "/asbplayer/load-subtitles",
+		`{"files":[{"name":"a.srt","base64":"AAA"}],"mediaId":"abc"}`, `{}`)
+
+	if command.Command != "load-subtitles" || command.Body["mediaId"] != "abc" {
+		t.Fatalf("unexpected targeted load-subtitles command: %v", command.Body)
+	}
+
 	command, response = exchange(http.MethodPost, "/asbplayer/seek", `{"timestamp":12.5,"mediaId":"abc"}`, `{}`)
 
 	if command.Command != "seek-timestamp" || command.Body["timestamp"] != 12.5 || command.Body["mediaId"] != "abc" {

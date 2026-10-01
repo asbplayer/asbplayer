@@ -8,11 +8,17 @@ export interface MineSubtitleParams extends CardTextFieldValues {
     postMineAction: PostMineAction;
 }
 
-export const useAppWebSocketClient = ({ settings }: { settings: WebSocketClientSettings }) => {
+export const useAppWebSocketClient = ({
+    settings,
+    appOwnsConnection,
+}: {
+    settings: WebSocketClientSettings;
+    appOwnsConnection: boolean;
+}) => {
     const [client, setClient] = useState<WebSocketClient>();
 
     useEffect(() => {
-        if (settings.webSocketClientEnabled && settings.webSocketServerUrl) {
+        if (appOwnsConnection && settings.webSocketClientEnabled && settings.webSocketServerUrl) {
             const client = new WebSocketClient();
             client.bind(settings.webSocketServerUrl).catch((error) => asbError('web-socket', error));
             setClient(client);
@@ -20,7 +26,7 @@ export const useAppWebSocketClient = ({ settings }: { settings: WebSocketClientS
         }
 
         setClient(undefined);
-    }, [settings.webSocketServerUrl, settings.webSocketClientEnabled]);
+    }, [settings.webSocketServerUrl, settings.webSocketClientEnabled, appOwnsConnection]);
 
     return client;
 };

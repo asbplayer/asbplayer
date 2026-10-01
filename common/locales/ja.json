@@ -346,6 +346,7 @@
         "subtitleVisibility": "Show subtitles: {{value}}",
         "connectionSucceeded": "接続が成功しました",
         "connectionFailed": "接続に失敗しました",
+        "webSocketManagedByExtension": "Connection is managed by the asbplayer extension",
         "error": "エラー：{{message}}",
         "errorNoMessage": "エラー",
         "toggleSubtitlesShortcut": "字幕を表示するには 「{{keys}}」 を押してください",

@@ -90,12 +90,12 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'm1', body: { published: true } }]);
     });
 
-    it('responds with published false when mine-subtitle is not handled', async () => {
+    it('does not respond to mine-subtitle when it is not handled', async () => {
         const socket = await connect();
 
         await socket.receive(command('mine-subtitle', 'm2', { fields: {}, postMineAction: 0 }));
 
-        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'm2', body: { published: false } }]);
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('responds with published false when the mine-subtitle handler returns false', async () => {
@@ -123,12 +123,12 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'l1', body: {} }]);
     });
 
-    it('responds to load-subtitles even when it is not handled', async () => {
+    it('does not respond to load-subtitles when it is not handled', async () => {
         const socket = await connect();
 
         await socket.receive(command('load-subtitles', 'l2', {}));
 
-        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'l2', body: {} }]);
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('dispatches seek-timestamp and responds with an empty body', async () => {
@@ -146,12 +146,12 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 's1', body: {} }]);
     });
 
-    it('responds to seek-timestamp even when it is not handled', async () => {
+    it('does not respond to seek-timestamp when it is not handled', async () => {
         const socket = await connect();
 
         await socket.receive(command('seek-timestamp', 's2', { timestamp: 1 }));
 
-        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 's2', body: {} }]);
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('dispatches get-bound-media and responds with the returned media', async () => {

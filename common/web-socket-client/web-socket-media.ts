@@ -1,3 +1,5 @@
+import type { SubtitleTrack } from '@project/common/src/model';
+
 const cyrb53 = (str: string) => {
     let h1 = 0xdeadbeef;
     let h2 = 0x41c6ce57;
@@ -16,3 +18,14 @@ const cyrb53 = (str: string) => {
 export const streamingMediaId = (tabId: number, src: string) => cyrb53(`streaming:${tabId}:${src}`);
 
 export const localMediaId = (asbplayerId: string) => cyrb53(`local:${asbplayerId}`);
+
+export const localMediaTitle = (loadedSubtitles: SubtitleTrack[]) => {
+    const [firstTrack] = loadedSubtitles;
+
+    if (firstTrack === undefined) {
+        return undefined;
+    }
+
+    const dot = firstTrack.fileName.lastIndexOf('.');
+    return dot > 0 ? firstTrack.fileName.substring(0, dot) : firstTrack.fileName;
+};

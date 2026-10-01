@@ -57,6 +57,10 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 ### `load-subtitles`
 
+Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
+
+> `mediaId` requires extension v1.22.0 or later. Earlier versions load the files into every tab with a bound video
+
 #### Request
 
 ```javascript
@@ -70,7 +74,9 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
             "name": "some-file.srt",
             // Base64-encoded file contents
             "base64": "Zm9vYmFyY..."
-        }]
+        }],
+        // Optional media id from `get-bound-media`
+        "mediaId": "a1b2c3d4e5f6"
     }
 }
 ```
@@ -88,9 +94,9 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 ### `seek-timestamp`
 
-Seeks the active tab's video by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target streaming media. Local media cannot be targeted by `mediaId`.
+Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
 
-> `mediaId` requires extension v1.20.0+
+> `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.22.0+
 
 #### Request
 
@@ -210,7 +216,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 The WebSocket server also implements an HTTP-based API which can trigger the commands above.
 
-- `POST asbplayer/load-subtitles` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
+- `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
 - `POST asbplayer/seek` (optional `mediaId` in the request body) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
 - `GET asbplayer/bound-media` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/bound-media))
 - `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))

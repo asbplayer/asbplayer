@@ -71,6 +71,7 @@ import { isMobile } from 'react-device-detect';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import type { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
+import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
 import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
 import { useTokenSelection } from '@project/common/app/hooks/use-token-selection';
 import '@project/common/app/components/subtitles.css';
@@ -1219,8 +1220,12 @@ export default function SubtitlePlayer({
         }
 
         webSocketClient.onMineSubtitle = async ({
-            body: { fields: receivedFields, postMineAction: receivedPostMineAction },
+            body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId },
         }: MineSubtitleCommand) => {
+            if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
+                return false;
+            }
+
             const fields = receivedFields ?? {};
             const word = fields[settings.wordField] || undefined;
             const definition = fields[settings.definitionField] || undefined;
@@ -1240,6 +1245,11 @@ export default function SubtitlePlayer({
             );
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
             return copyFromWebSocketClient({ postMineAction, text, word, definition, customFieldValues });
+        };
+
+        // The client outlives extension detection, so an extension detected later must not inherit this handler.
+        return () => {
+            webSocketClient.onMineSubtitle = undefined;
         };
     }, [webSocketClient, extension, settings, copyFromWebSocketClient]);
 

@@ -35,6 +35,7 @@ export interface LoadSubtitlesCommand {
     messageId: string;
     body: {
         files?: SubtitleFile[];
+        mediaId?: string;
     };
 }
 
