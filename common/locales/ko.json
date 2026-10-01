@@ -346,6 +346,7 @@
         "subtitleVisibility": "Show subtitles: {{value}}",
         "connectionSucceeded": "연결 완료",
         "connectionFailed": "연결 실패",
+        "webSocketManagedByExtension": "Connection is managed by the asbplayer extension",
         "error": "오류: {{message}}",
         "errorNoMessage": "오류",
         "toggleSubtitlesShortcut": "\"{{keys}}\" 키를 눌러 자막 표시를 전환",

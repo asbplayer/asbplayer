@@ -808,6 +808,16 @@ export interface JumpToSubtitleMessage extends Message {
     readonly subtitleFileName: string;
 }
 
+export interface SeekTimestampMessage extends Message {
+    readonly command: 'seek-timestamp';
+    readonly timestamp: number;
+}
+
+export interface LoadSubtitleFilesMessage extends Message {
+    readonly command: 'load-subtitle-files';
+    readonly subtitleFiles: SubtitleFile[];
+}
+
 export interface DownloadImageMessage extends Message, CardModel {
     readonly command: 'download-image';
 }

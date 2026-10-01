@@ -6,7 +6,7 @@ import type {
     Message,
     VideoTabModel,
 } from '@project/common';
-import { localMediaId, streamingMediaId } from '@project/extension/src/services/web-socket-media-id';
+import { localMediaId, streamingMediaId } from '@project/common/web-socket-client/web-socket-media';
 
 export type MediaTarget = { videoElement: VideoTabModel } | { asbplayer: AsbplayerInstance };
 

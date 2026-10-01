@@ -6,7 +6,7 @@ import { ExtensionSettingsStorage } from '@project/extension/src/services/extens
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import { webSocketCommandHandlers } from '@project/extension/src/services/web-socket-command-handlers';
-import { localMediaId, streamingMediaId } from '@project/extension/src/services/web-socket-media-id';
+import { localMediaId, streamingMediaId } from '@project/common/web-socket-client/web-socket-media';
 
 const subtitle = (text: string, track: number, start: number): SubtitleModel => ({
     text,
@@ -99,11 +99,13 @@ const harness = ({
                 }
             }
         },
-        publishCommandToVideoElementTabs: async (commandFactory: () => any) => {
-            const command = commandFactory();
+        publishCommandToVideoElementTabs: async (commandFactory: (tab: { id: number }) => any) => {
+            for (const tabId of new Set(videoElements.map((v) => v.id))) {
+                const command = commandFactory({ id: tabId });
 
-            if (command !== undefined) {
-                videoElementTabCommands.push(command);
+                if (command !== undefined) {
+                    videoElementTabCommands.push({ tabId, ...command });
+                }
             }
         },
         publishCommandToAsbplayersAndAwaitResponse: async ({ asbplayerId }: { asbplayerId: string }) => ({
@@ -163,17 +165,34 @@ describe('seek-timestamp', () => {
         expect(videoElementCommands).toEqual([]);
     });
 
-    it('does not seek local media', async () => {
-        const asbplayer = asbplayerInstance('asbplayer-1', 3);
+    it('seeks a local asbplayer named by an explicit media ID', async () => {
+        const targeted = asbplayerInstance('asbplayer-1', 3);
+        const other = asbplayerInstance('asbplayer-2', 4);
         const { handlers, videoElementCommands, asbplayerCommands } = harness({
-            asbplayers: [asbplayer],
-            activeTabId: 3,
+            asbplayers: [targeted, other],
+            activeTabId: 4,
         });
 
-        await handlers.onSeekTimestamp(seekCommand({ timestamp: 7, mediaId: localMediaId(asbplayer.id) }));
+        await handlers.onSeekTimestamp(seekCommand({ timestamp: 7, mediaId: localMediaId(targeted.id) }));
 
         expect(videoElementCommands).toEqual([]);
-        expect(asbplayerCommands).toEqual([]);
+        expect(asbplayerCommands).toEqual([
+            {
+                sender: 'asbplayer-extension-to-player',
+                message: { command: 'seek-timestamp', timestamp: 7 },
+                asbplayerId: targeted.id,
+            },
+        ]);
+    });
+
+    it('seeks only the local asbplayer in the active tab when no media ID is given', async () => {
+        const active = asbplayerInstance('asbplayer-1', 3);
+        const background = asbplayerInstance('asbplayer-2', 4);
+        const { handlers, asbplayerCommands } = harness({ asbplayers: [active, background], activeTabId: 3 });
+
+        await handlers.onSeekTimestamp(seekCommand({ timestamp: 7 }));
+
+        expect(asbplayerCommands.map((command) => command.asbplayerId)).toEqual([active.id]);
     });
 });
 
@@ -457,17 +476,112 @@ describe('get-subtitles', () => {
 });
 
 describe('load-subtitles', () => {
-    it('publishes the received files to video element tabs', async () => {
-        const { handlers, videoElementTabCommands } = harness({});
-        const files = [{ base64: 'AAA', name: 'a.srt' }];
+    const files = [{ base64: 'AAA', name: 'a.srt' }];
+    const loadCommand = (body: any) => ({ command: 'load-subtitles' as const, messageId: 'l', body });
 
-        await handlers.onLoadSubtitles({ command: 'load-subtitles', messageId: 'l', body: { files } });
+    it('loads the files into the active tab as a whole when no media ID is given', async () => {
+        const active = videoElement(1, 'https://example.com/a.mp4');
+        const activeSecond = videoElement(1, 'https://example.com/a2.mp4');
+        const background = videoElement(2, 'https://example.com/b.mp4');
+        const { handlers, videoElementCommands, videoElementTabCommands } = harness({
+            videoElements: [active, activeSecond, background],
+            activeTabId: 1,
+        });
+
+        await handlers.onLoadSubtitles(loadCommand({ files }));
 
         expect(videoElementTabCommands).toEqual([
             {
+                tabId: 1,
                 sender: 'asbplayer-extension-to-video',
                 message: { command: 'toggle-video-select', subtitleFiles: files },
             },
         ]);
+        expect(videoElementCommands).toEqual([]);
+    });
+
+    it('loads the files into the local asbplayer in the active tab when no media ID is given', async () => {
+        const active = asbplayerInstance('asbplayer-1', 3);
+        const background = asbplayerInstance('asbplayer-2', 4);
+        const { handlers, asbplayerCommands, videoElementTabCommands } = harness({
+            videoElements: [videoElement(1, 'https://example.com/a.mp4')],
+            asbplayers: [active, background],
+            activeTabId: 3,
+        });
+
+        await handlers.onLoadSubtitles(loadCommand({ files }));
+
+        expect(videoElementTabCommands).toEqual([]);
+        expect(asbplayerCommands).toEqual([
+            {
+                sender: 'asbplayer-extension-to-player',
+                message: { command: 'load-subtitle-files', subtitleFiles: files },
+                asbplayerId: active.id,
+            },
+        ]);
+    });
+
+    it('loads the files directly into the video element named by an explicit media ID', async () => {
+        const targeted = videoElement(1, 'https://example.com/a.mp4');
+        const other = videoElement(2, 'https://example.com/b.mp4');
+        const asbplayer = asbplayerInstance('asbplayer-1', 3);
+        const { handlers, videoElementCommands, videoElementTabCommands, asbplayerCommands } = harness({
+            videoElements: [targeted, other],
+            asbplayers: [asbplayer],
+            activeTabId: 2,
+        });
+
+        await handlers.onLoadSubtitles(loadCommand({ files, mediaId: streamingMediaId(targeted.id, targeted.src) }));
+
+        expect(videoElementCommands).toEqual([
+            {
+                sender: 'asbplayer-extension-to-video',
+                message: { command: 'toggle-video-select', subtitleFiles: files },
+                src: targeted.src,
+            },
+        ]);
+        expect(videoElementTabCommands).toEqual([]);
+        expect(asbplayerCommands).toEqual([]);
+    });
+
+    it('publishes the files only to the local asbplayer named by an explicit media ID', async () => {
+        const targeted = asbplayerInstance('asbplayer-1', 3);
+        const other = asbplayerInstance('asbplayer-2', 4);
+        const { handlers, videoElementCommands, videoElementTabCommands, asbplayerCommands } = harness({
+            videoElements: [videoElement(1, 'https://example.com/a.mp4')],
+            asbplayers: [targeted, other],
+            activeTabId: 3,
+        });
+
+        await handlers.onLoadSubtitles(loadCommand({ files, mediaId: localMediaId(targeted.id) }));
+
+        expect(videoElementCommands).toEqual([]);
+        expect(videoElementTabCommands).toEqual([]);
+        expect(asbplayerCommands.map((command) => command.asbplayerId)).toEqual([targeted.id]);
+    });
+
+    it('loads nothing when the media ID matches no media', async () => {
+        const { handlers, videoElementCommands, videoElementTabCommands, asbplayerCommands } = harness({
+            videoElements: [videoElement(1, 'https://example.com/a.mp4')],
+            asbplayers: [asbplayerInstance('asbplayer-1', 3)],
+            activeTabId: 1,
+        });
+
+        await handlers.onLoadSubtitles(loadCommand({ files, mediaId: 'not-a-media-id' }));
+
+        expect(videoElementCommands).toEqual([]);
+        expect(videoElementTabCommands).toEqual([]);
+        expect(asbplayerCommands).toEqual([]);
+    });
+
+    it('publishes nothing to local asbplayers when no files are given', async () => {
+        const { handlers, asbplayerCommands } = harness({
+            asbplayers: [asbplayerInstance('asbplayer-1', 3)],
+            activeTabId: 3,
+        });
+
+        await handlers.onLoadSubtitles(loadCommand({}));
+
+        expect(asbplayerCommands).toEqual([]);
     });
 });

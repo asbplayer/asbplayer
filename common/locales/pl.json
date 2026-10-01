@@ -346,6 +346,7 @@
         "subtitleVisibility": "Show subtitles: {{value}}",
         "connectionSucceeded": "Połączenie udane",
         "connectionFailed": "Połączenie nieudane",
+        "webSocketManagedByExtension": "Connection is managed by the asbplayer extension",
         "error": "Błąd: {{message}}",
         "errorNoMessage": "Błąd",
         "toggleSubtitlesShortcut": "Naciśnij \"{{keys}}\", aby przełączyć wyświetlanie napisów",

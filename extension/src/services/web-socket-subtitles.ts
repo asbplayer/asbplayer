@@ -1,5 +1,4 @@
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import type { SubtitleCue } from '@project/common/web-socket-client';
 import type {
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
@@ -51,14 +50,3 @@ export const requestSubtitlesFromVideoElement = async (
         return undefined;
     }
 };
-
-export const filterByTracks = (subtitles: SubtitleModel[], trackNumbers: number[] | undefined) => {
-    if (trackNumbers === undefined || trackNumbers.length === 0) {
-        return subtitles;
-    }
-
-    return subtitles.filter((subtitle) => trackNumbers.includes(subtitle.track));
-};
-
-export const toSubtitleCues = (subtitles: SubtitleModel[]): SubtitleCue[] =>
-    subtitles.map(({ text, start, end, track }) => ({ text, start, end, track }));

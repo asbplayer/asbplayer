@@ -14,12 +14,13 @@ import type {
     CopySubtitleMessage,
     CopySubtitleWithAdditionalFieldsMessage,
     ExtensionToVideoCommand,
-    Message,
+    LoadSubtitleFilesMessage,
+    SeekTimestampMessage,
     SubtitleModel,
     ToggleVideoSelectMessage,
 } from '@project/common';
 import { PostMineAction } from '@project/common';
-import { localMediaId, streamingMediaId } from '@project/extension/src/services/web-socket-media-id';
+import { localMediaId, localMediaTitle, streamingMediaId } from '@project/common/web-socket-client/web-socket-media';
 import {
     isVideoElementTarget,
     publishToAsbplayers,
@@ -27,16 +28,10 @@ import {
     resolveMediaTargets,
 } from '@project/extension/src/services/web-socket-media-targets';
 import {
-    filterByTracks,
     requestSubtitlesFromAsbplayer,
     requestSubtitlesFromVideoElement,
-    toSubtitleCues,
 } from '@project/extension/src/services/web-socket-subtitles';
-
-const withoutExtension = (fileName: string) => {
-    const dot = fileName.lastIndexOf('.');
-    return dot > 0 ? fileName.substring(0, dot) : fileName;
-};
+import { filterByTracks, toSubtitleCues } from '@project/common/web-socket-client/web-socket-subtitles';
 
 const ankiFieldValues = async (
     settings: SettingsProvider,
@@ -104,31 +99,73 @@ const mineSubtitle = async (
     return true;
 };
 
-const loadSubtitles = async (tabRegistry: TabRegistry, { body: { files: subtitleFiles } }: LoadSubtitlesCommand) => {
-    const toggleVideoSelectCommand: ExtensionToVideoCommand<ToggleVideoSelectMessage> = {
-        sender: 'asbplayer-extension-to-video',
+const loadSubtitles = async (
+    tabRegistry: TabRegistry,
+    { body: { files: subtitleFiles, mediaId } }: LoadSubtitlesCommand
+) => {
+    const targets = await resolveMediaTargets(tabRegistry, mediaId);
+
+    if (mediaId === undefined) {
+        // Target the whole tab rather than its videos so that a tab with several videos shows the video selector.
+        const tabIds = new Set(targets.filter(isVideoElementTarget).map(({ videoElement }) => videoElement.id));
+        await tabRegistry.publishCommandToVideoElementTabs(
+            (tab): ExtensionToVideoCommand<ToggleVideoSelectMessage> | undefined =>
+                tabIds.has(tab.id)
+                    ? {
+                          sender: 'asbplayer-extension-to-video',
+                          message: {
+                              command: 'toggle-video-select',
+                              subtitleFiles,
+                          },
+                      }
+                    : undefined
+        );
+    } else {
+        await publishToVideoElements<ToggleVideoSelectMessage>(tabRegistry, targets, (src) => ({
+            sender: 'asbplayer-extension-to-video',
+            message: {
+                command: 'toggle-video-select',
+                subtitleFiles,
+            },
+            src,
+        }));
+    }
+
+    if (subtitleFiles === undefined || subtitleFiles.length === 0) {
+        return;
+    }
+
+    await publishToAsbplayers<LoadSubtitleFilesMessage>(tabRegistry, targets, (asbplayerId) => ({
+        sender: 'asbplayer-extension-to-player',
         message: {
-            command: 'toggle-video-select',
+            command: 'load-subtitle-files',
             subtitleFiles,
         },
-    };
-    void tabRegistry.publishCommandToVideoElementTabs((): ExtensionToVideoCommand<Message> | undefined => {
-        return toggleVideoSelectCommand;
-    });
+        asbplayerId,
+    }));
 };
 
 const seekTimestamp = async (tabRegistry: TabRegistry, { body: { timestamp, mediaId } }: SeekTimestampCommand) => {
-    // Local media cannot be seeked, so only video element targets are published to
     const targets = await resolveMediaTargets(tabRegistry, mediaId);
 
-    await publishToVideoElements(tabRegistry, targets, (src) => ({
-        sender: 'asbplayer-extension-to-video',
-        message: {
-            command: 'currentTime',
-            value: timestamp,
-        },
-        src,
-    }));
+    await Promise.all([
+        publishToVideoElements(tabRegistry, targets, (src) => ({
+            sender: 'asbplayer-extension-to-video',
+            message: {
+                command: 'currentTime',
+                value: timestamp,
+            },
+            src,
+        })),
+        publishToAsbplayers<SeekTimestampMessage>(tabRegistry, targets, (asbplayerId) => ({
+            sender: 'asbplayer-extension-to-player',
+            message: {
+                command: 'seek-timestamp',
+                timestamp,
+            },
+            asbplayerId,
+        })),
+    ]);
 };
 
 const getBoundMedia = async (tabRegistry: TabRegistry): Promise<BoundMedia[]> => {
@@ -162,11 +199,10 @@ const getBoundMedia = async (tabRegistry: TabRegistry): Promise<BoundMedia[]> =>
         )
         .map((asbplayer) => {
             const loadedSubtitles = asbplayer.subtitleTracks ?? [];
-            const [firstTrack] = loadedSubtitles;
             return {
                 id: localMediaId(asbplayer.id),
                 type: 'local',
-                title: firstTrack === undefined ? undefined : withoutExtension(firstTrack.fileName),
+                title: localMediaTitle(loadedSubtitles),
                 loadedSubtitles,
                 active: activeByTabId.get(asbplayer.tabId!) ?? false,
             };

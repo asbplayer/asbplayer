@@ -1,12 +1,19 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    echo "usage: $0 <path/to/subtitle/file>"
+    echo "usage: $0 <path/to/subtitle/file> [mediaId]"
     exit 1
 fi
 
 BASE64=$(base64 -i $1)
 FILENAME=$(basename $1)
+
+if [ -z "$2" ]; then
+    body='{"files": [{"name": "'$FILENAME'", "base64": "'$BASE64'"}]}'
+else
+    body='{"files": [{"name": "'$FILENAME'", "base64": "'$BASE64'"}], "mediaId": "'$2'"}'
+fi
+
 curl -H "content-type: application/json" \
     -X POST "http://127.0.0.1:8766/asbplayer/load-subtitles" \
-    -d '{"files": [{"name": "'$FILENAME'", "base64": "'$BASE64'"}]}'
+    -d "$body"

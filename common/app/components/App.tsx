@@ -20,6 +20,8 @@ import type {
     CardModel,
     ShowAnkiUiMessage,
     JumpToSubtitleMessage,
+    LoadSubtitleFilesMessage,
+    SubtitleFile,
     DownloadImageMessage,
     DownloadAudioMessage,
     CardTextFieldValues,
@@ -62,7 +64,9 @@ import { useAnki } from '@project/common/app/hooks/use-anki';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
 import { MiningContext } from '@project/common/app/services/mining-context';
 import { useAppWebSocketClient } from '@project/common/app/hooks/use-app-web-socket-client';
+import { appWebSocketCommandHandlers } from '@project/common/app/services/app-web-socket-command-handlers';
 import type { LoadSubtitlesCommand } from '@project/common/web-socket-client';
+import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
 import { ExtensionBridgedCopyHistoryRepository } from '@project/common/app/services/extension-bridged-copy-history-repository';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import type { FileSystemFileHandleWithId } from '@project/common/file-system-access';
@@ -136,6 +140,15 @@ const SUBTITLE_EXT_SET = new Set<string>(subtitleExtensions);
 const getExtension = (fileName: string) => {
     const index = fileName.lastIndexOf('.');
     return index === -1 ? '' : fileName.substring(index).toLowerCase();
+};
+
+const decodeSubtitleFiles = async (subtitleFiles: SubtitleFile[]): Promise<FileWithId[]> => {
+    const files = await Promise.all(
+        subtitleFiles.map(
+            async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
+        )
+    );
+    return files.map((file) => ({ file, id: uuidv4() }));
 };
 
 async function extractDropFileHandles(items: DataTransferItemList): Promise<FileSystemFileHandle[] | undefined> {
@@ -372,7 +385,6 @@ function App({
         settings.subtitleHtml,
         settings.convertNetflixRuby,
     ]);
-    const webSocketClient = useAppWebSocketClient({ settings });
     const supportsDictionaryStatistics = !extension.installed || extension.supportsDictionaryStatistics;
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>([]);
     const playbackPreferences = usePlaybackPreferences();
@@ -380,6 +392,11 @@ function App({
     const anki = useAnki({ settings, fetcher });
     const searchParams = useMemo(() => new URLSearchParams(location.search), []);
     const inVideoPlayer = useMemo(() => searchParams.get('video') !== null, [searchParams]);
+    // The embedded video player is controlled by the app page that opened it, so it never connects itself.
+    const webSocketClient = useAppWebSocketClient({
+        settings,
+        appOwnsConnection: !inVideoPlayer && !extension.supportsWebSocketClientOwnership,
+    });
     const [videoFullscreen, setVideoFullscreen] = useState<boolean>(false);
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const videoFrameRef = useRef<HTMLIFrameElement>(null);
@@ -1213,14 +1230,47 @@ function App({
         }
 
         webSocketClient.onLoadSubtitles = async (command: LoadSubtitlesCommand) => {
-            const { files } = command.body;
-            const filePromises = (files ?? []).map(
-                async (f) => new File([await (await fetch('data:text/plain;base64,' + f.base64)).blob()], f.name)
-            );
-            const loadedFiles = await Promise.all(filePromises);
-            handleFiles({ files: loadedFiles.map((file) => ({ file, id: uuidv4() })) });
+            const { files, mediaId } = command.body;
+
+            if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
+                return;
+            }
+
+            handleFiles({ files: await decodeSubtitleFiles(files ?? []) });
         };
-    }, [webSocketClient, handleFiles]);
+    }, [webSocketClient, extension, handleFiles]);
+
+    useEffect(() => {
+        // An installed extension already answers read commands for this app's media; answering too would race it.
+        if (!webSocketClient || extension.supportsWebSocketClient) {
+            return;
+        }
+
+        webSocketClient.setHandlers(
+            appWebSocketCommandHandlers({
+                appId: extension.id,
+                subtitles,
+                subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
+                isActive: () => document.visibilityState === 'visible',
+            })
+        );
+
+        // The client outlives extension detection, so an extension detected later must not inherit these handlers.
+        return () => webSocketClient.setHandlers({ onGetBoundMedia: undefined, onGetSubtitles: undefined });
+    }, [webSocketClient, extension, subtitles, sources.subtitleFiles]);
+
+    useEffect(() => {
+        if (inVideoPlayer) {
+            return;
+        }
+
+        return extension.subscribe((message: ExtensionMessage) => {
+            if (message.data.command === 'load-subtitle-files') {
+                const { subtitleFiles } = message.data as LoadSubtitleFilesMessage;
+                void decodeSubtitleFiles(subtitleFiles).then((files) => handleFiles({ files }));
+            }
+        });
+    }, [extension, inVideoPlayer, handleFiles]);
 
     useEffect(() => {
         if (inVideoPlayer) {
