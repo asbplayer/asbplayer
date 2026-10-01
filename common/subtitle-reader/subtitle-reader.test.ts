@@ -1,12 +1,22 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-// These unrelated parsers ship as ESM that the repo's ts-jest setup does not transform.
-// WebVTT parsing and subtitle sanitation use their real implementations.
-jest.mock('@qgustavor/srt-parser', () => ({ __esModule: true, default: class {} }));
+// This dependency ships as ESM that ts-jest does not transform. The narrow fake
+// returns cue text for the SRT ruby conversion tests below.
+jest.mock('@qgustavor/srt-parser', () => ({
+    __esModule: true,
+    default: class {
+        fromSrt(value: string) {
+            const text = value.split(/\r?\n/).slice(2).join('\n');
+            return [{ startTime: 0, endTime: 1, text }];
+        }
+    },
+}));
 jest.mock('ass-compiler', () => ({ compile: () => ({ dialogues: [] }) }));
 
 import SubtitleReader from '@project/common/subtitle-reader/subtitle-reader';
 import { SubtitleHtml } from '@project/common';
+import { defaultSettings } from '@project/common/settings';
+import { renderRichTextOntoSubtitles } from '@project/common/annotations/render-annotations';
 
 const createReader = (options: Partial<ConstructorParameters<typeof SubtitleReader>[0]> = {}) =>
     new SubtitleReader({
@@ -22,6 +32,8 @@ const vttFile = (text: string, extension = 'vtt', timings = '00:00:00.000 --> 99
     ({ name: `test.${extension}`, text: async () => `WEBVTT\n\n${timings}\n${text}\n\n` }) as unknown as File;
 
 const nfimscFile = (xml: string) => ({ name: 'test.nfimsc', text: async () => xml }) as unknown as File;
+const srtFile = (text: string) =>
+    ({ name: 'test.srt', text: async () => `1\n00:00:00,000 --> 00:00:01,000\n${text}` }) as unknown as File;
 
 const parse = (xml: string, convertNetflixRuby = false, flatten = false, fileCount = 1) =>
     createReader({ convertNetflixRuby }).subtitles(
@@ -157,6 +169,40 @@ describe('SubtitleReader Netflix IMSC parsing', () => {
         expect(withoutRuby[0].text).toBe('ひろ子(こ)そんな');
         expect(withoutRuby[0].text).not.toContain('\u2063');
         expect(withoutRuby[0].tokenization).toBeUndefined();
+    });
+
+    it.each([
+        ['3月', 'さんがつ'],
+        ['第3', 'だいさん'],
+    ])('preserves the authored mixed-script base %s and later ruby positions', async (base, reading) => {
+        const xml =
+            '<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" xmlns:tts="http://www.w3.org/ns/ttml#styling" ttp:tickRate="10000000">' +
+            '<head><styling>' +
+            '<style xml:id="container" tts:ruby="container"/>' +
+            '<style xml:id="base" tts:ruby="base"/>' +
+            '<style xml:id="text" tts:ruby="text"/>' +
+            '</styling></head>' +
+            '<body><div><p begin="10000000t" end="30000000t">予定は' +
+            `<span style="container"><span style="base">${base}</span><span style="text">${reading}</span></span>` +
+            'と<span style="container"><span style="base">子</span><span style="text">こ</span></span>' +
+            '</p></div></body></tt>';
+
+        const subtitles = await parse(xml, true);
+
+        expect(subtitles).toEqual([
+            {
+                start: 1000,
+                end: 3000,
+                text: `予定は${base}と子`,
+                track: 0,
+                tokenization: {
+                    tokens: [
+                        { pos: [3, 5], readings: [{ pos: [0, 2], reading }], states: [] },
+                        { pos: [6, 7], readings: [{ pos: [0, 1], reading: 'こ' }], states: [] },
+                    ],
+                },
+            },
+        ]);
     });
 
     it('keeps ruby conversion while flattening and deduplicates identical files', async () => {
@@ -391,5 +437,57 @@ describe('SubtitleReader WebVTT timestamp stripping', () => {
         ]);
 
         expect(subtitles).toEqual([]);
+    });
+});
+
+describe('SubtitleReader Netflix ruby text conversion', () => {
+    it.each(['srt', 'vtt', 'nfvtt'])('renders imported ASCII and numeric readings from %s', async (extension) => {
+        const text = 'MIU(ミウ)、007(ゼロゼロセブン)、さっきTwitter(ツイッター)と5G通信(つうしん)';
+        const [subtitle] = await createReader({ convertNetflixRuby: true }).subtitles([
+            extension === 'srt' ? srtFile(text) : vttFile(text, extension),
+        ]);
+        const rendered = renderRichTextOntoSubtitles(
+            [{ ...subtitle, index: 0 }],
+            'video',
+            defaultSettings.dictionaryTracks
+        ).get(0);
+        const sink = document.createElement('div');
+        sink.innerHTML = rendered?.richText ?? '';
+
+        expect(subtitle.text).toBe('MIU、007、さっきTwitterと5G通信');
+        expect(Array.from(sink.querySelectorAll('ruby'), (ruby) => ruby.firstChild?.textContent)).toEqual([
+            'MIU',
+            '007',
+            'Twitter',
+            '通信',
+        ]);
+        expect(Array.from(sink.querySelectorAll('rt'), (reading) => reading.textContent)).toEqual([
+            'ミウ',
+            'ゼロゼロセブン',
+            'ツイッター',
+            'つうしん',
+        ]);
+    });
+
+    it('attaches readings to the final script run and adjusts later SRT token offsets', async () => {
+        const [subtitle] = await createReader({ convertNetflixRuby: true }).subtitles([
+            srtFile('さっきTwitter(ツイッター)のトレンドに…と5G通信(つうしん)'),
+        ]);
+        const tokens = subtitle.tokenization?.tokens ?? [];
+
+        expect(subtitle.text).toBe('さっきTwitterのトレンドに…と5G通信');
+        expect(tokens.map(({ pos }) => subtitle.text.substring(pos[0], pos[1]))).toEqual(['Twitter', '通信']);
+        expect(tokens.map(({ readings }) => readings[0].reading)).toEqual(['ツイッター', 'つうしん']);
+    });
+
+    it('keeps homogeneous ASCII and Japanese bases whole', async () => {
+        const [subtitle] = await createReader({ convertNetflixRuby: true }).subtitles([
+            srtFile('MIU(ミウ)、捏造(ねつぞう)'),
+        ]);
+        const tokens = subtitle.tokenization?.tokens ?? [];
+
+        expect(subtitle.text).toBe('MIU、捏造');
+        expect(tokens.map(({ pos }) => subtitle.text.substring(pos[0], pos[1]))).toEqual(['MIU', '捏造']);
+        expect(tokens.map(({ readings }) => readings[0].reading)).toEqual(['ミウ', 'ねつぞう']);
     });
 });

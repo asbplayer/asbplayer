@@ -12,10 +12,13 @@ import {
     TokenMatchStrategy,
     TokenState,
     TokenStatus,
+    TokenReadingAnnotation,
     areDictionaryTracksRenderOnly,
     dictionaryStatusCollectionEnabled,
 } from '@project/common/settings';
 import { Anki } from '@project/common/anki';
+import { Yomitan } from '@project/common/yomitan';
+import { renderRichTextOntoSubtitles } from '@project/common/annotations/render-annotations';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
 import type { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
 import { needsReset, TrackState } from '@project/common/annotations/subtitle-annotations';
@@ -914,6 +917,59 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.pendingBuild).toBeUndefined();
 
         subtitleAnnotations.unbind();
+    });
+
+    it('keeps imported ASCII and numeric readings visible when reused on a later subtitle', async () => {
+        // Yomitan is an external service; keep annotation building and rendering real.
+        jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('26.4.6');
+        jest.spyOn(Yomitan.prototype, 'tokenizeBulk').mockImplementation(async (texts) =>
+            texts.map(() => [
+                { text: 'MIU', reading: '' },
+                { text: '007', reading: '' },
+            ])
+        );
+        jest.spyOn(Yomitan.prototype, 'tokenize').mockResolvedValue([
+            [{ text: 'MIU', reading: 'dictionary reading' }],
+            [{ text: '007', reading: 'dictionary reading' }],
+        ]);
+        jest.spyOn(Yomitan.prototype, 'lemmatize').mockImplementation(async (text) => [text]);
+        const track = makeDictionaryTrack({ dictionaryTokenReadingAnnotation: TokenReadingAnnotation.ALWAYS });
+        const settings = makeSettings(makeDictionaryTracks(track));
+        const { subtitleAnnotations, subtitleAnnotationsUpdated } = makeSubtitleAnnotations(settings);
+        const completed = new Promise<void>((resolve) => {
+            subtitleAnnotationsUpdated.mockImplementation((subtitles) => {
+                if (subtitles.some((subtitle) => subtitle.index === 1)) resolve();
+            });
+        });
+
+        subtitleAnnotations.setSubtitles([
+            makeSubtitle({
+                text: 'MIU007',
+                originalText: 'MIU007',
+                tokenization: {
+                    tokens: [
+                        makeToken({ pos: [0, 3], readings: [{ pos: [0, 3], reading: 'ミウ' }] }),
+                        makeToken({ pos: [3, 6], readings: [{ pos: [0, 3], reading: 'ゼロゼロセブン' }] }),
+                    ],
+                },
+            }),
+            makeSubtitle({ index: 1, text: 'MIU007', originalText: 'MIU007' }),
+        ]);
+        await completed;
+
+        const rendered = renderRichTextOntoSubtitles(subtitleAnnotations.subtitles, 'video', settings.dictionaryTracks);
+        for (const index of [0, 1]) {
+            const sink = document.createElement('div');
+            sink.innerHTML = rendered.get(index)?.richText ?? '';
+            expect(Array.from(sink.querySelectorAll('ruby'), (ruby) => ruby.firstChild?.textContent)).toEqual([
+                'MIU',
+                '007',
+            ]);
+            expect(Array.from(sink.querySelectorAll('rt'), (reading) => reading.textContent)).toEqual([
+                'ミウ',
+                'ゼロゼロセブン',
+            ]);
+        }
     });
 
     it('executes the annotation pipeline and publishes a tokenized subtitle', async () => {

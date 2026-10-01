@@ -1996,6 +1996,7 @@ function App({
                                     profiles={profilesContext.profiles}
                                     activeProfile={profilesContext.activeProfile}
                                     onlineSubtitleSourceConfig={globalState.onlineSubtitleSourceConfig}
+                                    clientId="asbplayer-app"
                                     hasSeenFtue={true}
                                     hideRememberTrackPreferenceToggle={true}
                                     hideVideoNameTextField={true}
