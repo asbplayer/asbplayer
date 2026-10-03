@@ -39,19 +39,19 @@ on:
     workflow_dispatch:
         inputs:
             test_announcements:
-                description: Post the latest blog post to #announcements
+                description: "Post the latest blog post to #announcements"
                 type: boolean
                 default: true
             test_extension_releases:
-                description: Send a test notification to #extension-releases
+                description: "Send a test notification to #extension-releases"
                 type: boolean
                 default: false
             test_app_releases:
-                description: Send a test notification to #app-releases
+                description: "Send a test notification to #app-releases"
                 type: boolean
                 default: false
             test_github:
-                description: Send a test notification to #github
+                description: "Send a test notification to #github"
                 type: boolean
                 default: false
 
