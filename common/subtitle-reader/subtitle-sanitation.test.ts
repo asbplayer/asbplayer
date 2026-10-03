@@ -164,6 +164,21 @@ describe('subtitle reader security', () => {
         expect(assertSafeSink(plain.text).textContent).toBe('safe');
     });
 
+    it('drops subtitles left with only invisible or whitespace characters (#669)', async () => {
+        // A cue whose only content is a left-to-right mark (U+200E) has no meaningful
+        // text, so it is dropped instead of rendered as a blank line.
+        const removed = await reader().subtitles([file('blank.srt', '1\n00:00:00,000 --> 00:00:01,000\n\u200e')]);
+        expect(removed).toHaveLength(0);
+    });
+
+    it('keeps subtitles that have real text alongside bidi marks (#669)', async () => {
+        // Bidi marks are preserved within meaningful text; only empty cues are dropped.
+        const [subtitle] = await reader().subtitles([
+            file('mixed.srt', '1\n00:00:00,000 --> 00:00:01,000\nab\u200ecd'),
+        ]);
+        expect(subtitle.text).toBe('ab\u200ecd');
+    });
+
     it('preserves allowed subtitle formatting, strips every attribute, and is idempotent', () => {
         const input =
             '<b id="x" data-reading="bold" aria-label="bold">bold</b><br><ruby class="reading">語<rt style="color:red">ご</rt><rp>(</rp></ruby>';

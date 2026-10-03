@@ -33,6 +33,11 @@ const vttTimestampTagRegex = new RegExp(
 );
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 
+// Matches text containing at least one meaningful character: anything that is
+// not whitespace, a control character, or a default-ignorable code point (which
+// includes the bidi marks LRM/RLM). Subtitle events without any such character
+// are dropped so invisible leftovers do not render as blank lines. See issue #669.
+const hasTextContentRegex = /[^\s\p{Cc}\p{Default_Ignorable_Code_Point}]/u;
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
@@ -159,7 +164,6 @@ export default class SubtitleReader {
     async subtitles(files: File[], flatten?: boolean) {
         const allNodes = (await Promise.all(files.map((f, i) => this._subtitles(f, flatten === true ? 0 : i))))
             .flatMap((nodes) => nodes)
-            .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
         // Sanitize after all parser, filter, decoding, and flattening transformations.
@@ -171,7 +175,9 @@ export default class SubtitleReader {
             for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        return this._deduplicate(allNodes);
+        return this._deduplicate(
+            allNodes.filter((node) => node.textImage !== undefined || hasTextContentRegex.test(node.text))
+        );
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
