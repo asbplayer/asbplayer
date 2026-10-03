@@ -33,6 +33,12 @@ const vttTimestampTagRegex = new RegExp(
 );
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 
+// Invisible Unicode bidirectional control characters: LRM, RLM, the embedding/
+// override set (U+202A-202E) and the isolates (U+2066-2069). They can appear in
+// subtitles and survive the regex replace filter, so a user's anchored pattern
+// never matches and the line is left blank instead of removed. See issue #669.
+const bidiControlRegex = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
@@ -827,7 +833,10 @@ export default class SubtitleReader {
         text =
             this._textFilter === undefined
                 ? text
-                : text.replace(this._textFilter.regex, this._textFilter.replacement).trim();
+                : text
+                      .replace(bidiControlRegex, '')
+                      .replace(this._textFilter.regex, this._textFilter.replacement)
+                      .trim();
 
         if (this._removeXml) {
             text = removeSubtitleHtmlSafely(text);
