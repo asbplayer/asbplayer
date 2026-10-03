@@ -4,7 +4,13 @@
 #   - Release published / promoted (base repo)         -> #extension-releases
 #   - App deploy PR merged (base cf-pages, head
 #     deploy/cf-pages-*)                               -> #app-releases
+#   - Blog post added under docs/blog (push to main)   -> #announcements
 #   - Issue opened, or any other merged pull request   -> #github
+#
+# A workflow_dispatch run re-sends the most recently added blog post to
+# #announcements so the test run exercises the real blog notification path.
+# The test_* inputs are checkboxes; enable any of the other ones to also send
+# a static test message to #extension-releases, #app-releases, or #github.
 #
 # Webhook URLs are read from repository secrets. The optional message prefixes
 # are intentionally kept in this workflow so they can be edited here directly.
@@ -27,7 +33,27 @@ on:
         types: [opened]
     pull_request_target:
         types: [closed]
+    push:
+        branches: [main]
+        paths: ['docs/blog/**']
     workflow_dispatch:
+        inputs:
+            test_announcements:
+                description: Post the latest blog post to #announcements
+                type: boolean
+                default: true
+            test_extension_releases:
+                description: Send a test notification to #extension-releases
+                type: boolean
+                default: false
+            test_app_releases:
+                description: Send a test notification to #app-releases
+                type: boolean
+                default: false
+            test_github:
+                description: Send a test notification to #github
+                type: boolean
+                default: false
 
 permissions: {}
 
@@ -36,6 +62,7 @@ env:
     APP_DEPLOY_PREFIX: ''
     ISSUE_PREFIX: "Issue opened:"
     PULL_REQUEST_PREFIX: "Merged:"
+    BLOG_PREFIX: "New blog post:"
 
 jobs:
     extension-release:
@@ -85,6 +112,67 @@ jobs:
                     | curl -sS --fail-with-body -X POST \
                         -H 'Content-Type: application/json' \
                         --data @- "$WEBHOOK_URL"
+
+    blog-post:
+        name: Blog post
+        if: >-
+            github.event_name == 'push' ||
+            (github.event_name == 'workflow_dispatch' &&
+            inputs.test_announcements)
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Notify #announcements of new blog post(s)
+              env:
+                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_ANNOUNCEMENTS }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  BEFORE: ${{ github.event.before }}
+                  AFTER: ${{ github.event.after }}
+              run: |
+                  set -euo pipefail
+
+                  if [ "$EVENT_NAME" = "push" ]; then
+                    mapfile -t files < <(
+                      git diff --name-only --diff-filter=A "$BEFORE" "$AFTER" -- docs/blog \
+                        | grep -E '\.mdx?$' || true
+                    )
+                  else
+                    mapfile -t files < <(
+                      git log --diff-filter=A --name-only --format= -- docs/blog \
+                        | grep -E '\.mdx?$' | head -n1 || true
+                    )
+                  fi
+
+                  if [ "${#files[@]}" -eq 0 ]; then
+                    echo "No added blog posts; nothing to notify."
+                    exit 0
+                  fi
+
+                  for file in "${files[@]}"; do
+                    [ -n "$file" ] || continue
+                    title=$(awk '/^title:/{sub(/^title:[[:space:]]*/,""); gsub(/^["'\''"]|["'\'']$/,""); print; exit}' "$file")
+                    slug=$(awk '/^slug:/{sub(/^slug:[[:space:]]*/,""); gsub(/^["'\''"]|["'\'']$/,""); print; exit}' "$file")
+                    if [ -z "$slug" ]; then
+                      slug=$(basename "$file" | sed -E 's/\.(md|mdx)$//')
+                    fi
+                    url="https://docs.asbplayer.dev/blog/$slug"
+                    if [ -n "$title" ]; then
+                      content="$BLOG_PREFIX $title $url"
+                    else
+                      content="$BLOG_PREFIX $url"
+                    fi
+                    echo "Notifying #announcements: $content"
+                    jq -n --arg content "$content" \
+                      '{content: $content, allowed_mentions: {parse: []}}' \
+                      | curl -sS --fail-with-body -X POST \
+                          -H 'Content-Type: application/json' \
+                          --data @- "$WEBHOOK_URL"
+                  done
 
     github-issue:
         name: GitHub issue
@@ -136,10 +224,15 @@ jobs:
 
     test:
         name: Test webhooks
-        if: github.event_name == 'workflow_dispatch'
+        if: >-
+            github.event_name == 'workflow_dispatch' &&
+            (inputs.test_extension_releases ||
+            inputs.test_app_releases ||
+            inputs.test_github)
         runs-on: ubuntu-latest
         steps:
             - name: Test #extension-releases
+              if: ${{ inputs.test_extension_releases }}
               env:
                   WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
               run: |
@@ -151,6 +244,7 @@ jobs:
                         --data @- "$WEBHOOK_URL"
 
             - name: Test #app-releases
+              if: ${{ inputs.test_app_releases }}
               env:
                   WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_APP_RELEASES }}
               run: |
@@ -162,6 +256,7 @@ jobs:
                         --data @- "$WEBHOOK_URL"
 
             - name: Test #github
+              if: ${{ inputs.test_github }}
               env:
                   WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
               run: |
