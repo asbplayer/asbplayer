@@ -617,6 +617,28 @@ export interface RecordAnimatedWebpResponse {
     readonly error?: string;
 }
 
+// Begin an open-ended tab-capture clip in the content script, for manual recording. The clip runs until a
+// StopAnimatedWebpMessage arrives (or an internal safety limit is hit). Unlike RecordAnimatedWebpMessage,
+// the content script responds as soon as the capture is flowing, not when it is finished.
+export interface StartAnimatedWebpMessage extends Message, ImageCaptureParams {
+    readonly command: 'start-animated-webp';
+    readonly streamId: string;
+    readonly fps: number;
+    readonly quality: number;
+    readonly recordAudio: boolean;
+}
+
+export interface StartAnimatedWebpResponse {
+    readonly started: boolean;
+    readonly error?: string;
+}
+
+// Ends the capture currently running in the content script (open-ended or timed) and responds with the
+// same RecordAnimatedWebpResponse a timed capture produces.
+export interface StopAnimatedWebpMessage extends Message {
+    readonly command: 'stop-animated-webp';
+}
+
 // Sent by the content script before the mining seek, so the tab-capture stream (settings lookup +
 // chrome.tabCapture negotiation + getUserMedia) is already flowing by the time playback resumes at the
 // padding-adjusted start, instead of only starting afterward and clipping the beginning of the clip.

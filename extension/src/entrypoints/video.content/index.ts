@@ -5,16 +5,22 @@ import VideoSelectController from '@/controllers/video-select-controller';
 import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
+    ImageCaptureParams,
     RecordAnimatedWebpMessage,
+    StartAnimatedWebpMessage,
     TabToExtensionCommand,
     ToggleSidePanelMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
 import {
+    activeAnimatedWebpCapture,
     armAnimatedWebpCapture,
-    finishAnimatedWebpCapture,
+    discardArmedAnimatedWebpCapture,
+    releaseAnimatedWebpCapture,
+    startAnimatedWebpCapture,
     takeArmedAnimatedWebpCapture,
 } from '@/services/animated-webp-capture';
+import type { AnimatedWebpCaptureOptions } from '@/services/animated-webp-capture';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
@@ -197,6 +203,10 @@ export default defineContentScript({
 
             const videoSelectController = new VideoSelectController(bindings, {
                 isBindingsSorted: page.config.preferredVideoElementSelector !== undefined,
+                isPreferredBinding:
+                    page.config.preferredVideoElementSelector !== undefined
+                        ? (b) => page.videoElementPreference(b.video) === 0
+                        : undefined,
             });
             videoSelectController.bind();
 
@@ -208,6 +218,65 @@ export default defineContentScript({
                 statisticsOverlayController = new StatisticsOverlayController(bindings);
                 statisticsOverlayController.bind();
             }
+
+            const animatedWebpOptions = (
+                params: ImageCaptureParams,
+                src: string | undefined,
+                durationMs?: number
+            ): AnimatedWebpCaptureOptions => {
+                let rect = params.rect;
+
+                if (params.frameId !== undefined) {
+                    const iframe = frameInfoListener?.iframesById?.[params.frameId];
+
+                    if (iframe !== undefined) {
+                        const iframeRect = iframe.getBoundingClientRect();
+                        rect = {
+                            left: rect.left + iframeRect.left,
+                            top: rect.top + iframeRect.top,
+                            width: rect.width,
+                            height: rect.height,
+                        };
+                    }
+                }
+
+                const binding = bindings.find((b) => b.registeredVideoSrc === src) ?? bindings[0];
+
+                return {
+                    durationMs,
+                    rect,
+                    maxWidth: params.maxWidth,
+                    maxHeight: params.maxHeight,
+                    onRecordingStopped: () => {
+                        binding?.pause();
+                        binding?.subtitleController.persistentNotification('info.processingClip');
+                        return () => binding?.subtitleController.hideNotification();
+                    },
+                };
+            };
+
+            // Prefer a capture that was already armed (getUserMedia negotiated) before the mining seek
+            // happened, so we don't lose the start of the clip to that negotiation's latency. Fall back to
+            // arming it now if none is available.
+            const takeOrArmAnimatedWebpCapture = async (message: {
+                streamId?: string;
+                fps?: number;
+                quality?: number;
+                recordAudio: boolean;
+            }) => {
+                const armed = takeArmedAnimatedWebpCapture();
+
+                if (armed) {
+                    return armed;
+                }
+
+                if (message.streamId === undefined || message.fps === undefined || message.quality === undefined) {
+                    throw new Error('No armed animated WebP capture and no stream to arm one from');
+                }
+
+                await armAnimatedWebpCapture(message.streamId, message.fps, message.quality, message.recordAudio);
+                return takeArmedAnimatedWebpCapture()!;
+            };
 
             const messageListener = (
                 request: any,
@@ -277,68 +346,60 @@ export default defineContentScript({
                     }
                     case 'record-animated-webp': {
                         const recordAnimatedWebpMessage = request.message as RecordAnimatedWebpMessage;
-                        let animatedRect = recordAnimatedWebpMessage.rect;
-
-                        if (recordAnimatedWebpMessage.frameId !== undefined) {
-                            const iframe = frameInfoListener?.iframesById?.[recordAnimatedWebpMessage.frameId];
-
-                            if (iframe !== undefined) {
-                                const iframeRect = iframe.getBoundingClientRect();
-                                animatedRect = {
-                                    left: animatedRect.left + iframeRect.left,
-                                    top: animatedRect.top + iframeRect.top,
-                                    width: animatedRect.width,
-                                    height: animatedRect.height,
-                                };
-                            }
-                        }
-
-                        const animatedBinding =
-                            bindings.find((b) => b.registeredVideoSrc === request.src) ?? bindings[0];
-                        const onAnimatedRecordingStopped = () => {
-                            animatedBinding?.pause();
-                            animatedBinding?.subtitleController.persistentNotification('info.processingClip');
-                            return () => animatedBinding?.subtitleController.hideNotification();
-                        };
 
                         (async () => {
-                            // Prefer a capture that was already armed (getUserMedia negotiated) before the
-                            // mining seek happened, so we don't lose the start of the clip to that
-                            // negotiation's latency. Fall back to arming it now if none is available.
-                            let capture = takeArmedAnimatedWebpCapture();
-
-                            if (!capture) {
-                                if (
-                                    recordAnimatedWebpMessage.streamId === undefined ||
-                                    recordAnimatedWebpMessage.fps === undefined ||
-                                    recordAnimatedWebpMessage.quality === undefined
-                                ) {
-                                    throw new Error('No armed animated WebP capture and no stream to arm one from');
-                                }
-
-                                await armAnimatedWebpCapture(
-                                    recordAnimatedWebpMessage.streamId,
-                                    recordAnimatedWebpMessage.fps,
-                                    recordAnimatedWebpMessage.quality,
-                                    recordAnimatedWebpMessage.recordAudio
-                                );
-                                capture = takeArmedAnimatedWebpCapture()!;
-                            }
-
-                            return finishAnimatedWebpCapture(
+                            const capture = await takeOrArmAnimatedWebpCapture(recordAnimatedWebpMessage);
+                            return startAnimatedWebpCapture(
                                 capture,
-                                recordAnimatedWebpMessage.durationMs,
-                                animatedRect,
-                                recordAnimatedWebpMessage.maxWidth,
-                                recordAnimatedWebpMessage.maxHeight,
-                                onAnimatedRecordingStopped
-                            );
+                                animatedWebpOptions(
+                                    recordAnimatedWebpMessage,
+                                    request.src,
+                                    recordAnimatedWebpMessage.durationMs
+                                )
+                            ).result;
                         })()
                             .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
                             .catch((e) => {
                                 asbError('recording/animated-webp', e);
                                 sendResponse({ base64: '', error: String(e?.message ?? e) });
                             });
+                        return true;
+                    }
+                    case 'start-animated-webp': {
+                        const startAnimatedWebpMessage = request.message as StartAnimatedWebpMessage;
+
+                        (async () => {
+                            // A manual start has no mining seek to arm ahead of, so anything armed is stale
+                            discardArmedAnimatedWebpCapture();
+                            const capture = await takeOrArmAnimatedWebpCapture(startAnimatedWebpMessage);
+                            startAnimatedWebpCapture(
+                                capture,
+                                animatedWebpOptions(startAnimatedWebpMessage, request.src)
+                            );
+                        })()
+                            .then(() => sendResponse({ started: true }))
+                            .catch((e) => {
+                                asbError('recording/animated-webp', e);
+                                sendResponse({ started: false, error: String(e?.message ?? e) });
+                            });
+                        return true;
+                    }
+                    case 'stop-animated-webp': {
+                        const active = activeAnimatedWebpCapture();
+
+                        if (active === undefined) {
+                            sendResponse({ base64: '', error: 'No animated WebP capture in progress' });
+                            return true;
+                        }
+
+                        active.stop();
+                        active.result
+                            .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
+                            .catch((e) => {
+                                asbError('recording/animated-webp', e);
+                                sendResponse({ base64: '', error: String(e?.message ?? e) });
+                            })
+                            .finally(() => releaseAnimatedWebpCapture(active));
                         return true;
                     }
                     case 'show-anki-ui':

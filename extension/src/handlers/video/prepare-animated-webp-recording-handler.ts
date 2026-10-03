@@ -1,7 +1,7 @@
 import { asbError } from '@project/common/util/log';
 import type { Command, Message } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
-import { tabCaptureStreamId } from '@project/extension/src/services/video-capturer';
+import { negotiateAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
 
 // Negotiates the animated-WebP settings and tabCapture stream id ahead of the mining seek, so
 // RecordMediaHandler doesn't have to do it afterward - see armAnimatedWebpCapture for why that ordering
@@ -29,12 +29,8 @@ export default class PrepareAnimatedWebpRecordingHandler {
             return true;
         }
 
-        void Promise.all([
-            this._settingsProvider.getSingle('animatedImageFps'),
-            this._settingsProvider.getSingle('animatedImageQuality'),
-            tabCaptureStreamId(tabId),
-        ])
-            .then(([fps, quality, streamId]) => sendResponse({ streamId, fps, quality }))
+        void negotiateAnimatedWebp(this._settingsProvider, tabId)
+            .then((negotiation) => sendResponse(negotiation))
             .catch((e) => {
                 asbError('recording/prepare-animated-webp', e);
                 sendResponse({ error: String(e?.message ?? e) });
