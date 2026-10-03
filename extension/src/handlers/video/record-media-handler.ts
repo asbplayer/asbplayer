@@ -8,20 +8,22 @@ import type {
     RecordMediaAndForwardSubtitleMessage,
     VideoToExtensionCommand,
     ExtensionToVideoCommand,
-    ExtensionToOffscreenDocumentCommand,
     ScreenshotTakenMessage,
-    RecordingFinishedMessage,
-    EncodeMp3InServiceWorkerMessage,
     CardModel,
 } from '@project/common';
 import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
-import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
-import { recordAnimatedWebp, tabCaptureStreamId } from '@project/extension/src/services/video-capturer';
-import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
-import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
+import {
+    DrmProtectedStreamError,
+    RecordingInProgressError,
+} from '@project/extension/src/services/audio-recorder-service';
+import {
+    animatedWebpAudioModel,
+    negotiateAnimatedWebp,
+    shouldUseAnimatedWebp,
+} from '@project/extension/src/services/animated-webp-media';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -74,12 +76,9 @@ export default class RecordMediaHandler {
         // recording and the animated-WebP capture.
         const windowMs = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
 
-        // Animated WebP is Chrome-only (relies on chrome.tabCapture) and captures audio together with
-        // the video in a single stream rather than via the offscreen audio recorder.
-        const mediaFragmentFormat = message.screenshot
-            ? await this._settingsProvider.getSingle('mediaFragmentFormat')
-            : 'jpeg';
-        const useAnimatedWebp = message.screenshot && mediaFragmentFormat === 'webp' && !isFirefoxBuild;
+        // An animated WebP captures the tab's video and audio together in a single stream, so it replaces
+        // the separate audio recording instead of adding to it.
+        const useAnimatedWebp = await shouldUseAnimatedWebp(this._settingsProvider, message);
 
         if (message.record && message.postMineAction !== PostMineAction.showAnkiDialog) {
             encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
@@ -101,17 +100,12 @@ export default class RecordMediaHandler {
                 // would just be discarded, and doing it again here is exactly the latency this avoids.
                 const negotiation = message.animatedWebpArmed
                     ? undefined
-                    : {
-                          streamId: await tabCaptureStreamId(tabId),
-                          fps: await this._settingsProvider.getSingle('animatedImageFps'),
-                          quality: await this._settingsProvider.getSingle('animatedImageQuality'),
-                      };
-                const { base64, audioBase64 } = await recordAnimatedWebp(
-                    tabId,
-                    src,
+                    : await negotiateAnimatedWebp(this._settingsProvider, tabId);
+                const { base64, audioBase64 } = await this._audioRecorder.recordAnimatedWebpWithTimeout(
                     windowMs,
                     message.record,
                     { maxWidth, maxHeight, rect, frameId, trimBlackBars },
+                    { src, tabId },
                     negotiation
                 );
                 imageModel = {
@@ -119,20 +113,19 @@ export default class RecordMediaHandler {
                     extension: 'webp',
                     error: base64 ? undefined : ImageErrorCode.captureFailed,
                 };
-
-                if (message.record) {
-                    audioModel = await this._buildAnimatedAudioModel(audioBase64, encodeAsMp3, message);
-                }
+                audioModel = await animatedWebpAudioModel(audioBase64, encodeAsMp3, message);
             } catch (e) {
+                if (e instanceof RecordingInProgressError) {
+                    throw e;
+                }
+
                 asbError('recording/animated-webp', e);
                 imageModel = { base64: '', extension: 'webp', error: ImageErrorCode.captureFailed };
+            } finally {
+                // The audio recorder service signals the recording state, but the screenshot path normally
+                // restores the subtitles/controls that were hidden for a clean capture.
+                this._notifyScreenshotTaken(src, tabId);
             }
-
-            // We bypassed the audio recorder and the screenshot path, which normally emit these. Send
-            // them so the binding leaves recording state (recording-finished) and restores the
-            // subtitles/controls hidden for a clean screenshot (screenshot-taken).
-            this._notifyRecordingFinished(src, tabId);
-            this._notifyScreenshotTaken(src, tabId);
         } else if (message.screenshot) {
             const { maxWidth, maxHeight, rect, frameId } = message;
             const screenshotDelay = Math.max(
@@ -211,47 +204,6 @@ export default class RecordMediaHandler {
         }
     }
 
-    // Build the audio model from the audio captured alongside the animated WebP, encoding to mp3 when
-    // requested.
-    private async _buildAnimatedAudioModel(
-        audioBase64: string | undefined,
-        encodeAsMp3: boolean,
-        message: RecordMediaAndForwardSubtitleMessage
-    ): Promise<AudioModel> {
-        const { audioPaddingStart: paddingStart, audioPaddingEnd: paddingEnd, playbackRate } = message;
-        const base: AudioModel = {
-            base64: '',
-            extension: encodeAsMp3 ? 'mp3' : 'webm',
-            paddingStart,
-            paddingEnd,
-            playbackRate,
-        };
-
-        if (!audioBase64) {
-            return base;
-        }
-
-        if (!encodeAsMp3) {
-            return { ...base, base64: audioBase64 };
-        }
-
-        const mp3Base64 = await this._encodeMp3(audioBase64);
-        return { ...base, base64: mp3Base64 };
-    }
-
-    private async _encodeMp3(audioBase64: string): Promise<string> {
-        await ensureOffscreenAudioServiceDocument();
-        const command: ExtensionToOffscreenDocumentCommand<EncodeMp3InServiceWorkerMessage> = {
-            sender: 'asbplayer-extension-to-offscreen-document',
-            message: {
-                command: 'encode-mp3',
-                base64: audioBase64,
-                extension: 'webm',
-            },
-        };
-        return browser.runtime.sendMessage(command);
-    }
-
     private _notifyScreenshotTaken(src: string, tabId: number) {
         const command: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
             sender: 'asbplayer-extension-to-video',
@@ -259,14 +211,5 @@ export default class RecordMediaHandler {
             src,
         };
         void browser.tabs.sendMessage(tabId, command);
-    }
-
-    private _notifyRecordingFinished(src: string, tabId: number) {
-        const command: ExtensionToVideoCommand<RecordingFinishedMessage> = {
-            sender: 'asbplayer-extension-to-video',
-            message: { command: 'recording-finished' },
-            src,
-        };
-        browser.tabs.sendMessage(tabId, command).catch(() => {});
     }
 }

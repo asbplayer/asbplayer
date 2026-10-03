@@ -4,6 +4,9 @@ import type {
     ImageCaptureParams,
     RecordAnimatedWebpMessage,
     RecordAnimatedWebpResponse,
+    StartAnimatedWebpMessage,
+    StartAnimatedWebpResponse,
+    StopAnimatedWebpMessage,
 } from '@project/common';
 
 // Obtains a tabCapture stream id (no picker). consumerTabId lets the content script in that tab
@@ -31,6 +34,41 @@ export const recordAnimatedWebp = async (
     const command: ExtensionToVideoCommand<RecordAnimatedWebpMessage> = {
         sender: 'asbplayer-extension-to-video',
         message: { command: 'record-animated-webp', streamId, durationMs, fps, quality, recordAudio, ...captureParams },
+        src,
+    };
+
+    const response: RecordAnimatedWebpResponse = await browser.tabs.sendMessage(tabId, command);
+
+    if (response.error) {
+        asbError('recording/animated-webp', response.error);
+    }
+
+    return response;
+};
+
+// Asks the content script to begin an open-ended capture (manual recording), responding as soon as the
+// stream is flowing. The clip is collected later via stopAnimatedWebp.
+export const startAnimatedWebp = async (
+    tabId: number,
+    src: string,
+    recordAudio: boolean,
+    captureParams: ImageCaptureParams,
+    negotiation: { streamId: string; fps: number; quality: number }
+): Promise<StartAnimatedWebpResponse> => {
+    const command: ExtensionToVideoCommand<StartAnimatedWebpMessage> = {
+        sender: 'asbplayer-extension-to-video',
+        message: { command: 'start-animated-webp', recordAudio, ...negotiation, ...captureParams },
+        src,
+    };
+
+    return browser.tabs.sendMessage(tabId, command);
+};
+
+// Ends the capture in progress (open-ended or timed) and returns whatever it recorded.
+export const stopAnimatedWebp = async (tabId: number, src: string): Promise<RecordAnimatedWebpResponse> => {
+    const command: ExtensionToVideoCommand<StopAnimatedWebpMessage> = {
+        sender: 'asbplayer-extension-to-video',
+        message: { command: 'stop-animated-webp' },
         src,
     };
 
