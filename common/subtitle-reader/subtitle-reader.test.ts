@@ -491,3 +491,15 @@ describe('SubtitleReader Netflix ruby text conversion', () => {
         expect(tokens.map(({ readings }) => readings[0].reading)).toEqual(['ミウ', 'ねつぞう']);
     });
 });
+
+describe('SubtitleReader SRT override tag handling', () => {
+    it('strips ASS-style override tags from SRT cue text (#471)', async () => {
+        const [cue] = await createReader().subtitles([srtFile('{\\an8}Hello')]);
+        expect(cue.text).toBe('Hello');
+    });
+
+    it('strips multiple override tags and keeps the surrounding text', async () => {
+        const [cue] = await createReader().subtitles([srtFile('{\\an8}{\\i1}Hello{\\i0} world')]);
+        expect(cue.text).toBe('Hello world');
+    });
+});

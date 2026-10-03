@@ -33,6 +33,11 @@ const vttTimestampTagRegex = new RegExp(
 );
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 
+// ASS-style override tags (e.g. {\an8} for positioning, {\i1} for
+// italics) are sometimes embedded in SRT files. They are not valid SRT, so hide
+// them instead of rendering them as literal text. See issue #471.
+const assOverrideTagRegex = /\{\\[^}]*\}/g;
+
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
@@ -199,7 +204,7 @@ export default class SubtitleReader {
                 return {
                     start: Math.floor((node.startTime as number) * 1000),
                     end: Math.floor((node.endTime as number) * 1000),
-                    text: this._filterText(node.text),
+                    text: this._filterText(node.text.replace(assOverrideTagRegex, '')),
                     track: track,
                 };
             });
