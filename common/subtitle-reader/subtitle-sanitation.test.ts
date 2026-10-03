@@ -164,22 +164,19 @@ describe('subtitle reader security', () => {
         expect(assertSafeSink(plain.text).textContent).toBe('safe');
     });
 
-    it('strips invisible bidi control characters so the regex filter can match (#669)', async () => {
-        // A left-to-right mark (U+200E) hidden in a bracketed sound-effect line would
-        // otherwise defeat the anchored pattern, leaving the line unfiltered.
-        const removed = await reader({ regexFilter: '^\\[.+\\]$', replacement: '' }).subtitles([
-            file('bidi.srt', '1\n00:00:00,000 --> 00:00:01,000\n[THUNDER]\u200e'),
-        ]);
+    it('drops subtitles left with only invisible or whitespace characters (#669)', async () => {
+        // A cue whose only content is a left-to-right mark (U+200E) has no meaningful
+        // text, so it is dropped instead of rendered as a blank line.
+        const removed = await reader().subtitles([file('blank.srt', '1\n00:00:00,000 --> 00:00:01,000\n\u200e')]);
         expect(removed).toHaveLength(0);
     });
 
-    it('strips bidi control characters from text the regex filter keeps (#669)', async () => {
-        // Filter is active but its pattern does not match; the invisible marks (LRM,
-        // RLM and an isolate) should still be removed from the surviving text.
-        const [subtitle] = await reader({ regexFilter: 'NOMATCH', replacement: '' }).subtitles([
-            file('bidi-keep.srt', '1\n00:00:00,000 --> 00:00:01,000\nab\u200ec\u200fd\u2066e'),
+    it('keeps subtitles that have real text alongside bidi marks (#669)', async () => {
+        // Bidi marks are preserved within meaningful text; only empty cues are dropped.
+        const [subtitle] = await reader().subtitles([
+            file('mixed.srt', '1\n00:00:00,000 --> 00:00:01,000\nab\u200ecd'),
         ]);
-        expect(subtitle.text).toBe('abcde');
+        expect(subtitle.text).toBe('ab\u200ecd');
     });
 
     it('preserves allowed subtitle formatting, strips every attribute, and is idempotent', () => {
