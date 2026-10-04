@@ -5,7 +5,6 @@ import VideoSelectController from '@/controllers/video-select-controller';
 import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
-    ImageCaptureParams,
     RecordAnimatedWebpMessage,
     StartAnimatedWebpMessage,
     TabToExtensionCommand,
@@ -14,14 +13,13 @@ import type {
 import { SettingsProvider } from '@project/common/settings';
 import {
     activeAnimatedWebpCapture,
-    armAnimatedWebpCapture,
+    animatedWebpCaptureOptions,
     discardArmedAnimatedWebpCapture,
     NoArmedAnimatedWebpCaptureError,
     releaseAnimatedWebpCapture,
     startAnimatedWebpCapture,
-    takeArmedAnimatedWebpCapture,
+    takeOrArmAnimatedWebpCapture,
 } from '@/services/animated-webp-capture';
-import type { AnimatedWebpCaptureOptions } from '@/services/animated-webp-capture';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
@@ -216,67 +214,6 @@ export default defineContentScript({
                 statisticsOverlayController.bind();
             }
 
-            const animatedWebpOptions = (
-                params: ImageCaptureParams,
-                src: string | undefined,
-                durationMs?: number
-            ): AnimatedWebpCaptureOptions => {
-                let rect = params.rect;
-
-                if (params.frameId !== undefined) {
-                    const iframe = frameInfoListener?.iframesById?.[params.frameId];
-
-                    if (iframe !== undefined) {
-                        const iframeRect = iframe.getBoundingClientRect();
-                        rect = {
-                            left: rect.left + iframeRect.left,
-                            top: rect.top + iframeRect.top,
-                            width: rect.width,
-                            height: rect.height,
-                        };
-                    }
-                }
-
-                const binding = bindings.find((b) => b.registeredVideoSrc === src) ?? bindings[0];
-
-                return {
-                    durationMs,
-                    rect,
-                    maxWidth: params.maxWidth,
-                    maxHeight: params.maxHeight,
-                    onRecordingStopped: () => {
-                        binding?.pause();
-                        binding?.subtitleController.persistentNotification('info.processingClip');
-                        return () => binding?.subtitleController.hideNotification();
-                    },
-                };
-            };
-
-            // Prefer a capture that was already armed (getUserMedia negotiated) before the mining seek
-            // happened, so we don't lose the start of the clip to that negotiation's latency. Fall back to
-            // arming it now if none is available.
-            const takeOrArmAnimatedWebpCapture = async (message: {
-                streamId?: string;
-                fps?: number;
-                quality?: number;
-                recordAudio: boolean;
-            }) => {
-                const armed = takeArmedAnimatedWebpCapture();
-
-                if (armed) {
-                    return armed;
-                }
-
-                if (message.streamId === undefined || message.fps === undefined || message.quality === undefined) {
-                    throw new NoArmedAnimatedWebpCaptureError(
-                        'No armed animated WebP capture and no stream to arm one from'
-                    );
-                }
-
-                await armAnimatedWebpCapture(message.streamId, message.fps, message.quality, message.recordAudio);
-                return takeArmedAnimatedWebpCapture()!;
-            };
-
             const messageListener = (
                 request: any,
                 sender: Browser.runtime.MessageSender,
@@ -350,9 +287,10 @@ export default defineContentScript({
                             const capture = await takeOrArmAnimatedWebpCapture(recordAnimatedWebpMessage);
                             return startAnimatedWebpCapture(
                                 capture,
-                                animatedWebpOptions(
+                                animatedWebpCaptureOptions(
                                     recordAnimatedWebpMessage,
-                                    request.src,
+                                    bindings.find((b) => b.registeredVideoSrc === request.src),
+                                    frameInfoListener?.iframesById,
                                     recordAnimatedWebpMessage.durationMs
                                 )
                             ).result;
@@ -377,7 +315,11 @@ export default defineContentScript({
                             const capture = await takeOrArmAnimatedWebpCapture(startAnimatedWebpMessage);
                             startAnimatedWebpCapture(
                                 capture,
-                                animatedWebpOptions(startAnimatedWebpMessage, request.src)
+                                animatedWebpCaptureOptions(
+                                    startAnimatedWebpMessage,
+                                    bindings.find((b) => b.registeredVideoSrc === request.src),
+                                    frameInfoListener?.iframesById
+                                )
                             );
                         })()
                             .then(() => sendResponse({ started: true }))

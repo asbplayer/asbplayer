@@ -1,5 +1,6 @@
 import { muxAnimatedWebp } from '@project/common';
-import type { RectModel } from '@project/common';
+import type { ImageCaptureParams, RectModel } from '@project/common';
+import type Binding from '@project/extension/src/services/binding';
 import { bufferToBase64 } from '@project/common/base64';
 
 const animatedWebpMaxFrames = 90;
@@ -195,6 +196,63 @@ export const startAnimatedWebpCapture = (
     }
 
     return handle;
+};
+
+// Options for capturing a clip of the video that `binding` owns. A video inside an iframe reports its rect
+// relative to that iframe, so it is offset by the iframe's position in the page.
+export const animatedWebpCaptureOptions = (
+    params: ImageCaptureParams,
+    binding: Binding | undefined,
+    iframesById: { [frameId: string]: HTMLIFrameElement } | undefined,
+    durationMs?: number
+): AnimatedWebpCaptureOptions => {
+    let rect = params.rect;
+    const iframe = params.frameId === undefined ? undefined : iframesById?.[params.frameId];
+
+    if (iframe !== undefined) {
+        const iframeRect = iframe.getBoundingClientRect();
+        rect = {
+            left: rect.left + iframeRect.left,
+            top: rect.top + iframeRect.top,
+            width: rect.width,
+            height: rect.height,
+        };
+    }
+
+    return {
+        durationMs,
+        rect,
+        maxWidth: params.maxWidth,
+        maxHeight: params.maxHeight,
+        onRecordingStopped: () => {
+            binding?.pause();
+            binding?.subtitleController.persistentNotification('info.processingClip');
+            return () => binding?.subtitleController.hideNotification();
+        },
+    };
+};
+
+// Prefer a capture that was already armed (getUserMedia negotiated) before the mining seek happened, so we
+// don't lose the start of the clip to that negotiation's latency. Fall back to arming it now if none is
+// available.
+export const takeOrArmAnimatedWebpCapture = async (message: {
+    streamId?: string;
+    fps?: number;
+    quality?: number;
+    recordAudio: boolean;
+}) => {
+    const armed = takeArmedAnimatedWebpCapture();
+
+    if (armed) {
+        return armed;
+    }
+
+    if (message.streamId === undefined || message.fps === undefined || message.quality === undefined) {
+        throw new NoArmedAnimatedWebpCaptureError('No armed animated WebP capture and no stream to arm one from');
+    }
+
+    await armAnimatedWebpCapture(message.streamId, message.fps, message.quality, message.recordAudio);
+    return takeArmedAnimatedWebpCapture()!;
 };
 
 // Forget a finished capture so it no longer counts as the active one.
