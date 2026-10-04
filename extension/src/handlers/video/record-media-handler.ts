@@ -15,7 +15,15 @@ import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common'
 import type { SettingsProvider } from '@project/common/settings';
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
-import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
+import {
+    DrmProtectedStreamError,
+    RecordingInProgressError,
+} from '@project/extension/src/services/audio-recorder-service';
+import {
+    animatedWebpAudioModel,
+    negotiateAnimatedWebp,
+    shouldUseAnimatedWebp,
+} from '@project/extension/src/services/animated-webp-media';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -54,8 +62,9 @@ export default class RecordMediaHandler {
     ) {
         const message = recordMediaCommand.message;
         const subtitle = message.subtitle;
-        let audioPromise = undefined;
-        let imagePromise = undefined;
+        const src = recordMediaCommand.src;
+        let audioPromise: Promise<string> | undefined;
+        let imagePromise: Promise<string> | undefined;
         let imageModel: ImageModel | undefined = undefined;
         let audioModel: AudioModel | undefined = undefined;
         let encodeAsMp3 = false;
@@ -63,20 +72,61 @@ export default class RecordMediaHandler {
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot record media without a valid tab ID');
 
-        if (message.record) {
-            const time = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
+        // Capture window (subtitle duration adjusted for playback rate + padding), shared by audio
+        // recording and the animated-WebP capture.
+        const windowMs = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
 
-            if (message.postMineAction !== PostMineAction.showAnkiDialog) {
-                encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
-            }
+        // An animated WebP captures the tab's video and audio together in a single stream, so it replaces
+        // the separate audio recording instead of adding to it.
+        const useAnimatedWebp = await shouldUseAnimatedWebp(this._settingsProvider, message);
 
-            audioPromise = this._audioRecorder.startWithTimeout(time, encodeAsMp3, {
-                src: recordMediaCommand.src,
+        if (message.record && message.postMineAction !== PostMineAction.showAnkiDialog) {
+            encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
+        }
+
+        if (message.record && !useAnimatedWebp) {
+            audioPromise = this._audioRecorder.startWithTimeout(windowMs, encodeAsMp3, {
+                src,
                 tabId,
             });
         }
 
-        if (message.screenshot) {
+        if (useAnimatedWebp) {
+            const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = message;
+
+            try {
+                // When the content script already armed a capture before the seek (see binding.ts /
+                // animated-webp-capture.ts), skip re-negotiating settings and a tabCapture stream - it
+                // would just be discarded, and doing it again here is exactly the latency this avoids.
+                const negotiation = message.animatedWebpArmed
+                    ? undefined
+                    : await negotiateAnimatedWebp(this._settingsProvider, tabId);
+                const { base64, audioBase64 } = await this._audioRecorder.recordAnimatedWebpWithTimeout(
+                    windowMs,
+                    message.record,
+                    { maxWidth, maxHeight, rect, frameId, trimBlackBars },
+                    { src, tabId },
+                    negotiation
+                );
+                imageModel = {
+                    base64,
+                    extension: 'webp',
+                    error: base64 ? undefined : ImageErrorCode.captureFailed,
+                };
+                audioModel = await animatedWebpAudioModel(audioBase64, encodeAsMp3, message);
+            } catch (e) {
+                if (e instanceof RecordingInProgressError) {
+                    throw e;
+                }
+
+                asbError('recording/animated-webp', e);
+                imageModel = { base64: '', extension: 'webp', error: ImageErrorCode.captureFailed };
+            } finally {
+                // The audio recorder service signals the recording state, but the screenshot path normally
+                // restores the subtitles/controls that were hidden for a clean capture.
+                this._notifyScreenshotTaken(src, tabId);
+            }
+        } else if (message.screenshot) {
             const { maxWidth, maxHeight, rect, frameId } = message;
             const screenshotDelay = Math.max(
                 0,
@@ -84,23 +134,14 @@ export default class RecordMediaHandler {
                     ? message.mediaTimestamp - subtitle.start + message.audioPaddingStart
                     : message.imageDelay
             );
-            imagePromise = this._imageCapturer.capture(tabId, recordMediaCommand.src, screenshotDelay, {
+            imagePromise = this._imageCapturer.capture(tabId, src, screenshotDelay, {
                 maxWidth,
                 maxHeight,
                 rect,
                 frameId,
                 trimBlackBars: recordMediaCommand.message.trimBlackBars,
             });
-            void imagePromise.finally(() => {
-                const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
-                    sender: 'asbplayer-extension-to-video',
-                    message: {
-                        command: 'screenshot-taken',
-                    },
-                    src: recordMediaCommand.src,
-                };
-                void browser.tabs.sendMessage(tabId, screenshotTakenCommand);
-            });
+            void imagePromise.finally(() => this._notifyScreenshotTaken(src, tabId));
         }
 
         if (audioPromise) {
@@ -134,8 +175,7 @@ export default class RecordMediaHandler {
         if (imagePromise) {
             try {
                 await imagePromise;
-
-                // Use the last screenshot taken to allow user to re-take screenshot while audio is recording
+                // Use the last screenshot taken to allow re-taking while audio records.
                 imageModel = {
                     base64: this._imageCapturer.lastImageBase64!,
                     extension: 'jpeg',
@@ -162,5 +202,14 @@ export default class RecordMediaHandler {
         } else {
             void this._cardPublisher.publish(card, message.postMineAction, tabId, recordMediaCommand.src, noteId);
         }
+    }
+
+    private _notifyScreenshotTaken(src: string, tabId: number) {
+        const command: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
+            sender: 'asbplayer-extension-to-video',
+            message: { command: 'screenshot-taken' },
+            src,
+        };
+        void browser.tabs.sendMessage(tabId, command);
     }
 }

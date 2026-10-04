@@ -15,6 +15,7 @@ import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common'
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
 import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
+import { negotiateAnimatedWebp, shouldUseAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
 import type { SettingsProvider } from '@project/common/settings';
 
 export default class StartRecordingMediaHandler {
@@ -49,6 +50,20 @@ export default class StartRecordingMediaHandler {
 
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot start recording media without a valid tab ID');
+
+        if (await shouldUseAnimatedWebp(this._settings, startRecordingCommand.message)) {
+            // The clip is collected, and the card published, when recording stops. Until then the
+            // subtitles/controls stay hidden (they were hidden for a clean capture) and the screenshot
+            // path is skipped, since the animated WebP takes its place.
+            const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = startRecordingCommand.message;
+            await this._audioRecorder.startAnimatedWebp(
+                true,
+                { maxWidth, maxHeight, rect, frameId, trimBlackBars },
+                { src: startRecordingCommand.src, tabId },
+                await negotiateAnimatedWebp(this._settings, tabId)
+            );
+            return;
+        }
 
         if (startRecordingCommand.message.record) {
             try {

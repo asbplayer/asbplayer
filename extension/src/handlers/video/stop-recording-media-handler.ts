@@ -4,8 +4,10 @@ import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     AudioModel,
     Command,
+    ExtensionToVideoCommand,
     ImageModel,
     Message,
+    ScreenshotTakenMessage,
     StopRecordingMediaMessage,
     SubtitleModel,
     VideoToExtensionCommand,
@@ -18,6 +20,7 @@ import {
     TimedRecordingInProgressError,
     NoRecordingInProgressServiceError,
 } from '@project/extension/src/services/audio-recorder-service';
+import { animatedWebpAudioModel } from '@project/extension/src/services/animated-webp-media';
 
 export default class StopRecordingMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -63,6 +66,11 @@ export default class StopRecordingMediaHandler {
 
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot stop recording media without a valid tab ID');
+
+        if (this._audioRecorder.animatedWebpRecording) {
+            await this._stopAnimatedWebp(stopRecordingCommand, subtitle, surroundingSubtitles, tabId);
+            return;
+        }
 
         if (stopRecordingCommand.message.screenshot) {
             try {
@@ -141,6 +149,72 @@ export default class StopRecordingMediaHandler {
             }
 
             throw e;
+        }
+    }
+
+    // The recording in progress is an animated WebP, so the image comes from stopping it rather than from
+    // a screenshot, and the audio was recorded in the same stream.
+    private async _stopAnimatedWebp(
+        stopRecordingCommand: VideoToExtensionCommand<StopRecordingMediaMessage>,
+        subtitle: SubtitleModel,
+        surroundingSubtitles: SubtitleModel[],
+        tabId: number
+    ) {
+        const { src, message } = stopRecordingCommand;
+
+        try {
+            let encodeAsMp3 = false;
+
+            if (message.postMineAction !== PostMineAction.showAnkiDialog) {
+                encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
+            }
+
+            const { base64, audioBase64 } = await this._audioRecorder.stopAnimatedWebp({ tabId, src });
+            const imageModel: ImageModel = {
+                base64,
+                extension: 'webp',
+                error: base64 ? undefined : ImageErrorCode.captureFailed,
+            };
+            const audioModel: AudioModel = {
+                ...(await animatedWebpAudioModel(audioBase64, encodeAsMp3, {
+                    audioPaddingStart: 0,
+                    audioPaddingEnd: 0,
+                    playbackRate: message.playbackRate,
+                })),
+                start: message.startTimestamp,
+                end: message.endTimestamp,
+            };
+
+            void this._cardPublisher.publish(
+                {
+                    subtitle: subtitle,
+                    surroundingSubtitles: surroundingSubtitles,
+                    image: imageModel,
+                    audio: audioModel,
+                    url: message.url,
+                    subtitleFileName: message.subtitleFileName,
+                    mediaTimestamp: message.startTimestamp,
+                },
+                message.postMineAction,
+                tabId,
+                src
+            );
+        } catch (e) {
+            // Same benign stop conditions as audio: a timed recording that was just cut short is published
+            // by whoever started it, and there's nothing to do if recording already finished.
+            if (e instanceof TimedRecordingInProgressError || e instanceof NoRecordingInProgressServiceError) {
+                return;
+            }
+
+            throw e;
+        } finally {
+            // Restore the subtitles/controls that were hidden for a clean capture
+            const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
+                sender: 'asbplayer-extension-to-video',
+                message: { command: 'screenshot-taken' },
+                src,
+            };
+            void browser.tabs.sendMessage(tabId, screenshotTakenCommand);
         }
     }
 }
