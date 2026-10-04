@@ -70,6 +70,9 @@ class SettingsAccessor {
     get preferMp3() {
         return this.settings.preferMp3;
     }
+    get alwaysUseSubtitleForSentence() {
+        return this.settings.alwaysUseSubtitleForSentence;
+    }
     get audioPaddingStart() {
         return this.settings.audioPaddingStart;
     }
