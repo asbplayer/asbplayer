@@ -1,6 +1,7 @@
-import { Command, HttpPostMessage, Message } from '@project/common';
+import type { Command, HttpPostMessage, Message } from '@project/common';
+import { asbError } from '@project/common/util/log';
 
-const allowedKeys = ['version', 'action', 'params', 'text', 'scanLength', 'parser', 'term'];
+const allowedKeys = ['version', 'action', 'params', 'key', 'text', 'scanLength', 'parser', 'term'];
 const allowedActions = [
     'areSuspended',
     'guiAddCards',
@@ -48,7 +49,10 @@ export default class HttpPostHandler {
         })
             .then((response) => response.json())
             .then((json) => sendResponse(json))
-            .catch((e) => sendResponse({ error: e.message }));
+            .catch((e) => {
+                asbError('http-post', e);
+                sendResponse({ error: e.message });
+            });
 
         return true;
     }

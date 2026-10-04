@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { makeStyles } from '@mui/styles';
-import { timeDurationDisplay } from '../services/util';
+import { timeDurationDisplay } from '@project/common/util';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
@@ -17,12 +17,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
-import { type Theme } from '@mui/material';
-import { CopyHistoryItem } from '../..';
-import { AudioClip } from '../../audio-clip';
-import { Image } from '../..';
+import type { Theme } from '@mui/material';
+import type { CopyHistoryItem } from '@project/common';
+import { AudioClip } from '@project/common/audio-clip';
+import { MediaFragment } from '@project/common';
 
 interface CopyHistoryListProps {
     open: boolean;
@@ -41,8 +41,9 @@ interface CopyHistoryListProps {
 const useStyles = makeStyles<Theme>((theme) => ({
     listContainer: {
         display: 'flex',
-        height: '100%',
         flexDirection: 'column',
+        flexGrow: 1,
+        minHeight: 0,
         overflowY: 'auto',
         overflowX: 'hidden',
     },
@@ -66,11 +67,11 @@ const useStyles = makeStyles<Theme>((theme) => ({
     },
     emptyState: {
         display: 'flex',
+        flexGrow: 1,
         justifyContent: 'center',
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        height: '100%',
         padding: 15,
     },
     text: {
@@ -107,7 +108,7 @@ const useImageAvailability = (item: CopyHistoryItem) => {
     const [isImageAvailable, setIsImageAvailable] = useState<boolean>();
 
     useEffect(() => {
-        const image = Image.fromCard(item, 0, 0);
+        const image = MediaFragment.fromCard(item, 0, 0);
 
         if (image) {
             setIsImageAvailable(image.error === undefined);
@@ -144,7 +145,7 @@ function Menu({
 }: MenuProps) {
     const { t } = useTranslation();
     const handleCopy = useCallback(() => {
-        navigator.clipboard.writeText(item!.subtitle.text);
+        void navigator.clipboard.writeText(item.subtitle.text);
         onClose();
     }, [item, onClose]);
 
@@ -153,22 +154,22 @@ function Menu({
             return;
         }
 
-        onSelect(item!);
+        onSelect(item);
         onClose();
     }, [item, onSelect, onClose]);
 
     const handleClipAudio = useCallback(() => {
-        onClipAudio(item!);
+        onClipAudio(item);
         onClose();
     }, [item, onClipAudio, onClose]);
 
     const handleDownloadImage = useCallback(() => {
-        onDownloadImage(item!);
+        onDownloadImage(item);
         onClose();
     }, [item, onDownloadImage, onClose]);
 
     const handleDelete = useCallback(() => {
-        onDelete(item!);
+        onDelete(item);
         onClose();
     }, [item, onDelete, onClose]);
 
@@ -247,21 +248,34 @@ export default function CopyHistoryList({
 }: CopyHistoryListProps) {
     const classes = useStyles();
     const listContainerRef = useRef<HTMLDivElement | null>(null);
-    const scrollToBottomRefCallback = useCallback((element: HTMLElement | null) => {
-        if (!element || !listContainerRef.current) {
+    const bottomElementRef = useRef<HTMLElement | null>(null);
+    const scrollToBottomRefCallback = useCallback((bottomElement: HTMLElement | null) => {
+        if (bottomElement) {
+            // Scroll to bottom on first mount.
+            const isMounting = !bottomElementRef.current;
+            bottomElementRef.current = bottomElement;
+
+            if (isMounting) {
+                bottomElement.scrollIntoView();
+            }
+        }
+
+        if (!bottomElement || !listContainerRef.current) {
             return;
         }
 
+        // Stick to bottom if already at bottom and a new item is added.
         const listElement = listContainerRef.current;
         const threshold = 20;
         const distanceToBottom =
-            listElement.scrollHeight - listElement.scrollTop - listElement.clientHeight - element.clientHeight;
+            listElement.scrollHeight - listElement.scrollTop - listElement.clientHeight - bottomElement.clientHeight;
         const shouldAutoScroll = distanceToBottom <= threshold;
 
         if (shouldAutoScroll) {
-            element.scrollIntoView();
+            bottomElement.scrollIntoView();
         }
     }, []);
+
     const [menuItem, setMenuItem] = useState<CopyHistoryItem>();
     const [menuOpen, setMenuOpen] = useState<boolean>(false);
     const [menuAnchorEl, setMenuAnchorEl] = useState<Element>();
@@ -293,7 +307,7 @@ export default function CopyHistoryList({
         let lastSeenItemName: string | null = null;
         let i = 0;
         const itemNameCounters: { [name: string]: number } = {};
-        let itemsBySection: { [key: string]: CopyHistoryItem[] } = {};
+        const itemsBySection: { [key: string]: CopyHistoryItem[] } = {};
         let currentKey: string | undefined;
 
         for (const item of items) {
@@ -314,7 +328,7 @@ export default function CopyHistoryList({
                         <Typography color="textSecondary">{item.subtitleFileName}</Typography>
                         {onDownloadSectionAsSrt && (
                             <ListItemSecondaryAction>
-                                <Tooltip title={t('copyHistory.downloadMinedSubsAsSrt')!}>
+                                <Tooltip title={t('copyHistory.downloadMinedSubsAsSrt')}>
                                     <IconButton
                                         onClick={() =>
                                             onDownloadSectionAsSrt?.(item.subtitleFileName, itemsBySection[key])
@@ -341,7 +355,7 @@ export default function CopyHistoryList({
                     classes={{ gutters: classes.listItemGutters }}
                 >
                     <ListItemIcon classes={{ root: classes.listItemIconRoot }}>
-                        <Tooltip title={t('copyHistory.exportToAnki')!}>
+                        <Tooltip title={t('copyHistory.exportToAnki')}>
                             <IconButton onClick={() => onAnki(item)}>
                                 <NoteAddIcon fontSize="small" />
                             </IconButton>
@@ -371,7 +385,7 @@ export default function CopyHistoryList({
         }
 
         content = (
-            <Paper className={classes.listContainer} ref={listContainerRef}>
+            <Paper square className={classes.listContainer} ref={listContainerRef}>
                 <List className={classes.list}>{elements}</List>
                 <Button
                     variant="contained"
@@ -386,7 +400,7 @@ export default function CopyHistoryList({
         );
     } else {
         content = (
-            <Paper className={classes.emptyState}>
+            <Paper square className={classes.emptyState}>
                 <Typography variant="h6">{t('copyHistory.miningHistoryEmpty')}</Typography>
             </Paper>
         );

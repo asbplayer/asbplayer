@@ -1,12 +1,12 @@
 <p align="center">
-    <img src="https://raw.githubusercontent.com/killergerbah/asbplayer/main/extension/public/icon/icon128.png" width="75" height="75" style="border-radius: 16px" alt="asbplayer" />
+    <img src="https://raw.githubusercontent.com/asbplayer/asbplayer/main/extension/public/icon/icon128.png" width="75" height="75" style="border-radius: 16px" alt="asbplayer" />
 </p>
 
 <div align="center">
 
-[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/killergerbah/asbplayer/verify.yml)](https://github.com/killergerbah/asbplayer/actions/workflows/verify.yml)
-[![Github All Releases](https://img.shields.io/github/downloads/killergerbah/asbplayer/total.svg)](https://github.com/killergerbah/asbplayer/releases)
-[![GitHub License](https://img.shields.io/github/license/killergerbah/asbplayer)](https://github.com/killergerbah/asbplayer?tab=MIT-1-ov-file)
+[![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/asbplayer/asbplayer/verify.yml)](https://github.com/asbplayer/asbplayer/actions/workflows/verify.yml)
+[![Github All Releases](https://img.shields.io/github/downloads/asbplayer/asbplayer/total.svg)](https://github.com/asbplayer/asbplayer/releases)
+[![GitHub License](https://img.shields.io/github/license/asbplayer/asbplayer)](LICENSE)
 [![Discord](https://img.shields.io/discord/962412001810849814?color=%237785cc)](https://discord.gg/ad7VAQru7m)
 
 </div>
@@ -16,22 +16,24 @@
 **asbplayer** is a browser-based media player and Chrome extension developed for language learners who learn their target language through subtitled media. With asbplayer, you can:
 
 - **Easily create high-quality, multimedia flashcards** out of subtitled videos.
-- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**.
+- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
 - **Seek through subtitles** using a **navigable subtitle list**.
 - **Optimize language acquisition** with **playback modes** like:
-  - **Condensed playback**: Skip unsubtitled sections of video.
-  - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
-  - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
+    - **Condensed playback**: Skip unsubtitled sections of video.
+    - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
+    - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
 - **Use customizable keyboard shortcuts** to access most of asbplayer's features.
 - **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
-  - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki and/or tracked locally in asbplayer.
-  - **Reading annotation** for pronunciation displayed above each word or based on status.
-  - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
-  - Many more features for future releases! Some planned features include:
-    - **Statistics and Comprehension** on your known words for the current video and across videos.
-    - **Word browser** to manage local and Anki-synced words.
-    - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
-    - **Accent annotation** such as pitch accent, tones, gender, etc.
+    - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
+    - **Reading annotation** for reading displayed above each word or based on status.
+    - **Accent annotation** such as pitch accent.
+    - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
+    - **Glossary annotation** for a short definition or explanation of the word.
+    - **Statistics and Comprehension** on your known words for the current media.
+    - **Word browser** to manage local and view words synced from external sources.
+    - Many more features for future releases! Some planned features include:
+        - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
+        - **Statistics and Comprehension** on your known words across media.
 
 ## Thanks
 
@@ -80,7 +82,11 @@ ags,
 Vannde3,
 Champ,
 marcman3001,
-[@vladysor](https://github.com/vladysor)
+[@vladysor](https://github.com/vladysor),
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
+shiki,
+kansha-gratitude
 
 and to those who have donated privately.
 
@@ -121,25 +127,50 @@ Thank you to all those who have contributed to asbplayer:
 [@danthemango](https://github.com/danthemango),
 [@L-M-Sherlock](https://github.com/L-M-Sherlock),
 [@Hit2Skill](https://github.com/Hit2Skill),
-[@khajiitvaper2017](https://github.com/khajiitvaper2017)
+[@khajiitvaper2017](https://github.com/khajiitvaper2017),
+[@saifkaral](https://github.com/saifkaral),
+[@xwxb](https://github.com/xwxb),
+[@yqmmm](https://github.com/yqmmm),
+[@jprostko](https://github.com/jprostko),
+[@rodrigo-suarezmajor](https://github.com/rodrigo-suarezmajor),
+[@Roka20012](https://github.com/Roka20012),
+[@RonzyOnGIT](https://github.com/RonzyOnGIT),
+[@Dr-TNineS](https://github.com/Dr-TNineS),
+[@thntx](https://github.com/thntx),
+[@Otto-Deviant1904](https://github.com/Otto-Deviant1904),
+[@Ayase-the-Dark](https://github.com/Ayase-the-Dark),
+[@aramrw](https://github.com/aramrw),
+[@steckums](https://github.com/steckums),
+[@eXaminator](https://github.com/eXaminator),
+[@rajpiskala](https://github.com/rajpiskala),
+[@gpressutto5](https://github.com/gpressutto5),
+[@chadzimmerman](https://github.com/chadzimmerman)
 
 Thank you to all those who have translated asbplayer:
 
 **Mana Tsutsumi** (Japanese, initial translation),
 **Kai Böse** (German),
-**Triline**, **nekorushi** (Polish),
+**Triline**, **[@nekorushi](https://github.com/nekorushi)** (Polish),
 **NeverWinterSwor** (Simplified Chinese),
-**Yagxter**, **Chatterine** (Brazilian Portuguese),
+**[@AkihaZhang](https://github.com/AkihaZhang)** (Simplified Chinese),
+**senorli** (Simplified Chinese),
+**Yagxter**, **[@chatterine](https://github.com/chatterine)** (Brazilian Portuguese),
 **Leo Gonzalez** (Spanish),
-**Yuri (ganqqwerty)** (Russian),
+**[@NovaKing007](https://github.com/NovaKing007)** (Spanish),
+**Yuri ([@ganqqwerty](https://github.com/ganqqwerty))** (Russian),
 **Kellen (kputuhuk)** (Russian),
 **Vladislav Kochetkov (vakochetkov)** (Russian),
-**825i** (Finnish),
-**Jaybird1291** (French),
+**[@825i](https://github.com/825i)** (Finnish),
+**[@Jaybird1291](https://github.com/jaybird1291)** (French),
 **Tigerbabe aka Gyaru Jinsei Juku** (Korean),
-**yaacha** (Indonesian)
+**yaacha** (Indonesian),
+**[@NeriSal](https://github.com/nerisal)** (Italian)
 
-If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue to add it on the [issues page](https://github.com/killergerbah/asbplayer/issues).
+If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue to add it on the [issues page](https://github.com/asbplayer/asbplayer/issues).
+
+## Contributing
+
+Before contributing, please read the [contribution guidelines](https://github.com/asbplayer/asbplayer/blob/main/CONTRIBUTING.md).
 
 ## User guide
 
@@ -150,13 +181,13 @@ asbplayer's complete user guide is [here](https://docs.asbplayer.dev/docs/intro)
 > [!NOTE]  
 > asbplayer is both a subtitle control and flashcard creation tool. If you are not interested in flashcards, and only want to use asbplayer's subtitle features, just follow step 5.
 
-1. Install and set up a dictionary tool for your target language that allows you to do instant lookups. Popular ones are [Yomitan](https://chromewebstore.google.com/detail/yomitan/likgccmbimhjbgkjambclfkhldnlhbnn) (see [supported languages](https://yomitan.wiki/other/supported-languages/)) and [VocabSieve](https://github.com/FreeLanguageTools/vocabsieve) (tuned for European languages. Works with Asian languages too but doesn't automatically detect word boundaries).
+1. Install and set up a dictionary tool for your target language that allows you to do instant lookups such as [Yomitan](https://chromewebstore.google.com/detail/yomitan/likgccmbimhjbgkjambclfkhldnlhbnn).
 2. Install [Anki](https://apps.ankiweb.net/), and create a deck and note type. More details on [Refold's guide](https://refold.la/roadmap/stage-1/a/anki-setup).
 3. Install the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) plugin for Anki.
-4. [Configure](https://killergerbah.github.io/asbplayer/?view=settings) asbplayer to create cards via AnkiConnect using your deck and note type.
+4. [Configure](https://app.asbplayer.dev/?view=settings) asbplayer to create cards via AnkiConnect using your deck and note type.
 5. Enhance a video using asbplayer and subtitle files.
-    - **For streaming video:** After installing the [browser extension](https://github.com/killergerbah/asbplayer/releases/latest), drag-and-drop a subtitle file into the streaming video you want to mine.
-    - **For local files:** Drag-and-drop media/subtitle files into the [asbplayer website](https://killergerbah.github.io/asbplayer).
+    - **For streaming video:** After installing the [browser extension](https://github.com/asbplayer/asbplayer/releases/latest), drag-and-drop a subtitle file into the streaming video you want to mine.
+    - **For local files:** Drag-and-drop media/subtitle files into the [asbplayer website](https://app.asbplayer.dev).
 
     You may have to [adjust the subtitle offset](https://docs.asbplayer.dev/docs/guides/subtitle-timing) to get the subtitles in sync.
 
@@ -165,26 +196,28 @@ asbplayer's complete user guide is [here](https://docs.asbplayer.dev/docs/intro)
 
 ## Contact
 
-Submit bugs or feature requests from the [issues page](https://github.com/killergerbah/asbplayer/issues). Join the [Discord](https://discord.gg/ad7VAQru7m) server to talk with me and other language learners.
+Submit bugs or feature requests from the [issues page](https://github.com/asbplayer/asbplayer/issues). Join the [Discord](https://discord.gg/ad7VAQru7m) server to talk with me and other language learners.
 
 ## Notes for AMO source code reviewers
 
 ### Environment
 
-```
-node 22.17.1
-yarn 3.2.0
-```
+node 24.21.0
+pnpm 11.27.0
 
 ### Building
 
-```
+```sh
 # Install dependencies
-yarn
+pnpm install
 
 # Builds Firefox extension to extension/.output/asbplayer-<version>-firefox.zip
-yarn workspace @project/extension run wxt zip -b firefox
+pnpm --filter @project/extension run wxt zip -b firefox
 
 # Builds Firefox for Android extension to extension/.output/asbplayer-<version>-firefox-android.zip
-yarn workspace @project/extension run wxt zip -b firefox-android --mv2
+pnpm --filter @project/extension run wxt zip -b firefox-android --mv2
 ```
+
+## License
+
+asbplayer is licensed under the GNU Affero General Public License version 3 or later (AGPL-3.0-or-later). Portions of this software are licensed under the MIT License.

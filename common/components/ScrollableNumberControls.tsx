@@ -1,8 +1,9 @@
 import { makeStyles } from '@mui/styles';
-import PlaybackRateInput from './PlaybackRateInput';
-import SubtitleOffsetInput from './SubtitleOffsetInput';
-import TimeDisplay from './TimeDisplay';
-import { MutableRefObject, useCallback, useRef, useState } from 'react';
+import PlaybackRateInput from '@project/common/components/PlaybackRateInput';
+import SubtitleOffsetInput from '@project/common/components/SubtitleOffsetInput';
+import TimeDisplay from '@project/common/components/TimeDisplay';
+import type { MutableRefObject } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ControlType } from '..';
 
 const containerHeight = 40;
@@ -69,7 +70,7 @@ const ScrollableNumberControls = ({
     const initialScrollRef = useRef<InitialScrollState>(undefined);
     initialScrollRef.current = initialScroll;
     const containerRef = useRef<HTMLDivElement>(undefined);
-    const programmaticallyScrollingTimeoutRef = useRef<NodeJS.Timeout>(undefined);
+    const programmaticallyScrollingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
     const controlTypeRef = useRef<number>(controlType);
     const onScrollToRef = useRef<(controlType: ControlType) => void>(undefined);
     onScrollToRef.current = onScrollTo;

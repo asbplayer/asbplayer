@@ -2,7 +2,7 @@ export class CachedLocalStorage {
     private _cache: { [key: string]: string | null } = {};
 
     get(key: string): string | null {
-        let cached = this._cache[key];
+        const cached = this._cache[key];
 
         if (cached === undefined) {
             const fromStorage = localStorage.getItem(key);

@@ -1,11 +1,19 @@
-import {
+import type {
     AsbPlayerCommand,
     AsbPlayerToVideoCommandV2,
     AsbplayerInstance,
     CardModel,
+    DictionaryRequestStatisticsGenerationMessage,
+    DictionaryRequestStatisticsSnapshotMessage,
+    DictionaryRequestStatisticsMineSentencesMessage,
+    DictionaryRequestStatisticsSeekMessage,
+    DictionaryStatisticsMessage,
     ExtensionToAsbPlayerCommand,
     ExtensionToAsbPlayerCommandTabsCommand,
+    AppendLogsMessage,
     GetSettingsMessage,
+    GetLogsMessage,
+    GetLogsResponse,
     Message,
     MessageWithId,
     ToggleSidePanelMessage,
@@ -20,6 +28,9 @@ import {
     AddProfileMessage,
     RemoveProfileMessage,
     RequestSubtitlesFromAppMessage,
+    RequestSubtitlesResponse,
+    LocalSubtitlesResponseMessage,
+    SubtitleTrack,
     LoadSubtitlesMessage,
     RequestCopyHistoryMessage,
     RequestCopyHistoryResponse,
@@ -30,19 +41,31 @@ import {
     SetGlobalStateMessage,
     GetGlobalStateMessage,
     DictionaryBuildAnkiCacheMessage,
+    DictionaryBuildWaniKaniCacheMessage,
+    DictionaryGetAllTokensMessage,
+    DictionaryGetRecordsMessage,
     DictionaryGetBulkMessage,
     DictionaryGetByLemmaBulkMessage,
     DictionarySaveRecordLocalBulkMessage,
     DictionaryDeleteRecordLocalBulkMessage,
+    DictionaryDeleteRecordsMessage,
     DictionaryDeleteProfileMessage,
     DictionaryExportRecordLocalBulkMessage,
     DictionaryImportRecordLocalBulkMessage,
+    DictionaryUpdateRecordsMessage,
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
     SaveTokenLocalFromAppMessage,
+    SidePanelLocation,
+    AckTabsMessage,
+    BrowserFeatures,
 } from '@project/common';
-import {
+import { asbError } from '@project/common/util/log';
+import { buildSubtitleTracks } from '@project/common/util';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     DictionaryLocalTokenInput,
+    DictionaryTokenKey,
     DictionaryTokenRecord,
     DictionaryExportRecordLocalResult,
     DictionaryImportRecordLocalResult,
@@ -51,8 +74,12 @@ import {
     TokenResults,
     DictionaryDeleteRecordLocalResult,
     DictionaryDeleteProfileResult,
+    DictionaryRecordDeleteResult,
+    DictionaryRecordUpdateInput,
+    DictionaryRecordUpdateResult,
+    DictionaryRecordsResult,
 } from '@project/common/dictionary-db';
-import {
+import type {
     ApplyStrategy,
     AsbplayerSettings,
     PageSettings,
@@ -61,11 +88,13 @@ import {
     TokenState,
     TokenStatus,
 } from '@project/common/settings';
-import { GlobalState } from '@project/common/global-state';
+import { isSaveOnlySettings } from '@project/common/settings';
+import type { GlobalState } from '@project/common/global-state';
 import { v4 as uuidv4 } from 'uuid';
+import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import gte from 'semver/functions/gte';
 import gt from 'semver/functions/gt';
-import { isFirefox } from '../../browser-detection';
+import { isFirefox } from '@project/common/browser-detection';
 import { isMobile } from 'react-device-detect';
 
 export interface ExtensionMessage {
@@ -80,25 +109,29 @@ export default class ChromeExtension {
     readonly version: string;
     readonly extensionCommands: { [key: string]: string | undefined };
     readonly pageConfig?: { [K in keyof PageSettings]: SettingsFormPageConfig };
+    readonly browserFeatures?: BrowserFeatures;
 
     tabs: VideoTabModel[] | undefined;
     asbplayers: AsbplayerInstance[] | undefined;
     installed: boolean;
     sidePanel: boolean;
+    sidePanelAppRequestedLocation?: SidePanelLocation;
     videoPlayer: boolean | undefined;
     syncedVideoElement: VideoTabModel | undefined;
     loadedSubtitles: boolean = false;
+    subtitleTracks: SubtitleTrack[] = [];
 
     private readonly windowEventListener: (event: MessageEvent) => void;
     private readonly _responseResolves: { [key: string]: (value: any) => void } = {};
     private onMessageCallbacks: Array<(message: ExtensionMessage) => void>;
     private onTabsCallbacks: Array<(tabs: VideoTabModel[]) => void>;
-    private heartbeatInterval?: NodeJS.Timeout;
+    private heartbeatInterval?: ReturnType<typeof setInterval>;
 
     constructor(
         version?: string,
         extensionCommands?: { [key: string]: string | undefined },
-        pageConfig?: { [K in keyof PageSettings]: SettingsFormPageConfig }
+        pageConfig?: { [K in keyof PageSettings]: SettingsFormPageConfig },
+        browserFeatures?: BrowserFeatures
     ) {
         this.onMessageCallbacks = [];
         this.onTabsCallbacks = [];
@@ -106,6 +139,7 @@ export default class ChromeExtension {
         this.version = version ?? '';
         this.extensionCommands = extensionCommands ?? {};
         this.pageConfig = pageConfig;
+        this.browserFeatures = browserFeatures;
         this.sidePanel = false;
         this.windowEventListener = (event: MessageEvent) => {
             if (event.source !== window) {
@@ -134,24 +168,30 @@ export default class ChromeExtension {
                 this.tabs = tabsCommand.message.tabs;
                 this.asbplayers = tabsCommand.message.asbplayers;
 
-                for (let c of this.onTabsCallbacks) {
+                for (const c of this.onTabsCallbacks) {
                     c(this.tabs);
                 }
 
                 if (tabsCommand.message.ackRequested) {
+                    const ackTabsMessage: AckTabsMessage = {
+                        command: 'ackTabs',
+                        id: id,
+                        receivedTabs: this.tabs,
+                        sidePanel: this.sidePanel,
+                        sidePanelAppRequestedLocation: this.sidePanelAppRequestedLocation,
+                        loadedSubtitles: this.loadedSubtitles,
+                        subtitleTracks: this.subtitleTracks,
+                        syncedVideoElement: this.syncedVideoElement,
+                        videoPlayer: this.videoPlayer ?? false,
+                    };
                     window.postMessage({
                         sender: 'asbplayerv2',
-                        message: {
-                            command: 'ackTabs',
-                            id: id,
-                            receivedTabs: this.tabs,
-                            sidePanel: this.sidePanel,
-                        },
+                        message: ackTabsMessage,
                     });
                 }
             } else {
                 const command = event.data as ExtensionToAsbPlayerCommand<Message>;
-                for (let c of this.onMessageCallbacks) {
+                for (const c of this.onMessageCallbacks) {
                     c({
                         data: command.message,
                         tabId: command.tabId,
@@ -162,6 +202,58 @@ export default class ChromeExtension {
         };
 
         window.addEventListener('message', this.windowEventListener);
+    }
+
+    get supportsLogs() {
+        return this.installed && gte(this.version, '1.22.0');
+    }
+
+    get supportsSubtitlesWidthInPixels() {
+        return this.installed && gte(this.version, '1.22.0');
+    }
+
+    get supportsAutoPauseResume() {
+        return this.installed && gte(this.version, '1.21.0');
+    }
+
+    get supportsSubtitleListCustomization() {
+        return this.installed && gte(this.version, '1.21.0');
+    }
+
+    get supportsPlaybackEngine() {
+        return this.installed && gte(this.version, '1.20.0');
+    }
+
+    get supportsSubtitleTrackSelectorInWebApp() {
+        return this.installed && gte(this.version, '1.20.0');
+    }
+
+    get supportsDictionaryTokenAnnotationConfig() {
+        return this.installed && gte(this.version, '1.19.0');
+    }
+
+    get supportsDictionaryMatchAcrossScripts() {
+        return this.installed && gte(this.version, '1.18.0');
+    }
+
+    get supportsDictionaryWaniKani() {
+        return this.installed && gte(this.version, '1.18.0');
+    }
+
+    get supportsAutoCopyableTrackSetting() {
+        return this.installed && gte(this.version, '1.17.0');
+    }
+
+    get supportsSeekableTrackSetting() {
+        return this.installed && gte(this.version, '1.17.0');
+    }
+
+    get supportsDictionaryBrowser() {
+        return this.installed && gte(this.version, '1.17.0');
+    }
+
+    get supportsDictionaryStatistics() {
+        return this.installed && gte(this.version, '1.16.0');
     }
 
     get supportsDictionaryYomitanMecab() {
@@ -227,6 +319,7 @@ export default class ChromeExtension {
     get supportsSidePanel() {
         return (
             this.installed &&
+            (this.browserFeatures?.sidePanel ?? false) &&
             ((!isFirefox && !isMobile && gte(this.version, '1.0.0')) ||
                 (isFirefox && !isMobile && gte(this.version, '1.14.0')))
         );
@@ -250,6 +343,14 @@ export default class ChromeExtension {
 
     get supportsOffsetMessage() {
         return this.installed && gte(this.version, '0.23.0');
+    }
+
+    get id() {
+        return id;
+    }
+
+    setSubtitleTracks(subtitles: { track: number }[], subtitleFileNames: string[]) {
+        this.subtitleTracks = buildSubtitleTracks(subtitles, subtitleFileNames);
     }
 
     startHeartbeat() {
@@ -290,7 +391,9 @@ export default class ChromeExtension {
             receivedTabs: fromVideoPlayer ? [] : this.tabs,
             videoPlayer: fromVideoPlayer,
             sidePanel: this.sidePanel,
+            sidePanelAppRequestedLocation: this.sidePanelAppRequestedLocation,
             loadedSubtitles,
+            subtitleTracks: this.subtitleTracks,
             syncedVideoElement,
         };
         window.postMessage({
@@ -328,7 +431,9 @@ export default class ChromeExtension {
                 src: src,
             };
             window.postMessage(command);
-            this._createResponsePromise(messageId).then(callback);
+            void this._createResponsePromise(messageId)
+                .then(callback)
+                .catch((error) => asbError('app/extension', 'Failed to receive a video response:', error));
         }
     }
 
@@ -343,11 +448,12 @@ export default class ChromeExtension {
         window.postMessage(command);
     }
 
-    toggleSidePanel() {
+    toggleSidePanel(location?: SidePanelLocation) {
         const command: AsbPlayerCommand<ToggleSidePanelMessage> = {
             sender: 'asbplayerv2',
             message: {
                 command: 'toggle-side-panel',
+                location,
             },
         };
         window.postMessage(command);
@@ -403,6 +509,18 @@ export default class ChromeExtension {
         return this._createResponsePromise(messageId);
     }
 
+    sendSubtitles(messageId: string, response: RequestSubtitlesResponse) {
+        const command: AsbPlayerCommand<LocalSubtitlesResponseMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'local-subtitles-response',
+                messageId,
+                response,
+            },
+        };
+        window.postMessage(command);
+    }
+
     saveTokenLocal(
         tabId: number,
         src: string,
@@ -442,7 +560,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<RequestCopyHistoryResponse>;
+        return this._createResponsePromise<RequestCopyHistoryResponse>(messageId);
     }
 
     deleteCopyHistory(id: string) {
@@ -456,7 +574,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<void>;
+        return this._createResponsePromise(messageId);
     }
 
     saveCopyHistory(copyHistoryItem: CopyHistoryItem) {
@@ -470,7 +588,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<void>;
+        return this._createResponsePromise(messageId);
     }
 
     clearCopyHistory() {
@@ -483,7 +601,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId) as Promise<void>;
+        return this._createResponsePromise(messageId);
     }
 
     loadSubtitles(tabId: number, src: string) {
@@ -521,7 +639,39 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId).then(() => this.notifySettingsUpdated());
+        return this._createResponsePromise(messageId).then(() => {
+            if (!isSaveOnlySettings(settings)) this.notifySettingsUpdated();
+        });
+    }
+
+    appendLogs(lines: readonly LogLine[]): Promise<void> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<AppendLogsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'append-logs',
+                lines,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise<void>(messageId);
+    }
+
+    getLogs(): Promise<LogSnapshot> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<GetLogsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'get-logs',
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise<GetLogsResponse>(messageId).then((response) => {
+            if ('error' in response) throw new Error(response.error);
+            return response;
+        });
     }
 
     getGlobalState(): Promise<GlobalState> {
@@ -628,7 +778,22 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
+    }
+
+    async dictionaryGetAllTokens(profile: string | undefined, track: number): Promise<TokenResults> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryGetAllTokensMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-get-all-tokens',
+                profile,
+                track,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryGetByLemmaBulk(
@@ -648,12 +813,12 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionarySaveRecordLocalBulk(
         profile: string | undefined,
-        localTokenInputs: DictionaryLocalTokenInput[],
+        localTokenInputs: readonly DictionaryLocalTokenInput[],
         applyStates: ApplyStrategy
     ): Promise<DictionarySaveRecordLocalResult> {
         const messageId = uuidv4();
@@ -668,7 +833,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryDeleteRecordLocalBulk(
@@ -686,7 +851,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryDeleteProfile(profile: string): Promise<DictionaryDeleteProfileResult> {
@@ -700,7 +865,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryExportRecordLocalBulk(): Promise<DictionaryExportRecordLocalResult> {
@@ -713,7 +878,7 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
     async dictionaryImportRecordLocalBulk(
@@ -731,17 +896,136 @@ export default class ChromeExtension {
             },
         };
         window.postMessage(command);
-        return await this._createResponsePromise(messageId);
+        return this._createResponsePromise(messageId);
     }
 
-    buildAnkiCache(profile: string | undefined, settings: AsbplayerSettings): Promise<void> {
+    async dictionaryGetRecords(
+        profile: string | undefined,
+        track: number | undefined
+    ): Promise<DictionaryRecordsResult> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryGetRecordsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-get-records',
+                profile,
+                track,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId, 60000); // Usually a few seconds
+    }
+
+    async dictionaryUpdateRecords(
+        profile: string | undefined,
+        updates: DictionaryRecordUpdateInput[],
+        applyStates: ApplyStrategy
+    ): Promise<DictionaryRecordUpdateResult> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryUpdateRecordsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-update-records',
+                profile,
+                updates,
+                applyStates,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId, 60000); // Usually a few seconds
+    }
+
+    async dictionaryDeleteRecords(
+        profile: string | undefined,
+        tokenKeys: DictionaryTokenKey[]
+    ): Promise<DictionaryRecordDeleteResult> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryDeleteRecordsMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-delete-records',
+                profile,
+                tokenKeys,
+                messageId,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId, 60000); // Usually a few seconds
+    }
+
+    buildAnkiCache(profile: string | undefined, settings?: AsbplayerSettings): Promise<void> {
         const messageId = uuidv4();
         const command: AsbPlayerCommand<DictionaryBuildAnkiCacheMessage> = {
             sender: 'asbplayerv2',
-            message: { command: 'dictionary-build-anki-cache', messageId, profile, settings },
+            message: {
+                command: 'dictionary-build-anki-cache',
+                messageId,
+                profile,
+                ...(this.supportsDictionaryWaniKani ? {} : { settings }),
+            },
         };
         window.postMessage(command);
-        return this._createResponsePromise(messageId, 60000); // Usually <10s
+        return this._createResponsePromise(messageId, 300000); // Usually <10s
+    }
+
+    buildWaniKaniCache(profile: string | undefined): Promise<void> {
+        const messageId = uuidv4();
+        const command: AsbPlayerCommand<DictionaryBuildWaniKaniCacheMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-build-wanikani-cache',
+                messageId,
+                profile,
+            },
+        };
+        window.postMessage(command);
+        return this._createResponsePromise(messageId, 300000); // Usually <10s
+    }
+
+    publishStatisticsSnapshot(mediaId: string, snapshot?: DictionaryStatisticsSnapshot) {
+        const command: AsbPlayerCommand<DictionaryStatisticsMessage> = {
+            sender: 'asbplayerv2',
+            message: { command: 'dictionary-statistics', mediaId, snapshot },
+        };
+        window.postMessage(command);
+    }
+
+    requestStatisticsSnapshot(mediaId?: string) {
+        const command: AsbPlayerCommand<DictionaryRequestStatisticsSnapshotMessage> = {
+            sender: 'asbplayerv2',
+            message: { command: 'dictionary-request-statistics-snapshot', mediaId },
+        };
+        window.postMessage(command);
+    }
+
+    requestStatisticsGeneration(mediaId?: string) {
+        const command: AsbPlayerCommand<DictionaryRequestStatisticsGenerationMessage> = {
+            sender: 'asbplayerv2',
+            message: { command: 'dictionary-request-statistics-generation', mediaId },
+        };
+        window.postMessage(command);
+    }
+
+    requestStatisticsSeek(mediaId: string, timestamp: number) {
+        const command: AsbPlayerCommand<DictionaryRequestStatisticsSeekMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'dictionary-request-statistics-seek',
+                mediaId,
+                timestamp,
+            },
+        };
+        window.postMessage(command);
+    }
+
+    requestStatisticsMineSentences(mediaId: string, indexes: number[]) {
+        const command: AsbPlayerCommand<DictionaryRequestStatisticsMineSentencesMessage> = {
+            sender: 'asbplayerv2',
+            message: { command: 'dictionary-request-statistics-mine-sentences', mediaId, indexes },
+        };
+        window.postMessage(command);
     }
 
     private _createResponsePromise<T>(messageId: string, timeout = 5000) {
@@ -770,7 +1054,7 @@ export default class ChromeExtension {
         return () => this._remove(callback, this.onMessageCallbacks);
     }
 
-    _remove(callback: Function, callbacks: Function[]) {
+    _remove<T>(callback: T, callbacks: T[]) {
         for (let i = callbacks.length - 1; i >= 0; --i) {
             if (callback === callbacks[i]) {
                 callbacks.splice(i, 1);

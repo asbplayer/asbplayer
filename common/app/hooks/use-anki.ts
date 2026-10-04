@@ -1,6 +1,6 @@
-import { Fetcher } from '../..';
-import { Anki } from '../../anki';
-import { AnkiSettings } from '../../settings';
+import type { Fetcher } from '@project/common';
+import { Anki } from '@project/common/anki';
+import type { AnkiSettings } from '@project/common/settings';
 import { useMemo } from 'react';
 
 class SettingsAccessor {
@@ -8,6 +8,9 @@ class SettingsAccessor {
 
     get ankiConnectUrl() {
         return this.settings.ankiConnectUrl;
+    }
+    get ankiConnectApiKey() {
+        return this.settings.ankiConnectApiKey;
     }
     get deck() {
         return this.settings.deck;
@@ -79,6 +82,21 @@ class SettingsAccessor {
     get maxImageHeight() {
         return this.settings.maxImageHeight;
     }
+    get mediaFragmentFormat() {
+        return this.settings.mediaFragmentFormat;
+    }
+    get mediaFragmentTrimStart() {
+        return this.settings.mediaFragmentTrimStart;
+    }
+    get mediaFragmentTrimEnd() {
+        return this.settings.mediaFragmentTrimEnd;
+    }
+    get mediaFragmentMaxClipLength() {
+        return this.settings.mediaFragmentMaxClipLength;
+    }
+    get trimBlackBars() {
+        return this.settings.trimBlackBars;
+    }
     get surroundingSubtitlesCountRadius() {
         return this.settings.surroundingSubtitlesCountRadius;
     }
@@ -87,6 +105,9 @@ class SettingsAccessor {
     }
     get recordWithAudioPlayback() {
         return this.settings.recordWithAudioPlayback;
+    }
+    get ankiRefreshBrowserAfterUpdate() {
+        return this.settings.ankiRefreshBrowserAfterUpdate;
     }
 }
 

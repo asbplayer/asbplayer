@@ -1,4 +1,4 @@
-import { StorageArea } from './extension-settings-storage';
+import type { StorageArea } from '@project/extension/src/services/extension-settings-storage';
 
 export class MockStorageArea implements StorageArea {
     private _values: { [key: string]: any } = {};

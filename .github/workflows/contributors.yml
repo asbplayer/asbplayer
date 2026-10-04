@@ -1,0 +1,36 @@
+name: Contributors
+
+on:
+    pull_request_target:
+        branches: main
+        types: [opened, synchronize, reopened, edited]
+
+permissions:
+    contents: read
+
+jobs:
+    contributors:
+        name: Contributor licensing
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+
+            - name: Fetch pull request commits
+              run: |
+                  git fetch --no-tags origin \
+                    "refs/pull/${{ github.event.pull_request.number }}/head"
+
+            - name: Check contributor licensing
+              run: node --experimental-strip-types scripts/check-contributors.ts
+              env:
+                  CONTRIBUTORS_BYPASS: ${{ secrets.CONTRIBUTORS_BYPASS }}
+                  CONTRIBUTORS_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+                  CONTRIBUTORS_HEAD_SHA: ${{ github.event.pull_request.head.sha }}

@@ -1,9 +1,10 @@
-import { AudioClip } from '@project/common/audio-clip';
-import { AnkiExportMode, CardModel, Image, Progress } from '@project/common';
-import { HttpFetcher, Fetcher } from '@project/common';
-import { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
-import sanitize from 'sanitize-filename';
+import { asbError, asbInfo } from '@project/common/util/log';
 import { extractText, fromBatches, sourceString } from '@project/common/util';
+import { AudioClip } from '@project/common/audio-clip';
+import type { AnkiExportMode, CardModel, Progress, Fetcher } from '@project/common';
+import { MediaFragment, HttpFetcher } from '@project/common';
+import type { AnkiSettings, AnkiSettingsFieldKey } from '@project/common/settings';
+import sanitize from 'sanitize-filename';
 
 const ANKI_CARDS_INFO_BATCH_SIZE = 10;
 const ANKI_NOTES_INFO_BATCH_SIZE = 100;
@@ -12,8 +13,24 @@ const ANKI_MOD_BATCH_SIZE = 10000;
 const ankiQuerySpecialCharacters = ['"', '*', '_', '\\', ':'];
 const ankiQueryDeckSpecialCharacters = ['"', '*', '_', '\\'];
 const alphaNumericCharacters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-const unsafeURLChars = /[:\/\?#\[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
+const unsafeURLChars = /[:/?#[\]@!$&'()*+,;= "<>%{}|\\^`]/g;
 const replacement = '_';
+
+const logMediaCreationTime = (type: string, extension: string, durationMs: number, fileName: string) => {
+    asbInfo('anki/media', `${type} creation took ${durationMs}ms (${fileName}, .${extension})`);
+};
+
+const timedMediaBase64 = async (
+    type: string,
+    extension: string,
+    fileName: string,
+    getBase64: () => Promise<string>
+) => {
+    const startedAt = Date.now();
+    const data = await getBase64();
+    logMediaCreationTime(type, extension, Date.now() - startedAt, fileName);
+    return data;
+};
 
 export function escapeAnkiQuery(query: string) {
     let escaped = '';
@@ -72,14 +89,14 @@ const makeUniqueFileName = (fileName: string) => {
     return `${baseName}_${randomString()}.${exension}`;
 };
 
-const htmlTagRegexString = '<([^/ >])*[^>]*>(.*?)</\\1>';
+const htmlTagRegexString = '<([^/ >]+)[^>]*>(.*?)</\\1>';
 const anyHtmlTagRegex = /<[^>]+>/;
 
 // Given <a><b>content</b></a> return ['<a><b>content</b></a>', '<b>content</b>', 'content']
 const tagContent = (html: string) => {
     const htmlTagRegex = new RegExp(htmlTagRegexString);
     let content = html;
-    let contents = [html];
+    const contents = [html];
 
     while (true) {
         const match = htmlTagRegex.exec(content);
@@ -136,24 +153,38 @@ export interface ExportParams {
     track3: string | undefined;
     definition: string | undefined;
     audioClip: AudioClip | undefined;
-    image: Image | undefined;
+    image: MediaFragment | undefined;
     word: string | undefined;
     source: string | undefined;
     url: string | undefined;
     customFieldValues: { [key: string]: string };
     tags: string[];
     mode: AnkiExportMode;
+    noteId?: number;
     ankiConnectUrl?: string;
+}
+
+interface EncodedMedia {
+    sanitizedName: string;
+    data: string;
+}
+
+interface Base64Exportable {
+    name: string;
+    extension: string;
+    base64: () => Promise<string>;
 }
 
 export async function exportCard(
     card: CardModel,
     ankiSettings: AnkiSettings,
-    exportMode: AnkiExportMode = 'default'
+    exportMode: AnkiExportMode = 'default',
+    fetcher?: Fetcher,
+    noteId?: number
 ): Promise<string> {
-    const anki = new Anki(ankiSettings);
+    const anki = new Anki(ankiSettings, fetcher);
     const source = sourceString(card.subtitleFileName, card.mediaTimestamp);
-    let audioClip =
+    const audioClip =
         card.audio === undefined
             ? undefined
             : AudioClip.fromBase64(
@@ -166,7 +197,7 @@ export async function exportCard(
                   card.audio.error
               );
 
-    return await anki.export({
+    return anki.export({
         text: card.text ?? extractText(card.subtitle, card.surroundingSubtitles),
         track1: extractText(card.subtitle, card.surroundingSubtitles, 0),
         track2: extractText(card.subtitle, card.surroundingSubtitles, 1),
@@ -176,7 +207,7 @@ export async function exportCard(
         image:
             card.image === undefined
                 ? undefined
-                : Image.fromBase64(
+                : MediaFragment.fromBase64(
                       source,
                       card.subtitle.start,
                       card.image.base64,
@@ -189,6 +220,7 @@ export async function exportCard(
         customFieldValues: card.customFieldValues ?? {},
         tags: ankiSettings.tags,
         mode: exportMode,
+        noteId,
     });
 }
 
@@ -222,7 +254,7 @@ export interface CardInfo {
     ord: number;
     type: number;
     queue: number;
-    due: number;
+    due: number; // This cannot be used to get the due date because it's relative to the Anki db creation time which AnkiConnect doesn't expose
     reps: number;
     lapses: number;
     left: number;
@@ -252,6 +284,10 @@ export class Anki {
 
     get ankiConnectUrl() {
         return this.settingsProvider.ankiConnectUrl;
+    }
+
+    get ankiConnectApiKey() {
+        return this.settingsProvider.ankiConnectApiKey;
     }
 
     async deckNames(ankiConnectUrl?: string): Promise<string[]> {
@@ -294,6 +330,18 @@ export class Anki {
         return this.findNotes(`"${this.settingsProvider.wordField}:${escapeAnkiQuery(word)}"`, ankiConnectUrl);
     }
 
+    async findNotesWithFieldsContainingWord(
+        word: string,
+        fields: string[],
+        ankiConnectUrl?: string
+    ): Promise<number[]> {
+        if (!fields.length) return [];
+        return this.findNotes(
+            fields.map((field) => `"${field}:*${escapeAnkiQuery(word)}*"`).join(' OR '),
+            ankiConnectUrl
+        );
+    }
+
     async findNotesWithWordGui(word: string, ankiConnectUrl?: string): Promise<number[]> {
         const response = await this._executeAction(
             'guiBrowse',
@@ -304,20 +352,33 @@ export class Anki {
     }
 
     async findRecentlyEditedOrReviewedCards(
-        fields: string[],
         sinceDays: number,
+        fields: string[],
+        decks: string[] = [],
         ankiConnectUrl?: string
     ): Promise<number[]> {
         if (!fields.length) return [];
         if (sinceDays < 1) sinceDays = 1;
-        const response = await this._executeAction(
-            'findCards',
-            {
-                query: `(rated:${sinceDays} OR edited:${sinceDays}) (${fields.map((field) => `"${escapeAnkiQuery(field)}:_*"`).join(' OR ')})`,
-            },
-            ankiConnectUrl
-        );
-        return response.result;
+        const fieldsQuery = fields.map((field) => `"${escapeAnkiQuery(field)}:_*"`).join(' OR ');
+        const decksQuery = decks.map((deck) => `"deck:${escapeAnkiDeckQuery(deck)}"`).join(' OR ');
+        const query = decksQuery.length ? `(${decksQuery}) (${fieldsQuery})` : fieldsQuery;
+        const recentQuery = `(edited:${sinceDays} OR rated:${sinceDays})`;
+        return this.findCards(`${recentQuery} (${query})`, ankiConnectUrl);
+    }
+
+    async findCardsDueBy(
+        dueDays: number,
+        fields: string[],
+        decks: string[] = [],
+        ankiConnectUrl?: string
+    ): Promise<number[]> {
+        if (!fields.length) return [];
+        if (dueDays < 0) dueDays = 0;
+        const fieldsQuery = fields.map((field) => `"${escapeAnkiQuery(field)}:_*"`).join(' OR ');
+        const decksQuery = decks.map((deck) => `"deck:${escapeAnkiDeckQuery(deck)}"`).join(' OR ');
+        const query = decksQuery.length ? `(${decksQuery}) (${fieldsQuery})` : fieldsQuery;
+        const dueQuery = `prop:due<=${dueDays}`;
+        return this.findCards(`${dueQuery} (${query})`, ankiConnectUrl);
     }
 
     async cardsInfo(
@@ -419,6 +480,14 @@ export class Anki {
         return response.result;
     }
 
+    static requiresApiKey(result: any): boolean {
+        if (result === null || result === undefined) return false;
+        if (result instanceof Error) return Anki.requiresApiKey(result.message);
+        if (typeof result === 'string') return result.toLowerCase().includes('valid api key must be provided');
+        if (typeof result !== 'object') return false;
+        return result.requireApikey === true || result.requireApiKey === true || Anki.requiresApiKey(result.error);
+    }
+
     async export({
         text,
         track1,
@@ -434,6 +503,7 @@ export class Anki {
         tags,
         mode,
         ankiConnectUrl,
+        noteId,
     }: ExportParams) {
         const fields: { [key: string]: string } = {};
 
@@ -475,41 +545,31 @@ export class Anki {
 
         const gui = mode === 'gui';
         const updateLast = mode === 'updateLast' || mode === 'updateLastForSameLine';
+        const isUpdate = updateLast || mode === 'updateSpecific';
 
-        if (this.settingsProvider.audioField && audioClip && audioClip.error === undefined) {
-            const sanitizedName = this._sanitizeFileName(audioClip.name);
-            const data = await audioClip.base64();
-
-            if (data) {
-                if (gui || updateLast) {
-                    const fileName = (await this._storeMediaFile(sanitizedName, data, ankiConnectUrl)).result;
-                    this._appendField(fields, this.settingsProvider.audioField, `[sound:${fileName}]`, false);
-                } else {
-                    params.note['audio'] = {
-                        filename: sanitizedName,
-                        data,
-                        fields: [this.settingsProvider.audioField],
-                    };
-                }
-            }
+        const recentNotes = updateLast
+            ? await this.findNotes(mode === 'updateLastForSameLine' ? 'added:2' : 'added:1', ankiConnectUrl)
+            : [];
+        if (updateLast && recentNotes.length === 0) {
+            throw new Error('Could not find note to update');
         }
 
-        if (this.settingsProvider.imageField && image && image.error === undefined) {
-            const sanitizedName = this._sanitizeFileName(image.name);
-            const data = await image.base64();
+        const exportableAudio =
+            this.settingsProvider.audioField && audioClip && audioClip.error === undefined ? audioClip : undefined;
+        const exportableImage =
+            this.settingsProvider.imageField && image && image.error === undefined ? image : undefined;
 
-            if (data) {
-                if (gui || updateLast) {
-                    const fileName = (await this._storeMediaFile(sanitizedName, data, ankiConnectUrl)).result;
-                    this._appendField(fields, this.settingsProvider.imageField, `<img src="${fileName}">`, false);
-                } else {
-                    params.note['picture'] = {
-                        filename: sanitizedName,
-                        data,
-                        fields: [this.settingsProvider.imageField],
-                    };
-                }
-            }
+        const [encodedAudio, encodedImage] = await Promise.all([
+            this._encodeMedia(exportableAudio, 'audio'),
+            this._encodeMedia(exportableImage, image?.extension === 'webm' ? 'clip' : 'image'),
+        ]);
+
+        if (encodedAudio) {
+            await this._attachAudio(params, fields, encodedAudio, gui || isUpdate, ankiConnectUrl);
+        }
+
+        if (encodedImage && image) {
+            await this._attachMediaFragment(params, fields, encodedImage, image, gui || isUpdate, ankiConnectUrl);
         }
 
         params.note['fields'] = fields;
@@ -518,135 +578,28 @@ export class Anki {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
             case 'updateLastForSameLine':
-            case 'updateLast':
-                const recentNotes = (
-                    await this._executeAction('findNotes', { query: 'added:2' }, ankiConnectUrl)
-                ).result.sort();
+            case 'updateLast': {
+                const lastNoteId = [...recentNotes].sort((a, b) => a - b)[recentNotes.length - 1];
 
                 if (recentNotes.length === 0) {
                     throw new Error('Could not find note to update');
                 }
 
-                const lastNoteId = recentNotes[recentNotes.length - 1];
-                params.note['id'] = lastNoteId;
-                const infoResponse = await this._executeAction('notesInfo', { notes: [lastNoteId] });
+                const result = await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
 
-                if (infoResponse.result.length > 0 && infoResponse.result[0].noteId === lastNoteId) {
-                    const info = infoResponse.result[0];
-
-                    this._inheritHtmlMarkupFromField('sentenceField', info, params);
-                    this._inheritHtmlMarkupFromField('track1Field', info, params);
-                    this._inheritHtmlMarkupFromField('track2Field', info, params);
-                    this._inheritHtmlMarkupFromField('track3Field', info, params);
-
-                    await this._executeAction('updateNoteFields', params, ankiConnectUrl);
-
-                    if (tags.length > 0) {
-                        await this._executeAction(
-                            'addTags',
-                            { notes: [lastNoteId], tags: tags.join(' ') },
-                            ankiConnectUrl
-                        );
-                    }
-
-                    // Update other recent cards from the same subtitle line with audio and image.
-                    // Walk backwards from the most recent note, stopping at the first note
-                    // whose sentence doesn't match. This handles cards created across Anki's
-                    // day boundary and avoids scanning the entire deck.
-                    if (mode === 'updateLastForSameLine' && text && this.settingsProvider.sentenceField) {
-                        const normalizedSubtitle = text.replace(/\n/g, ' ');
-                        const sentenceFieldName = this.settingsProvider.sentenceField;
-
-                        // Walk backwards through preceding notes (descending ID order)
-                        const precedingNoteIds = recentNotes
-                            .filter((id: number) => id !== lastNoteId)
-                            .reverse();
-
-                        if (precedingNoteIds.length > 0) {
-                            const precedingInfoResponse = await this._executeAction(
-                                'notesInfo',
-                                { notes: precedingNoteIds },
-                                ankiConnectUrl
-                            );
-
-                            for (const otherInfo of precedingInfoResponse.result) {
-                                const otherSentenceHtml = otherInfo.fields?.[sentenceFieldName]?.value;
-                                if (!otherSentenceHtml) break;
-
-                                const otherSentencePlain = otherSentenceHtml
-                                    .replace(/<br\s*\/?>/gi, ' ')
-                                    .replace(/<[^>]+>/g, '')
-                                    .replace(/&nbsp;/g, ' ')
-                                    .trim();
-
-                                if (
-                                    otherSentencePlain.length === 0 ||
-                                    (!normalizedSubtitle.includes(otherSentencePlain) &&
-                                        !otherSentencePlain.includes(normalizedSubtitle))
-                                ) {
-                                    break;
-                                }
-
-                                // Update asbplayer-provided fields (audio, image, source, url),
-                                // preserving card-specific fields (sentence, word, definition, etc.)
-                                const otherFields: { [key: string]: string } = {};
-
-                                if (this.settingsProvider.audioField && fields[this.settingsProvider.audioField]) {
-                                    otherFields[this.settingsProvider.audioField] =
-                                        fields[this.settingsProvider.audioField];
-                                }
-
-                                if (this.settingsProvider.imageField && fields[this.settingsProvider.imageField]) {
-                                    otherFields[this.settingsProvider.imageField] =
-                                        fields[this.settingsProvider.imageField];
-                                }
-
-                                if (this.settingsProvider.sourceField && fields[this.settingsProvider.sourceField]) {
-                                    otherFields[this.settingsProvider.sourceField] =
-                                        fields[this.settingsProvider.sourceField];
-                                }
-
-                                if (this.settingsProvider.urlField && fields[this.settingsProvider.urlField]) {
-                                    otherFields[this.settingsProvider.urlField] =
-                                        fields[this.settingsProvider.urlField];
-                                }
-
-                                if (Object.keys(otherFields).length === 0) continue;
-
-                                const otherParams = {
-                                    note: {
-                                        id: otherInfo.noteId,
-                                        fields: otherFields,
-                                    },
-                                };
-
-                                await this._executeAction('updateNoteFields', otherParams, ankiConnectUrl);
-
-                                if (tags.length > 0) {
-                                    await this._executeAction(
-                                        'addTags',
-                                        { notes: [otherInfo.noteId], tags: tags.join(' ') },
-                                        ankiConnectUrl
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    if (!this.settingsProvider.wordField || !info.fields) {
-                        return info.noteId;
-                    }
-
-                    const wordField = info.fields[this.settingsProvider.wordField];
-
-                    if (!wordField || !wordField.value) {
-                        return info.noteId;
-                    }
-
-                    return wordField.value;
+                if (mode === 'updateLastForSameLine' && text && this.settingsProvider.sentenceField) {
+                    await this._updateSameSubtitleNotes(recentNotes, lastNoteId, text, fields, tags, ankiConnectUrl);
                 }
 
-                throw new Error('Could not update last card because the card info could not be fetched');
+                return result;
+            }
+            case 'updateSpecific': {
+                if (noteId === undefined) {
+                    throw new Error('noteId is required for updateSpecific mode');
+                }
+
+                return this._updateNoteFields(noteId, params, tags, ankiConnectUrl);
+            }
             case 'default':
                 return (await this._executeAction('addNote', params, ankiConnectUrl)).result;
             default:
@@ -670,6 +623,92 @@ export class Anki {
         }
 
         fields[fieldName] = newValue;
+    }
+
+    private async _encodeMedia(media: Base64Exportable | undefined, type: string): Promise<EncodedMedia | undefined> {
+        if (!media) {
+            return undefined;
+        }
+
+        const sanitizedName = this._sanitizeFileName(media.name);
+        const data = await timedMediaBase64(type, media.extension, sanitizedName, () => media.base64());
+
+        if (!data) {
+            return undefined;
+        }
+
+        return { sanitizedName, data };
+    }
+
+    private async _attachAudio(
+        params: any,
+        fields: any,
+        encodedAudio: EncodedMedia,
+        storeMediaFile: boolean,
+        ankiConnectUrl?: string
+    ) {
+        if (storeMediaFile) {
+            await this._storeAndAppendField(
+                fields,
+                this.settingsProvider.audioField,
+                encodedAudio,
+                (fileName) => `[sound:${fileName}]`,
+                ankiConnectUrl
+            );
+            return;
+        }
+
+        params.note['audio'] = {
+            filename: encodedAudio.sanitizedName,
+            data: encodedAudio.data,
+            fields: [this.settingsProvider.audioField],
+        };
+    }
+
+    private async _attachMediaFragment(
+        params: any,
+        fields: any,
+        encodedImage: EncodedMedia,
+        image: MediaFragment,
+        storeMediaFile: boolean,
+        ankiConnectUrl?: string
+    ) {
+        if (image.extension === 'webm' || storeMediaFile) {
+            await this._storeAndAppendField(
+                fields,
+                this.settingsProvider.imageField,
+                encodedImage,
+                (fileName) => this._mediaFragmentFieldHtml(fileName, image.extension),
+                ankiConnectUrl
+            );
+            return;
+        }
+
+        params.note['picture'] = {
+            filename: encodedImage.sanitizedName,
+            data: encodedImage.data,
+            fields: [this.settingsProvider.imageField],
+        };
+    }
+
+    private async _storeAndAppendField(
+        fields: any,
+        fieldName: string | undefined,
+        encodedMedia: EncodedMedia,
+        value: (fileName: string) => string,
+        ankiConnectUrl?: string
+    ) {
+        const fileName = (await this._storeMediaFile(encodedMedia.sanitizedName, encodedMedia.data, ankiConnectUrl))
+            .result;
+        this._appendField(fields, fieldName, value(fileName), false);
+    }
+
+    private _mediaFragmentFieldHtml(fileName: string, extension: string) {
+        if (extension === 'webm') {
+            return `<video autoplay loop muted playsinline src="${fileName}"></video>`;
+        }
+
+        return `<img src="${fileName}">`;
     }
 
     private _sanitizeUnsafeURLChars(name: string) {
@@ -698,6 +737,116 @@ export class Anki {
         );
     }
 
+    private async _updateSameSubtitleNotes(
+        recentNotes: number[],
+        lastNoteId: number,
+        text: string,
+        fields: { [key: string]: string },
+        tags: string[],
+        ankiConnectUrl?: string
+    ) {
+        // Include the previous day to handle cards mined across Anki's day boundary.
+        // Stop at the first different subtitle so earlier mining sessions are not updated.
+        const precedingNoteIds = recentNotes.filter((id) => id < lastNoteId).sort((a, b) => b - a);
+        if (precedingNoteIds.length === 0) return;
+
+        const normalizedSubtitle = text.replace(/\n/g, ' ');
+        const sentenceFieldName = this.settingsProvider.sentenceField;
+        const precedingInfo = await this.notesInfo(precedingNoteIds, ankiConnectUrl);
+
+        for (const otherInfo of precedingInfo) {
+            const otherSentenceHtml = otherInfo.fields?.[sentenceFieldName]?.value;
+            if (!otherSentenceHtml) break;
+
+            const otherSentencePlain = otherSentenceHtml
+                .replace(/<br\s*\/?>/gi, ' ')
+                .replace(/<[^>]+>/g, '')
+                .replace(/&nbsp;/g, ' ')
+                .trim();
+
+            if (
+                otherSentencePlain.length === 0 ||
+                (!normalizedSubtitle.includes(otherSentencePlain) && !otherSentencePlain.includes(normalizedSubtitle))
+            ) {
+                break;
+            }
+
+            // Preserve the sentence, word, definition, and custom fields on preceding notes.
+            const otherFields: { [key: string]: string } = {};
+            for (const fieldName of [
+                this.settingsProvider.audioField,
+                this.settingsProvider.imageField,
+                this.settingsProvider.sourceField,
+                this.settingsProvider.urlField,
+            ]) {
+                if (fieldName && fields[fieldName]) otherFields[fieldName] = fields[fieldName];
+            }
+
+            if (Object.keys(otherFields).length === 0) continue;
+
+            await this._executeAction(
+                'updateNoteFields',
+                { note: { id: otherInfo.noteId, fields: otherFields } },
+                ankiConnectUrl
+            );
+
+            if (tags.length > 0) {
+                await this._executeAction(
+                    'addTags',
+                    { notes: [otherInfo.noteId], tags: tags.join(' ') },
+                    ankiConnectUrl
+                );
+            }
+        }
+    }
+
+    private async _updateNoteFields(noteId: number, params: any, tags: string[], ankiConnectUrl?: string) {
+        params.note['id'] = noteId;
+        const infoResponse = await this._executeAction('notesInfo', { notes: [noteId] }, ankiConnectUrl);
+
+        if (infoResponse.result.length === 0 || infoResponse.result[0].noteId !== noteId) {
+            throw new Error('Could not update card because the card info could not be fetched');
+        }
+
+        const info = infoResponse.result[0];
+
+        this._inheritHtmlMarkupFromField('sentenceField', info, params);
+        this._inheritHtmlMarkupFromField('track1Field', info, params);
+        this._inheritHtmlMarkupFromField('track2Field', info, params);
+        this._inheritHtmlMarkupFromField('track3Field', info, params);
+
+        await this._executeAction('updateNoteFields', params, ankiConnectUrl);
+
+        if (tags.length > 0) {
+            await this._executeAction('addTags', { notes: [noteId], tags: tags.join(' ') }, ankiConnectUrl);
+        }
+
+        if (this.settingsProvider.ankiRefreshBrowserAfterUpdate) {
+            await this._refreshBrowser(noteId, ankiConnectUrl);
+        }
+
+        if (!this.settingsProvider.wordField || !info.fields) {
+            return info.noteId;
+        }
+
+        const wordField = info.fields[this.settingsProvider.wordField];
+
+        if (!wordField || !wordField.value) {
+            return info.noteId;
+        }
+
+        return wordField.value;
+    }
+
+    private async _refreshBrowser(noteId: number, ankiConnectUrl?: string) {
+        try {
+            await this._executeAction('guiBrowse', { query: 'nid:1' }, ankiConnectUrl);
+            await this._executeAction('guiBrowse', { query: `nid:${noteId}` }, ankiConnectUrl);
+        } catch (e) {
+            asbError('anki/connect', 'Failed to refresh Anki card browser after updating note:', e);
+        }
+    }
+
     private _inheritHtmlMarkupFromField(fieldKey: AnkiSettingsFieldKey, info: any, params: any) {
         const fieldName = this.settingsProvider[fieldKey];
 
@@ -719,6 +868,10 @@ export class Anki {
             action: action,
             version: 6,
         };
+
+        if (this.settingsProvider.ankiConnectApiKey) {
+            body['key'] = this.settingsProvider.ankiConnectApiKey;
+        }
 
         if (params) {
             body['params'] = params;

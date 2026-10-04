@@ -8,11 +8,13 @@ import type {
     SubtitleSettings,
     TokenState,
     TokenStatus,
-} from '../settings/settings';
-import type { GlobalState } from '../global-state';
-import {
+} from '@project/common/settings';
+import type { GenericParseType, GlobalState, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { DictionaryStatisticsSnapshot } from '@project/common/dictionary-statistics';
+import type {
     RectModel,
     SubtitleModel,
+    SubtitleTrack,
     AudioTrackModel,
     AnkiUiSavedState,
     ConfirmedVideoDataSubtitleTrack,
@@ -25,10 +27,17 @@ import {
     CopyHistoryItem,
     AnkiDialogSettings,
     AnkiExportMode,
-    RichSubtitleModel,
-} from './model';
-import { AsbPlayerToVideoCommandV2 } from './command';
-import { DictionaryLocalTokenInput, DictionaryTokenRecord } from '../dictionary-db/dictionary-db';
+    BrowserFeatures,
+    IndexedSubtitleModel,
+} from '@project/common/src/model';
+import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
+import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
+import type {
+    DictionaryLocalTokenInput,
+    DictionaryTokenKey,
+    DictionaryTokenRecord,
+    DictionaryRecordUpdateInput,
+} from '@project/common/dictionary-db/dictionary-db';
 
 export interface Message {
     readonly command: string;
@@ -44,6 +53,9 @@ export interface AsbplayerInstance {
     sidePanel: boolean;
     timestamp: number;
     videoPlayer: boolean;
+    loadedSubtitles: boolean;
+    subtitleTracks?: SubtitleTrack[];
+    syncedVideoElement?: VideoTabModel;
 }
 
 export interface AsbplayerHeartbeatMessage extends Message {
@@ -52,7 +64,9 @@ export interface AsbplayerHeartbeatMessage extends Message {
     readonly receivedTabs?: VideoTabModel[];
     readonly videoPlayer: boolean;
     readonly sidePanel?: boolean;
+    readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
     readonly syncedVideoElement?: VideoTabModel;
 }
 
@@ -62,7 +76,9 @@ export interface AckTabsMessage extends Message {
     readonly receivedTabs: VideoTabModel[];
     readonly videoPlayer: boolean;
     readonly sidePanel?: boolean;
+    readonly sidePanelAppRequestedLocation?: SidePanelLocation;
     readonly loadedSubtitles?: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
     readonly syncedVideoElement?: VideoTabModel;
 }
 
@@ -79,6 +95,7 @@ export interface VideoHeartbeatMessage extends Message {
     readonly synced: boolean;
     readonly syncedTimestamp?: number;
     readonly loadedSubtitles: boolean;
+    readonly subtitleTracks?: SubtitleTrack[];
 }
 
 export interface VideoDisappearedMessage extends Message {
@@ -109,11 +126,23 @@ export interface SettingsUpdatedMessage extends Message {
     readonly command: 'settings-updated';
 }
 
+export interface AppendLogsMessage extends MessageWithId {
+    readonly command: 'append-logs';
+    readonly lines: readonly LogLine[];
+}
+
+export interface GetLogsMessage extends MessageWithId {
+    readonly command: 'get-logs';
+}
+
+export type GetLogsResponse = LogSnapshot | { readonly error: string };
+
 export interface ImageCaptureParams {
     readonly maxWidth: number;
     readonly maxHeight: number;
     readonly rect: RectModel;
     readonly frameId?: string;
+    readonly trimBlackBars: boolean;
 }
 
 export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextFieldValues, ImageCaptureParams {
@@ -131,6 +160,7 @@ export interface RecordMediaAndForwardSubtitleMessage extends Message, CardTextF
     readonly playbackRate: number;
     readonly mediaTimestamp: number;
     readonly isBulkExport?: boolean;
+    readonly noteId?: number;
 }
 
 export interface StartRecordingMediaMessage extends Message, ImageCaptureParams {
@@ -180,6 +210,7 @@ export interface CopySubtitleMessage extends Message, CardTextFieldValues {
     readonly subtitle?: SubtitleModel;
     readonly surroundingSubtitles?: SubtitleModel[];
     readonly isBulkExport?: boolean;
+    readonly noteId?: number;
 }
 
 export interface CopySubtitleWithAdditionalFieldsMessage extends Message, CardTextFieldValues {
@@ -236,6 +267,10 @@ export interface ScreenshotTakenMessage extends Message {
 export interface ShowAnkiUiMessage extends Message, CardModel {
     readonly command: 'show-anki-ui';
     readonly id: string;
+}
+
+export interface ShowCardSelectUiMessage extends Message, CardModel {
+    readonly command: 'show-card-select-ui';
 }
 
 export interface RecordingStartedMessage extends Message {
@@ -341,6 +376,11 @@ export interface ReadyFromVideoMessage extends Message {
     readonly playbackRate: number;
 }
 
+export interface DurationFromVideoMessage extends Message {
+    readonly command: 'duration';
+    readonly value: number;
+}
+
 export interface ReadyToVideoMessage extends Message {
     readonly command: 'ready';
     readonly duration: number;
@@ -361,6 +401,15 @@ export interface CurrentTimeFromVideoMessage extends Message {
     readonly command: 'currentTime';
     readonly value: number;
     readonly echo: boolean;
+}
+
+export interface PlaybackStateFromVideoMessage extends Message {
+    readonly command: 'playbackState';
+    readonly timestampMs: number;
+    readonly showingSubtitleIndexes: readonly number[];
+    readonly invisibleSubtitleIndexes?: readonly number[];
+    readonly hiddenSubtitleIndexes?: readonly number[];
+    readonly paused: boolean;
 }
 
 export interface CurrentTimeToVideoMessage extends Message {
@@ -398,7 +447,7 @@ export interface SubtitlesToVideoMessage extends Message {
 
 export interface SubtitlesUpdatedToVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly subtitles: RichSubtitleModel[];
+    readonly subtitles: readonly IndexedSubtitleModel[];
 }
 
 export interface RequestCurrentSubtitleMessage extends Message {
@@ -411,11 +460,20 @@ export interface RequestSubtitlesMessage extends Message {
 
 export interface SubtitlesUpdatedFromVideoMessage extends Message {
     readonly command: 'subtitlesUpdated';
-    readonly updatedSubtitles: RichSubtitleModel[];
+    readonly updatedSubtitles: readonly IndexedSubtitleModel[];
 }
 
 export interface RequestSubtitlesFromAppMessage extends MessageWithId {
     readonly command: 'request-subtitles';
+}
+
+export interface RequestLocalSubtitlesMessage extends MessageWithId {
+    readonly command: 'request-local-subtitles';
+}
+
+export interface LocalSubtitlesResponseMessage extends MessageWithId {
+    readonly command: 'local-subtitles-response';
+    readonly response: RequestSubtitlesResponse;
 }
 
 export interface SubtitleSettingsToVideoMessage extends Message {
@@ -514,6 +572,16 @@ export interface VideoDataUiBridgeOpenFileMessage extends Message {
     readonly subtitles: SerializedSubtitleFile[];
 }
 
+export interface VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage extends Message {
+    readonly command: 'setOnlineSubtitleSourceConfig';
+    readonly state: Partial<OnlineSubtitleSourceConfig>;
+}
+
+export interface VideoDataUiBridgeSetGenericSubtitleParserMessage extends Message {
+    readonly command: 'setGenericSubtitleParser';
+    readonly parse: GenericParseType;
+}
+
 export interface CropAndResizeMessage extends Message, ImageCaptureParams {
     readonly command: 'crop-and-resize';
     readonly dataUrl: string;
@@ -594,6 +662,7 @@ export interface EditKeyboardShortcutsMessage extends Message {
 export interface OpenAsbplayerSettingsMessage extends Message {
     readonly command: 'open-asbplayer-settings';
     readonly tutorial?: boolean;
+    readonly scrollToId?: string;
 }
 
 export interface ExtensionVersionMessage extends Message {
@@ -601,6 +670,7 @@ export interface ExtensionVersionMessage extends Message {
     version: string;
     extensionCommands?: { [key: string]: string | undefined };
     pageConfig?: { [K in keyof PageSettings]: SettingsFormPageConfig };
+    browserFeatures?: BrowserFeatures;
 }
 
 export interface AlertMessage extends Message {
@@ -636,7 +706,7 @@ export interface RequestActiveTabPermissionMessage extends Message {
     readonly command: 'request-active-tab-permission';
 }
 
-export interface RequestingActiveTabPermsisionMessage extends Message {
+export interface RequestingActiveTabPermissionMessage extends Message {
     readonly command: 'requesting-active-tab-permission';
     readonly requesting: boolean;
 }
@@ -645,8 +715,20 @@ export interface GrantedActiveTabPermissionMessage extends Message {
     readonly command: 'granted-active-tab-permission';
 }
 
+export type SidePanelLocation = 'mining-history' | 'statistics';
+
 export interface ToggleSidePanelMessage extends Message {
     readonly command: 'toggle-side-panel';
+    readonly location?: SidePanelLocation;
+}
+
+export interface OpenSidePanelLocationMessage extends Message {
+    readonly command: 'open-side-panel-location';
+    readonly location: SidePanelLocation;
+}
+
+export interface OpenStatisticsMessage extends Message {
+    readonly command: 'open-statistics';
 }
 
 export interface CloseSidePanelMessage extends Message {
@@ -711,7 +793,7 @@ export interface AckMessage extends MessageWithId {
 }
 
 export interface RequestSubtitlesResponse {
-    subtitles: RichSubtitleModel[];
+    subtitles: IndexedSubtitleModel[];
     subtitleFileNames: string[];
 }
 
@@ -741,6 +823,7 @@ export interface NotifyErrorMessage extends Message {
 
 export interface RequestMobileOverlayModelMessage extends Message {
     readonly command: 'request-mobile-overlay-model';
+    readonly overlayInstanceId: string;
 }
 
 export interface UpdateMobileOverlayModelMessage extends Message {
@@ -760,6 +843,14 @@ export interface NotificationDialogMessage extends Message {
 
 export interface HiddenMessage extends Message {
     readonly command: 'hidden';
+}
+
+export interface PlaybackModeSelectorOpenedMessage extends Message {
+    readonly command: 'playback-mode-selector-opened';
+}
+
+export interface PlaybackModeSelectorClosedMessage extends Message {
+    readonly command: 'playback-mode-selector-closed';
 }
 
 export interface RequestCopyHistoryMessage extends MessageWithId {
@@ -802,7 +893,7 @@ export interface DictionaryGetByLemmaBulkMessage extends MessageWithId {
 export interface DictionarySaveRecordLocalBulkMessage extends MessageWithId {
     readonly command: 'dictionary-save-record-local-bulk';
     readonly profile: string | undefined;
-    readonly localTokenInputs: DictionaryLocalTokenInput[];
+    readonly localTokenInputs: readonly DictionaryLocalTokenInput[];
     readonly applyStates: ApplyStrategy;
 }
 
@@ -827,14 +918,42 @@ export interface DictionaryImportRecordLocalBulkMessage extends MessageWithId {
     readonly profiles: string[];
 }
 
+export interface DictionaryGetRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-get-records';
+    readonly profile: string | undefined;
+    readonly track: number | undefined;
+}
+
+export interface DictionaryUpdateRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-update-records';
+    readonly profile: string | undefined;
+    readonly updates: DictionaryRecordUpdateInput[];
+    readonly applyStates: ApplyStrategy;
+}
+
+export interface DictionaryDeleteRecordsMessage extends MessageWithId {
+    readonly command: 'dictionary-delete-records';
+    readonly profile: string | undefined;
+    readonly tokenKeys: DictionaryTokenKey[];
+}
+
 export interface DictionaryBuildAnkiCacheMessage extends MessageWithId {
     readonly command: 'dictionary-build-anki-cache';
     readonly profile: string | undefined;
-    readonly settings: AsbplayerSettings;
+    readonly settings?: AsbplayerSettings;
+}
+
+export interface DictionaryBuildWaniKaniCacheMessage extends MessageWithId {
+    readonly command: 'dictionary-build-wanikani-cache';
+    readonly profile: string | undefined;
 }
 
 export interface DictionaryBuildAnkiCacheStateBody {
     modifiedTokens?: string[];
+}
+
+export interface DictionaryBuildWaniKaniCacheStateBody extends DictionaryBuildAnkiCacheStateBody {
+    track: number;
 }
 
 export interface DictionaryBuildAnkiCacheState {
@@ -846,6 +965,15 @@ export interface DictionaryBuildAnkiCacheStateMessage extends DictionaryBuildAnk
     readonly command: 'dictionary-build-anki-cache-state';
 }
 
+export interface DictionaryBuildWaniKaniCacheState {
+    body: DictionaryBuildWaniKaniCacheStateBody;
+    type: DictionaryBuildWaniKaniCacheStateType;
+}
+
+export interface DictionaryBuildWaniKaniCacheStateMessage extends DictionaryBuildWaniKaniCacheState, Message {
+    readonly command: 'dictionary-build-wanikani-cache-state';
+}
+
 export enum DictionaryBuildAnkiCacheStateType {
     start = 0,
     unknown = 1,
@@ -854,7 +982,19 @@ export enum DictionaryBuildAnkiCacheStateType {
     progress = 4,
 }
 
+export enum DictionaryBuildWaniKaniCacheStateType {
+    start = 0,
+    unknown = 1,
+    error = 2,
+    stats = 3,
+    progress = 4,
+}
+
 export interface DictionaryBuildAnkiCacheStart extends DictionaryBuildAnkiCacheStateBody {
+    buildTimestamp: number;
+}
+
+export interface DictionaryBuildWaniKaniCacheStart extends DictionaryBuildWaniKaniCacheStateBody {
     buildTimestamp: number;
 }
 
@@ -871,6 +1011,12 @@ export interface DictionaryBuildAnkiCacheProgress extends DictionaryBuildAnkiCac
     forAnkiSync?: boolean;
 }
 
+export interface DictionaryBuildWaniKaniCacheProgress extends DictionaryBuildWaniKaniCacheStateBody {
+    current: number;
+    total: number;
+    buildTimestamp: number;
+}
+
 export interface DictionaryBuildAnkiCacheStats extends DictionaryBuildAnkiCacheStateBody {
     buildTimestamp: number;
     tracksToBuild?: number[];
@@ -879,12 +1025,27 @@ export interface DictionaryBuildAnkiCacheStats extends DictionaryBuildAnkiCacheS
     modifiedCards?: number;
 }
 
+export interface DictionaryBuildWaniKaniCacheStats extends DictionaryBuildWaniKaniCacheStateBody {
+    buildTimestamp: number;
+    numFetchedAssignments?: number;
+    numFetchedSubjects?: number;
+    numImportedTokens?: number;
+    isTokensCleared?: boolean;
+}
+
 export enum DictionaryBuildAnkiCacheStateErrorCode {
     concurrentBuild = 1,
     noAnki = 2,
     noYomitan = 3,
     failedToSyncTrackStates = 4,
     failedToBuild = 5,
+}
+
+export enum DictionaryBuildWaniKaniCacheStateErrorCode {
+    concurrentBuild = 1,
+    invalidWaniKaniToken = 2,
+    noYomitan = 3,
+    failedToBuild = 4,
 }
 
 export interface DictionaryBuildAnkiCacheStateErrorTrackNumberData {
@@ -903,6 +1064,14 @@ export interface DictionaryBuildAnkiCacheStateError extends DictionaryBuildAnkiC
     code: DictionaryBuildAnkiCacheStateErrorCode;
     msg?: string;
     data?: DictionaryBuildAnkiCacheStateErrorData;
+}
+
+export type DictionaryBuildWaniKaniCacheStateErrorData = DictionaryBuildAnkiCacheStateErrorBuildExpirationData;
+
+export interface DictionaryBuildWaniKaniCacheStateError extends DictionaryBuildWaniKaniCacheStateBody {
+    code: DictionaryBuildWaniKaniCacheStateErrorCode;
+    msg?: string;
+    data?: DictionaryBuildWaniKaniCacheStateErrorData;
 }
 
 export interface SaveTokenLocalMessage extends Message {
@@ -939,4 +1108,66 @@ export interface SaveTokenLocalToVideoMessage extends Message {
     readonly status: TokenStatus | null;
     readonly states: TokenState[];
     readonly applyStates: ApplyStrategy;
+}
+
+export interface DictionaryGetAllTokensMessage extends MessageWithId {
+    readonly command: 'dictionary-get-all-tokens';
+    readonly profile: string | undefined;
+    readonly track: number;
+}
+
+export interface DictionaryStatisticsMessage extends Message {
+    readonly command: 'dictionary-statistics';
+    readonly mediaId: string;
+    readonly snapshot?: DictionaryStatisticsSnapshot;
+}
+
+export interface DictionaryRequestStatisticsGenerationMessage extends Message {
+    readonly command: 'dictionary-request-statistics-generation';
+    readonly mediaId?: string;
+}
+
+export interface DictionaryRequestStatisticsSnapshotMessage extends Message {
+    readonly command: 'dictionary-request-statistics-snapshot';
+    readonly mediaId?: string;
+}
+
+export interface DictionaryRequestStatisticsSeekMessage extends Message {
+    readonly command: 'dictionary-request-statistics-seek';
+    readonly mediaId: string;
+    readonly timestamp: number;
+}
+
+export interface DictionaryRequestStatisticsMineSentencesMessage extends Message {
+    readonly command: 'dictionary-request-statistics-mine-sentences';
+    readonly mediaId: string;
+    readonly indexes: number[];
+}
+
+export interface OpenStatisticsOverlayMessage extends Message {
+    readonly command: 'open-statistics-overlay';
+    readonly mediaId: string;
+    readonly force: boolean;
+}
+
+export interface ResizeStatisticsOverlayMessage extends Message {
+    readonly command: 'resize-statistics-overlay';
+    readonly width: number;
+    readonly height: number;
+}
+
+export interface MoveStatisticsOverlayMessage extends Message {
+    readonly command: 'move-statistics-overlay';
+    readonly deltaX: number;
+    readonly deltaY: number;
+}
+
+export interface CloseStatisticsOverlayMessage extends Message {
+    readonly command: 'close-statistics-overlay';
+    readonly mediaId: string;
+}
+
+export interface ElementExistsStatisticsOverlayMessage extends Message {
+    readonly command: 'element-exists';
+    readonly mediaId: string;
 }

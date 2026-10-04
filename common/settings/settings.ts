@@ -1,5 +1,28 @@
-import { AnkiExportMode, AutoPausePreference, PostMineAction, PostMinePlayback, SubtitleHtml } from '../src/model';
-import { arrayEquals } from '../util';
+import type {
+    AnkiExportMode,
+    PlayMode,
+    PostMineAction,
+    PostMinePlayback,
+    SubtitleHtml,
+} from '@project/common/src/model';
+import { AutoPausePreference } from '@project/common/src/model';
+import { arrayEquals } from '@project/common/util/array-equals';
+import type { DictionarySettings } from '@project/common/settings/settings-dictionary';
+
+export const activeProfileKey = 'activeSettingsProfile';
+export const profilesKey = 'settingsProfiles';
+
+// Settings visible in UI probably shouldn't ever be here to prevent user confusion.
+export const saveOnlySettings: readonly (keyof AsbplayerSettings)[] = [
+    'lastSubtitleOffset',
+    'lastPlaybackModes',
+    'lastPlaybackPositions',
+];
+
+export const isSaveOnlySettings = (settings: Partial<AsbplayerSettings>): boolean => {
+    const changedKeys = Object.keys(settings) as (keyof AsbplayerSettings)[];
+    return changedKeys.every((key) => saveOnlySettings.includes(key));
+};
 
 export enum PauseOnHoverMode {
     disabled = 0,
@@ -7,13 +30,90 @@ export enum PauseOnHoverMode {
     inNotOut = 2,
 }
 
+export enum AutoPauseResumeMode {
+    manual = 'manual',
+    fixed = 'fixed',
+    subtitleLength = 'subtitleLength',
+}
+
+export enum SubtitleVisibility {
+    whenDue = 'whenDue',
+    whilePaused = 'whilePaused',
+}
+
+export enum VideoSubtitleSplitBehavior {
+    rememberSplitPosition = 'rememberSplitPosition',
+    autoMaximizeVideo = 'autoMaximizeVideo',
+}
+
+export enum SubtitleListTimestampDisplay {
+    hidden = 'hidden',
+    start = 'start',
+    startAndEnd = 'startAndEnd',
+}
+
+export interface SubtitleListCustomization {
+    readonly showMiningButton: boolean;
+    readonly timestampDisplay: SubtitleListTimestampDisplay;
+}
+
+export const effectiveSubtitleListCustomization = (
+    settings: Pick<MiscSettings, 'showSubtitleListMiningButton' | 'subtitleListTimestampDisplay'>,
+    supported: boolean
+): SubtitleListCustomization =>
+    supported
+        ? {
+              showMiningButton: settings.showSubtitleListMiningButton,
+              timestampDisplay: settings.subtitleListTimestampDisplay,
+          }
+        : {
+              showMiningButton: true,
+              timestampDisplay: SubtitleListTimestampDisplay.start,
+          };
+
+// Bitsets - if the nth bit is 1 then the nth track is "seekable" where "seekable"
+// means that the track is eligible for seeking, and automatic play mode behaviors
+export type SeekableTracks = number;
+// Bitset - same as above
+export type AutoCopyableTracks = number;
+
+export interface PlaybackPosition {
+    readonly fileName: string;
+    readonly position: number;
+}
+
 export interface MiscSettings {
     readonly themeType: 'dark' | 'light';
+    readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
+    readonly showSubtitleListMiningButton: boolean;
+    readonly subtitleListTimestampDisplay: SubtitleListTimestampDisplay;
     readonly copyToClipboardOnMine: boolean;
     readonly autoPausePreference: AutoPausePreference;
+    readonly autoPauseResumeMode: AutoPauseResumeMode;
+    readonly autoPauseResumeDelayMs: number;
+    readonly autoPauseFixedDurationMs: number;
+    readonly autoPauseMinimumDurationMs: number;
+    readonly autoPauseMaximumDurationMs: number;
+    readonly autoPauseTimePerCharacterMs: number;
+    readonly subtitleVisibility: SubtitleVisibility;
+    readonly subtitleTriggerStartOffset: number;
+    readonly subtitleTriggerEndOffset: number;
+    readonly subtitleTriggerGapEndOffset: number;
+    readonly subtitleTriggerGapStartOffset: number;
+    readonly seekableTracks: SeekableTracks;
+    readonly autoCopyableTracks: AutoCopyableTracks;
     readonly seekDuration: number;
     readonly speedChangeStep: number;
+    readonly playbackRate: number;
+    readonly playbackRateNotificationEnabled: boolean;
+    readonly rememberPlaybackRate: boolean;
     readonly fastForwardModePlaybackRate: number;
+    readonly fastForwardPlaybackMinimumSkipIntervalMs: number;
+    readonly streamingCondensedPlaybackMinimumSkipIntervalMs: number;
+    readonly repeatCountPreference: number;
+    readonly rememberPlaybackModes: boolean;
+    readonly lastPlaybackModes: PlayMode[];
+    readonly lastPlaybackPositions: PlaybackPosition[];
     readonly keyBindSet: KeyBindSet;
     readonly rememberSubtitleOffset: boolean;
     readonly autoCopyCurrentSubtitle: boolean;
@@ -31,220 +131,65 @@ export interface MiscSettings {
     readonly lastSelectedAnkiExportMode: AnkiExportMode;
     readonly tabName: string;
     readonly pauseOnHoverMode: PauseOnHoverMode;
+    readonly subtitleAboveThumbnail: boolean;
+    readonly thumbnailPreview: boolean;
 }
 
-export enum DictionaryTokenSource {
-    LOCAL = 0,
-    ANKI_WORD = 1,
-    ANKI_SENTENCE = 2,
-}
+export type AutoPausePreferenceEdge = AutoPausePreference.atStart | AutoPausePreference.atEnd;
 
-/*
-These are all the possible scenarios which can result in a match. We don't need to support every possible combination,
-as some are not useful or inconsistent. Inconsistent meaning the order the user collects forms affects what future forms
-are considered collected (e.g collecting the lemma will match all forms but user needs to collect every inflection if
-they don't ever collect the lemma).
+export const autoPausePreferenceForCheckboxChange = (
+    preference: AutoPausePreference,
+    edge: AutoPausePreferenceEdge,
+    checked: boolean
+): AutoPausePreference => {
+    let pauseAtStart = preference !== AutoPausePreference.atEnd;
+    let pauseAtEnd = preference !== AutoPausePreference.atStart;
 
-Lemma In Subtitle
------------------------------------------------------------------
-| User Collection | LEMMA_FORM_COLLECTED | EXACT_FORM_COLLECTED |
------------------------------------------------------------------
-| Lemma           |         MATCH        |         MATCH        |
-| Inflection      |          NO          |          NO          |
------------------------------------------------------------------
+    if (edge === AutoPausePreference.atStart) {
+        pauseAtStart = checked;
+    } else {
+        pauseAtEnd = checked;
+    }
 
-Inflection In Subtitle
------------------------------------------------------------------
-| User Collection | LEMMA_FORM_COLLECTED | EXACT_FORM_COLLECTED |
------------------------------------------------------------------
-| Lemma           |         MATCH        |          NO          |
-| Same Inflection |          NO          |         MATCH        |
-| Diff Inflection |          NO          |          NO          |
------------------------------------------------------------------
-*/
-export enum TokenMatchStrategy {
-    ANY_FORM_COLLECTED = 'ANY_FORM_COLLECTED', // All scenarios above result in MATCH
-    LEMMA_OR_EXACT_FORM_COLLECTED = 'LEMMA_OR_EXACT_FORM_COLLECTED', // See LEMMA_FORM_COLLECTED and EXACT_FORM_COLLECTED columns above
-    LEMMA_FORM_COLLECTED = 'LEMMA_FORM_COLLECTED', // See LEMMA_FORM_COLLECTED column above
-    EXACT_FORM_COLLECTED = 'EXACT_FORM_COLLECTED', // See EXACT_FORM_COLLECTED column above
-}
+    if (!pauseAtStart && !pauseAtEnd) {
+        return edge === AutoPausePreference.atStart ? AutoPausePreference.atEnd : AutoPausePreference.atStart;
+    }
 
-export enum TokenMatchStrategyPriority {
-    EXACT = 'EXACT',
-    LEMMA = 'LEMMA',
-    BEST_KNOWN = 'BEST_KNOWN',
-    LEAST_KNOWN = 'LEAST_KNOWN',
-}
-
-export enum TokenStyling {
-    TEXT = 'TEXT',
-    BACKGROUND = 'BACKGROUND',
-    UNDERLINE = 'UNDERLINE',
-    OVERLINE = 'OVERLINE',
-    OUTLINE = 'OUTLINE',
-}
-
-export enum TokenStatus {
-    UNCOLLECTED = 0,
-    UNKNOWN = 1,
-    LEARNING = 2,
-    GRADUATED = 3,
-    YOUNG = 4,
-    MATURE = 5, // If ever adding more statuses, they should go last and getFullyKnownTokenStatus should be updated
-}
-
-export function getFullyKnownTokenStatus(): TokenStatus {
-    return TokenStatus.MATURE; // If future statuses are optional, this logic may need to change
-}
-
-// Any future field added will likely need to be optional for app/extension version mismatch
-export interface TokenStatusConfig {
-    readonly display: boolean;
-    readonly color: string;
-    readonly alpha: string;
-}
-
-const tokenStatusConfigComparators: {
-    [K in keyof TokenStatusConfig]: (a: TokenStatusConfig[K], b: TokenStatusConfig[K]) => boolean;
-} = {
-    display: (a, b) => a === b,
-    color: (a, b) => a === b,
-    alpha: (a, b) => a === b,
+    return pauseAtStart
+        ? pauseAtEnd
+            ? AutoPausePreference.atStartAndEnd
+            : AutoPausePreference.atStart
+        : AutoPausePreference.atEnd;
 };
 
-export function compareTokenStatusConfigField<K extends keyof TokenStatusConfig>(
-    key: K,
-    a: TokenStatusConfig,
-    b: TokenStatusConfig
-): boolean {
-    return tokenStatusConfigComparators[key](a[key], b[key]);
-}
-
-export function areTokenStatusConfigsEqual(a: TokenStatusConfig, b: TokenStatusConfig): boolean {
-    if (a === b) return true;
-    for (const key in tokenStatusConfigComparators) {
-        if (!compareTokenStatusConfigField(key as keyof TokenStatusConfig, a, b)) {
-            return false;
-        }
+const isIncludedInBitset = (bitset: number, value: number) => ((bitset >> value) & 1) > 0;
+const newBitset = (values: number[]) => {
+    let val: number = 0;
+    for (const i of values) {
+        val |= 1 << i;
     }
-    return true;
-}
-
-export enum TokenState {
-    IGNORED = 0, // If ever adding more states, they should go last (if adding colors for states, use a separate array from dictionaryTokenStatusColors indexed by TokenState)
-}
-
-export enum ApplyStrategy {
-    ADD = 'ADD',
-    REMOVE = 'REMOVE',
-    REPLACE = 'REPLACE',
-    TOGGLE = 'TOGGLE',
-}
-
-export enum TokenReadingAnnotation {
-    ALWAYS = 'ALWAYS',
-    LEARNING_OR_BELOW = 'LEARNING_OR_BELOW',
-    UNKNOWN_OR_BELOW = 'UNKNOWN_OR_BELOW',
-    NEVER = 'NEVER',
-}
-
-export enum TokenFrequencyAnnotation {
-    ALWAYS = 'ALWAYS',
-    UNCOLLECTED_ONLY = 'UNCOLLECTED_ONLY',
-    NEVER = 'NEVER',
-}
-
-export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
-    return (
-        dt.dictionaryColorizeSubtitles ||
-        dt.dictionaryTokenReadingAnnotation !== TokenReadingAnnotation.NEVER ||
-        dt.dictionaryDisplayIgnoredTokenReadings ||
-        dt.dictionaryTokenFrequencyAnnotation !== TokenFrequencyAnnotation.NEVER
-    );
-}
-
-export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack): boolean {
-    return (
-        dt.dictionaryColorizeSubtitles ||
-        dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.LEARNING_OR_BELOW ||
-        dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.UNKNOWN_OR_BELOW ||
-        dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.UNCOLLECTED_ONLY
-    );
-}
-
-export interface DictionaryTrack {
-    readonly dictionaryColorizeSubtitles: boolean;
-    readonly dictionaryColorizeOnHoverOnly: boolean; // Currently applies to both colorization and reading annotations, named in case we want to separate later
-    readonly dictionaryHighlightOnHover: boolean;
-    readonly dictionaryTokenMatchStrategy: TokenMatchStrategy;
-    readonly dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority;
-    readonly dictionaryYomitanUrl: string;
-    readonly dictionaryYomitanParser: 'scanning-parser' | 'mecab';
-    readonly dictionaryYomitanScanLength: number;
-    readonly dictionaryTokenReadingAnnotation: TokenReadingAnnotation;
-    readonly dictionaryDisplayIgnoredTokenReadings: boolean;
-    readonly dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation;
-    readonly dictionaryAnkiDecks: string[];
-    readonly dictionaryAnkiWordFields: string[];
-    readonly dictionaryAnkiSentenceFields: string[];
-    readonly dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy;
-    readonly dictionaryAnkiMatureCutoff: number;
-    readonly dictionaryAnkiTreatSuspended: TokenStatus | 'NORMAL';
-    readonly dictionaryTokenStyling: TokenStyling;
-    readonly dictionaryTokenStylingThickness: number;
-    readonly dictionaryColorizeFullyKnownTokens: boolean; // Deprecated in favor of dictionaryTokenStatusConfig
-    readonly dictionaryTokenStatusColors: string[]; // Deprecated in favor of dictionaryTokenStatusConfig
-    readonly dictionaryTokenStatusConfig: TokenStatusConfig[]; // Indexed by TokenStatus (if adding config for states, use a separate array indexed by TokenState)
-}
-
-export interface DictionarySettings {
-    readonly dictionaryTracks: DictionaryTrack[];
-}
-
-const dictionaryTrackComparators: {
-    [K in keyof DictionaryTrack]: (a: DictionaryTrack[K], b: DictionaryTrack[K]) => boolean;
-} = {
-    dictionaryColorizeSubtitles: (a, b) => a === b,
-    dictionaryColorizeOnHoverOnly: (a, b) => a === b,
-    dictionaryHighlightOnHover: (a, b) => a === b,
-    dictionaryTokenMatchStrategy: (a, b) => a === b,
-    dictionaryTokenMatchStrategyPriority: (a, b) => a === b,
-    dictionaryYomitanUrl: (a, b) => a === b,
-    dictionaryYomitanParser: (a, b) => a === b,
-    dictionaryYomitanScanLength: (a, b) => a === b,
-    dictionaryTokenReadingAnnotation: (a, b) => a === b,
-    dictionaryDisplayIgnoredTokenReadings: (a, b) => a === b,
-    dictionaryTokenFrequencyAnnotation: (a, b) => a === b,
-    dictionaryAnkiDecks: (a, b) => arrayEquals(a, b),
-    dictionaryAnkiWordFields: (a, b) => arrayEquals(a, b),
-    dictionaryAnkiSentenceFields: (a, b) => arrayEquals(a, b),
-    dictionaryAnkiSentenceTokenMatchStrategy: (a, b) => a === b,
-    dictionaryAnkiMatureCutoff: (a, b) => a === b,
-    dictionaryAnkiTreatSuspended: (a, b) => a === b,
-    dictionaryTokenStyling: (a, b) => a === b,
-    dictionaryTokenStylingThickness: (a, b) => a === b,
-    dictionaryColorizeFullyKnownTokens: (a, b) => a === b,
-    dictionaryTokenStatusColors: (a, b) => arrayEquals(a, b),
-    dictionaryTokenStatusConfig: (a, b) => arrayEquals(a, b, areTokenStatusConfigsEqual),
+    return val;
+};
+const updateBitset = (bitset: number, value: number, add: boolean) => {
+    if (add) {
+        return bitset | (1 << value);
+    }
+    return bitset & ~(1 << value);
 };
 
-export function compareDTField<K extends keyof DictionaryTrack>(
-    key: K,
-    a: DictionaryTrack,
-    b: DictionaryTrack
-): boolean {
-    return dictionaryTrackComparators[key](a[key], b[key]);
-}
+export const isTrackSeekable = (seekable: SeekableTracks, track: number) => isIncludedInBitset(seekable, track);
+export const calculateSeekableTracksValue = (trackIndices: number[]): SeekableTracks => newBitset(trackIndices);
+export const updateSeekableTracksValue = (seekableTracks: SeekableTracks, trackIndex: number, add: boolean) =>
+    updateBitset(seekableTracks, trackIndex, add);
 
-export function areDictionaryTracksEqual(dt1: DictionaryTrack, dt2: DictionaryTrack): boolean {
-    if (dt1 === dt2) return true;
-    for (const key in dictionaryTrackComparators) {
-        if (!compareDTField(key as keyof DictionaryTrack, dt1, dt2)) {
-            return false;
-        }
-    }
-    return true;
-}
+export const isTrackAutoCopyable = (autoCopyableTracks: AutoCopyableTracks, track: number) =>
+    isIncludedInBitset(autoCopyableTracks, track);
+export const calculateAutoCopyableTracksValue = (trackIndices: number[]): AutoCopyableTracks => newBitset(trackIndices);
+export const updateAutoCopyableTracksValue = (
+    autoCopyableTracks: AutoCopyableTracks,
+    trackIndex: number,
+    add: boolean
+) => updateBitset(autoCopyableTracks, trackIndex, add);
 
 export type AnkiSettingsFieldKey =
     | 'sentenceField'
@@ -258,8 +203,13 @@ export type AnkiSettingsFieldKey =
     | 'track2Field'
     | 'track3Field';
 
+export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
+
+// Any setting being added here also needs to be added to SettingsAccessor in use-anki.ts
 export interface AnkiSettings {
     readonly ankiConnectUrl: string;
+    readonly ankiConnectApiKey: string;
+    readonly ankiRefreshBrowserAfterUpdate: boolean;
     readonly deck: string;
     readonly noteType: string;
     readonly sentenceField: string;
@@ -280,6 +230,11 @@ export interface AnkiSettings {
     readonly audioPaddingEnd: number;
     readonly maxImageWidth: number;
     readonly maxImageHeight: number;
+    readonly mediaFragmentFormat: MediaFragmentFormatSetting;
+    readonly mediaFragmentTrimStart: number;
+    readonly mediaFragmentTrimEnd: number;
+    readonly mediaFragmentMaxClipLength: number;
+    readonly trimBlackBars: boolean;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -308,6 +263,8 @@ export type CustomAnkiFieldSettings = { [key: string]: AnkiField };
 
 const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     ankiConnectUrl: true,
+    ankiConnectApiKey: true,
+    ankiRefreshBrowserAfterUpdate: true,
     deck: true,
     noteType: true,
     sentenceField: true,
@@ -328,6 +285,11 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     audioPaddingEnd: true,
     maxImageWidth: true,
     maxImageHeight: true,
+    mediaFragmentFormat: true,
+    mediaFragmentTrimStart: true,
+    mediaFragmentTrimEnd: true,
+    mediaFragmentMaxClipLength: true,
+    trimBlackBars: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,
@@ -375,6 +337,7 @@ const subtitleSettingsKeysObject: { [key in keyof SubtitleSettings]: boolean } =
     subtitleAlignment: true,
     subtitleTracksV2: true,
     subtitlesWidth: true,
+    subtitlesWidthUnit: true,
 };
 
 export const subtitleSettingsKeys: (keyof SubtitleSettings)[] = Object.keys(
@@ -406,6 +369,22 @@ export interface TextSubtitleSettings {
     readonly subtitleAlignment: SubtitleAlignment;
 }
 
+export type SubtitlesWidthUnit = '%' | 'px';
+
+export const subtitlesWidthUnits: readonly SubtitlesWidthUnit[] = ['%', 'px'];
+
+export const maxSubtitlesWidth = (unit: SubtitlesWidthUnit): number => (unit === '%' ? 100 : 10000);
+
+export const subtitlesWidthCssValue = (
+    settings: Pick<SubtitleSettings, 'subtitlesWidth' | 'subtitlesWidthUnit'>
+): string | undefined => {
+    if (settings.subtitlesWidth === -1) {
+        return undefined;
+    }
+
+    return `${settings.subtitlesWidth}${settings.subtitlesWidthUnit}`;
+};
+
 export interface SubtitleSettings extends TextSubtitleSettings {
     readonly imageBasedSubtitleScaleFactor: number;
     readonly subtitlePositionOffset: number;
@@ -416,8 +395,83 @@ export interface SubtitleSettings extends TextSubtitleSettings {
     // Track 0 continues to be configured from the top-level settings object.
     readonly subtitleTracksV2: TextSubtitleSettings[];
 
-    // Percentage of containing video width; -1 means 'auto'
+    // Expressed in subtitlesWidthUnit; -1 means 'auto'
     readonly subtitlesWidth: number;
+    readonly subtitlesWidthUnit: SubtitlesWidthUnit;
+}
+
+const textSubtitleSettingsComparators: {
+    [K in keyof TextSubtitleSettings]: (a: TextSubtitleSettings[K], b: TextSubtitleSettings[K]) => boolean;
+} = {
+    subtitleColor: (a, b) => a === b,
+    subtitleSize: (a, b) => a === b,
+    subtitleThickness: (a, b) => a === b,
+    subtitleOutlineThickness: (a, b) => a === b,
+    subtitleOutlineColor: (a, b) => a === b,
+    subtitleShadowThickness: (a, b) => a === b,
+    subtitleShadowColor: (a, b) => a === b,
+    subtitleBackgroundOpacity: (a, b) => a === b,
+    subtitleBackgroundColor: (a, b) => a === b,
+    subtitleFontFamily: (a, b) => a === b,
+    subtitleCustomStyles: (a, b) =>
+        arrayEquals(a, b, (left, right) => left.key === right.key && left.value === right.value),
+    subtitleBlur: (a, b) => a === b,
+    subtitleAlignment: (a, b) => a === b,
+};
+
+const subtitleSettingsComparators: {
+    [K in keyof SubtitleSettings]: (a: SubtitleSettings[K], b: SubtitleSettings[K]) => boolean;
+} = {
+    ...textSubtitleSettingsComparators,
+    imageBasedSubtitleScaleFactor: (a, b) => a === b,
+    subtitlePositionOffset: (a, b) => a === b,
+    topSubtitlePositionOffset: (a, b) => a === b,
+    subtitleTracksV2: (a, b) => arrayEquals(a, b, areTextSubtitleSettingsEqual),
+    subtitlesWidth: (a, b) => a === b,
+    subtitlesWidthUnit: (a, b) => a === b,
+};
+
+function areTextSubtitleSettingsEqual(
+    left: TextSubtitleSettings | undefined,
+    right: TextSubtitleSettings | undefined
+): boolean {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    for (const key of Object.keys(textSubtitleSettingsComparators) as (keyof TextSubtitleSettings)[]) {
+        if (!compareTextSubtitleSettingsField(key, left, right)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function compareTextSubtitleSettingsField<K extends keyof TextSubtitleSettings>(
+    key: K,
+    left: TextSubtitleSettings,
+    right: TextSubtitleSettings
+): boolean {
+    return textSubtitleSettingsComparators[key](left[key], right[key]);
+}
+
+export function compareSubtitleSettingsField<K extends keyof SubtitleSettings>(
+    key: K,
+    a: SubtitleSettings,
+    b: SubtitleSettings
+): boolean {
+    return subtitleSettingsComparators[key](a[key], b[key]);
+}
+
+export function areSubtitleSettingsEqual(left: SubtitleSettings | undefined, right: SubtitleSettings | undefined) {
+    if (left === right) return true;
+    if (!left || !right) return false;
+
+    for (const key in subtitleSettingsComparators) {
+        if (!compareSubtitleSettingsField(key as keyof SubtitleSettings, left, right)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 export interface KeyBind {
@@ -453,17 +507,36 @@ export interface KeyBindSet {
     readonly increasePlaybackRate: KeyBind;
     readonly toggleSidePanel: KeyBind;
     readonly toggleRepeat: KeyBind;
+    readonly toggleSubtitleVisibility: KeyBind;
+    readonly cycleAutoPauseResumeMode: KeyBind;
     readonly moveBottomSubtitlesUp: KeyBind;
     readonly moveBottomSubtitlesDown: KeyBind;
     readonly moveTopSubtitlesUp: KeyBind;
     readonly moveTopSubtitlesDown: KeyBind;
+    readonly openStatistics: KeyBind;
+    readonly jumpToNextToken: KeyBind;
+    readonly jumpToPreviousToken: KeyBind;
     readonly markHoveredToken5: KeyBind;
+    readonly jumpToNextTokenStatus5: KeyBind;
+    readonly jumpToPreviousTokenStatus5: KeyBind;
     readonly markHoveredToken4: KeyBind;
+    readonly jumpToNextTokenStatus4: KeyBind;
+    readonly jumpToPreviousTokenStatus4: KeyBind;
     readonly markHoveredToken3: KeyBind;
+    readonly jumpToNextTokenStatus3: KeyBind;
+    readonly jumpToPreviousTokenStatus3: KeyBind;
     readonly markHoveredToken2: KeyBind;
+    readonly jumpToNextTokenStatus2: KeyBind;
+    readonly jumpToPreviousTokenStatus2: KeyBind;
     readonly markHoveredToken1: KeyBind;
+    readonly jumpToNextTokenStatus1: KeyBind;
+    readonly jumpToPreviousTokenStatus1: KeyBind;
     readonly markHoveredToken0: KeyBind;
+    readonly jumpToNextTokenStatus0: KeyBind;
+    readonly jumpToPreviousTokenStatus0: KeyBind;
     readonly toggleHoveredTokenIgnored: KeyBind;
+    readonly jumpToNextTokenState0: KeyBind;
+    readonly jumpToPreviousTokenState0: KeyBind;
 
     // Bound from Chrome if extension is installed
     readonly copySubtitle: KeyBind;
@@ -472,6 +545,7 @@ export interface KeyBindSet {
     readonly exportCard: KeyBind;
     readonly takeScreenshot: KeyBind;
     readonly toggleRecording: KeyBind;
+    readonly selectSubtitleTrack: KeyBind;
 }
 
 export interface WebSocketClientSettings {
@@ -479,7 +553,13 @@ export interface WebSocketClientSettings {
     readonly webSocketClientEnabled: boolean;
 }
 
-export type ChromeBoundKeyBindName = 'copySubtitle' | 'ankiExport' | 'updateLastCard' | 'exportCard' | 'takeScreenshot';
+export type ChromeBoundKeyBindName =
+    | 'copySubtitle'
+    | 'ankiExport'
+    | 'updateLastCard'
+    | 'updateSelectedCard'
+    | 'exportCard'
+    | 'takeScreenshot';
 export type SubtitleAlignment = 'top' | 'bottom';
 export enum SubtitleListPreference {
     noSubtitleList = 'noSubtitleList',
@@ -520,6 +600,7 @@ export interface PageSettings {
     bandaiChannel: Page;
     amazonPrime: Page;
     hulu: Page;
+    huluJp: Page;
     disneyPlus: Page;
     appsDisneyPlus: Page;
     unext: Page;
@@ -537,6 +618,12 @@ export interface PageSettings {
     iwanttfc: Page;
     svtplay: Page;
     urplay: Page;
+    archive: Page;
+    crunchyroll: Page;
+    rutube: Page;
+    okru: Page;
+    vkvideo: Page;
+    dreaming: Page;
 }
 
 export interface StreamingVideoSettings {
@@ -552,7 +639,6 @@ export interface StreamingVideoSettings {
     // Last language selected in subtitle track selector, keyed by domain
     // Used to auto-selecting a language in subtitle track selector, if it's available
     readonly streamingLastLanguagesSynced: { [key: string]: string[] };
-    readonly streamingCondensedPlaybackMinimumSkipIntervalMs: number;
     readonly streamingScreenshotDelay: number;
     readonly streamingSubtitleListPreference: SubtitleListPreference;
     readonly streamingEnableOverlay: boolean;
@@ -575,6 +661,7 @@ const keyBindNameMap: any = {
     'copy-subtitle': 'copySubtitle',
     'copy-subtitle-with-dialog': 'ankiExport',
     'update-last-card': 'updateLastCard',
+    'update-selected-card': 'updateSelectedCard',
     'export-card': 'exportCard',
     'take-screenshot': 'takeScreenshot',
     'toggle-recording': 'toggleRecording',

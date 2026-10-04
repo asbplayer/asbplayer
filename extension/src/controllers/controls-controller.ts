@@ -26,7 +26,7 @@ export default class ControlsController {
             e.classList.add('asbplayer-hide');
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             setTimeout(() => resolve(undefined), 0);
         });
     }
@@ -83,14 +83,23 @@ export default class ControlsController {
             return;
         }
 
+        if (rootNode instanceof ShadowRoot && !rootNode.contains(element)) {
+            return;
+        }
+
         const host: Element | undefined = (rootNode as ShadowRoot).host;
+
         let current = element;
         yield current;
 
         while (true) {
             const parent = current.parentElement;
 
-            if (!parent || parent.contains(this.video) || (host !== undefined && parent.contains(host))) {
+            if (
+                !parent ||
+                parent.contains(this.video) ||
+                (host !== undefined && (parent.contains(host) || parent.isSameNode(host)))
+            ) {
                 break;
             }
 

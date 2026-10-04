@@ -1,15 +1,23 @@
-import pagesConfig from '../pages.json';
+import rawPagesConfig from '@project/extension/src/pages.json';
 import type { PublicPath } from 'wxt/browser';
-import { isOnTutorialPage } from './tutorial';
-import { ExtensionSettingsStorage } from './extension-settings-storage';
-import { SettingsProvider } from '@project/common/settings/settings-provider';
-import { SettingsFormPageConfig, PageSettings } from '@project/common/settings';
+import { isOnTutorialPage } from '@project/extension/src/services/tutorial';
+import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
+import { SettingsProvider } from '@project/common/settings';
+import type { SettingsFormPageConfig, PageSettings } from '@project/common/settings';
+import type { GenericParseType } from '@project/common/global-state';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
+import { genericSubtitleParserOptionsForHost } from '@project/extension/src/services/generic-subtitle-parser';
 
 interface PageConfigFile {
     pages: PageConfig[];
 }
 
-interface PageConfig {
+const pagesConfig = rawPagesConfig as PageConfigFile; // JSON imports widen string literals, including subtitleDiscoveryRequestTarget.
+
+const baseGenericPageScript = 'base-generic-page.js';
+const aggressiveGenericPageScript = 'aggressive-generic-page.js';
+
+export interface PageConfig {
     // Regex for URLs where script should be loaded
     host: string;
 
@@ -22,6 +30,19 @@ interface PageConfig {
     // Page script to load
     pageScript?: string;
 
+    // Whether this is the generic fallback used for otherwise unsupported pages
+    generic?: boolean;
+
+    // Where subtitle discovery requests should originate. Generic discovery uses
+    // the active video element so its event path identifies the video to inspect.
+    subtitleDiscoveryRequestTarget?: 'document' | 'video';
+
+    // Whether to refresh available subtitle tracks when the subtitle picker opens
+    refreshSubtitleDataOnPickerOpen?: boolean;
+
+    // Whether a changed media source identifies a new video even when the page URL is unchanged
+    videoSrcChangesIndicateNewVideo?: boolean;
+
     // URL relative path regex where subtitle track data syncing is allowed
     syncAllowedAtPath?: string;
 
@@ -33,6 +54,9 @@ interface PageConfig {
 
     // Whether video elements with blank src should be bindable on this page
     allowVideoElementsWithBlankSrc?: boolean;
+
+    // CSS selector for preferred videos that may auto-sync and should sort first in manual video selection
+    preferredVideoElementSelector?: string;
 
     autoSync?: {
         // Whether to attempt to load detected subtitles automatically
@@ -57,6 +81,7 @@ interface PageConfig {
 }
 
 const settings = new SettingsProvider(new ExtensionSettingsStorage());
+const globalState = new ExtensionGlobalStateProvider();
 
 async function pageConfigsMergedWithSettingsOverrides(): Promise<PageConfigFile> {
     const pageSettings = await settings.getSingle('streamingPages');
@@ -94,26 +119,56 @@ async function pageConfigsMergedWithSettingsOverrides(): Promise<PageConfigFile>
         };
     });
 
-    return { pages: mergedPages } as PageConfigFile;
+    return { pages: mergedPages };
 }
 
-export async function currentPageDelegate(): Promise<PageDelegate | undefined> {
+export async function currentPageDelegate(): Promise<PageDelegate> {
     const urlObj = new URL(window.location.href);
-    const mergedPageConfig = await pageConfigsMergedWithSettingsOverrides();
-    for (const page of mergedPageConfig.pages) {
-        const regex = new RegExp(page.host);
+    const [mergedPageConfig, genericSubtitleParserOptions] = await Promise.all([
+        pageConfigsMergedWithSettingsOverrides(),
+        genericSubtitleParserOptionsForHost(globalState, urlObj.host),
+    ]);
+    return pageDelegateForUrl(mergedPageConfig.pages, urlObj, {
+        tutorial: isOnTutorialPage(),
+        genericSubtitleParser: genericSubtitleParserOptions.parse,
+    });
+}
 
+interface PageDelegateOptions {
+    tutorial: boolean;
+    genericSubtitleParser: GenericParseType;
+}
+
+export function pageDelegateForUrl(
+    pages: readonly PageConfig[],
+    urlObj: URL,
+    { tutorial, genericSubtitleParser }: PageDelegateOptions
+): PageDelegate {
+    const aggressiveGenericSubtitleParserEnabled = genericSubtitleParser === 'aggressive';
+    const genericPageConfig = (page?: PageConfig): PageConfig => ({
+        ...page,
+        host: page?.host ?? urlObj.host,
+        pageScript: aggressiveGenericSubtitleParserEnabled ? aggressiveGenericPageScript : baseGenericPageScript,
+        generic: true,
+        refreshSubtitleDataOnPickerOpen: true,
+        searchShadowRootsForVideoElements:
+            page?.searchShadowRootsForVideoElements ?? aggressiveGenericSubtitleParserEnabled,
+        autoSync: { ...page?.autoSync, enabled: false },
+    });
+
+    for (const page of pages) {
+        const regex = new RegExp(page.host);
         if (regex.test(urlObj.host) || (page.literalHosts !== undefined && page.literalHosts.includes(urlObj.host))) {
-            return new PageDelegate(page, urlObj);
+            if (page.pageScript !== undefined) return new PageDelegate(page, urlObj);
+            return new PageDelegate(genericSubtitleParser !== 'off' ? genericPageConfig(page) : page, urlObj);
         }
     }
 
-    if (isOnTutorialPage()) {
+    if (tutorial) {
         return new PageDelegate(
             {
-                host: window.location.host,
+                host: urlObj.host,
                 pageScript: 'asbplayer-tutorial-page.js',
-                syncAllowedAtPath: '.*',
                 autoSync: {
                     enabled: false,
                 },
@@ -122,7 +177,15 @@ export async function currentPageDelegate(): Promise<PageDelegate | undefined> {
         );
     }
 
-    return undefined;
+    return new PageDelegate(
+        genericSubtitleParser !== 'off'
+            ? genericPageConfig()
+            : {
+                  host: urlObj.host,
+                  autoSync: { enabled: false },
+              },
+        urlObj
+    );
 }
 
 export class PageDelegate {
@@ -139,10 +202,7 @@ export class PageDelegate {
             return;
         }
 
-        const s = document.createElement('script');
-        s.src = browser.runtime.getURL(`${this.config.pageScript}` as PublicPath);
-        s.onload = () => s.remove();
-        (document.head || document.documentElement).appendChild(s);
+        return injectPageScript(this.config.pageScript);
     }
 
     shouldIgnore(element: HTMLMediaElement) {
@@ -168,18 +228,25 @@ export class PageDelegate {
         return false;
     }
 
+    videoElementPreference(element: HTMLMediaElement) {
+        const selector = this.config.preferredVideoElementSelector;
+        return selector === undefined || element.matches(selector) ? 0 : 1;
+    }
+
     canAutoSync(element: HTMLMediaElement) {
         return (
             this.config.autoSync !== undefined &&
             this.config.autoSync.enabled &&
+            (this.config.preferredVideoElementSelector === undefined ||
+                element.matches(this.config.preferredVideoElementSelector)) &&
             (this.config.autoSync.elementId === undefined || element.id === this.config.autoSync.elementId) &&
             (this.config.autoSync.videoSrc === undefined || new RegExp(this.config.autoSync.videoSrc).test(element.src))
         );
     }
 
     isVideoPage() {
-        var hashMatch = true;
-        var pathMatch = true;
+        let hashMatch = true;
+        let pathMatch = true;
         if (this.config.syncAllowedAtHash) {
             hashMatch = new RegExp(this.config.syncAllowedAtHash).test(this.url.hash);
         }
@@ -188,6 +255,14 @@ export class PageDelegate {
         }
         return hashMatch && pathMatch;
     }
+}
+
+export function injectPageScript(pageScript: string) {
+    const script = document.createElement('script');
+    script.src = browser.runtime.getURL(pageScript as PublicPath);
+    script.onload = () => script.remove();
+    (document.head || document.documentElement).appendChild(script);
+    return script;
 }
 
 export const settingsPageConfigs: { [K in keyof PageSettings]: SettingsFormPageConfig } = Object.fromEntries(

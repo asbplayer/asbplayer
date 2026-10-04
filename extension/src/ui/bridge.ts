@@ -1,4 +1,4 @@
-import { Message, MessageWithId } from '@project/common';
+import type { Message, MessageWithId } from '@project/common';
 
 export default class Bridge {
     private readonly _resolves: { [key: string]: (response: any) => void } = {};

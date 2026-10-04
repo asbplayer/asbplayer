@@ -1,4 +1,4 @@
-import TutorialBubble from './TutorialBubble';
+import TutorialBubble from '@project/common/components/TutorialBubble';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import { useState } from 'react';

@@ -1,12 +1,13 @@
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
-import { useSettings } from '../hooks/use-settings';
+import { useSettings } from '@project/extension/src/ui/hooks/use-settings';
 import { useMemo } from 'react';
-import SettingsPage from './SettingsPage';
+import SettingsPage from '@project/extension/src/ui/components/SettingsPage';
 import { createTheme } from '@project/common/theme';
 import { StyledEngineProvider } from '@mui/material/styles';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
+import { extensionLogProvider } from '@/services/extension-log-provider';
 
 const searchParams = new URLSearchParams(window.location.search);
 const inTutorial = searchParams.get('tutorial') === 'true';
@@ -27,6 +28,7 @@ const SettingsUi = () => {
                 <CssBaseline />
                 <SettingsPage
                     dictionaryProvider={dictionaryProvider}
+                    logProvider={extensionLogProvider}
                     settings={settings}
                     onSettingsChanged={onSettingsChanged}
                     inTutorial={inTutorial}

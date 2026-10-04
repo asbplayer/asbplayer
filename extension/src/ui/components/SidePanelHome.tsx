@@ -2,10 +2,10 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import { ChromeExtension } from '@project/common/app';
+import type { ChromeExtension } from '@project/common/app';
 import { useTranslation } from 'react-i18next';
-import CenteredGridItem from './CenteredGridItem';
-import CenteredGridContainer from './CenteredGridContainer';
+import CenteredGridItem from '@project/extension/src/ui/components/CenteredGridItem';
+import CenteredGridContainer from '@project/extension/src/ui/components/CenteredGridContainer';
 import LoadSubtitlesIcon from '@project/common/components/LoadSubtitlesIcon';
 import HistoryIcon from '@mui/icons-material/History';
 import ButtonGroup from '@mui/material/ButtonGroup';
@@ -14,6 +14,7 @@ import TutorialIcon from '@project/common/components/TutorialIcon';
 interface Props {
     extension: ChromeExtension;
     videoElementCount: number;
+    miningHistoryCount: number;
     onLoadSubtitles: () => void;
     onShowMiningHistory: () => void;
     onOpenUserGuide: () => void;
@@ -30,7 +31,13 @@ const VideoElementInfoText = ({ videoElementCount }: { videoElementCount: number
     );
 };
 
-const SidePanelHome = ({ videoElementCount, onLoadSubtitles, onShowMiningHistory, onOpenUserGuide }: Props) => {
+const SidePanelHome = ({
+    videoElementCount,
+    miningHistoryCount,
+    onLoadSubtitles,
+    onShowMiningHistory,
+    onOpenUserGuide,
+}: Props) => {
     const { t } = useTranslation();
 
     return (
@@ -48,7 +55,7 @@ const SidePanelHome = ({ videoElementCount, onLoadSubtitles, onShowMiningHistory
                         {t('action.loadSubtitles')}
                     </Button>
                     <Button startIcon={<HistoryIcon />} onClick={onShowMiningHistory}>
-                        {t('bar.miningHistory')}
+                        {`${t('bar.miningHistory')} (${miningHistoryCount})`}
                     </Button>
                     <Button startIcon={<TutorialIcon />} onClick={onOpenUserGuide}>
                         {t('action.userGuide')}

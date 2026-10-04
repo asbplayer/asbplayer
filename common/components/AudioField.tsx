@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import makeStyles from '@mui/styles/makeStyles';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
-import { AudioClip } from '../audio-clip';
+import DownloadIcon from '@mui/icons-material/Download';
+import type { AudioClip } from '@project/common/audio-clip';
 import { useTranslation } from 'react-i18next';
 import Badge from '@mui/material/Badge';
 
@@ -39,12 +40,12 @@ const useAudioHelperText = (audioClip?: AudioClip, onRerecord?: () => void) => {
 
             if (playable) {
                 if (onRerecord === undefined && !audioClip.isSliceable()) {
-                    setAudioHelperText(t('ankiDialog.cannotUpdateAudio')!);
+                    setAudioHelperText(t('ankiDialog.cannotUpdateAudio'));
                 } else {
                     setAudioHelperText(undefined);
                 }
             } else {
-                setAudioHelperText(t(audioClip.errorLocKey!)!);
+                setAudioHelperText(t(audioClip.errorLocKey!));
             }
         }
     }, [audioClip, onRerecord, t]);
@@ -69,6 +70,20 @@ export default function AudioField({
 
     audioActionElement = (
         <>
+            <Tooltip title={t('action.downloadAudio')}>
+                <span>
+                    <IconButton
+                        disabled={audioClip?.error !== undefined}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            void audioClip.download();
+                        }}
+                        edge="end"
+                    >
+                        <DownloadIcon />
+                    </IconButton>
+                </span>
+            </Tooltip>
             <IconButton disabled={audioClip?.error !== undefined} onClick={() => {}} edge="end">
                 {playing && <PauseIcon />}
                 {!playing && <PlayArrowIcon />}
@@ -77,8 +92,8 @@ export default function AudioField({
                 <Tooltip
                     title={
                         timestampIntervalSelectionNotApplied
-                            ? t('ankiDialog.rerecordAndApplySelection')!
-                            : t('ankiDialog.rerecord')!
+                            ? t('ankiDialog.rerecordAndApplySelection')
+                            : t('ankiDialog.rerecord')
                     }
                 >
                     <span>

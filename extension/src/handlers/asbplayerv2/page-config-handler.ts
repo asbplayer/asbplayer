@@ -1,5 +1,5 @@
 import { settingsPageConfigs } from '@/services/pages';
-import { Command, Message } from '@project/common';
+import type { Command, Message } from '@project/common';
 
 export default class PageConfigHandler {
     get sender() {

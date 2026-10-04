@@ -16,8 +16,9 @@ import IconButton from '@mui/material/IconButton';
 import { Trans } from 'react-i18next';
 import Link from '@mui/material/Link';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { AsbPlayerToVideoCommandV2, RequestSubtitlesMessage, RequestSubtitlesResponse } from '@project/common';
+import type { AsbPlayerToVideoCommandV2, RequestSubtitlesMessage } from '@project/common';
 import TutorialBubble from '@project/common/components/TutorialBubble';
+import { asbError } from '@project/common/util/log';
 import { isFirefox } from '@project/common/browser-detection';
 
 const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
@@ -29,18 +30,18 @@ const useExtensionState = () => {
     const [loadedSubtitlesCount, setLoadedSubtitlesCount] = useState<number>();
     const [currentTabId, setCurrentTabId] = useState<number>();
     useEffect(() => {
-        browser.tabs.getCurrent().then((t) => setCurrentTabId(t?.id));
+        void browser.tabs.getCurrent().then((t) => setCurrentTabId(t?.id));
     }, []);
     useEffect(() => {
         const interval = setInterval(() => {
-            tabRegistry
+            void tabRegistry
                 .findAsbplayer({
                     filter: (asbplayer) => asbplayer.sidePanel ?? false,
                     allowTabCreation: false,
                 })
                 .then((asbplayer) => setSidePanelOpen(asbplayer !== undefined));
 
-            tabRegistry.activeVideoElements().then(async (elems) => {
+            void tabRegistry.activeVideoElements().then(async (elems) => {
                 const currentElem = elems.find((elem) => elem.id === currentTabId && elem.synced);
 
                 if (currentElem !== undefined) {
@@ -52,9 +53,7 @@ const useExtensionState = () => {
                         tabId: currentElem.id,
                         src: currentElem.src,
                     };
-                    const response = (await browser.runtime.sendMessage(message)) as
-                        | RequestSubtitlesResponse
-                        | undefined;
+                    const response = await browser.runtime.sendMessage(message);
 
                     setLoadedSubtitlesCount(response?.subtitles?.length);
                 }
@@ -94,11 +93,7 @@ const ToolbarBubble: React.FC<{ show: boolean; onConfirm: () => void }> = ({ sho
     );
 };
 
-const LoadSubtitlesDialog: React.FC<{ open: boolean; count?: number; onClose: () => void }> = ({
-    open,
-    count,
-    onClose,
-}) => {
+const LoadSubtitlesDialog: React.FC<{ open: boolean; count?: number; onClose: () => void }> = ({ open, count }) => {
     return (
         <Dialog style={{ zIndex: zIndexTop }} open={open}>
             <DialogContent>
@@ -244,13 +239,16 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
 
     useEffect(() => {
         if (step == Step.overlay) {
-            settingsProvider.getSingle('streamingEnableOverlay').then((overlayEnabled) => {
-                if (overlayEnabled) {
-                    videoRef.current?.pause();
-                } else {
-                    setStep(Step.almostDone);
-                }
-            });
+            void settingsProvider
+                .getSingle('streamingEnableOverlay')
+                .then((overlayEnabled) => {
+                    if (overlayEnabled) {
+                        videoRef.current?.pause();
+                    } else {
+                        setStep(Step.almostDone);
+                    }
+                })
+                .catch((error) => asbError('tutorial', 'Failed to load overlay settings:', error));
         }
     }, [step]);
 
@@ -261,7 +259,7 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
         if (playing) {
             videoRef.current?.pause();
         } else {
-            videoRef.current?.play();
+            void videoRef.current?.play();
         }
     };
 
@@ -308,7 +306,7 @@ const Tutorial: React.FC<{ className: string; show: boolean }> = ({ className, s
                                     }}
                                 >
                                     {!playing && (
-                                        <IconButton onClick={() => videoRef.current?.play()}>
+                                        <IconButton onClick={() => void videoRef.current?.play()}>
                                             <PlayArrowIcon />
                                         </IconButton>
                                     )}

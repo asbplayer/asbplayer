@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
     initialWidth: () => number;
     minWidth: number;
     maxWidth: number;
     onResizeStart?: () => void;
-    onResizeEnd?: () => void;
+    onResizeEnd?: (width: number) => void;
 }
 
 // https://stackoverflow.com/questions/49469834/recommended-way-to-have-drawer-resizable
@@ -13,6 +13,11 @@ export const useResize = ({ initialWidth, minWidth, maxWidth, onResizeStart, onR
     const [isResizing, setIsResizing] = useState(false);
     const [width, setWidth] = useState(initialWidth);
     const [lastMouseDownClientX, setLastMouseDownClientX] = useState<number>(0);
+    const widthRef = useRef(width);
+
+    useEffect(() => {
+        widthRef.current = width;
+    }, [width]);
 
     const enableResize = useCallback(() => {
         setIsResizing(true);
@@ -20,9 +25,13 @@ export const useResize = ({ initialWidth, minWidth, maxWidth, onResizeStart, onR
     }, [setIsResizing, onResizeStart]);
 
     const disableResize = useCallback(() => {
+        if (!isResizing) {
+            return;
+        }
+
         setIsResizing(false);
-        onResizeEnd?.();
-    }, [setIsResizing, onResizeEnd]);
+        onResizeEnd?.(widthRef.current);
+    }, [isResizing, setIsResizing, onResizeEnd]);
 
     const recordLastMouseDownPosition = useCallback((e: MouseEvent) => {
         setLastMouseDownClientX(e.clientX);

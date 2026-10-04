@@ -5,10 +5,11 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import { useTranslation } from 'react-i18next';
-import { Image, ImageErrorCode } from '@project/common';
-import { type Theme } from '@mui/material';
-import { useImageData } from '../hooks/use-image-data';
-import Tooltip from './Tooltip';
+import type { MediaFragment } from '@project/common';
+import { MediaFragmentErrorCode } from '@project/common';
+import type { Theme } from '@mui/material';
+import { useImageData } from '@project/common/hooks/use-image-data';
+import Tooltip from '@project/common/components/Tooltip';
 import ImageIcon from '@mui/icons-material/Image';
 
 interface StyleProps {
@@ -36,7 +37,7 @@ const useStyles = makeStyles<Theme, StyleProps>(() => ({
     },
 }));
 
-const useImageHelperText = (image?: Image) => {
+const useImageHelperText = (image?: MediaFragment) => {
     const { t } = useTranslation();
     const [imageHelperText, setImageHelperText] = useState<string>();
     const [imageAvailable, setImageAvailable] = useState<boolean>();
@@ -46,12 +47,12 @@ const useImageHelperText = (image?: Image) => {
             if (image.error === undefined) {
                 setImageAvailable(true);
                 setImageHelperText(undefined);
-            } else if (image.error === ImageErrorCode.fileLinkLost) {
+            } else if (image.error === MediaFragmentErrorCode.fileLinkLost) {
                 setImageAvailable(false);
-                setImageHelperText(t('ankiDialog.imageFileLinkLost')!);
-            } else if (image.error === ImageErrorCode.captureFailed) {
+                setImageHelperText(t('ankiDialog.imageFileLinkLost'));
+            } else if (image.error === MediaFragmentErrorCode.captureFailed) {
                 setImageAvailable(false);
-                setImageHelperText(t('ankiDialog.imageCaptureFailed')!);
+                setImageHelperText(t('ankiDialog.imageCaptureFailed'));
             }
         }
     }, [image, t]);
@@ -62,7 +63,7 @@ const useImageHelperText = (image?: Image) => {
 interface Props {
     onViewImage: (e: React.MouseEvent<HTMLDivElement>) => void;
     onCopyImageToClipboard: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-    image: Image;
+    image: MediaFragment;
     copyEnabled: boolean;
 }
 
@@ -72,6 +73,8 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
     const classes = useStyles({ dataUrl });
     const { imageHelperText, imageAvailable } = useImageHelperText(image);
     const resizeRatio = height === 0 ? 0 : 20 / height;
+    const copyAllowed = copyEnabled && image.extension !== 'webm';
+
     return (
         <div className={classes.root} onClick={onViewImage}>
             <TextField
@@ -84,20 +87,35 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
                 disabled={!imageAvailable}
                 slotProps={{
                     input: {
-                        startAdornment: dataUrl && width > 0 && height > 0 && (
-                            <img
-                                src={dataUrl}
-                                width={width * resizeRatio}
-                                height={height * resizeRatio}
-                                className={classes.imagePreview}
-                            />
-                        ),
+                        startAdornment:
+                            dataUrl &&
+                            width > 0 &&
+                            height > 0 &&
+                            (image.extension === 'webm' ? (
+                                <video
+                                    src={dataUrl}
+                                    width={width * resizeRatio}
+                                    height={height * resizeRatio}
+                                    className={classes.imagePreview}
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                />
+                            ) : (
+                                <img
+                                    src={dataUrl}
+                                    width={width * resizeRatio}
+                                    height={height * resizeRatio}
+                                    className={classes.imagePreview}
+                                />
+                            )),
                         endAdornment: (
                             <InputAdornment position="end">
                                 <>
                                     <Tooltip
                                         disabled={!image.canChangeTimestamp || !imageAvailable}
-                                        title={t('ankiDialog.imagePreview')!}
+                                        title={t('ankiDialog.imagePreview')}
                                     >
                                         <span>
                                             <IconButton disabled={!imageAvailable} onClick={() => {}} edge="end">
@@ -105,8 +123,8 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
                                             </IconButton>
                                         </span>
                                     </Tooltip>
-                                    {copyEnabled && (
-                                        <Tooltip disabled={!imageAvailable} title={t('ankiDialog.copyToClipboard')!}>
+                                    {copyAllowed && (
+                                        <Tooltip disabled={!imageAvailable} title={t('ankiDialog.copyToClipboard')}>
                                             <span>
                                                 <IconButton
                                                     disabled={!imageAvailable}

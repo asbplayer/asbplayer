@@ -9,16 +9,47 @@ export enum AnnotationTutorialState {
     hasSeen = 2,
 }
 
+export interface JimakuCachedWork {
+    id: number;
+    name: string;
+}
+
+export interface OnlineSubtitleSourceConfig {
+    jimakuApiKey: string;
+    jimakuSearchCategory: 'anime' | 'drama';
+    jimakuRecentWorks?: JimakuCachedWork[];
+}
+
+export type GenericParseType = 'off' | 'base' | 'aggressive';
+
+export interface GenericSubtitleParserState {
+    pages: {
+        [host: string]: {
+            parse: GenericParseType;
+        };
+    };
+}
+
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
     ftueHasSeenSubtitleTrackSelector: false,
     ftueAnnotation: AnnotationTutorialState.hasNotSeen,
+    genericSubtitleParser: {
+        pages: {},
+    },
+    onlineSubtitleSourceConfig: {
+        jimakuApiKey: '',
+        jimakuSearchCategory: 'anime',
+        jimakuRecentWorks: [],
+    },
 };
 
 export interface GlobalState {
     ftueHasSeenAnkiDialogQuickSelectV2: boolean;
     ftueHasSeenSubtitleTrackSelector: boolean;
     ftueAnnotation: AnnotationTutorialState;
+    genericSubtitleParser: GenericSubtitleParserState;
+    onlineSubtitleSourceConfig: OnlineSubtitleSourceConfig;
 }
 
 export interface GlobalStateProvider {

@@ -4,13 +4,17 @@ import { Trans, useTranslation } from 'react-i18next';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import Paper from '@mui/material/Paper';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import { createTheme } from '@project/common/theme';
+import { asbError } from '@project/common/util/log';
 import { makeStyles } from '@mui/styles';
-import CenteredGridContainer from './CenteredGridContainer';
-import CenteredGridItem from './CenteredGridItem';
+import CenteredGridContainer from '@project/extension/src/ui/components/CenteredGridContainer';
+import CenteredGridItem from '@project/extension/src/ui/components/CenteredGridItem';
 import React, { useEffect, useState } from 'react';
-import Tutorial from './Tutorial';
+import Tutorial from '@project/extension/src/ui/components/Tutorial';
+import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
+import { SettingsProvider } from '@project/common/settings';
+import type { PaletteMode } from '@mui/material';
 
 const useStyles = makeStyles({
     container: {
@@ -59,6 +63,8 @@ const WelcomeMessage: React.FC<{ className: string }> = ({ className }) => {
     );
 };
 
+const settingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
+
 const useLangParam = () => {
     const [lang, setLang] = useState<string>();
     useEffect(() => setLang(new URLSearchParams(window.location.search).get('lang') ?? undefined), []);
@@ -66,7 +72,8 @@ const useLangParam = () => {
 };
 
 const FtueUi = () => {
-    const theme = createTheme('dark');
+    const [themeType, setThemeType] = useState<PaletteMode>('dark');
+    const theme = createTheme(themeType);
     const langParam = useLangParam();
     const { initialized: i18Initialized } = useI18n({ language: langParam ?? browser.i18n.getUILanguage() });
     const classes = useStyles();
@@ -85,6 +92,13 @@ const FtueUi = () => {
             }
         };
     };
+
+    useEffect(() => {
+        void settingsProvider
+            .getSingle('themeType')
+            .then(setThemeType)
+            .catch((error) => asbError('ftue', 'Failed to load the theme setting:', error));
+    }, []);
 
     if (!i18Initialized) {
         return null;

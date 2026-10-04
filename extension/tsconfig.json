@@ -7,10 +7,13 @@
         "useDefineForClassFields": true,
         "allowImportingTsExtensions": true,
         "isolatedModules": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
         "moduleDetection": "force",
         "noUnusedLocals": false,
         "noUnusedParameters": false,
         "noFallthroughCasesInSwitch": true,
-        "noUncheckedSideEffectImports": true
+        "noUncheckedSideEffectImports": true,
+        "noUncheckedIndexedAccess": false
     }
 }

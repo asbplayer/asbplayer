@@ -1,4 +1,5 @@
-import {
+import { asbError } from '@project/common/util/log';
+import type {
     AsbPlayerToVideoCommandV2,
     Command,
     ExtensionToVideoCommand,
@@ -24,9 +25,10 @@ export default class RequestSubtitlesHandler {
                 command: 'request-subtitles',
             },
         };
-        browser.tabs.sendMessage(tabId, requestSubtitlesFromTabCommand).then((response) => {
-            sendResponse(response);
-        });
+        void browser.tabs
+            .sendMessage(tabId, requestSubtitlesFromTabCommand)
+            .then(sendResponse)
+            .catch((error) => asbError('video/request', 'Failed to request subtitles from the video tab:', error));
         return true;
     }
 }

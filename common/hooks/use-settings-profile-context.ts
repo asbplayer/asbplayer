@@ -1,5 +1,6 @@
-import { DictionaryProvider } from '../dictionary-db';
-import { Profile, SettingsProvider } from '../settings';
+import { asbError } from '@project/common/util/log';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { Profile, SettingsProvider } from '@project/common/settings';
 import { useEffect, useState, useCallback } from 'react';
 
 interface Params {
@@ -12,8 +13,18 @@ export const useSettingsProfileContext = ({ dictionaryProvider, settingsProvider
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [activeProfile, setActiveProfile] = useState<string>();
     const refreshProfileContext = useCallback(() => {
-        settingsProvider.profiles().then(setProfiles);
-        settingsProvider.activeProfile().then((p) => setActiveProfile(p?.name));
+        void settingsProvider
+            .profiles()
+            .then(setProfiles)
+            .catch((error) => {
+                asbError('settings/profiles', 'Failed to load profiles:', error);
+            });
+        void settingsProvider
+            .activeProfile()
+            .then((p) => setActiveProfile(p?.name))
+            .catch((error) => {
+                asbError('settings/profiles', 'Failed to load the active profile:', error);
+            });
     }, [settingsProvider]);
     useEffect(() => {
         refreshProfileContext();
@@ -26,19 +37,27 @@ export const useSettingsProfileContext = ({ dictionaryProvider, settingsProvider
                 .then(() => settingsProvider.profiles().then(setProfiles))
                 .then(() => settingsProvider.setActiveProfile(name))
                 .then(() => setActiveProfile(name))
-                .then(() => onProfileChanged()),
+                .then(() => onProfileChanged())
+                .catch((error) => {
+                    asbError('settings/profiles', `Failed to create profile '${name}':`, error);
+                }),
         [settingsProvider, onProfileChanged]
     );
     const onRemoveProfile = useCallback(
         async (name: string) => {
-            await dictionaryProvider.deleteProfile(name);
+            try {
+                await dictionaryProvider.deleteProfile(name);
 
-            if (name === activeProfile) {
-                await settingsProvider.setActiveProfile(undefined);
-                setActiveProfile(undefined);
-                onProfileChanged();
+                if (name === activeProfile) {
+                    await settingsProvider.setActiveProfile(undefined);
+                    setActiveProfile(undefined);
+                    onProfileChanged();
+                }
+                await settingsProvider.removeProfile(name);
+                setProfiles(await settingsProvider.profiles());
+            } catch (error) {
+                asbError('settings/profiles', `Failed to remove profile '${name}':`, error);
             }
-            settingsProvider.removeProfile(name).then(() => settingsProvider.profiles().then(setProfiles));
         },
         [dictionaryProvider, settingsProvider, activeProfile, onProfileChanged]
     );
@@ -47,7 +66,10 @@ export const useSettingsProfileContext = ({ dictionaryProvider, settingsProvider
             settingsProvider
                 .setActiveProfile(name)
                 .then(() => setActiveProfile(name))
-                .then(() => onProfileChanged()),
+                .then(() => onProfileChanged())
+                .catch((error) => {
+                    asbError('settings/profiles', `Failed to set the active profile to '${name ?? 'none'}':`, error);
+                }),
         [settingsProvider, onProfileChanged]
     );
 

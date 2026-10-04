@@ -1,7 +1,8 @@
 import React from 'react';
 import Grid2 from '@mui/material/Grid2';
 import Typography from '@mui/material/Typography';
-import { type Theme, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 
 interface Props {
     label: React.ReactNode;

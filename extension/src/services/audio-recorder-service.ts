@@ -1,16 +1,15 @@
-import {
+import type {
     ExtensionToAsbPlayerCommand,
     ExtensionToVideoCommand,
     NotifyErrorMessage,
     RecordingFinishedMessage,
     RecordingStartedMessage,
     RequestActiveTabPermissionMessage,
-    StartRecordingErrorCode,
     StartRecordingResponse,
-    StopRecordingErrorCode,
 } from '@project/common';
-import TabRegistry from './tab-registry';
-import { AudioRecorderDelegate } from './audio-recorder-delegate';
+import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
+import type { AudioRecorderDelegate } from '@project/extension/src/services/audio-recorder-delegate';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Requester {
@@ -74,7 +73,7 @@ export default class AudioRecorderService {
                 throw this._handleStartError(response, requester);
             }
 
-            this._prepareForAudioDataResponse(requestId);
+            void this._prepareForAudioDataResponse(requestId);
             this._notifyRecordingStarted(requester);
         } catch (e) {
             this._notifyRecordingFinished(requester);
@@ -108,11 +107,12 @@ export default class AudioRecorderService {
             },
             src,
         };
-        browser.tabs.sendMessage(tabId, command);
+        void browser.tabs.sendMessage(tabId, command);
     }
 
     async stop(encodeAsMp3: boolean, requester: Requester): Promise<string> {
-        if (this.audioBase64Promise === undefined) {
+        const audioBase64Promise = this.audioBase64Promise; // Audio delivery can clear the shared promise before the stop acknowledgment arrives.
+        if (audioBase64Promise === undefined) {
             // Benign no-op: If the user spams cancel on a bulk export,
             // we can get a cancel request on a non-recording state.
             this._notifyRecordingFinished(requester);
@@ -132,7 +132,7 @@ export default class AudioRecorderService {
         }
 
         this._notifyRecordingFinished(requester);
-        return await this.audioBase64Promise;
+        return audioBase64Promise;
     }
 
     private _notifyRecordingStarted({ tabId, src }: Requester) {
@@ -142,7 +142,7 @@ export default class AudioRecorderService {
                 command: 'recording-started',
             },
         };
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => (asbplayer.sidePanel ? command : undefined),
         });
         const videoCommand: ExtensionToVideoCommand<RecordingStartedMessage> = {
@@ -152,7 +152,7 @@ export default class AudioRecorderService {
             },
             src,
         };
-        browser.tabs.sendMessage(tabId, videoCommand);
+        void browser.tabs.sendMessage(tabId, videoCommand);
     }
 
     private _notifyRecordingFinished({ tabId, src }: Requester) {
@@ -162,7 +162,7 @@ export default class AudioRecorderService {
                 command: 'recording-finished',
             },
         };
-        this._tabRegistry.publishCommandToAsbplayers({
+        void this._tabRegistry.publishCommandToAsbplayers({
             commandFactory: (asbplayer) => (asbplayer.sidePanel ? playerCommand : undefined),
         });
         const videoCommand: ExtensionToVideoCommand<RecordingFinishedMessage> = {
@@ -172,7 +172,7 @@ export default class AudioRecorderService {
             },
             src,
         };
-        browser.tabs.sendMessage(tabId, videoCommand);
+        void browser.tabs.sendMessage(tabId, videoCommand);
     }
 
     private _prepareForAudioDataResponse(requestId: string): Promise<string> {
@@ -201,6 +201,6 @@ export default class AudioRecorderService {
             },
             src,
         };
-        browser.tabs.sendMessage(tabId, notifyErrorCommand);
+        void browser.tabs.sendMessage(tabId, notifyErrorCommand);
     }
 }

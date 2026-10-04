@@ -1,10 +1,11 @@
+import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { ControlType } from '..';
 
 interface Params {
     isMobile: boolean;
     fetchLastControlType: () => Promise<ControlType | undefined>;
-    saveLastControlType: (controlType: ControlType) => void;
+    saveLastControlType: (controlType: ControlType) => Promise<void>;
 }
 
 export const useLastScrollableControlType = ({ isMobile, fetchLastControlType, saveLastControlType }: Params) => {
@@ -15,19 +16,23 @@ export const useLastScrollableControlType = ({ isMobile, fetchLastControlType, s
     const [lastControlType, setLastControlType] = useState<ControlType>(defaultControlType);
 
     useEffect(() => {
-        fetchLastControlType().then((controlType) => {
-            if (controlType === undefined) {
-                setLastControlType(defaultControlType);
-            } else {
-                setLastControlType(controlType);
-            }
-        });
+        void fetchLastControlType()
+            .then((controlType) => {
+                if (controlType === undefined) {
+                    setLastControlType(defaultControlType);
+                } else {
+                    setLastControlType(controlType);
+                }
+            })
+            .catch((error) => asbError('settings/ui', 'Failed to load last scrollable control type:', error));
     }, [defaultControlType, fetchLastControlType]);
 
     const wrapSaveLastControlType = useCallback(
         (controlType: ControlType) => {
             setLastControlType(controlType);
-            saveLastControlType(controlType);
+            void saveLastControlType(controlType).catch((error) =>
+                asbError('settings/ui', 'Failed to save last scrollable control type:', error)
+            );
         },
         [saveLastControlType]
     );

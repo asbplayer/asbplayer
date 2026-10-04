@@ -9,32 +9,40 @@ import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import LabelWithHoverEffect from './LabelWithHoverEffect';
+import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
 import MenuItem from '@mui/material/MenuItem';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Radio from '@mui/material/Radio';
-import {
+import Select from '@mui/material/Select';
+import type {
     AsbplayerSettings,
+    SubtitlesWidthUnit,
     TextSubtitleSettings,
+    CustomStyle,
+} from '@project/common/settings';
+import {
     changeForTextSubtitleSetting,
+    maxSubtitlesWidth,
+    subtitlesWidthUnits,
     textSubtitleSettingsAreDirty,
     textSubtitleSettingsForTrack,
 } from '@project/common/settings';
 import { isNumeric } from '@project/common/util';
-import { CustomStyle } from '@project/common/settings';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import RadioGroup from '@mui/material/RadioGroup';
-import Tooltip from './Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Autocomplete from '@mui/material/Autocomplete';
 import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
-import SubtitleAppearanceTrackSelector from './SubtitleAppearanceTrackSelector';
-import SubtitlePreview from './SubtitlePreview';
+import SubtitleAppearanceTrackSelector from '@project/common/components/SubtitleAppearanceTrackSelector';
+import SubtitlePreview from '@project/common/components/SubtitlePreview';
 import Stack from '@mui/material/Stack';
-import SettingsTextField from './SettingsTextField';
-import SwitchLabelWithHoverEffect from './SwitchLabelWithHoverEffect';
-import SettingsSection from './SettingsSection';
+import SettingsTextField from '@project/common/components/SettingsTextField';
+import NumericSettingInput from '@project/common/components/NumericSettingInput';
+import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
+import SettingsSection from '@project/common/components/SettingsSection';
+import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 
 // Filter out keys that look like '0', '1', ... as those are invalid
 const cssStyles = Object.keys(document.body.style).filter((s) => !isNumeric(s));
@@ -62,7 +70,7 @@ function AddCustomStyle({ styleKey, onStyleKey, onAddCustomStyle }: AddCustomSty
             }}
             renderInput={(params) => (
                 <SettingsTextField
-                    placeholder={t('settings.styleKey')!}
+                    placeholder={t('settings.styleKey')}
                     label={t('settings.addCustomCss')}
                     color="primary"
                     {...params}
@@ -101,7 +109,7 @@ function CustomStyleSetting({ customStyle, onCustomStyle, onDelete }: CustomStyl
         <SettingsTextField
             color="primary"
             label={t('settings.customCssField', { styleKey: customStyle.key })}
-            placeholder={t('settings.styleValue')!}
+            placeholder={t('settings.styleValue')}
             value={customStyle.value}
             onChange={(e) => onCustomStyle({ key: customStyle.key, value: e.target.value })}
             slotProps={{
@@ -119,6 +127,42 @@ function CustomStyleSetting({ customStyle, onCustomStyle, onDelete }: CustomStyl
     );
 }
 
+interface SubtitlesWidthUnitSelectProps {
+    value: SubtitlesWidthUnit;
+    onValueChange: (value: SubtitlesWidthUnit) => void;
+}
+
+function SubtitlesWidthUnitSelect({ value, onValueChange }: SubtitlesWidthUnitSelectProps) {
+    const { t } = useTranslation();
+
+    return (
+        <Select
+            variant="standard"
+            disableUnderline
+            value={value}
+            SelectDisplayProps={{ 'aria-label': t('settings.subtitlesWidth') }}
+            onChange={(event) => onValueChange(event.target.value as SubtitlesWidthUnit)}
+            sx={{
+                fontSize: 'inherit',
+                '& .MuiSelect-select': {
+                    padding: 0,
+                    paddingRight: 2,
+                },
+                '& .MuiSelect-icon': {
+                    right: 0,
+                    fontSize: 'inherit',
+                },
+            }}
+        >
+            {subtitlesWidthUnits.map((unit) => (
+                <MenuItem key={unit} value={unit}>
+                    {unit}
+                </MenuItem>
+            ))}
+        </Select>
+    );
+}
+
 interface Props {
     settings: AsbplayerSettings;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
@@ -126,10 +170,12 @@ interface Props {
     extensionInstalled?: boolean;
     extensionSupportsTrackSpecificSettings?: boolean;
     extensionSupportsSubtitlesWidthSetting?: boolean;
+    extensionSupportsSubtitlesWidthInPixels?: boolean;
     localFontsAvailable: boolean;
     localFontsPermission?: PermissionState;
     localFontFamilies: string[];
     onUnlockLocalFonts: () => void;
+    onViewKeyboardShortcuts: () => void;
 }
 
 const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
@@ -139,10 +185,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
     extensionInstalled,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
+    extensionSupportsSubtitlesWidthInPixels,
     localFontsAvailable,
     localFontsPermission,
     localFontFamilies,
     onUnlockLocalFonts,
+    onViewKeyboardShortcuts,
 }) => {
     const { t } = useTranslation();
     const {
@@ -151,7 +199,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
         subtitlePositionOffset,
         topSubtitlePositionOffset,
         subtitlesWidth,
+        subtitlesWidthUnit,
     } = settings;
+    const supportsSubtitlesWidthInPixels = !extensionInstalled || extensionSupportsSubtitlesWidthInPixels;
+    const subtitlesWidthUnitForExtension: SubtitlesWidthUnit = supportsSubtitlesWidthInPixels
+        ? subtitlesWidthUnit
+        : '%';
     const [currentStyleKey, setCurrentStyleKey] = useState<string>(cssStyles[0]);
     const [selectedSubtitleAppearanceTrack, setSelectedSubtitleAppearanceTrack] = useState<number>();
     const {
@@ -227,13 +280,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 />
             )}
             {subtitleSize !== undefined && (
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.subtitleSize')}
                     fullWidth
                     value={subtitleSize}
                     color="primary"
-                    onChange={(event) => handleSubtitleTextSettingChanged('subtitleSize', Number(event.target.value))}
+                    onValueChange={(value) => handleSubtitleTextSettingChanged('subtitleSize', value)}
                     slotProps={{
                         htmlInput: {
                             min: 1,
@@ -272,15 +324,12 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 />
             )}
             {subtitleOutlineThickness !== undefined && (
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.subtitleOutlineThickness')}
                     helperText={t('settings.subtitleOutlineThicknessHelperText')}
                     fullWidth
                     value={subtitleOutlineThickness}
-                    onChange={(event) =>
-                        handleSubtitleTextSettingChanged('subtitleOutlineThickness', Number(event.target.value))
-                    }
+                    onValueChange={(value) => handleSubtitleTextSettingChanged('subtitleOutlineThickness', value)}
                     slotProps={{
                         htmlInput: {
                             min: 0,
@@ -301,14 +350,11 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 />
             )}
             {subtitleShadowThickness !== undefined && (
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.subtitleShadowThickness')}
                     fullWidth
                     value={subtitleShadowThickness}
-                    onChange={(event) =>
-                        handleSubtitleTextSettingChanged('subtitleShadowThickness', Number(event.target.value))
-                    }
+                    onValueChange={(value) => handleSubtitleTextSettingChanged('subtitleShadowThickness', value)}
                     slotProps={{
                         htmlInput: {
                             min: 0,
@@ -331,8 +377,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 />
             )}
             {subtitleBackgroundOpacity !== undefined && (
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.subtitleBackgroundOpacity')}
                     fullWidth
                     slotProps={{
@@ -344,9 +389,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     }}
                     value={subtitleBackgroundOpacity}
                     color="primary"
-                    onChange={(event) =>
-                        handleSubtitleTextSettingChanged('subtitleBackgroundOpacity', Number(event.target.value))
-                    }
+                    onValueChange={(value) => handleSubtitleTextSettingChanged('subtitleBackgroundOpacity', value)}
                 />
             )}
             {subtitleFontFamily !== undefined && (
@@ -366,7 +409,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                     localFontFamilies.length === 0 &&
                                     localFontsAvailable &&
                                     localFontsPermission === 'prompt' ? (
-                                        <Tooltip title={t('settings.unlockLocalFonts')!}>
+                                        <Tooltip title={t('settings.unlockLocalFonts')}>
                                             <IconButton onClick={onUnlockLocalFonts}>
                                                 <LockIcon fontSize="small" />
                                             </IconButton>
@@ -424,7 +467,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
             )}
 
             {subtitleBlur !== undefined && (
-                <Tooltip placement="bottom-end" title={t('settings.subtitleBlurDescription')!}>
+                <Tooltip placement="bottom-end" title={t('settings.subtitleBlurDescription')}>
                     <SwitchLabelWithHoverEffect
                         control={
                             <Switch
@@ -441,8 +484,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
             )}
 
             {selectedSubtitleAppearanceTrack === undefined && (
-                <SettingsTextField
-                    type="number"
+                <NumericSettingInput
                     label={t('settings.imageBasedSubtitleScaleFactor')}
                     placeholder="Inherited"
                     fullWidth
@@ -455,7 +497,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                     }}
                     value={imageBasedSubtitleScaleFactor}
                     color="primary"
-                    onChange={(event) => onSettingChanged('imageBasedSubtitleScaleFactor', Number(event.target.value))}
+                    onValueChange={(value) => void onSettingChanged('imageBasedSubtitleScaleFactor', value)}
                 />
             )}
 
@@ -496,11 +538,15 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
 
             {selectedSubtitleAppearanceTrack === undefined && (
                 <>
-                    <SettingsTextField
-                        type="number"
+                    <NumericSettingInput
                         color="primary"
                         fullWidth
-                        label={t('settings.subtitlePositionOffset')}
+                        label={
+                            <>
+                                {t('settings.subtitlePositionOffset')}
+                                <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} preset="numericalInputLabel" />
+                            </>
+                        }
                         value={subtitlePositionOffset}
                         slotProps={{
                             htmlInput: {
@@ -508,13 +554,17 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 step: 1,
                             },
                         }}
-                        onChange={(e) => onSettingChanged('subtitlePositionOffset', Number(e.target.value))}
+                        onValueChange={(value) => void onSettingChanged('subtitlePositionOffset', value)}
                     />
-                    <SettingsTextField
-                        type="number"
+                    <NumericSettingInput
                         color="primary"
                         fullWidth
-                        label={t('settings.topSubtitlePositionOffset')}
+                        label={
+                            <>
+                                {t('settings.topSubtitlePositionOffset')}
+                                <KeyboardShortcutLink onClick={onViewKeyboardShortcuts} preset="numericalInputLabel" />
+                            </>
+                        }
                         value={topSubtitlePositionOffset}
                         slotProps={{
                             htmlInput: {
@@ -522,51 +572,83 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 step: 1,
                             },
                         }}
-                        onChange={(e) => onSettingChanged('topSubtitlePositionOffset', Number(e.target.value))}
+                        onValueChange={(value) => void onSettingChanged('topSubtitlePositionOffset', value)}
                     />
-                    {(!extensionInstalled || extensionSupportsSubtitlesWidthSetting) && (
-                        <SettingsTextField
-                            color="primary"
-                            fullWidth
-                            label={t('settings.subtitlesWidth')}
-                            disabled={subtitlesWidth === -1}
-                            value={subtitlesWidth === -1 ? 'auto' : subtitlesWidth}
-                            onChange={(e) => {
-                                const numberValue = Number(e.target.value);
-
-                                if (!Number.isNaN(numberValue) && numberValue >= 0 && numberValue <= 100) {
-                                    onSettingChanged('subtitlesWidth', numberValue);
+                    {(!extensionInstalled || extensionSupportsSubtitlesWidthSetting) &&
+                        (subtitlesWidth === -1 ? (
+                            <SettingsTextField
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitlesWidth')}
+                                disabled
+                                value="auto"
+                                slotProps={{
+                                    input: {
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => void onSettingChanged('subtitlesWidth', 100)}
+                                                >
+                                                    <EditIcon />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    },
+                                }}
+                            />
+                        ) : (
+                            <NumericSettingInput
+                                color="primary"
+                                fullWidth
+                                label={t('settings.subtitlesWidth')}
+                                value={subtitlesWidth}
+                                normalizeValue={(value) =>
+                                    value >= 0 &&
+                                    value <= maxSubtitlesWidth(subtitlesWidthUnitForExtension) &&
+                                    Number.isFinite(value)
+                                        ? value
+                                        : undefined
                                 }
-                            }}
-                            slotProps={{
-                                input: {
-                                    endAdornment: (
-                                        <>
-                                            {subtitlesWidth === -1 && (
+                                onValueChange={(value) => void onSettingChanged('subtitlesWidth', value)}
+                                slotProps={{
+                                    htmlInput: {
+                                        min: 0,
+                                        max: maxSubtitlesWidth(subtitlesWidthUnitForExtension),
+                                    },
+                                    input: {
+                                        endAdornment: (
+                                            <>
+                                                {supportsSubtitlesWidthInPixels ? (
+                                                    <InputAdornment position="end">
+                                                        <SubtitlesWidthUnitSelect
+                                                            value={subtitlesWidthUnit}
+                                                            onValueChange={(unit) =>
+                                                                onSettingsChanged({
+                                                                    subtitlesWidthUnit: unit,
+                                                                    subtitlesWidth: Math.min(
+                                                                        subtitlesWidth,
+                                                                        maxSubtitlesWidth(unit)
+                                                                    ),
+                                                                })
+                                                            }
+                                                        />
+                                                    </InputAdornment>
+                                                ) : (
+                                                    <InputAdornment position="end">%</InputAdornment>
+                                                )}
                                                 <InputAdornment position="end">
-                                                    <IconButton onClick={() => onSettingChanged('subtitlesWidth', 100)}>
-                                                        <EditIcon />
+                                                    <IconButton
+                                                        onClick={() => void onSettingChanged('subtitlesWidth', -1)}
+                                                    >
+                                                        <ClearIcon />
                                                     </IconButton>
                                                 </InputAdornment>
-                                            )}
-                                            {subtitlesWidth !== -1 && (
-                                                <>
-                                                    <InputAdornment position="end">%</InputAdornment>
-                                                    <InputAdornment position="end">
-                                                        <IconButton
-                                                            onClick={() => onSettingChanged('subtitlesWidth', -1)}
-                                                        >
-                                                            <ClearIcon />
-                                                        </IconButton>
-                                                    </InputAdornment>
-                                                </>
-                                            )}
-                                        </>
-                                    ),
-                                },
-                            }}
-                        />
-                    )}
+                                            </>
+                                        ),
+                                    },
+                                }}
+                            />
+                        ))}
                 </>
             )}
         </Stack>

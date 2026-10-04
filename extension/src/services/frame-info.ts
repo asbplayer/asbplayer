@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class FrameInfoBroadcaster {
     readonly frameId = uuidv4();
-    private _broadcastInterval?: NodeJS.Timeout;
+    private _broadcastInterval?: ReturnType<typeof setInterval>;
     private _bound = false;
 
     bind() {

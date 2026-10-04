@@ -22,7 +22,8 @@ const diff = (a, b) => {
 
 fs.readdir(localesPath, (err, files) => {
     if (err) {
-        console.error(error);
+        console.error(err);
+        return;
     }
 
     const enLocale = JSON.parse(fs.readFileSync(`${localesPath}/en.json`));
@@ -39,7 +40,7 @@ fs.readdir(localesPath, (err, files) => {
         const code = /(.+)\.json/.exec(f)[1];
         updateFlattenedUntranslatedKeys(code, 'common', untranslated)
             .then(() => {
-                fs.writeFileSync(localePath, JSON.stringify(mergedLocale, null, 4), 'utf8');
+                fs.writeFileSync(localePath, JSON.stringify(mergedLocale, null, 4) + '\n', 'utf8');
             })
             .catch(console.error);
     }

@@ -1,5 +1,6 @@
-import { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
+import type { VideoData, VideoDataSubtitleTrack, VideoDataSubtitleTrackDef } from '@project/common';
 import { extractExtension, poll, trackId } from '@/pages/util';
+import { asbError } from '@project/common/util/log';
 
 declare global {
     interface XMLHttpRequest {
@@ -22,47 +23,95 @@ export default defineUnlistedScript(() => {
 
     let lastEntityId: string | undefined;
 
-    const originalXhrOpen = window.XMLHttpRequest.prototype.open;
-    window.XMLHttpRequest.prototype.open = function () {
-        const url = arguments[1];
+    // Returns the captured titleId if the URL is a VOD playback resources request. The
+    // caller pairs the body with the same id when the request is actually sent.
+    const captureRequestUrl = (url: string): string | undefined => {
+        if (url.includes('GetVodPlaybackResources')) {
+            const titleId = urlParam(url, 'titleId');
 
-        if (typeof url === 'string') {
-            if (url.includes('GetVodPlaybackResources')) {
-                const titleId = urlParam(url, 'titleId');
-
-                if (titleId) {
-                    const urls = metadataUrls[titleId] ?? {};
-                    urls.vodPlaybackResourcesUrl = url;
-                    metadataUrls[titleId] = urls;
-                    lastEntityId = titleId;
-                    this._vodPlaybackResourcesTitleId = titleId;
-                }
-            }
-
-            if (url.includes('playerChromeResources') && url.includes('catalogMetadataV2')) {
-                const entityId = urlParam(url, 'entityId');
-
-                if (entityId) {
-                    const urls = metadataUrls[entityId] ?? {};
-                    urls.playerChromeResourcesUrl = url;
-                    metadataUrls[entityId] = urls;
-                    lastEntityId = entityId;
-                }
+            if (titleId) {
+                const urls = metadataUrls[titleId] ?? {};
+                urls.vodPlaybackResourcesUrl = url;
+                metadataUrls[titleId] = urls;
+                lastEntityId = titleId;
+                return titleId;
             }
         }
 
-        // @ts-ignore
-        originalXhrOpen.apply(this, arguments);
+        if (url.includes('playerChromeResources') && url.includes('catalogMetadataV2')) {
+            const entityId = urlParam(url, 'entityId');
+
+            if (entityId) {
+                const urls = metadataUrls[entityId] ?? {};
+                urls.playerChromeResourcesUrl = url;
+                metadataUrls[entityId] = urls;
+                lastEntityId = entityId;
+            }
+        }
+
+        return undefined;
+    };
+
+    const originalXhrOpen = window.XMLHttpRequest.prototype.open;
+    window.XMLHttpRequest.prototype.open = function (...args: unknown[]) {
+        const url = args[1];
+
+        if (typeof url === 'string') {
+            const titleId = captureRequestUrl(url);
+
+            if (titleId) {
+                this._vodPlaybackResourcesTitleId = titleId;
+            }
+        }
+
+        // @ts-expect-error: forwarding original XHR arguments
+        originalXhrOpen.apply(this, args);
     };
 
     const originalXhrSend = window.XMLHttpRequest.prototype.send;
-    window.XMLHttpRequest.prototype.send = function () {
-        if (this._vodPlaybackResourcesTitleId && typeof arguments[0] === 'string') {
-            metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = arguments[0];
+    window.XMLHttpRequest.prototype.send = function (...args: unknown[]) {
+        if (this._vodPlaybackResourcesTitleId && typeof args[0] === 'string') {
+            metadataUrls[this._vodPlaybackResourcesTitleId].vodPlaybackResourceBody = args[0];
         }
 
-        // @ts-ignore
-        originalXhrSend.apply(this, arguments);
+        // @ts-expect-error: forwarding original XHR arguments
+        originalXhrSend.apply(this, args);
+    };
+
+    // Prime's player issues these calls via fetch, so mirror the capture there too.
+    const originalFetch = window.fetch;
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+        try {
+            const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+            if (typeof url === 'string') {
+                const titleId = captureRequestUrl(url);
+
+                if (titleId) {
+                    if (init && typeof init.body === 'string') {
+                        metadataUrls[titleId].vodPlaybackResourceBody = init.body;
+                    } else if (input instanceof Request) {
+                        // Body lives on the Request object itself. Clone so the page's
+                        // own consumption is unaffected.
+                        input
+                            .clone()
+                            .text()
+                            .then((body) => {
+                                if (body) {
+                                    metadataUrls[titleId].vodPlaybackResourceBody = body;
+                                }
+                            })
+                            .catch(() => {
+                                // Ignore so the page's fetch is not broken.
+                            });
+                    }
+                }
+            }
+        } catch {
+            // Never let our interceptor break the page's fetches.
+        }
+
+        return originalFetch.call(this, input, init);
     };
 
     const basenameFromUrl = async (url: string) => {
@@ -97,7 +146,23 @@ export default defineUnlistedScript(() => {
     };
 
     const tracksFromUrl = async (url: string, body: string) => {
-        const response = await (await fetch(url, { method: 'POST', body, credentials: 'include' })).json();
+        const response = await (
+            await fetch(url, {
+                method: 'POST',
+                body,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            })
+        ).json();
+
+        // Treat stale-session error responses as a real error rather than letting
+        // the picker show no tracks. Titles with no subtitles still pass through.
+        if (!response?.timedTextUrls?.result) {
+            throw new Error(
+                'Could not detect subtitles. Try refreshing this page and starting playback. (stale playback session)'
+            );
+        }
+
         const tracks = response?.timedTextUrls?.result?.subtitleUrls;
         const subtitleTracks: VideoDataSubtitleTrack[] = [];
 
@@ -122,8 +187,8 @@ export default defineUnlistedScript(() => {
 
     document.addEventListener(
         'asbplayer-get-synced-data',
-        async () => {
-            try {
+        () => {
+            void (async () => {
                 if (lastEntityId) {
                     const entityId = lastEntityId;
                     const capturedUrls = await poll(() => {
@@ -152,25 +217,34 @@ export default defineUnlistedScript(() => {
                     } else {
                         document.dispatchEvent(
                             new CustomEvent('asbplayer-synced-data', {
-                                detail: { error: 'Could not capture metadata', basename: '', subtitles: [] },
+                                detail: {
+                                    error: 'Could not detect subtitles. Try refreshing this page and starting playback. (incomplete metadata)',
+                                    basename: '',
+                                    subtitles: [],
+                                },
                             })
                         );
                     }
                 } else {
                     document.dispatchEvent(
                         new CustomEvent('asbplayer-synced-data', {
-                            detail: { error: 'Could not capture video ID', basename: '', subtitles: [] },
+                            detail: {
+                                error: 'Could not detect subtitles. Try refreshing this page and starting playback. (no video ID captured)',
+                                basename: '',
+                                subtitles: [],
+                            },
                         })
                     );
                 }
-            } catch (e) {
+            })().catch((e) => {
+                asbError('amazon-prime', e);
                 const error = e instanceof Error ? e.message : String(e);
                 document.dispatchEvent(
                     new CustomEvent('asbplayer-synced-data', {
                         detail: { error },
                     })
                 );
-            }
+            });
         },
         false
     );

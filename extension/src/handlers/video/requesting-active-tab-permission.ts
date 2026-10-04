@@ -1,5 +1,5 @@
-import { Command, Message, RequestingActiveTabPermsisionMessage, VideoToExtensionCommand } from '@project/common';
-import { setRequestingActiveTabPermission } from '../../services/active-tab-permission-request';
+import type { Command, Message, RequestingActiveTabPermissionMessage, VideoToExtensionCommand } from '@project/common';
+import { setRequestingActiveTabPermission } from '@project/extension/src/services/active-tab-permission-request';
 
 export class RequestingActiveTabPermissionHandler {
     get sender() {
@@ -12,10 +12,10 @@ export class RequestingActiveTabPermissionHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender) {
         const requestingActiveTabPermissionCommand =
-            command as VideoToExtensionCommand<RequestingActiveTabPermsisionMessage>;
+            command as VideoToExtensionCommand<RequestingActiveTabPermissionMessage>;
 
         if (sender.tab?.id !== undefined) {
-            setRequestingActiveTabPermission(
+            void setRequestingActiveTabPermission(
                 sender.tab.id,
                 requestingActiveTabPermissionCommand.src,
                 requestingActiveTabPermissionCommand.message.requesting

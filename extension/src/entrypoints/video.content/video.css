@@ -14,16 +14,43 @@
     pointer-events: auto !important;
 }
 
-.asbplayer-subtitles {
+.asbplayer-subtitles,
+.asbplayer-fullscreen-subtitles {
     text-align: center !important;
     color: white;
-    font-size: 24px;
+    text-shadow: none;
+    font-family: sans-serif;
+    font-size: 36px;
+    font-style: normal;
+    font-stretch: normal;
+    font-variant: normal;
+    letter-spacing: normal;
+    text-transform: none;
     padding-left: 10px;
     padding-right: 10px;
     user-select: text !important;
     cursor: text !important;
+    white-space: pre-wrap !important; /* Ruby annotations (specifically gloss) can add new ones, `pre` solves it but breaks wrapping on small videos. */
+}
+
+div.asbplayer-subtitles,
+div.asbplayer-fullscreen-subtitles {
+    line-height: 0 !important;
+}
+
+div.asbplayer-subtitles > span,
+div.asbplayer-fullscreen-subtitles > span {
     line-height: normal !important;
-    white-space: pre-wrap !important;
+}
+
+/* Subtitle annotations wrap text in extra token/ruby elements; keep their font
+   size inheriting from the subtitle so the host page's element styles can't
+   resize them. */
+.asbplayer-subtitles > span span,
+.asbplayer-subtitles > span ruby,
+.asbplayer-fullscreen-subtitles > span span,
+.asbplayer-fullscreen-subtitles > span ruby {
+    font-size: inherit !important;
 }
 
 .asbplayer-subtitles-blurred {
@@ -39,17 +66,18 @@
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-text,
-.asbplayer-fullscreen-subtitles:hover .asbplayer-subtitle-text {
+:is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles):is(:hover, .asb-subtitle-token-selected)
+    .asbplayer-subtitle-text {
     display: none;
 }
 
-.asbplayer-subtitles:hover .asbplayer-subtitle-rich,
-.asbplayer-fullscreen-subtitles:hover .asbplayer-subtitle-rich {
+:is(.asbplayer-subtitles, .asbplayer-fullscreen-subtitles):is(:hover, .asb-subtitle-token-selected)
+    .asbplayer-subtitle-rich {
     display: inline;
 }
 
-.asbplayer-token-container:focus-within .asb-token-highlight:hover {
+.asbplayer-token-container:focus-within .asb-token-highlight:hover,
+.asbplayer-token-container:focus-within .asb-token-selected {
     background-color: rgb(0, 123, 255) !important;
 }
 
@@ -90,31 +118,118 @@
     pointer-events: none;
 }
 
-.asbplayer-fullscreen-subtitles {
-    text-align: center !important;
-    color: white;
-    text-shadow:
-        0 0 2px black,
-        0 0 2px black,
-        0 0 2px black,
-        0 0 2px black;
-    font-size: 36px;
-    padding-left: 10px;
-    padding-right: 10px;
-    user-select: text !important;
-    cursor: text !important;
-    line-height: normal !important;
-    white-space: pre-wrap !important;
-}
-
 .asb-reading {
     ruby-position: over !important;
 }
 
 .asb-reading rt {
-    font-size: 0.5em !important;
+    font-size: var(--asb-reading-size) !important;
     line-height: 1 !important;
     display: revert !important; /* Safari doesn't support 'ruby-text' */
+}
+
+.asb-gloss {
+    ruby-position: over !important;
+}
+
+.asb-gloss-under {
+    ruby-position: under !important;
+}
+
+.asb-gloss rt {
+    font-size: var(--asb-gloss-size);
+    line-height: 1;
+}
+
+.asb-gloss-text {
+    display: inline-block;
+}
+
+.asb-gloss-popup {
+    position: relative;
+}
+
+.asb-gloss-popup::after {
+    content: attr(data-asb-gloss);
+    display: none;
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    bottom: calc(100% + 1.5em);
+    width: max-content;
+    max-width: min(28em, 80vw);
+    transform: translateX(-50%);
+    padding: 0.4em 0.6em;
+    border-radius: 0.25em;
+    background: rgb(32 33 36 / 95%);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 35%);
+    color: white;
+    font-family: sans-serif;
+    font-size: 14px !important;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    text-align: left;
+    text-shadow: none;
+    white-space: normal !important;
+    -webkit-text-fill-color: white;
+}
+
+.asb-gloss-popup:hover::after,
+.asb-token-selected .asb-gloss-popup::after {
+    display: block;
+}
+
+.asb-pitch-accent {
+    --asb-pitch-accent-lift: var(--asb-pitch-accent-size); /* Extra space to clear diacritics */
+    display: inline-block;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.asb-pitch-accent-mora {
+    display: inline-block;
+    position: relative;
+    padding: 0 0.12ch;
+    line-height: 1;
+}
+
+.asb-pitch-accent-mora::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--asb-pitch-accent-size);
+    background: var(--asb-pitch-accent-color);
+    pointer-events: none;
+}
+
+.asb-pitch-accent-mora-high::after {
+    top: calc(-1 * var(--asb-pitch-accent-lift));
+}
+
+.asb-pitch-accent-mora-low::after {
+    bottom: 0;
+}
+
+.asb-pitch-accent-line {
+    display: inline-block;
+    width: var(--asb-pitch-accent-size);
+    height: calc(1em + var(--asb-pitch-accent-lift));
+    margin: 0 calc(var(--asb-pitch-accent-size) / -2);
+    position: relative;
+    vertical-align: bottom;
+    line-height: 0;
+}
+
+.asb-pitch-accent-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--asb-pitch-accent-color);
+    pointer-events: none;
 }
 
 .asb-frequency {
@@ -122,22 +237,8 @@
 }
 
 .asb-frequency rt {
-    font-size: 0.25em;
+    font-size: var(--asb-frequency-size);
     line-height: 1;
-}
-
-.asb-frequency-hover {
-    ruby-position: under;
-}
-
-.asb-frequency-hover rt {
-    font-size: 0.25em; /* This is overridden for SubtitlePlayer as it's too small */
-    line-height: 1;
-    display: none;
-}
-
-.asb-frequency-hover:hover rt {
-    display: revert; /* Safari doesn't support 'ruby-text' */
 }
 
 .asbplayer-ui-frame {
@@ -232,7 +333,7 @@
     position: absolute !important;
     transform: translate(-50%) !important;
     display: inline-block !important;
-    z-index: 2147483647 !important;
+    z-index: 2147483646 !important;
     text-align: center !important;
     pointer-events: auto !important;
 }
@@ -241,10 +342,50 @@
     position: absolute !important;
     transform: translate(-50%, -100%) !important;
     display: inline-block !important;
-    z-index: 2147483647 !important;
+    z-index: 2147483646 !important;
     text-align: center !important;
     pointer-events: auto !important;
 }
 
 .asbplayer-mobile-video-overlay {
+}
+
+.asbplayer-statistics-overlay-container {
+    position: fixed !important;
+    top: 8px !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+    width: 100vw !important;
+    /* +1 more than mobile overlay */
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+}
+
+/* Contains the iframe with class "asbplayer-statistics-overlay-frame " */
+.asbplayer-statistics-overlay-content {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.asbplayer-statistics-overlay-frame {
+    display: block !important;
+    border: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.asbplayer-color-scheme-normal {
+    color-scheme: normal !important;
+}
+
+.asbplayer-color-scheme-light {
+    color-scheme: light !important;
+}
+
+.asbplayer-color-scheme-dark {
+    color-scheme: dark !important;
+}
+
+.asbplayer-color-scheme-light-dark {
+    color-scheme: light dark !important;
 }

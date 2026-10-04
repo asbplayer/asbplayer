@@ -1,4 +1,5 @@
-import { CardModel, HttpFetcher } from '@project/common';
+import type { CardModel } from '@project/common';
+import { HttpFetcher } from '@project/common';
 import { useCallback, useMemo } from 'react';
 import { makeStyles } from '@mui/styles';
 import { useTranslation } from 'react-i18next';
@@ -7,17 +8,21 @@ import SettingsForm from '@project/common/components/SettingsForm';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
-import { useCommandKeyBinds } from '../hooks/use-command-key-binds';
+import { useCommandKeyBinds } from '@project/extension/src/ui/hooks/use-command-key-binds';
 import { useLocalFontFamilies } from '@project/common/hooks';
-import { useI18n } from '../hooks/use-i18n';
+import { useI18n } from '@project/extension/src/ui/hooks/use-i18n';
 import Paper from '@mui/material/Paper';
 import { Anki } from '@project/common/anki';
-import { useSupportedLanguages } from '../hooks/use-supported-languages';
+import { useSupportedLanguages } from '@project/extension/src/ui/hooks/use-supported-languages';
 import SettingsProfileSelectMenu from '@project/common/components/SettingsProfileSelectMenu';
-import { AsbplayerSettings, Profile, testCard } from '@project/common/settings';
-import { useTheme, type Theme } from '@mui/material/styles';
+import type { AsbplayerSettings, Profile } from '@project/common/settings';
+import { testCard } from '@project/common/settings';
+import { useTheme } from '@mui/material/styles';
+import type { Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
-import { DictionaryProvider } from '@project/common/dictionary-db';
+import type { DictionaryProvider } from '@project/common/dictionary-db';
+import type { LogProvider } from '@project/common/util/log';
+import { useLocationHash } from '@project/common/hooks/use-location-hash';
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
@@ -36,6 +41,7 @@ const useStyles = makeStyles<Theme>((theme) => ({
 
 interface Props {
     dictionaryProvider: DictionaryProvider;
+    logProvider: LogProvider;
     settings: AsbplayerSettings;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     profiles: Profile[];
@@ -57,6 +63,7 @@ const extensionTestCard: () => Promise<CardModel> = () => {
 
 const SettingsPage = ({
     dictionaryProvider,
+    logProvider,
     settings,
     inTutorial,
     inAnnotationTutorial,
@@ -87,18 +94,13 @@ const SettingsPage = ({
     const commands = useCommandKeyBinds();
 
     const handleOpenExtensionShortcuts = useCallback(() => {
-        browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
+        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
     }, []);
 
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
-    const section = useMemo(() => {
-        if (location.hash && location.hash.startsWith('#')) {
-            return location.hash.substring(1, location.hash.length);
-        }
-
-        return undefined;
-    }, []);
     const { supportedLanguages } = useSupportedLanguages();
+
+    const { hash: scrollToId } = useLocationHash();
 
     if (!settings || !anki || !commands || !i18nInitialized) {
         return null;
@@ -119,16 +121,27 @@ const SettingsPage = ({
                         extensionSupportsOrderableAnkiFields
                         extensionSupportsTrackSpecificSettings
                         extensionSupportsSubtitlesWidthSetting
+                        extensionSupportsSubtitlesWidthInPixels
                         extensionSupportsPauseOnHover
+                        extensionSupportsPlaybackEngine
+                        extensionSupportsAutoPauseResume
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
                         extensionSupportsDictionary
+                        extensionSupportsDictionaryBrowser
+                        extensionSupportsDictionaryWaniKani
+                        extensionSupportsDictionaryMatchAcrossScripts
+                        extensionSupportsSeekableTrackSetting
+                        extensionSupportsAutoCopyableTrackSetting
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
                         extensionSupportsDictionaryYomitanMecab
+                        extensionSupportsSubtitleTrackSelectorInWebApp
+                        extensionSupportsSubtitleListCustomization
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}
                         dictionaryProvider={dictionaryProvider}
+                        logProvider={logProvider}
                         settings={settings}
                         profiles={profileContext.profiles}
                         activeProfile={profileContext.activeProfile}
@@ -138,11 +151,11 @@ const SettingsPage = ({
                         localFontFamilies={localFontFamilies}
                         supportedLanguages={supportedLanguages}
                         onUnlockLocalFonts={handleUnlockLocalFonts}
-                        scrollToId={section}
                         inTutorial={inTutorial}
                         inAnnotationTutorial={inAnnotationTutorial}
                         onAnnotationTutorialSeen={onAnnotationTutorialSeen}
                         testCard={extensionTestCard}
+                        scrollToId={scrollToId}
                     />
                 </DialogContent>
                 <Box style={{ marginBottom: theme.spacing(2) }} className={classes.profilesContainer}>

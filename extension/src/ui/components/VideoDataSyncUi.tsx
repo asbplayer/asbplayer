@@ -1,45 +1,44 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
-import VideoDataSyncDialog from './VideoDataSyncDialog';
-import Bridge from '../bridge';
-import {
+import VideoDataSyncDialog, {
+    useVideoDataSyncDialogState,
+    emptySubtitleTrack,
+} from '@project/common/components/VideoDataSyncDialog';
+import type Bridge from '@project/extension/src/ui/bridge';
+import type {
     ConfirmedVideoDataSubtitleTrack,
     Message,
     SerializedSubtitleFile,
     UpdateStateMessage,
-    VideoDataSubtitleTrack,
     VideoDataUiBridgeConfirmMessage,
     VideoDataUiBridgeOpenFileMessage,
+    VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage,
+    VideoDataUiBridgeSetGenericSubtitleParserMessage,
     VideoDataUiModel,
-    VideoDataUiOpenReason,
     ActiveProfileMessage,
 } from '@project/common';
+import { VideoDataUiOpenReason } from '@project/common';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
 import { createTheme } from '@project/common/theme';
-import { type PaletteMode } from '@mui/material/styles';
+import type { PaletteMode } from '@mui/material/styles';
 import { bufferToBase64 } from '@project/common/base64';
 import { useTranslation } from 'react-i18next';
 import type { Profile } from '@project/common/settings';
 import { StyledEngineProvider } from '@mui/material/styles';
+import type { FileWithId } from '@project/common/file-selector';
+import { DefaultFileSelector } from '@project/common/file-selector';
 
 interface Props {
     bridge: Bridge;
 }
 
-const initialTrackIds = ['-', '-', '-'];
-
 export default function VideoDataSyncUi({ bridge }: Props) {
     const { t } = useTranslation();
-    const [open, setOpen] = useState<boolean>(false);
-    const [disabled, setDisabled] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [suggestedName, setSuggestedName] = useState<string>('');
-    const [showSubSelect, setShowSubSelect] = useState<boolean>(true);
-    const [subtitles, setSubtitles] = useState<VideoDataSubtitleTrack[]>([
-        { id: '-', language: '-', url: '-', label: t('extension.videoDataSync.emptySubtitleTrack'), extension: 'srt' },
-    ]);
-    const [selectedSubtitleTrackIds, setSelectedSubtitleTrackIds] = useState<string[]>(initialTrackIds);
     const [defaultCheckboxState, setDefaultCheckboxState] = useState<boolean>(false);
     const [openReason, setOpenReason] = useState<VideoDataUiOpenReason>(VideoDataUiOpenReason.userRequested);
     const [openedFromAsbplayerId, setOpenedFromAsbplayerId] = useState<string>('');
@@ -47,9 +46,41 @@ export default function VideoDataSyncUi({ bridge }: Props) {
     const [themeType, setThemeType] = useState<string>();
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [activeProfile, setActiveProfile] = useState<string>();
-    const [fileInputTrackNumber, setFileInputTrackNumber] = useState<number>();
     const [hasSeenFtue, setHasSeenFtue] = useState<boolean>();
     const [hideRememberTrackPreferenceToggle, setHideRememberTrackPreferenceToggle] = useState<boolean>();
+    const [isGenericPage, setIsGenericPage] = useState(false);
+    const [showGenericPageOption, setShowGenericPageOption] = useState(false);
+    const [genericSubtitleParser, setGenericSubtitleParser] = useState<GenericParseType>('off');
+    const [onlineSubtitleSourceConfig, setOnlineSubtitleSourceConfig] = useState<OnlineSubtitleSourceConfig>({
+        jimakuApiKey: '',
+        jimakuSearchCategory: 'anime',
+    });
+    const trackedLocalObjectUrlsRef = useRef(new Set<string>());
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const fileSelector = useMemo<DefaultFileSelector>(
+        () => new DefaultFileSelector(() => fileInputRef.current?.click()),
+        []
+    );
+
+    const handleFileInputChange = useCallback(() => {
+        const files = fileInputRef.current?.files;
+
+        if (files && files.length > 0) {
+            fileSelector.publishFiles([...files].map((file) => ({ file, id: uuidv4() })));
+        }
+    }, [fileSelector]);
+
+    const {
+        subtitleTrackSelectorOpen,
+        openSubtitleTrackSelector,
+        closeSubtitleTrackSelector,
+        subtitleTrackSelectorSelectedTrackIds,
+        setSubtitleTrackSelectorSelectedTrackIds,
+        subtitleTrackSelectorTracks,
+        setSubtitleTrackSelectorTracks,
+        subtitleTrackSelectorDisabled,
+        setSubtitleTrackSelectorDisabled,
+    } = useVideoDataSyncDialogState();
 
     const theme = useMemo(() => createTheme((themeType || 'dark') as PaletteMode), [themeType]);
 
@@ -57,12 +88,23 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         bridge.sendMessageFromServer({ command: 'openSettings' });
     }, [bridge]);
     const handleCancel = useCallback(() => {
-        setOpen(false);
+        closeSubtitleTrackSelector();
         bridge.sendMessageFromServer({ command: 'cancel' });
-    }, [bridge]);
+    }, [bridge, closeSubtitleTrackSelector]);
     const handleConfirm = useCallback(
         (data: ConfirmedVideoDataSubtitleTrack[], shouldRememberTrackChoices: boolean) => {
-            setOpen(false);
+            closeSubtitleTrackSelector();
+
+            // Create blob URLs for content script to consume and track them so we can revoke later.
+            for (const t of data) {
+                if (t.file !== undefined) {
+                    if (t.url === undefined) {
+                        t.url = URL.createObjectURL(t.file);
+                        trackedLocalObjectUrlsRef.current.add(t.url);
+                    }
+                }
+            }
+
             const message: VideoDataUiBridgeConfirmMessage = {
                 command: 'confirm',
                 data,
@@ -71,7 +113,7 @@ export default function VideoDataSyncUi({ bridge }: Props) {
             };
             bridge.sendMessageFromServer(message);
         },
-        [bridge, openedFromAsbplayerId]
+        [bridge, closeSubtitleTrackSelector, openedFromAsbplayerId]
     );
 
     useEffect(() => {
@@ -80,10 +122,14 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                 return;
             }
 
-            const model = (message as UpdateStateMessage).state as VideoDataUiModel;
+            const model = (message as UpdateStateMessage).state as Partial<VideoDataUiModel>;
 
             if (model.open !== undefined) {
-                setOpen(model.open);
+                if (model.open) {
+                    openSubtitleTrackSelector();
+                } else {
+                    closeSubtitleTrackSelector();
+                }
             }
 
             if (model.isLoading !== undefined) {
@@ -94,22 +140,9 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                 setSuggestedName(model.suggestedName);
             }
 
-            if (model.showSubSelect !== undefined) {
-                setShowSubSelect(model.showSubSelect);
-            }
-
             if (model.subtitles !== undefined) {
-                const newSubtitles = [
-                    {
-                        id: '-',
-                        language: '-',
-                        url: '-',
-                        label: t('extension.videoDataSync.emptySubtitleTrack'),
-                        extension: 'srt',
-                    },
-                    ...model.subtitles,
-                ];
-                setSelectedSubtitleTrackIds((currentSelectedTrackIds) => {
+                const newSubtitles = [emptySubtitleTrack(t), ...model.subtitles];
+                setSubtitleTrackSelectorSelectedTrackIds((currentSelectedTrackIds) => {
                     return currentSelectedTrackIds.map((currentSelectedTrackId) => {
                         const stillSelected = newSubtitles.find((t) => t.id === currentSelectedTrackId);
 
@@ -120,11 +153,11 @@ export default function VideoDataSyncUi({ bridge }: Props) {
                         return '-';
                     });
                 });
-                setSubtitles(newSubtitles);
+                setSubtitleTrackSelectorTracks(newSubtitles);
             }
 
             if (model.selectedSubtitle !== undefined) {
-                setSelectedSubtitleTrackIds(model.selectedSubtitle);
+                setSubtitleTrackSelectorSelectedTrackIds(model.selectedSubtitle);
             }
 
             if (model.defaultCheckboxState !== undefined) {
@@ -156,72 +189,90 @@ export default function VideoDataSyncUi({ bridge }: Props) {
             if (model.hideRememberTrackPreferenceToggle !== undefined) {
                 setHideRememberTrackPreferenceToggle(model.hideRememberTrackPreferenceToggle);
             }
+
+            if (model.isGenericPage !== undefined) {
+                setIsGenericPage(model.isGenericPage);
+            }
+
+            if (model.showGenericPageOption !== undefined) {
+                setShowGenericPageOption(model.showGenericPageOption);
+            }
+
+            if (model.genericSubtitleParser !== undefined) {
+                setGenericSubtitleParser(model.genericSubtitleParser);
+            }
+
+            if (model.onlineSubtitleSourceConfig !== undefined) {
+                setOnlineSubtitleSourceConfig(model.onlineSubtitleSourceConfig);
+            }
         });
-    }, [bridge, t]);
+    }, [
+        bridge,
+        openSubtitleTrackSelector,
+        closeSubtitleTrackSelector,
+        setSubtitleTrackSelectorTracks,
+        setSubtitleTrackSelectorSelectedTrackIds,
+        t,
+    ]);
 
     useEffect(() => bridge.serverIsReady(), [bridge]);
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleFileInputChange = useCallback(async () => {
-        const files = fileInputRef.current?.files;
-
-        if (files && files.length > 0) {
-            try {
-                setDisabled(true);
-
-                if (fileInputTrackNumber === undefined) {
-                    const subtitles: SerializedSubtitleFile[] = [];
-
-                    for (let i = 0; i < files.length; ++i) {
-                        const f = files[i];
-                        const base64 = await bufferToBase64(await f.arrayBuffer());
-
-                        subtitles.push({
-                            name: f.name,
-                            base64: base64,
-                        });
-                    }
-
-                    setOpen(false);
-                    const message: VideoDataUiBridgeOpenFileMessage = { command: 'openFile', subtitles };
-                    bridge.sendMessageFromServer(message);
-                } else {
-                    const fileTracks: VideoDataSubtitleTrack[] = [...files].map((f) => {
-                        const url = URL.createObjectURL(f);
-                        const extension = f.name.substring(f.name.lastIndexOf('.') + 1, f.name.length);
-                        return {
-                            label: f.name,
-                            id: url,
-                            url,
-                            extension,
-                            localFile: true,
-                        };
-                    });
-
-                    if (fileTracks.length > 0) {
-                        setSubtitles((s) => [...s, ...fileTracks]);
-                        setSelectedSubtitleTrackIds((s) => {
-                            const selectedIdsByTrackNumber = [...s];
-                            selectedIdsByTrackNumber[fileInputTrackNumber] = fileTracks[0].id;
-                            return selectedIdsByTrackNumber;
-                        });
-                    }
-                }
-            } finally {
-                setDisabled(false);
-
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                }
+    useEffect(() => {
+        // Revoke tracked blob URLs once they are no longer referenced by subtitle tracks.
+        const currentObjectUrlsByTrackId = new Map<string, string>();
+        for (const t of subtitleTrackSelectorTracks) {
+            if (t.file !== undefined && typeof t.url === 'string') {
+                currentObjectUrlsByTrackId.set(t.id, t.url);
             }
         }
-    }, [bridge, fileInputTrackNumber]);
 
-    const handleOpenFile = useCallback((track?: number) => {
-        setFileInputTrackNumber(track);
-        fileInputRef.current?.click();
-    }, []);
+        for (const [trackId, trackedUrl] of trackedLocalObjectUrlsRef.current.entries()) {
+            const trackIsNoLongerReferenced = !currentObjectUrlsByTrackId.has(trackId);
+            if (trackIsNoLongerReferenced && trackedLocalObjectUrlsRef.current.has(trackedUrl)) {
+                URL.revokeObjectURL(trackedUrl);
+                trackedLocalObjectUrlsRef.current.delete(trackedUrl);
+            }
+        }
+    }, [subtitleTrackSelectorTracks]);
+
+    useEffect(
+        () => () => {
+            // Safety net for cancel/close/navigation paths where sync never consumes these URLs.
+            for (const url of trackedLocalObjectUrlsRef.current) {
+                URL.revokeObjectURL(url);
+            }
+
+            trackedLocalObjectUrlsRef.current.clear();
+        },
+        []
+    );
+
+    const handleOpenFiles = useCallback(
+        async (files: FileWithId[]) => {
+            setSubtitleTrackSelectorDisabled(true);
+
+            try {
+                const subtitles: SerializedSubtitleFile[] = [];
+
+                for (let i = 0; i < files.length; ++i) {
+                    const f = files[i].file;
+                    const base64 = bufferToBase64(await f.arrayBuffer());
+
+                    subtitles.push({
+                        name: f.name,
+                        base64: base64,
+                    });
+                }
+
+                closeSubtitleTrackSelector();
+                const message: VideoDataUiBridgeOpenFileMessage = { command: 'openFile', subtitles };
+                bridge.sendMessageFromServer(message);
+            } finally {
+                setSubtitleTrackSelectorDisabled(false);
+            }
+        },
+        [bridge, setSubtitleTrackSelectorDisabled, closeSubtitleTrackSelector]
+    );
 
     const handleSetActiveProfile = useCallback(
         (profile: string | undefined) => {
@@ -235,32 +286,63 @@ export default function VideoDataSyncUi({ bridge }: Props) {
         setHasSeenFtue(true);
         bridge.sendMessageFromServer({ command: 'dismissFtue' });
     }, [bridge]);
+    const handleOnlineSubtitleSourceConfigChanged = useCallback(
+        (state: Partial<OnlineSubtitleSourceConfig>) => {
+            setOnlineSubtitleSourceConfig((current) => ({ ...current, ...state }));
+            const message: VideoDataUiBridgeSetOnlineSubtitleSourceConfigMessage = {
+                command: 'setOnlineSubtitleSourceConfig',
+                state,
+            };
+            bridge.sendMessageFromServer(message);
+        },
+        [bridge]
+    );
+    const handleGenericSubtitleParserChange = useCallback(
+        (parse: GenericParseType) => {
+            setGenericSubtitleParser(parse);
+            const message: VideoDataUiBridgeSetGenericSubtitleParserMessage = {
+                command: 'setGenericSubtitleParser',
+                parse,
+            };
+            bridge.sendMessageFromServer(message);
+        },
+        [bridge]
+    );
 
     return (
         <StyledEngineProvider injectFirst>
             <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <VideoDataSyncDialog
-                    open={open}
-                    disabled={disabled}
+                    open={subtitleTrackSelectorOpen}
+                    disabled={subtitleTrackSelectorDisabled}
                     isLoading={isLoading}
                     suggestedName={suggestedName}
-                    showSubSelect={showSubSelect}
-                    subtitleTracks={subtitles}
-                    selectedSubtitleTrackIds={selectedSubtitleTrackIds}
+                    subtitleTracks={subtitleTrackSelectorTracks}
+                    onSubtitleTracks={setSubtitleTrackSelectorTracks}
+                    selectedSubtitleTrackIds={subtitleTrackSelectorSelectedTrackIds}
+                    onSelectedSubtitleTrackIds={setSubtitleTrackSelectorSelectedTrackIds}
                     defaultCheckboxState={defaultCheckboxState}
                     openReason={openReason}
                     error={error}
                     profiles={profiles}
                     activeProfile={activeProfile}
+                    onlineSubtitleSourceConfig={onlineSubtitleSourceConfig}
+                    clientId="asbplayer-extension"
                     hasSeenFtue={hasSeenFtue}
                     hideRememberTrackPreferenceToggle={hideRememberTrackPreferenceToggle}
+                    isGenericPage={isGenericPage}
+                    showGenericPageOption={showGenericPageOption}
+                    genericSubtitleParser={genericSubtitleParser}
+                    fileSelector={fileSelector}
                     onCancel={handleCancel}
-                    onOpenFile={handleOpenFile}
+                    onOpenFiles={handleOpenFiles}
                     onOpenSettings={handleOpenSettings}
+                    onOnlineSourceConfigChanged={handleOnlineSubtitleSourceConfigChanged}
                     onConfirm={handleConfirm}
                     onSetActiveProfile={handleSetActiveProfile}
                     onDismissFtue={handleDismissFtue}
+                    onGenericSubtitleParserChange={handleGenericSubtitleParserChange}
                 />
                 <input
                     ref={fileInputRef}

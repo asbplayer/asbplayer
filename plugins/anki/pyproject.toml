@@ -1,0 +1,25 @@
+[project]
+name = "asbplayer-plugin"
+version = "1.0.0"
+description = "Anki asbplayer plugin for one-click mining support"
+requires-python = ">=3.13"
+
+# Anki cannot install deps at runtime: anything listed here would have to be vendored
+# into asbplayer-plugin/ and shipped inside the .ankiaddon. Keep it empty unless that's
+# intended, and pure-Python only.
+dependencies = []
+
+[dependency-groups]
+# Dev-only. Supplies Anki/Qt type information to basedpyright.
+dev = ["aqt[qt]==26.8.1"]
+
+[tool.uv]
+package = false
+
+[tool.basedpyright]
+include = ["asbplayer-plugin"]
+exclude = ["**/__pycache__", ".venv"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+typeCheckingMode = "standard"

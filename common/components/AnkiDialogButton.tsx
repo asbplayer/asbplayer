@@ -1,14 +1,17 @@
 import type { ButtonBaseActions } from '@mui/material';
-import Button, { ButtonProps } from '@mui/material/Button';
-import React, { ForwardedRef, useCallback, useEffect, useRef, useState } from 'react';
+import type { ButtonProps } from '@mui/material/Button';
+import Button from '@mui/material/Button';
+import type { ForwardedRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props extends ButtonProps {
     focusVisible: boolean;
     onBlurVisible: () => void;
+    component?: (props: ButtonProps) => React.ReactNode;
 }
 
 export default React.forwardRef(function AnkiDialogButton(
-    { children, focusVisible, onBlurVisible, ...rest }: Props,
+    { children, focusVisible, onBlurVisible, component: Component, ...rest }: Props,
     ref: ForwardedRef<HTMLButtonElement>
 ) {
     const actionRef = useRef<ButtonBaseActions | null>(null);
@@ -43,6 +46,10 @@ export default React.forwardRef(function AnkiDialogButton(
     );
 
     const handleBlur = useCallback(() => onBlurVisible(), [onBlurVisible]);
+
+    if (Component !== undefined) {
+        return <Component ref={refCallback} onBlur={handleBlur} action={actionRef} {...rest} />;
+    }
 
     return (
         <Button ref={refCallback} onBlur={handleBlur} action={actionRef} {...rest}>

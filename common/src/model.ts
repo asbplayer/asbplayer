@@ -1,4 +1,7 @@
-import type { AnkiSettings, TokenState, TokenStatus } from '../settings/settings';
+import type { AnkiSettings, TokenState, TokenStatus } from '@project/common/settings';
+import type { GenericParseType, OnlineSubtitleSourceConfig } from '@project/common/global-state';
+import type { TokenStatusInfo } from '@project/common/dictionary-db';
+import type { PitchAccentPosition } from '@project/common/yomitan';
 
 type Profile = { name: string };
 
@@ -30,7 +33,12 @@ export interface Token {
     states: TokenState[];
     status?: TokenStatus | null; // null means "error"
     readings: TokenReading[];
-    frequency?: number;
+    frequency?: number | null; // null means no frequency data
+    gloss?: string | null; // null means no gloss data
+    pitchAccent?: PitchAccentPosition | null; // null means no pitch accent data
+    groupingKey?: string; // Stable key for equivalence aggregation
+    lemmasGroupingKey?: string; // Stable key for equivalence aggregation based on lemmas (statistics)
+    externalCandidateStatuses?: TokenStatusInfo[];
 }
 
 export interface Tokenization {
@@ -40,26 +48,40 @@ export interface Tokenization {
 
 export interface SubtitleModel {
     readonly text: string;
+    readonly originalText?: string;
     readonly textImage?: SubtitleTextImage;
     readonly start: number;
     readonly end: number;
     readonly originalStart: number;
     readonly originalEnd: number;
+    readonly displayTime?: string;
+    readonly displayEndTime?: string;
     readonly track: number;
     readonly index?: number;
     readonly tokenization?: Tokenization;
-    readonly richText?: string;
 }
 
 export interface IndexedSubtitleModel extends SubtitleModel {
     readonly index: number;
 }
 
-export interface RichSubtitleModel extends IndexedSubtitleModel {
-    richText?: string;
+export interface PlaybackState {
+    readonly timestampMs: number;
+    /** Indexes of subtitles currently being shown on the screen. */
+    readonly showingSubtitleIndexes: readonly number[];
+    /** Indexes of invisible layout placeholders. Absent when empty. */
+    readonly invisibleSubtitleIndexes?: readonly number[];
+    /** Indexes suppressed from rendering by user preference. Absent when empty. */
+    readonly hiddenSubtitleIndexes?: readonly number[];
+    readonly paused: boolean;
 }
 
-export interface TokenizedSubtitleModel extends RichSubtitleModel {
+export interface DisplaySubtitleModel extends IndexedSubtitleModel {
+    readonly displayTime: string;
+    readonly displayEndTime: string;
+}
+
+export interface TokenizedSubtitleModel extends IndexedSubtitleModel {
     originalText?: string;
     tokenization?: Tokenization;
 }
@@ -95,16 +117,20 @@ export interface CopyHistoryItem extends CardModel {
     readonly timestamp: number;
 }
 
-export enum ImageErrorCode {
+export enum MediaFragmentErrorCode {
     captureFailed = 1,
     fileLinkLost = 2,
 }
 
-export interface ImageModel {
+export interface MediaFragmentModel {
     readonly base64: string;
-    readonly extension: 'jpeg';
-    readonly error?: ImageErrorCode;
+    readonly extension: 'jpeg' | 'webm';
+    readonly error?: MediaFragmentErrorCode;
 }
+
+export const ImageErrorCode = MediaFragmentErrorCode;
+export type ImageErrorCode = MediaFragmentErrorCode;
+export type ImageModel = MediaFragmentModel;
 
 export enum AudioErrorCode {
     drmProtected = 1,
@@ -122,7 +148,7 @@ export interface AudioModel {
     readonly error?: AudioErrorCode;
 }
 
-export type AnkiExportMode = 'gui' | 'updateLast' | 'updateLastForSameLine' | 'default';
+export type AnkiExportMode = 'gui' | 'updateLast' | 'updateLastForSameLine' | 'updateSpecific' | 'default';
 
 export interface AnkiDialogSettings extends AnkiSettings {
     themeType: string;
@@ -150,6 +176,7 @@ export interface AnkiUiState extends CardTextFieldValues {
 
 export interface AnkiUiInitialState extends AnkiUiState {
     readonly type: 'initial';
+    readonly cardSelectOpen?: boolean;
 }
 
 export interface AnkiUiResumeState extends AnkiUiState {
@@ -188,9 +215,10 @@ export interface AnkiUiSavedState {
 export interface VideoDataSubtitleTrackDef {
     label: string;
     language?: string;
-    url: string | string[];
+    url?: string | string[];
+    file?: File;
     extension: string;
-    localFile?: boolean;
+    capturedDuringPlayback?: boolean;
 }
 
 export interface VideoDataSubtitleTrack extends VideoDataSubtitleTrackDef {
@@ -226,13 +254,21 @@ export interface VideoDataUiModel {
     subtitles?: VideoDataSubtitleTrack[];
     error?: string;
     selectedSubtitle?: string[];
-    showSubSelect?: boolean;
     openReason?: VideoDataUiOpenReason;
     openedFromAsbplayerId?: string;
     defaultCheckboxState?: boolean;
+    onlineSubtitleSourceConfig?: OnlineSubtitleSourceConfig;
     settings: VideoDataUiSettings;
     hasSeenFtue: boolean;
     hideRememberTrackPreferenceToggle: boolean;
+    isGenericPage: boolean;
+    showGenericPageOption: boolean;
+    genericSubtitleParser: GenericParseType;
+}
+
+export interface SubtitleTrack {
+    trackNumber: number;
+    fileName: string;
 }
 
 export interface VideoTabModel {
@@ -241,6 +277,8 @@ export interface VideoTabModel {
     src: string; // Video src
     subscribed: boolean; // Whether the video element is subscribed to extension messages
     synced: boolean; // Whether the video element has received subtitles
+    loadedSubtitles: boolean; // Whether a non-empty subtitle track is loaded
+    subtitleTracks?: SubtitleTrack[]; // The loaded non-empty subtitle tracks (track number + file name)
     syncedTimestamp?: number;
     faviconUrl?: string;
 }
@@ -262,6 +300,7 @@ export enum PostMineAction {
     showAnkiDialog = 1,
     updateLastCard = 2,
     exportCard = 3,
+    showUpdateCardDialog = 4,
 }
 
 export enum PostMinePlayback {
@@ -273,6 +312,7 @@ export enum PostMinePlayback {
 export enum AutoPausePreference {
     atStart = 1,
     atEnd = 2,
+    atStartAndEnd = 3,
 }
 
 export enum SubtitleHtml {
@@ -303,10 +343,15 @@ export interface MobileOverlayModel {
     subtitlesAreVisible: boolean;
     themeType: 'dark' | 'light';
     playModes: PlayMode[];
+    overlayInstanceId?: string;
 }
 
 export enum ControlType {
     timeDisplay = 0,
     subtitleOffset = 1,
     playbackRate = 2,
+}
+
+export interface BrowserFeatures {
+    sidePanel: boolean;
 }

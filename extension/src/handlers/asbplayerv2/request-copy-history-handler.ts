@@ -1,4 +1,5 @@
 import type { Command, Message, RequestCopyHistoryMessage, RequestCopyHistoryResponse } from '@project/common';
+import { asbError } from '@project/common/util/log';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 
 export default class RequestCopyHistoryHandler {
@@ -12,12 +13,15 @@ export default class RequestCopyHistoryHandler {
 
     handle(command: Command<Message>, sender: Browser.runtime.MessageSender, sendResponse: (r?: any) => void) {
         const message = command.message as RequestCopyHistoryMessage;
-        new IndexedDBCopyHistoryRepository(message.count).fetch(message.count).then((copyHistoryItems) => {
-            const response: RequestCopyHistoryResponse = {
-                copyHistoryItems,
-            };
-            sendResponse(response);
-        });
+        void new IndexedDBCopyHistoryRepository(message.count)
+            .fetch(message.count)
+            .then((copyHistoryItems) => {
+                const response: RequestCopyHistoryResponse = {
+                    copyHistoryItems,
+                };
+                sendResponse(response);
+            })
+            .catch((error) => asbError('copy-history', 'Failed to load copy history:', error));
         return true;
     }
 }

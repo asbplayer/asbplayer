@@ -1,42 +1,48 @@
 import { makeStyles } from '@mui/styles';
-import { type Theme } from '@mui/material';
+import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
 import BugReportIcon from '@mui/icons-material/BugReport';
-import FavoriteIcon from '@mui/icons-material/Favorite';
 import TutorialIcon from '@project/common/components/TutorialIcon';
 import IconButton from '@mui/material/IconButton';
 import HistoryIcon from '@mui/icons-material/History';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Toolbar from '@mui/material/Toolbar';
 import type { TooltipProps } from '@mui/material/Tooltip';
-import Tooltip from '../../components/Tooltip';
+import Tooltip from '@project/common/components/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useState } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
-import MuiLink, { LinkProps as MuiLinkProps } from '@mui/material/Link';
+import type { LinkProps as MuiLinkProps } from '@mui/material/Link';
+import MuiLink from '@mui/material/Link';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Popover from '@mui/material/Popover';
 import ErrorIcon from '@mui/icons-material/Error';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import type { FileWithId } from '@project/common/file-selector';
 
 interface BarProps {
     drawerWidth: number;
     drawerOpen: boolean;
     hidden: boolean;
     title: string;
-    subtitleFiles?: File[];
+    subtitleFiles?: FileWithId[];
     lastError?: any;
     onFileSelector?: () => void;
     onDownloadSubtitleFilesAsSrt: () => void;
+    onDownloadSubtitleTimeline: () => void;
     onOpenSettings: () => void;
     onOpenCopyHistory: () => void;
     onCopyLastError: (error: string) => void;
+    onOpenStatistics?: () => void;
 }
 
 interface StyleProps {
@@ -65,19 +71,19 @@ const useStyles = makeStyles<Theme, StyleProps, string>((theme) => ({
         }),
         marginRight: ({ drawerWidth }) => drawerWidth,
     },
-    copyHistoryButton: {
+    drawerButton: {
         transform: 'scaleX(1)',
-        width: 48,
-        padding: 12,
+        width: 40,
+        padding: 8,
         transition: theme.transitions.create(['transform', 'padding', 'width'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
         }),
     },
-    copyHistoryButtonShift: {
+    drawerButtonShift: {
         transform: 'scaleX(0)',
         width: 0,
-        padding: 5,
+        padding: 0,
         transition: theme.transitions.create(['transform', 'padding', 'width'], {
             easing: theme.transitions.easing.easeOut,
             duration: theme.transitions.duration.enteringScreen,
@@ -101,7 +107,7 @@ interface CopyHistoryTooltipProps extends TooltipProps {
     show: boolean;
 }
 
-const useCopyHistoryTooltipStyles = makeStyles<Theme, CopyHistoryTooltipStylesProps, string>((theme) => ({
+const useCopyHistoryTooltipStyles = makeStyles<Theme, CopyHistoryTooltipStylesProps, string>(() => ({
     tooltip: ({ show }) => ({
         display: show ? 'block' : 'none',
     }),
@@ -129,16 +135,32 @@ export default function Bar({
     onOpenSettings,
     onOpenCopyHistory,
     onDownloadSubtitleFilesAsSrt,
+    onDownloadSubtitleTimeline,
     onCopyLastError,
+    onOpenStatistics,
 }: BarProps) {
     const classes = useStyles({ drawerWidth });
     const canSaveAsSrt =
-        subtitleFiles !== undefined && subtitleFiles.find((f) => !f.name.endsWith('.sup')) !== undefined;
+        subtitleFiles !== undefined && subtitleFiles.find((f) => !f.file.name.endsWith('.sup')) !== undefined;
     const { t } = useTranslation();
 
-    const handleDownloadSubtitleFilesAsSrt = useCallback(() => {
+    const [downloadMenuAnchorEl, setDownloadMenuAnchorEl] = useState<HTMLElement>();
+    const [downloadMenuOpen, setDownloadMenuOpen] = useState<boolean>(false);
+    const handleDownloadMenuOpen = useCallback((e: React.UIEvent) => {
+        setDownloadMenuAnchorEl(e.currentTarget as HTMLElement);
+        setDownloadMenuOpen(true);
+    }, []);
+    const handleDownloadMenuClose = useCallback(() => {
+        setDownloadMenuOpen(false);
+    }, []);
+    const handleDownloadSrt = useCallback(() => {
+        handleDownloadMenuClose();
         onDownloadSubtitleFilesAsSrt();
-    }, [onDownloadSubtitleFilesAsSrt]);
+    }, [handleDownloadMenuClose, onDownloadSubtitleFilesAsSrt]);
+    const handleDownloadTimeline = useCallback(() => {
+        handleDownloadMenuClose();
+        onDownloadSubtitleTimeline();
+    }, [handleDownloadMenuClose, onDownloadSubtitleTimeline]);
 
     const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement>();
     const [menuOpen, setMenuOpen] = useState<boolean>(false);
@@ -177,12 +199,12 @@ export default function Bar({
             >
                 <Toolbar>
                     {canSaveAsSrt && (
-                        <Tooltip title={t('action.downloadSubtitlesAsSrt')!}>
+                        <Tooltip title={t('action.downloadSubtitlesAsSrt')}>
                             <IconButton
                                 edge="start"
                                 color="inherit"
                                 className={classes.leftButton}
-                                onClick={handleDownloadSubtitleFilesAsSrt}
+                                onClick={handleDownloadMenuOpen}
                             >
                                 <SaveAltIcon />
                             </IconButton>
@@ -194,26 +216,67 @@ export default function Bar({
                     <IconButton edge="end" color="inherit" onClick={handleMenuOpen}>
                         <GitHubIcon />
                     </IconButton>
-                    <Tooltip title={t('bar.settings')!}>
+                    <Tooltip title={t('bar.settings')}>
                         <IconButton edge="end" color="inherit" onClick={onOpenSettings}>
                             <SettingsIcon />
                         </IconButton>
                     </Tooltip>
-                    <CopyHistoryTooltip title={t('bar.miningHistory')!} show={!drawerOpen}>
-                        <IconButton
-                            edge="end"
-                            color="inherit"
-                            aria-label="menu"
-                            className={clsx(classes.copyHistoryButton, {
-                                [classes.copyHistoryButtonShift]: drawerOpen,
-                            })}
-                            onClick={onOpenCopyHistory}
-                        >
-                            <HistoryIcon />
-                        </IconButton>
-                    </CopyHistoryTooltip>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <CopyHistoryTooltip title={t('bar.miningHistory')} show={!drawerOpen}>
+                            <IconButton
+                                edge="end"
+                                color="inherit"
+                                className={clsx(classes.drawerButton, {
+                                    [classes.drawerButtonShift]: drawerOpen,
+                                })}
+                                onClick={onOpenCopyHistory}
+                            >
+                                <HistoryIcon />
+                            </IconButton>
+                        </CopyHistoryTooltip>
+                        {onOpenStatistics && (
+                            <Tooltip title={t('statistics.title')}>
+                                <IconButton
+                                    edge="end"
+                                    color="inherit"
+                                    onClick={onOpenStatistics}
+                                    className={clsx(classes.drawerButton, {
+                                        [classes.drawerButtonShift]: drawerOpen,
+                                    })}
+                                >
+                                    <BarChartIcon />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                    </Box>
                 </Toolbar>
             </AppBar>
+            <Popover
+                open={downloadMenuOpen}
+                anchorEl={downloadMenuAnchorEl}
+                onClose={handleDownloadMenuClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+            >
+                <List dense onMouseLeave={handleDownloadMenuClose}>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={handleDownloadSrt}>
+                            <ListItemIcon>
+                                <SaveAltIcon />
+                            </ListItemIcon>
+                            <ListItemText primary={t('action.downloadSubtitlesAsSrt')} />
+                        </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={handleDownloadTimeline}>
+                            <ListItemIcon>
+                                <TimelineIcon />
+                            </ListItemIcon>
+                            <ListItemText primary={t('action.downloadSubtitleTimelineAsHtml')} />
+                        </ListItemButton>
+                    </ListItem>
+                </List>
+            </Popover>
             <Popover
                 disableEnforceFocus={true}
                 open={menuOpen}
@@ -235,17 +298,17 @@ export default function Bar({
                                 <ListItemIcon>
                                     <TutorialIcon />
                                 </ListItemIcon>
-                                <ListItemText primary={t('action.userGuide')!} />
+                                <ListItemText primary={t('action.userGuide')} />
                             </ListItemButton>
                         </ListItem>
                     </Link>
-                    <Link href="https://github.com/killergerbah/asbplayer/issues">
+                    <Link href="https://github.com/asbplayer/asbplayer/issues">
                         <ListItem disablePadding>
                             <ListItemButton>
                                 <ListItemIcon>
                                     <BugReportIcon />
                                 </ListItemIcon>
-                                <ListItemText primary={t('bar.submitIssue')!} />
+                                <ListItemText primary={t('bar.submitIssue')} />
                             </ListItemButton>
                         </ListItem>
                     </Link>
@@ -255,7 +318,7 @@ export default function Bar({
                                 <ListItemIcon>
                                     <ErrorIcon />
                                 </ListItemIcon>
-                                <ListItemText primary={t('bar.copyLastError')!} />
+                                <ListItemText primary={t('bar.copyLastError')} />
                             </ListItemButton>
                         </ListItem>
                     )}

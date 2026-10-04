@@ -1,88 +1,44 @@
+import type { SubtitlesWidthUnit, PageSettings, SubtitleAlignment } from '@project/common/settings';
 import {
-    AsbplayerSettings,
-    AsbplayerSettingsProfile,
-    Profile,
     SettingsProvider,
-    SettingsStorage,
-    SubtitleAlignment,
+    SubtitleListTimestampDisplay,
+    VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
-    prefixedSettings,
+    isSaveOnlySettings,
+    saveOnlySettings,
     textSubtitleSettingsForTrack,
-    unprefixedSettings,
 } from '@project/common/settings';
-
-export class MockSettingsStorage implements SettingsStorage {
-    private _activeProfile?: string;
-    private _profiles: Profile[] = [];
-    private _data: any = {};
-
-    async get(keysAndDefaults: Partial<AsbplayerSettings>) {
-        const settings: any = {};
-
-        const actualKeysAndDefaults =
-            this._activeProfile === undefined
-                ? keysAndDefaults
-                : prefixedSettings(keysAndDefaults, this._activeProfile);
-
-        for (const [key, defaultValue] of Object.entries(actualKeysAndDefaults)) {
-            // Simulate retrieval from actual storage - object references should change
-            settings[key] = JSON.parse(JSON.stringify(this._data[key] ?? defaultValue));
-        }
-
-        return this._activeProfile === undefined
-            ? (settings as Partial<AsbplayerSettings>)
-            : unprefixedSettings(settings as Partial<AsbplayerSettingsProfile<string>>, this._activeProfile);
-    }
-
-    async set(settings: Partial<AsbplayerSettings>) {
-        const actualSettings =
-            this._activeProfile === undefined ? settings : prefixedSettings(settings, this._activeProfile);
-
-        for (const [key, value] of Object.entries(actualSettings)) {
-            this._data[key] = value;
-        }
-    }
-
-    async activeProfile(): Promise<Profile | undefined> {
-        return this._activeProfile === undefined
-            ? undefined
-            : this._profiles.find((p) => p.name === this._activeProfile);
-    }
-
-    async setActiveProfile(name: string | undefined): Promise<void> {
-        this._activeProfile = name;
-    }
-
-    async profiles(): Promise<Profile[]> {
-        return this._profiles;
-    }
-
-    async addProfile(name: string): Promise<void> {
-        const existing = this._profiles.find((p) => p.name === name);
-
-        if (existing === undefined) {
-            this._profiles.push({ name });
-        }
-    }
-
-    async removeProfile(name: string): Promise<void> {
-        if (this._activeProfile === name) {
-            throw new Error('Cannot remove active profile');
-        }
-
-        this._profiles = this._profiles.filter((p) => p.name !== name);
-    }
-
-    setData(data: any) {
-        this._data = data;
-    }
-}
+import { describe, expect, it } from '@jest/globals';
+import { PlayMode } from '@project/common';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 
 it('starts at default settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());
     const initialSettings = await provider.getAll();
     expect(initialSettings).toEqual(defaultSettings);
+    expect(initialSettings.playbackRate).toBe(1);
+    expect(initialSettings.playbackRateNotificationEnabled).toBe(true);
+    expect(initialSettings.rememberPlaybackRate).toBe(false);
+    expect(initialSettings.fastForwardPlaybackMinimumSkipIntervalMs).toBe(500);
+    expect(initialSettings.repeatCountPreference).toBe(0);
+    expect(initialSettings.rememberPlaybackModes).toBe(false);
+    expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
+    expect(initialSettings.lastPlaybackPositions).toEqual([]);
+    expect(initialSettings.showSubtitleListMiningButton).toBe(true);
+    expect(initialSettings.subtitleListTimestampDisplay).toBe(SubtitleListTimestampDisplay.startAndEnd);
+    expect(initialSettings.keyBindSet.jumpToPreviousToken).toEqual({ keys: 'Q+W' });
+    expect(initialSettings.keyBindSet.jumpToNextToken).toEqual({ keys: 'Q+E' });
+});
+
+it('keeps playback-owned settings separate from UI settings', () => {
+    expect(saveOnlySettings).toEqual(['lastSubtitleOffset', 'lastPlaybackModes', 'lastPlaybackPositions']);
+    expect(saveOnlySettings).not.toContain('playbackRate');
+    expect(saveOnlySettings).not.toContain('fastForwardModePlaybackRate');
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100 })).toBe(true);
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100, lastPlaybackModes: [PlayMode.normal] })).toBe(true);
+    expect(isSaveOnlySettings({ playbackRate: 1 })).toBe(false);
+    expect(isSaveOnlySettings({ lastSubtitleOffset: 100, language: 'ja' })).toBe(false);
 });
 
 it('can change the value of object-typed settings', async () => {
@@ -101,6 +57,10 @@ it('can change the value of value-typed settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());
     await provider.set({ audioField: 'test-value' });
     expect(await provider.getSingle('audioField')).toBe('test-value');
+    await provider.set({ videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior.autoMaximizeVideo });
+    expect(await provider.getSingle('videoSubtitleSplitBehavior')).toBe(VideoSubtitleSplitBehavior.autoMaximizeVideo);
+    await provider.set({ subtitleListTimestampDisplay: SubtitleListTimestampDisplay.hidden });
+    expect(await provider.getSingle('subtitleListTimestampDisplay')).toBe(SubtitleListTimestampDisplay.hidden);
 });
 
 it('returns the same object references if the values inside do not change', async () => {
@@ -172,6 +132,7 @@ const subtitleSettings = {
     subtitlePositionOffset: 70,
     topSubtitlePositionOffset: 70,
     subtitlesWidth: 100,
+    subtitlesWidthUnit: '%' as SubtitlesWidthUnit,
     subtitleTracksV2: [
         {
             subtitleSize: 36,
@@ -208,7 +169,7 @@ it('calculates diff for text subtitle settings', () => {
                 subtitleBackgroundOpacity: 0,
                 subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
                 subtitleBlur: true,
-                subtitleAlignment: 'bottom' as SubtitleAlignment,
+                subtitleAlignment: 'bottom',
                 subtitleCustomStyles: [],
             },
             {
@@ -223,7 +184,7 @@ it('calculates diff for text subtitle settings', () => {
                 subtitleBackgroundOpacity: 0,
                 subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
                 subtitleBlur: false,
-                subtitleAlignment: 'bottom' as SubtitleAlignment,
+                subtitleAlignment: 'bottom',
                 subtitleCustomStyles: [{ key: 'opacity', value: '0.5' }],
             },
         ],
@@ -245,7 +206,7 @@ it('calculates diff for text subtitle settings', () => {
                 subtitleBackgroundOpacity: 0,
                 subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
                 subtitleBlur: true,
-                subtitleAlignment: 'bottom' as SubtitleAlignment,
+                subtitleAlignment: 'bottom',
                 subtitleCustomStyles: [],
             },
         ],
@@ -268,7 +229,7 @@ it('targets correct values for text subtitle ', () => {
         subtitleBackgroundOpacity: 0,
         subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
         subtitleBlur: false,
-        subtitleAlignment: 'bottom' as SubtitleAlignment,
+        subtitleAlignment: 'bottom',
         subtitleCustomStyles: [],
     });
     expect(textSubtitleSettingsForTrack(subtitleSettings, 1)).toEqual({
@@ -283,7 +244,70 @@ it('targets correct values for text subtitle ', () => {
         subtitleBackgroundOpacity: 0,
         subtitleFontFamily: 'ToppanBunkyuMidashiGothicStdN-ExtraBold',
         subtitleBlur: true,
-        subtitleAlignment: 'bottom' as SubtitleAlignment,
+        subtitleAlignment: 'bottom',
         subtitleCustomStyles: [],
+    });
+});
+
+describe('streamingPages consistency', () => {
+    it('back-fills page settings missing from the stored blob', async () => {
+        const storage = new MockSettingsStorage();
+        const storedStreamingPages: Partial<PageSettings> = { ...defaultSettings.streamingPages };
+        delete (storedStreamingPages as any).crunchyroll;
+        delete (storedStreamingPages as any).youtube;
+        storage.setData({ streamingPages: storedStreamingPages });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages.crunchyroll).toEqual(defaultSettings.streamingPages.crunchyroll);
+        expect(streamingPages.youtube).toEqual(defaultSettings.streamingPages.youtube);
+        expect(streamingPages.netflix).toEqual(defaultSettings.streamingPages.netflix);
+    });
+
+    it('preserves user modifications to existing page settings', async () => {
+        const storage = new MockSettingsStorage();
+        const storedStreamingPages: Partial<PageSettings> = { ...defaultSettings.streamingPages };
+        delete (storedStreamingPages as any).crunchyroll;
+        storage.setData({
+            streamingPages: {
+                ...storedStreamingPages,
+                youtube: { targetLanguages: ['ja'] },
+            },
+        });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages.youtube).toEqual({ targetLanguages: ['ja'] });
+        expect(streamingPages.crunchyroll).toEqual(defaultSettings.streamingPages.crunchyroll);
+    });
+
+    it('replaces malformed page settings values', async () => {
+        const storage = new MockSettingsStorage();
+        storage.setData({
+            streamingPages: {
+                ...defaultSettings.streamingPages,
+                netflix: null,
+                youtube: 'not-an-object',
+            },
+        });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages.netflix).toEqual(defaultSettings.streamingPages.netflix);
+        expect(streamingPages.youtube).toEqual(defaultSettings.streamingPages.youtube);
+    });
+
+    it('leaves complete page settings untouched', async () => {
+        const storage = new MockSettingsStorage();
+        const storedStreamingPages = { ...defaultSettings.streamingPages };
+        storage.setData({ streamingPages: storedStreamingPages });
+        const provider = new SettingsProvider(storage);
+
+        const streamingPages = await provider.getSingle('streamingPages');
+
+        expect(streamingPages).toEqual(defaultSettings.streamingPages);
     });
 });

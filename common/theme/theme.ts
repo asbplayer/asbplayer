@@ -1,4 +1,5 @@
-import { createTheme as createMuiTheme, PaletteMode } from '@mui/material/styles';
+import type { PaletteMode } from '@mui/material/styles';
+import { createTheme as createMuiTheme } from '@mui/material/styles';
 import { red } from '@mui/material/colors';
 
 export const createTheme = (themeType: PaletteMode) =>
@@ -13,6 +14,6 @@ export const createTheme = (themeType: PaletteMode) =>
             background: {
                 default: 'rgba(0, 0, 0, 0)',
             },
-            mode: themeType as PaletteMode,
+            mode: themeType,
         },
     });

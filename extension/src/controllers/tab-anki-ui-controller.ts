@@ -1,4 +1,6 @@
-import {
+import { asbError } from '@project/common/util/log';
+import { sourceString } from '@project/common/util';
+import type {
     AnkiUiInitialState,
     OpenAsbplayerSettingsMessage,
     CopyToClipboardMessage,
@@ -13,12 +15,14 @@ import {
     CardUpdatedDialogMessage,
     CardExportedDialogMessage,
 } from '@project/common';
-import { AnkiSettings, SettingsProvider, ankiSettingsKeys } from '@project/common/settings';
-import { sourceString } from '@project/common/util';
-import UiFrame from '../services/ui-frame';
-import { fetchLocalization } from '../services/localization-fetcher';
-import { ExtensionGlobalStateProvider } from '../services/extension-global-state-provider';
+import type { AnkiSettings, SettingsProvider } from '@project/common/settings';
+import { ankiSettingsKeys } from '@project/common/settings';
+import type UiFrame from '@project/extension/src/services/ui-frame';
+import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
+import { fetchLocalization } from '@project/extension/src/services/localization-fetcher';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { isOnTutorialPage } from '@/services/tutorial';
+import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
@@ -33,6 +37,7 @@ async function html(language: string) {
                     <title>asbplayer - Anki</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
+                        ${frameColorSchemeStyleBlock()}
                     </style>
                 </head>
                 <body>
@@ -51,7 +56,7 @@ export class TabAnkiUiController {
     private readonly _inTutorial = isOnTutorialPage();
 
     constructor(settings: SettingsProvider) {
-        this._frame = new UiFrame(html);
+        this._frame = uiFrameForHtml(html);
         this._settings = settings;
     }
 
@@ -90,17 +95,20 @@ export class TabAnkiUiController {
         ]);
 
         if (this._frame.bound) {
-            this._frame.client().then(async (client) => {
-                const profilesPromise = this._settings.profiles();
-                const activeProfilePromise = this._settings.activeProfile();
-                const message: AnkiDialogSettingsMessage = {
-                    command: 'settings',
-                    settings: ankiDialogSettings,
-                    profiles: await profilesPromise,
-                    activeProfile: (await activeProfilePromise)?.name,
-                };
-                client.sendMessage(message);
-            });
+            void this._frame
+                .client()
+                .then(async (client) => {
+                    const profilesPromise = this._settings.profiles();
+                    const activeProfilePromise = this._settings.activeProfile();
+                    const message: AnkiDialogSettingsMessage = {
+                        command: 'settings',
+                        settings: ankiDialogSettings,
+                        profiles: await profilesPromise,
+                        activeProfile: (await activeProfilePromise)?.name,
+                    };
+                    client.sendMessage(message);
+                })
+                .catch((error) => asbError('anki/ui', 'Failed to update Anki dialog settings:', error));
         }
     }
 
@@ -113,89 +121,106 @@ export class TabAnkiUiController {
         const client = await this._frame.client();
 
         if (isNewClient) {
-            client.onMessage(async (message) => {
-                switch (message.command) {
-                    case 'openSettings':
-                        const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'open-asbplayer-settings',
-                            },
-                        };
-                        browser.runtime.sendMessage(openSettingsCommand);
-                        return;
-                    case 'copy-to-clipboard':
-                        const copyToClipboardMessage = message as CopyToClipboardMessage;
-                        const copyToClipboardCommand: TabToExtensionCommand<CopyToClipboardMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'copy-to-clipboard',
-                                dataUrl: copyToClipboardMessage.dataUrl,
-                            },
-                        };
-                        browser.runtime.sendMessage(copyToClipboardCommand);
-                        return;
-                    case 'encode-mp3':
-                        const { base64, messageId, extension } = message as EncodeMp3Message;
-                        const encodeMp3Command: TabToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: {
-                                command: 'encode-mp3',
-                                base64,
-                                extension,
-                            },
-                        };
-                        const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
-                        client.sendMessage({
-                            messageId,
-                            base64: encodedBase64,
-                        });
-                        return;
-                    case 'resume':
-                        this._frame.hide();
-                        return;
-                    case 'activeProfile':
-                        const activeProfileMessage = message as ActiveProfileMessage;
-                        this._settings.setActiveProfile(activeProfileMessage.profile).then(() => {
-                            const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+            client.onMessage((message) => {
+                void (async () => {
+                    switch (message.command) {
+                        case 'openSettings': {
+                            const openSettingsCommand: TabToExtensionCommand<OpenAsbplayerSettingsMessage> = {
                                 sender: 'asbplayer-video-tab',
                                 message: {
-                                    command: 'settings-updated',
+                                    command: 'open-asbplayer-settings',
                                 },
                             };
-                            browser.runtime.sendMessage(settingsUpdatedCommand);
-                        });
-                        return;
-                    case 'dismissedQuickSelectFtue':
-                        globalStateProvider.set({ ftueHasSeenAnkiDialogQuickSelectV2: true }).catch(console.error);
-                        return;
-                    case 'exported':
-                        const exportedMessage = message as AnkiUiBridgeExportedMessage;
-                        this._settings.set({ lastSelectedAnkiExportMode: exportedMessage.mode }).then(() => {
-                            const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                            void browser.runtime.sendMessage(openSettingsCommand);
+                            return;
+                        }
+                        case 'copy-to-clipboard': {
+                            const copyToClipboardMessage = message as CopyToClipboardMessage;
+                            const copyToClipboardCommand: TabToExtensionCommand<CopyToClipboardMessage> = {
                                 sender: 'asbplayer-video-tab',
                                 message: {
-                                    command: 'settings-updated',
+                                    command: 'copy-to-clipboard',
+                                    dataUrl: copyToClipboardMessage.dataUrl,
                                 },
                             };
-                            browser.runtime.sendMessage(settingsUpdatedCommand);
-                        });
-                        return;
-                    case 'card-updated-dialog':
-                        const cardUpdatedDialogCommand: TabToExtensionCommand<CardUpdatedDialogMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: message as CardUpdatedDialogMessage,
-                        };
-                        browser.runtime.sendMessage(cardUpdatedDialogCommand);
-                        return;
-                    case 'card-exported-dialog':
-                        const cardExportedDialogCommand: TabToExtensionCommand<CardExportedDialogMessage> = {
-                            sender: 'asbplayer-video-tab',
-                            message: message as CardExportedDialogMessage,
-                        };
-                        browser.runtime.sendMessage(cardExportedDialogCommand);
-                        return;
-                }
+                            void browser.runtime.sendMessage(copyToClipboardCommand);
+                            return;
+                        }
+                        case 'encode-mp3': {
+                            const { base64, messageId, extension } = message as EncodeMp3Message;
+                            const encodeMp3Command: TabToExtensionCommand<EncodeMp3InServiceWorkerMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: {
+                                    command: 'encode-mp3',
+                                    base64,
+                                    extension,
+                                },
+                            };
+                            const encodedBase64 = await browser.runtime.sendMessage(encodeMp3Command);
+                            client.sendMessage({
+                                messageId,
+                                base64: encodedBase64,
+                            });
+                            return;
+                        }
+                        case 'resume':
+                            this._frame.hide();
+                            return;
+                        case 'activeProfile': {
+                            const activeProfileMessage = message as ActiveProfileMessage;
+                            void this._settings
+                                .setActiveProfile(activeProfileMessage.profile)
+                                .then(async () => {
+                                    const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                                        sender: 'asbplayer-video-tab',
+                                        message: {
+                                            command: 'settings-updated',
+                                        },
+                                    };
+                                    await browser.runtime.sendMessage(settingsUpdatedCommand);
+                                })
+                                .catch((error) => asbError('anki/ui', 'Failed to set the active profile:', error));
+                            return;
+                        }
+                        case 'dismissedQuickSelectFtue':
+                            globalStateProvider
+                                .set({ ftueHasSeenAnkiDialogQuickSelectV2: true })
+                                .catch((error) => asbError('anki/ui', error));
+                            return;
+                        case 'exported': {
+                            const exportedMessage = message as AnkiUiBridgeExportedMessage;
+                            void this._settings
+                                .set({ lastSelectedAnkiExportMode: exportedMessage.mode })
+                                .then(async () => {
+                                    const settingsUpdatedCommand: TabToExtensionCommand<SettingsUpdatedMessage> = {
+                                        sender: 'asbplayer-video-tab',
+                                        message: {
+                                            command: 'settings-updated',
+                                        },
+                                    };
+                                    await browser.runtime.sendMessage(settingsUpdatedCommand);
+                                })
+                                .catch((error) => asbError('anki/ui', 'Failed to save Anki export settings:', error));
+                            return;
+                        }
+                        case 'card-updated-dialog': {
+                            const cardUpdatedDialogCommand: TabToExtensionCommand<CardUpdatedDialogMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: message as CardUpdatedDialogMessage,
+                            };
+                            void browser.runtime.sendMessage(cardUpdatedDialogCommand);
+                            return;
+                        }
+                        case 'card-exported-dialog': {
+                            const cardExportedDialogCommand: TabToExtensionCommand<CardExportedDialogMessage> = {
+                                sender: 'asbplayer-video-tab',
+                                message: message as CardExportedDialogMessage,
+                            };
+                            void browser.runtime.sendMessage(cardExportedDialogCommand);
+                            return;
+                        }
+                    }
+                })().catch((error) => asbError('anki/ui', error));
             });
         }
 

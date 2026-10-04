@@ -1,0 +1,852 @@
+---
+sidebar_position: 1
+---
+
+import NoteAddIcon from '@site/src/components/NoteAddIcon';
+
+# Settings
+
+## [Anki](https://app.asbplayer.dev/?view=settings#anki-settings)
+
+### AnkiConnect URL
+
+URL to the AnkiConnect server running as on addon inside Anki.
+
+### AnkiConnect API Key
+
+API key configured in AnkiConnect when API key protection is enabled.
+
+### Refresh Anki Card Browser after updating cards
+
+When enabled, refreshes the open Anki Card Browser after asbplayer updates a card so that its fields display their current values. This may bring the Card Browser window to the foreground. This setting is disabled by default.
+
+### Deck
+
+Anki deck where cards are sent.
+
+### Note Type
+
+Anki note type to use for cards. A note type defines a "model" and a "view" for the cards. More specifically, a set of card fields, and an HTML template that determines how to render those fields on the card's front and back.
+
+### Card Fields
+
+Each card field setting determines what content gets mapped to which field of the configured note type. The **field label** - Sentence, Definition, Word, Image, Audio, or URL - is the **content** - and the **field value** is the **field inside the note type**.
+
+Fields will appear in the **Anki Export Dialog** in the order that they appear in the settings. The order can be changed using the **⋮ menu** → **Move Down** or **Move Up**.
+
+| Field                 | Content                                            |
+| --------------------- | -------------------------------------------------- |
+| Sentence (all tracks) | All subtitles at the mined timestamp               |
+| Definition            | The user-provided word definition                  |
+| Word                  | The user-provided word                             |
+| Audio                 | Audio recorded from video source                   |
+| Image                 | Screenshot of video source                         |
+| Source                | Subtitle file or video name and timestamp          |
+| URL                   | Current URL if card was mined from streaming video |
+| Subtitle Track 1      | Subtitles from track 1 at the mined timestamp      |
+| Subtitle Track 2      | Subtitles from track 2 at the mined timestamp      |
+| Subtitle Track 3      | Subtitles from track 3 at the mined timestamp      |
+| Custom Fields         | User-provided values                               |
+
+### Tags
+
+Default tags to supply with each card.
+
+## [Mining](https://app.asbplayer.dev/?view=settings#mining-settings)
+
+### Mining button default action
+
+"Mining button" <NoteAddIcon/> refers to the leftmost button that appears in the **Overlay UI**, and the button that appears next to subtitles in the **Subtitle List**. This setting configures what those buttons do.
+
+| Setting                 | Behavior                                                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Show Anki dialog        | Record target subtitle in mining history and show **Anki Export Dialog**                                                                                                                               |
+| Update last card        | Record target subtitle in mining history and update the last card in the configured deck with all asbplayer-provided context - all fields except the user-provided definition, word, and custom fields |
+| Show update card dialog | Record target subtitle in mining history and show the dialog for updating the last card with asbplayer-provided context                                                                                |
+| Export card             | Record target subtitle in mining history and export a card _only_ with asbplayer-provided context - all fields except the user-provided definition, word, and custom fields                            |
+| None                    | Record target subtitle in mining history                                                                                                                                                               |
+
+### Post-mining playback state
+
+Configures the desired playback state after triggering a mining action.
+
+### Copy mined subtitles to clipboard
+
+If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
+
+### Update all cards from the same subtitle line
+
+When enabled, the extension's **Update last card** mining action also updates the audio, image, source, and URL fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+
+The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+
+### Play audio while recording from local video
+
+asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
+
+### Re-encode audio as mp3
+
+Recorded audio is not encoded as an `mp3` by default. This setting will cause audio to be re-encoded as an `mp3`. In general there's no reason to turn this setting off, especially for users who want to review their cards on iOS.
+
+### Audio padding start
+
+How many milliseconds **before** the target subtitle to start recording audio.
+
+### Audio padding end
+
+How many milliseconds **after** the target subtitle to stop recording audio.
+
+### Image capture format (website only)
+
+Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+
+### Max capture width/height
+
+Max width/height in pixels of screenshots. `0` means "no limit."
+
+### Trim black bars from screenshots
+
+When enabled, trims black bars due to letterboxing from screenshots.
+
+### Clip trim start/end
+
+Specifies how much time to trim off the start and end of a subtitle's time interval when determining the default time interval for the video clip. Only available when the video clip image capture format is selected.
+
+### Max clip length
+
+Specifies the max video clip length. Only available when video clip image capture format is selected.
+
+### Screenshot capture delay
+
+How long to wait after the target subtitle appears before taking the screenshot.
+
+### Surrounding subtitles count radius
+
+At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls limits the number of those surrounding subtitles.
+
+### Surrounding subtitles time radius
+
+At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
+
+## [Subtitle appearance](https://app.asbplayer.dev/?view=settings#subtitle-appearance)
+
+### Subtitle track
+
+asbplayer can load multiple subtitle tracks simultaneously. This dropdown selects the track(s) to which the settings below will apply. The default selection is "All." Modifying any appearance setting with "All" selected, modifies that setting for all tracks simultaneously. When you configure a track-specific value for a setting, that setting disappears from the "All" page.
+
+### Subtitle preview
+
+Preview and edit the subtitle text used to show the effect of the appearance settings.
+
+### Styling
+
+| Setting                           | Description                                                                          | CSS property                |
+| --------------------------------- | ------------------------------------------------------------------------------------ | --------------------------- |
+| Subtitle color                    | Color                                                                                | `color`                     |
+| Subtitle size                     | Size in `px`                                                                         | `font-size`                 |
+| Subtitle font thickness           | Font thickness                                                                       | `font-weight`               |
+| Subtitle outline color            | Color of the stroke                                                                  | `-webkit-text-stroke-color` |
+| Subtitle outline thickness        | Thickness of the stroke                                                              | `-webkit-text-stroke-width` |
+| Subtitle shadow color             | Color of the shadow                                                                  | `text-shadow`               |
+| Subtitle shadow thickness         | Thickness of the shadow                                                              | `text-shadow`               |
+| Subtitle background color         | Background color                                                                     | `background-color`          |
+| Subtitle background opacity       | Background opacity                                                                   | `background`                |
+| Subtitle font family              | Font. A dropdown of available fonts appears when local font access is granted.       | `font-family`               |
+| CSS:\<style key\>                 | String value of any custom CSS property added using the **Add Custom CSS** dropdown. | Custom property             |
+| Subtitle blur                     | Applies a blur effect to subtitles. Unblurs on hover.                                | `filter:blur(...)`          |
+| Image-based subtitle scale factor | Scales image-based subtitles.                                                        | —                           |
+
+### Layout
+
+| Setting                              | Description                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| Subtitle alignment                   | Whether to place subtitles at the top or bottom of the video element.        |
+| Subtitle position offset from bottom | Distance from the bottom of the video element of all bottom subtitle tracks. |
+| Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
+| Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
+
+## [Keyboard shortcuts](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts)
+
+Keyboard shortcuts can be used to access most of asbplayer's features.
+
+### [Subtitles](https://app.asbplayer.dev/?view=settings#subtitle-appearance) keyboard shortcuts
+
+| Behavior                             | Default shortcut |
+| ------------------------------------ | ---------------- |
+| Select subtitle tracks to load.      | Ctrl + Shift + F |
+| Toggle subtitles                     | ↓                |
+| Toggle subtitle track 1 in video     | 1                |
+| Toggle subtitle track 2 in video     | 2                |
+| Toggle subtitle track 3 in video     | 3                |
+| Toggle subtitle track 1 in asbplayer | W + 1            |
+| Toggle subtitle track 2 in asbplayer | W + 2            |
+| Toggle subtitle track 3 in asbplayer | W + 3            |
+| Unblur subtitle track 1 in asbplayer | B + 1            |
+| Unblur subtitle track 2 in asbplayer | B + 2            |
+| Unblur subtitle track 3 in asbplayer | B + 3            |
+| Move bottom subtitles up             |                  |
+| Move bottom subtitles down           |                  |
+| Move top subtitles up                |                  |
+| Move top subtitles down              |                  |
+
+### [Mining](https://app.asbplayer.dev/?view=settings#mining-settings) keyboard shortcuts
+
+| Behavior                                                                             | Default shortcut |
+| ------------------------------------------------------------------------------------ | ---------------- |
+| Mine current subtitle                                                                | Ctrl + Shift + Z |
+| Mine current subtitle and open Anki dialog                                           | Ctrl + Shift + X |
+| Update last-created Anki card with asbplayer-captured screenshot, audio, etc.        | Ctrl + Shift + U |
+| Export card to Anki, bypassing dialog.                                               |                  |
+| Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V |
+| Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R |
+
+### [Playback](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior                        | Default shortcut |
+| ------------------------------- | ---------------- |
+| Toggle side panel               | \`               |
+| Play/pause                      | Space            |
+| Toggle auto-pause               | Shift + P        |
+| Toggle condensed playback       | Shift + O        |
+| Toggle fast forward playback    | Shift + F        |
+| Toggle repeat mode              | Shift + R        |
+| Toggle when subtitles are shown |                  |
+| Cycle auto-pause resume mode    |                  |
+
+### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior                                                                  | Default shortcut |
+| ------------------------------------------------------------------------- | ---------------- |
+| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
+| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
+| Seek to previous subtitle                                                 | ←                |
+| Seek to next subtitle                                                     | →                |
+| Seek to beginning of current/previous subtitle                            | ↑                |
+
+### [Playback rate](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior               | Default shortcut |
+| ---------------------- | ---------------- |
+| Increase playback rate | Ctrl + Shift + ] |
+| Decrease playback rate | Ctrl + Shift + [ |
+
+### [Subtitle offset](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
+
+| Behavior                                                                 | Default shortcut |
+| ------------------------------------------------------------------------ | ---------------- |
+| Adjust subtitle offset so that previous subtitle is at current timestamp | Ctrl + ←         |
+| Adjust subtitle offset so that next subtitle is at current timestamp     | Ctrl + →         |
+| Adjust subtitle offset by +100ms                                         | Ctrl + Shift + ← |
+| Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
+| Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
+
+### [Annotation](https://app.asbplayer.dev/?view=settings#annotation) keyboard shortcuts
+
+| Behavior                          | Default shortcut |
+| --------------------------------- | ---------------- |
+| Open statistics                   | Q + S            |
+| Jump to next word                 | Q + E            |
+| Jump to previous word             | Q + W            |
+| Mark hovered word as Mature       | Q + 5            |
+| Jump to next Mature word          |                  |
+| Jump to previous Mature word      |                  |
+| Mark hovered word as Young        | Q + 4            |
+| Jump to next Young word           |                  |
+| Jump to previous Young word       |                  |
+| Mark hovered word as Graduated    | Q + 3            |
+| Jump to next Graduated word       |                  |
+| Jump to previous Graduated word   |                  |
+| Mark hovered word as Learning     | Q + 2            |
+| Jump to next Learning word        |                  |
+| Jump to previous Learning word    |                  |
+| Mark hovered word as Unknown      | Q + 1            |
+| Jump to next Unknown word         |                  |
+| Jump to previous Unknown word     |                  |
+| Mark hovered word as Uncollected  | Q + 0            |
+| Jump to next Uncollected word     |                  |
+| Jump to previous Uncollected word |                  |
+| Toggle hovered word as Ignored    | Q + I            |
+| Jump to next Ignored word         |                  |
+| Jump to previous Ignored word     |                  |
+
+### Seek interval (seconds)
+
+Controls the interval used by the [Seek keyboard shortcuts](#seek-keyboard-shortcuts).
+
+### Always play after invoking 'Seek to beginning of current/previous subtitle'
+
+Instead of retaining the current playback state, always play when using the [Seek keyboard shortcut](#seek-keyboard-shortcuts) that seeks to the beginning of the current/previous subtitle. Saves a keypress.
+
+### Playback speed adjust step
+
+Increment to use when using the "increase/decrease playback rate" [keyboard shortcuts](#playback-rate-keyboard-shortcuts).
+
+### Extension shortcuts
+
+When the browser extension is installed, some mining shortcuts (e.g. mine current subtitle, mine current subtitle and open Anki dialog) are implemented as browser commands rather than vanilla key event listeners, and can only be edited in the browser's extension shortcuts editor.
+
+- Chrome: `chrome://extensions/shortcuts`
+- Firefox: `about:addons` → `Manage Extension Shortcuts`
+
+## [Annotation](https://app.asbplayer.dev/?view=settings#annotation)
+
+### Word Browser
+
+:::info
+Only local words can be edited/deleted, external sources are read-only and can only update through [syncing](#re-build-anki-word-database).
+:::
+
+Opens the Word Browser, where you can view and manage all words in your local word database and Anki-synced word database.
+
+:::tip
+You can lookup words in any script of the language (e.g romaji/hiragana/katakana/kanji for Japanese).
+
+There are also some other common QOL substitutions, such as `e -> é` or `ss -> ß` done automatically.
+:::
+
+### Import Words
+
+Imports words into asbplayer's **local word database**.
+
+Imported words are considered local and take priority over the external sources when determining word status.
+
+The import dialog supports pasting arbitrary text (asbplayer will tokenize it) and importing previously-exported files.
+
+:::tip
+You can hover over words and use the [Annotation keyboard shortcuts](#annotation-keyboard-shortcuts) to change their status locally.
+:::
+
+### Export Words
+
+Exports your local word database so it can be backed up, moved to another device, or shared between the website and extension.
+
+### Re-Build Anki word database
+
+Builds (or rebuilds) the local cache of word-status information sourced from Anki.
+
+:::tip
+The cache is also updated automatically during playback when a track is enabled and Anki is connectable.
+
+This button is disabled unless your annotation settings [benefit from Anki integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+
+To clear the Anki word database entries for a track, [follow these steps](../common-issues.md#clear-anki-word-database).
+:::
+
+### Re-Build WaniKani word database
+
+Builds (or rebuilds) the local cache of vocabulary information sourced from WaniKani.
+
+:::tip
+The cache is also updated automatically during playback when a track is enabled and a token is configured.
+
+This button is disabled unless your annotation settings [benefit from WaniKani integration](../common-issues.md#enable-or-disable-annotation-for-a-track).
+
+To clear the WaniKani word database entries for a track, [follow these steps](../common-issues.md#clear-wanikani-word-database).
+:::
+
+### Subtitle track
+
+Selects which subtitle track these annotation settings apply to.
+
+### Colorize subtitles based on known words
+
+Enables word-status styling (uncollected/unknown/learning/etc.). Styling uses the configured [**Word color style**](#word-color-style) and [**Word status colors**](#word-status-colors).
+
+### Generate statistics automatically
+
+Automatically generate statistics for the current media upon load. This will also enable the statistics overlay. The [Open statistics keyboard shortcut](#annotation-keyboard-shortcuts) is in the Annotation group.
+
+### Display word readings
+
+Shows readings (e.g. furigana) above words based on the word status and states.
+
+### Display word frequency
+
+Shows a rank-based frequency value below words (when available) based on status and states. This is useful for prioritizing which words are worth spending time learning.
+
+:::tip
+Frequency information requires at least one rank-based frequency dictionary to be available in your Yomitan instance. If a frequency dictionary doesn't declare its mode, asbplayer will try to infer whether it is rank-based and use it accordingly.
+
+If multiple frequency numbers are available for a word, the lowest (most frequent) number is used.
+:::
+
+### Display pitch accent (Japanese)
+
+:::note
+Too see the pitch accent on furigana, it must be enabled via [**Display word readings**](#display-word-readings).
+:::
+
+Shows pitch accent on furigana or the kana itself based on status and states.
+
+:::info
+The attaching particle's pitch accent following a word is determined by the pitch accent of the word, if the data is available.
+
+Typically only kanji would receive furigana readings but with this feature enabled all characters in a word will receive furigana readings if at least one character is kanji. This makes it easier to reading the pitch accent for compound words.
+:::
+
+### Display word definitions
+
+Controls whether short definitions or explanations are displayed for each word based on the word status and states.
+
+### Word field search strategy
+
+Controls how asbplayer matches a subtitle word against your known words.
+
+- **Exact form collected**: the field must contain the exact surface form from the subtitle (running -> running).
+- **Lemma form collected**: you must have the lemma/base form collected (running -> run).
+- **Lemma or exact form collected**: treat the word as collected if either lemma or exact form matches (any of the above).
+- **Any form collected**: treat the word as collected if any related form matches (running -> run, ran, runs, etc.).
+
+When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+
+### Card choice priority
+
+If multiple Anki cards match a word, this controls which card is used to determine the word's status:
+
+- **Field contains exact form** (fallback to best known card if multiple)
+- **Field contains lemma** (fallback to best known card if multiple)
+- **Best known card**
+- **Least known card**
+
+### Sentence field search strategy
+
+Controls how asbplayer searches your configured [**Anki sentence fields**](#anki-sentence-fields), it has the same options as [**Word field search strategy**](#word-field-search-strategy).
+
+When **Lemma form collected**, **Lemma or exact form collected**, or **Any form collected** is selected, [**Match across language scripts**](#match-across-language-scripts) controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+
+:::tip
+Since sentences will contain multiple words thus diluting the relevance of the card state to any individual word, it's best to keep this as **Exact form collected** unless you only have sentence cards.
+:::
+
+### Match across language scripts
+
+Controls whether lemma-based matching may cross between different scripts for a language (e.g Kanji, Hiragana, Katakana).
+
+```
+if true:
+  - Kana subtitles can match kanji in collection, could be homophones but text processing can't handle it so we allow it.
+  - Kanji subtitles only match with kanji in collection, prevents kana collected matches all kanji homophones.
+if false:
+  - Never match across scripts, downside is if kanji is collected kana will need to be collected too.
+  - Essentially a strict mode where the you need to collect all script forms of a word.
+```
+
+### Yomitan API URL
+
+The URL for the Yomitan API endpoint. If the URL is unreachable or invalid, asbplayer will show an error.
+
+:::tip
+You will need a configured [Yomitan](https://yomitan.wiki/) instance and the [yomitan-api](https://github.com/yomidevs/yomitan-api).
+:::
+
+### Yomitan parser
+
+Selects which Yomitan parser to use for tokenizing subtitle text:
+
+- **Scanning Parser (All languages)**: Yomitan's internal parser that matches the longest words from your dictionaries.
+- **MeCab (Japanese)**: Uses MeCab to parse Japanese text. Requires Yomitan to be configured with MeCab support, preferably with at least one UniDic dictionary.
+
+### Max word length
+
+:::info
+This setting only applies to the Scanning Parser.
+:::
+
+Limits the maximum word length that asbplayer will try to scan/tokenize for annotation.
+
+:::tip
+Setting this too low will miss longer words, setting it too high may cause performance issues.
+:::
+
+### Anki decks (optional)
+
+Restricts Anki searches to the selected decks. If left empty, asbplayer searches across all decks.
+
+### Anki word fields
+
+Anki note fields that contain _only_ the target word. This is the recommended way to source known-status information from Anki.
+
+### Anki sentence fields
+
+Anki note fields that contain a sentence (commonly used for sentence decks). This will be used as a fallback if there are no cards with the target word in [**Anki word fields**](#anki-word-fields).
+
+### Mature Anki stability/interval (days)
+
+Controls the cutoff (in days) for treating an Anki card as **Mature** versus lower maturity statuses.
+
+- **Uncollected**: not found in Anki.
+- **Unknown**: found in Anki with `is:new`.
+- **Learning**: found in Anki with `is:learn`.
+- **Graduated**: found in Anki with `-is:new -is:learn prop:s<{ceil(cutoff / 2)}`.
+- **Young**: found in Anki with `-is:new -is:learn prop:s>=${ceil(cutoff / 2)} prop:s<${cutoff}`.
+- **Mature**: found in Anki with `-is:new -is:learn prop:s>=${cutoff}`.
+
+:::tip
+If a card has its FSRS stability available (last review of the card was with FSRS enabled), it will be used instead of the interval.
+
+For more information on word statuses, see [**Word status colors**](#word-status-colors).
+:::
+
+### Treat suspended Anki cards as
+
+Controls how **suspended** cards are treated when building word status from Anki:
+
+- **Normal**: use Anki status as-is.
+- Or choose a specific word status (e.g. **Mature**, **Unknown**, etc.) to force suspended cards to be treated as that status.
+
+:::tip
+If only some of the cards for a word are suspended, the suspended cards will be filtered out and the word status will be based on the unsuspended cards.
+
+For more information on word statuses, see [**Word status colors**](#word-status-colors).
+:::
+
+### WaniKani API token
+
+Use the WaniKani API token to sync your known words from WaniKani. For setup, follow the instructions in the [annotations guide](../guides/annotation.md#setup).
+
+For asbplayer, we only use the `vocabulary` and `kana_vocabulary` subject types to determine known words. Statuses are determined based on the SRS stage based on the configured [spaced repetition system](https://docs.api.wanikani.com/20170710/#spaced-repetition-system) for that subject. WaniKani statuses are determined as follows:
+
+- **Uncollected**: not found in WaniKani.
+- **Unknown**: found in WaniKani with an SRS stage below `Starting stage`.
+- **Learning**: found in WaniKani with an SRS stage at or above `Starting stage` and below `Passing stage`.
+- **Graduated**: found in WaniKani with an SRS stage in the lower half of the stages between `Passing stage` and `Burning stage`.
+- **Young**: found in WaniKani with an SRS stage in the upper half of the stages between `Passing stage` and `Burning stage`.
+- **Mature**: found in WaniKani with an SRS stage at or above `Burning stage`.
+
+:::tip
+For more information on word statuses, see [**Word status colors**](#word-status-colors).
+:::
+
+### Word color style
+
+Controls how status colors are applied to words for [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words):
+
+- **Text**: color of the word is changed.
+- **Background**: color behind the word is changed.
+- **Underline**: underline the word with the status color.
+- **Overline**: overline the word with the status color.
+- **Outline**: outline the word with the status color.
+
+:::tip
+When using **Outline**, you may need to set [**Subtitle outline thickness**](#subtitle-track) to `0` for the best results.
+:::
+
+### Thickness
+
+Controls the thickness (in pixels) of **Underline**, **Overline**, and **Outline** styling.
+
+### Highlight words on hover
+
+:::info
+This highlight reflects the focus asbplayer has to register keyboard shortcuts. If the highlight does not appear, you may need to click on the player to focus it. Keyboard shortcuts only work for either the video or the subtitle list (but not both at the same time) depending on where the focus is.
+
+The highlight exists primarily to help you understand which word you're hovering over for collection. As such it requires that the hover target must be a word and that you have coloring enabled.
+:::
+
+If enabled, hovering a word will highlight it which helps you understand how yomitan has tokenized it.
+
+### Only display word color on hover
+
+:::note
+This setting only applies if [**Colorize subtitles based on known words**](#colorize-subtitles-based-on-known-words) is enabled.
+:::
+
+If enabled for video or subtitle list, word colors are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Only display word reading on hover
+
+:::note
+This setting only applies if [**Display word readings**](#display-word-readings) is enabled.
+:::
+
+If enabled for video or subtitle list, word readings are hidden by default and only appear when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Only display word frequency on hover
+
+:::note
+This setting only applies if [**Display word frequency**](#display-word-frequency) is enabled.
+:::
+
+If enabled for video or subtitle list, word frequency is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Only display pitch accent on hover
+
+:::note
+This setting only applies if [**Display pitch accent (Japanese)**](#display-pitch-accent-japanese) is enabled.
+:::
+
+If enabled for video or subtitle list, pitch accent is hidden by default and only appears when you hover over the subtitle text in the video or subtitle list respectively.
+
+### Word reading size
+
+Controls the size of word readings (furigana) in em units (% of subtitle font size).
+
+### Word frequency size
+
+Controls the size of word frequency in em units (% of subtitle font size).
+
+### Pitch accent size
+
+Controls the size of pitch accent in em units (% of subtitle font size).
+
+### Word status colors
+
+Each status has a configurable color and transparency used by [**Word color style**](#word-color-style) which can be individually enabled or disabled.
+
+- **Uncollected**: Word is not present in your asbplayer database.
+- **Unknown**: Word is present but considered unknown.
+- **Learning**: Word is currently learning.
+- **Graduated**: Word has graduated from learning.
+- **Young**: Word is known, but not yet mature.
+- **Mature**: Word is fully known (mature).
+
+:::tip
+You can disable status stylings per your liking, e.g. disabling **Mature** to reduce clutter.
+
+You can reuse colors (e.g. **Graduated** and **Young**) if you don't want to differentiate between certain statuses.
+
+For how Anki Card statuses are determined, see [**Mature Anki stability/interval (days)**](#mature-anki-stabilityinterval-days).
+For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
+:::
+
+## [Streaming video](https://app.asbplayer.dev/?view=settings#streaming-video) (extension only)
+
+Streaming video settings are available only when the browser extension is installed.
+
+### When loading subtitles, also open subtitle list via the app in a separate tab
+
+Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+
+### App URL
+
+Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+
+### Enable controls overlay
+
+Display the overlay UI on video elements with loaded subtitles.
+
+### Display subtitles
+
+Display loaded subtitles on video elements.
+
+### Record audio when mining
+
+When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+
+### Take screenshot when mining
+
+When mining a subtitle, take a screenshot for inclusion in the flashcard.
+
+### Clean screenshot when mining
+
+When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+
+### Crop screenshot when mining
+
+When mining a subtitle, crop the screenshot to the video element.
+
+### Allow subtitle file drag-and-drop
+
+Allow subtitle files to be drag-and-dropped into video elements.
+
+### Auto-load detected subtitles
+
+If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+
+### Prompt when auto-loading detected subtitles fails
+
+When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+
+### Pages
+
+Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+
+#### Target language codes for machine translation (YouTube only)
+
+Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+
+## [Misc](https://app.asbplayer.dev/?view=settings#misc-settings)
+
+### Import/export settings
+
+Imports or exports settings as a `json` file.
+
+### Theme
+
+Display all asbplayer in a light or dark theme.
+
+### Language
+
+Language to display UI in.
+
+Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+
+### Auto-maximize local video
+
+Automatically maximize the local video when the subtitle panel is opened.
+
+### Show mining button in subtitle list
+
+When enabled, shows a mining button next to each subtitle in the subtitle list.
+
+### Subtitle list timestamps
+
+Controls how timestamps are displayed in the subtitle list.
+
+- **Hidden**: Not shown.
+- **Start**: Shows subtitle's start timestamp only.
+- **Start and end**: Shows both start and end timestamps of the subtitle.
+
+### Remember subtitle offset
+
+When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+
+### Auto-copy current subtitle to clipboard
+
+Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+
+### Subtitle tracks eligible for auto-copy
+
+Specifies which tracks will be auto-copied when the `Auto-copy current subtitle to clipboard` setting is enabled.
+
+### Subtitle tracks affected by playback modes and keyboard shortcuts
+
+Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+
+### Show preview thumbnails
+
+Shows preview thumbnails in the subtitle list.
+
+### Subtitle above thumbnail
+
+Shows the subtitle above the preview thumbnail in the subtitle list.
+
+### Subtitle regex filter
+
+Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+
+### Subtitle regex filter text replacement
+
+Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+
+### Subtitle HTML
+
+How to handle HTML that appears in subtitle files.
+
+### Detect and Display Ruby
+
+When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
+
+### Auto-pause when mousing over subtitles
+
+Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+
+### Playback modes
+
+Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+
+### Playback rate
+
+Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+
+### Show playback rate notification
+
+Shows a notification when the playback rate changes outside fast-forward playback.
+
+### Remember last playback rate
+
+Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+
+### Remember last playback modes
+
+Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+
+### Auto-pause preference
+
+When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+
+### Repeat count preference
+
+Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+
+### Subtitle trigger start and end offsets
+
+Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+
+### Fast-forward minimum skip interval
+
+Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+
+### Fast-forward playback rate
+
+How fast to fast-forward when fast-forward mode is enabled.
+
+### Condensed playback minimum skip interval
+
+When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+
+### Subtitle gap trigger start and end offsets
+
+Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+
+### Auto-pause resume mode
+
+Controls how an automatic pause finishes.
+
+- **Manual**: Playback stays paused until you resume it.
+
+- **Fixed**: Every automatic pause lasts for the same configured time.
+    - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
+    - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+### Fixed pause duration
+
+The amount of time an automatic pause lasts in **Fixed** mode.
+
+### Minimum pause duration
+
+The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+
+### Maximum pause duration
+
+The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+
+### Pause time per character
+
+The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+
+### Resume delay after auto-pause
+
+In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+
+### Show subtitles
+
+- **When due**: Subtitles appear while their timing is active.
+
+- **While paused**: Subtitles appear only when they are due and playback is paused.
+
+### Primed listening
+
+Primed listening is a technique for language learning where you read the native-language subtitle, watch it disappear, and then hear the target-language audio without subtitles. This can be achieved by combining [Auto-pause preference](#auto-pause-preference), **Subtitle length** under [Auto-pause resume mode](#auto-pause-resume-mode), **While paused** under [Show subtitles](#show-subtitles), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+### Enable WebSocket client
+
+Enables the WebSocket client. Allows asbplayer to be controlled using the WebSocket interface.
+
+### WebSocket Server URL
+
+The URL of the WebSocket server to connect to when enabling the WebSocket client. Usually this would be a locally-running instance of the [pre-packaged WebSocket server](../guides/web-socket-server).
+
+### Mining history storage limit
+
+Limits the number of cards that can be saved in the mining history.
+
+### Name of the tab
+
+The name to use for the app tab.
+
+## Profiles
+
+A settings profile is a completely different set of settings values. The active settings profile can be changed from the settings UI or from the **Load Subtitles** and **Anki Export** dialogs.

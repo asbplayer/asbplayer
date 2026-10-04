@@ -1,37 +1,35 @@
-import { isFirefoxBuild } from './build-flags';
-import FrameBridgeClient, { FetchOptions } from './frame-bridge-client';
+import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
+import type { FetchOptions } from '@project/extension/src/services/frame-bridge-client';
+import FrameBridgeClient from '@project/extension/src/services/frame-bridge-client';
+import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
 
-const frameColorScheme = () => {
-    // Prevent iframe from showing up with solid background by selecting suitable color scheme according to document's color scheme
-    // https://fvsch.com/transparent-iframes
-
-    const documentColorSchemeMetaTag = document.querySelector('meta[name="color-scheme"]');
-
-    if (documentColorSchemeMetaTag === null) {
-        return 'normal';
-    }
-
-    const documentColorScheme = (documentColorSchemeMetaTag as HTMLMetaElement).content;
-    const light = documentColorScheme.includes('light');
-    const dark = documentColorScheme.includes('dark');
-
-    if (light && dark) {
-        return 'none';
-    }
-
-    if (light) {
-        return 'light';
-    }
-
-    if (dark) {
-        return 'dark';
-    }
-
-    return 'normal';
+export const uiFrameForHtml = (html: (lang: string) => Promise<string>) => {
+    return new UiFrame(async (frame: HTMLIFrameElement, lang: string) => {
+        if (isFirefoxBuild) {
+            // Firefox does not allow document.write() into the about:blank iframe.
+            frame.srcdoc = await html(lang);
+        } else {
+            // On Chromium, use document.write() since it allows the loading of extension scripts
+            // into the iframe without additional work.
+            const doc = frame.contentDocument!;
+            doc.open();
+            doc.write(await html(lang));
+            doc.close();
+        }
+    });
 };
 
+export const uiFrameForSrc = (src: string) => {
+    return new UiFrame(async (frame: HTMLIFrameElement) => {
+        const colorScheme = frameColorScheme();
+        frame.src = `${src}?colorScheme=${encodeURIComponent(colorScheme)}`;
+    });
+};
+
+type FrameInitializer = (frame: HTMLIFrameElement, lang: string) => Promise<void>;
+
 export default class UiFrame {
-    private readonly _html: (lang: string) => Promise<string>;
+    private readonly _frameInitializer: FrameInitializer;
     private _fetchOptions: FetchOptions | undefined;
     private _client: FrameBridgeClient | undefined;
     private _frame: HTMLIFrameElement | undefined;
@@ -39,8 +37,8 @@ export default class UiFrame {
     private _dirty = true;
     private _bound = false;
 
-    constructor(html: (lang: string) => Promise<string>) {
-        this._html = html;
+    constructor(frameInitializer: FrameInitializer) {
+        this._frameInitializer = frameInitializer;
     }
 
     set fetchOptions(fetchOptions: FetchOptions) {
@@ -73,7 +71,7 @@ export default class UiFrame {
     }
 
     async bind(): Promise<boolean> {
-        return await this._init();
+        return this._init();
     }
 
     async client() {
@@ -92,29 +90,15 @@ export default class UiFrame {
         this._frame?.remove();
 
         this._frame = document.createElement('iframe');
-        this._frame.className = 'asbplayer-ui-frame';
-
-        this._frame.style.colorScheme = frameColorScheme();
+        this._frame.classList.add('asbplayer-ui-frame');
+        this._frame.classList.add(frameColorSchemeClass());
         this._frame.setAttribute('allowtransparency', 'true');
 
         this._client = new FrameBridgeClient(this._frame, this._fetchOptions);
         document.body.appendChild(this._frame);
 
-        if (isFirefoxBuild) {
-            // Firefox does not allow document.write() into the about:blank iframe.
-            // CSP headers are modified using the webRequest API to allow extension scripts to
-            // be loaded.
-            this._frame.srcdoc = await this._html(this._language);
-        } else {
-            // On Chromium, use document.write() since it allows the loading of extension scripts
-            // into the iframe without additional work.
-            const doc = this._frame.contentDocument!;
-            doc.open();
-            doc.write(await this._html(this._language));
-            doc.close();
-        }
-
-        await this._client!.bind();
+        await this._frameInitializer(this._frame, this._language);
+        await this._client.bind();
         return true;
     }
 

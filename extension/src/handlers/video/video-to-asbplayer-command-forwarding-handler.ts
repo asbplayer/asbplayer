@@ -1,5 +1,5 @@
-import { Command, ExtensionToAsbPlayerCommand, Message, VideoToExtensionCommand } from '@project/common';
-import TabRegistry from '../../services/tab-registry';
+import type { Command, ExtensionToAsbPlayerCommand, Message, VideoToExtensionCommand } from '@project/common';
+import type TabRegistry from '@project/extension/src/services/tab-registry';
 
 export default class VideoToAsbplayerCommandForwardingHandler {
     private readonly tabRegistry: TabRegistry;
@@ -26,7 +26,7 @@ export default class VideoToAsbplayerCommandForwardingHandler {
                 tabId: sender.tab.id,
                 src: videoToExtensionCommand.src,
             };
-            this.tabRegistry.publishCommandToAsbplayers({ commandFactory: () => extensionToPlayerCommand });
+            void this.tabRegistry.publishCommandToAsbplayers({ commandFactory: () => extensionToPlayerCommand });
         }
 
         return false;

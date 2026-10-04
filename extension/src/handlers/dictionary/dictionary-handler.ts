@@ -1,27 +1,42 @@
-import {
+import { asbError } from '@project/common/util/log';
+import type {
     Command,
     DictionaryBuildAnkiCacheMessage,
     DictionaryBuildAnkiCacheState,
     DictionaryBuildAnkiCacheStateMessage,
-    DictionaryDBCommand,
+    DictionaryBuildWaniKaniCacheMessage,
+    DictionaryBuildWaniKaniCacheState,
+    DictionaryBuildWaniKaniCacheStateMessage,
+    DictionaryGetAllTokensMessage,
+    DictionaryGetRecordsMessage,
     DictionaryImportRecordLocalBulkMessage,
+    DictionaryDeleteRecordsMessage,
+    DictionaryUpdateRecordsMessage,
     ExtensionToAsbPlayerCommand,
     Message,
-} from '@project/common';
-import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
-import {
+    ExtensionToVideoCommand,
+    DictionaryStatisticsMessage,
+    DictionaryRequestStatisticsGenerationMessage,
+    DictionaryRequestStatisticsSnapshotMessage,
+    DictionaryRequestStatisticsSeekMessage,
+    DictionaryRequestStatisticsMineSentencesMessage,
     DictionaryGetBulkMessage,
     DictionaryGetByLemmaBulkMessage,
     DictionarySaveRecordLocalBulkMessage,
     DictionaryDeleteRecordLocalBulkMessage,
     DictionaryDeleteProfileMessage,
 } from '@project/common';
+import type { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
+import type { Asbplayer, VideoElement } from '@/services/tab-registry';
+import type TabRegistry from '@/services/tab-registry';
 
 export default class DictionaryHandler {
     private readonly dictionaryDB: DictionaryDB;
+    private readonly tabRegistry: TabRegistry;
 
-    constructor(dictionaryDB: DictionaryDB) {
+    constructor(dictionaryDB: DictionaryDB, tabRegistry: TabRegistry) {
         this.dictionaryDB = dictionaryDB;
+        this.tabRegistry = tabRegistry;
     }
 
     get sender() {
@@ -36,81 +51,211 @@ export default class DictionaryHandler {
         switch (command.message.command) {
             case 'dictionary-get-bulk': {
                 const message = command.message as DictionaryGetBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .getBulk(message.profile, message.track, message.tokens)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
+                return true;
+            }
+            case 'dictionary-get-all-tokens': {
+                const message = command.message as DictionaryGetAllTokensMessage;
+                void this.dictionaryDB
+                    .getAllTokens(message.profile, message.track)
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-get-by-lemma-bulk': {
                 const message = command.message as DictionaryGetByLemmaBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .getByLemmaBulk(message.profile, message.track, message.lemmas)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-save-record-local-bulk': {
                 const message = command.message as DictionarySaveRecordLocalBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .saveRecordLocalBulk(message.profile, message.localTokenInputs, message.applyStates)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-delete-record-local-bulk': {
                 const message = command.message as DictionaryDeleteRecordLocalBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .deleteRecordLocalBulk(message.profile, message.tokens)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-delete-profile': {
                 const message = command.message as DictionaryDeleteProfileMessage;
-                this.dictionaryDB.deleteProfile(message.profile).then((result) => sendResponse(result));
+                void this.dictionaryDB
+                    .deleteProfile(message.profile)
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-export-record-local-bulk': {
-                this.dictionaryDB.exportRecordLocalBulk().then((result) => sendResponse(result));
+                void this.dictionaryDB
+                    .exportRecordLocalBulk()
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-import-record-local-bulk': {
                 const message = command.message as DictionaryImportRecordLocalBulkMessage;
-                this.dictionaryDB
+                void this.dictionaryDB
                     .importRecordLocalBulk(message.records, message.profiles)
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
+                return true;
+            }
+            case 'dictionary-get-records': {
+                const message = command.message as DictionaryGetRecordsMessage;
+                void this.dictionaryDB
+                    .getRecords(message.profile, message.track)
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
+                return true;
+            }
+            case 'dictionary-update-records': {
+                const message = command.message as DictionaryUpdateRecordsMessage;
+                void this.dictionaryDB
+                    .updateRecords(message.profile, message.updates, message.applyStates)
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
+                return true;
+            }
+            case 'dictionary-delete-records': {
+                const message = command.message as DictionaryDeleteRecordsMessage;
+                void this.dictionaryDB
+                    .deleteRecords(message.profile, message.tokenKeys)
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
             case 'dictionary-build-anki-cache': {
                 const message = command.message as DictionaryBuildAnkiCacheMessage;
-                let originTabId =
-                    (command as DictionaryDBCommand<Message>).useOriginTab && typeof sender.tab?.id === 'number'
-                        ? sender.tab.id
-                        : undefined;
-                this.dictionaryDB
-                    .buildAnkiCache(message.profile, message.settings, async (state: DictionaryBuildAnkiCacheState) => {
-                        const message: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
+                void this.dictionaryDB
+                    .buildAnkiCache(message.profile, (state: DictionaryBuildAnkiCacheState) => {
+                        const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildAnkiCacheStateMessage> = {
                             sender: 'asbplayer-extension-to-player',
                             message: { command: 'dictionary-build-anki-cache-state', ...state },
                         };
-
-                        try {
-                            await browser.runtime.sendMessage(message);
-                        } catch {
-                            // No one is currently listening
-                        }
-
-                        if (typeof originTabId !== 'number') return;
-                        try {
-                            await browser.tabs.sendMessage(originTabId, message);
-                        } catch (e) {
-                            console.error(
-                                'Failed to send build Anki cache status update to origin tab, stopping updates to tab',
-                                e
-                            );
-                            originTabId = undefined;
-                        }
+                        void this._relayToExtensionContexts(playerMessage);
+                        void this._relayToAsbplayers((asbplayer) => {
+                            if (asbplayer.sidePanel) return;
+                            return playerMessage;
+                        });
+                        void this._relayToVideoElements((videoElement) => {
+                            return {
+                                sender: 'asbplayer-extension-to-video',
+                                src: videoElement.src,
+                                message: {
+                                    command: 'dictionary-build-anki-cache-state',
+                                    ...state,
+                                },
+                            } satisfies ExtensionToVideoCommand<DictionaryBuildAnkiCacheStateMessage>;
+                        });
                     })
-                    .then((result) => sendResponse(result));
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
                 return true;
             }
+            case 'dictionary-build-wanikani-cache': {
+                const message = command.message as DictionaryBuildWaniKaniCacheMessage;
+                void this.dictionaryDB
+                    .buildWaniKaniCache(message.profile, (state: DictionaryBuildWaniKaniCacheState) => {
+                        const playerMessage: ExtensionToAsbPlayerCommand<DictionaryBuildWaniKaniCacheStateMessage> = {
+                            sender: 'asbplayer-extension-to-player',
+                            message: { command: 'dictionary-build-wanikani-cache-state', ...state },
+                        };
+                        void this._relayToExtensionContexts(playerMessage);
+                        void this._relayToAsbplayers((asbplayer) => {
+                            if (asbplayer.sidePanel) return;
+                            return playerMessage;
+                        });
+                        void this._relayToVideoElements((videoElement) => {
+                            return {
+                                sender: 'asbplayer-extension-to-video',
+                                src: videoElement.src,
+                                message: {
+                                    command: 'dictionary-build-wanikani-cache-state',
+                                    ...state,
+                                },
+                            } satisfies ExtensionToVideoCommand<DictionaryBuildWaniKaniCacheStateMessage>;
+                        });
+                    })
+                    .then((result) => sendResponse(result))
+                    .catch((error) => asbError('dictionary', `Failed to handle ${command.message.command}:`, error));
+                return true;
+            }
+            case 'dictionary-statistics':
+            case 'dictionary-request-statistics-generation':
+            case 'dictionary-request-statistics-snapshot':
+            case 'dictionary-request-statistics-seek':
+            case 'dictionary-request-statistics-mine-sentences': {
+                type DSM =
+                    | DictionaryStatisticsMessage
+                    | DictionaryRequestStatisticsGenerationMessage
+                    | DictionaryRequestStatisticsSnapshotMessage
+                    | DictionaryRequestStatisticsSeekMessage
+                    | DictionaryRequestStatisticsMineSentencesMessage;
+                const playerMessage: ExtensionToAsbPlayerCommand<DSM> = {
+                    sender: 'asbplayer-extension-to-player',
+                    message: command.message as DSM,
+                };
+                void this._relayToExtensionContexts(playerMessage);
+                void this._relayToAsbplayers((asbplayer) => {
+                    if (asbplayer.sidePanel) return;
+                    if (!playerMessage.message.mediaId) return playerMessage; // Messages without mediaId should be sent to all non-sidePanel App instances
+                    if (asbplayer.syncedVideoElement) {
+                        if (asbplayer.syncedVideoElement.src !== playerMessage.message.mediaId) return;
+                        return playerMessage; // Extension controlled media must match the synced video src
+                    }
+                    if (asbplayer.id === playerMessage.message.mediaId) return playerMessage; // App controlled media must match subtitle App instance id
+                    if (!asbplayer.loadedSubtitles && !asbplayer.videoPlayer) return playerMessage; // Idle App instances should receive statistics
+                });
+                const videoMessage: ExtensionToVideoCommand<DSM> = {
+                    sender: 'asbplayer-extension-to-video',
+                    message: command.message as DSM,
+                };
+                void this._relayToVideoElements((videoElement) => {
+                    if (!videoMessage.message.mediaId) return videoMessage; // Messages without mediaId should be sent to all video elements
+                    if (videoElement.src === videoMessage.message.mediaId) return videoMessage;
+                });
+                return false;
+            }
+        }
+    }
+
+    private async _relayToExtensionContexts(message: ExtensionToAsbPlayerCommand<Message>) {
+        try {
+            await browser.runtime.sendMessage(message);
+        } catch {
+            // No extension UI is currently listening.
+        }
+    }
+
+    private async _relayToAsbplayers(
+        commandFactory: (asbplayer: Asbplayer) => ExtensionToAsbPlayerCommand<Message> | undefined
+    ) {
+        try {
+            await this.tabRegistry.publishCommandToAsbplayers({ commandFactory });
+        } catch {
+            // No App instances are currently listening.
+        }
+    }
+
+    private async _relayToVideoElements(
+        commandFactory: (videoElement: VideoElement) => ExtensionToVideoCommand<Message> | undefined
+    ) {
+        try {
+            await this.tabRegistry.publishCommandToVideoElements(commandFactory);
+        } catch {
+            // No video elements are currently listening.
         }
     }
 }

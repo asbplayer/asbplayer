@@ -1,13 +1,17 @@
-import {
+import type {
     MobileOverlayToVideoCommand,
     MobileOverlayModel,
     UpdateMobileOverlayModelMessage,
     VideoToExtensionCommand,
     PlayModeMessage,
 } from '@project/common';
-import Binding from '../services/binding';
-import { CachingElementOverlay, OffsetAnchor } from '../services/element-overlay';
-import { adjacentSubtitle } from '@project/common/key-binder';
+import type Binding from '@project/extension/src/services/binding';
+import { CachingElementOverlay, OffsetAnchor } from '@project/extension/src/services/element-overlay';
+import { asbError } from '@project/common/util/log';
+import { adjacentSubtitle } from '@project/common/util';
+import { frameColorScheme, frameColorSchemeClass } from '@project/extension/src/services/frame-color-scheme';
+import { v4 as uuidv4 } from 'uuid';
+import { PlayMode } from '@project/common';
 
 const smallScreenVideoHeightThreshold = 300;
 
@@ -35,9 +39,15 @@ export class MobileVideoOverlayController {
     ) => void;
     private _bound = false;
     private _frameParams?: FrameParams;
+    private _enabled = false;
+    private _configuredOffsetAnchor: OffsetAnchor;
+    private _playModeSelectorOpen = false;
+    private _overlayInstanceId = uuidv4();
+    private _playModes = new Set<PlayMode>([PlayMode.normal]);
 
     constructor(context: Binding, offsetAnchor: OffsetAnchor) {
         this._context = context;
+        this._configuredOffsetAnchor = offsetAnchor;
         this._overlay = MobileVideoOverlayController._elementOverlay(context.video, offsetAnchor);
     }
 
@@ -54,41 +64,51 @@ export class MobileVideoOverlayController {
             fullscreenContentClassName: 'asbplayer-mobile-video-overlay',
             offsetAnchor,
             contentPositionOffset: 8,
-            contentWidthPercentage: -1,
+            contentWidth: -1,
             onMouseOver: () => {},
             onMouseOut: () => {},
         });
     }
 
     set offsetAnchor(value: OffsetAnchor) {
+        this._configuredOffsetAnchor = value;
+        this._setOverlayOffsetAnchor(value);
+    }
+
+    private _setOverlayOffsetAnchor(value: OffsetAnchor) {
         if (this._overlay.offsetAnchor === value) {
-            return;
+            return false;
         }
 
         this._overlay.dispose();
         this._overlay = MobileVideoOverlayController._elementOverlay(this._context.video, value);
+        this._overlayInstanceId = uuidv4();
 
         if (this._showing) {
             this._doShow();
         }
+
+        return true;
+    }
+
+    set enabled(value: boolean) {
+        this._enabled = value;
+        if (value) {
+            this.bind();
+        } else {
+            this.unbind();
+        }
     }
 
     set forceHide(forceHide: boolean) {
-        if (!this._bound) {
-            return;
-        }
+        if (!this._bound) return;
 
         if (forceHide) {
-            if (this._showing) {
-                this._doHide();
-            }
-
+            if (this._showing) this._doHide();
             this._forceHiding = true;
-        } else {
-            if (this._forceHiding) {
-                this._forceHiding = false;
-                this._show();
-            }
+        } else if (this._forceHiding) {
+            this._forceHiding = false;
+            this._show();
         }
     }
 
@@ -98,13 +118,16 @@ export class MobileVideoOverlayController {
         }
 
         this._pauseListener = () => {
-            this._show();
+            if (this._enabled) {
+                this._show();
+                void this.updateModel();
+            }
         };
         this._playListener = () => {
             this._hide();
         };
         this._seekedListener = () => {
-            this.updateModel();
+            void this.updateModel();
         };
 
         this._context.video.addEventListener('pause', this._pauseListener);
@@ -115,27 +138,40 @@ export class MobileVideoOverlayController {
             sender: Browser.runtime.MessageSender,
             sendResponse: (response?: any) => void
         ) => {
-            if (message.sender !== 'asbplayer-mobile-overlay-to-video' || message.src !== this._context.video.src) {
+            if (
+                message.sender !== 'asbplayer-mobile-overlay-to-video' ||
+                message.src !== this._context.registeredVideoSrc
+            ) {
                 return;
             }
 
             if (message.message.command === 'request-mobile-overlay-model') {
-                this._model().then(sendResponse);
+                if (this._overlayInstanceId !== message.message.overlayInstanceId) {
+                    return;
+                }
+                void this._model()
+                    .then(sendResponse)
+                    .catch((error) => asbError('mobile-overlay', 'Failed to load the overlay model:', error));
                 this._uiInitialized = true;
                 return true;
             }
 
             if (message.message.command === 'playMode') {
                 const command = message as MobileOverlayToVideoCommand<PlayModeMessage>;
+                this._playModeSelectorOpen = true;
                 this._context.togglePlayMode(command.message.playMode);
+            } else if (message.message.command === 'playback-mode-selector-opened') {
+                this._playModeSelectorOpen = true;
             } else if (message.message.command === 'hidden') {
                 this._doHide();
+            } else if (message.message.command === 'playback-mode-selector-closed') {
+                this._playModeSelectorClosed();
             }
         };
         browser.runtime.onMessage.addListener(this._messageListener);
         this._bound = true;
 
-        if (this._context.video.paused) {
+        if (this._context.video.paused && this._enabled) {
             this._show();
         }
     }
@@ -152,22 +188,27 @@ export class MobileVideoOverlayController {
                 command: 'update-mobile-overlay-model',
                 model,
             },
-            src: this._context.video.src,
+            src: this._context.registeredVideoSrc,
         };
-        browser.runtime.sendMessage(command);
+        void browser.runtime.sendMessage(command);
+    }
+
+    setPlaybackModes(modes: ReadonlySet<PlayMode>): void {
+        this._playModes = new Set(modes);
     }
 
     private async _model() {
         const subtitles = this._context.subtitleController.subtitles;
         const subtitleDisplaying =
             subtitles.length > 0 && this._context.subtitleController.currentSubtitle()[0] !== null;
-        const timestamp = this._context.video.currentTime * 1000;
-        const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles } =
+        const timestamp = this._context.currentTimeMs;
+        const { language, clickToMineDefaultAction, themeType, streamingDisplaySubtitles, seekableTracks } =
             await this._context.settings.get([
                 'language',
                 'clickToMineDefaultAction',
                 'themeType',
                 'streamingDisplaySubtitles',
+                'seekableTracks',
             ]);
         const model: MobileOverlayModel = {
             offset: subtitles.length === 0 ? 0 : subtitles[0].start - subtitles[0].originalStart,
@@ -175,14 +216,17 @@ export class MobileVideoOverlayController {
             emptySubtitleTrack: subtitles.length === 0,
             recordingEnabled: this._context.recordMedia,
             recording: this._context.recordingMedia,
-            previousSubtitleTimestamp: adjacentSubtitle(false, timestamp, subtitles)?.originalStart ?? undefined,
-            nextSubtitleTimestamp: adjacentSubtitle(true, timestamp, subtitles)?.originalStart ?? undefined,
+            previousSubtitleTimestamp:
+                adjacentSubtitle(false, timestamp, subtitles, seekableTracks)?.originalStart ?? undefined,
+            nextSubtitleTimestamp:
+                adjacentSubtitle(true, timestamp, subtitles, seekableTracks)?.originalStart ?? undefined,
             currentTimestamp: timestamp,
             language,
             postMineAction: clickToMineDefaultAction,
             subtitleDisplaying,
             subtitlesAreVisible: streamingDisplaySubtitles,
-            playModes: Array.from(this._context.playModes),
+            playModes: Array.from(this._playModes),
+            overlayInstanceId: this._overlayInstanceId,
             themeType,
         };
         return model;
@@ -196,13 +240,28 @@ export class MobileVideoOverlayController {
         this._show();
     }
 
+    private _playModeSelectorClosed() {
+        this._playModeSelectorOpen = false;
+
+        if (!this._enabled) {
+            this.unbind();
+            return;
+        }
+
+        if (!this._context.video.paused) this._doHide();
+        const anchorChanged = this._setOverlayOffsetAnchor(this._configuredOffsetAnchor);
+        if (this._showing && !anchorChanged) this._doShow();
+        void this.updateModel();
+    }
+
     disposeOverlay() {
         this._overlay.dispose();
         this._overlay = MobileVideoOverlayController._elementOverlay(this._context.video, this._overlay.offsetAnchor);
+        this._overlayInstanceId = uuidv4();
     }
 
     private _show() {
-        if (!this._context.synced || this._forceHiding) {
+        if (!this._context.synced || this._forceHiding || !this._enabled) {
             return;
         }
 
@@ -215,15 +274,20 @@ export class MobileVideoOverlayController {
 
         if (this._frameParams !== undefined && this._differentFrameParams(frameParams, this._frameParams)) {
             this._overlay.uncacheHtml();
+            this._overlayInstanceId = uuidv4();
         }
 
+        const colorScheme = frameColorScheme();
+        const colorSchemeClass = frameColorSchemeClass();
         this._overlay.setHtml([
             {
                 key: 'ui',
                 html: () =>
-                    `<iframe style="border: 0; color-scheme: normal; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
+                    `<iframe class="${colorSchemeClass}" allowtransparency="true" style="border: 0; color-scheme: ${colorScheme}; width: ${width}px; height: ${height}px" src="${browser.runtime.getURL(
                         '/mobile-video-overlay-ui.html'
-                    )}?src=${src}&anchor=${anchor}&tooltips=${tooltips}"/>`,
+                    )}?src=${src}&anchor=${anchor}&tooltips=${tooltips}&colorScheme=${encodeURIComponent(
+                        colorScheme
+                    )}&overlayId=${encodeURIComponent(this._overlayInstanceId)}"/>`,
             },
         ]);
 
@@ -238,7 +302,7 @@ export class MobileVideoOverlayController {
         const height = smallScreen ? 64 : 108;
         const tooltips = !smallScreen;
         const width = Math.min(window.innerWidth, 410);
-        const src = encodeURIComponent(this._context.video.src);
+        const src = encodeURIComponent(this._context.registeredVideoSrc);
 
         return { width, height, anchor, src, tooltips };
     }
@@ -289,6 +353,7 @@ export class MobileVideoOverlayController {
     }
 
     unbind() {
+        this._playModeSelectorOpen = false;
         if (this._pauseListener) {
             this._context.video.removeEventListener('pause', this._pauseListener);
             this._pauseListener = undefined;
@@ -310,8 +375,10 @@ export class MobileVideoOverlayController {
         }
 
         this._overlay.dispose();
-        this._overlay = MobileVideoOverlayController._elementOverlay(this._context.video, this._overlay.offsetAnchor);
+        this._overlay = MobileVideoOverlayController._elementOverlay(this._context.video, this._configuredOffsetAnchor);
+        this._overlayInstanceId = uuidv4();
         this._showing = false;
+        this._uiInitialized = false;
         this._bound = false;
     }
 }

@@ -17,5 +17,5 @@
         "jsx": "react-jsx",
         "types": ["vite/client", "@types/jest", "node", "vite-plugin-pwa/client"]
     },
-    "include": ["src", "decs.d.ts", "vite-env.d.ts"]
+    "include": ["src", "decs.d.ts", "vite-env.d.ts", "plausible.d.ts"]
 }

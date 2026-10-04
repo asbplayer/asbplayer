@@ -1,0 +1,30 @@
+---
+slug: 1.19.0-released
+title: Extension v1.19.0 released
+authors: [killergerbah]
+tags: []
+---
+
+Extension v1.19.0 has been released.
+
+<!-- truncate -->
+
+- Big thanks to [@jprostko](https://github.com/jprostko) for taking the time to make a high-quality, critical bug fix to Netflix subtitle detection within a few days of the bug report.
+
+- [@ShanaryS](https://github.com/ShanaryS) is continuing to make enormous contributions to the project.
+  In this release, [@ShanaryS](https://github.com/ShanaryS) added support for Japanese pitch accent annotations, bringing asbplayer another step closer to parity with similar software.
+
+- [@ShanaryS](https://github.com/ShanaryS) also reimplemented subtitle list rendering using a virtual table - vastly improving its performance.
+  This has been a long time coming but is even more important with the new annotation features.
+
+- [@mcgrizzz](https://github.com/mcgrizzz) has been consistently working to improve asbplayer's API by introducing useful commands.
+  In this release they have implemented `get-bound-media` which allows callers to fetch asbplayer-bound media.
+  [@mcgrizzz](https://github.com/mcgrizzz)'s followup contribution to implement `get-subtitles` will be released in 1.20.0, and will allow callers fetch the subtitles of bound media.
+
+- [@xwxb](https://github.com/xwxb) has continued to own and improve the Jimaku API integration by introducing the "Recent" list to the Jimaku search UI.
+
+- Shoutout to first-time contributor [@thntx](https://github.com/thntx) who added a highly desired feature that allows users to target specific Anki cards to supply with asbplayer content.
+
+Thanks to everyone for their contributions.
+
+Read the full release notes for v1.19.0 [here](https://github.com/asbplayer/asbplayer/releases/tag/v1.19.0).

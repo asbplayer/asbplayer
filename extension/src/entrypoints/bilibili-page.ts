@@ -24,7 +24,7 @@ export default defineUnlistedScript(() => {
                 }
             }
         },
-        onRequest: (addTrack, setBasename) => {
+        onRequest: async (_addTrack, setBasename) => {
             setBasename(document.title);
         },
         waitForBasename: false,

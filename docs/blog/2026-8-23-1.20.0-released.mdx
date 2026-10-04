@@ -1,0 +1,36 @@
+---
+slug: 1.20.0-released
+title: Extension v1.20.0+ released
+authors: [killergerbah]
+tags: []
+---
+
+Extension v1.20.0 has been released, along with some hotfixes to patch critical issues.
+
+<!-- truncate -->
+
+v1.20.0 was a very large release.
+
+- [@ShanaryS](https://github.com/ShanaryS) introduced a huge architectural change to playback modes,
+  incidentally implementing a lot of new features, and making it easier to build more.
+- Also from [@ShanaryS](https://github.com/ShanaryS) - lots of bug fixes and quality-of-life changes. The YouTube
+  integration is much improved as well as the overall quality of the code base.
+- [@mcgrizzz](https://github.com/mcgrizzz) continues to improve the external API, adding a `get-subtitles` command
+  and targeting by `mediaId`.
+- [@Ayase-the-Dark](https://github.com/Ayase-the-Dark) made the Disney Plus integration fully functional. It used to be completely broken!
+- [@steckums](https://github.com/steckums) updated the Comprehensible Japanese integration to its new name, Natural Japanese.
+- [@artomsR](https://github.com/artjomsR) introduced a way to resume playback from previous sessions, which was re-implemented by ShanaryS
+  during his refactoring efforts.
+- [@Otto-Deviant1904](https://github.com/Otto-Deviant1904) fixed subtitles with exactly the same timestamp appearing in the wrong order.
+  Unfortunately, the fix has since regressed due to the amount of change in this release, and will need to be fixed in a future release.
+  We still acknowledge [@Otto-Deviant1904](https://github.com/Otto-Deviant1904)'s efforts here.
+
+Following the release of v1.20.0, critical issues were discovered and are now fixed on Firefox with v1.20.1 and on Chrome with v1.20.2.
+
+- Netflix subtitles would be frozen sometimes.
+- Sites with a content security policy, like Gmail, were broken on Firefox.
+
+Thanks to all the contributors both old and new for making this release possible. Full release notes can be read here:
+[v1.20.0](https://github.com/asbplayer/asbplayer/releases/tag/v1.20.0),
+[v1.20.1](https://github.com/asbplayer/asbplayer/releases/tag/v1.20.1),
+[v1.20.2](https://github.com/asbplayer/asbplayer/releases/tag/v1.20.2)
