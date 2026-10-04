@@ -69,6 +69,8 @@ const cropDimensions = (
     return { sx, sy, sw, sh, dw: Math.max(1, Math.round(sw * scale)), dh: Math.max(1, Math.round(sh * scale)) };
 };
 
+export class NoArmedAnimatedWebpCaptureError extends Error {}
+
 export interface ArmedAnimatedWebpCapture {
     readonly stream: MediaStream;
     readonly videoTrack: MediaStreamTrack;

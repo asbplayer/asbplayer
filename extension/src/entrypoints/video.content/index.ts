@@ -16,6 +16,7 @@ import {
     activeAnimatedWebpCapture,
     armAnimatedWebpCapture,
     discardArmedAnimatedWebpCapture,
+    NoArmedAnimatedWebpCaptureError,
     releaseAnimatedWebpCapture,
     startAnimatedWebpCapture,
     takeArmedAnimatedWebpCapture,
@@ -271,7 +272,9 @@ export default defineContentScript({
                 }
 
                 if (message.streamId === undefined || message.fps === undefined || message.quality === undefined) {
-                    throw new Error('No armed animated WebP capture and no stream to arm one from');
+                    throw new NoArmedAnimatedWebpCaptureError(
+                        'No armed animated WebP capture and no stream to arm one from'
+                    );
                 }
 
                 await armAnimatedWebpCapture(message.streamId, message.fps, message.quality, message.recordAudio);
@@ -361,7 +364,11 @@ export default defineContentScript({
                             .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
                             .catch((e) => {
                                 asbError('recording/animated-webp', e);
-                                sendResponse({ base64: '', error: String(e?.message ?? e) });
+                                sendResponse({
+                                    base64: '',
+                                    error: String(e?.message ?? e),
+                                    armedCaptureMissing: e instanceof NoArmedAnimatedWebpCaptureError,
+                                });
                             });
                         return true;
                     }

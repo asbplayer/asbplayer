@@ -125,6 +125,33 @@ describe('AudioRecorderService', () => {
             expect(finishedForOtherTab).toHaveLength(1);
         });
 
+        it('renegotiates the stream and retries when the armed capture was discarded', async () => {
+            const missing: RecordAnimatedWebpResponse = { base64: '', error: 'gone', armedCaptureMissing: true };
+            capturer.recordAnimatedWebp.mockResolvedValueOnce(missing).mockResolvedValueOnce(webp);
+            const renegotiate = jest.fn(async () => negotiation);
+
+            await expect(
+                service.recordAnimatedWebpWithTimeout(1000, true, captureParams, requester, undefined, renegotiate)
+            ).resolves.toEqual(webp);
+
+            expect(renegotiate).toHaveBeenCalledTimes(1);
+            expect(capturer.recordAnimatedWebp).toHaveBeenCalledTimes(2);
+            expect(capturer.recordAnimatedWebp.mock.calls[0][5]).toBeUndefined();
+            expect(capturer.recordAnimatedWebp.mock.calls[1][5]).toEqual(negotiation);
+            // One continuous recording as far as the video is concerned
+            expect(signals()).toEqual(['recording-started', 'recording-finished']);
+        });
+
+        it('does not renegotiate when the capture succeeded', async () => {
+            capturer.recordAnimatedWebp.mockResolvedValue(webp);
+            const renegotiate = jest.fn(async () => negotiation);
+
+            await service.recordAnimatedWebpWithTimeout(1000, true, captureParams, requester, undefined, renegotiate);
+
+            expect(renegotiate).not.toHaveBeenCalled();
+            expect(capturer.recordAnimatedWebp).toHaveBeenCalledTimes(1);
+        });
+
         it('is cut short by stopping, which leaves publishing to the original caller', async () => {
             const capture = deferred<RecordAnimatedWebpResponse>();
             capturer.recordAnimatedWebp.mockReturnValue(capture.promise);

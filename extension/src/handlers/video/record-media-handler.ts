@@ -106,7 +106,8 @@ export default class RecordMediaHandler {
                     message.record,
                     { maxWidth, maxHeight, rect, frameId, trimBlackBars },
                     { src, tabId },
-                    negotiation
+                    negotiation,
+                    () => negotiateAnimatedWebp(this._settingsProvider, tabId)
                 );
                 imageModel = {
                     base64,

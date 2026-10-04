@@ -119,20 +119,23 @@ export default class AudioRecorderService {
         recordAudio: boolean,
         captureParams: ImageCaptureParams,
         requester: Requester,
-        negotiation?: AnimatedWebpNegotiation
+        negotiation?: AnimatedWebpNegotiation,
+        // Used if the capture that was armed ahead of time turned out to be gone by the time it was needed
+        renegotiate?: () => Promise<AnimatedWebpNegotiation>
     ): Promise<RecordAnimatedWebpResponse> {
         const recording = this._beginAnimatedWebp(requester, true);
         this._notifyRecordingStarted(requester);
 
         try {
-            return await recordAnimatedWebp(
-                requester.tabId,
-                requester.src,
-                durationMs,
-                recordAudio,
-                captureParams,
-                negotiation
-            );
+            const record = (negotiation?: AnimatedWebpNegotiation) =>
+                recordAnimatedWebp(requester.tabId, requester.src, durationMs, recordAudio, captureParams, negotiation);
+            const response = await record(negotiation);
+
+            if (response.armedCaptureMissing && renegotiate) {
+                return await record(await renegotiate());
+            }
+
+            return response;
         } finally {
             this._endAnimatedWebp(recording);
         }
