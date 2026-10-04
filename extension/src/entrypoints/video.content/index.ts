@@ -204,10 +204,6 @@ export default defineContentScript({
 
             const videoSelectController = new VideoSelectController(bindings, {
                 isBindingsSorted: page.config.preferredVideoElementSelector !== undefined,
-                isPreferredBinding:
-                    page.config.preferredVideoElementSelector !== undefined
-                        ? (b) => page.videoElementPreference(b.video) === 0
-                        : undefined,
             });
             videoSelectController.bind();
 

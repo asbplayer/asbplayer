@@ -18,7 +18,6 @@ import { frameColorSchemeStyleBlock } from '@/services/frame-color-scheme';
 
 interface VideoSelectControllerOptions {
     readonly isBindingsSorted: boolean;
-    readonly isPreferredBinding?: (binding: Binding) => boolean;
 }
 
 export default class VideoSelectController {
@@ -26,7 +25,6 @@ export default class VideoSelectController {
     private readonly _frame: UiFrame;
     private readonly _settings: SettingsProvider = new SettingsProvider(new ExtensionSettingsStorage());
     private readonly _isBindingsSorted: boolean;
-    private readonly _isPreferredBinding?: (binding: Binding) => boolean;
     private _subtitleFiles?: SubtitleFile[];
 
     private messageListener?: (
@@ -38,7 +36,6 @@ export default class VideoSelectController {
     constructor(bindings: Binding[], options: VideoSelectControllerOptions) {
         this._bindings = bindings;
         this._isBindingsSorted = options.isBindingsSorted;
-        this._isPreferredBinding = options.isPreferredBinding;
         this._frame = uiFrameForHtml(
             async (lang) => `<!DOCTYPE html>
                 <html lang="en">
@@ -122,9 +119,9 @@ export default class VideoSelectController {
                     binding.showVideoDataDialog(openedFromMiningCommand, fromAsbplayerId);
                 }
             }
-        } else if (this._soleCandidateBinding() !== undefined) {
+        } else if (this._bindings.length === 1) {
             // Special case - skip video select dialog since there is only one element
-            const binding = this._soleCandidateBinding()!;
+            const binding = this._bindings[0];
 
             if (binding.subscribed) {
                 if (subtitleFiles !== undefined) {
@@ -138,20 +135,6 @@ export default class VideoSelectController {
             void this._showUi(openedFromMiningCommand);
             this._subtitleFiles = subtitleFiles;
         }
-    }
-
-    private _soleCandidateBinding() {
-        if (this._bindings.length === 1) {
-            return this._bindings[0];
-        }
-
-        if (this._isPreferredBinding === undefined) {
-            return undefined;
-        }
-
-        // Pages like YouTube keep extra video elements around (e.g. hover previews), so a single preferred element wins
-        const preferred = this._bindings.filter(this._isPreferredBinding);
-        return preferred.length === 1 ? preferred[0] : undefined;
     }
 
     private async _showUi(openedFromMiningCommand: boolean) {
