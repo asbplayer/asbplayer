@@ -18,13 +18,13 @@ sidebar_position: 7
 
 ### Browsers and features
 
-|                                  | Screenshots | Audio Recording (non-DRM) | Audio Recording (DRM) | Side Panel | WebSocket Interface |
-| -------------------------------- | :---------: | :-----------------------: | :-------------------: | :--------: | :-----------------: |
-| **Most Chromium-based browsers** |      ✓      |             ✓             |           ✓           |     ✓      |          ✓          |
-| **Firefox**                      |      ✓      |             ✓             |                       |     ✓      |          ✓          |
-| **Firefox for Android**          |             |             ✓             |                       |            |                     |
-| **Kiwi Browser (Android)**       |             |             ✓             |           ✓           |            |                     |
-| **Edge Canary (Android)**        |      ✓      |                           |                       |            |                     |
+|                                  | Screenshots | Animated WebP (non-DRM) | Audio Recording (non-DRM) | Audio Recording (DRM) | Side Panel | WebSocket Interface |
+| -------------------------------- | :---------: | :---------------------: | :-----------------------: | :-------------------: | :--------: | :-----------------: |
+| **Most Chromium-based browsers** |      ✓      |            ✓            |             ✓             |           ✓           |     ✓      |          ✓          |
+| **Firefox**                      |      ✓      |                         |             ✓             |                       |     ✓      |          ✓          |
+| **Firefox for Android**          |             |                         |             ✓             |                       |            |                     |
+| **Kiwi Browser (Android)**       |             |                         |             ✓             |           ✓           |            |                     |
+| **Edge Canary (Android)**        |      ✓      |                         |                           |                       |            |                     |
 
 ### Streaming services and subtitle detection
 

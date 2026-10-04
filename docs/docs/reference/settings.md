@@ -90,7 +90,7 @@ How many milliseconds **before** the target subtitle to start recording audio.
 
 How many milliseconds **after** the target subtitle to stop recording audio.
 
-### Image capture format (website only)
+### Image capture format
 
 Specifies the image capture format for mined cards.
 
