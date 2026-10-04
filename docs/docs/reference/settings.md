@@ -94,9 +94,13 @@ How many milliseconds **after** the target subtitle to stop recording audio.
 
 Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
 
-### Max image width/height
+### Max capture width/height
 
 Max width/height in pixels of screenshots. `0` means "no limit."
+
+### Trim black bars from screenshots
+
+When enabled, trims black bars due to letterboxing from screenshots.
 
 ### Clip trim start/end
 
@@ -205,13 +209,13 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 
 ### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
-| Behavior                                       | Default shortcut |
-| ---------------------------------------------- | ---------------- |
-| Seek backward 10 seconds                       | A                |
-| Seek forward 10 seconds                        | D                |
-| Seek to previous subtitle                      | ←                |
-| Seek to next subtitle                          | →                |
-| Seek to beginning of current/previous subtitle | ↑                |
+| Behavior                                                                  | Default shortcut |
+| ------------------------------------------------------------------------- | ---------------- |
+| Seek backward (default 3 seconds, [configurable](#seek-interval-seconds)) | A                |
+| Seek forward (default 3 seconds, [configurable](#seek-interval-seconds))  | D                |
+| Seek to previous subtitle                                                 | ←                |
+| Seek to next subtitle                                                     | →                |
+| Seek to beginning of current/previous subtitle                            | ↑                |
 
 ### [Playback rate](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts
 
@@ -674,6 +678,18 @@ Note: not all strings have been localized in every language that asbplayer suppo
 ### Auto-maximize local video
 
 Automatically maximize the local video when the subtitle panel is opened.
+
+### Show mining button in subtitle list
+
+When enabled, shows a mining button next to each subtitle in the subtitle list.
+
+### Subtitle list timestamps
+
+Controls how timestamps are displayed in the subtitle list.
+
+- **Hidden**: Not shown.
+- **Start**: Shows subtitle's start timestamp only.
+- **Start and end**: Shows both start and end timestamps of the subtitle.
 
 ### Remember subtitle offset
 
