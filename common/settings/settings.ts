@@ -622,6 +622,7 @@ export interface PageSettings {
     rutube: Page;
     okru: Page;
     vkvideo: Page;
+    dreaming: Page;
 }
 
 export interface StreamingVideoSettings {

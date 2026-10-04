@@ -327,6 +327,7 @@ export const defaultSettings: AsbplayerSettings = {
         rutube: {},
         okru: {},
         vkvideo: {},
+        dreaming: {},
     },
     webSocketClientEnabled: false,
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',

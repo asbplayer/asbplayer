@@ -275,6 +275,17 @@
             "autoSync": {
                 "enabled": true
             }
+        },
+        {
+            "key": "dreaming",
+            "host": "app\\.dreaming\\.com",
+            "pageScript": "dreaming-page.js",
+            "subtitleDiscoveryRequestTarget": "video",
+            "syncAllowedAtPath": "watch",
+            "refreshSubtitleDataOnPickerOpen": true,
+            "autoSync": {
+                "enabled": true
+            }
         }
     ]
 }
