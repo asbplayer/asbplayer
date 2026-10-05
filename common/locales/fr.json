@@ -501,6 +501,7 @@
         "subtitleBlurDescription": "Masque les pistes de sous-titres sélectionnées en les floutant. Le flou est supprimé au survol de la souris.",
         "tabName": "Nom de l'onglet",
         "subtitleRegexFilter": "Filtre regex des sous-titres",
+        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
         "subtitleRegexFilterTextReplacement": "Remplacement de texte pour le filtre regex des sous-titres",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "Sous-titres HTML",

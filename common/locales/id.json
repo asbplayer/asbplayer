@@ -501,6 +501,7 @@
         "subtitleBlurDescription": "Menyembunyikan trek takarir terpilih dengan membuatnya buram. Bisa dibuka kembali saat kursor diarahkan.",
         "tabName": "Nama Tab",
         "subtitleRegexFilter": "Filter regex takarir",
+        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
         "subtitleRegexFilterTextReplacement": "Penggantian teks filter regex takarir",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "HTML Takarir",

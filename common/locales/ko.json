@@ -501,6 +501,7 @@
         "subtitleBlurDescription": "선택한 자막을 블러 효과로 숨깁니다. 마우스를 올리면 해제됩니다.",
         "tabName": "탭 이름",
         "subtitleRegexFilter": "자막 정규식 필터",
+        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
         "subtitleRegexFilterTextReplacement": "자막 정규식 필터 텍스트 치환",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "자막 HTML",

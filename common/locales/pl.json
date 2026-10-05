@@ -501,6 +501,7 @@
         "subtitleBlurDescription": "Ukrywa zaznaczone ścieżki napisów, rozmywając je. Rozmycie można deaktywować najeżdżając na nie myszką.",
         "tabName": "Nazwa karty",
         "subtitleRegexFilter": "Filtr Regex napisów",
+        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
         "subtitleRegexFilterTextReplacement": "Zamiana tekstu z filtru Regex napisów",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "Subtitle HTML",

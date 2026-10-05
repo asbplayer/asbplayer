@@ -501,6 +501,7 @@
         "subtitleBlurDescription": "Hides selected subtitle tracks by blurring them. Can be un-blurred on mouse hover.",
         "tabName": "Reiterbezeichnung",
         "subtitleRegexFilter": "Untertitelfilter (Regulärer Ausdruck)",
+        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
         "subtitleRegexFilterTextReplacement": "Untertitelfilter Ersetzung",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "Subtitle HTML",

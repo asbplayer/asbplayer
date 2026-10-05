@@ -501,6 +501,7 @@
         "subtitleBlurDescription": "Nasconde le tracce di sottotitoli selezionate sfocandole. È possibile togliere la sfocatura passando il mouse sopra.",
         "tabName": "Nome della scheda",
         "subtitleRegexFilter": "Filtro regex sottotitoli",
+        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
         "subtitleRegexFilterTextReplacement": "Sostituzione testo filtro regex sottotitoli",
         "convertNetflixRuby": "Rileva e mostra Ruby",
         "subtitleHtml": "HTML sottotitoli",

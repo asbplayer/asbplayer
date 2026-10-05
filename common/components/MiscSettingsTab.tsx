@@ -11,6 +11,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
 import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
@@ -28,7 +29,7 @@ import {
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings';
 import { exportSettings, mergeImportedSettings, validateSettings } from '@project/common/settings/import-export';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AutoPausePreference, SubtitleHtml } from '..';
 import { WebSocketClient } from '@project/common/web-socket-client';
@@ -455,7 +456,27 @@ const MiscSettingTab: React.FC<Props> = ({
                     value={subtitleRegexFilter}
                     color="primary"
                     error={!validRegex}
-                    helperText={validRegex ? undefined : 'Invalid regular expression'}
+                    helperText={
+                        <>
+                            {!validRegex && (
+                                <>
+                                    Invalid regular expression
+                                    <br />
+                                </>
+                            )}
+                            <Trans
+                                i18nKey="settings.subtitleRegexFilterHelperText"
+                                components={[
+                                    <Link
+                                        key={0}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        href="https://docs.asbplayer.dev/docs/guides/subtitle-text-filtering"
+                                    />,
+                                ]}
+                            />
+                        </>
+                    }
                     onChange={(event) => onSettingChanged('subtitleRegexFilter', event.target.value)}
                 />
                 <SettingsTextField
