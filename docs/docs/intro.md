@@ -2,9 +2,9 @@
 sidebar_position: 1
 ---
 
-# What is asbplayer?
+# What is asbplayer? {#what-is-asbplayer}
 
-## A language-learning assistant
+## A language-learning assistant {#a-language-learning-assistant}
 
 **asbplayer** is a language-learning assistant that makes it easier to learn languages through subtitled videos. Its original author created for himself to help with learning Japanese using [AJATT](https://tatsumoto-ren.github.io/blog/whats-ajatt.html). It was then popularized in the [Refold](https://refold.la/) Japanese-learning community as a **sentence mining** and **subtitle** tool. However, asbplayer's feature set is always growing. With asbplayer you can:
 
@@ -28,11 +28,11 @@ sidebar_position: 1
         - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
         - **Statistics and Comprehension** on your known words across media.
 
-## A website and browser extension
+## A website and browser extension {#a-website-and-browser-extension}
 
 In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a [website](https://app.asbplayer.dev) which works with local video files, and a [browser extension](https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab) which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
 
-## Why use asbplayer?
+## Why use asbplayer? {#why-use-asbplayer}
 
 - You want a way to watch videos with text-selectable subtitles.
 - You want a way to create high-quality, multimedia flashcards out of video and subtitle sources.

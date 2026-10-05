@@ -2,11 +2,11 @@
 sidebar_position: 2
 ---
 
-# Subtitle timing
+# Subtitle timing {#subtitle-timing}
 
 Subtitle files will very often not be aligned to the video source you load them into. To work around this, asbplayer provides ways to manually adjust subtitle timing.
 
-## Keyboard shortcuts
+## Keyboard shortcuts {#keyboard-shortcuts}
 
 The fastest way to fix subtitle timing is with the [Subtitle offset keyboard shortcuts](../reference/settings.md#subtitle-offset-keyboard-shortcuts). There are two sets of shortcuts for adjusting subtitle offset:
 
@@ -19,7 +19,7 @@ Most often, finding the correct offset will look like this:
 2. `Ctrl + Left/Right` until the subtitle matching the character's dialog appears on screen.
 3. `Ctrl + Shift + Right/Left` until the subtitle timing precisely matches the dialog.
 
-## Overlay UI
+## Overlay UI {#overlay-ui}
 
 The overlay UI provides buttons that perform the same functions as the keyboard shortcuts above.
 
