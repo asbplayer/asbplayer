@@ -139,6 +139,7 @@ const SettingsPage = ({
                         extensionSupportsSubtitleTrackSelectorInWebApp
                         extensionSupportsSubtitleListCustomization
                         extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
+                        extensionSupportsUpdateLastWithSameSubtitleText
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}

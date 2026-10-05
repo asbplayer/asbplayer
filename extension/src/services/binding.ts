@@ -223,6 +223,7 @@ export default class Binding {
     readonly bulkExportController: BulkExportController;
 
     private copyToClipboardOnMine: boolean;
+    private alwaysUseSubtitleForSentence: boolean;
     private clickToMineDefaultAction: PostMineAction;
     private takeScreenshot: boolean;
     private cleanScreenshot: boolean;
@@ -305,6 +306,7 @@ export default class Binding {
         this.maxImageWidth = 0;
         this.maxImageHeight = 0;
         this.copyToClipboardOnMine = false;
+        this.alwaysUseSubtitleForSentence = false;
         this.alwaysPlayOnSubtitleRepeat = true;
         this.postMinePlayback = PostMinePlayback.remember;
         this._synced = false;
@@ -1362,6 +1364,7 @@ export default class Binding {
         this.maxImageHeight = currentSettings.maxImageHeight;
         this.trimBlackBars = currentSettings.trimBlackBars;
         this.copyToClipboardOnMine = currentSettings.copyToClipboardOnMine;
+        this.alwaysUseSubtitleForSentence = currentSettings.alwaysUseSubtitleForSentence;
         this.alwaysPlayOnSubtitleRepeat = currentSettings.alwaysPlayOnSubtitleRepeat;
         this.pauseOnHoverMode = currentSettings.pauseOnHoverMode;
 
@@ -1593,7 +1596,7 @@ export default class Binding {
             await this.play();
         }
 
-        if (!text || subtitle.text.includes(text.trim())) {
+        if (this.alwaysUseSubtitleForSentence || !text || subtitle.text.includes(text.trim())) {
             text = extractText(subtitle, surroundingSubtitles);
         }
 

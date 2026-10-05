@@ -242,6 +242,7 @@ const Popup = ({
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
                             extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
+                            extensionSupportsUpdateLastWithSameSubtitleText
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}

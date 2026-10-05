@@ -68,6 +68,6 @@ fs.readdir(localesPath, (err, files) => {
         const localePath = `${localesPath}/${f}`;
         const locale = JSON.parse(fs.readFileSync(localePath, 'utf8'));
         updateKey(locale, key, enValue);
-        fs.writeFileSync(localePath, JSON.stringify(locale, null, 4), 'utf8');
+        fs.writeFileSync(localePath, JSON.stringify(locale, null, 4) + '\n', 'utf8');
     }
 });

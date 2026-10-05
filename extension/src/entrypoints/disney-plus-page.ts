@@ -1,5 +1,5 @@
-import { inferTracks } from '@/pages/util';
-import { subtitleTrackSegmentsFromM3U8 } from '@/pages/m3u8-util';
+import { inferTracks } from '@project/extension/src/pages/util';
+import { subtitleTrackSegmentsFromM3U8 } from '@project/extension/src/pages/m3u8-util';
 
 type DisneySeekRequest = {
     requestId: string;
@@ -249,47 +249,60 @@ export default defineUnlistedScript(() => {
     document.addEventListener(playEventName, () => disneyPlusPlayer()?.play());
     document.addEventListener(pauseEventName, () => disneyPlusPlayer()?.pause());
 
-    setTimeout(() => {
-        let lastM3U8Url: string | undefined = undefined;
-        let lastBasename: string | undefined = undefined;
-        const originalParse = JSON.parse;
-        JSON.parse = function (...args: unknown[]) {
-            // @ts-expect-error: forwarding original parse arguments
-            const value = originalParse.apply(this, args);
-            if (value?.stream?.sources instanceof Array && value.stream.sources.length > 0) {
-                const url = value.stream.sources[0].complete?.url;
+    // Capture manifests immediately: Disney+ can parse its playback response before
+    // a deferred hook installation runs.
+    let lastM3U8Url: string | undefined;
+    let lastBasename: string | undefined;
+    const processParsedValue = (value: any) => {
+        if (Array.isArray(value?.stream?.sources) && value.stream.sources.length > 0) {
+            const url = value.stream.sources[0].complete?.url;
 
-                if (url) {
-                    lastM3U8Url = url;
-                }
+            if (url) {
+                lastM3U8Url = url;
             }
+        }
 
-            if (value?.data?.playerExperience?.title) {
-                lastBasename = value?.data?.playerExperience?.title;
-                if (value?.data?.playerExperience?.subtitle) {
-                    lastBasename += ` ${value?.data?.playerExperience?.subtitle}`;
-                }
+        if (value?.data?.playerExperience?.title) {
+            lastBasename = value?.data?.playerExperience?.title;
+            if (value?.data?.playerExperience?.subtitle) {
+                lastBasename += ` ${value?.data?.playerExperience?.subtitle}`;
             }
+        }
+    };
+
+    const originalParse = JSON.parse;
+    JSON.parse = function (...args: Parameters<typeof JSON.parse>) {
+        const value = originalParse.apply(this, args);
+        processParsedValue(value);
+        return value;
+    };
+
+    // Response.json uses an internal parser rather than the patched JSON.parse.
+    const originalResponseJson = Response.prototype.json;
+    Response.prototype.json = function (this: Response) {
+        return originalResponseJson.call(this).then((value) => {
+            processParsedValue(value);
             return value;
-        };
-        inferTracks(
-            {
-                onRequest: async (addTrack, setBasename) => {
-                    if (lastBasename !== undefined) {
-                        setBasename(lastBasename);
-                    }
+        });
+    };
 
-                    if (lastM3U8Url !== undefined) {
-                        const tracks = await subtitleTrackSegmentsFromM3U8(lastM3U8Url);
+    inferTracks(
+        {
+            onRequest: async (addTrack, setBasename) => {
+                if (lastBasename !== undefined) {
+                    setBasename(lastBasename);
+                }
 
-                        for (const track of tracks) {
-                            addTrack(track);
-                        }
+                if (lastM3U8Url !== undefined) {
+                    const tracks = await subtitleTrackSegmentsFromM3U8(lastM3U8Url);
+
+                    for (const track of tracks) {
+                        addTrack(track);
                     }
-                },
-                waitForBasename: false,
+                }
             },
-            60_000
-        );
-    }, 0);
+            waitForBasename: false,
+        },
+        60_000
+    );
 });

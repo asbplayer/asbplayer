@@ -31,6 +31,8 @@ const testAnkiSettings: AnkiSettings = {
     tags: [],
     recordWithAudioPlayback: false,
     preferMp3: false,
+    alwaysUseSubtitleForSentence: false,
+    updateLastCardForSameSubtitle: false,
     audioPaddingStart: 0,
     audioPaddingEnd: 0,
     maxImageWidth: 0,
@@ -1316,6 +1318,95 @@ describe('Anki', () => {
                 },
             ],
         ]);
+    });
+
+    it.each(['different subtitle', '', '<span> </span>'])(
+        'updates consecutive same-subtitle notes and stops at a boundary sentence of %p',
+        async (boundarySentence) => {
+            const fetcher = new MockFetcher();
+            const sentences: Record<number, string> = {
+                11: '<b>foo</b> bar',
+                4: '<i>foo</i><br>bar',
+                3: 'foo&nbsp;bar',
+                2: boundarySentence,
+                1: 'foo bar',
+            };
+            fetcher.fetch.mockImplementation(async (_url, body) => {
+                switch (body.action) {
+                    case 'findNotes':
+                        return ankiConnectResponse([4, 1, 11, 2, 3]);
+                    case 'storeMediaFile':
+                        return ankiConnectResponse(
+                            body.params.filename.endsWith('.mp3') ? 'shared-audio.mp3' : 'shared-image.jpeg'
+                        );
+                    case 'notesInfo':
+                        return ankiConnectResponse(
+                            body.params.notes.map((noteId: number) =>
+                                makeNoteInfo({
+                                    noteId,
+                                    fields: {
+                                        Sentence: { value: sentences[noteId], order: 0 },
+                                        Word: { value: `word-${noteId}`, order: 1 },
+                                        Definition: { value: `definition-${noteId}`, order: 2 },
+                                    },
+                                })
+                            )
+                        );
+                    default:
+                        return ankiConnectResponse(null);
+                }
+            });
+            const anki = new Anki({ ...testAnkiSettings, updateLastCardForSameSubtitle: true }, fetcher);
+
+            await expect(
+                anki.export(
+                    makeExportArguments({
+                        mode: 'updateLast',
+                        text: 'foo\nbar',
+                        audioClip: makeAudioClip(),
+                        image: makeImage(),
+                        ankiConnectUrl: 'http://override:8765',
+                    })
+                )
+            ).resolves.toBe('word-11');
+
+            const requests = fetcher.fetch.mock.calls.map((call) => call[1]);
+            expect(requests[0].params).toEqual({ query: 'added:2' });
+            expect(requests.filter((request) => request.action === 'storeMediaFile')).toHaveLength(2);
+            const updates = requests.filter((request) => request.action === 'updateNoteFields');
+            expect(updates.map((request) => request.params.note.id)).toEqual([11, 4, 3]);
+            for (const update of updates.slice(1)) {
+                expect(update.params.note.fields).toEqual({
+                    Audio: '[sound:shared-audio.mp3]',
+                    Image: '<img src="shared-image.jpeg">',
+                });
+            }
+            expect(requests.filter((request) => request.action === 'addTags').map((request) => request.params)).toEqual(
+                [
+                    { notes: [11], tags: 'tag-a tag-b' },
+                    { notes: [4], tags: 'tag-a tag-b' },
+                    { notes: [3], tags: 'tag-a tag-b' },
+                ]
+            );
+            expect(fetcher.fetch.mock.calls.every((call) => call[0] === 'http://override:8765')).toBe(true);
+        }
+    );
+
+    it('only updates the latest note when no sentence field is configured', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([11, 4]));
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([makeNoteInfo({ noteId: 11 })]));
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse(null));
+        const anki = new Anki({ ...testAnkiSettings, sentenceField: '', updateLastCardForSameSubtitle: true }, fetcher);
+
+        await anki.export(makeExportArguments({ mode: 'updateLast', tags: [] }));
+
+        expect(fetcher.fetch.mock.calls.map((call) => call[1].action)).toEqual([
+            'findNotes',
+            'notesInfo',
+            'updateNoteFields',
+        ]);
+        expect(fetcher.fetch.mock.calls[2][1].params.note.id).toBe(11);
     });
 
     it('uses the per-export AnkiConnect URL override throughout updateLast exports', async () => {

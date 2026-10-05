@@ -22,11 +22,13 @@ interface Props {
     showWebmMediaFragmentSettings?: boolean;
     // only in chrome
     animatedMediaFragmentSupported?: boolean;
+    supportsUpdateLastWithSameSubtitleText?: boolean;
 }
 
 const MiningSettingsTab: React.FC<Props> = ({
     settings,
     onSettingChanged,
+    supportsUpdateLastWithSameSubtitleText,
     showWebmMediaFragmentSettings = true,
     animatedMediaFragmentSupported = false,
 }) => {
@@ -53,6 +55,8 @@ const MiningSettingsTab: React.FC<Props> = ({
         recordWithAudioPlayback,
         preferMp3,
         copyToClipboardOnMine,
+        alwaysUseSubtitleForSentence,
+        updateLastCardForSameSubtitle,
     } = settings;
     return (
         <Stack spacing={1}>
@@ -184,6 +188,30 @@ const MiningSettingsTab: React.FC<Props> = ({
                 label={t('settings.copyOnMine')}
                 labelPlacement="start"
             />
+            <SwitchLabelWithHoverEffect
+                control={
+                    <Switch
+                        checked={alwaysUseSubtitleForSentence}
+                        onChange={(event) => onSettingChanged('alwaysUseSubtitleForSentence', event.target.checked)}
+                    />
+                }
+                label={t('settings.alwaysUseSubtitleForSentence')}
+                labelPlacement="start"
+            />
+            {supportsUpdateLastWithSameSubtitleText && (
+                <SwitchLabelWithHoverEffect
+                    control={
+                        <Switch
+                            checked={updateLastCardForSameSubtitle}
+                            onChange={(event) =>
+                                onSettingChanged('updateLastCardForSameSubtitle', event.target.checked)
+                            }
+                        />
+                    }
+                    label={t('settings.updateLastCardForSameSubtitle')}
+                    labelPlacement="start"
+                />
+            )}
             <SettingsSection>{t('settings.audio')}</SettingsSection>
             <SwitchLabelWithHoverEffect
                 control={

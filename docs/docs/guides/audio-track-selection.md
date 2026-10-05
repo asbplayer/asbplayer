@@ -2,7 +2,7 @@
 sidebar_position: 10
 ---
 
-# Audio track selection
+# Audio track selection {#audio-track-selection}
 
 Some video files have multiple audio tracks. On the website, an audio track selector is available when the **Experimental Web Platform features** flag is enabled from `chrome://flags` (or equivalent for the current browser).
 

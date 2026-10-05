@@ -64,6 +64,133 @@ const duplicateNfimscDocument = (count: number) =>
     Array.from({ length: count }, () => '<p begin="10000000t" end="30000000t">Duplicate cue</p>').join('') +
     '</div></body></tt>';
 
+describe('SubtitleReader text content', () => {
+    it('drops subtitles left with only invisible or whitespace characters (#669)', async () => {
+        // A cue whose only content is a left-to-right mark (U+200E) has no meaningful
+        // text, so it is dropped instead of rendered as a blank line.
+        const removed = await createReader().subtitles([srtFile('\u200e')]);
+        expect(removed).toHaveLength(0);
+    });
+
+    it('keeps subtitles that have real text alongside bidi marks (#669)', async () => {
+        // Bidi marks are preserved within meaningful text; only empty cues are dropped.
+        const [subtitle] = await createReader().subtitles([srtFile('ab\u200ecd')]);
+        expect(subtitle.text).toBe('ab\u200ecd');
+    });
+
+    it.each([
+        ['empty formatting tags', '<b><i></i></b>'],
+        ['line breaks', '<br><br>'],
+        ['encoded whitespace', '<span>&nbsp;&#32;&#9;</span>'],
+        ['encoded bidi marks', '<b>&lrm;&#x200f;</b>'],
+        ['ruby readings without base text', '<ruby>\u200e<rp>(</rp><rt>ご</rt><rp>)</rp></ruby>'],
+    ])('drops cues containing only %s', async (_scenario, text) => {
+        const subtitles = await createReader().subtitles([srtFile(text)]);
+
+        expect(subtitles).toEqual([]);
+    });
+
+    it.each([
+        ['formatted text', '<b>Hello</b>'],
+        ['ruby base text', '<ruby>語<rp>(</rp><rt>ご</rt><rp>)</rp></ruby>'],
+        ['encoded punctuation', '&amp;'],
+    ])('keeps %s without changing its markup or entities', async (_scenario, text) => {
+        const subtitles = await createReader().subtitles([srtFile(text)]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 1000, text, track: 0 }]);
+    });
+
+    it('drops markup and invisible leftovers after regex filtering while keeping meaningful cues', async () => {
+        const subtitles = await createReader({
+            regexFilter: '\\[.+\\]',
+            regexFilterTextReplacement: '',
+        }).subtitles([srtFile('<b>[THUNDER]</b>\u200e'), srtFile('<b>Hello</b>\u200e')]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 1000, text: '<b>Hello</b>\u200e', track: 1 }]);
+    });
+
+    it('drops a normally matched replacement containing only non-content HTML', async () => {
+        const subtitles = await createReader({
+            regexFilter: '^\\[.+\\]$',
+            regexFilterTextReplacement: '<b>&nbsp;\u200f</b><br>',
+        }).subtitles([srtFile('[THUNDER]')]);
+
+        expect(subtitles).toEqual([]);
+    });
+});
+
+describe('SubtitleReader regex filter fallback', () => {
+    it.each([
+        ['trailing bidi marks', '[THUNDER]\u200e'],
+        ['leading bidi marks', '\u200f[THUNDER]'],
+        ['both boundary marks', '\u2066[THUNDER]\u2069'],
+        ['whitespace, controls, and default-ignorable characters', ' \t\u0001\u200b[THUNDER]\u0007\ufe0f\n '],
+    ])('drops cues when %s prevent an anchored regex from matching', async (_scenario, text) => {
+        const subtitles = await createReader({
+            regexFilter: '^\\[.+\\]$',
+            regexFilterTextReplacement: '',
+        }).subtitles([srtFile(text)]);
+
+        expect(subtitles).toEqual([]);
+    });
+
+    it.each([
+        ['whitespace', ' \t\n'],
+        ['invisible characters', '\u200e\u2066'],
+        ['empty HTML', '<b>&nbsp;\u200f</b><br>'],
+    ])('drops cues when the fallback produces only %s', async (_scenario, replacement) => {
+        const subtitles = await createReader({
+            regexFilter: '^\\[.+\\]$',
+            regexFilterTextReplacement: replacement,
+        }).subtitles([srtFile('[THUNDER]\u200e')]);
+
+        expect(subtitles).toEqual([]);
+    });
+
+    it.each([
+        {
+            scenario: 'the regex still does not match',
+            text: '\u200fHello\u200e',
+            regexFilter: '^\\[.+\\]$',
+            regexFilterTextReplacement: '',
+        },
+        {
+            scenario: 'matching would require removing an internal bidi mark',
+            text: '[THUN\u200eDER]\u200f',
+            regexFilter: '^\\[THUNDER\\]$',
+            regexFilterTextReplacement: '',
+        },
+        {
+            scenario: 'the fallback replacement contains meaningful text',
+            text: '[THUNDER]\u200e',
+            regexFilter: '^\\[.+\\]$',
+            regexFilterTextReplacement: 'sound effect',
+        },
+        {
+            scenario: 'no regex filter is configured',
+            text: '[THUNDER]\u200e',
+            regexFilter: '',
+            regexFilterTextReplacement: '',
+        },
+    ])('preserves the original text when $scenario', async ({ text, regexFilter, regexFilterTextReplacement }) => {
+        const subtitles = await createReader({ regexFilter, regexFilterTextReplacement }).subtitles([srtFile(text)]);
+
+        expect(subtitles).toEqual([{ start: 0, end: 1000, text, track: 0 }]);
+    });
+
+    it('uses normal replacement when the regex matches, across multiple cues', async () => {
+        const subtitles = await createReader({
+            regexFilter: '\u200e$|^\\[.+\\]$',
+            regexFilterTextReplacement: '',
+        }).subtitles([srtFile('[THUNDER]\u200e'), srtFile('[RAIN]\u200e')]);
+
+        expect(subtitles).toEqual([
+            { start: 0, end: 1000, text: '[THUNDER]', track: 0 },
+            { start: 0, end: 1000, text: '[RAIN]', track: 1 },
+        ]);
+    });
+});
+
 describe('SubtitleReader Netflix IMSC parsing', () => {
     it('parses Netflix IMSC cues', async () => {
         // Prefixed elements, namespaced ttp:tickRate, a dur-only cue, a second
@@ -489,5 +616,78 @@ describe('SubtitleReader Netflix ruby text conversion', () => {
         expect(subtitle.text).toBe('MIU、捏造');
         expect(tokens.map(({ pos }) => subtitle.text.substring(pos[0], pos[1]))).toEqual(['MIU', '捏造']);
         expect(tokens.map(({ readings }) => readings[0].reading)).toEqual(['ミウ', 'ねつぞう']);
+    });
+});
+
+describe('SubtitleReader SRT override tag handling', () => {
+    it.each([
+        '\\an1',
+        '\\an2',
+        '\\an3',
+        '\\an4',
+        '\\an5',
+        '\\an6',
+        '\\an7',
+        '\\an8',
+        '\\an9',
+        '\\i0',
+        '\\i1',
+        '\\u0',
+        '\\u1',
+        '\\s0',
+        '\\s1',
+        '\\b0',
+        '\\b1',
+        '\\b100',
+        '\\b200',
+        '\\b300',
+        '\\b400',
+        '\\b500',
+        '\\b600',
+        '\\b700',
+        '\\b800',
+        '\\b900',
+    ])('strips whitelisted ASS-style tag %s from SRT cue text (#471)', async (tag) => {
+        const [cue] = await createReader().subtitles([srtFile(`{${tag}}Hello`)]);
+        expect(cue.text).toBe('Hello');
+    });
+
+    it('strips multiple whitelisted tags in one block', async () => {
+        const [cue] = await createReader().subtitles([srtFile('{\\an8\\i1\\b700}Hello{\\i0\\b0} world')]);
+        expect(cue.text).toBe('Hello world');
+    });
+
+    it('strips multiple override tags and keeps the surrounding text', async () => {
+        const [cue] = await createReader().subtitles([srtFile('{\\an8}{\\i1}Hello{\\i0} world')]);
+        expect(cue.text).toBe('Hello world');
+    });
+
+    it.each([
+        '{}',
+        '{text}',
+        '{\\}',
+        '{\\unknown}',
+        '{\\pos(10,20)}',
+        '{\\an0}',
+        '{\\an10}',
+        '{\\i2}',
+        '{\\u2}',
+        '{\\s2}',
+        '{\\b-1}',
+        '{\\b00}',
+        '{\\b70}',
+        '{\\b1000}',
+        '{\\an8 text}',
+        '{\\an8\\pos(10,20)}',
+        '{\\pos(10,20)\\an8}',
+        '{\\an8',
+    ])('preserves non-whitelisted or malformed block %s', async (block) => {
+        const [cue] = await createReader().subtitles([srtFile(`Hello${block} world`)]);
+        expect(cue.text).toBe(`Hello${block} world`);
+    });
+
+    it('preserves unsupported blocks alongside whitelisted blocks', async () => {
+        const [cue] = await createReader().subtitles([srtFile('{\\an8}Hello{\\unknown}{\\i1} world{\\i0}')]);
+        expect(cue.text).toBe('Hello{\\unknown} world');
     });
 });

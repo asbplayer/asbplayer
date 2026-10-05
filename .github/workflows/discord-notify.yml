@@ -12,8 +12,17 @@
 # The test_* inputs are checkboxes; enable any of the other ones to also send
 # a static test message to #extension-releases, #app-releases, or #github.
 #
-# Webhook URLs are read from repository secrets. The optional message prefixes
-# are intentionally kept in this workflow so they can be edited here directly.
+# The blog post body is posted as message text via components v2 Text Display
+# (converted by scripts/blog-post-to-discord.ts) and @mentions the role stored in the
+# DISCORD_ROLE_ANNOUNCEMENT_SUBSCRIBER repository variable. Newly added blog
+# posts are found via the shared scripts/added-blog-posts helper.
+#
+# Webhook URLs are read from repository secrets. Each can be overridden for a
+# run via the webhook_* workflow_dispatch inputs, useful for testing against a
+# different channel.
+#
+# The optional message prefixes are intentionally kept in this workflow so they
+# can be edited here directly.
 #
 # Note: events triggered by the repository's own GITHUB_TOKEN do not trigger
 # workflows. Releases are published and pull requests are merged manually today,
@@ -54,6 +63,22 @@ on:
                 description: "Send a test notification to #github"
                 type: boolean
                 default: false
+            webhook_announcements:
+                description: "Override webhook URL for #announcements (blank = default secret)"
+                type: string
+                default: ""
+            webhook_extension_releases:
+                description: "Override webhook URL for #extension-releases (blank = default secret)"
+                type: string
+                default: ""
+            webhook_app_releases:
+                description: "Override webhook URL for #app-releases (blank = default secret)"
+                type: string
+                default: ""
+            webhook_github:
+                description: "Override webhook URL for #github (blank = default secret)"
+                type: string
+                default: ""
 
 permissions: {}
 
@@ -62,7 +87,7 @@ env:
     APP_DEPLOY_PREFIX: ''
     ISSUE_PREFIX: "Issue opened:"
     PULL_REQUEST_PREFIX: "Merged:"
-    BLOG_PREFIX: "New blog post:"
+    BLOG_PREFIX: ""
 
 jobs:
     extension-release:
@@ -72,7 +97,7 @@ jobs:
         steps:
             - name: Notify #extension-releases
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
+                  WEBHOOK_URL: ${{ inputs.webhook_extension_releases || secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
                   URL: ${{ github.event.release.html_url }}
               run: |
                   set -euo pipefail
@@ -98,7 +123,7 @@ jobs:
         steps:
             - name: Notify #app-releases
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_APP_RELEASES }}
+                  WEBHOOK_URL: ${{ inputs.webhook_app_releases || secrets.DISCORD_WEBHOOK_APP_RELEASES }}
                   URL: ${{ github.event.pull_request.html_url }}
               run: |
                   set -euo pipefail
@@ -127,25 +152,25 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version-file: '.nvmrc'
+
             - name: Notify #announcements of new blog post(s)
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_ANNOUNCEMENTS }}
+                  WEBHOOK_URL: ${{ inputs.webhook_announcements || secrets.DISCORD_WEBHOOK_ANNOUNCEMENTS }}
                   EVENT_NAME: ${{ github.event_name }}
                   BEFORE: ${{ github.event.before }}
                   AFTER: ${{ github.event.after }}
+                  DISCORD_ROLE_ANNOUNCEMENT_SUBSCRIBER: ${{ vars.DISCORD_ROLE_ANNOUNCEMENT_SUBSCRIBER }}
               run: |
                   set -euo pipefail
 
                   if [ "$EVENT_NAME" = "push" ]; then
-                    mapfile -t files < <(
-                      git diff --name-only --diff-filter=A "$BEFORE" "$AFTER" -- docs/blog \
-                        | grep -E '\.mdx?$' || true
-                    )
+                    mapfile -t files < <(scripts/added-blog-posts "$BEFORE..$AFTER")
                   else
-                    mapfile -t files < <(
-                      git log --diff-filter=A --name-only --format= -- docs/blog \
-                        | grep -E '\.mdx?$' | head -n1 || true
-                    )
+                    mapfile -t files < <(scripts/added-blog-posts --latest)
                   fi
 
                   if [ "${#files[@]}" -eq 0 ]; then
@@ -153,25 +178,19 @@ jobs:
                     exit 0
                   fi
 
+                  # Incoming webhooks only honor components v2 when the query
+                  # param is present, so the Text Display payload is not dropped.
+                  sep='?'
+                  case "$WEBHOOK_URL" in *\?*) sep='&' ;; esac
+                  action_url="${WEBHOOK_URL}${sep}with_components=true"
+
                   for file in "${files[@]}"; do
                     [ -n "$file" ] || continue
-                    title=$(awk '/^title:/{sub(/^title:[[:space:]]*/,""); gsub(/^["'\''"]|["'\'']$/,""); print; exit}' "$file")
-                    slug=$(awk '/^slug:/{sub(/^slug:[[:space:]]*/,""); gsub(/^["'\''"]|["'\'']$/,""); print; exit}' "$file")
-                    if [ -z "$slug" ]; then
-                      slug=$(basename "$file" | sed -E 's/\.(md|mdx)$//')
-                    fi
-                    url="https://docs.asbplayer.dev/blog/$slug"
-                    if [ -n "$title" ]; then
-                      content="$BLOG_PREFIX $title $url"
-                    else
-                      content="$BLOG_PREFIX $url"
-                    fi
-                    echo "Notifying #announcements: $content"
-                    jq -n --arg content "$content" \
-                      '{content: $content, allowed_mentions: {parse: []}}' \
+                    echo "Notifying #announcements of $file"
+                    node --experimental-strip-types scripts/blog-post-to-discord.ts "$file" "$BLOG_PREFIX" \
                       | curl -sS --fail-with-body -X POST \
                           -H 'Content-Type: application/json' \
-                          --data @- "$WEBHOOK_URL"
+                          --data @- "$action_url"
                   done
 
     github-issue:
@@ -181,7 +200,7 @@ jobs:
         steps:
             - name: Notify #github of new issue
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+                  WEBHOOK_URL: ${{ inputs.webhook_github || secrets.DISCORD_WEBHOOK_GITHUB }}
                   URL: ${{ github.event.issue.html_url }}
               run: |
                   set -euo pipefail
@@ -207,7 +226,7 @@ jobs:
         steps:
             - name: Notify #github of merged pull request
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+                  WEBHOOK_URL: ${{ inputs.webhook_github || secrets.DISCORD_WEBHOOK_GITHUB }}
                   URL: ${{ github.event.pull_request.html_url }}
               run: |
                   set -euo pipefail
@@ -234,7 +253,7 @@ jobs:
             - name: Test #extension-releases
               if: ${{ inputs.test_extension_releases }}
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
+                  WEBHOOK_URL: ${{ inputs.webhook_extension_releases || secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
               run: |
                   set -euo pipefail
                   jq -n --arg content "Test notification for #extension-releases" \
@@ -246,7 +265,7 @@ jobs:
             - name: Test #app-releases
               if: ${{ inputs.test_app_releases }}
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_APP_RELEASES }}
+                  WEBHOOK_URL: ${{ inputs.webhook_app_releases || secrets.DISCORD_WEBHOOK_APP_RELEASES }}
               run: |
                   set -euo pipefail
                   jq -n --arg content "Test notification for #app-releases" \
@@ -258,7 +277,7 @@ jobs:
             - name: Test #github
               if: ${{ inputs.test_github }}
               env:
-                  WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB }}
+                  WEBHOOK_URL: ${{ inputs.webhook_github || secrets.DISCORD_WEBHOOK_GITHUB }}
               run: |
                   set -euo pipefail
                   jq -n --arg content "Test notification for #github" \
