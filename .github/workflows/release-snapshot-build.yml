@@ -1,0 +1,110 @@
+# Builds production-like snapshots of all extension targets and posts the
+# installable zips to the #snapshot-releases Discord channel.
+#
+# Manual-only (workflow_dispatch). Each target is packaged with the existing
+# extension/package.json scripts (`zip`, `zip:firefox`, `zip:firefox-android`),
+# which each run the full `pnpm check` before zipping.
+#
+# The extension version is read from extension/wxt.config.ts and used to link
+# the matching milestone. Milestone titles embed the exact version, e.g.
+# "Extension v1.22.0"; if no matching milestone exists, the link is omitted.
+#
+# The webhook URL is read from the DISCORD_WEBHOOK_SNAPSHOT_RELEASES repository
+# secret and can be overridden for a run via the workflow_dispatch input.
+#
+# Only the installable zips are posted to Discord. Discord webhooks accept files
+# via multipart/form-data (payload_json plus files[n]) with a per-file size
+# limit, so the larger *-sources.zip produced by the Android script is excluded.
+
+name: Release extension snapshot
+
+on:
+    workflow_dispatch:
+        inputs:
+            webhook_snapshot_releases:
+                description: "Override webhook URL for #snapshot-releases (blank = default secret)"
+                type: string
+                default: ""
+
+permissions: {}
+
+jobs:
+    snapshot:
+        name: Build and publish snapshot
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            issues: read
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+
+            - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
+
+            - name: Build Chrome snapshot
+              run: pnpm --filter @project/extension run zip
+
+            - name: Build Firefox snapshot
+              run: pnpm --filter @project/extension run zip:firefox
+
+            - name: Build Firefox for Android snapshot
+              run: pnpm --filter @project/extension run zip:firefox-android
+
+            - name: Read extension version
+              id: version
+              run: |
+                  set -euo pipefail
+                  version=$(node -e "const fs=require('fs');const m=fs.readFileSync('extension/wxt.config.ts','utf8').match(/const version = '([^']+)'/);if(!m){console.error('version not found in extension/wxt.config.ts');process.exit(1)}console.log(m[1])")
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  echo "Extension version: $version"
+
+            - name: Upload snapshot artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: extension-snapshot-${{ steps.version.outputs.version }}
+                  path: |
+                      extension/.output/asbplayer-${{ steps.version.outputs.version }}-chrome.zip
+                      extension/.output/asbplayer-${{ steps.version.outputs.version }}-firefox.zip
+                      extension/.output/asbplayer-${{ steps.version.outputs.version }}-firefox-android.zip
+                  if-no-files-found: error
+
+            - name: Resolve milestone
+              id: milestone
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  version='${{ steps.version.outputs.version }}'
+                  url=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/milestones?state=all&per_page=100" \
+                    --jq ".[] | select(.title == \"Extension v${version}\") | .html_url" | head -n 1)
+                  echo "url=$url" >> "$GITHUB_OUTPUT"
+                  if [ -n "$url" ]; then
+                    echo "Milestone: $url"
+                  else
+                    echo "No milestone titled 'Extension v${version}' found."
+                  fi
+
+            - name: "Post snapshot to #snapshot-releases"
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_snapshot_releases || secrets.DISCORD_WEBHOOK_SNAPSHOT_RELEASES }}
+                  VERSION: ${{ steps.version.outputs.version }}
+                  MILESTONE_URL: ${{ steps.milestone.outputs.url }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  SHA: ${{ github.sha }}
+              run: |
+                  set -euo pipefail
+                  short_sha="${SHA:0:7}"
+                  content=$(printf 'Snapshot extension v%s (%s)' "$VERSION" "$short_sha")
+                  if [ -n "$MILESTONE_URL" ]; then
+                    content="${content}"$'\n'"Milestone: ${MILESTONE_URL}"
+                  fi
+                  content="${content}"$'\n'"Run: ${RUN_URL}"
+
+                  payload=$(jq -n --arg content "$content" '{content: $content, allowed_mentions: {parse: []}}')
+                  curl -sS --fail-with-body -X POST "$WEBHOOK_URL" \
+                    --form-string "payload_json=$payload" \
+                    -F "files[0]=@extension/.output/asbplayer-${VERSION}-chrome.zip" \
+                    -F "files[1]=@extension/.output/asbplayer-${VERSION}-firefox.zip" \
+                    -F "files[2]=@extension/.output/asbplayer-${VERSION}-firefox-android.zip"
