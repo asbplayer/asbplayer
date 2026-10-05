@@ -74,6 +74,10 @@ Configures the desired playback state after triggering a mining action.
 
 If enabled, copies the target subtitle to clipboard anytime mining action is triggered.
 
+### Always use subtitle text for sentence field
+
+When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when mining with Yomitan through the [AnkiConnect proxy](../guides/one-click-mining).
+
 ### Play audio while recording from local video
 
 asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
