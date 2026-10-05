@@ -2,13 +2,13 @@
 sidebar_position: 8
 ---
 
-# Acknowledgements
+# Acknowledgements {#acknowledgements}
 
 asbplayer would not be what it is today without the community around it. We thank all the people who have used and benefited from asbplayer, who have advocated for it, suggested features, reported bugs, and made contributions.
 
 We epecially acknowledge the wonderful humans below.
 
-## Contributors
+## Contributors {#contributors}
 
 [@Renji-XD](https://www.github.com/Renji-XD),
 [@MatiasIslaA](https://www.github.com/MatiasIslaA),
@@ -64,7 +64,7 @@ We epecially acknowledge the wonderful humans below.
 [@gpressutto5](https://github.com/gpressutto5),
 [@chadzimmerman](https://github.com/chadzimmerman)
 
-## Translators
+## Translators {#translators}
 
 **Mana Tsutsumi** (Japanese, initial translation),
 **Kai Böse** (German),
@@ -86,7 +86,7 @@ We epecially acknowledge the wonderful humans below.
 
 If you are a non-English native, and would like to help translate asbplayer, join the [Crowdin project](https://crowdin.com/project/asbplayer). If your language isn't there, feel free to create an issue on the [issues page](https://github.com/asbplayer/asbplayer/issues).
 
-## Sponsors
+## Sponsors {#sponsors}
 
 [@vivekchoksi](https://www.github.com/vivekchoksi),
 [@nzarbayezid](https://www.github.com/nzarbayezid),

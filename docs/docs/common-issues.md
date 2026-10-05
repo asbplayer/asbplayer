@@ -2,11 +2,11 @@
 sidebar_position: 5
 ---
 
-# Common issues
+# Common issues {#common-issues}
 
-## General
+## General {#general}
 
-### Subtitles aren't showing up
+### Subtitles aren't showing up {#subtitles-arent-showing-up}
 
 It's possible to hide the subtitles in asbplayer through a few ways:
 
@@ -14,7 +14,7 @@ It's possible to hide the subtitles in asbplayer through a few ways:
 - The [`Toggle subtitle track X in video`](./reference/settings.md#subtitles-keyboard-shortcuts) keyboard shortcuts.
 - The [`Show subtitles`](./reference/settings.md#show-subtitles) option in `Misc > Playback Modes`
 
-### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.'
+### asbplayer can't connect to Anki. It shows an error message e.g. 'Failed to fetch.' {#anki-connection-failed}
 
 This can happen due to ad blockers:
 
@@ -30,23 +30,23 @@ Or bugs:
 - As of this writing enabling experimental web platform features is known to cause this issue. Try disabling this flag from `chrome://flags`.
 - On later versions of macOS, AnkiConnect will not respond when Anki is in the background ([Notes for MacOS Users](https://git.sr.ht/~foosoft/anki-connect#notes-for-macos-users)).
 
-### When using the 'update last card' feature, the card does not update in Anki.
+### When using the 'update last card' feature, the card does not update in Anki. {#card-not-updating}
 
 Make sure Anki's card browser is closed when using "update last card." There is a [known issue](https://github.com/FooSoft/anki-connect/issues/82) with AnkiConnect where cards will not appear to update when the card browser is open.
 
-### When loading a local file asbplayer either shows a black screen, or doesn't play audio.
+### When loading a local file asbplayer either shows a black screen, or doesn't play audio. {#local-video-playback-issues}
 
 Browsers have varying ability to decode certain video and audio formats. See the [compatibility section](./compatibility).
 
-### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel
+### My popup dictionary extension (e.g. Yomitan) doesn't work on the side panel {#popup-dictionary-in-side-panel}
 
 For security reasons, browsers do not allow extension scripts to be injected into other extension pages, so there is no fix for this. If you want to scan text with other extensions then you will need to do it from the subtitles displayed inside the video element, or from the subtitle list on the asbplayer website.
 
-### asbplayer isn't detecting streaming video.
+### asbplayer isn't detecting streaming video. {#asbplayer-isnt-detecting-streaming-video}
 
 Make sure that in the extension details, the extension has access to all sites.
 
-### Keyboard shortcuts aren't working.
+### Keyboard shortcuts aren't working. {#keyboard-shortcuts-arent-working}
 
 Check the [keyboard shortcut settings](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts) or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
 
@@ -57,29 +57,29 @@ Also, if using the extension:
 - Try uninstalling and reinstalling the extension, and restarting Chrome.
 - Make sure the extension isn't installed twice.
 
-### asbplayer isn't properly cropping screenshots from streaming video.
+### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}
 
 Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the [extension settings](https://app.asbplayer.dev/?view=settings#misc-settings).
 
-### I'm having trouble creating cards using JP mining note.
+### I'm having trouble creating cards using JP mining note. {#jp-mining-note-issues}
 
 See this [issue](https://github.com/asbplayer/asbplayer/issues/220#issuecomment-1501124166).
 
-### asbplayer keeps asking for permission to record audio
+### asbplayer keeps asking for permission to record audio {#repeated-audio-permission-prompts}
 
 asbplayer is not currently compatible with the Volume Master extension. So you'll need to disable it.
 
-### Audio recordings are garbled, scratchy, or spotty
+### Audio recordings are garbled, scratchy, or spotty {#garbled-audio-recordings}
 
 This is usually due to insufficient CPU. If you are on a laptop, make sure it's connected to a power source. In general make sure your CPU is not being throttled by battery-saving mode, etc.
 
-### When I use a keyboard shortcut to open asbplayer for streaming video, nothing happens and the page becomes unresponsive.
+### When I use a keyboard shortcut to open asbplayer for streaming video, nothing happens and the page becomes unresponsive. {#streaming-shortcut-unresponsive}
 
 This can happen because `Experimental Web Platform features` is enabled in `chrome://flags`. Make sure it's disabled and try again.
 
-## Annotation
+## Annotation {#annotation}
 
-### Enable or disable annotation for a track
+### Enable or disable annotation for a track {#enable-or-disable-annotation-for-a-track}
 
 Annotation is considered disabled if the following settings are set to these values:
 
@@ -96,21 +96,21 @@ To enable annotation for a track, set at least one of the above settings to a va
 The [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) and [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) buttons will be disabled unless the above settings have specific values that benefit from their integration.
 :::
 
-### Clear Anki word database
+### Clear Anki word database {#clear-anki-word-database}
 
 To clear the Anki word database entries for a track, set the [`Anki word fields`](./reference/settings.md#anki-word-fields) and [`Anki sentence fields`](./reference/settings.md#anki-sentence-fields) to empty values and use the [`Re-build Anki word database`](./reference/settings.md#re-build-anki-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
 
-### Clear WaniKani word database
+### Clear WaniKani word database {#clear-wanikani-word-database}
 
 To clear the WaniKani word database entries for a track, set the [WaniKani API token](./reference/settings.md#wanikani-api-token) to an empty value and use the [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database) button. If the button is disabled, [follow these steps](#enable-or-disable-annotation-for-a-track) to enable annotation for the track first.
 
-### Delete locally tracked words
+### Delete locally tracked words {#delete-locally-tracked-words}
 
 You can delete a locally tracked word by hovering over it and using the [Annotation keyboard shortcuts](./reference/settings.md#annotation-keyboard-shortcuts) to set its status to **Uncollected** and toggle **Ignored** if it was set.
 
 To bulk delete locally tracked words, use the [`Word Browser`](./reference/settings.md#word-browser) to mark words as **Uncollected** and remove their states. You can also use the [`Import Words`](./reference/settings.md#import-words) feature.
 
-### Everything is uncollected
+### Everything is uncollected {#everything-is-uncollected}
 
 If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
 
@@ -125,7 +125,7 @@ If word statuses never change from **Uncollected**:
     - Run [`Re-build WaniKani word database`](./reference/settings.md#re-build-wanikani-word-database).
     - asbplayer will automatically sync with WaniKani during playback.
 
-### Red strikethrough styling appears
+### Red strikethrough styling appears {#red-strikethrough-styling-appears}
 
 If you accidentally enabled annotation, [follow these steps](#enable-or-disable-annotation-for-a-track) to disable it.
 

@@ -31,6 +31,7 @@ const testAnkiSettings: AnkiSettings = {
     tags: [],
     recordWithAudioPlayback: false,
     preferMp3: false,
+    alwaysUseSubtitleForSentence: false,
     audioPaddingStart: 0,
     audioPaddingEnd: 0,
     maxImageWidth: 0,

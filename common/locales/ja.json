@@ -423,6 +423,7 @@
         "fastForwardPlaybackMinimumSkipInterval": "Fast-forward minimum skip interval",
         "coloringStrategy": "色付け戦略",
         "copyOnMine": "マイニングした字幕をクリップボードにコピー",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "updateLastCardForSameSubtitle": "Update all cards from the same subtitle line",
         "corsHelperText": "<0>この動画</0>を参考に、{{origin}} が AnkiConnect 設定の webCorsOriginList に入っていることを確認してください。",
         "customCssField": "CSS: {{styleKey}}",

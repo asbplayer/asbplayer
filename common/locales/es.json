@@ -423,6 +423,7 @@
         "fastForwardPlaybackMinimumSkipInterval": "Fast-forward minimum skip interval",
         "coloringStrategy": "Estrategia de coloración",
         "copyOnMine": "Copiar subtítulos minados al portapapeles",
+        "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
         "updateLastCardForSameSubtitle": "Update all cards from the same subtitle line",
         "corsHelperText": "Asegúrate de que {{origin}} esté en webCorsOriginList en tu configuración de AnkiConnect como en este <0>video</0>.",
         "customCssField": "CSS: {{styleKey}}",
