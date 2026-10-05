@@ -32,6 +32,7 @@ const testAnkiSettings: AnkiSettings = {
     recordWithAudioPlayback: false,
     preferMp3: false,
     alwaysUseSubtitleForSentence: false,
+    updateLastCardForSameSubtitle: false,
     audioPaddingStart: 0,
     audioPaddingEnd: 0,
     maxImageWidth: 0,
@@ -1307,12 +1308,12 @@ describe('Anki', () => {
                         return ankiConnectResponse(null);
                 }
             });
-            const anki = new Anki(testAnkiSettings, fetcher);
+            const anki = new Anki({ ...testAnkiSettings, updateLastCardForSameSubtitle: true }, fetcher);
 
             await expect(
                 anki.export(
                     makeExportArguments({
-                        mode: 'updateLastForSameLine',
+                        mode: 'updateLast',
                         text: 'foo\nbar',
                         audioClip: makeAudioClip(),
                         image: makeImage(),
@@ -1330,8 +1331,6 @@ describe('Anki', () => {
                 expect(update.params.note.fields).toEqual({
                     Audio: '[sound:shared-audio.mp3]',
                     Image: '<img src="shared-image.jpeg">',
-                    Source: 'Episode 1',
-                    Url: 'https://example.com',
                 });
             }
             expect(requests.filter((request) => request.action === 'addTags').map((request) => request.params)).toEqual(
@@ -1350,9 +1349,9 @@ describe('Anki', () => {
         fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([11, 4]));
         fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse([makeNoteInfo({ noteId: 11 })]));
         fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse(null));
-        const anki = new Anki({ ...testAnkiSettings, sentenceField: '' }, fetcher);
+        const anki = new Anki({ ...testAnkiSettings, sentenceField: '', updateLastCardForSameSubtitle: true }, fetcher);
 
-        await anki.export(makeExportArguments({ mode: 'updateLastForSameLine', tags: [] }));
+        await anki.export(makeExportArguments({ mode: 'updateLast', tags: [] }));
 
         expect(fetcher.fetch.mock.calls.map((call) => call[1].action)).toEqual([
             'findNotes',

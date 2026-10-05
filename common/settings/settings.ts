@@ -126,7 +126,6 @@ export interface MiscSettings {
     readonly language: string;
     readonly clickToMineDefaultAction: PostMineAction;
     readonly postMiningPlaybackState: PostMinePlayback;
-    readonly updateLastCardForSameSubtitle: boolean;
     readonly lastSubtitleOffset: number;
     readonly lastSelectedAnkiExportMode: AnkiExportMode;
     readonly tabName: string;
@@ -227,6 +226,7 @@ export interface AnkiSettings {
     readonly recordWithAudioPlayback: boolean;
     readonly preferMp3: boolean;
     readonly alwaysUseSubtitleForSentence: boolean;
+    readonly updateLastCardForSameSubtitle: boolean;
     readonly audioPaddingStart: number;
     readonly audioPaddingEnd: number;
     readonly maxImageWidth: number;
@@ -283,6 +283,7 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     recordWithAudioPlayback: true,
     preferMp3: true,
     alwaysUseSubtitleForSentence: true,
+    updateLastCardForSameSubtitle: true,
     audioPaddingStart: true,
     audioPaddingEnd: true,
     maxImageWidth: true,

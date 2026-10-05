@@ -148,7 +148,7 @@ export interface AudioModel {
     readonly error?: AudioErrorCode;
 }
 
-export type AnkiExportMode = 'gui' | 'updateLast' | 'updateLastForSameLine' | 'updateSpecific' | 'default';
+export type AnkiExportMode = 'gui' | 'updateLast' | 'updateSpecific' | 'default';
 
 export interface AnkiDialogSettings extends AnkiSettings {
     themeType: string;

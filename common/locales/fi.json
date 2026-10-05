@@ -424,7 +424,7 @@
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Kopioi louhitut tekstitykset leikepöydälle",
         "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
-        "updateLastCardForSameSubtitle": "Update all cards from the same subtitle line",
+        "updateLastCardForSameSubtitle": "When updating last card, also update image/audio for cards that have the same subtitle text",
         "corsHelperText": "Varmista, että {{origin}} on WebCorsOriginList teidän AnkiConnect asetukset kuten tässä <0>video</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Pakka",

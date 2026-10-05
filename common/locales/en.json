@@ -424,7 +424,7 @@
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "Copy mined subtitles to clipboard",
         "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
-        "updateLastCardForSameSubtitle": "Update all cards from the same subtitle line",
+        "updateLastCardForSameSubtitle": "When updating last card, also update image/audio for cards that have the same subtitle text",
         "corsHelperText": "Ensure that {{origin}} is in the webCorsOriginList in your AnkiConnect settings as in this <0>video</0>.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "Deck",

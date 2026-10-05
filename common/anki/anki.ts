@@ -114,6 +114,14 @@ const tagContent = (html: string) => {
 
 const containsHtmlTag = (value: string) => anyHtmlTagRegex.test(value);
 
+const normalizeSubtitleForComparison = (text: string) =>
+    text
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\n/g, ' ')
+        .trim();
+
 export const inheritHtmlMarkup = (original: string, markedUp: string) => {
     const htmlTagRegex = new RegExp(htmlTagRegexString, 'ig');
     const markedUpWithoutBreaklines = markedUp.replaceAll('<br>', '');
@@ -544,11 +552,12 @@ export class Anki {
         };
 
         const gui = mode === 'gui';
-        const updateLast = mode === 'updateLast' || mode === 'updateLastForSameLine';
+        const updateLast = mode === 'updateLast';
         const isUpdate = updateLast || mode === 'updateSpecific';
+        const updateLastForSameLine = updateLast && this.settingsProvider.updateLastCardForSameSubtitle;
 
         const recentNotes = updateLast
-            ? await this.findNotes(mode === 'updateLastForSameLine' ? 'added:2' : 'added:1', ankiConnectUrl)
+            ? await this.findNotes(updateLastForSameLine ? 'added:2' : 'added:1', ankiConnectUrl)
             : [];
         if (updateLast && recentNotes.length === 0) {
             throw new Error('Could not find note to update');
@@ -577,7 +586,6 @@ export class Anki {
         switch (mode) {
             case 'gui':
                 return (await this._executeAction('guiAddCards', params, ankiConnectUrl)).result;
-            case 'updateLastForSameLine':
             case 'updateLast': {
                 const lastNoteId = [...recentNotes].sort((a, b) => a - b)[recentNotes.length - 1];
 
@@ -587,7 +595,7 @@ export class Anki {
 
                 const result = await this._updateNoteFields(lastNoteId, params, tags, ankiConnectUrl);
 
-                if (mode === 'updateLastForSameLine' && text && this.settingsProvider.sentenceField) {
+                if (updateLastForSameLine && text && this.settingsProvider.sentenceField) {
                     await this._updateSameSubtitleNotes(recentNotes, lastNoteId, text, fields, tags, ankiConnectUrl);
                 }
 
@@ -750,7 +758,7 @@ export class Anki {
         const precedingNoteIds = recentNotes.filter((id) => id < lastNoteId).sort((a, b) => b - a);
         if (precedingNoteIds.length === 0) return;
 
-        const normalizedSubtitle = text.replace(/\n/g, ' ');
+        const normalizedSubtitle = normalizeSubtitleForComparison(text);
         const sentenceFieldName = this.settingsProvider.sentenceField;
         const precedingInfo = await this.notesInfo(precedingNoteIds, ankiConnectUrl);
 
@@ -758,11 +766,7 @@ export class Anki {
             const otherSentenceHtml = otherInfo.fields?.[sentenceFieldName]?.value;
             if (!otherSentenceHtml) break;
 
-            const otherSentencePlain = otherSentenceHtml
-                .replace(/<br\s*\/?>/gi, ' ')
-                .replace(/<[^>]+>/g, '')
-                .replace(/&nbsp;/g, ' ')
-                .trim();
+            const otherSentencePlain = normalizeSubtitleForComparison(otherSentenceHtml);
 
             if (
                 otherSentencePlain.length === 0 ||
@@ -771,14 +775,9 @@ export class Anki {
                 break;
             }
 
-            // Preserve the sentence, word, definition, and custom fields on preceding notes.
+            // Only update image/audio fields for preceding cards.
             const otherFields: { [key: string]: string } = {};
-            for (const fieldName of [
-                this.settingsProvider.audioField,
-                this.settingsProvider.imageField,
-                this.settingsProvider.sourceField,
-                this.settingsProvider.urlField,
-            ]) {
+            for (const fieldName of [this.settingsProvider.audioField, this.settingsProvider.imageField]) {
                 if (fieldName && fields[fieldName]) otherFields[fieldName] = fields[fieldName];
             }
 
