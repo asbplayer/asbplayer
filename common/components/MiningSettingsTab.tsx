@@ -20,9 +20,15 @@ interface Props {
     settings: AsbplayerSettings;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     showWebmMediaFragmentSettings?: boolean;
+    supportsUpdateLastWithSameSubtitleText?: boolean;
 }
 
-const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWebmMediaFragmentSettings = true }) => {
+const MiningSettingsTab: React.FC<Props> = ({
+    settings,
+    onSettingChanged,
+    supportsUpdateLastWithSameSubtitleText,
+    showWebmMediaFragmentSettings = true,
+}) => {
     const { t } = useTranslation();
     const webmCaptureSupported = showWebmMediaFragmentSettings && isWebmMediaFragmentSupported();
     const {
@@ -44,6 +50,7 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
         preferMp3,
         copyToClipboardOnMine,
         alwaysUseSubtitleForSentence,
+        updateLastCardForSameSubtitle,
     } = settings;
     return (
         <Stack spacing={1}>
@@ -185,6 +192,20 @@ const MiningSettingsTab: React.FC<Props> = ({ settings, onSettingChanged, showWe
                 label={t('settings.alwaysUseSubtitleForSentence')}
                 labelPlacement="start"
             />
+            {supportsUpdateLastWithSameSubtitleText && (
+                <SwitchLabelWithHoverEffect
+                    control={
+                        <Switch
+                            checked={updateLastCardForSameSubtitle}
+                            onChange={(event) =>
+                                onSettingChanged('updateLastCardForSameSubtitle', event.target.checked)
+                            }
+                        />
+                    }
+                    label={t('settings.updateLastCardForSameSubtitle')}
+                    labelPlacement="start"
+                />
+            )}
             <SettingsSection>{t('settings.audio')}</SettingsSection>
             <SwitchLabelWithHoverEffect
                 control={

@@ -73,6 +73,9 @@ class SettingsAccessor {
     get alwaysUseSubtitleForSentence() {
         return this.settings.alwaysUseSubtitleForSentence;
     }
+    get updateLastCardForSameSubtitle() {
+        return this.settings.updateLastCardForSameSubtitle;
+    }
     get audioPaddingStart() {
         return this.settings.audioPaddingStart;
     }

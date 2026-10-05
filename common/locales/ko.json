@@ -424,6 +424,7 @@
         "coloringStrategy": "Coloring strategy",
         "copyOnMine": "추출한 자막을 클립보드에 복사",
         "alwaysUseSubtitleForSentence": "Always use subtitle text for sentence field",
+        "updateLastCardForSameSubtitle": "When updating last card, also update image/audio for cards that have the same subtitle text",
         "corsHelperText": "{{origin}}이 AnkiConnect의 webCorsOriginList 항목에 추가되어 있는지 이 <0>영상</0>을 참고하여 확인해 주세요.",
         "customCssField": "CSS: {{styleKey}}",
         "deck": "덱",

@@ -78,6 +78,12 @@ If enabled, copies the target subtitle to clipboard anytime mining action is tri
 
 When enabled, fills the Sentence field with the mined subtitle text from all tracks, even if an external application supplies different sentence text. This is useful when mining with Yomitan through the [AnkiConnect proxy](../guides/one-click-mining).
 
+### When updating last card, also update image/audio for cards that have the same subtitle text" {#update-all-cards-with-the-same-subtitle-text}
+
+When enabled, the **Update last card** mining action also updates the audio and image fields on consecutively created notes from the same subtitle line. Each preceding note keeps its sentence, word, definition, and custom fields. Matching ignores sentence markup and allows the sentence to be part of the mined subtitle context.
+
+The search includes notes added within the last two Anki days and stops at the first different or missing sentence. A sentence field must be configured. This setting is disabled by default and does not affect updates to a specifically selected card.
+
 ### Play audio while recording from local video {#play-audio-while-recording-from-local-video}
 
 asbplayer uses the browser's built-in [MediaRecorder](https://developer.mozilla.org/ja/docs/Web/API/MediaRecorder) API to record audio from local video files. This setting configures whether sound should play during recording.
