@@ -1,4 +1,5 @@
 ---
+name: "Agent: Docs drift audit"
 description: |
   Weekly docs drift audit that verifies documentation correctness against the code and cross-checks duplicated documentation, reporting findings as a GitHub issue.
 
@@ -129,7 +130,7 @@ Record every finding with evidence from BOTH sides (file:line for the doc, file:
 
 4. **README ↔ docs duplication**: compare `README.md`'s feature bullet list against `docs/docs/intro.md` bullet-by-bullet; report any content divergence (missing bullets, different wording of the same feature).
 
-5. **Acknowledgements**: compare the Contributors, Translators, and Sponsors lists between `README.md` and `docs/docs/acknowledgements.md` — sets AND order AND entry format (links, bold, plain names) must match exactly. Then compare the lists against `recent-contributors.md`: report contributors with merged PRs since the last "Acknowledge" commit who are missing from both lists. Ignore bot authors (`github-actions[bot]`, `dependabot[bot]`).
+5. **Acknowledgements**: compare the Contributors, Translators, and Sponsors lists between `README.md` and `docs/docs/acknowledgements.md` — sets AND order AND entry format (links, bold, plain names) must match exactly. Then compare the lists against `recent-contributors.md`: report contributors with merged PRs since the last "Acknowledge" commit who are missing from both lists. Ignore bot authors (`github-actions[bot]`, `dependabot[bot]`). If `killergerbah` appears missing, ignore them. They should not be added to the Contributors list.
 
 6. **Cross-references and dead links**: verify anchors between `guides/*`, `common-issues.md`, and `reference/settings.md` headings (e.g. `#seek-keyboard-shortcuts`), internal doc links, image paths, and links to app URLs (`?view=...` routes must exist in the code).
 

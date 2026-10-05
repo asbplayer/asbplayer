@@ -126,6 +126,7 @@ export default defineConfig({
                         'rutube-page.js',
                         'okru-page.js',
                         'vkvideo-page.js',
+                        'dreaming-page.js',
                         'anki-ui.js',
                         'mp3-encoder-worker.js',
                         'pgs-parser-worker.js',

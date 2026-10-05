@@ -225,7 +225,7 @@ const MiscSettingTab: React.FC<Props> = ({
         exportSettings(settings);
     }, [settings]);
     const theme = useTheme();
-    const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
 
     return (
         <>

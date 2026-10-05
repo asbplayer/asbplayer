@@ -240,6 +240,7 @@ const Popup = ({
                             extensionSupportsDictionaryYomitanMecab
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
+                            extensionSupportsUpdateLastWithSameSubtitleText
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}

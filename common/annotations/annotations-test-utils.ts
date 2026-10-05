@@ -138,7 +138,7 @@ export const makeSubtitleAnnotations = (settings = makeSettings()) => {
     const settingsStorage = new MockSettingsStorage();
     settingsStorage.setData(settings);
     const settingsProvider = new SettingsProvider(settingsStorage);
-    const subtitleAnnotationsUpdated = jest.fn();
+    const subtitleAnnotationsUpdated = jest.fn<ConstructorParameters<typeof SubtitleAnnotations>[4]>();
     const subtitleAnnotations = new SubtitleAnnotations(
         provider,
         settingsProvider,

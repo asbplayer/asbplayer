@@ -137,6 +137,7 @@ const SettingsPage = ({
                         extensionSupportsDictionaryYomitanMecab
                         extensionSupportsSubtitleTrackSelectorInWebApp
                         extensionSupportsSubtitleListCustomization
+                        extensionSupportsUpdateLastWithSameSubtitleText
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}

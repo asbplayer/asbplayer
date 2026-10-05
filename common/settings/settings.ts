@@ -225,6 +225,8 @@ export interface AnkiSettings {
     readonly tags: string[];
     readonly recordWithAudioPlayback: boolean;
     readonly preferMp3: boolean;
+    readonly alwaysUseSubtitleForSentence: boolean;
+    readonly updateLastCardForSameSubtitle: boolean;
     readonly audioPaddingStart: number;
     readonly audioPaddingEnd: number;
     readonly maxImageWidth: number;
@@ -280,6 +282,8 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     tags: true,
     recordWithAudioPlayback: true,
     preferMp3: true,
+    alwaysUseSubtitleForSentence: true,
+    updateLastCardForSameSubtitle: true,
     audioPaddingStart: true,
     audioPaddingEnd: true,
     maxImageWidth: true,
@@ -622,6 +626,7 @@ export interface PageSettings {
     rutube: Page;
     okru: Page;
     vkvideo: Page;
+    dreaming: Page;
 }
 
 export interface StreamingVideoSettings {

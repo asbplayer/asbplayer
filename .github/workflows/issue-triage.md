@@ -1,4 +1,5 @@
 ---
+name: "Agent: Issue triage"
 description: |
   Triage assistant that categorizes issues, finds duplicate issues, and provides initial assistance from documentation.
 

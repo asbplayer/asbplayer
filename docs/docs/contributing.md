@@ -2,11 +2,11 @@
 sidebar_position: 6
 ---
 
-# Contributing
+# Contributing {#contributing}
 
 Contributions to the project are always welcome. asbplayer will never be complete, and there are a ton of [issues](https://github.com/asbplayer/asbplayer/issues) to work on. [Many contributions](https://github.com/asbplayer/asbplayer/pulls?q=is%3Apr+is%3Aclosed) have already been made, including some very large features.
 
-## AI-assisted contributions
+## AI-assisted contributions {#ai-assisted-contributions}
 
 The guidelines below take inspiration from the [Linux project](https://github.com/torvalds/linux/blob/master/Documentation/process/coding-assistants.rst#attribution).
 
@@ -22,7 +22,7 @@ For example:
 Assisted-by: Claude:claude-3-opus
 ```
 
-## Pull requests
+## Pull requests {#pull-requests}
 
 Make sure the pre-merge checks are passing:
 
@@ -32,11 +32,11 @@ pnpm run verify
 
 Then open a pull request on the [GitHub repository](https://github.com/asbplayer/asbplayer).
 
-## Documentation
+## Documentation {#documentation}
 
 Documentation is under the `docs` folder in this repository. When adding new features, please update the documentation as well.
 
-## Development
+## Development {#development}
 
 Use the Node version specified in `.nvmrc`, either via a node version manager (e.g. `nvm use`) or via nix, which has it locked down in `flake.lock`.
 
@@ -67,7 +67,7 @@ pnpm --filter @project/extension dev:firefox-android
 
 If you have problems building try deleting `node_modules` and re-running `pnpm i`.
 
-## Localization
+## Localization {#localization}
 
 Any new localization keys should first be added to the English loc files, and then copied across all the other loc files using a helper script.
 

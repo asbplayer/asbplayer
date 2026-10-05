@@ -23,6 +23,7 @@ import type {
     DownloadAudioMessage,
     CardExportedMessage,
     DisplaySubtitleModel,
+    TokenizedSubtitleModel,
 } from '@project/common';
 import type { BulkExportStartedPayload } from '@project/extension/src/controllers/bulk-export-controller';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
@@ -620,6 +621,51 @@ export default function SidePanel({ dictionaryProvider, settingsProvider, settin
             active: true,
         });
     }, []);
+
+    useEffect(() => {
+        if (syncedVideoTab === undefined || currentTabId !== syncedVideoTab.id) {
+            return;
+        }
+
+        // If the user is on the app's tab in the same window where the chrome side panel is now displaying
+        // the mining history, the subtitle side panel on the video will not receive the updated subtitles.
+        // Once the subtitle side panel is active, we only need to refresh the colors once to get anything missed.
+        void (async () => {
+            const message: ExtensionToVideoCommand<RequestSubtitlesMessage> = {
+                sender: 'asbplayer-extension-to-video',
+                message: {
+                    command: 'request-subtitles',
+                },
+                src: syncedVideoTab.src,
+            };
+            const response: RequestSubtitlesResponse | undefined = await browser.tabs.sendMessage(
+                syncedVideoTab.id,
+                message
+            );
+
+            if (!response) return;
+            const { subtitles: updatedSubtitles } = response;
+            setSubtitles((prevSubtitles) => {
+                if (!prevSubtitles?.length) return prevSubtitles;
+                const allSubtitles = prevSubtitles.slice();
+                for (const s of updatedSubtitles) {
+                    // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
+                    // We should probably have a hash or ID associated with the subtitle file this color update is for.
+                    const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
+                    const prevText =
+                        (allSubtitles[s.index] as TokenizedSubtitleModel)?.originalText ?? allSubtitles[s.index]?.text;
+                    if (updatedText === prevText) {
+                        allSubtitles[s.index] = {
+                            ...allSubtitles[s.index],
+                            text: s.text,
+                            tokenization: s.tokenization,
+                        };
+                    }
+                }
+                return allSubtitles;
+            });
+        })().catch((error) => asbError('side-panel', error));
+    }, [currentTabId, syncedVideoTab]);
 
     if (!i18nInitialized) {
         return null;
