@@ -504,16 +504,18 @@ export default function OnlineSubtitleSourceDialog({
                                             onDelete={handleClearEpisodeFilter}
                                         />
                                     )}
-                                    <IconButton
-                                        size="small"
-                                        color={jimakuEpisodeRegex.trim() ? 'primary' : 'default'}
-                                        onClick={() => setShowEpisodeRegex((show) => !show)}
-                                    >
-                                        <SettingsIcon fontSize="small" />
-                                    </IconButton>
+                                    {detectedTitleHint?.trim() && (
+                                        <IconButton
+                                            size="small"
+                                            color={jimakuEpisodeRegex.trim() ? 'primary' : 'default'}
+                                            onClick={() => setShowEpisodeRegex((show) => !show)}
+                                        >
+                                            <SettingsIcon fontSize="small" />
+                                        </IconButton>
+                                    )}
                                 </Box>
                             </Box>
-                            {showEpisodeRegex && (
+                            {showEpisodeRegex && detectedTitleHint?.trim() && (
                                 <TextField
                                     size="small"
                                     fullWidth
