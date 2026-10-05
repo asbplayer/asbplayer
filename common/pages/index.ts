@@ -35,4 +35,5 @@ export const pageMetadata: { [K in keyof PageSettings]: PageMetadata } = {
     rutube: { title: 'Rutube', disableCspRuleId: 27 },
     okru: { title: 'OK.ru', disableCspRuleId: 28 },
     vkvideo: { title: 'VK Video', disableCspRuleId: 29 },
+    dreaming: { title: 'Dreaming', disableCspRuleId: 30 },
 };

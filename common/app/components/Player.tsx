@@ -12,7 +12,6 @@ import type {
     IndexedSubtitleModel,
     PlaybackState,
     PostMineAction,
-    RequestSubtitlesResponse,
     SubtitleModel,
     DisplaySubtitleModel,
     TokenizedSubtitleModel,
@@ -841,38 +840,6 @@ function PlayerComponent(
 
     useEffect(() => {
         if (!tab) return; // Only matters for extension
-
-        // If the user is on the app's tab in the same window where the chrome side panel is now displaying
-        // the mining history, the subtitle side panel on the video will not receive the updated subtitles.
-        // Once the subtitle side panel is active, we only need to refresh the colors once to get anything missed.
-        void (async () => {
-            if (!subtitlesRef.current) return;
-            const response = (await extension.requestSubtitles(tab.id, tab.src)) as
-                | RequestSubtitlesResponse
-                | undefined;
-            if (!response) return;
-            const { subtitles: updatedSubtitles } = response;
-            const playerSubtitles = subtitlesForPlayer(updatedSubtitles);
-            onSubtitles((prevSubtitles) => {
-                if (!prevSubtitles?.length) return prevSubtitles;
-                const allSubtitles = prevSubtitles.slice();
-                for (const s of playerSubtitles) {
-                    // FIXME: Primitive check to ensure we don't apply a color update from a completely different subtitle or subtitle file.
-                    // We should probably have a hash or ID associated with the subtitle file this color update is for.
-                    const updatedText = (s as TokenizedSubtitleModel).originalText ?? s.text;
-                    const prevText =
-                        (allSubtitles[s.index] as TokenizedSubtitleModel).originalText ?? allSubtitles[s.index].text;
-                    if (updatedText === prevText) {
-                        allSubtitles[s.index] = {
-                            ...allSubtitles[s.index],
-                            text: s.text,
-                            tokenization: s.tokenization,
-                        };
-                    }
-                }
-                return allSubtitles;
-            });
-        })();
 
         const removeCardUpdatedDialog = channel?.onCardUpdatedDialog(() =>
             extension.cardUpdatedDialog(tab.id, tab.src)

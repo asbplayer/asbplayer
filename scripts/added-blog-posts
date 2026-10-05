@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Prints the blog posts newly added (not modified) under docs/blog.
+#
+# Usage:
+#   added-blog-posts <range>    e.g. "abc123..def456" or "abc123...def456"
+#   added-blog-posts --latest   the most recently added post (for test runs)
+#
+set -euo pipefail
+
+if [ "${1:-}" = "--latest" ]; then
+    git log --diff-filter=A --name-only --format= -- docs/blog | grep -E '\.mdx?$' | head -n1 || true
+    exit 0
+fi
+
+range="${1:-}"
+if [ -z "$range" ]; then
+    echo "Usage: added-blog-posts <range> | added-blog-posts --latest" >&2
+    exit 1
+fi
+
+# A new branch push reports an all-zero "before" SHA; fall back to the latest post.
+before="${range%%[.]*}"
+if [[ "$before" =~ ^0+$ ]]; then
+    exec "$0" --latest
+fi
+
+git diff --name-only --diff-filter=A "$range" -- docs/blog | grep -E '\.mdx?$' || true

@@ -33,10 +33,23 @@ const vttTimestampTagRegex = new RegExp(
 );
 const vttClassRegex = /<(\/)?c(\.[^>]*)?>/g;
 
+// Matches text containing at least one meaningful character: anything that is
+// not whitespace, a control character, or a default-ignorable code point (which
+// includes the bidi marks LRM/RLM). Subtitle events without any such character
+// are dropped so invisible leftovers do not render as blank lines. See issue #669.
+const nonContentCharacterClass = String.raw`\s\p{Cc}\p{Default_Ignorable_Code_Point}`;
+const hasTextContentRegex = new RegExp(`[^${nonContentCharacterClass}]`, 'u');
+const nonContentAtEdgesRegex = new RegExp(`^[${nonContentCharacterClass}]+|[${nonContentCharacterClass}]+$`, 'gu');
+
+// Common ASS-style override tags are sometimes embedded in SRT files. Hide blocks
+// containing only alignment, italic, underline, strikeout, and bold tags, while
+// preserving other brace-delimited text to avoid false positives. See issue #471.
+const assOverrideTagRegex = /\{(?:\\(?:an[1-9]|[ius][01]|b(?:[01]|[1-9]00)))+\}/g;
+
 const assNewLineRegex = RegExp(/\\[nN]/, 'ig');
 // Character classes shared by the Netflix ruby regexes below so they cannot drift apart.
 const netflixRubyKanaClass = '\\p{sc=Hira}\\p{sc=Kana}';
-const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶ`;
+const netflixRubyBaseClass = `${netflixRubyKanaClass}\\p{sc=Han}々〆〤ヶA-Za-z0-9`;
 // Invisible sentinel placed before a ruby base so netflixRubyRegex cannot capture back
 // into preceding kanji or kana. U+2063 is an invisible separator that in practice never
 // appears in subtitle text and is a valid scalar, so extension loaders accept it in
@@ -51,6 +64,23 @@ const netflixRubyRegex = new RegExp(
 // always consumed.
 const netflixRubyBaseRegex = new RegExp(`^[${netflixRubyBaseClass}]+$`, 'u');
 const netflixRubyReadingRegex = new RegExp(`^[^)]*[${netflixRubyKanaClass}]`, 'u');
+
+const isAsciiAlphaNumeric = (character: string) => /^[A-Za-z0-9]$/.test(character);
+
+/**
+ * Text can mix ascii with non-ascii in which case the ruby only applies to the last script type, e.g:
+ *
+ * 5G通信(つうしん) -> 通信(つうしん) (5G omitted from the ruby base)
+ * さっきTwitter(ツイッター) -> Twitter(ツイッター) (さっき omitted from the ruby base)
+ */
+const netflixRubyTokenStartOffset = (base: string) => {
+    let tokenStartOffset = 0;
+    for (let i = 1; i < base.length; ++i) {
+        if (isAsciiAlphaNumeric(base[i - 1]) !== isAsciiAlphaNumeric(base[i])) tokenStartOffset = i;
+    }
+    return tokenStartOffset;
+};
+
 interface SubtitleNode {
     start: number;
     end: number;
@@ -142,7 +172,6 @@ export default class SubtitleReader {
     async subtitles(files: File[], flatten?: boolean) {
         const allNodes = (await Promise.all(files.map((f, i) => this._subtitles(f, flatten === true ? 0 : i))))
             .flatMap((nodes) => nodes)
-            .filter((node) => node.textImage !== undefined || node.text !== '')
             .sort((n1, n2) => n1.start - n2.start);
 
         // Sanitize after all parser, filter, decoding, and flattening transformations.
@@ -154,7 +183,11 @@ export default class SubtitleReader {
             for (const node of allNodes) this._convertNetflixRubyToHtml(node);
         }
 
-        return this._deduplicate(allNodes);
+        return this._deduplicate(
+            allNodes.filter(
+                (node) => node.textImage !== undefined || hasTextContentRegex.test(removeSubtitleHtmlSafely(node.text))
+            )
+        );
     }
 
     private _deduplicate(nodes: SubtitleNode[]) {
@@ -182,7 +215,7 @@ export default class SubtitleReader {
                 return {
                     start: Math.floor((node.startTime as number) * 1000),
                     end: Math.floor((node.endTime as number) * 1000),
-                    text: this._filterText(node.text),
+                    text: this._filterText(node.text.replace(assOverrideTagRegex, '')),
                     track: track,
                 };
             });
@@ -778,9 +811,11 @@ export default class SubtitleReader {
         let currentLengthChangeDueToStringReplacement = 0;
         node.text = node.text.replace(netflixRubyRegex, (_match, base, reading, offset) => {
             const adjustedOffset = offset + currentLengthChangeDueToStringReplacement;
+            const tokenStartOffset = _match.startsWith(netflixRubyBaseMarker) ? 0 : netflixRubyTokenStartOffset(base);
+            const tokenBase = base.substring(tokenStartOffset);
             tokens.push({
-                pos: [adjustedOffset, adjustedOffset + base.length],
-                readings: [{ pos: [0, base.length], reading }],
+                pos: [adjustedOffset + tokenStartOffset, adjustedOffset + base.length],
+                readings: [{ pos: [0, tokenBase.length], reading }],
                 states: [],
             });
             currentLengthChangeDueToStringReplacement += base.length - _match.length;
@@ -805,10 +840,21 @@ export default class SubtitleReader {
     }
 
     private _filterText(text: string): string {
-        text =
-            this._textFilter === undefined
-                ? text
-                : text.replace(this._textFilter.regex, this._textFilter.replacement).trim();
+        if (this._textFilter !== undefined) {
+            const { regex, replacement } = this._textFilter;
+
+            // Boundary controls can prevent an anchored filter from matching. Retry
+            // only to detect empty cues; preserve bidi marks in meaningful text.
+            if (text.search(regex) === -1) {
+                const trimmed = text.replace(nonContentAtEdgesRegex, '');
+                if (trimmed !== text) {
+                    const retried = trimmed.replace(regex, replacement);
+                    if (!hasTextContentRegex.test(removeSubtitleHtmlSafely(retried))) return '';
+                }
+            }
+
+            text = text.replace(regex, replacement).trim();
+        }
 
         if (this._removeXml) {
             text = removeSubtitleHtmlSafely(text);

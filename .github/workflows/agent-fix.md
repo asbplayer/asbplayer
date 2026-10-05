@@ -1,4 +1,5 @@
 ---
+name: "Agent: Fix bug"
 description: |
   Bug-fix agent triggered by a `/agent` maintainer comment on an issue. Attempts a
   low-complexity, low-risk fix, verifies it offline with the repo's check scripts,

@@ -1,4 +1,5 @@
 ---
+name: "Agent: Create app deploy branch"
 description: |
   Prepares a deploy pull request from main to cf-pages with LLM-generated release notes and a follow-up commit linking the app version to the deploy PR.
 

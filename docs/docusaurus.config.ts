@@ -19,6 +19,8 @@ const config: Config = {
     locales: ["en"],
   },
 
+  plugins: ["./plugins/llms-txt.ts"],
+
   presets: [
     [
       "classic",

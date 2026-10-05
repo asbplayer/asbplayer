@@ -1,0 +1,67 @@
+# Verifies blog posts that are newly added in a push or pull request.
+#
+# The script tests (unit fixtures plus a conversion check for each new post) are
+# intentionally non-blocking: a malformed blog post should not prevent the
+# extension from being deployed. Failures surface as a warning annotation.
+#
+# Triggers only when blog content or the blog notification tooling changes.
+
+name: Verify blog
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'docs/blog/**'
+            - 'scripts/added-blog-posts'
+            - 'scripts/blog-post-to-discord.ts'
+            - 'scripts/blog-post-to-discord.test.ts'
+            - '.github/workflows/verify-blog.yml'
+    pull_request:
+        branches: [main]
+        paths:
+            - 'docs/blog/**'
+            - 'scripts/added-blog-posts'
+            - 'scripts/blog-post-to-discord.ts'
+            - 'scripts/blog-post-to-discord.test.ts'
+            - '.github/workflows/verify-blog.yml'
+
+permissions:
+    contents: read
+
+jobs:
+    blog-scripts:
+        name: Blog scripts
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+
+            - name: Find newly added blog posts
+              id: new-posts
+              run: |
+                  set -euo pipefail
+                  if [ "${{ github.event_name }}" = "pull_request" ]; then
+                    range="${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+                  else
+                    range="${{ github.event.before }}..${{ github.event.after }}"
+                  fi
+                  scripts/added-blog-posts "$range" > "$RUNNER_TEMP/new-blog-posts.txt" || true
+                  count=$(grep -c . "$RUNNER_TEMP/new-blog-posts.txt" || true)
+                  echo "Found $count newly added blog post(s)."
+                  echo "count=$count" >> "$GITHUB_OUTPUT"
+
+            - name: Run blog script tests
+              id: script-tests
+              continue-on-error: true
+              env:
+                  BLOG_POST_FILES_FILE: ${{ runner.temp }}/new-blog-posts.txt
+              run: pnpm run test:scripts
+
+            - name: Warn on blog script test failure
+              if: steps.script-tests.outcome == 'failure'
+              run: echo "::warning title=Blog script tests failed::Blog/script test failure is non-blocking; see logs."

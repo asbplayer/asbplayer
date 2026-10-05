@@ -1,4 +1,4 @@
-name: Release Firefox for Android Build
+name: Release Firefox for Android build
 
 on:
     workflow_dispatch:
