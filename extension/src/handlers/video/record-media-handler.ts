@@ -15,6 +15,7 @@ import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common'
 import type { SettingsProvider } from '@project/common/settings';
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
+import type { RecordedMedia } from '@project/extension/src/services/audio-recorder-delegate';
 import {
     DrmProtectedStreamError,
     RecordingInProgressError,
@@ -63,7 +64,7 @@ export default class RecordMediaHandler {
         const message = recordMediaCommand.message;
         const subtitle = message.subtitle;
         const src = recordMediaCommand.src;
-        let audioPromise: Promise<string> | undefined;
+        let audioPromise: Promise<RecordedMedia> | undefined;
         let imagePromise: Promise<string> | undefined;
         let imageModel: ImageModel | undefined = undefined;
         let audioModel: AudioModel | undefined = undefined;
@@ -156,7 +157,7 @@ export default class RecordMediaHandler {
             };
 
             try {
-                const audioBase64 = await audioPromise;
+                const { audioBase64 } = await audioPromise;
                 audioModel = {
                     ...baseAudioModel,
                     base64: audioBase64,

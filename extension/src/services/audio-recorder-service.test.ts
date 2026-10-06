@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { ImageCaptureParams, RecordAnimatedWebpResponse } from '@project/common';
-import type { AudioRecorderDelegate } from '@project/extension/src/services/audio-recorder-delegate';
+import type { AudioRecorderDelegate, RecordedMedia } from '@project/extension/src/services/audio-recorder-delegate';
 import AudioRecorderService, {
     NoRecordingInProgressServiceError,
     RecordingInProgressError,
@@ -60,6 +60,53 @@ describe('AudioRecorderService', () => {
     afterEach(() => {
         jest.resetAllMocks();
         delete (globalThis as any).browser;
+    });
+
+    describe('recording result', () => {
+        const image = { captureParams, armed: false };
+        const media: RecordedMedia = { audioBase64: 'audio', image: { base64: 'webp', extension: 'webp' } };
+        const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+        it('resolves with the audio delivered by message, without an image', async () => {
+            const recording = service.startWithTimeout(1000, false, requester);
+            await flush();
+            const requestId = delegate.startWithTimeout.mock.calls[0][2];
+
+            service.onAudioBase64('audio', requestId);
+
+            await expect(recording).resolves.toEqual({ audioBase64: 'audio', image: null });
+        });
+
+        it('resolves with the result handed back by the delegate', async () => {
+            delegate.startWithTimeout.mockResolvedValue({ started: true, result: Promise.resolve(media) });
+
+            await expect(service.startWithTimeout(1000, false, requester, image)).resolves.toEqual(media);
+            expect(delegate.startWithTimeout.mock.calls[0][4]).toEqual(image);
+            expect(signals()).toEqual(['recording-started', 'recording-finished']);
+        });
+
+        it('rejects when the result handed back by the delegate fails', async () => {
+            delegate.startWithTimeout.mockImplementation(async () => ({
+                started: true,
+                result: Promise.reject(new Error('capture failed')),
+            }));
+
+            await expect(service.startWithTimeout(1000, false, requester, image)).rejects.toThrow('capture failed');
+        });
+
+        it('returns the result of a manual recording on stop', async () => {
+            const result = deferred<RecordedMedia>();
+            delegate.start.mockResolvedValue({ started: true, result: result.promise });
+            delegate.stop.mockImplementation(async () => {
+                result.resolve(media);
+                return { stopped: true };
+            });
+
+            await service.start(requester, image);
+            expect(delegate.start.mock.calls[0][2]).toEqual(image);
+
+            await expect(service.stop(false, requester)).resolves.toEqual(media);
+        });
     });
 
     describe('timed animated WebP', () => {
