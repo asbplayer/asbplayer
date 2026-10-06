@@ -15,7 +15,8 @@ import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common'
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
 import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
-import { negotiateAnimatedWebp, shouldUseAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
+import type { ImageRecordingRequest } from '@project/extension/src/services/audio-recorder-delegate';
+import { shouldUseAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
 import type { SettingsProvider } from '@project/common/settings';
 
 export default class StartRecordingMediaHandler {
@@ -51,23 +52,19 @@ export default class StartRecordingMediaHandler {
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot start recording media without a valid tab ID');
 
-        if (await shouldUseAnimatedWebp(this._settings, startRecordingCommand.message)) {
-            // The clip is collected, and the card published, when recording stops. Until then the
-            // subtitles/controls stay hidden (they were hidden for a clean capture) and the screenshot
-            // path is skipped, since the animated WebP takes its place.
-            const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = startRecordingCommand.message;
-            await this._audioRecorder.startAnimatedWebp(
-                true,
-                { maxWidth, maxHeight, rect, frameId, trimBlackBars },
-                { src: startRecordingCommand.src, tabId },
-                await negotiateAnimatedWebp(this._settings, tabId)
-            );
-            return;
-        }
+        // An animated WebP is recorded together with the audio and collected when recording stops. It takes the
+        // place of the screenshot, so the subtitles/controls hidden for a clean capture stay hidden until then.
+        const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = startRecordingCommand.message;
+        const image: ImageRecordingRequest | undefined = (await shouldUseAnimatedWebp(
+            this._settings,
+            startRecordingCommand.message
+        ))
+            ? { captureParams: { maxWidth, maxHeight, rect, frameId, trimBlackBars }, armed: false }
+            : undefined;
 
         if (startRecordingCommand.message.record) {
             try {
-                await this._audioRecorder.start({ src: startRecordingCommand.src, tabId });
+                await this._audioRecorder.start({ src: startRecordingCommand.src, tabId }, image);
             } catch (e) {
                 if (!(e instanceof DrmProtectedStreamError)) {
                     throw e;
@@ -79,9 +76,8 @@ export default class StartRecordingMediaHandler {
 
         let imageModel: ImageModel | undefined;
 
-        if (startRecordingCommand.message.screenshot) {
+        if (startRecordingCommand.message.screenshot && image === undefined) {
             const imageDelay = startRecordingCommand.message.record ? startRecordingCommand.message.imageDelay : 0;
-            const { maxWidth, maxHeight, rect, frameId } = startRecordingCommand.message;
             try {
                 const imageBase64 = await this._imageCapturer.capture(tabId, startRecordingCommand.src, imageDelay, {
                     maxWidth,

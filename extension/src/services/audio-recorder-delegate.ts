@@ -11,6 +11,7 @@ import type {
     StopRecordingResponse,
 } from '@project/common';
 import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
+import type AnimatedWebpRecorder from '@project/extension/src/services/animated-webp-recorder';
 
 export interface Requester {
     tabId: number;
@@ -115,6 +116,51 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
             },
         };
         return browser.runtime.sendMessage(command);
+    }
+}
+
+// Chrome can only capture a tab once at a time, so a recording that also captures an image takes the place of
+// the offscreen audio recording instead of running alongside it.
+export class ChromeMediaRecorder implements AudioRecorderDelegate {
+    private readonly _audioRecorder: OffscreenAudioRecorder;
+    private readonly _animatedWebpRecorder: AnimatedWebpRecorder;
+    private _recordingImage = false;
+
+    constructor(audioRecorder: OffscreenAudioRecorder, animatedWebpRecorder: AnimatedWebpRecorder) {
+        this._audioRecorder = audioRecorder;
+        this._animatedWebpRecorder = animatedWebpRecorder;
+    }
+
+    startWithTimeout(
+        time: number,
+        encodeAsMp3: boolean,
+        requestId: string,
+        requester: Requester,
+        image?: ImageRecordingRequest
+    ) {
+        this._recordingImage = image !== undefined;
+
+        if (image === undefined) {
+            return this._audioRecorder.startWithTimeout(time, encodeAsMp3, requestId, requester);
+        }
+
+        return this._animatedWebpRecorder.startWithTimeout(time, encodeAsMp3, requester, image);
+    }
+
+    start(requestId: string, requester: Requester, image?: ImageRecordingRequest) {
+        this._recordingImage = image !== undefined;
+
+        if (image === undefined) {
+            return this._audioRecorder.start(requestId, requester);
+        }
+
+        return this._animatedWebpRecorder.start(requester, image);
+    }
+
+    stop(encodeAsMp3: boolean) {
+        return this._recordingImage
+            ? this._animatedWebpRecorder.stop(encodeAsMp3)
+            : this._audioRecorder.stop(encodeAsMp3);
     }
 }
 

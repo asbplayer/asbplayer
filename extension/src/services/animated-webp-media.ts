@@ -1,11 +1,4 @@
-import type {
-    AudioModel,
-    EncodeMp3InServiceWorkerMessage,
-    ExtensionToOffscreenDocumentCommand,
-    RecordMediaAndForwardSubtitleMessage,
-} from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
-import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
 import { isFirefoxBuild } from '@project/extension/src/services/build-flags';
 import { tabCaptureStreamId } from '@project/extension/src/services/video-capturer';
 
@@ -25,44 +18,4 @@ export const negotiateAnimatedWebp = async (settings: SettingsProvider, tabId: n
         tabCaptureStreamId(tabId),
     ]);
     return { streamId, fps, quality };
-};
-
-// Build the audio model from the audio recorded alongside an animated WebP, encoding to mp3 when
-// requested.
-export const animatedWebpAudioModel = async (
-    audioBase64: string | undefined,
-    encodeAsMp3: boolean,
-    timing: Pick<RecordMediaAndForwardSubtitleMessage, 'audioPaddingStart' | 'audioPaddingEnd' | 'playbackRate'>
-): Promise<AudioModel> => {
-    const { audioPaddingStart: paddingStart, audioPaddingEnd: paddingEnd, playbackRate } = timing;
-    const base: AudioModel = {
-        base64: '',
-        extension: encodeAsMp3 ? 'mp3' : 'webm',
-        paddingStart,
-        paddingEnd,
-        playbackRate,
-    };
-
-    if (!audioBase64) {
-        return base;
-    }
-
-    if (!encodeAsMp3) {
-        return { ...base, base64: audioBase64 };
-    }
-
-    return { ...base, base64: await encodeMp3(audioBase64) };
-};
-
-const encodeMp3 = async (audioBase64: string): Promise<string> => {
-    await ensureOffscreenAudioServiceDocument();
-    const command: ExtensionToOffscreenDocumentCommand<EncodeMp3InServiceWorkerMessage> = {
-        sender: 'asbplayer-extension-to-offscreen-document',
-        message: {
-            command: 'encode-mp3',
-            base64: audioBase64,
-            extension: 'webm',
-        },
-    };
-    return browser.runtime.sendMessage(command);
 };

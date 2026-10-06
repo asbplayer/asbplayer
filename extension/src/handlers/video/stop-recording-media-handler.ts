@@ -20,7 +20,6 @@ import {
     TimedRecordingInProgressError,
     NoRecordingInProgressServiceError,
 } from '@project/extension/src/services/audio-recorder-service';
-import { animatedWebpAudioModel } from '@project/extension/src/services/animated-webp-media';
 
 export default class StopRecordingMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -67,39 +66,8 @@ export default class StopRecordingMediaHandler {
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot stop recording media without a valid tab ID');
 
-        if (this._audioRecorder.animatedWebpRecording) {
-            await this._stopAnimatedWebp(stopRecordingCommand, subtitle, surroundingSubtitles, tabId);
-            return;
-        }
-
-        if (stopRecordingCommand.message.screenshot) {
-            try {
-                let lastImageBase64 = this._imageCapturer.lastImageBase64;
-
-                if (lastImageBase64 === undefined) {
-                    const { maxWidth, maxHeight, rect, frameId } = stopRecordingCommand.message;
-                    lastImageBase64 = await this._imageCapturer.capture(tabId, stopRecordingCommand.src, 0, {
-                        maxWidth,
-                        maxHeight,
-                        rect,
-                        frameId,
-                        trimBlackBars: stopRecordingCommand.message.trimBlackBars,
-                    });
-                }
-
-                imageModel = {
-                    base64: lastImageBase64,
-                    extension: 'jpeg',
-                };
-            } catch (e) {
-                asbError('recording/screenshot', e);
-                imageModel = {
-                    base64: '',
-                    extension: 'jpeg',
-                    error: ImageErrorCode.captureFailed,
-                };
-            }
-        }
+        // The screenshot taken when recording started, if any. Read before stopping, which can take a while.
+        const lastImageBase64 = this._imageCapturer.lastImageBase64;
 
         try {
             let encodeAsMp3 = false;
@@ -108,10 +76,19 @@ export default class StopRecordingMediaHandler {
                 encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
             }
 
-            const { audioBase64 } = await this._audioRecorder.stop(encodeAsMp3, {
+            const { audioBase64, image } = await this._audioRecorder.stop(encodeAsMp3, {
                 tabId,
                 src: stopRecordingCommand.src,
             });
+
+            if (image) {
+                // The recording captured an animated WebP, which takes the place of the screenshot
+                imageModel = { ...image, error: image.base64 ? undefined : ImageErrorCode.captureFailed };
+                this._notifyScreenshotTaken(stopRecordingCommand.src, tabId);
+            } else if (stopRecordingCommand.message.screenshot) {
+                imageModel = await this._screenshot(stopRecordingCommand, tabId, lastImageBase64);
+            }
+
             const audioModel: AudioModel = {
                 base64: audioBase64,
                 extension: encodeAsMp3 ? 'mp3' : 'webm',
@@ -152,69 +129,43 @@ export default class StopRecordingMediaHandler {
         }
     }
 
-    // The recording in progress is an animated WebP, so the image comes from stopping it rather than from
-    // a screenshot, and the audio was recorded in the same stream.
-    private async _stopAnimatedWebp(
+    private async _screenshot(
         stopRecordingCommand: VideoToExtensionCommand<StopRecordingMediaMessage>,
-        subtitle: SubtitleModel,
-        surroundingSubtitles: SubtitleModel[],
-        tabId: number
-    ) {
-        const { src, message } = stopRecordingCommand;
-
+        tabId: number,
+        lastImageBase64: string | undefined
+    ): Promise<ImageModel> {
         try {
-            let encodeAsMp3 = false;
-
-            if (message.postMineAction !== PostMineAction.showAnkiDialog) {
-                encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
+            if (lastImageBase64 === undefined) {
+                const { maxWidth, maxHeight, rect, frameId } = stopRecordingCommand.message;
+                lastImageBase64 = await this._imageCapturer.capture(tabId, stopRecordingCommand.src, 0, {
+                    maxWidth,
+                    maxHeight,
+                    rect,
+                    frameId,
+                    trimBlackBars: stopRecordingCommand.message.trimBlackBars,
+                });
             }
 
-            const { base64, audioBase64 } = await this._audioRecorder.stopAnimatedWebp({ tabId, src });
-            const imageModel: ImageModel = {
-                base64,
-                extension: 'webp',
-                error: base64 ? undefined : ImageErrorCode.captureFailed,
+            return {
+                base64: lastImageBase64,
+                extension: 'jpeg',
             };
-            const audioModel: AudioModel = {
-                ...(await animatedWebpAudioModel(audioBase64, encodeAsMp3, {
-                    audioPaddingStart: 0,
-                    audioPaddingEnd: 0,
-                    playbackRate: message.playbackRate,
-                })),
-                start: message.startTimestamp,
-                end: message.endTimestamp,
-            };
-
-            void this._cardPublisher.publish(
-                {
-                    subtitle: subtitle,
-                    surroundingSubtitles: surroundingSubtitles,
-                    image: imageModel,
-                    audio: audioModel,
-                    url: message.url,
-                    subtitleFileName: message.subtitleFileName,
-                    mediaTimestamp: message.startTimestamp,
-                },
-                message.postMineAction,
-                tabId,
-                src
-            );
         } catch (e) {
-            // Same benign stop conditions as audio: a timed recording that was just cut short is published
-            // by whoever started it, and there's nothing to do if recording already finished.
-            if (e instanceof TimedRecordingInProgressError || e instanceof NoRecordingInProgressServiceError) {
-                return;
-            }
-
-            throw e;
-        } finally {
-            // Restore the subtitles/controls that were hidden for a clean capture
-            const screenshotTakenCommand: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
-                sender: 'asbplayer-extension-to-video',
-                message: { command: 'screenshot-taken' },
-                src,
+            asbError('recording/screenshot', e);
+            return {
+                base64: '',
+                extension: 'jpeg',
+                error: ImageErrorCode.captureFailed,
             };
-            void browser.tabs.sendMessage(tabId, screenshotTakenCommand);
         }
+    }
+
+    private _notifyScreenshotTaken(src: string, tabId: number) {
+        const command: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
+            sender: 'asbplayer-extension-to-video',
+            message: { command: 'screenshot-taken' },
+            src,
+        };
+        void browser.tabs.sendMessage(tabId, command);
     }
 }

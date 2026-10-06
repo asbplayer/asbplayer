@@ -3,10 +3,8 @@ import type {
     ExtensionToVideoCommand,
     NotifyErrorMessage,
     RecordingFinishedMessage,
-    RecordAnimatedWebpResponse,
     RecordingStartedMessage,
     RequestActiveTabPermissionMessage,
-    ImageCaptureParams,
     StartRecordingResponse,
 } from '@project/common';
 import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
@@ -16,11 +14,6 @@ import type {
     ImageRecordingRequest,
     RecordedMedia,
 } from '@project/extension/src/services/audio-recorder-delegate';
-import {
-    recordAnimatedWebp,
-    startAnimatedWebp,
-    stopAnimatedWebp,
-} from '@project/extension/src/services/video-capturer';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Requester {
@@ -36,21 +29,6 @@ export class NoRecordingInProgressServiceError extends Error {}
 
 export class RecordingInProgressError extends Error {}
 
-export interface AnimatedWebpNegotiation {
-    streamId: string;
-    fps: number;
-    quality: number;
-}
-
-interface AnimatedWebpRecording {
-    requester: Requester;
-    // Whether it ends by itself after a fixed duration, as opposed to waiting for stopAnimatedWebp
-    timed: boolean;
-}
-
-// Owns the state of every media recording the extension makes - audio-only clips and animated-WebP clips
-// alike - so they share the same started/finished notifications and can't overlap. Both capture from the
-// tab's single tabCapture stream, which is why they have to exclude each other.
 export default class AudioRecorderService {
     private readonly _tabRegistry: TabRegistry;
     private readonly _delegate: AudioRecorderDelegate;
@@ -59,7 +37,9 @@ export default class AudioRecorderService {
     private mediaResolve?: (value: RecordedMedia) => void;
     private mediaReject?: (error: any) => void;
     private currentRecordRequestId: string | undefined;
-    private animatedWebp?: AnimatedWebpRecording;
+    // Set while a recording that also captures an image is starting or in progress. It holds the tab's only
+    // tabCapture stream, so nothing else can start until it's done.
+    private imageRecordingRequestId: string | undefined;
 
     constructor(tabRegistry: TabRegistry, delegate: AudioRecorderDelegate) {
         this._tabRegistry = tabRegistry;
@@ -100,7 +80,7 @@ export default class AudioRecorderService {
         const requestId = uuidv4();
 
         try {
-            this._assertNoAnimatedWebpRecording(requester);
+            this._assertCanStart(requestId, requester, image);
             const response = await this._delegate.startWithTimeout(time, encodeAsMp3, requestId, requester, image);
 
             if (response.started) {
@@ -110,142 +90,47 @@ export default class AudioRecorderService {
 
             throw this._handleStartError(response, requester);
         } finally {
+            this._endImageRecording(requestId);
             this._notifyRecordingFinished(requester);
         }
     }
 
     async start(requester: Requester, image?: ImageRecordingRequest) {
+        const requestId = uuidv4();
+
         try {
-            this._assertNoAnimatedWebpRecording(requester);
-            const requestId = uuidv4();
+            this._assertCanStart(requestId, requester, image);
             const response = await this._delegate.start(requestId, requester, image);
 
             if (!response.started) {
                 throw this._handleStartError(response, requester);
             }
 
-            void this._prepareForMediaResponse(requestId, response.result);
+            const end = () => this._endImageRecording(requestId);
+            void this._prepareForMediaResponse(requestId, response.result).then(end, end);
             this._notifyRecordingStarted(requester);
         } catch (e) {
+            this._endImageRecording(requestId);
             this._notifyRecordingFinished(requester);
             throw e;
         }
     }
 
-    get animatedWebpRecording() {
-        return this.animatedWebp !== undefined;
-    }
-
-    // Records an animated WebP (plus audio, when requested) for a fixed duration. Can be cut short with
-    // stopAnimatedWebp, in which case this still resolves with what was captured.
-    async recordAnimatedWebpWithTimeout(
-        durationMs: number,
-        recordAudio: boolean,
-        captureParams: ImageCaptureParams,
-        requester: Requester,
-        negotiation?: AnimatedWebpNegotiation,
-        // Used if the capture that was armed ahead of time turned out to be gone by the time it was needed
-        renegotiate?: () => Promise<AnimatedWebpNegotiation>
-    ): Promise<RecordAnimatedWebpResponse> {
-        const recording = this._beginAnimatedWebp(requester, true);
-        this._notifyRecordingStarted(requester);
-
-        try {
-            const record = (negotiation?: AnimatedWebpNegotiation) =>
-                recordAnimatedWebp(requester.tabId, requester.src, durationMs, recordAudio, captureParams, negotiation);
-            const response = await record(negotiation);
-
-            if (response.armedCaptureMissing && renegotiate) {
-                return await record(await renegotiate());
-            }
-
-            return response;
-        } finally {
-            this._endAnimatedWebp(recording);
-        }
-    }
-
-    // Starts an open-ended animated WebP recording that runs until stopAnimatedWebp.
-    async startAnimatedWebp(
-        recordAudio: boolean,
-        captureParams: ImageCaptureParams,
-        requester: Requester,
-        negotiation: AnimatedWebpNegotiation
-    ) {
-        const recording = this._beginAnimatedWebp(requester, false);
-
-        try {
-            const response = await startAnimatedWebp(
-                requester.tabId,
-                requester.src,
-                recordAudio,
-                captureParams,
-                negotiation
-            );
-
-            if (!response.started) {
-                const errorMessage = `Failed to start animated WebP recording: "${response.error}"`;
-                this._notifyError(errorMessage, requester);
-                throw new Error(errorMessage);
-            }
-
-            this._notifyRecordingStarted(requester);
-        } catch (e) {
-            this._endAnimatedWebp(recording);
-            throw e;
-        }
-    }
-
-    async stopAnimatedWebp(requester: Requester): Promise<RecordAnimatedWebpResponse> {
-        const recording = this.animatedWebp;
-
-        if (recording === undefined) {
-            // Benign no-op, same as stopping audio when nothing is recording
-            this._notifyRecordingFinished(requester);
-            throw new NoRecordingInProgressServiceError();
-        }
-
-        let response: RecordAnimatedWebpResponse;
-
-        try {
-            response = await stopAnimatedWebp(recording.requester.tabId, recording.requester.src);
-        } catch (e) {
-            this._endAnimatedWebp(recording);
-            throw e;
-        }
-
-        if (recording.timed) {
-            // The timed recording was cut short and its original caller publishes the card, so there is
-            // nothing for this caller to do.
-            throw new TimedRecordingInProgressError();
-        }
-
-        this._endAnimatedWebp(recording);
-        return response;
-    }
-
-    private _beginAnimatedWebp(requester: Requester, timed: boolean): AnimatedWebpRecording {
-        if (this.animatedWebp !== undefined || this.mediaPromise !== undefined) {
-            // Let the requester leave its "recording requested" state, like a rejected audio start does
-            this._notifyRecordingFinished(requester);
+    // A new audio-only recording replaces a pending audio-only one, but a recording that captures an image
+    // can't be replaced or replace another one, since the tab can only be captured once at a time.
+    private _assertCanStart(requestId: string, requester: Requester, image?: ImageRecordingRequest) {
+        if (this.imageRecordingRequestId !== undefined || (image !== undefined && this.mediaPromise !== undefined)) {
             throw this._recordingInProgress(requester);
         }
 
-        this.animatedWebp = { requester, timed };
-        return this.animatedWebp;
-    }
-
-    private _endAnimatedWebp(recording: AnimatedWebpRecording) {
-        if (this.animatedWebp === recording) {
-            this.animatedWebp = undefined;
+        if (image !== undefined) {
+            this.imageRecordingRequestId = requestId;
         }
-
-        this._notifyRecordingFinished(recording.requester);
     }
 
-    private _assertNoAnimatedWebpRecording(requester: Requester) {
-        if (this.animatedWebp !== undefined) {
-            throw this._recordingInProgress(requester);
+    private _endImageRecording(requestId: string) {
+        if (this.imageRecordingRequestId === requestId) {
+            this.imageRecordingRequestId = undefined;
         }
     }
 

@@ -15,16 +15,9 @@ import { AudioErrorCode, ImageErrorCode, PostMineAction } from '@project/common'
 import type { SettingsProvider } from '@project/common/settings';
 import type { CardPublisher } from '@project/extension/src/services/card-publisher';
 import type AudioRecorderService from '@project/extension/src/services/audio-recorder-service';
-import type { RecordedMedia } from '@project/extension/src/services/audio-recorder-delegate';
-import {
-    DrmProtectedStreamError,
-    RecordingInProgressError,
-} from '@project/extension/src/services/audio-recorder-service';
-import {
-    animatedWebpAudioModel,
-    negotiateAnimatedWebp,
-    shouldUseAnimatedWebp,
-} from '@project/extension/src/services/animated-webp-media';
+import { DrmProtectedStreamError } from '@project/extension/src/services/audio-recorder-service';
+import type { ImageRecordingRequest, RecordedMedia } from '@project/extension/src/services/audio-recorder-delegate';
+import { shouldUseAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
 
 export default class RecordMediaHandler {
     private readonly _audioRecorder: AudioRecorderService;
@@ -63,9 +56,8 @@ export default class RecordMediaHandler {
     ) {
         const message = recordMediaCommand.message;
         const subtitle = message.subtitle;
-        const src = recordMediaCommand.src;
-        let audioPromise: Promise<RecordedMedia> | undefined;
-        let imagePromise: Promise<string> | undefined;
+        let mediaPromise: Promise<RecordedMedia> | undefined = undefined;
+        let imagePromise = undefined;
         let imageModel: ImageModel | undefined = undefined;
         let audioModel: AudioModel | undefined = undefined;
         let encodeAsMp3 = false;
@@ -73,80 +65,52 @@ export default class RecordMediaHandler {
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot record media without a valid tab ID');
 
-        // Capture window (subtitle duration adjusted for playback rate + padding), shared by audio
-        // recording and the animated-WebP capture.
-        const windowMs = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
+        // An animated WebP is recorded together with the audio, so it's requested from the recorder and takes
+        // the place of the screenshot.
+        const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = message;
+        const image: ImageRecordingRequest | undefined = (await shouldUseAnimatedWebp(this._settingsProvider, message))
+            ? {
+                  captureParams: { maxWidth, maxHeight, rect, frameId, trimBlackBars },
+                  armed: Boolean(message.animatedWebpArmed),
+              }
+            : undefined;
 
-        // An animated WebP captures the tab's video and audio together in a single stream, so it replaces
-        // the separate audio recording instead of adding to it.
-        const useAnimatedWebp = await shouldUseAnimatedWebp(this._settingsProvider, message);
+        if (message.record) {
+            const time = (subtitle.end - subtitle.start) / message.playbackRate + message.audioPaddingEnd;
 
-        if (message.record && message.postMineAction !== PostMineAction.showAnkiDialog) {
-            encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
-        }
-
-        if (message.record && !useAnimatedWebp) {
-            audioPromise = this._audioRecorder.startWithTimeout(windowMs, encodeAsMp3, {
-                src,
-                tabId,
-            });
-        }
-
-        if (useAnimatedWebp) {
-            const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = message;
-
-            try {
-                // When the content script already armed a capture before the seek (see binding.ts /
-                // animated-webp-capture.ts), skip re-negotiating settings and a tabCapture stream - it
-                // would just be discarded, and doing it again here is exactly the latency this avoids.
-                const negotiation = message.animatedWebpArmed
-                    ? undefined
-                    : await negotiateAnimatedWebp(this._settingsProvider, tabId);
-                const { base64, audioBase64 } = await this._audioRecorder.recordAnimatedWebpWithTimeout(
-                    windowMs,
-                    message.record,
-                    { maxWidth, maxHeight, rect, frameId, trimBlackBars },
-                    { src, tabId },
-                    negotiation,
-                    () => negotiateAnimatedWebp(this._settingsProvider, tabId)
-                );
-                imageModel = {
-                    base64,
-                    extension: 'webp',
-                    error: base64 ? undefined : ImageErrorCode.captureFailed,
-                };
-                audioModel = await animatedWebpAudioModel(audioBase64, encodeAsMp3, message);
-            } catch (e) {
-                if (e instanceof RecordingInProgressError) {
-                    throw e;
-                }
-
-                asbError('recording/animated-webp', e);
-                imageModel = { base64: '', extension: 'webp', error: ImageErrorCode.captureFailed };
-            } finally {
-                // The audio recorder service signals the recording state, but the screenshot path normally
-                // restores the subtitles/controls that were hidden for a clean capture.
-                this._notifyScreenshotTaken(src, tabId);
+            if (message.postMineAction !== PostMineAction.showAnkiDialog) {
+                encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
             }
-        } else if (message.screenshot) {
-            const { maxWidth, maxHeight, rect, frameId } = message;
+
+            mediaPromise = this._audioRecorder.startWithTimeout(
+                time,
+                encodeAsMp3,
+                {
+                    src: recordMediaCommand.src,
+                    tabId,
+                },
+                image
+            );
+        }
+
+        if (message.screenshot && image === undefined) {
             const screenshotDelay = Math.max(
                 0,
                 message.record
                     ? message.mediaTimestamp - subtitle.start + message.audioPaddingStart
                     : message.imageDelay
             );
-            imagePromise = this._imageCapturer.capture(tabId, src, screenshotDelay, {
+            imagePromise = this._imageCapturer.capture(tabId, recordMediaCommand.src, screenshotDelay, {
                 maxWidth,
                 maxHeight,
                 rect,
                 frameId,
                 trimBlackBars: recordMediaCommand.message.trimBlackBars,
             });
-            void imagePromise.finally(() => this._notifyScreenshotTaken(src, tabId));
+            void imagePromise.finally(() => this._notifyScreenshotTaken(recordMediaCommand.src, tabId));
         }
 
-        if (audioPromise) {
+        if (mediaPromise) {
             const { audioPaddingStart: paddingStart, audioPaddingEnd: paddingEnd, playbackRate } = message;
             const baseAudioModel: AudioModel = {
                 base64: '',
@@ -157,11 +121,18 @@ export default class RecordMediaHandler {
             };
 
             try {
-                const { audioBase64 } = await audioPromise;
+                const media = await mediaPromise;
                 audioModel = {
                     ...baseAudioModel,
-                    base64: audioBase64,
+                    base64: media.audioBase64,
                 };
+
+                if (media.image) {
+                    imageModel = {
+                        ...media.image,
+                        error: media.image.base64 ? undefined : ImageErrorCode.captureFailed,
+                    };
+                }
             } catch (e) {
                 if (!(e instanceof DrmProtectedStreamError)) {
                     throw e;
@@ -171,6 +142,11 @@ export default class RecordMediaHandler {
                     ...baseAudioModel,
                     error: AudioErrorCode.drmProtected,
                 };
+            } finally {
+                if (image) {
+                    // Restore the subtitles/controls that were hidden for a clean capture
+                    this._notifyScreenshotTaken(recordMediaCommand.src, tabId);
+                }
             }
         }
 
