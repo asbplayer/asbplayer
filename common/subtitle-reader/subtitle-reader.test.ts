@@ -72,7 +72,7 @@ const srv3Document = (rows: string, mode = '0') =>
     '</body></timedtext>';
 
 describe('SubtitleReader YouTube pop-on captions', () => {
-    it('caps overlapping two-line cues at the next start, as in the affected response', async () => {
+    it('caps overlapping two-line cues at the next start', async () => {
         const rows =
             '<p t="0" d="6880" w="1">Walk into supermarkets in London, Delhi,\nor Johannesburg, and you&#39;ll find many of</p>' +
             '<p t="4760" d="7640" w="1">the same global [music] food brands. Kit\nKats, Maggi, Cerelac, Fanta. The</p>' +
