@@ -1,6 +1,7 @@
 import { muxAnimatedWebp } from '@project/common';
 import type { ImageCaptureParams, RectModel } from '@project/common';
 import type Binding from '@project/extension/src/services/binding';
+import AudioRecorder from '@project/extension/src/services/audio-recorder';
 import { bufferToBase64 } from '@project/common/base64';
 
 const animatedWebpMaxFrames = 90;
@@ -25,22 +26,6 @@ const canvasToWebpBytes = (canvas: HTMLCanvasElement, quality: number): Promise<
             quality
         );
     });
-
-const recordTrack = (track: MediaStreamTrack, mimeType: string): { stop: () => Promise<Blob> } => {
-    const recorder = new MediaRecorder(new MediaStream([track]));
-    const chunks: BlobPart[] = [];
-    recorder.ondataavailable = (e) => chunks.push(e.data);
-    const stopped = new Promise<Blob>((resolve) => {
-        recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
-    });
-    recorder.start();
-    return {
-        stop: () => {
-            recorder.stop();
-            return stopped;
-        },
-    };
-};
 
 // The captured frame is the whole tab, so map the video element's CSS-pixel rect onto it (matching the
 // screenshot crop path). Derived once from the first frame.
@@ -284,8 +269,13 @@ const captureAnimatedWebp = async (
 
     try {
         // The tab is briefly muted while capturing (piping the captured audio back to keep the tab
-        // audible would feed back into tabCapture). The MediaRecorder still records the audio cleanly.
-        const audioRecording = audioTrack ? recordTrack(audioTrack, 'audio/webm') : undefined;
+        // audible would feed back into tabCapture), hence doNotManageStream. The audio is still recorded cleanly.
+        let audioRecorder: AudioRecorder | undefined;
+
+        if (audioTrack) {
+            audioRecorder = new AudioRecorder();
+            await audioRecorder.start(new MediaStream([audioTrack]), true);
+        }
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d')!;
@@ -351,8 +341,8 @@ const captureAnimatedWebp = async (
             await reader.cancel().catch(() => {});
         }
 
-        if (audioRecording) {
-            audioBase64 = bufferToBase64(await (await audioRecording.stop()).arrayBuffer());
+        if (audioRecorder) {
+            audioBase64 = await audioRecorder.stop(true);
         }
     } finally {
         capture.stream.getTracks().forEach((t) => t.stop());
