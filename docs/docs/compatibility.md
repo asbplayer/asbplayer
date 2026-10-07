@@ -51,3 +51,5 @@ sidebar_position: 7
 | Comprehensible Japanese |                                                                                            ✓                                                                                             |
 | SVT Play                |                                                                                            ✓                                                                                             |
 | UR Play                 |                                                                                            ✓                                                                                             |
+
+On Bilibili, wait for the site's subtitles to appear in the player before opening asbplayer's subtitle selector. Subtitle loading may take longer when using a VPN, and opening the selector before the subtitles have loaded may show no tracks.
