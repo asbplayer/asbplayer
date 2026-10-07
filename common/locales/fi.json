@@ -501,7 +501,7 @@
         "subtitleBlurDescription": "Piilottaa valitut tekstityskappaleet hämärtämällä niitä. Voi olla puristumaton hiiren liikutuksessa.",
         "tabName": "Sarkaimen nimi",
         "subtitleRegexFilter": "Tekstityksen regex suodatin",
-        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
+        "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "Tekstitys regex suodatin tekstin korvaaminen",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "Tekstityksen HTML",

@@ -501,7 +501,7 @@
         "subtitleBlurDescription": "Скрывает выбранные дорожки субтитров, размывая их. Показывается обратно при наведении мыши.",
         "tabName": "Название вкладки",
         "subtitleRegexFilter": "Пропускать субтитры через фильтр с регулярным выражением",
-        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
+        "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "Текст на замену при использовании регулярных выражений",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "HTML субтитров",

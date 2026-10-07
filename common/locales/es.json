@@ -501,7 +501,7 @@
         "subtitleBlurDescription": "Oculta las pistas de subtítulos seleccionadas desenfocándolas. Pueden enfocarse nuevamente al pasar el ratón por encima.",
         "tabName": "Nombre de la pestaña",
         "subtitleRegexFilter": "Filtro regex para subtítulos",
-        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
+        "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "Texto de reemplazo para el filtro regex",
         "convertNetflixRuby": "Detectar y mostrar anotaciones Ruby",
         "subtitleHtml": "HTML de subtítulos",

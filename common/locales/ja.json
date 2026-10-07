@@ -501,7 +501,7 @@
         "subtitleBlurDescription": "字幕トラックをぼかします。マウスホバーでぼかしを解除できます。",
         "tabName": "タブ名",
         "subtitleRegexFilter": "字幕の正規表現フィルタ",
-        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
+        "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "字幕の正規表現フィルタの置き換えテキスト",
         "convertNetflixRuby": "ルビーを検出して表示",
         "subtitleHtml": "字幕に含まれるHTML",

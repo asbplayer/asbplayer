@@ -501,7 +501,7 @@
         "subtitleBlurDescription": "通过模糊处理隐藏选定字幕，鼠标悬停时可恢复清晰。",
         "tabName": "选项卡名称",
         "subtitleRegexFilter": "字幕正则过滤器",
-        "subtitleRegexFilterHelperText": "See the <0>guide and examples</0> for subtitle text filtering.",
+        "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "正则替换文本",
         "convertNetflixRuby": "转换并显示注音（Ruby）",
         "subtitleHtml": "网页代码解析",
