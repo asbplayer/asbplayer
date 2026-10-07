@@ -4,14 +4,8 @@ import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { AsbplayerSettings } from '@project/common/settings';
 import { ApplyStrategy, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
-import type { DictionaryLocalTokenInput, DictionaryTokenRecord } from '@project/common/dictionary-db/dictionary-db';
-import {
-    DictionaryDB,
-    LOCAL_TOKEN_TRACK,
-    _gatherModifiedTokens,
-    _getFromSourceBulk,
-    _saveRecordBulk,
-} from '@project/common/dictionary-db/dictionary-db';
+import type { DictionaryLocalTokenInput } from '@project/common/dictionary-db/dictionary-db';
+import { DictionaryDB, LOCAL_TOKEN_TRACK } from '@project/common/dictionary-db/dictionary-db';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
@@ -56,7 +50,8 @@ describe('DictionaryDB', () => {
         await privateDb(dictionaryDB).ankiCards.bulkPut(records);
     };
 
-    const allTokenRecords = async () => privateDb(dictionaryDB).tokens.toArray() as Promise<DictionaryTokenRecord[]>;
+    const allTokenRecords = async (recordProfile = profile) =>
+        (await dictionaryDB.getRecords(recordProfile, undefined)).tokenRecords;
 
     describe('ignored tokens', () => {
         const lemma = 'うわ';
@@ -209,117 +204,52 @@ describe('DictionaryDB', () => {
             await expect(dictionaryDB.getBulk(profile, track, [sibling])).resolves.toMatchObject({
                 [sibling]: { ...externalResult, states: [] },
             });
-            expect(
-                (await dictionaryDB.getRecords(profile, undefined)).tokenRecords.some(
-                    (r) => r.source === DictionaryTokenSource.LOCAL
-                )
-            ).toBe(false);
+            expect((await allTokenRecords()).some((r) => r.source === DictionaryTokenSource.LOCAL)).toBe(false);
         });
     });
 
-    it('normalizes undefined profiles to Default and keeps explicit profile values unchanged', () => {
-        expect((dictionaryDB as any)._getProfile(undefined)).toBe('Default');
-        expect((dictionaryDB as any)._getProfile(profile)).toBe(profile);
-        expect((dictionaryDB as any)._getProfile('')).toBe('');
-    });
-
-    it('maps card statuses by unique card ID while respecting profile and track boundaries', async () => {
-        await seedAnkiCards(
-            makeAnkiCardRecord({ cardId: 1, status: TokenStatus.UNKNOWN }),
-            makeAnkiCardRecord({ cardId: 2, status: TokenStatus.MATURE, suspended: true }),
-            makeAnkiCardRecord({ cardId: 3, track: otherTrack, status: TokenStatus.GRADUATED }),
-            makeAnkiCardRecord({ cardId: 4, profile: otherProfile, status: TokenStatus.YOUNG })
-        );
-
-        await expect((dictionaryDB as any)._cardStatusMap(profile, track, [])).resolves.toEqual(new Map());
-        await expect((dictionaryDB as any)._cardStatusMap(profile, track, [1, 1, 2, 3, 4])).resolves.toEqual(
-            new Map([
-                [1, { cardId: 1, status: TokenStatus.UNKNOWN, suspended: false }],
-                [2, { cardId: 2, status: TokenStatus.MATURE, suspended: true }],
-            ])
-        );
-    });
-
-    it('maps statuses only from the record source', () => {
-        const ankiStatus = { cardId: 1, status: TokenStatus.MATURE, suspended: false };
-        const waniKaniStatus = {
-            waniKani: { subjectId: 1, subjectLevel: 2 },
-            status: TokenStatus.YOUNG,
-            suspended: false,
-        };
-        const cardStatusMap = new Map([[1, ankiStatus]]);
-        const waniKaniSubjectStatusMap = new Map([[1, waniKaniStatus]]);
-
-        expect(
-            (dictionaryDB as any)._statusesFromRecord(
-                makeTokenRecord({ source: DictionaryTokenSource.ANKI_WORD, cardIds: [1] }),
-                cardStatusMap,
-                waniKaniSubjectStatusMap
-            )
-        ).toEqual([ankiStatus]);
-        expect(
-            (dictionaryDB as any)._statusesFromRecord(
-                makeTokenRecord({ source: DictionaryTokenSource.WANIKANI, cardIds: [1] }),
-                cardStatusMap,
-                waniKaniSubjectStatusMap
-            )
-        ).toEqual([waniKaniStatus]);
-        expect(
-            (dictionaryDB as any)._statusesFromRecord(
-                makeTokenRecord({ source: DictionaryTokenSource.LOCAL, cardIds: [1] }),
-                cardStatusMap,
-                waniKaniSubjectStatusMap
-            )
-        ).toEqual([]);
-    });
-
-    it('converts token records to prioritized token results with ordered card statuses', async () => {
+    it('returns normalized token results through the public lookup boundary', async () => {
         await seedAnkiCards(
             makeAnkiCardRecord({ cardId: 1, status: TokenStatus.UNKNOWN }),
             makeAnkiCardRecord({ cardId: 2, status: TokenStatus.MATURE, suspended: true }),
             makeAnkiCardRecord({ cardId: 3, status: TokenStatus.GRADUATED })
         );
-
-        await expect((dictionaryDB as any)._tokenResultsFromRecords(profile, track, [], settings)).resolves.toEqual({});
-        const results = await (dictionaryDB as any)._tokenResultsFromRecords(
-            profile,
-            track,
-            [
-                makeTokenRecord({ token: 'local', status: TokenStatus.LEARNING, states: [TokenState.IGNORED] }),
-                makeTokenRecord({
-                    token: 'local',
-                    track,
-                    source: DictionaryTokenSource.ANKI_WORD,
-                    status: null,
-                    cardIds: [1],
-                }),
-                makeTokenRecord({
-                    token: 'word',
-                    track,
-                    source: DictionaryTokenSource.ANKI_SENTENCE,
-                    status: null,
-                    lemmas: ['word'],
-                    cardIds: [3],
-                }),
-                makeTokenRecord({
-                    token: 'word',
-                    track,
-                    source: DictionaryTokenSource.ANKI_WORD,
-                    status: null,
-                    lemmas: ['word'],
-                    cardIds: [2, 1],
-                }),
-                makeTokenRecord({
-                    token: 'sentence',
-                    track,
-                    source: DictionaryTokenSource.ANKI_SENTENCE,
-                    status: null,
-                    lemmas: ['sentence'],
-                    cardIds: [],
-                }),
-            ],
-            settings
+        await seedTokens(
+            makeTokenRecord({ token: 'local', status: TokenStatus.LEARNING, states: [TokenState.IGNORED] }),
+            makeTokenRecord({
+                token: 'local',
+                track,
+                source: DictionaryTokenSource.ANKI_WORD,
+                status: null,
+                cardIds: [1],
+            }),
+            makeTokenRecord({
+                token: 'word',
+                track,
+                source: DictionaryTokenSource.ANKI_SENTENCE,
+                status: null,
+                lemmas: ['word'],
+                cardIds: [3],
+            }),
+            makeTokenRecord({
+                token: 'word',
+                track,
+                source: DictionaryTokenSource.ANKI_WORD,
+                status: null,
+                lemmas: ['word'],
+                cardIds: [2, 1],
+            }),
+            makeTokenRecord({
+                token: 'sentence',
+                track,
+                source: DictionaryTokenSource.ANKI_SENTENCE,
+                status: null,
+                lemmas: ['sentence'],
+                cardIds: [],
+            })
         );
+
+        const results = await dictionaryDB.getBulk(profile, track, ['local', 'word', 'sentence']);
         expect(results).toMatchObject({
             local: {
                 source: DictionaryTokenSource.LOCAL,
@@ -344,10 +274,21 @@ describe('DictionaryDB', () => {
             { cardId: 1, status: TokenStatus.UNKNOWN, suspended: false },
         ]);
         expect(results.word.externalCandidateStatuses).toEqual([
-            { cardId: 3, status: TokenStatus.GRADUATED, suspended: false },
             { cardId: 2, status: TokenStatus.MATURE, suspended: true },
             { cardId: 1, status: TokenStatus.UNKNOWN, suspended: false },
+            { cardId: 3, status: TokenStatus.GRADUATED, suspended: false },
         ]);
+    });
+
+    it('normalizes undefined profiles through public writes and reads', async () => {
+        await expect(
+            dictionaryDB.saveRecordLocalBulk(
+                undefined,
+                [{ token: 'word', status: TokenStatus.UNKNOWN, lemmas: ['word'], states: [] }],
+                ApplyStrategy.ADD
+            )
+        ).resolves.toMatchObject({ savedTokens: expect.any(Array) });
+        await expect(dictionaryDB.getBulk(undefined, track, ['word'])).resolves.toHaveProperty('word');
     });
 
     it('returns empty results for empty bulk operations', async () => {
@@ -413,7 +354,9 @@ describe('DictionaryDB', () => {
                 states: [],
             },
         });
-        expect((await allTokenRecords()).find((record) => record.token === 'alpha')?.lemmas).toEqual(['alpha']);
+        expect((await allTokenRecords('Default')).find((record) => record.token === 'alpha')?.lemmas).toEqual([
+            'alpha',
+        ]);
     });
 
     it('does not mutate local token inputs while preparing them for persistence', async () => {
@@ -546,51 +489,30 @@ describe('DictionaryDB', () => {
         ]);
     });
 
-    it('fetches and saves token records through source helpers', async () => {
-        const localRecord = makeTokenRecord({ token: 'alpha' });
-        const ankiRecord = makeTokenRecord({
-            token: 'alpha',
-            track,
-            source: DictionaryTokenSource.ANKI_WORD,
-            status: null,
-            cardIds: [1],
+    it('saves local token inputs and reads them through the public lookup boundary', async () => {
+        await expect(
+            dictionaryDB.saveRecordLocalBulk(
+                profile,
+                [
+                    { token: 'alpha', status: TokenStatus.UNKNOWN, lemmas: ['alpha'], states: [] },
+                    { token: 'beta', status: TokenStatus.LEARNING, lemmas: ['beta'], states: [] },
+                ],
+                ApplyStrategy.ADD
+            )
+        ).resolves.toEqual({ savedTokens: [tokenKey('alpha'), tokenKey('beta')], deletedTokens: [] });
+
+        await expect(dictionaryDB.getBulk(profile, track, ['alpha', 'beta'])).resolves.toMatchObject({
+            alpha: {
+                source: DictionaryTokenSource.LOCAL,
+                statuses: [{ status: TokenStatus.UNKNOWN, suspended: false }],
+                states: [],
+            },
+            beta: {
+                source: DictionaryTokenSource.LOCAL,
+                statuses: [{ status: TokenStatus.LEARNING, suspended: false }],
+                states: [],
+            },
         });
-        const secondRecord = makeTokenRecord({ token: 'beta' });
-
-        await expect(_saveRecordBulk(privateDb(dictionaryDB), [])).resolves.toEqual([]);
-        await expect(
-            _getFromSourceBulk(privateDb(dictionaryDB), profile, LOCAL_TOKEN_TRACK, DictionaryTokenSource.LOCAL, [])
-        ).resolves.toEqual(new Map());
-        await expect(
-            _saveRecordBulk(privateDb(dictionaryDB), [localRecord, ankiRecord, secondRecord])
-        ).resolves.toEqual([
-            tokenKey('alpha'),
-            tokenKey('alpha', DictionaryTokenSource.ANKI_WORD, track),
-            tokenKey('beta'),
-        ]);
-        await expect(
-            _getFromSourceBulk(privateDb(dictionaryDB), profile, LOCAL_TOKEN_TRACK, DictionaryTokenSource.LOCAL, [
-                'alpha',
-                'beta',
-            ])
-        ).resolves.toEqual(
-            new Map([
-                ['alpha', localRecord],
-                ['beta', secondRecord],
-            ])
-        );
-    });
-
-    it('gathers modified tokens through lemma relationships within the same profile', async () => {
-        const modifiedTokens = new Set(['alpha']);
-        await seedTokens(
-            makeTokenRecord({ token: 'related', lemmas: ['alpha', 'related-lemma'] }),
-            makeTokenRecord({ token: 'other-profile-related', profile: otherProfile, lemmas: ['alpha'] })
-        );
-
-        await _gatherModifiedTokens(privateDb(dictionaryDB), profile, modifiedTokens);
-
-        expect(modifiedTokens).toEqual(new Set(['alpha', 'related', 'related-lemma']));
     });
 
     it('prioritizes local, Anki word, then Anki sentence records for token lookups', async () => {
@@ -1124,11 +1046,12 @@ describe('DictionaryDB', () => {
             deletedWaniKaniAssignments: [],
         });
         await expect(dictionaryDB.getBulk(profile, track, ['alpha'])).resolves.toEqual({});
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toBeUndefined();
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track]).toBeUndefined();
         await expect(dictionaryDB.getBulk(otherProfile, track, ['other-profile'])).resolves.toHaveProperty(
             'other-profile'
         );
-        await expect(privateDb(dictionaryDB).ankiCards.count()).resolves.toBe(1);
-        await expect(privateDb(dictionaryDB).ankiCards.where('profile').equals(otherProfile).count()).resolves.toBe(1);
+        expect((await dictionaryDB.getRecords(otherProfile, track)).ankiCardRecords[track]).toEqual({
+            2: expect.objectContaining({ cardId: 2, profile: otherProfile }),
+        });
     });
 });

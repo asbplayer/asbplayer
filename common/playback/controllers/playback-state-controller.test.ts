@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
+import { configureLogProvider, LogProvider } from '@project/common/util/log';
+import type { LogLine } from '@project/common/util/log-utils';
 
 const subtitles: readonly IndexedSubtitleModel[] = [
     {
@@ -42,6 +44,65 @@ const makeController = () => {
 };
 
 describe('PlaybackStateController', () => {
+    it('traces layout transitions without repeating traces for periodic or forced notifications', async () => {
+        const lines: LogLine[] = [];
+        const playbackStates: PlaybackState[] = [];
+        const provider = new LogProvider({
+            append: async (batch) => {
+                lines.push(...batch);
+            },
+            getLogs: async () => ({ lines }),
+        });
+        await configureLogProvider(provider);
+        lines.length = 0;
+        let visible = true;
+        let paused = false;
+        const controller = new PlaybackStateController({
+            paused: () => paused,
+            showingSubtitlesAt: () => [subtitles[0]],
+            invisibleSubtitlesAt: (timestampMs) => (timestampMs >= 600 ? [subtitles[1]] : []),
+            subtitlesVisible: () => visible,
+            playbackStateChanged: (state) => playbackStates.push(state),
+            now: () => 2000,
+        });
+        controller.bind();
+        controller.notify(500, { force: false });
+        controller.notify(550, { force: true });
+        paused = true;
+        controller.notify(575, { force: false });
+        controller.notify(600, { force: false });
+        visible = false;
+        controller.notify(700, { force: false });
+        controller.notify(800, { force: true });
+
+        const traces = (await provider.getLogLines()).filter((line) => line.label === 'playback/subtitles');
+        expect(traces.map((line) => JSON.parse(line.msg.slice(line.msg.indexOf('{'))))).toEqual([
+            {
+                timestampMs: 500,
+                paused: false,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [],
+                hiddenSubtitleIndexes: [],
+            },
+            {
+                timestampMs: 600,
+                paused: true,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [1],
+                hiddenSubtitleIndexes: [],
+            },
+            {
+                timestampMs: 700,
+                paused: true,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [1],
+                hiddenSubtitleIndexes: [0, 1],
+            },
+        ]);
+        expect(playbackStates.map(({ timestampMs }) => timestampMs)).toEqual([500, 550, 575, 600, 700, 800]);
+        expect(playbackStates[2]).toMatchObject({ paused: true });
+    });
+
     it('publishes invisible indexes for layout placeholders', () => {
         const playbackStates: PlaybackState[] = [];
         const controller = new PlaybackStateController({
