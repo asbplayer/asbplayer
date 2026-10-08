@@ -454,6 +454,12 @@ const settingsSchema = {
         trimBlackBars: {
             type: 'boolean',
         },
+        animatedImageFps: {
+            type: 'number',
+        },
+        animatedImageQuality: {
+            type: 'number',
+        },
         surroundingSubtitlesCountRadius: {
             type: 'number',
         },

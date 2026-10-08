@@ -6,6 +6,7 @@ import TabRegistry from '@/services/tab-registry';
 import ImageCapturer from '@/services/image-capturer';
 import VideoHeartbeatHandler from '@/handlers/video/video-heartbeat-handler';
 import RecordMediaHandler from '@/handlers/video/record-media-handler';
+import PrepareAnimatedWebpRecordingHandler from '@/handlers/video/prepare-animated-webp-recording-handler';
 import RerecordMediaHandler from '@/handlers/video/rerecord-media-handler';
 import StartRecordingMediaHandler from '@/handlers/video/start-recording-media-handler';
 import StopRecordingMediaHandler from '@/handlers/video/stop-recording-media-handler';
@@ -56,7 +57,12 @@ import BulkExportCancellationHandler from '@/handlers/asbplayerv2/bulk-export-ca
 import BulkExportStartedHandler from '@/handlers/asbplayerv2/bulk-export-started-handler';
 import { bindWebSocketClient, unbindWebSocketClient } from '@/services/web-socket-client-binding';
 import { isFirefoxBuild } from '@/services/build-flags';
-import { CaptureStreamAudioRecorder, OffscreenAudioRecorder } from '@/services/audio-recorder-delegate';
+import {
+    CaptureStreamAudioRecorder,
+    ChromeMediaRecorder,
+    OffscreenAudioRecorder,
+} from '@/services/audio-recorder-delegate';
+import AnimatedWebpRecorder from '@/services/animated-webp-recorder';
 import RequestModelHandler from '@/handlers/mobile-overlay/request-model-handler';
 import CurrentTabHandler from '@/handlers/current-tab-handler';
 import UpdateMobileOverlayModelHandler from '@/handlers/video/update-mobile-overlay-model-handler';
@@ -180,7 +186,9 @@ export default defineBackground(() => {
     const tabRegistry = new TabRegistry(settings);
     const audioRecorder = new AudioRecorderService(
         tabRegistry,
-        isFirefoxBuild ? new CaptureStreamAudioRecorder() : new OffscreenAudioRecorder()
+        isFirefoxBuild
+            ? new CaptureStreamAudioRecorder()
+            : new ChromeMediaRecorder(new OffscreenAudioRecorder(), new AnimatedWebpRecorder(settings))
     );
     const imageCapturer = new ImageCapturer(settings);
     const cardPublisher = new CardPublisher(settings);
@@ -189,6 +197,7 @@ export default defineBackground(() => {
     const handlers: CommandHandler[] = [
         new VideoHeartbeatHandler(tabRegistry),
         new RecordMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
+        new PrepareAnimatedWebpRecordingHandler(settings),
         new RerecordMediaHandler(settings, audioRecorder, cardPublisher),
         new StartRecordingMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),
         new StopRecordingMediaHandler(audioRecorder, imageCapturer, cardPublisher, settings),

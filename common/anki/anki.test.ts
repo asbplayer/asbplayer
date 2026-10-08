@@ -42,6 +42,8 @@ const testAnkiSettings: AnkiSettings = {
     mediaFragmentTrimEnd: 200,
     mediaFragmentMaxClipLength: 10000,
     trimBlackBars: false,
+    animatedImageFps: 10,
+    animatedImageQuality: 0.85,
     surroundingSubtitlesCountRadius: 0,
     surroundingSubtitlesTimeRadius: 0,
     ankiFieldSettings: {
@@ -1035,6 +1037,52 @@ describe('Anki', () => {
                 },
             ],
         ]);
+    });
+
+    it('exports a default note with an animated webp media fragment as a regular picture', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValue(ankiConnectResponse(323));
+        const image = makeImage({ name: 'clip:name?.webp', extension: 'webp' });
+        const anki = new Anki(testAnkiSettings, fetcher);
+
+        const result = await anki.export(makeExportArguments({ audioClip: undefined, image }));
+
+        expect(result).toEqual(323);
+        expect(image.base64Reads).toBe(1);
+        expect(fetcher.fetch).toHaveBeenCalledTimes(1);
+        expect(fetcher.fetch.mock.calls[0][1]).toMatchObject({
+            action: 'addNote',
+            params: {
+                note: {
+                    picture: { filename: 'asbp_clip_name_.webp', data: 'image-base64', fields: ['Image'] },
+                },
+            },
+        });
+    });
+
+    it('exports GUI notes with animated webp media fragments using image html', async () => {
+        const fetcher = new MockFetcher();
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse('stored-clip.webp'));
+        fetcher.fetch.mockResolvedValueOnce(ankiConnectResponse(656));
+        const anki = new Anki(testAnkiSettings, fetcher);
+
+        const result = await anki.export(
+            makeExportArguments({
+                audioClip: undefined,
+                image: makeImage({ name: 'clip:name?.webp', extension: 'webp' }),
+                mode: 'gui',
+            })
+        );
+
+        expect(result).toEqual(656);
+        expect(fetcher.fetch.mock.calls[0][1]).toMatchObject({
+            action: 'storeMediaFile',
+            params: { filename: expect.stringMatching(/^asbp_clip_name__[A-Za-z0-9]{8}\.webp$/) },
+        });
+        expect(fetcher.fetch.mock.calls[1][1]).toMatchObject({
+            action: 'guiAddCards',
+            params: { note: { fields: { Image: '<img src="stored-clip.webp">' } } },
+        });
     });
 
     it('uses the per-export AnkiConnect URL override for default exports', async () => {

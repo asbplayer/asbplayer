@@ -4,8 +4,10 @@ import type ImageCapturer from '@project/extension/src/services/image-capturer';
 import type {
     AudioModel,
     Command,
+    ExtensionToVideoCommand,
     ImageModel,
     Message,
+    ScreenshotTakenMessage,
     StopRecordingMediaMessage,
     SubtitleModel,
     VideoToExtensionCommand,
@@ -64,34 +66,8 @@ export default class StopRecordingMediaHandler {
         const tabId = sender.tab?.id;
         if (tabId === undefined) throw new Error('Cannot stop recording media without a valid tab ID');
 
-        if (stopRecordingCommand.message.screenshot) {
-            try {
-                let lastImageBase64 = this._imageCapturer.lastImageBase64;
-
-                if (lastImageBase64 === undefined) {
-                    const { maxWidth, maxHeight, rect, frameId } = stopRecordingCommand.message;
-                    lastImageBase64 = await this._imageCapturer.capture(tabId, stopRecordingCommand.src, 0, {
-                        maxWidth,
-                        maxHeight,
-                        rect,
-                        frameId,
-                        trimBlackBars: stopRecordingCommand.message.trimBlackBars,
-                    });
-                }
-
-                imageModel = {
-                    base64: lastImageBase64,
-                    extension: 'jpeg',
-                };
-            } catch (e) {
-                asbError('recording/screenshot', e);
-                imageModel = {
-                    base64: '',
-                    extension: 'jpeg',
-                    error: ImageErrorCode.captureFailed,
-                };
-            }
-        }
+        // The screenshot taken when recording started, if any. Read before stopping, which can take a while.
+        const lastImageBase64 = this._imageCapturer.lastImageBase64;
 
         try {
             let encodeAsMp3 = false;
@@ -100,10 +76,19 @@ export default class StopRecordingMediaHandler {
                 encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
             }
 
-            const audioBase64 = await this._audioRecorder.stop(encodeAsMp3, {
+            const { audioBase64, image } = await this._audioRecorder.stop(encodeAsMp3, {
                 tabId,
                 src: stopRecordingCommand.src,
             });
+
+            if (image) {
+                // The recording captured an animated WebP, which takes the place of the screenshot
+                imageModel = { ...image, error: image.base64 ? undefined : ImageErrorCode.captureFailed };
+                this._notifyScreenshotTaken(stopRecordingCommand.src, tabId);
+            } else if (stopRecordingCommand.message.screenshot) {
+                imageModel = await this._screenshot(stopRecordingCommand, tabId, lastImageBase64);
+            }
+
             const audioModel: AudioModel = {
                 base64: audioBase64,
                 extension: encodeAsMp3 ? 'mp3' : 'webm',
@@ -142,5 +127,45 @@ export default class StopRecordingMediaHandler {
 
             throw e;
         }
+    }
+
+    private async _screenshot(
+        stopRecordingCommand: VideoToExtensionCommand<StopRecordingMediaMessage>,
+        tabId: number,
+        lastImageBase64: string | undefined
+    ): Promise<ImageModel> {
+        try {
+            if (lastImageBase64 === undefined) {
+                const { maxWidth, maxHeight, rect, frameId } = stopRecordingCommand.message;
+                lastImageBase64 = await this._imageCapturer.capture(tabId, stopRecordingCommand.src, 0, {
+                    maxWidth,
+                    maxHeight,
+                    rect,
+                    frameId,
+                    trimBlackBars: stopRecordingCommand.message.trimBlackBars,
+                });
+            }
+
+            return {
+                base64: lastImageBase64,
+                extension: 'jpeg',
+            };
+        } catch (e) {
+            asbError('recording/screenshot', e);
+            return {
+                base64: '',
+                extension: 'jpeg',
+                error: ImageErrorCode.captureFailed,
+            };
+        }
+    }
+
+    private _notifyScreenshotTaken(src: string, tabId: number) {
+        const command: ExtensionToVideoCommand<ScreenshotTakenMessage> = {
+            sender: 'asbplayer-extension-to-video',
+            message: { command: 'screenshot-taken' },
+            src,
+        };
+        void browser.tabs.sendMessage(tabId, command);
     }
 }

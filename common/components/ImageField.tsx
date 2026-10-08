@@ -73,7 +73,7 @@ export default function ImageField({ image, onViewImage, onCopyImageToClipboard,
     const classes = useStyles({ dataUrl });
     const { imageHelperText, imageAvailable } = useImageHelperText(image);
     const resizeRatio = height === 0 ? 0 : 20 / height;
-    const copyAllowed = copyEnabled && image.extension !== 'webm';
+    const copyAllowed = copyEnabled && image.extension !== 'webm' && image.extension !== 'webp';
 
     return (
         <div className={classes.root} onClick={onViewImage}>

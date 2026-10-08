@@ -5,10 +5,21 @@ import VideoSelectController from '@/controllers/video-select-controller';
 import type {
     CopyToClipboardMessage,
     CropAndResizeMessage,
+    RecordAnimatedWebpMessage,
+    StartAnimatedWebpMessage,
     TabToExtensionCommand,
     ToggleSidePanelMessage,
 } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
+import {
+    activeAnimatedWebpCapture,
+    animatedWebpCaptureOptions,
+    discardArmedAnimatedWebpCapture,
+    NoArmedAnimatedWebpCaptureError,
+    releaseAnimatedWebpCapture,
+    startAnimatedWebpCapture,
+    takeOrArmAnimatedWebpCapture,
+} from '@/services/animated-webp-capture';
 import { FrameInfoBroadcaster, FrameInfoListener } from '@/services/frame-info';
 import { cropAndResize } from '@project/common/src/image-transformer';
 import { TabAnkiUiController } from '@/controllers/tab-anki-ui-controller';
@@ -267,6 +278,73 @@ export default defineContentScript({
                             cropAndResizeMessage.dataUrl,
                             cropAndResizeMessage.trimBlackBars
                         ).then((dataUrl) => sendResponse({ dataUrl }));
+                        return true;
+                    }
+                    case 'record-animated-webp': {
+                        const recordAnimatedWebpMessage = request.message as RecordAnimatedWebpMessage;
+
+                        (async () => {
+                            const capture = await takeOrArmAnimatedWebpCapture(recordAnimatedWebpMessage);
+                            return startAnimatedWebpCapture(
+                                capture,
+                                animatedWebpCaptureOptions(
+                                    recordAnimatedWebpMessage,
+                                    bindings.find((b) => b.registeredVideoSrc === request.src),
+                                    frameInfoListener?.iframesById,
+                                    recordAnimatedWebpMessage.durationMs
+                                )
+                            ).result;
+                        })()
+                            .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
+                            .catch((e) => {
+                                asbError('recording/animated-webp', e);
+                                sendResponse({
+                                    base64: '',
+                                    error: String(e?.message ?? e),
+                                    armedCaptureMissing: e instanceof NoArmedAnimatedWebpCaptureError,
+                                });
+                            });
+                        return true;
+                    }
+                    case 'start-animated-webp': {
+                        const startAnimatedWebpMessage = request.message as StartAnimatedWebpMessage;
+
+                        (async () => {
+                            // A manual start has no mining seek to arm ahead of, so anything armed is stale
+                            discardArmedAnimatedWebpCapture();
+                            const capture = await takeOrArmAnimatedWebpCapture(startAnimatedWebpMessage);
+                            startAnimatedWebpCapture(
+                                capture,
+                                animatedWebpCaptureOptions(
+                                    startAnimatedWebpMessage,
+                                    bindings.find((b) => b.registeredVideoSrc === request.src),
+                                    frameInfoListener?.iframesById
+                                )
+                            );
+                        })()
+                            .then(() => sendResponse({ started: true }))
+                            .catch((e) => {
+                                asbError('recording/animated-webp', e);
+                                sendResponse({ started: false, error: String(e?.message ?? e) });
+                            });
+                        return true;
+                    }
+                    case 'stop-animated-webp': {
+                        const active = activeAnimatedWebpCapture();
+
+                        if (active === undefined) {
+                            sendResponse({ base64: '', error: 'No animated WebP capture in progress' });
+                            return true;
+                        }
+
+                        active.stop();
+                        active.result
+                            .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
+                            .catch((e) => {
+                                asbError('recording/animated-webp', e);
+                                sendResponse({ base64: '', error: String(e?.message ?? e) });
+                            })
+                            .finally(() => releaseAnimatedWebpCapture(active));
                         return true;
                     }
                     case 'show-anki-ui':

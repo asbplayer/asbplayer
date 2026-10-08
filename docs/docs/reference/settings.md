@@ -100,9 +100,22 @@ How many milliseconds **before** the target subtitle to start recording audio.
 
 How many milliseconds **after** the target subtitle to stop recording audio.
 
-### Image capture format (website only) {#image-capture-format}
+### Image capture format {#image-capture-format}
 
-Specifies the image capture format for mined cards. Only available on the website for local video files where the only additional option is "video clip."
+Specifies the image capture format for mined cards.
+
+- On the website, for local video files, the additional option is "video clip."
+- In the Chrome extension, the additional option is "Animated WebP," which captures the video playing in the tab for the subtitle's time interval - including the audio padding - and saves it as an animated image, instead of a single screenshot.
+
+Animated WebP is only used while [recording audio when mining](#record-audio-when-mining) is enabled, and otherwise a screenshot is taken as usual. It applies to every way of mining that records media, including manual recording started and stopped with the record keyboard shortcut, which captures everything up to the moment recording is stopped (up to 30 seconds). Only one recording can run at a time. Animated WebP is not available in Firefox, and videos protected by DRM can't be captured. The tab is muted while the clip is being captured.
+
+### Animated image FPS
+
+How many frames per second to capture for animated WebP images. Longer clips automatically use fewer frames to keep the card small. Only available when the Animated WebP image capture format is selected.
+
+### Animated image quality
+
+Quality of each frame of animated WebP images, from `0.1` to `1`. Higher is better looking but results in a larger file. Only available when the Animated WebP image capture format is selected.
 
 ### Max capture width/height {#max-capture-dimensions}
 
