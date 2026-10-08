@@ -1,3 +1,6 @@
+import 'core-js/stable/structured-clone';
+import 'fake-indexeddb/auto';
+import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
     DictionaryBuildAnkiCacheStateErrorCode,
@@ -5,7 +8,7 @@ import {
     DictionaryBuildWaniKaniCacheStateErrorCode,
     DictionaryBuildWaniKaniCacheStateType,
 } from '@project/common';
-import type { TokenizedSubtitleModel } from '@project/common';
+import type { Fetcher, TokenizedSubtitleModel } from '@project/common';
 import {
     ApplyStrategy,
     DictionaryTokenSource,
@@ -19,6 +22,8 @@ import {
     SettingsProvider,
 } from '@project/common/settings';
 import { DictionaryProvider } from '@project/common/dictionary-db';
+import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
+import { makeAnkiCardRecord, makeTokenRecord, privateDb } from '@project/common/dictionary-db/dictionary-db-test-utils';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 import { Anki } from '@project/common/anki';
 import { Yomitan } from '@project/common/yomitan';
@@ -34,6 +39,15 @@ import {
     makeToken,
     makeStorage,
 } from '@project/common/annotations/annotations-test-utils';
+
+const waitForAnnotationPublication = async (
+    updated: ReturnType<typeof makeSubtitleAnnotations>['subtitleAnnotationsUpdated'],
+    action: () => void | Promise<void>
+) => {
+    const published = new Promise<void>((resolve) => updated.mockImplementationOnce(() => resolve()));
+    await action();
+    await published;
+};
 
 const privateAnnotations = (subtitleAnnotations: SubtitleAnnotations) => subtitleAnnotations as any;
 
@@ -108,6 +122,225 @@ describe('TrackState', () => {
 });
 
 describe('SubtitleAnnotations', () => {
+    describe('ignored tokens', () => {
+        beforeEach(() => {
+            // Keep annotation building real; Yomitan is the external parser boundary.
+            jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('26.4.6');
+            jest.spyOn(Yomitan.prototype, 'tokenizeBulk').mockImplementation(async (texts) =>
+                texts.map((text) => [{ text, reading: '' }])
+            );
+            jest.spyOn(Yomitan.prototype, 'tokenize').mockImplementation(async (text) => [[{ text, reading: '' }]]);
+            jest.spyOn(Yomitan.prototype, 'lemmatize').mockImplementation(async (text) => [text]);
+            jest.spyOn(Yomitan.prototype, 'frequency').mockResolvedValue(null);
+            jest.spyOn(Yomitan.prototype, 'gloss').mockResolvedValue(null);
+            jest.spyOn(Yomitan.prototype, 'pitchAccent').mockResolvedValue(null);
+        });
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        it.each([
+            [DictionaryTokenSource.LOCAL, TokenStatus.UNCOLLECTED],
+            [DictionaryTokenSource.ANKI_WORD, TokenStatus.UNKNOWN],
+        ])('keeps ignored tokens fully known when source %s reports status %s', async (source, status) => {
+            const { subtitleAnnotations, storage, subtitleAnnotationsUpdated } = makeSubtitleAnnotations(
+                makeSettings(
+                    makeDictionaryTracks(
+                        makeDictionaryTrack({
+                            dictionaryColorizeSubtitles: true,
+                            dictionaryTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                        })
+                    )
+                )
+            );
+            storage.getBulk.mockResolvedValue({
+                word: { source, statuses: [{ status, suspended: false }], states: [TokenState.IGNORED] },
+            });
+            try {
+                subtitleAnnotations.bind();
+                await waitForAnnotationPublication(subtitleAnnotationsUpdated, () =>
+                    subtitleAnnotations.setSubtitles([makeSubtitle()])
+                );
+                expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).toMatchObject({
+                    status: TokenStatus.MATURE,
+                    states: [TokenState.IGNORED],
+                });
+
+                storage.getBulk.mockResolvedValue({
+                    word: {
+                        source: DictionaryTokenSource.ANKI_WORD,
+                        statuses: [{ status: TokenStatus.LEARNING, suspended: false }],
+                        states: [],
+                    },
+                });
+                await waitForAnnotationPublication(subtitleAnnotationsUpdated, () =>
+                    subtitleAnnotations.tokensWereModified(['word'])
+                );
+                expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).toMatchObject({
+                    status: TokenStatus.LEARNING,
+                    states: [],
+                });
+            } finally {
+                subtitleAnnotations.unbind();
+            }
+        });
+    });
+
+    describe('saveTokenLocal', () => {
+        const lemma = 'うわ';
+        const inflection = 'うわー';
+        const sibling = 'うわーっ';
+        let dictionaryDB: DictionaryDB;
+        let settingsProvider: SettingsProvider;
+
+        beforeEach(async () => {
+            await Dexie.delete('DictionaryDatabase');
+            const settingsStorage = new MockSettingsStorage();
+            settingsStorage.setData(
+                makeSettings(
+                    makeDictionaryTracks(
+                        makeDictionaryTrack({
+                            dictionaryColorizeSubtitles: true,
+                            dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                            dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                        })
+                    )
+                )
+            );
+            settingsProvider = new SettingsProvider(settingsStorage);
+            dictionaryDB = new DictionaryDB(settingsProvider);
+        });
+
+        afterEach(async () => {
+            privateDb(dictionaryDB).close();
+            await Dexie.delete('DictionaryDatabase');
+        });
+
+        it.each([false, true])(
+            'persists local saves and refreshes sibling forms with an external match: %s',
+            async (hasExternalMatch) => {
+                if (hasExternalMatch) {
+                    await privateDb(dictionaryDB).tokens.put(
+                        makeTokenRecord({
+                            profile: 'Default',
+                            track: 0,
+                            token: sibling,
+                            lemmas: [lemma],
+                            source: DictionaryTokenSource.ANKI_WORD,
+                            status: null,
+                            cardIds: [1],
+                        })
+                    );
+                    await privateDb(dictionaryDB).ankiCards.put(
+                        makeAnkiCardRecord({ profile: 'Default', status: TokenStatus.MATURE })
+                    );
+                }
+                const fetcher: Fetcher = {
+                    fetch: jest.fn(async (url: string, request: { text?: string | string[] }) => {
+                        if (url.endsWith('/yomitanVersion')) return { version: '26.4.6' };
+                        if (url.endsWith('/tokenize')) {
+                            const texts = Array.isArray(request.text) ? request.text : [request.text];
+                            return texts.map((text, index) => {
+                                const headword = {
+                                    term: lemma,
+                                    reading: lemma,
+                                    sources: [
+                                        {
+                                            originalText: text,
+                                            deinflectedText: lemma,
+                                            isPrimary: true,
+                                            matchType: 'exact',
+                                        },
+                                    ],
+                                };
+                                return {
+                                    id: 'id',
+                                    source: 'source',
+                                    dictionary: 'dictionary',
+                                    index,
+                                    content: [[{ text, reading: '', headwords: [[headword]] }]],
+                                };
+                            });
+                        }
+                        if (url.endsWith('/termEntries')) return { dictionaryEntries: [] };
+                        throw new Error(`unexpected request: ${url}`);
+                    }),
+                };
+                const provider = new DictionaryProvider({
+                    ...makeStorage(),
+                    getBulk: dictionaryDB.getBulk.bind(dictionaryDB),
+                    getByLemmaBulk: dictionaryDB.getByLemmaBulk.bind(dictionaryDB),
+                    getAllTokens: dictionaryDB.getAllTokens.bind(dictionaryDB),
+                    saveRecordLocalBulk: dictionaryDB.saveRecordLocalBulk.bind(dictionaryDB),
+                } as any);
+                const updated = jest.fn<ConstructorParameters<typeof SubtitleAnnotations>[4]>();
+                const annotations = new SubtitleAnnotations(
+                    provider,
+                    settingsProvider,
+                    { showingCheckRadiusMs: 150 },
+                    'media-id',
+                    updated,
+                    undefined,
+                    fetcher
+                );
+                const subtitles = [
+                    makeSubtitle({ text: inflection, originalText: inflection }),
+                    makeSubtitle({ index: 1, text: sibling, originalText: sibling }),
+                ];
+                const expectedStatus = hasExternalMatch ? TokenStatus.MATURE : TokenStatus.UNCOLLECTED;
+                const expectTokens = (status: TokenStatus, ignored = true) => {
+                    expect(annotations.subtitles.map((s) => s.tokenization?.tokens[0])).toMatchObject([
+                        { status: ignored ? TokenStatus.MATURE : status, states: ignored ? [TokenState.IGNORED] : [] },
+                        { status, states: [] },
+                    ]);
+                };
+                try {
+                    annotations.bind();
+                    await waitForAnnotationPublication(updated, () => annotations.setSubtitles(subtitles));
+                    expectTokens(expectedStatus, false);
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, null, [TokenState.IGNORED], ApplyStrategy.TOGGLE)
+                    );
+                    expectTokens(expectedStatus);
+                    expect((await dictionaryDB.getRecords(undefined, undefined)).tokenRecords).toContainEqual(
+                        expect.objectContaining({
+                            token: inflection,
+                            lemmas: [lemma],
+                            source: DictionaryTokenSource.LOCAL,
+                            status: TokenStatus.UNCOLLECTED,
+                            states: [TokenState.IGNORED],
+                        })
+                    );
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, TokenStatus.UNKNOWN, [], ApplyStrategy.ADD)
+                    );
+                    expectTokens(TokenStatus.UNKNOWN);
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, TokenStatus.UNCOLLECTED, [], ApplyStrategy.ADD)
+                    );
+                    expectTokens(expectedStatus);
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, null, [TokenState.IGNORED], ApplyStrategy.TOGGLE)
+                    );
+                    expectTokens(expectedStatus, false);
+                    expect(
+                        (await dictionaryDB.getRecords(undefined, undefined)).tokenRecords.some(
+                            (record) => record.source === DictionaryTokenSource.LOCAL
+                        )
+                    ).toBe(false);
+                } finally {
+                    annotations.unbind();
+                }
+            },
+            15000
+        );
+    });
+
     it('only needs a reset when subtitle source content or original tokenization changes', () => {
         const previous = [makeSubtitle({ text: 'annotated', originalText: 'word' })];
 

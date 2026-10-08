@@ -3,6 +3,7 @@ import {
     DictionaryTokenSource,
     TokenMatchStrategy,
     TokenMatchStrategyPriority,
+    TokenState,
     TokenStatus,
 } from '@project/common/settings';
 import { getTokenStatus } from '@project/common/util';
@@ -54,6 +55,138 @@ describe('getTokenStatus', () => {
 });
 
 describe('resolveTokenStatus', () => {
+    describe('ignored tokens', () => {
+        const lemma = 'うわ';
+        const sibling = 'うわーっ';
+        const inflection = 'うわー';
+        const addIgnoredToken = (trackState: TrackState, token = lemma) => {
+            const statuses = [{ status: TokenStatus.UNCOLLECTED, suspended: false }];
+            const states = [TokenState.IGNORED];
+            trackState.tokenCollectionExact.add(statuses, DictionaryTokenSource.LOCAL, undefined, token, states);
+            trackState.tokenCollectionLemma.add(statuses, DictionaryTokenSource.LOCAL, undefined, token, states);
+            trackState.tokenCollectionAny.add(statuses, DictionaryTokenSource.LOCAL, undefined, lemma, states, token);
+        };
+
+        it.each(
+            Object.values(TokenMatchStrategy).flatMap((strategy) =>
+                [lemma, inflection].map((ignoredToken) => [strategy, ignoredToken] as const)
+            )
+        )('keeps uncollected siblings uncollected with %s after ignoring %s', async (strategy, ignoredToken) => {
+            const trackState = makeTrackState({ dictionaryTokenMatchStrategy: strategy }, [lemma]);
+            addIgnoredToken(trackState, ignoredToken);
+
+            await expect(resolveTokenStatus(sibling, sibling, trackState)).resolves.toEqual({
+                status: TokenStatus.UNCOLLECTED,
+            });
+            expect(trackState.tokenStates.get(ignoredToken)).toEqual([TokenState.IGNORED]);
+            expect(trackState.tokenStates.has(sibling)).toBe(false);
+        });
+
+        it.each([false, true])(
+            'keeps external matches unknown when a card status is present: %s',
+            async (hasCardStatus) => {
+                const trackState = makeTrackState(
+                    { dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED },
+                    [lemma]
+                );
+                addIgnoredToken(trackState);
+                trackState.tokenCollectionAny.add(
+                    hasCardStatus ? [cardStatus(TokenStatus.UNKNOWN)] : [],
+                    DictionaryTokenSource.ANKI_WORD,
+                    undefined,
+                    lemma,
+                    [],
+                    sibling
+                );
+
+                await expect(resolveTokenStatus(sibling, sibling, trackState)).resolves.toMatchObject({
+                    status: TokenStatus.UNKNOWN,
+                    source: DictionaryTokenSource.ANKI_WORD,
+                });
+            }
+        );
+
+        it.each(
+            [
+                DictionaryTokenSource.ANKI_WORD,
+                DictionaryTokenSource.WANIKANI,
+                DictionaryTokenSource.ANKI_SENTENCE,
+            ].flatMap((source) => [lemma, sibling].map((ignoredToken) => [source, ignoredToken] as const))
+        )('allows source %s to supply knowledge after ignoring %s', async (source, ignoredToken) => {
+            const trackState = makeTrackState(
+                {
+                    dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                    dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                },
+                [lemma]
+            );
+            addIgnoredToken(trackState, ignoredToken);
+            trackState.tokenCollectionAny.add([cardStatus(TokenStatus.MATURE)], source, undefined, lemma, [], sibling);
+
+            await expect(resolveTokenStatus(sibling, sibling, trackState)).resolves.toMatchObject({
+                status: TokenStatus.MATURE,
+                source,
+            });
+            expect(trackState.tokenStates.get(ignoredToken)).toEqual([TokenState.IGNORED]);
+            expect(trackState.tokenStates.get(sibling) ?? []).toEqual(
+                ignoredToken === sibling ? [TokenState.IGNORED] : []
+            );
+        });
+
+        it.each(Object.values(TokenMatchStrategyPriority))(
+            'does not prioritize a state-only lemma under %s',
+            async (priority) => {
+                const trackState = makeTrackState(
+                    {
+                        dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                        dictionaryTokenMatchStrategyPriority: priority,
+                    },
+                    [lemma]
+                );
+                addIgnoredToken(trackState);
+                trackState.tokenCollectionAny.add(
+                    [{ status: TokenStatus.MATURE, suspended: false }],
+                    DictionaryTokenSource.LOCAL,
+                    undefined,
+                    lemma,
+                    [],
+                    sibling
+                );
+
+                await expect(resolveTokenStatus(sibling, sibling, trackState)).resolves.toMatchObject({
+                    status: TokenStatus.MATURE,
+                    source: DictionaryTokenSource.LOCAL,
+                });
+                expect(trackState.tokenStates.has(sibling)).toBe(false);
+            }
+        );
+
+        it('falls through to an exact sentence match when the word match only stores ignored state', async () => {
+            const trackState = makeTrackState(
+                {
+                    dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                    dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                },
+                [lemma]
+            );
+            addIgnoredToken(trackState);
+            trackState.tokenCollectionExact.add(
+                [cardStatus(TokenStatus.MATURE)],
+                DictionaryTokenSource.ANKI_SENTENCE,
+                undefined,
+                sibling,
+                []
+            );
+
+            await expect(resolveTokenStatus(sibling, sibling, trackState)).resolves.toMatchObject({
+                status: TokenStatus.MATURE,
+                source: DictionaryTokenSource.ANKI_SENTENCE,
+            });
+            expect(trackState.tokenStates.get(lemma)).toEqual([TokenState.IGNORED]);
+            expect(trackState.tokenStates.has(sibling)).toBe(false);
+        });
+    });
+
     it('ignores capitalization when resolving collected word matches', async () => {
         const trackState = new TrackState(
             0,

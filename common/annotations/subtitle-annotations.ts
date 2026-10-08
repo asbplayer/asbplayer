@@ -96,7 +96,7 @@ export class TrackState {
 
         /**
          * The logic will need to be revisited if new states are added.
-         * It also currently relies on the fact that only local tokens can have states.
+         * States come from local records, even when an external record supplies the status.
          */
         const updateTokenStates = (normalizedToken: string, states: TokenState[]) => {
             if (!states.length) return;
