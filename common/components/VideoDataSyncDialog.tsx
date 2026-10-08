@@ -157,6 +157,7 @@ interface Props {
     profiles: Profile[];
     activeProfile?: string;
     onlineSubtitleSourceConfig: OnlineSubtitleSourceConfig;
+    clientId: string;
     hasSeenFtue?: boolean;
     hideRememberTrackPreferenceToggle?: boolean;
     hideVideoNameTextField?: boolean;
@@ -189,6 +190,7 @@ export default function VideoDataSyncDialog({
     profiles,
     activeProfile,
     onlineSubtitleSourceConfig,
+    clientId,
     hasSeenFtue,
     hideRememberTrackPreferenceToggle,
     hideVideoNameTextField,
@@ -617,6 +619,7 @@ export default function VideoDataSyncDialog({
                 onClose={handleOnlineDialogClose}
                 onImport={handleImportOnlineFile}
                 detectedTitleHint={detectedTitleHint}
+                clientId={clientId}
                 jimakuApiKey={onlineSubtitleSourceConfig.jimakuApiKey}
                 onJimakuApiKeyChange={(jimakuApiKey) =>
                     onOnlineSourceConfigChanged({

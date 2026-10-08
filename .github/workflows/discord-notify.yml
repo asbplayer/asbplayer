@@ -1,0 +1,287 @@
+# Posts project activity to Discord incoming webhooks.
+#
+# Routing:
+#   - Release published / promoted (base repo)         -> #extension-releases
+#   - App deploy PR merged (base cf-pages, head
+#     deploy/cf-pages-*)                               -> #app-releases
+#   - Blog post added under docs/blog (push to main)   -> #announcements
+#   - Issue opened, or any other merged pull request   -> #github
+#
+# A workflow_dispatch run re-sends the most recently added blog post to
+# #announcements so the test run exercises the real blog notification path.
+# The test_* inputs are checkboxes; enable any of the other ones to also send
+# a static test message to #extension-releases, #app-releases, or #github.
+#
+# The blog post body is posted as message text via components v2 Text Display
+# (converted by scripts/blog-post-to-discord.ts) and @mentions the role stored in the
+# DISCORD_ROLE_ANNOUNCEMENT_SUBSCRIBER repository variable. Newly added blog
+# posts are found via the shared scripts/added-blog-posts helper.
+#
+# Webhook URLs are read from repository secrets. Each can be overridden for a
+# run via the webhook_* workflow_dispatch inputs, useful for testing against a
+# different channel.
+#
+# The optional message prefixes are intentionally kept in this workflow so they
+# can be edited here directly.
+#
+# Note: events triggered by the repository's own GITHUB_TOKEN do not trigger
+# workflows. Releases are published and pull requests are merged manually today,
+# so this workflow fires as expected; if release publishing becomes automated
+# with GITHUB_TOKEN, the release trigger will stop firing.
+#
+# pull_request_target (not pull_request) is used so secrets are available for
+# pull requests merged from forks. The workflow only reads the event payload and
+# never checks out or executes pull request code.
+
+name: Discord notify
+
+on:
+    release:
+        types: [published, released]
+    issues:
+        types: [opened]
+    pull_request_target:
+        types: [closed]
+    push:
+        branches: [main]
+        paths: ['docs/blog/**']
+    workflow_dispatch:
+        inputs:
+            test_announcements:
+                description: "Post the latest blog post to #announcements"
+                type: boolean
+                default: true
+            test_extension_releases:
+                description: "Send a test notification to #extension-releases"
+                type: boolean
+                default: false
+            test_app_releases:
+                description: "Send a test notification to #app-releases"
+                type: boolean
+                default: false
+            test_github:
+                description: "Send a test notification to #github"
+                type: boolean
+                default: false
+            webhook_announcements:
+                description: "Override webhook URL for #announcements (blank = default secret)"
+                type: string
+                default: ""
+            webhook_extension_releases:
+                description: "Override webhook URL for #extension-releases (blank = default secret)"
+                type: string
+                default: ""
+            webhook_app_releases:
+                description: "Override webhook URL for #app-releases (blank = default secret)"
+                type: string
+                default: ""
+            webhook_github:
+                description: "Override webhook URL for #github (blank = default secret)"
+                type: string
+                default: ""
+
+permissions: {}
+
+env:
+    RELEASE_PREFIX: ''
+    APP_DEPLOY_PREFIX: ''
+    ISSUE_PREFIX: "Issue opened:"
+    PULL_REQUEST_PREFIX: "Merged:"
+    BLOG_PREFIX: ""
+
+jobs:
+    extension-release:
+        name: Extension release
+        if: github.event_name == 'release'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #extension-releases
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_extension_releases || secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
+                  URL: ${{ github.event.release.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$RELEASE_PREFIX" ]; then
+                    content="$RELEASE_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    app-deploy:
+        name: App deploy
+        if: >-
+            github.event_name == 'pull_request_target' &&
+            github.event.pull_request.merged == true &&
+            github.event.pull_request.base.ref == 'cf-pages' &&
+            startsWith(github.event.pull_request.head.ref, 'deploy/cf-pages-')
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #app-releases
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_app_releases || secrets.DISCORD_WEBHOOK_APP_RELEASES }}
+                  URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$APP_DEPLOY_PREFIX" ]; then
+                    content="$APP_DEPLOY_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    blog-post:
+        name: Blog post
+        if: >-
+            github.event_name == 'push' ||
+            (github.event_name == 'workflow_dispatch' &&
+            inputs.test_announcements)
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version-file: '.nvmrc'
+
+            - name: Notify #announcements of new blog post(s)
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_announcements || secrets.DISCORD_WEBHOOK_ANNOUNCEMENTS }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  BEFORE: ${{ github.event.before }}
+                  AFTER: ${{ github.event.after }}
+                  DISCORD_ROLE_ANNOUNCEMENT_SUBSCRIBER: ${{ vars.DISCORD_ROLE_ANNOUNCEMENT_SUBSCRIBER }}
+              run: |
+                  set -euo pipefail
+
+                  if [ "$EVENT_NAME" = "push" ]; then
+                    mapfile -t files < <(scripts/added-blog-posts "$BEFORE..$AFTER")
+                  else
+                    mapfile -t files < <(scripts/added-blog-posts --latest)
+                  fi
+
+                  if [ "${#files[@]}" -eq 0 ]; then
+                    echo "No added blog posts; nothing to notify."
+                    exit 0
+                  fi
+
+                  # Incoming webhooks only honor components v2 when the query
+                  # param is present, so the Text Display payload is not dropped.
+                  sep='?'
+                  case "$WEBHOOK_URL" in *\?*) sep='&' ;; esac
+                  action_url="${WEBHOOK_URL}${sep}with_components=true"
+
+                  for file in "${files[@]}"; do
+                    [ -n "$file" ] || continue
+                    echo "Notifying #announcements of $file"
+                    node --experimental-strip-types scripts/blog-post-to-discord.ts "$file" "$BLOG_PREFIX" \
+                      | curl -sS --fail-with-body -X POST \
+                          -H 'Content-Type: application/json' \
+                          --data @- "$action_url"
+                  done
+
+    github-issue:
+        name: GitHub issue
+        if: github.event_name == 'issues'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #github of new issue
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_github || secrets.DISCORD_WEBHOOK_GITHUB }}
+                  URL: ${{ github.event.issue.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$ISSUE_PREFIX" ]; then
+                    content="$ISSUE_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    github-pull-request:
+        name: GitHub pull request
+        if: >-
+            github.event_name == 'pull_request_target' &&
+            github.event.pull_request.merged == true &&
+            !(github.event.pull_request.base.ref == 'cf-pages' &&
+              startsWith(github.event.pull_request.head.ref, 'deploy/cf-pages-'))
+        runs-on: ubuntu-latest
+        steps:
+            - name: Notify #github of merged pull request
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_github || secrets.DISCORD_WEBHOOK_GITHUB }}
+                  URL: ${{ github.event.pull_request.html_url }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$PULL_REQUEST_PREFIX" ]; then
+                    content="$PULL_REQUEST_PREFIX $URL"
+                  else
+                    content="$URL"
+                  fi
+                  jq -n --arg content "$content" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+    test:
+        name: Test webhooks
+        if: >-
+            github.event_name == 'workflow_dispatch' &&
+            (inputs.test_extension_releases ||
+            inputs.test_app_releases ||
+            inputs.test_github)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Test #extension-releases
+              if: ${{ inputs.test_extension_releases }}
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_extension_releases || secrets.DISCORD_WEBHOOK_EXTENSION_RELEASES }}
+              run: |
+                  set -euo pipefail
+                  jq -n --arg content "Test notification for #extension-releases" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+            - name: Test #app-releases
+              if: ${{ inputs.test_app_releases }}
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_app_releases || secrets.DISCORD_WEBHOOK_APP_RELEASES }}
+              run: |
+                  set -euo pipefail
+                  jq -n --arg content "Test notification for #app-releases" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"
+
+            - name: Test #github
+              if: ${{ inputs.test_github }}
+              env:
+                  WEBHOOK_URL: ${{ inputs.webhook_github || secrets.DISCORD_WEBHOOK_GITHUB }}
+              run: |
+                  set -euo pipefail
+                  jq -n --arg content "Test notification for #github" \
+                    '{content: $content, allowed_mentions: {parse: []}}' \
+                    | curl -sS --fail-with-body -X POST \
+                        -H 'Content-Type: application/json' \
+                        --data @- "$WEBHOOK_URL"

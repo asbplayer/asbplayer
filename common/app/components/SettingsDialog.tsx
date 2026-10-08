@@ -130,6 +130,7 @@ export default function SettingsDialog({
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}
+                    extensionSupportsUpdateLastWithSameSubtitleText={extension.supportsUpdateLastWithSameSubtitleText}
                     pageConfigs={extension.pageConfig}
                     insideApp
                     appVersionRepoPath={import.meta.env.VITE_APP_VERSION_REPO_PATH}

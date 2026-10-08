@@ -204,6 +204,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsUpdateLastWithSameSubtitleText() {
+        return this.installed && gte(this.version, '1.22.0');
+    }
+
     get supportsLogs() {
         return this.installed && gte(this.version, '1.22.0');
     }

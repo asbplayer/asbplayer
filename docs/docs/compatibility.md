@@ -2,11 +2,11 @@
 sidebar_position: 7
 ---
 
-# Compatibility
+# Compatibility {#compatibility}
 
-## Website
+## Website {#website}
 
-### Browsers and audio/video formats
+### Browsers and audio/video formats {#browsers-and-media-formats}
 
 |                                                                               |                                     H.264                                     |                                  H.265/HEVC                                   | `mp4` container | `mkv` container | Dolby-patented audio codecs like AC3/DTS |
 | ----------------------------------------------------------------------------- | :---------------------------------------------------------------------------: | :---------------------------------------------------------------------------: | :-------------: | :-------------: | ---------------------------------------- |
@@ -14,9 +14,9 @@ sidebar_position: 7
 | **Chromium-based browsers**                                                   |                                       ✓                                       |                                                                               |        ✓        |        ✓        |                                          |
 | **Firefox**                                                                   | [Depends](https://support.mozilla.org/en-US/kb/html5-audio-and-video-firefox) | [Depends](https://support.mozilla.org/en-US/kb/html5-audio-and-video-firefox) |        ✓        |                 |
 
-## Extension
+## Extension {#extension}
 
-### Browsers and features
+### Browsers and features {#browsers-and-features}
 
 |                                  | Screenshots | Audio Recording (non-DRM) | Audio Recording (DRM) | Side Panel | WebSocket Interface |
 | -------------------------------- | :---------: | :-----------------------: | :-------------------: | :--------: | :-----------------: |
@@ -26,7 +26,7 @@ sidebar_position: 7
 | **Kiwi Browser (Android)**       |             |             ✓             |           ✓           |            |                     |
 | **Edge Canary (Android)**        |      ✓      |                           |                       |            |                     |
 
-### Streaming services and subtitle detection
+### Streaming services and subtitle detection {#streaming-services-and-subtitle-detection}
 
 :::tip
 For streaming services not listed below, asbplayer can attempt a best-effort generic subtitle detection which works for ~85% of websites.
@@ -41,6 +41,7 @@ You can always request a dedicated parser for any website, even if the generic p
 | BiliBili                |                                                                                            ✓                                                                                             |
 | Crunchyroll             |                                                                                            ✓                                                                                             |
 | Disney Plus             |                                                                                            ✓                                                                                             |
+| Dreaming                |                                                                                            ✓                                                                                             |
 | Emby/Jellyfin           |                                                                Configure custom domains from the page-specific settings.                                                                 |
 | HBO Max                 |                                                             See [issue](https://github.com/asbplayer/asbplayer/issues/1006)                                                              |
 | Hulu                    |                                                                                            ✓                                                                                             |

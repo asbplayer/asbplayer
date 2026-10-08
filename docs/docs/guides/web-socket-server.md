@@ -2,7 +2,7 @@
 sidebar_position: 9
 ---
 
-# WebSocket server
+# WebSocket server {#websocket-server}
 
 asbplayer takes advantage of the two-way nature of WebSocket connections in order to expose an interface accessible from outside of the browser.
 
@@ -10,7 +10,7 @@ In this design, asbplayer is a **WebSocket client** that maintains a connection 
 
 The server was originally written to enable a one-click mining flow that enriches AnkiConnect `addNote` requests with asbplayer-supplied media, and so one of its primary functions is also as an **AnkiConnect proxy**.
 
-## Run the server
+## Run the server {#run-the-server}
 
 1. Clone the [asbplayer repo](https://github.com/asbplayer/asbplayer).
    ```
@@ -26,10 +26,10 @@ The server was originally written to enable a one-click mining flow that enriche
 
 The proxy is very lightweight, so it's fine to leave it running in the background. On Windows, [RBTray](https://github.com/benbuck/rbtray) can be used to minimise it to the taskbar.
 
-## Connect asbplayer to the server
+## Connect asbplayer to the server {#connect-asbplayer-to-the-server}
 
 Configure and enable asbplayer's WebSocket client from the [misc settings](https://app.asbplayer.dev/?view=settings#misc-settings). By default, asbplayer is already pointed at the WebSocket server's default IP address and port, and so in general all that's required is to enable the WebSocket client.
 
-## Use the server
+## Use the server {#use-the-server}
 
 See the [one-click mining guide](./one-click-mining) for how to enable a one-click mining flow using this server. See the [techncal reference](../reference/external-api#http-based-api) for a description of the API.

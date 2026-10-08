@@ -16,12 +16,13 @@
 **asbplayer** is a browser-based media player and Chrome extension developed for language learners who learn their target language through subtitled media. With asbplayer, you can:
 
 - **Easily create high-quality, multimedia flashcards** out of subtitled videos.
-- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**.
+- **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
 - **Seek through subtitles** using a **navigable subtitle list**.
 - **Optimize language acquisition** with **playback modes** like:
     - **Condensed playback**: Skip unsubtitled sections of video.
     - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
     - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
+    - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
 - **Use customizable keyboard shortcuts** to access most of asbplayer's features.
 - **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
     - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
@@ -32,7 +33,9 @@
     - **Statistics and Comprehension** on your known words for the current media.
     - **Word browser** to manage local and view words synced from external sources.
     - Many more features for future releases! Some planned features include:
-        - **Auto pause**, **Condensed playback**, and **Auto mining** on uncollected/unknown/learning words.
+        - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
+        - **Auto mining** on uncollected/unknown/learning words.
+        - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
         - **Statistics and Comprehension** on your known words across media.
 
 ## Thanks

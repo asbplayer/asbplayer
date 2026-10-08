@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { AutoPausePreference, PlayMode } from '@project/common';
+import { AutoPausePreference, PlayMode, PostMineAction } from '@project/common';
 import type { IndexedSubtitleModel } from '@project/common';
 import Binding from '@project/extension/src/services/binding';
 import type { BindingOptions } from '@project/extension/src/services/binding';
@@ -268,6 +268,61 @@ describe('Binding playback mode integration', () => {
         expect(binding.subtitleController.currentSubtitle()[0]?.text).toBe('subtitle');
         binding.unbind();
     });
+
+    it.each([
+        { enabled: false, text: 'External sentence', expected: 'External sentence' },
+        { enabled: true, text: 'External sentence', expected: 'Original subtitle\nTranslation' },
+        { enabled: false, text: undefined, expected: 'Original subtitle\nTranslation' },
+        { enabled: false, text: 'subtitle', expected: 'Original subtitle\nTranslation' },
+    ])(
+        'mines sentence text with subtitle preference $enabled and external text $text',
+        async ({ enabled, text, expected }) => {
+            await storage.set({
+                alwaysUseSubtitleForSentence: enabled,
+                streamingRecordMedia: false,
+                streamingTakeScreenshot: false,
+            });
+            const video = createVideo();
+            const binding = new Binding(video, bindingOptions(false, false));
+            binding.bind();
+            await jest.advanceTimersByTimeAsync(0);
+            const subtitle = makeSubtitle({ text: 'Original subtitle' });
+            const surroundingSubtitles = [subtitle, makeSubtitle({ text: 'Translation', track: 1, index: 1 })];
+            sendSubtitles(binding, surroundingSubtitles);
+
+            const request = {
+                sender: 'asbplayer-extension-to-video',
+                src: binding.registeredVideoSrc,
+                message: {
+                    command: 'copy-subtitle',
+                    postMineAction: PostMineAction.updateLastCard,
+                    subtitle,
+                    surroundingSubtitles,
+                    text,
+                    word: 'word',
+                    definition: 'definition',
+                    customFieldValues: { Extra: 'extra' },
+                    noteId: 123,
+                },
+            };
+            for (const listener of runtimeListeners) listener(request, {}, () => undefined);
+            await jest.advanceTimersByTimeAsync(0);
+
+            expect(browser.runtime.sendMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: expect.objectContaining({
+                        command: 'record-media-and-forward-subtitle',
+                        text: expected,
+                        word: 'word',
+                        definition: 'definition',
+                        customFieldValues: { Extra: 'extra' },
+                        noteId: 123,
+                    }),
+                })
+            );
+            binding.unbind();
+        }
+    );
 
     it('shows active playback modes above the transition notification', async () => {
         const video = createVideo();

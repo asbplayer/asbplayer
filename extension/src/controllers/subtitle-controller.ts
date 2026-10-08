@@ -865,6 +865,7 @@ export default class SubtitleController {
         this.loadedMessageHideTimeout = setTimeout(() => {
             this.loadedMessageHideTimeout = undefined;
             this.showingLoadedMessage = false;
+            this.showingSubtitles = undefined;
             this.refreshShowingSubtitles();
         }, 1000);
     }

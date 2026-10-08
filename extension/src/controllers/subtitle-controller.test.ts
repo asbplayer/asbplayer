@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { ASB_TOKEN_SELECTED_CLASS, selectTokenInRoot } from '@project/common/annotations';
 import {
     makeDictionaryTrack,
@@ -19,6 +19,7 @@ describe('SubtitleController appearance rendering', () => {
         for (const controller of controllers) controller.unbind();
         controllers.length = 0;
         document.body.replaceChildren();
+        jest.useRealTimers();
     });
 
     const controllerForVideo = () => {
@@ -220,6 +221,27 @@ describe('SubtitleController appearance rendering', () => {
         expect(document.querySelector('.asbplayer-subtitles-container-bottom span')).toBeNull();
         expect(document.querySelector('.asbplayer-subtitles-container-top span')?.getAttribute('style')).toContain(
             'color: #0000ff'
+        );
+    });
+
+    it('clears the loaded subtitle filename after its timeout when no subtitle is showing', () => {
+        jest.useFakeTimers();
+        const controller = controllerForVideo();
+        controller.subtitleFileNames = ['episode.srt'];
+        controller.playbackStateChanged({
+            timestampMs: 0,
+            showingSubtitleIndexes: [],
+            invisibleSubtitleIndexes: [],
+            paused: true,
+        });
+
+        controller.showLoadedMessage([]);
+        expect(document.querySelector('.asbplayer-subtitles-container-bottom')?.textContent).toContain('episode.srt');
+
+        jest.advanceTimersByTime(1000);
+
+        expect(document.querySelector('.asbplayer-subtitles-container-bottom')?.textContent).not.toContain(
+            'episode.srt'
         );
     });
 

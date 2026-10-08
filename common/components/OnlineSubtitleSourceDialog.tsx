@@ -43,6 +43,7 @@ interface Props {
     onClose: () => void;
     onImport: (file: OnlineSubtitleImportCandidate) => Promise<void>;
     detectedTitleHint?: string;
+    clientId: string;
     jimakuApiKey: string;
     onJimakuApiKeyChange: (jimakuApiKey: string) => void;
     jimakuSearchCategory: 'anime' | 'drama';
@@ -88,6 +89,7 @@ export default function OnlineSubtitleSourceDialog({
     onClose,
     onImport,
     detectedTitleHint,
+    clientId,
     jimakuApiKey,
     onJimakuApiKeyChange,
     jimakuSearchCategory,
@@ -201,7 +203,7 @@ export default function OnlineSubtitleSourceDialog({
                 }
             }
 
-            const client = new JimakuClient({ apiKey: jimakuApiKey });
+            const client = new JimakuClient({ apiKey: jimakuApiKey, clientId });
             const result =
                 jimakuSearchCategory === 'anime'
                     ? await client.searchEntries(query)
@@ -226,7 +228,7 @@ export default function OnlineSubtitleSourceDialog({
         } finally {
             setSearching(false);
         }
-    }, [jimakuApiKey, query, jimakuSearchCategory]);
+    }, [jimakuApiKey, clientId, query, jimakuSearchCategory]);
 
     const prevCategoryRef = useRef(jimakuSearchCategory);
     useEffect(() => {
@@ -250,7 +252,7 @@ export default function OnlineSubtitleSourceDialog({
             setActiveEpisodeFilter(undefined);
 
             try {
-                const client = new JimakuClient({ apiKey: jimakuApiKey });
+                const client = new JimakuClient({ apiKey: jimakuApiKey, clientId });
                 const toCandidates = (files: JimakuFile[]) =>
                     files
                         .filter((file) => isSupportedSubtitleFile(file.name))
@@ -288,7 +290,7 @@ export default function OnlineSubtitleSourceDialog({
                 }
             }
         },
-        [jimakuApiKey, upsertRecentWork]
+        [jimakuApiKey, clientId, upsertRecentWork]
     );
 
     const handleLoadJimakuFiles = useCallback(
