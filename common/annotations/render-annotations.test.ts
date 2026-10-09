@@ -161,8 +161,14 @@ describe('rich text rendering', () => {
         const tracks = makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: true }));
         const withoutTokenization = makeSubtitle({ tokenization: undefined });
 
-        expect(renderRichTextOntoSubtitles([withoutTokenization], 'video', tracks)).toEqual(new Map());
-        expect(renderRichTextOntoSubtitles([makeSubtitle()], 'video', tracks.slice(0, 1))).toEqual(new Map());
+        expect(
+            renderRichTextOntoSubtitles([withoutTokenization], 'video', tracks, { adaptiveWordVisibilityEnabled: true })
+        ).toEqual(new Map());
+        expect(
+            renderRichTextOntoSubtitles([makeSubtitle()], 'video', tracks.slice(0, 1), {
+                adaptiveWordVisibilityEnabled: true,
+            })
+        ).toEqual(new Map());
         expect(computeRichText('plain', { tokens: [] }, {} as any)).toBeUndefined();
     });
 
@@ -177,7 +183,8 @@ describe('rich text rendering', () => {
         const rendered = renderRichTextOntoSubtitles(
             subtitles,
             'video',
-            makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: true }))
+            makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: true })),
+            { adaptiveWordVisibilityEnabled: true }
         );
 
         expect(rendered.get(0)?.richText).toContain('class="asb-token asb-token-highlight"');
@@ -188,6 +195,74 @@ describe('rich text rendering', () => {
         expect(renderToken('語学', makeToken({ pos: [0, 2], status: null }))).toBe(
             '<span data-asb-token-start="0" style="text-decoration: line-through red 3px;">語学</span>'
         );
+    });
+
+    it('hides nonmatching words while keeping selected words visible', () => {
+        const dt = makeAnnotationTrack({});
+        const config = JSON.parse(JSON.stringify(dt.dictionaryPlaybackConfig));
+        config.wordVisibility.onStatuses[TokenStatus.UNKNOWN].enabled = true;
+        const track = { ...dt, dictionaryPlaybackConfig: config };
+        const subtitle = makeSubtitle({
+            text: '語 学',
+            tokenization: {
+                tokens: [
+                    makeToken({ pos: [0, 1], status: TokenStatus.MATURE }),
+                    makeToken({ pos: [2, 3], status: TokenStatus.UNKNOWN }),
+                ],
+            },
+        });
+        const rendered = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(track), {
+            adaptiveWordVisibilityEnabled: true,
+        });
+        expect(rendered.get(0)?.richText).toContain('class="asb-token-adaptive-hidden" data-asb-token-start="0"');
+        expect(rendered.get(0)?.richText).toContain('<span data-asb-token-start="2">学</span>');
+        const notShownDuringPlayback = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(track), {
+            adaptiveWordVisibilityEnabled: false,
+        });
+        expect(notShownDuringPlayback.get(0)?.richText).not.toContain('asb-token-adaptive-hidden');
+
+        config.wordVisibility.wholeSubtitleMatchThreshold = 1;
+        const belowWholeSubtitleThreshold = renderRichTextOntoSubtitles(
+            [subtitle],
+            'video',
+            makeDictionaryTracks(track),
+            { adaptiveWordVisibilityEnabled: true }
+        );
+        expect(belowWholeSubtitleThreshold.get(0)?.richText).toContain('asb-token-adaptive-hidden');
+
+        config.wordVisibility.hideWordsIndividuallyUntilThreshold = false;
+        const wholeSubtitleOnly = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(track), {
+            adaptiveWordVisibilityEnabled: true,
+        });
+        expect(wholeSubtitleOnly.get(0)?.richText).not.toContain('asb-token-adaptive-hidden');
+
+        config.wordVisibility.wholeSubtitleMatchThreshold = 0.5;
+        const atWholeSubtitleThreshold = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(track), {
+            adaptiveWordVisibilityEnabled: true,
+        });
+        expect(atWholeSubtitleThreshold.get(0)?.richText).not.toContain('asb-token-adaptive-hidden');
+    });
+
+    it('shows selected words within the frequency limit and leaves punctuation visible', () => {
+        const dt = makeAnnotationTrack({});
+        dt.dictionaryPlaybackConfig.wordVisibility.onStatuses[TokenStatus.UNCOLLECTED].enabled = true;
+        dt.dictionaryPlaybackConfig.wordVisibility.rules.maxFrequency = 10000;
+        const subtitle = makeSubtitle({
+            text: '語 学。',
+            tokenization: {
+                tokens: [
+                    makeToken({ pos: [0, 1], status: TokenStatus.UNCOLLECTED, frequency: 9000 }),
+                    makeToken({ pos: [2, 3], status: TokenStatus.UNCOLLECTED, frequency: 10001 }),
+                    makeToken({ pos: [3, 4], status: TokenStatus.UNKNOWN }),
+                ],
+            },
+        });
+        const rendered = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(dt), {
+            adaptiveWordVisibilityEnabled: true,
+        });
+        expect(rendered.get(0)?.richText).toContain('<span data-asb-token-start="0">語</span>');
+        expect(rendered.get(0)?.richText).toContain('class="asb-token-adaptive-hidden" data-asb-token-start="2"');
+        expect(rendered.get(0)?.richText).toContain('学</span>。');
     });
 
     it('wraps letter tokens even when color annotations are disabled', () => {
@@ -205,7 +280,8 @@ describe('rich text rendering', () => {
                 }),
             ],
             'video',
-            makeDictionaryTracks(dt)
+            makeDictionaryTracks(dt),
+            { adaptiveWordVisibilityEnabled: true }
         );
         expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語</span>。');
     });
@@ -221,7 +297,8 @@ describe('rich text rendering', () => {
             'video',
             makeDictionaryTracks(
                 makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryColorizeOnHoverOnly: true })
-            )
+            ),
+            { adaptiveWordVisibilityEnabled: true }
         );
 
         expect(rendered.get(0)?.richText).toBe('<span data-asb-token-start="0">語学</span>');
@@ -590,7 +667,8 @@ describe('rich text rendering', () => {
                 }),
             ],
             'video',
-            makeDictionaryTracks(dt)
+            makeDictionaryTracks(dt),
+            { adaptiveWordVisibilityEnabled: true }
         ).get(0);
 
         expect(rendered?.richText).toBe('<span data-asb-token-start="0">語学</span>');
@@ -649,7 +727,8 @@ describe('rich text rendering', () => {
                 }),
             ],
             'video',
-            makeDictionaryTracks(dt)
+            makeDictionaryTracks(dt),
+            { adaptiveWordVisibilityEnabled: true }
         ).get(0);
 
         expect(rendered?.richTextOnHover).toBe(
@@ -781,7 +860,8 @@ describe('rich text rendering', () => {
             const rendered = renderRichTextOntoSubtitles(
                 [makeSubtitle({ text, tokenization: { tokens: [token] } })],
                 'video',
-                makeDictionaryTracks(dt)
+                makeDictionaryTracks(dt),
+                { adaptiveWordVisibilityEnabled: true }
             ).get(0);
 
             expect(rendered?.richText).toBe('<span data-asb-token-start="0">' + text + '</span>');
@@ -808,11 +888,14 @@ describe('rich text rendering', () => {
             },
         });
 
-        const videoRendered = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(dt)).get(0);
+        const videoRendered = renderRichTextOntoSubtitles([subtitle], 'video', makeDictionaryTracks(dt), {
+            adaptiveWordVisibilityEnabled: true,
+        }).get(0);
         const subtitlePlayerRendered = renderRichTextOntoSubtitles(
             [subtitle],
             'subtitlePlayer',
-            makeDictionaryTracks(dt)
+            makeDictionaryTracks(dt),
+            { adaptiveWordVisibilityEnabled: true }
         ).get(0);
 
         expect(videoRendered?.richText).toBe('<span data-asb-token-start="0">語学</span>');

@@ -60,15 +60,20 @@ export const autoPauseDurationMs = (
 };
 
 /**
- * Handles automatic resume after a pause issued by the playback engine itself.
+ * Tracks pauses issued by the playback engine and handles their automatic resume.
  */
 export default class AutoPauseController {
     private readonly callbacks: AutoPauseControllerCallbacks;
     private resume?: PlaybackPlanAutoPauseResume;
     private timeout?: ReturnType<typeof setTimeout>;
+    private automaticPauseActive = false;
 
     constructor(callbacks: AutoPauseControllerCallbacks) {
         this.callbacks = callbacks;
+    }
+
+    get automaticallyPaused(): boolean {
+        return this.automaticPauseActive;
     }
 
     replacePlan(resume: PlaybackPlanAutoPauseResume | undefined): boolean {
@@ -77,13 +82,14 @@ export default class AutoPauseController {
             previousMode: this.resume?.mode,
             mode: resume?.mode,
         });
-        this.clearTimeout();
+        this.cancel();
         this.resume = resume;
         return true;
     }
 
     autoPaused(subtitles: readonly SubtitleModel[]): void {
         this.clearTimeout();
+        this.automaticPauseActive = true;
         const resume = this.resume;
         if (resume === undefined || resume.mode === AutoPauseResumeMode.manual) return;
 
@@ -93,6 +99,7 @@ export default class AutoPauseController {
                 this.timeout = setTimeout(() => {
                     this.timeout = undefined;
                     this.callbacks.play().catch((error) => {
+                        this.automaticPauseActive = false;
                         this.callbacks.autoResumeFailed();
                         this.callbacks.onError(error);
                     });
@@ -103,15 +110,16 @@ export default class AutoPauseController {
     }
 
     playbackStarted(): void {
-        this.clearTimeout();
+        this.cancel();
     }
 
     userSeeked(): void {
-        this.clearTimeout();
+        this.cancel();
     }
 
     cancel(): void {
         this.clearTimeout();
+        this.automaticPauseActive = false;
     }
 
     private clearTimeout(): void {

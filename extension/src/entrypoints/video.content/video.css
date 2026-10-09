@@ -389,3 +389,22 @@ div.asbplayer-fullscreen-subtitles > span {
 .asbplayer-color-scheme-light-dark {
     color-scheme: light dark !important;
 }
+
+.asbplayer-subtitles .asb-token-adaptive-hidden,
+.asbplayer-fullscreen-subtitles .asb-token-adaptive-hidden {
+    visibility: hidden;
+}
+
+.asb-playback-paused .asbplayer-subtitles .asb-token-adaptive-hidden,
+.asb-playback-paused .asbplayer-fullscreen-subtitles .asb-token-adaptive-hidden,
+.asb-subtitle-token-selected .asb-token-adaptive-hidden {
+    visibility: visible;
+}
+
+/* Revealing adaptive words must not reveal invisible layout placeholders. */
+[aria-hidden='true'] .asbplayer-subtitles .asb-token-adaptive-hidden,
+[aria-hidden='true'] .asbplayer-fullscreen-subtitles .asb-token-adaptive-hidden,
+.asbplayer-subtitles[aria-hidden='true'] .asb-token-adaptive-hidden,
+.asbplayer-fullscreen-subtitles[aria-hidden='true'] .asb-token-adaptive-hidden {
+    visibility: hidden;
+}

@@ -61,6 +61,27 @@ describe('needsReset', () => {
         ).toBe(true);
         expect(needsReset([], previous)).toBe(true);
     });
+
+    it('compares only source tokens, ignoring generated tokens and annotation-only fields', () => {
+        const external = makeToken({ pos: [0, 4], readings: [{ pos: [0, 4], reading: 'wa' }] });
+        const generated = { ...makeToken({ pos: [0, 4] }), __internal: true };
+        const previous = [makeSubtitle({ text: 'word', tokenization: { tokens: [generated, external] } })];
+        const annotated = {
+            ...external,
+            pos: [0, 4] as [number, number],
+            status: TokenStatus.MATURE,
+            readings: [{ pos: [0, 4] as [number, number], reading: 'wa' }],
+        };
+        expect(needsReset([makeSubtitle({ text: 'word', tokenization: { tokens: [annotated] } })], previous)).toBe(
+            false
+        );
+        const reread = { ...annotated, readings: [{ pos: [0, 4] as [number, number], reading: 'wo' }] };
+        expect(needsReset([makeSubtitle({ text: 'word', tokenization: { tokens: [reread] } })], previous)).toBe(true);
+        expect(needsReset([makeSubtitle({ text: 'word', tokenization: { tokens: [generated] } })], previous)).toBe(
+            true
+        );
+        expect(needsReset([makeSubtitle({ text: 'word', index: 1 })], previous)).toBe(true);
+    });
 });
 
 const waitForTokenization = async (annotations: ReturnType<typeof makeSubtitleAnnotations>['subtitleAnnotations']) => {
@@ -312,7 +333,12 @@ describe('SubtitleAnnotations public boundary', () => {
         ]);
         await completed;
 
-        const rendered = renderRichTextOntoSubtitles(subtitleAnnotations.subtitles, 'video', settings.dictionaryTracks);
+        const rendered = renderRichTextOntoSubtitles(
+            subtitleAnnotations.subtitles,
+            'video',
+            settings.dictionaryTracks,
+            { adaptiveWordVisibilityEnabled: true }
+        );
         for (const index of [0, 1]) {
             const sink = document.createElement('div');
             sink.innerHTML = rendered.get(index)?.richText ?? '';

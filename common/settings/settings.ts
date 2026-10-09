@@ -7,6 +7,8 @@ import type {
 } from '@project/common/src/model';
 import { AutoPausePreference } from '@project/common/src/model';
 import { arrayEquals } from '@project/common/util/array-equals';
+import { compareField, fieldsEqual } from '@project/common/util';
+import type { FieldComparators } from '@project/common/util';
 import type { DictionarySettings } from '@project/common/settings/settings-dictionary';
 
 export const activeProfileKey = 'activeSettingsProfile';
@@ -39,6 +41,7 @@ export enum AutoPauseResumeMode {
 export enum SubtitleVisibility {
     whenDue = 'whenDue',
     whilePaused = 'whilePaused',
+    whileManuallyPaused = 'whileManuallyPaused',
 }
 
 export enum VideoSubtitleSplitBehavior {
@@ -111,6 +114,7 @@ export interface MiscSettings {
     readonly fastForwardPlaybackMinimumSkipIntervalMs: number;
     readonly streamingCondensedPlaybackMinimumSkipIntervalMs: number;
     readonly repeatCountPreference: number;
+    readonly repeatsBeforeShowingSubtitles: number;
     readonly rememberPlaybackModes: boolean;
     readonly lastPlaybackModes: PlayMode[];
     readonly lastPlaybackPositions: PlaybackPosition[];
@@ -139,7 +143,7 @@ export type AutoPausePreferenceEdge = AutoPausePreference.atStart | AutoPausePre
 export const autoPausePreferenceForCheckboxChange = (
     preference: AutoPausePreference,
     edge: AutoPausePreferenceEdge,
-    checked: boolean
+    { checked }: { readonly checked: boolean }
 ): AutoPausePreference => {
     let pauseAtStart = preference !== AutoPausePreference.atEnd;
     let pauseAtEnd = preference !== AutoPausePreference.atStart;
@@ -403,9 +407,7 @@ export interface SubtitleSettings extends TextSubtitleSettings {
     readonly subtitlesWidthUnit: SubtitlesWidthUnit;
 }
 
-const textSubtitleSettingsComparators: {
-    [K in keyof TextSubtitleSettings]: (a: TextSubtitleSettings[K], b: TextSubtitleSettings[K]) => boolean;
-} = {
+const textSubtitleSettingsComparators: FieldComparators<TextSubtitleSettings> = {
     subtitleColor: (a, b) => a === b,
     subtitleSize: (a, b) => a === b,
     subtitleThickness: (a, b) => a === b,
@@ -422,9 +424,7 @@ const textSubtitleSettingsComparators: {
     subtitleAlignment: (a, b) => a === b,
 };
 
-const subtitleSettingsComparators: {
-    [K in keyof SubtitleSettings]: (a: SubtitleSettings[K], b: SubtitleSettings[K]) => boolean;
-} = {
+const subtitleSettingsComparators: FieldComparators<SubtitleSettings> = {
     ...textSubtitleSettingsComparators,
     imageBasedSubtitleScaleFactor: (a, b) => a === b,
     subtitlePositionOffset: (a, b) => a === b,
@@ -438,23 +438,7 @@ function areTextSubtitleSettingsEqual(
     left: TextSubtitleSettings | undefined,
     right: TextSubtitleSettings | undefined
 ): boolean {
-    if (left === right) return true;
-    if (!left || !right) return false;
-
-    for (const key of Object.keys(textSubtitleSettingsComparators) as (keyof TextSubtitleSettings)[]) {
-        if (!compareTextSubtitleSettingsField(key, left, right)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-function compareTextSubtitleSettingsField<K extends keyof TextSubtitleSettings>(
-    key: K,
-    left: TextSubtitleSettings,
-    right: TextSubtitleSettings
-): boolean {
-    return textSubtitleSettingsComparators[key](left[key], right[key]);
+    return fieldsEqual(left, right, textSubtitleSettingsComparators);
 }
 
 export function compareSubtitleSettingsField<K extends keyof SubtitleSettings>(
@@ -462,19 +446,11 @@ export function compareSubtitleSettingsField<K extends keyof SubtitleSettings>(
     a: SubtitleSettings,
     b: SubtitleSettings
 ): boolean {
-    return subtitleSettingsComparators[key](a[key], b[key]);
+    return compareField(key, a, b, subtitleSettingsComparators);
 }
 
 export function areSubtitleSettingsEqual(left: SubtitleSettings | undefined, right: SubtitleSettings | undefined) {
-    if (left === right) return true;
-    if (!left || !right) return false;
-
-    for (const key in subtitleSettingsComparators) {
-        if (!compareSubtitleSettingsField(key as keyof SubtitleSettings, left, right)) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(left, right, subtitleSettingsComparators);
 }
 
 export interface KeyBind {

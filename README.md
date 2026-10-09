@@ -31,9 +31,9 @@
     - **Frequency annotation** for rank-based frequency displayed below each word or based on status.
     - **Glossary annotation** for a short definition or explanation of the word.
     - **Statistics and Comprehension** on your known words for the current media.
+    - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
     - **Word browser** to manage local and view words synced from external sources.
     - Many more features for future releases! Some planned features include:
-        - **Adaptive Playback** that uses **playback modes** and the annotation data to optimize your learning experience.
         - **Auto mining** on uncollected/unknown/learning words.
         - **Rich Anki Card Creation** for generating high-quality flashcards from annotated subtitles.
         - **Statistics and Comprehension** on your known words across media.

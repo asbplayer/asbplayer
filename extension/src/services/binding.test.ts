@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { AutoPausePreference, PlayMode, PostMineAction } from '@project/common';
 import type { IndexedSubtitleModel } from '@project/common';
+import { defaultSettings, TokenStatus } from '@project/common/settings';
+import type { DictionaryTrack } from '@project/common/settings';
 import Binding from '@project/extension/src/services/binding';
 import type { BindingOptions } from '@project/extension/src/services/binding';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
@@ -323,6 +325,69 @@ describe('Binding playback mode integration', () => {
             binding.unbind();
         }
     );
+
+    it('recalculates adaptive playback when annotations arrive and retains the full subtitle collection', async () => {
+        const dictionaryTracks: DictionaryTrack[] = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+        dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.onStatuses[TokenStatus.UNCOLLECTED].enabled = true;
+        await storage.set({ dictionaryTracks });
+        let finishTokenization!: () => void;
+        const tokenizationReady = new Promise<void>((resolve) => {
+            finishTokenization = resolve;
+        });
+        const sendMessage = (globalThis as any).browser.runtime.sendMessage as jest.Mock<
+            (request: any) => Promise<any>
+        >;
+        sendMessage.mockImplementation(async ({ message }) => {
+            if (message.command === 'http-post') {
+                if (message.url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
+                if (message.url.endsWith('/tokenize')) {
+                    await tokenizationReady;
+                    return message.body.text.map((text: string, index: number) => ({
+                        id: 'id',
+                        source: 'source',
+                        dictionary: 'dictionary',
+                        index,
+                        content: [[{ text, reading: '' }]],
+                    }));
+                }
+                if (message.url.endsWith('/termEntries')) return { dictionaryEntries: [] };
+                throw new Error(`Unexpected annotation request: ${message.url}`);
+            }
+            if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk')
+                return {};
+            if (message.command === 'dictionary-get-records')
+                return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectRecords: {} };
+        });
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        try {
+            binding.bind();
+            await flushPlaybackTiming();
+            sendSubtitles(binding, [
+                makeSubtitle({ text: 'word', start: 1000, end: 2000 }),
+                makeSubtitle({ text: 'other', start: 4000, end: 5000, index: 1 }),
+            ]);
+            video.currentTime = 1.5;
+            binding.togglePlayMode(PlayMode.fastForward);
+            await flushPlaybackTiming();
+            expect(video.playbackRate).toBe(defaultSettings.fastForwardModePlaybackRate);
+
+            finishTokenization();
+            await jest.advanceTimersByTimeAsync(50);
+
+            expect(binding.subtitleController.subtitles[0].tokenization?.tokens[0].status).toBe(
+                TokenStatus.UNCOLLECTED
+            );
+            expect(video.playbackRate).toBe(defaultSettings.playbackRate);
+            video.presentFrame(4500);
+            await flushPlaybackTiming();
+            expect(binding.subtitleController.currentSubtitle()[0]?.text).toBe('other');
+            expect(video.playbackRate).toBe(defaultSettings.playbackRate);
+        } finally {
+            finishTokenization();
+            binding.unbind();
+        }
+    });
 
     it('shows active playback modes above the transition notification', async () => {
         const video = createVideo();

@@ -117,6 +117,79 @@ describe('omitPath', () => {
     });
 });
 
+it('preserves dictionary playback rules through settings export and import', () => {
+    const playback = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig));
+    playback.autoPause.onStatuses[1].enabled = true;
+    playback.autoPause.rules.minWords = 1;
+    playback.autoPause.rules.maxWords = 2;
+    playback.autoPause.rules.minFrequency = 100001;
+    playback.autoPause.rules.maxFrequency = 200000;
+    playback.fastForward.rateByComprehension.enabled = true;
+    const settings = {
+        ...defaultSettings,
+        dictionaryTracks: defaultSettings.dictionaryTracks.map((track, index) =>
+            index === 0 ? { ...track, dictionaryPlaybackConfig: playback } : track
+        ),
+    };
+    const imported = validateSettings(mergeImportedSettings(settingsForExport(settings), defaultSettings));
+    expect(imported.dictionaryTracks?.[0].dictionaryPlaybackConfig).toEqual(playback);
+});
+
+it('requires current playback fields when a dictionary playback config is present', () => {
+    const legacy = JSON.parse(JSON.stringify(defaultSettings));
+    delete legacy.dictionaryTracks[0].dictionaryPlaybackConfig;
+    expect(() => validateSettings(legacy)).not.toThrow();
+
+    const missingFields = [
+        (config: any) => delete config.autoPause.onStatuses,
+        (config: any) => delete config.autoPause.onStatuses[0].enabled,
+        (config: any) => delete config.repeat.onStates[0].enabled,
+        (config: any) => delete config.autoPause,
+        (config: any) => delete config.autoPause.rules,
+        (config: any) => delete config.autoPause.rules.minWords,
+        (config: any) => delete config.autoPause.rules.maxWords,
+        (config: any) => delete config.autoPause.rules.minFrequency,
+        (config: any) => delete config.autoPause.rules.maxFrequency,
+        (config: any) => delete config.wordVisibility.hideWordsIndividuallyUntilThreshold,
+        (config: any) => delete config.wordVisibility.wholeSubtitleMatchThreshold,
+        (config: any) => delete config.fastForward.rateByComprehension,
+        (config: any) => delete config.fastForward.rateByComprehension.enabled,
+    ];
+    for (const removeField of missingFields) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        removeField(settings.dictionaryTracks[0].dictionaryPlaybackConfig);
+        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+    }
+});
+
+it('accepts only whole-subtitle match thresholds from one through one hundred percent', () => {
+    for (const threshold of [0.01, 0.5, 1]) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.wordVisibility.wholeSubtitleMatchThreshold = threshold;
+        expect(() => validateSettings(settings)).not.toThrow();
+    }
+    for (const threshold of [0, 0.009, -0.1, 1.1, true]) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.wordVisibility.wholeSubtitleMatchThreshold = threshold;
+        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+    }
+});
+
+it('requires a boolean for individual word hiding before the threshold', () => {
+    for (const value of [true, false]) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.wordVisibility.hideWordsIndividuallyUntilThreshold =
+            value;
+        expect(() => validateSettings(settings)).not.toThrow();
+    }
+    for (const value of [0, 1, 'true', null]) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.wordVisibility.hideWordsIndividuallyUntilThreshold =
+            value;
+        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+    }
+});
+
 it('excludes credentials from settings exports without mutating the settings', () => {
     const settings = {
         ...defaultSettings,

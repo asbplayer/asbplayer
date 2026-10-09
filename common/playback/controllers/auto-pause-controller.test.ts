@@ -109,15 +109,21 @@ describe('AutoPauseController', () => {
         jest.useRealTimers();
     });
 
-    it('starts the resume delay and then resumes after it', () => {
+    it('keeps the automatic pause active through the reading and resume delay until playback starts', () => {
         const { controller, events } = harness(subtitleLengthResume);
 
+        expect(controller.automaticallyPaused).toBe(false);
         controller.autoPaused([subtitleOfLength(10)]);
+        expect(controller.automaticallyPaused).toBe(true);
         jest.advanceTimersByTime(1000);
         expect(events).toEqual(['resume-delay-started']);
+        expect(controller.automaticallyPaused).toBe(true);
 
         jest.advanceTimersByTime(300);
         expect(events).toEqual(['resume-delay-started', 'play']);
+        expect(controller.automaticallyPaused).toBe(true);
+        controller.playbackStarted();
+        expect(controller.automaticallyPaused).toBe(false);
     });
 
     it('waits indefinitely in manual mode', () => {
@@ -125,6 +131,7 @@ describe('AutoPauseController', () => {
         controller.autoPaused([subtitleOfLength(10)]);
         jest.advanceTimersByTime(60_000);
         expect(events).toEqual([]);
+        expect(controller.automaticallyPaused).toBe(true);
     });
 
     it('preserves a pending resume when an equivalent plan is replaced', () => {
@@ -133,6 +140,7 @@ describe('AutoPauseController', () => {
         controller.replacePlan({ ...subtitleLengthResume });
         jest.advanceTimersByTime(1300);
         expect(events).toEqual(['resume-delay-started', 'play']);
+        expect(controller.automaticallyPaused).toBe(true);
     });
 
     it.each([
@@ -144,6 +152,7 @@ describe('AutoPauseController', () => {
         const { controller, events } = harness(subtitleLengthResume);
         controller.autoPaused([subtitleOfLength(10)]);
         interrupt(controller);
+        expect(controller.automaticallyPaused).toBe(false);
         jest.advanceTimersByTime(60_000);
         expect(events).toEqual([]);
     });

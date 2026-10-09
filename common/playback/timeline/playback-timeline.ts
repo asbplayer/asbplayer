@@ -1,4 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
+import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import { compilePlaybackTimeline } from '@project/common/playback/timeline/playback-timeline-compiler';
 import type {
     PlaybackTimelineActionIndex,
@@ -23,11 +24,21 @@ export interface PlaybackTimelineEventGroup {
 export interface PlaybackTimelineRepeatAction {
     /** Zero means repeat indefinitely. */
     readonly count: number;
+    /** Zero shows subtitles on the initial pass. */
+    readonly repeatsBeforeShowingSubtitles: number;
 }
 
 export interface PlaybackTimelineEndAction {
     readonly pause: boolean;
     readonly repeat?: PlaybackTimelineRepeatAction;
+}
+
+export interface PlaybackTimelineAdaptiveRate {
+    readonly playbackRate: number;
+    /** Blend toward the configured fast-forward rate, independent of the relative rates. */
+    readonly fraction: number;
+    /** Speed controls edit the fast-forward rate even when comprehension keeps the applied rate normal. */
+    readonly comprehensionControlled: boolean;
 }
 
 export interface PlaybackTimelineBlock {
@@ -45,6 +56,9 @@ export interface PlaybackTimelineBlock {
     readonly subtitleTriggerGapStartOffsetMs: number;
     /** Pause when the playback-mode interval starts. */
     readonly startAction?: true;
+    readonly adaptiveRate?: PlaybackTimelineAdaptiveRate;
+    readonly autoPauseToken?: Readonly<TokenSelectionLocation>;
+    readonly autoPauseEndToken?: Readonly<TokenSelectionLocation>;
     readonly endAction?: PlaybackTimelineEndAction;
 }
 
@@ -56,6 +70,11 @@ export interface PlaybackTimelineSegment<T extends IndexedSubtitleModel> {
     readonly invisibleSubtitles: readonly T[];
     readonly condensedTarget?: number;
     readonly nextStartActionTimestamp?: number;
+    readonly nextPlaybackActionTimestamp?: number;
+    /** Block whose repeat progress controls subtitle reveal in this segment. */
+    readonly repeatBlock?: PlaybackTimelineBlock;
+    /** Showing or invisible subtitles hidden entirely by adaptive word visibility while playing. */
+    readonly hiddenSubtitleIndexes: readonly number[];
 }
 
 export interface PlaybackTimelineState {
@@ -100,6 +119,7 @@ export const advanceTimestampIndex = <T>(
 export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
     readonly durationMs: number;
     readonly blocks: readonly PlaybackTimelineBlock[];
+    readonly actionBlocks: readonly PlaybackTimelineBlock[];
     private readonly blocksById: ReadonlyMap<string, PlaybackTimelineBlock>;
     readonly actionIndex: PlaybackTimelineActionIndex;
     readonly segments: readonly PlaybackTimelineSegment<T>[];
@@ -110,8 +130,9 @@ export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
     private constructor(compiled: PlaybackTimelineCompilation<T>) {
         this.durationMs = compiled.durationMs;
         this.blocks = compiled.blocks;
+        this.actionBlocks = compiled.actionBlocks;
         const blocksById = new Map<string, PlaybackTimelineBlock>();
-        for (const block of this.blocks) blocksById.set(block.id, block);
+        for (const block of [...this.blocks, ...this.actionBlocks]) blocksById.set(block.id, block);
         this.blocksById = blocksById;
         this.actionIndex = compiled.actionIndex;
         this.segments = compiled.segments;
@@ -146,6 +167,14 @@ export default class PlaybackTimeline<T extends IndexedSubtitleModel> {
 
     blockById(blockId: string): PlaybackTimelineBlock | undefined {
         return this.blocksById.get(blockId);
+    }
+
+    repeatBlockAt(timestampMs: number): PlaybackTimelineBlock | undefined {
+        return this.lookupAt(timestampMs).segment.repeatBlock;
+    }
+
+    hiddenSubtitleIndexesAt(timestampMs: number): readonly number[] {
+        return this.lookupAt(timestampMs).segment.hiddenSubtitleIndexes;
     }
 
     private indexAt(timestampMs: number): number {
