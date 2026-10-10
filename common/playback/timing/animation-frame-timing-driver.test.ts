@@ -342,6 +342,8 @@ describe('AnimationFrameTimingDriver', () => {
         const plan: PlaybackPlan<IndexedSubtitleModel> = {
             subtitleVisibility: SubtitleVisibility.whenDue,
             timelineSubtitles: {
+                actionBlocks: [],
+                hiddenSubtitleIndexes: [],
                 durationMs: 3000,
                 blocks: [],
                 displaySubtitles: [subtitle],

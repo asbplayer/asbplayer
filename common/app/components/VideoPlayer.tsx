@@ -30,6 +30,7 @@ import {
     allTextSubtitleSettings,
     TokenState,
     ApplyStrategy,
+    SubtitleVisibility,
 } from '@project/common/settings';
 import {
     adjacentSubtitle,
@@ -49,9 +50,12 @@ import {
 import { asbTrace } from '@project/common/util/log';
 import {
     HoveredToken,
+    selectTokenInRoot,
+    clearAutoPauseTokenSelectionInRoot,
     renderRichTextOntoSubtitles,
     getAnnotationsHtml,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
+    ASB_PLAYBACK_PAUSED_CLASS,
 } from '@project/common/annotations';
 import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
 import Clock from '@project/common/playback/timing/clock';
@@ -182,7 +186,8 @@ const showingSubtitleHtml = (
     subtitleStyles: string,
     subtitleClasses: string,
     imageBasedSubtitleScaleFactor: number,
-    dictionaryTracks: DictionaryTrack[]
+    dictionaryTracks: DictionaryTrack[],
+    adaptiveWordVisibilityEnabled: boolean
 ) => {
     if (subtitle.textImage) {
         const imageScale =
@@ -201,7 +206,9 @@ const showingSubtitleHtml = (
 `;
     }
     const allSubtitleClasses = subtitleClasses ? `${subtitleClasses} asbplayer-subtitles` : 'asbplayer-subtitles';
-    const rendered = renderRichTextOntoSubtitles([subtitle], 'video', dictionaryTracks)?.get(subtitle.index);
+    const rendered = renderRichTextOntoSubtitles([subtitle], 'video', dictionaryTracks, {
+        adaptiveWordVisibilityEnabled,
+    })?.get(subtitle.index);
     return `<span class="${allSubtitleClasses}" style="${subtitleStyles}" data-track="${subtitle.track}" ${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${subtitle.index}">${getAnnotationsHtml(
         subtitle.text,
         rendered?.richText,
@@ -411,6 +418,7 @@ export default function VideoPlayer({
     const [wasPlayingOnAnkiDialogRequest, setWasPlayingOnAnkiDialogRequest] = useState<boolean>(false);
     const [subtitles, setSubtitles] = useState<IndexedSubtitleModel[]>([]);
     const subtitlesRef = useRef(subtitles);
+    const annotationSubtitlesRef = useRef<IndexedSubtitleModel[] | undefined>(undefined);
     subtitlesRef.current = subtitles;
     const [showSubtitles, setShowSubtitles] = useState<IndexedSubtitleModel[]>([]);
     const [invisibleSubtitles, setInvisibleSubtitles] = useState<IndexedSubtitleModel[]>([]);
@@ -720,6 +728,13 @@ export default function VideoPlayer({
                 }
             ),
             callbacks: {
+                selectToken: (target) =>
+                    selectTokenInRoot(containerRef.current ?? document, target, {
+                        autoPause: true,
+                        scrollIntoView: false,
+                    }),
+                clearAutoPauseTokenSelection: () =>
+                    clearAutoPauseTokenSelectionInRoot(containerRef.current ?? document),
                 pause: () => {
                     video.pause();
                     clock.stop();
@@ -738,6 +753,7 @@ export default function VideoPlayer({
                 setSubtitleOffset: (offset, options, notificationKey) =>
                     updateSubtitlesWithOffset(offset, options.notifyPlayer, notificationKey),
                 playbackStateChanged: (state) => {
+                    containerRef.current?.classList.toggle(ASB_PLAYBACK_PAUSED_CLASS, state.paused);
                     playbackStateChangedRef.current(state);
                     playerChannel.playbackState(state);
                 },
@@ -851,7 +867,7 @@ export default function VideoPlayer({
     useEffect(() => {
         const playbackEngine = playbackEngineRef.current;
         if (!playerChannelSubscribed || !playbackEngine) return;
-        playbackEngine.subtitlesChanged(subtitles);
+        playbackEngine.subtitlesChanged(subtitles, { timingChanged: subtitles !== annotationSubtitlesRef.current });
     }, [playerChannelSubscribed, subtitles, video]);
 
     useEffect(() => {
@@ -961,6 +977,7 @@ export default function VideoPlayer({
                 };
             }
             subtitlesRef.current = allSubtitles;
+            annotationSubtitlesRef.current = allSubtitles;
             setSubtitles(allSubtitles);
         });
 
@@ -2007,9 +2024,15 @@ export default function VideoPlayer({
                 trackStyles[subtitle.track]?.styleString ?? trackStyles[0]?.styleString ?? '',
                 trackStyles[subtitle.track]?.classes ?? trackStyles[0]?.classes ?? '',
                 subtitleSettings.imageBasedSubtitleScaleFactor,
-                renderDictionaryTracks
+                renderDictionaryTracks,
+                settings.subtitleVisibility === SubtitleVisibility.whenDue
             ),
-        [trackStyles, renderDictionaryTracks, subtitleSettings.imageBasedSubtitleScaleFactor]
+        [
+            trackStyles,
+            renderDictionaryTracks,
+            subtitleSettings.imageBasedSubtitleScaleFactor,
+            settings.subtitleVisibility,
+        ]
     );
 
     const { getSubtitleDomCache, updateSubtitleDomCache } = useSubtitleDomCache(subtitles, getSubtitleHtml);

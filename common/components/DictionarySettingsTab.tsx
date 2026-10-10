@@ -6,6 +6,7 @@ import {
     humanReadableTime,
     localizeDateTime,
     percentToHex2,
+    tokenStatusSelectionLabels,
 } from '@project/common/util';
 import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -192,30 +193,6 @@ const tokenAnnotationSelection = (
     statuses: tokenAnnotationStatuses.filter((status) => config.onStatuses[status][annotation]),
     states: tokenAnnotationStates.filter((state) => config.onStates[state][annotation]),
 });
-
-const tokenAnnotationStatusSelectionLabels = (
-    statuses: TokenStatus[],
-    statusLabel: (status: TokenStatus) => string
-): string[] => {
-    const sortedStatuses = Array.from(new Set(statuses)).sort((lhs, rhs) => lhs - rhs);
-    const labels: string[] = [];
-
-    for (let blockStart = 0; blockStart < sortedStatuses.length; ) {
-        let blockEnd = blockStart;
-        while (blockEnd + 1 < sortedStatuses.length && sortedStatuses[blockEnd + 1] === sortedStatuses[blockEnd] + 1) {
-            ++blockEnd;
-        }
-
-        if (blockEnd - blockStart + 1 >= 3) {
-            labels.push(`${statusLabel(sortedStatuses[blockStart])} \u2192 ${statusLabel(sortedStatuses[blockEnd])}`);
-        } else {
-            for (let i = blockStart; i <= blockEnd; ++i) labels.push(statusLabel(sortedStatuses[i]));
-        }
-        blockStart = blockEnd + 1;
-    }
-
-    return labels;
-};
 
 const withTokenAnnotationHoverEnabled = (
     config: DictionaryTokenAnnotationConfig,
@@ -535,6 +512,10 @@ interface Props {
     supportsDictionaryMatchAcrossScripts: boolean;
     supportsDictionaryTokenStatusDisplayAlpha: boolean;
     supportsDictionaryYomitanMecab: boolean;
+    supportsDictionaryPlayback: boolean;
+    selectedDictionaryTrack: number;
+    onSelectedDictionaryTrackChanged: (track: number) => void;
+    onPlaybackSettingsClick: () => void;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     onViewKeyboardShortcuts: () => void;
     profiles: Profile[];
@@ -551,6 +532,10 @@ const DictionarySettingsTab: React.FC<Props> = ({
     supportsDictionaryMatchAcrossScripts,
     supportsDictionaryTokenStatusDisplayAlpha,
     supportsDictionaryYomitanMecab,
+    supportsDictionaryPlayback,
+    selectedDictionaryTrack,
+    onSelectedDictionaryTrackChanged,
+    onPlaybackSettingsClick,
     onSettingChanged,
     onViewKeyboardShortcuts,
     profiles,
@@ -560,7 +545,6 @@ const DictionarySettingsTab: React.FC<Props> = ({
     const { t } = useTranslation();
     const { ankiConnectUrl, ankiConnectApiKey, dictionaryTracks } = settings;
     const initialDictionaryTracksRef = useRef(dictionaryTracks);
-    const [selectedDictionaryTrack, setSelectedDictionaryTrack] = useState<number>(0);
     const [tokenAnnotationTarget, setTokenAnnotationTarget] = useState<TokenAnnotationConfigTarget>('video');
     const selectedDictionary = dictionaryTracks[selectedDictionaryTrack];
 
@@ -1140,7 +1124,11 @@ const DictionarySettingsTab: React.FC<Props> = ({
                         </Stack>
                     )}
                 </Stack>
-                <SettingsSection docs="docs/reference/settings#annotation">{t('settings.annotation')}</SettingsSection>
+                <div id="dictionary-annotation-settings">
+                    <SettingsSection docs="docs/reference/settings#annotation">
+                        {t('settings.annotation')}
+                    </SettingsSection>
+                </div>
                 <SettingsTextField
                     select
                     fullWidth
@@ -1151,7 +1139,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                     value={selectedDictionaryTrack}
                     onChange={(e) => {
                         const track = Number(e.target.value);
-                        setSelectedDictionaryTrack(track);
+                        onSelectedDictionaryTrackChanged(track);
                         setShowDictionaryWaniKaniApiToken(!dictionaryTracks[track].dictionaryWaniKaniApiToken);
                     }}
                 >
@@ -1304,7 +1292,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                                 const selectedValues = tokenAnnotationOptionValues(selected);
                                                 const selection =
                                                     tokenAnnotationSelectionFromOptionValues(selectedValues);
-                                                const statusLabels = tokenAnnotationStatusSelectionLabels(
+                                                const statusLabels = tokenStatusSelectionLabels(
                                                     selection.statuses,
                                                     tokenAnnotationStatusLabel
                                                 );
@@ -1334,6 +1322,25 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                     </SettingsTextField>
                                 );
                             })}
+                            {supportsDictionaryPlayback && (
+                                <Typography variant="caption" color="textSecondary">
+                                    <Trans
+                                        i18nKey="settings.dictionaryEnabledHelper"
+                                        values={{
+                                            section: `${t('extension.settings.playback')} → ${t('settings.annotation')}`,
+                                        }}
+                                        components={[
+                                            <Link key={0} component="button" onClick={onPlaybackSettingsClick} />,
+                                            <Link
+                                                key={1}
+                                                href="https://docs.asbplayer.dev/docs/common-issues#enable-or-disable-annotation-for-a-track"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            />,
+                                        ]}
+                                    />
+                                </Typography>
+                            )}
                         </Stack>
                     </Box>
                 </Box>

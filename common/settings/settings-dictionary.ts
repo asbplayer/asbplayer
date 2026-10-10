@@ -1,4 +1,6 @@
 import { arrayEquals } from '@project/common/util/array-equals';
+import { compareField, fieldsEqual } from '@project/common/util';
+import type { FieldComparators } from '@project/common/util';
 
 export enum DictionaryTokenSource {
     LOCAL = 0,
@@ -121,9 +123,7 @@ export interface TokenStatusConfig {
     readonly alpha: string;
 }
 
-const tokenStatusConfigComparators: {
-    [K in keyof TokenStatusConfig]: (a: TokenStatusConfig[K], b: TokenStatusConfig[K]) => boolean;
-} = {
+const tokenStatusConfigComparators: FieldComparators<TokenStatusConfig> = {
     display: (a, b) => a === b,
     color: (a, b) => a === b,
     alpha: (a, b) => a === b,
@@ -134,48 +134,21 @@ export function compareTokenStatusConfigField<K extends keyof TokenStatusConfig>
     a: TokenStatusConfig,
     b: TokenStatusConfig
 ): boolean {
-    return tokenStatusConfigComparators[key](a[key], b[key]);
+    return compareField(key, a, b, tokenStatusConfigComparators);
 }
 
 export function areTokenStatusConfigsEqual(a: TokenStatusConfig, b: TokenStatusConfig): boolean {
-    if (a === b) return true;
-    for (const key in tokenStatusConfigComparators) {
-        if (!compareTokenStatusConfigField(key as keyof TokenStatusConfig, a, b)) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(a, b, tokenStatusConfigComparators);
 }
 
-const tokenStatusConfigRenderOnlyComparators: {
-    [K in keyof TokenStatusConfig]: (a: TokenStatusConfig[K], b: TokenStatusConfig[K]) => boolean;
-} = {
+const tokenStatusConfigRenderOnlyComparators: FieldComparators<TokenStatusConfig> = {
     display: () => true,
     color: () => true,
     alpha: () => true,
 };
 
-function compareRenderOnlyField<T, K extends keyof T>(
-    comparators: { [P in keyof T]: (a: T[P], b: T[P]) => boolean },
-    key: K,
-    a: T,
-    b: T
-): boolean {
-    return comparators[key](a[key], b[key]);
-}
-
 export function areTokenStatusConfigsRenderOnly(a: TokenStatusConfig, b: TokenStatusConfig): boolean {
-    if (a === b) return true;
-    for (const key in tokenStatusConfigComparators) {
-        const typedKey = key as keyof TokenStatusConfig;
-        if (
-            !compareTokenStatusConfigField(typedKey, a, b) &&
-            !compareRenderOnlyField(tokenStatusConfigRenderOnlyComparators, typedKey, a, b)
-        ) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(a, b, tokenStatusConfigComparators, tokenStatusConfigRenderOnlyComparators);
 }
 
 export interface TokenAnnotationTriggerOptions {
@@ -217,14 +190,139 @@ export interface TokenAnnotationConfigs {
     onStates: TokenAnnotationTriggerOptions[];
 }
 
+export interface DictionaryPlaybackTriggerConfig {
+    enabled: boolean; // May want each status/state to be able to override the base rules and add in specific rate/auto-pause/etc
+}
+
+export interface DictionaryPlaybackRules {
+    /** Inclusive word-count bounds for each status or state; zero disables each bound. */
+    minWords: number;
+    maxWords: number;
+    /** Inclusive frequency bounds; zero disables each bound and missing frequency is treated as one. */
+    minFrequency: number;
+    maxFrequency: number;
+}
+
+export interface DictionaryPlaybackFeatureConfig<Rules = DictionaryPlaybackRules> {
+    rules: Rules;
+    onStatuses: DictionaryPlaybackTriggerConfig[];
+    onStates: DictionaryPlaybackTriggerConfig[];
+}
+
+export interface DictionaryPlaybackComprehensionConfig {
+    enabled: boolean; // May want to expose the comprehension thresholds and use non-linear interpolation in the future
+}
+
+export interface DictionaryPlaybackFastForwardConfig extends DictionaryPlaybackFeatureConfig {
+    rateByComprehension: DictionaryPlaybackComprehensionConfig;
+}
+
+export interface DictionaryPlaybackWordVisibilityConfig extends DictionaryPlaybackFeatureConfig {
+    /** Whether words that do not match the visibility rule are hidden before the whole-subtitle threshold is met. */
+    hideWordsIndividuallyUntilThreshold: boolean;
+    /** Fraction of words that must be hidden before hiding the whole subtitle; one requires every word. */
+    wholeSubtitleMatchThreshold: number;
+}
+
+export interface DictionaryPlaybackConfig {
+    autoPause: DictionaryPlaybackFeatureConfig;
+    condensed: DictionaryPlaybackFeatureConfig;
+    fastForward: DictionaryPlaybackFastForwardConfig;
+    repeat: DictionaryPlaybackFeatureConfig;
+    wordVisibility: DictionaryPlaybackWordVisibilityConfig;
+}
+
+export type DictionaryPlaybackFeature = keyof DictionaryPlaybackConfig;
+
+export const dictionaryPlaybackFeatures: readonly DictionaryPlaybackFeature[] = [
+    'autoPause',
+    'repeat',
+    'condensed',
+    'fastForward',
+    'wordVisibility',
+];
+
+export const dictionaryPlaybackFeatureEnabled = (
+    config: DictionaryPlaybackConfig,
+    feature: DictionaryPlaybackFeature
+) =>
+    config[feature].onStatuses.some((status) => status.enabled) ||
+    config[feature].onStates.some((state) => state.enabled);
+
+export function dictionaryPlaybackGroupSettingsEnabled(
+    config: DictionaryPlaybackConfig,
+    feature: DictionaryPlaybackFeature
+): boolean {
+    return (
+        dictionaryPlaybackFeatureEnabled(config, feature) ||
+        (feature === 'fastForward' && config.fastForward.rateByComprehension.enabled)
+    );
+}
+
+function areDictionaryPlaybackTriggersEqual(a: DictionaryPlaybackTriggerConfig, b: DictionaryPlaybackTriggerConfig) {
+    return a.enabled === b.enabled;
+}
+
+const dictionaryPlaybackRulesComparators: FieldComparators<DictionaryPlaybackRules> = {
+    minWords: (a, b) => a === b,
+    maxWords: (a, b) => a === b,
+    minFrequency: (a, b) => a === b,
+    maxFrequency: (a, b) => a === b,
+};
+
+function areDictionaryPlaybackRulesEqual(a: DictionaryPlaybackRules, b: DictionaryPlaybackRules) {
+    return fieldsEqual(a, b, dictionaryPlaybackRulesComparators);
+}
+
+const dictionaryPlaybackFeatureConfigComparators: FieldComparators<DictionaryPlaybackFeatureConfig> = {
+    rules: areDictionaryPlaybackRulesEqual,
+    onStatuses: (a, b) => arrayEquals(a, b, areDictionaryPlaybackTriggersEqual),
+    onStates: (a, b) => arrayEquals(a, b, areDictionaryPlaybackTriggersEqual),
+};
+
+function areDictionaryPlaybackFeatureConfigsEqual(
+    a: DictionaryPlaybackFeatureConfig,
+    b: DictionaryPlaybackFeatureConfig
+) {
+    return fieldsEqual(a, b, dictionaryPlaybackFeatureConfigComparators);
+}
+
+function areDictionaryPlaybackFastForwardConfigsEqual(
+    a: DictionaryPlaybackFastForwardConfig,
+    b: DictionaryPlaybackFastForwardConfig
+): boolean {
+    return (
+        areDictionaryPlaybackFeatureConfigsEqual(a, b) &&
+        a.rateByComprehension.enabled === b.rateByComprehension.enabled
+    );
+}
+
+function areDictionaryPlaybackWordVisibilityConfigsEqual(
+    a: DictionaryPlaybackWordVisibilityConfig,
+    b: DictionaryPlaybackWordVisibilityConfig
+): boolean {
+    return (
+        areDictionaryPlaybackFeatureConfigsEqual(a, b) &&
+        a.hideWordsIndividuallyUntilThreshold === b.hideWordsIndividuallyUntilThreshold &&
+        a.wholeSubtitleMatchThreshold === b.wholeSubtitleMatchThreshold
+    );
+}
+
+const dictionaryPlaybackConfigComparators: FieldComparators<DictionaryPlaybackConfig> = {
+    autoPause: areDictionaryPlaybackFeatureConfigsEqual,
+    condensed: areDictionaryPlaybackFeatureConfigsEqual,
+    fastForward: areDictionaryPlaybackFastForwardConfigsEqual,
+    repeat: areDictionaryPlaybackFeatureConfigsEqual,
+    wordVisibility: areDictionaryPlaybackWordVisibilityConfigsEqual,
+};
+
+export function areDictionaryPlaybackConfigsEqual(a: DictionaryPlaybackConfig, b: DictionaryPlaybackConfig): boolean {
+    return fieldsEqual(a, b, dictionaryPlaybackConfigComparators);
+}
+
 export type TokenAnnotationConfigTarget = keyof Pick<TokenAnnotationConfigs, 'video' | 'subtitlePlayer'>;
 
-const tokenAnnotationTriggerOptionsComparators: {
-    [K in keyof TokenAnnotationTriggerOptions]: (
-        a: TokenAnnotationTriggerOptions[K],
-        b: TokenAnnotationTriggerOptions[K]
-    ) => boolean;
-} = {
+const tokenAnnotationTriggerOptionsComparators: FieldComparators<TokenAnnotationTriggerOptions> = {
     reading: (a, b) => a === b,
     frequency: (a, b) => a === b,
     gloss: (a, b) => a === b,
@@ -236,28 +334,17 @@ export function compareTokenAnnotationTriggerOptionsField<K extends keyof TokenA
     a: TokenAnnotationTriggerOptions,
     b: TokenAnnotationTriggerOptions
 ): boolean {
-    return tokenAnnotationTriggerOptionsComparators[key](a[key], b[key]);
+    return compareField(key, a, b, tokenAnnotationTriggerOptionsComparators);
 }
 
 export function areTokenAnnotationTriggerOptionsEqual(
     a: TokenAnnotationTriggerOptions,
     b: TokenAnnotationTriggerOptions
 ): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationTriggerOptionsComparators) {
-        if (!compareTokenAnnotationTriggerOptionsField(key as keyof TokenAnnotationTriggerOptions, a, b)) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(a, b, tokenAnnotationTriggerOptionsComparators);
 }
 
-const tokenAnnotationConfigOptionsComparators: {
-    [K in keyof TokenAnnotationConfigOptions]: (
-        a: TokenAnnotationConfigOptions[K],
-        b: TokenAnnotationConfigOptions[K]
-    ) => boolean;
-} = {
+const tokenAnnotationConfigOptionsComparators: FieldComparators<TokenAnnotationConfigOptions> = {
     onHoverEnabled: (a, b) => a === b,
     size: (a, b) => a === b,
 };
@@ -267,26 +354,17 @@ export function compareTokenAnnotationConfigOptionsField<K extends keyof TokenAn
     a: TokenAnnotationConfigOptions,
     b: TokenAnnotationConfigOptions
 ): boolean {
-    return tokenAnnotationConfigOptionsComparators[key](a[key], b[key]);
+    return compareField(key, a, b, tokenAnnotationConfigOptionsComparators);
 }
 
 export function areTokenAnnotationConfigOptionsEqual(
     a: TokenAnnotationConfigOptions,
     b: TokenAnnotationConfigOptions
 ): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationConfigOptionsComparators) {
-        if (!compareTokenAnnotationConfigOptionsField(key as keyof TokenAnnotationConfigOptions, a, b)) return false;
-    }
-    return true;
+    return fieldsEqual(a, b, tokenAnnotationConfigOptionsComparators);
 }
 
-const tokenAnnotationConfigOptionsRenderOnlyComparators: {
-    [K in keyof TokenAnnotationConfigOptions]: (
-        a: TokenAnnotationConfigOptions[K],
-        b: TokenAnnotationConfigOptions[K]
-    ) => boolean;
-} = {
+const tokenAnnotationConfigOptionsRenderOnlyComparators: FieldComparators<TokenAnnotationConfigOptions> = {
     onHoverEnabled: () => true,
     size: () => true,
 };
@@ -295,22 +373,15 @@ function areTokenAnnotationConfigOptionsRenderOnly(
     a: TokenAnnotationConfigOptions,
     b: TokenAnnotationConfigOptions
 ): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationConfigOptionsComparators) {
-        const typedKey = key as keyof TokenAnnotationConfigOptions;
-        if (
-            !compareTokenAnnotationConfigOptionsField(typedKey, a, b) &&
-            !compareRenderOnlyField(tokenAnnotationConfigOptionsRenderOnlyComparators, typedKey, a, b)
-        ) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(
+        a,
+        b,
+        tokenAnnotationConfigOptionsComparators,
+        tokenAnnotationConfigOptionsRenderOnlyComparators
+    );
 }
 
-const tokenAnnotationConfigComparators: {
-    [K in keyof TokenAnnotationConfig]: (a: TokenAnnotationConfig[K], b: TokenAnnotationConfig[K]) => boolean;
-} = {
+const tokenAnnotationConfigComparators: FieldComparators<TokenAnnotationConfig> = {
     color: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
     reading: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
     frequency: (a, b) => areTokenAnnotationConfigOptionsEqual(a, b),
@@ -323,20 +394,14 @@ export function compareTokenAnnotationConfigField<K extends keyof TokenAnnotatio
     a: TokenAnnotationConfig,
     b: TokenAnnotationConfig
 ): boolean {
-    return tokenAnnotationConfigComparators[key](a[key], b[key]);
+    return compareField(key, a, b, tokenAnnotationConfigComparators);
 }
 
 export function areTokenAnnotationConfigEqual(a: TokenAnnotationConfig, b: TokenAnnotationConfig): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationConfigComparators) {
-        if (!compareTokenAnnotationConfigField(key as keyof TokenAnnotationConfig, a, b)) return false;
-    }
-    return true;
+    return fieldsEqual(a, b, tokenAnnotationConfigComparators);
 }
 
-const tokenAnnotationConfigRenderOnlyComparators: {
-    [K in keyof TokenAnnotationConfig]: (a: TokenAnnotationConfig[K], b: TokenAnnotationConfig[K]) => boolean;
-} = {
+const tokenAnnotationConfigRenderOnlyComparators: FieldComparators<TokenAnnotationConfig> = {
     color: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
     reading: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
     frequency: (a, b) => areTokenAnnotationConfigOptionsRenderOnly(a, b),
@@ -345,22 +410,10 @@ const tokenAnnotationConfigRenderOnlyComparators: {
 };
 
 function areTokenAnnotationConfigRenderOnly(a: TokenAnnotationConfig, b: TokenAnnotationConfig): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationConfigComparators) {
-        const typedKey = key as keyof TokenAnnotationConfig;
-        if (
-            !compareTokenAnnotationConfigField(typedKey, a, b) &&
-            !compareRenderOnlyField(tokenAnnotationConfigRenderOnlyComparators, typedKey, a, b)
-        ) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(a, b, tokenAnnotationConfigComparators, tokenAnnotationConfigRenderOnlyComparators);
 }
 
-const tokenAnnotationConfigsComparators: {
-    [K in keyof TokenAnnotationConfigs]: (a: TokenAnnotationConfigs[K], b: TokenAnnotationConfigs[K]) => boolean;
-} = {
+const tokenAnnotationConfigsComparators: FieldComparators<TokenAnnotationConfigs> = {
     colorizeEnabled: (a, b) => a === b,
     video: (a, b) => areTokenAnnotationConfigEqual(a, b),
     subtitlePlayer: (a, b) => areTokenAnnotationConfigEqual(a, b),
@@ -373,23 +426,14 @@ export function compareTokenAnnotationConfigsField<K extends keyof TokenAnnotati
     a: TokenAnnotationConfigs,
     b: TokenAnnotationConfigs
 ): boolean {
-    return tokenAnnotationConfigsComparators[key](a[key], b[key]);
+    return compareField(key, a, b, tokenAnnotationConfigsComparators);
 }
 
 export function areTokenAnnotationConfigsEqual(a: TokenAnnotationConfigs, b: TokenAnnotationConfigs): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationConfigsComparators) {
-        if (!compareTokenAnnotationConfigsField(key as keyof TokenAnnotationConfigs, a, b)) return false;
-    }
-    return true;
+    return fieldsEqual(a, b, tokenAnnotationConfigsComparators);
 }
 
-const tokenAnnotationTriggerOptionsRenderOnlyComparators: {
-    [K in keyof TokenAnnotationTriggerOptions]: (
-        a: TokenAnnotationTriggerOptions[K],
-        b: TokenAnnotationTriggerOptions[K]
-    ) => boolean;
-} = {
+const tokenAnnotationTriggerOptionsRenderOnlyComparators: FieldComparators<TokenAnnotationTriggerOptions> = {
     reading: () => true,
     frequency: () => true,
     gloss: () => false,
@@ -400,22 +444,15 @@ function areTokenAnnotationTriggerOptionsRenderOnly(
     a: TokenAnnotationTriggerOptions,
     b: TokenAnnotationTriggerOptions
 ): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationTriggerOptionsComparators) {
-        const typedKey = key as keyof TokenAnnotationTriggerOptions;
-        if (
-            !compareTokenAnnotationTriggerOptionsField(typedKey, a, b) &&
-            !tokenAnnotationTriggerOptionsRenderOnlyComparators[typedKey](a[typedKey], b[typedKey])
-        ) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(
+        a,
+        b,
+        tokenAnnotationTriggerOptionsComparators,
+        tokenAnnotationTriggerOptionsRenderOnlyComparators
+    );
 }
 
-const tokenAnnotationConfigsRenderOnlyComparators: {
-    [K in keyof TokenAnnotationConfigs]: (a: TokenAnnotationConfigs[K], b: TokenAnnotationConfigs[K]) => boolean;
-} = {
+const tokenAnnotationConfigsRenderOnlyComparators: FieldComparators<TokenAnnotationConfigs> = {
     colorizeEnabled: () => true,
     video: (a, b) => areTokenAnnotationConfigRenderOnly(a, b),
     subtitlePlayer: (a, b) => areTokenAnnotationConfigRenderOnly(a, b),
@@ -424,17 +461,7 @@ const tokenAnnotationConfigsRenderOnlyComparators: {
 };
 
 export function areTokenAnnotationConfigsRenderOnly(a: TokenAnnotationConfigs, b: TokenAnnotationConfigs): boolean {
-    if (a === b) return true;
-    for (const key in tokenAnnotationConfigsComparators) {
-        const typedKey = key as keyof TokenAnnotationConfigs;
-        if (
-            !compareTokenAnnotationConfigsField(typedKey, a, b) &&
-            !compareRenderOnlyField(tokenAnnotationConfigsRenderOnlyComparators, typedKey, a, b)
-        ) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(a, b, tokenAnnotationConfigsComparators, tokenAnnotationConfigsRenderOnlyComparators);
 }
 
 export enum TokenState {
@@ -461,6 +488,10 @@ export enum TokenFrequencyAnnotation {
 
 export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
     return (
+        dictionaryPlaybackFeatures.some((feature) =>
+            dictionaryPlaybackFeatureEnabled(dt.dictionaryPlaybackConfig, feature)
+        ) ||
+        dt.dictionaryPlaybackConfig.fastForward.rateByComprehension.enabled ||
         dt.dictionaryTokenAnnotationConfig.colorizeEnabled ||
         dt.dictionaryTokenAnnotationConfig.onStatuses.some((s) => Object.values(s).some((v) => v)) ||
         dt.dictionaryTokenAnnotationConfig.onStates.some((s) => Object.values(s).some((v) => v)) ||
@@ -470,6 +501,12 @@ export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
 
 export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack, options: { includeStates: boolean }): boolean {
     const { includeStates } = options;
+    if (dt.dictionaryPlaybackConfig.fastForward.rateByComprehension.enabled) return true;
+    for (const feature of dictionaryPlaybackFeatures) {
+        const { onStatuses, onStates } = dt.dictionaryPlaybackConfig[feature];
+        if (onStatuses.some((status) => status.enabled)) return true;
+        if (includeStates && onStates.some((state) => state.enabled)) return true;
+    }
     if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled || dt.dictionaryAutoGenerateStatistics) return true;
     const { onStatuses, onStates } = dt.dictionaryTokenAnnotationConfig;
     for (const annotation of Object.keys(onStatuses[0]) as (keyof TokenAnnotationTriggerOptions)[]) {
@@ -565,15 +602,14 @@ export interface DictionaryTrack {
     readonly dictionaryTokenStatusColors: string[];
     readonly dictionaryTokenStatusConfig: TokenStatusConfig[]; // Indexed by TokenStatus (if adding config for states, use a separate array indexed by TokenState)
     readonly dictionaryTokenAnnotationConfig: TokenAnnotationConfigs;
+    readonly dictionaryPlaybackConfig: DictionaryPlaybackConfig;
 }
 
 export interface DictionarySettings {
     readonly dictionaryTracks: DictionaryTrack[];
 }
 
-const dictionaryTrackComparators: {
-    [K in keyof DictionaryTrack]: (a: DictionaryTrack[K], b: DictionaryTrack[K]) => boolean;
-} = {
+const dictionaryTrackComparators: FieldComparators<DictionaryTrack> = {
     dictionaryColorizeSubtitles: (a, b) => a === b,
     dictionaryAutoGenerateStatistics: (a, b) => a === b,
     dictionaryColorizeOnHoverOnly: (a, b) => a === b,
@@ -600,6 +636,7 @@ const dictionaryTrackComparators: {
     dictionaryTokenStatusColors: (a, b) => arrayEquals(a, b),
     dictionaryTokenStatusConfig: (a, b) => arrayEquals(a, b, areTokenStatusConfigsEqual),
     dictionaryTokenAnnotationConfig: (a, b) => areTokenAnnotationConfigsEqual(a, b),
+    dictionaryPlaybackConfig: (a, b) => areDictionaryPlaybackConfigsEqual(a, b),
 };
 
 export function compareDTField<K extends keyof DictionaryTrack>(
@@ -607,24 +644,14 @@ export function compareDTField<K extends keyof DictionaryTrack>(
     a: DictionaryTrack,
     b: DictionaryTrack
 ): boolean {
-    return dictionaryTrackComparators[key](a[key], b[key]);
+    return compareField(key, a, b, dictionaryTrackComparators);
 }
 
 export function areDictionaryTracksEqual(dt1: DictionaryTrack | undefined, dt2: DictionaryTrack | undefined): boolean {
-    if (dt1 === dt2) return true;
-    if (!dt1 || !dt2) return false;
-
-    for (const key in dictionaryTrackComparators) {
-        if (!compareDTField(key as keyof DictionaryTrack, dt1, dt2)) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(dt1, dt2, dictionaryTrackComparators);
 }
 
-const dictionaryTrackRenderOnlyComparators: {
-    [K in keyof DictionaryTrack]: (a: DictionaryTrack[K], b: DictionaryTrack[K]) => boolean;
-} = {
+const dictionaryTrackRenderOnlyComparators: FieldComparators<DictionaryTrack> = {
     dictionaryColorizeSubtitles: () => true,
     dictionaryAutoGenerateStatistics: () => false,
     dictionaryColorizeOnHoverOnly: () => true,
@@ -651,6 +678,7 @@ const dictionaryTrackRenderOnlyComparators: {
     dictionaryTokenStatusColors: () => true,
     dictionaryTokenStatusConfig: (a, b) => arrayEquals(a, b, areTokenStatusConfigsRenderOnly),
     dictionaryTokenAnnotationConfig: (a, b) => areTokenAnnotationConfigsRenderOnly(a, b),
+    dictionaryPlaybackConfig: () => true,
 };
 
 export function areDictionaryTracksRenderOnly(
@@ -670,14 +698,5 @@ export function areDictionaryTracksRenderOnly(
         }
     }
 
-    for (const key in dictionaryTrackComparators) {
-        const typedKey = key as keyof DictionaryTrack;
-        if (
-            !compareDTField(typedKey, dt1, dt2) &&
-            !compareRenderOnlyField(dictionaryTrackRenderOnlyComparators, typedKey, dt1, dt2)
-        ) {
-            return false;
-        }
-    }
-    return true;
+    return fieldsEqual(dt1, dt2, dictionaryTrackComparators, dictionaryTrackRenderOnlyComparators);
 }

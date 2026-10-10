@@ -1,4 +1,5 @@
 import type { IndexedSubtitleModel } from '@project/common';
+import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import { asbTrace } from '@project/common/util/log';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import type {
@@ -21,6 +22,7 @@ export const maximumInternalSeekMismatchMs = 3000;
 export interface PlaybackPlanPause<T extends IndexedSubtitleModel> {
     readonly timestampMs: number;
     readonly playbackModeSubtitlesAtPause: readonly T[];
+    readonly autoPauseToken?: Readonly<TokenSelectionLocation>;
 }
 
 export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
@@ -37,10 +39,17 @@ type RepeatedBlock = {
     repeats: number;
 };
 
-type PendingTarget = {
-    readonly timestampMs: number;
-    readonly blockId?: string;
-};
+type PendingTarget =
+    | {
+          readonly kind: 'condensed';
+          readonly timestampMs: number;
+      }
+    | {
+          readonly kind: 'repeat';
+          readonly timestampMs: number;
+          readonly repeatBlockId: string;
+          readonly startPauseSuppressionBlockId?: string;
+      };
 
 type StartPauseSuppression = {
     readonly blockId: string;
@@ -72,6 +81,10 @@ const playbackPlanTraceDetails = <T extends IndexedSubtitleModel>(plan: Playback
     durationMs: plan.timelineSubtitles.durationMs,
     displaySubtitleCount: plan.timelineSubtitles.displaySubtitles.length,
     timelineBlockCount: plan.timelineSubtitles.blocks.length,
+    actionBlockCount: plan.timelineSubtitles.actionBlocks.length,
+    adaptiveRateBlockCount: plan.timelineSubtitles.blocks.filter((block) => block.adaptiveRate !== undefined).length,
+    condensedBlockCount: plan.timelineSubtitles.condensedBlocks?.length,
+    hiddenSubtitleCount: plan.timelineSubtitles.hiddenSubtitleIndexes.length,
     playbackRate: plan.playbackRate,
     condensed: plan.condensed !== undefined,
     fastForwardPlaybackRate: plan.fastForward?.playbackRate,
@@ -93,7 +106,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     private condensedOperation?: number;
     private operationGeneration = 0;
     private updateOperationGeneration = 0;
-    private _isFastForwarding: boolean;
+    private currentPlaybackRate: number;
+    private currentFastForwardRateFraction = 0;
+    private currentComprehensionControlled = false;
     private expectedDiscontinuity?: ExpectedDiscontinuity;
     private updateInProgress = false;
     private deferredDiscontinuity?: DeferredDiscontinuity;
@@ -104,7 +119,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             timestampMs,
         });
         this.plan = plan;
-        this._isFastForwarding = false;
+        this.currentPlaybackRate = plan.playbackRate;
         this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         this.callbacks = callbacks;
         this.runner = new PlaybackTimelineRunner(this.timeline, timestampMs, {
@@ -122,7 +137,15 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
     }
 
     get isFastForwarding(): boolean {
-        return this._isFastForwarding;
+        return this.currentFastForwardRateFraction > 0;
+    }
+
+    get playbackRate(): number {
+        return this.currentPlaybackRate;
+    }
+
+    get comprehensionControlled(): boolean {
+        return this.currentComprehensionControlled;
     }
 
     showingSubtitlesAt(timestampMs: number): readonly T[] {
@@ -133,16 +156,29 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return this.timeline.invisibleSubtitlesAt(timestampMs);
     }
 
-    replacePlan(
-        plan: PlaybackPlan<T>,
-        timestampMs: number,
-        options: { readonly forcePlaybackRate?: boolean } = {}
-    ): void {
+    hiddenSubtitleIndexesAt(timestampMs: number): readonly number[] {
+        return this.timeline.hiddenSubtitleIndexesAt(timestampMs);
+    }
+
+    hideSubtitlesForRepeatAt(timestampMs: number): boolean {
+        const block = this.timeline.repeatBlockAt(timestampMs);
+        const revealAfter = block?.endAction?.repeat?.repeatsBeforeShowingSubtitles ?? 0;
+        if (revealAfter === 0) return false;
+        const repeats = block !== undefined && this.repeatedBlock?.id === block.id ? this.repeatedBlock.repeats : 0;
+        return repeats < revealAfter;
+    }
+
+    replacePlan(plan: PlaybackPlan<T>, timestampMs: number, options: { readonly forcePlaybackRate?: boolean }): void {
         asbTrace('playback/executor', 'Replacing playback plan in executor', {
             forcePlaybackRate: options.forcePlaybackRate === true,
             plan: playbackPlanTraceDetails(plan),
             timestampMs,
         });
+        const previousPendingTarget = this.pendingTarget;
+        const previousPendingRepeatBlock =
+            previousPendingTarget?.kind === 'repeat'
+                ? this.timeline.blockById(previousPendingTarget.repeatBlockId)
+                : undefined;
         this.invalidatePendingOperations({ preserveExpectedDiscontinuity: true });
         const playbackRateChanged =
             this.plan.playbackRate !== plan.playbackRate ||
@@ -154,7 +190,29 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.timeline = PlaybackTimeline.fromSubtitles(plan.timelineSubtitles);
         this.runner.replaceTimeline(this.timeline, timestampMs);
         this.lookaheadCursor.replaceTimeline(this.timeline, timestampMs);
-        this.pendingTarget = undefined;
+        const pendingRepeatBlock =
+            previousPendingRepeatBlock === undefined
+                ? undefined
+                : this.timeline.blockById(previousPendingRepeatBlock.id);
+        const pendingRepeatAction = pendingRepeatBlock?.endAction?.repeat;
+        // Annotation updates may change other blocks while this paused repeat remains valid.
+        this.pendingTarget =
+            pendingRepeatBlock !== undefined &&
+            pendingRepeatAction !== undefined &&
+            pendingRepeatBlock.playbackModeStartMs === previousPendingRepeatBlock?.playbackModeStartMs &&
+            pendingRepeatBlock.playbackModeEndMs === previousPendingRepeatBlock?.playbackModeEndMs &&
+            (pendingRepeatAction.count === 0 || (this.repeatedBlock?.repeats ?? 0) < pendingRepeatAction.count)
+                ? this.repeatTarget(pendingRepeatBlock)
+                : undefined;
+        if (previousPendingTarget?.kind === 'repeat') {
+            asbTrace('playback/executor', 'Reconciled pending repeat while replacing plan', {
+                blockId: previousPendingTarget.repeatBlockId,
+                outcome: this.pendingTarget === undefined ? 'discarded' : 'preserved',
+                repeatCount: pendingRepeatAction?.count,
+                repeats: this.repeatedBlock?.repeats ?? 0,
+                timestampMs,
+            });
+        }
 
         const repeatedBlockId = this.repeatedBlock?.id;
         const repeatedPlanBlock = repeatedBlockId === undefined ? undefined : this.timeline.blockById(repeatedBlockId);
@@ -172,7 +230,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         }
         if (resetPlaybackRate) {
             this.callbacks.setPlaybackRate(plan.playbackRate);
-            this._isFastForwarding = false;
+            this.currentFastForwardRateFraction = 0;
+            this.currentComprehensionControlled = false;
+            this.currentPlaybackRate = plan.playbackRate;
             asbTrace('playback/executor', 'Reset playback rate while replacing plan', {
                 playbackRate: plan.playbackRate,
             });
@@ -186,7 +246,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.updateOperationGeneration = this.operationGeneration;
         this.updateInProgress = true;
         try {
-            await this.runner.update(this.nextPlaybackActionTimestamp(timestampMs, options.lookaheadTimestampMs));
+            await this.runner.update(this.nextPlaybackActionTimestamp(timestampMs, options));
         } finally {
             this.updateInProgress = false;
             const deferredDiscontinuity = this.deferredDiscontinuity;
@@ -300,17 +360,22 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
         asbTrace('playback/executor', 'Resuming playback at pending timeline target', target);
 
-        if (target.blockId !== undefined) {
+        const suppressionBlockId = target.kind === 'repeat' ? target.startPauseSuppressionBlockId : undefined;
+        if (suppressionBlockId !== undefined) {
             this.startPauseSuppression = {
-                blockId: target.blockId,
+                blockId: suppressionBlockId,
             };
         }
         this.operationGeneration++;
         try {
-            await this.seek(target.timestampMs, { includeAtTimestamp: true });
+            if (target.kind === 'repeat') {
+                await this.seekRepeat(target.timestampMs, target.repeatBlockId);
+            } else {
+                await this.seek(target.timestampMs, { includeAtTimestamp: true });
+            }
         } catch (error) {
             asbTrace('playback/error', 'Pending playback target seek failed', { error, target });
-            if (this.startPauseSuppression?.blockId === target.blockId) this.startPauseSuppression = undefined;
+            if (this.startPauseSuppression?.blockId === suppressionBlockId) this.startPauseSuppression = undefined;
             throw error;
         }
     }
@@ -330,6 +395,7 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.callbacks.pause({
             timestampMs: event.timestampMs,
             playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
+            autoPauseToken: block.autoPauseToken,
         });
         return { autoPaused: true };
     }
@@ -349,30 +415,44 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.callbacks.pause({
                 timestampMs: event.timestampMs,
                 playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
+                autoPauseToken: block.autoPauseEndToken,
             });
         }
         if (repeat) {
-            const blockId = block.id;
-            if (action.pause) {
-                this.pendingTarget = {
-                    timestampMs: block.playbackModeStartMs,
-                    ...(block.startAction !== undefined ? { blockId } : {}),
-                };
+            if (action.pause || options.alreadyAutoPaused) {
+                this.pendingTarget = this.repeatTarget(block);
             } else {
                 const operation = ++this.operationGeneration;
-                await this.seek(block.playbackModeStartMs, { includeAtTimestamp: true });
+                await this.seekRepeat(block.playbackModeStartMs, block.id);
                 seeked = this.isCurrentOperation(operation);
             }
         } else if (action.pause) {
             const target = this.nextCondensedTarget(block.playbackModeEndExclusiveMs);
             if (target !== undefined) {
                 this.pendingTarget = {
+                    kind: 'condensed',
                     timestampMs: target,
                 };
             }
         }
 
         return { autoPaused: action.pause, seeked };
+    }
+
+    private repeatTarget(block: PlaybackTimelineBlock): PendingTarget {
+        const startPauseBlock = this.timeline
+            .startActionsAt(block.playbackModeStartMs)
+            .find(
+                (candidate) =>
+                    candidate.endAction?.pause === true && candidate.playbackModeEndMs === block.playbackModeEndMs
+            );
+        const suppressionBlockId = block.startAction !== undefined ? block.id : startPauseBlock?.id;
+        return {
+            kind: 'repeat',
+            timestampMs: block.playbackModeStartMs,
+            repeatBlockId: block.id,
+            ...(suppressionBlockId === undefined ? {} : { startPauseSuppressionBlockId: suppressionBlockId }),
+        };
     }
 
     reconcileAt(timestampMs: number, options: PlaybackRateReconciliationOptions): void {
@@ -382,17 +462,35 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     private reconcilePlaybackRate(state: PlaybackTimelineState, options: PlaybackRateReconciliationOptions): void {
         const fastForwarding = fastForwardingForPlanState(this.plan, state);
-        const playbackRate = fastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate;
-        const modeChanged = fastForwarding !== this._isFastForwarding;
-        this._isFastForwarding = fastForwarding;
-        if (modeChanged || options.forcePlaybackRate) {
+        const playbackRate =
+            state.current?.adaptiveRate?.playbackRate ??
+            (fastForwarding ? this.plan.fastForward!.playbackRate : this.plan.playbackRate);
+        const modeChanged = fastForwarding !== this.isFastForwarding;
+        const previousPlaybackRate = this.currentPlaybackRate;
+        const previousFraction = this.currentFastForwardRateFraction;
+        const previousComprehensionControlled = this.currentComprehensionControlled;
+        this.currentFastForwardRateFraction = state.current?.adaptiveRate?.fraction ?? (fastForwarding ? 1 : 0);
+        this.currentComprehensionControlled = state.current?.adaptiveRate?.comprehensionControlled ?? false;
+        const controlChanged =
+            previousFraction !== this.currentFastForwardRateFraction ||
+            previousComprehensionControlled !== this.currentComprehensionControlled;
+        const rateCommandNeeded = modeChanged || options.forcePlaybackRate || previousPlaybackRate !== playbackRate;
+        if (rateCommandNeeded || controlChanged) {
             asbTrace('playback/executor', 'Reconciled playback rate', {
+                blockId: state.current?.id,
+                comprehensionControlled: this.currentComprehensionControlled,
+                controlChanged,
                 fastForwarding,
                 forcePlaybackRate: options.forcePlaybackRate,
+                fraction: this.currentFastForwardRateFraction,
                 modeChanged,
                 playbackRate,
+                previousPlaybackRate,
             });
+        }
+        if (rateCommandNeeded) {
             this.callbacks.setPlaybackRate(playbackRate);
+            this.currentPlaybackRate = playbackRate;
         }
     }
 
@@ -413,9 +511,11 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.condensedOperation = operation;
             const shouldPause = this.shouldPauseForCondensedSeek(target);
             const seek = this.seek(target, { includeAtTimestamp: !shouldPause });
+            const startActions = this.timeline.startActionsAt(target);
             const pause = {
                 timestampMs: target,
-                playbackModeSubtitlesAtPause: this.pauseSubtitlesFor(this.timeline.startActionsAt(target)),
+                playbackModeSubtitlesAtPause: this.pauseSubtitlesFor(startActions),
+                autoPauseToken: startActions.find((block) => block.autoPauseToken)?.autoPauseToken,
             };
             if (shouldPause) this.callbacks.pause(pause);
             await seek;
@@ -450,12 +550,9 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         const condensedTarget = lookup.segment.condensedTarget;
         if (condensedTarget === undefined) return;
         const autoPauseStartTarget = lookup.segment.nextStartActionTimestamp;
-        const target =
-            autoPauseStartTarget === undefined ? condensedTarget : Math.min(condensedTarget, autoPauseStartTarget);
-        if (
-            target === undefined ||
-            target - timestampMs + 1 + timestampComparisonToleranceMs < condensed.minimumSkipIntervalMs
-        ) {
+        const nextActionTarget = lookup.segment.nextPlaybackActionTimestamp;
+        const target = Math.min(condensedTarget, autoPauseStartTarget ?? Infinity, nextActionTarget ?? Infinity);
+        if (target - timestampMs + 1 + timestampComparisonToleranceMs < condensed.minimumSkipIntervalMs) {
             return;
         }
 
@@ -469,7 +566,10 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         return target;
     }
 
-    private nextPlaybackActionTimestamp(timestampMs: number, lookaheadTimestampMs?: number): number {
+    private nextPlaybackActionTimestamp(
+        timestampMs: number,
+        { lookaheadTimestampMs }: { readonly lookaheadTimestampMs?: number }
+    ): number {
         const hasLookahead =
             lookaheadTimestampMs !== undefined &&
             Number.isFinite(lookaheadTimestampMs) &&
@@ -494,9 +594,19 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
 
     private shouldRepeat(block: PlaybackTimelineBlock, repeatCount: number): boolean {
         if (this.repeatedBlock?.id !== block.id) this.repeatedBlock = { id: block.id, repeats: 0 };
-        if (repeatCount > 0 && this.repeatedBlock.repeats >= repeatCount) return false;
-        this.repeatedBlock.repeats++;
-        return true;
+        return repeatCount === 0 || this.repeatedBlock.repeats < repeatCount;
+    }
+
+    private async seekRepeat(timestampMs: number, blockId: string): Promise<void> {
+        if (this.repeatedBlock?.id !== blockId) this.repeatedBlock = { id: blockId, repeats: 0 };
+        const repeatedBlock = this.repeatedBlock;
+        repeatedBlock.repeats++; // Queuing a repeat during an end pause does not start the next pass.
+        try {
+            await this.seek(timestampMs, { includeAtTimestamp: true });
+        } catch (error) {
+            if (this.repeatedBlock === repeatedBlock) repeatedBlock.repeats--;
+            throw error;
+        }
     }
 
     private async seek(timestampMs: number, options: { includeAtTimestamp: boolean }): Promise<void> {

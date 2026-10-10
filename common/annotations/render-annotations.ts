@@ -1,4 +1,5 @@
 import type { Token, Tokenization, TokenReading } from '@project/common';
+import { subtitleWordVisibility } from '@project/common/playback/plan/playback-dictionary';
 import type { DictionaryTrack, EnabledAnnotations, TokenAnnotationConfigTarget } from '@project/common/settings';
 import {
     areDictionaryTracksEqual,
@@ -36,6 +37,7 @@ import {
     ASB_PITCH_ACCENT_MORA_LOW_CLASS,
     ASB_READING_CLASS,
     ASB_TOKEN_CLASS,
+    ASB_TOKEN_ADAPTIVE_HIDDEN_CLASS,
     ASB_TOKEN_HIGHLIGHT_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
 } from '@project/common/annotations';
@@ -115,7 +117,8 @@ interface RichTextRenderable {
 export const renderRichTextOntoSubtitles = (
     subtitles: readonly RichTextRenderable[],
     tokenAnnotationTarget: TokenAnnotationConfigTarget,
-    dictionaryTracks: DictionaryTrack[] | undefined
+    dictionaryTracks: DictionaryTrack[] | undefined,
+    options: { readonly adaptiveWordVisibilityEnabled: boolean }
 ): Map<number, RenderedRichText> => {
     const rendered = new Map<number, RenderedRichText>();
     if (dictionaryTracks?.length !== defaultSettings.dictionaryTracks.length) {
@@ -134,7 +137,18 @@ export const renderRichTextOntoSubtitles = (
         if (!subtitle.tokenization) continue;
         const ta = trackAnnotations[subtitle.track];
 
+        const playbackConfig = ta.dt.dictionaryPlaybackConfig;
+        let hiddenTokens: ReadonlySet<Token> | undefined;
+        if (
+            options.adaptiveWordVisibilityEnabled &&
+            playbackConfig &&
+            playbackConfig.wordVisibility.hideWordsIndividuallyUntilThreshold
+        ) {
+            const visibility = subtitleWordVisibility(subtitle, playbackConfig);
+            if (!visibility.hideWholeSubtitle) hiddenTokens = visibility.hiddenTokens;
+        }
         const richText = computeRichText(subtitle.text, subtitle.tokenization, {
+            hiddenTokens,
             dt: ta.dt,
             enabledAnnotations: ta.richTextEnabledAnnotations,
             allowAsciiReading,
@@ -143,6 +157,7 @@ export const renderRichTextOntoSubtitles = (
         const richTextOnHover = ta.isRichTextOnHoverEnabled
             ? computeRichText(subtitle.text, subtitle.tokenization, {
                   dt: ta.dt,
+                  hiddenTokens,
                   enabledAnnotations: ta.richTextOnHoverEnabledAnnotations,
                   allowAsciiReading,
                   glossSize: ta.glossSize,
@@ -180,7 +195,9 @@ export const renderRichTextWindow = (
         toRender.push(subtitle);
     }
     if (toRender.length) {
-        const rendered = renderRichTextOntoSubtitles(toRender, tokenAnnotationTarget, dictionaryTracks);
+        const rendered = renderRichTextOntoSubtitles(toRender, tokenAnnotationTarget, dictionaryTracks, {
+            adaptiveWordVisibilityEnabled: true,
+        });
         for (const subtitle of toRender) {
             const value = rendered.get(subtitle.index);
             buffer.set(subtitle.index, {
@@ -205,9 +222,9 @@ export const renderRichTextForSubtitle = (
     const cached = window.buffer.get(subtitle.index);
     if (cached && cachedRichTextIsCurrent(cached, subtitle, tokenAnnotationTarget, dictionaryTracks)) return cached;
 
-    const rendered = renderRichTextOntoSubtitles([subtitle], tokenAnnotationTarget, dictionaryTracks).get(
-        subtitle.index
-    );
+    const rendered = renderRichTextOntoSubtitles([subtitle], tokenAnnotationTarget, dictionaryTracks, {
+        adaptiveWordVisibilityEnabled: true,
+    }).get(subtitle.index);
     window.buffer.set(subtitle.index, {
         ...rendered,
         text: subtitle.text,
@@ -223,6 +240,7 @@ interface TokenStyleState {
     enabledAnnotations: EnabledAnnotations;
     allowAsciiReading: boolean;
     glossSize: number;
+    hiddenTokens?: ReadonlySet<Token>;
 }
 
 export const computeRichText = (fullText: string, tokenization: Tokenization, ss: TokenStyleState) => {
@@ -249,15 +267,25 @@ export const computeRichText = (fullText: string, tokenization: Tokenization, ss
 const ERROR_STYLE = `style="text-decoration: line-through red 3px;"`;
 const LOGIC_ERROR_STYLE = `style="text-decoration: line-through red 3px double;"`;
 
-const addressableTokenWrapper = (tokenText: string, token: Token, style?: string) => {
-    return `<span ${ASB_TOKEN_START_ATTRIBUTE}="${token.pos[0]}"${style ? ` ${style}` : ''}>${tokenText}</span>`;
+interface TokenWrapperOptions {
+    readonly style?: string;
+    readonly hidden: boolean;
+}
+
+const addressableTokenWrapper = (tokenText: string, token: Token, options: TokenWrapperOptions) => {
+    return `<span ${options.hidden ? `class="${ASB_TOKEN_ADAPTIVE_HIDDEN_CLASS}" ` : ''}${ASB_TOKEN_START_ATTRIBUTE}="${token.pos[0]}"${options.style ? ` ${options.style}` : ''}>${tokenText}</span>`;
 };
 
-const collectibleTokenWrapper = (tokenText: string, token: Token, ss: TokenStyleState, style?: string) => {
+const collectibleTokenWrapper = (
+    tokenText: string,
+    token: Token,
+    ss: TokenStyleState,
+    options: TokenWrapperOptions
+) => {
     const highlightClass =
         ss.enabledAnnotations.color && ss.dt.dictionaryHighlightOnHover ? ` ${ASB_TOKEN_HIGHLIGHT_CLASS}` : '';
-    return `<span class="${ASB_TOKEN_CLASS}${highlightClass}" ${ASB_TOKEN_START_ATTRIBUTE}="${token.pos[0]}"${
-        style ? ` ${style}` : ''
+    return `<span class="${ASB_TOKEN_CLASS}${highlightClass}${options.hidden ? ` ${ASB_TOKEN_ADAPTIVE_HIDDEN_CLASS}` : ''}" ${ASB_TOKEN_START_ATTRIBUTE}="${token.pos[0]}"${
+        options.style ? ` ${options.style}` : ''
     }>${tokenText}</span>`;
 };
 
@@ -265,6 +293,7 @@ const hasExternalReadings = (token: InternalToken) =>
     token.readings.length > 0 && (!token.__internal || token.__usingExternalReadings === true);
 
 const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentContext, ss: TokenStyleState) => {
+    const hidden = ss.hiddenTokens?.has(token) ?? false;
     const rawTokenText = fullText.substring(token.pos[0], token.pos[1]);
     if (!HAS_LETTER_REGEX.test(rawTokenText)) {
         if (hasExternalReadings(token)) return applyReadingAnnotation(rawTokenText, token, prevPitch, ss);
@@ -278,40 +307,45 @@ const applyTokenStyle = (fullText: string, token: Token, prevPitch: PitchAccentC
         ss,
         rawTokenText
     );
-    if (token.status === null) return addressableTokenWrapper(tokenText, token, ERROR_STYLE);
-    if (token.status === undefined && dictionaryTrackEnabled(ss.dt))
-        return addressableTokenWrapper(tokenText, token, LOGIC_ERROR_STYLE); // External tokens may flash this on initial load
-    if (!ss.enabledAnnotations.color) return addressableTokenWrapper(tokenText, token);
+    if (token.status === null) return addressableTokenWrapper(tokenText, token, { style: ERROR_STYLE, hidden });
+    if (token.status === undefined && dictionaryTrackEnabled(ss.dt)) {
+        return addressableTokenWrapper(tokenText, token, { style: LOGIC_ERROR_STYLE, hidden }); // External tokens may flash this on initial load
+    }
+    if (!ss.enabledAnnotations.color) return addressableTokenWrapper(tokenText, token, { hidden });
 
     const config = ss.dt.dictionaryTokenStatusConfig[token.status!];
-    if (!config.display) return collectibleTokenWrapper(tokenText, token, ss);
+    if (!config.display) return collectibleTokenWrapper(tokenText, token, ss, { hidden });
     if (
         token.pitchAccent != null &&
         ss.enabledAnnotations.pitchAccent &&
         tokenText.includes(`class="${ASB_PITCH_ACCENT_CLASS}"`)
     ) {
-        return collectibleTokenWrapper(tokenText, token, ss); // Only colorize the pitch accent when pitch accent is being shown
+        return collectibleTokenWrapper(tokenText, token, ss, { hidden }); // Only colorize the pitch accent when pitch accent is being shown
     }
 
     const c = `${config.color}${config.alpha}`;
     const t = ss.dt.dictionaryTokenStylingThickness;
     switch (ss.dt.dictionaryTokenStyling) {
         case TokenStyling.TEXT:
-            return collectibleTokenWrapper(tokenText, token, ss, `style="-webkit-text-fill-color: ${c};"`);
+            return collectibleTokenWrapper(tokenText, token, ss, {
+                style: `style="-webkit-text-fill-color: ${c};"`,
+                hidden,
+            });
         case TokenStyling.BACKGROUND:
-            return collectibleTokenWrapper(tokenText, token, ss, `style="background-color: ${c};"`);
+            return collectibleTokenWrapper(tokenText, token, ss, { style: `style="background-color: ${c};"`, hidden });
         case TokenStyling.UNDERLINE:
         case TokenStyling.OVERLINE:
-            return collectibleTokenWrapper(
-                tokenText,
-                token,
-                ss,
-                `style="text-decoration: ${ss.dt.dictionaryTokenStyling} ${c} ${t}px;"`
-            );
+            return collectibleTokenWrapper(tokenText, token, ss, {
+                style: `style="text-decoration: ${ss.dt.dictionaryTokenStyling} ${c} ${t}px;"`,
+                hidden,
+            });
         case TokenStyling.OUTLINE:
-            return collectibleTokenWrapper(tokenText, token, ss, `style="-webkit-text-stroke: ${t}px ${c};"`);
+            return collectibleTokenWrapper(tokenText, token, ss, {
+                style: `style="-webkit-text-stroke: ${t}px ${c};"`,
+                hidden,
+            });
         default:
-            return collectibleTokenWrapper(tokenText, token, ss, LOGIC_ERROR_STYLE);
+            return collectibleTokenWrapper(tokenText, token, ss, { style: LOGIC_ERROR_STYLE, hidden });
     }
 };
 

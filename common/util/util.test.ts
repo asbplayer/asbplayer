@@ -7,6 +7,8 @@ import {
     buildSubtitleTracks,
     clamp,
     compareSubtitlesForDisplay,
+    compareField,
+    fieldsEqual,
     computeStyles,
     computeStyleString,
     download,
@@ -52,6 +54,7 @@ import {
     timeDurationDisplay,
     clampMediaTimestamp,
 } from '@project/common/util';
+import type { FieldComparators } from '@project/common/util';
 import type { TextSubtitleSettings } from '@project/common/settings';
 import { calculateSeekableTracksValue } from '@project/common/settings';
 import type { Progress } from '@project/common';
@@ -1292,4 +1295,68 @@ it('maps showing and invisible subtitles in display order with their visibility'
         { track: 2, index: 0, visible: true },
         { track: 2, index: 2, visible: false },
     ]);
+});
+
+interface Example {
+    id: number;
+    label?: string;
+    values: number[];
+}
+
+const comparators: FieldComparators<Example> = {
+    id: (a, b) => a === b,
+    label: (a, b) => a === b,
+    values: (a, b) => arrayEquals(a, b),
+};
+const example: Example = { id: 1, label: 'first', values: [1, 2] };
+
+describe('fieldsEqual', () => {
+    it('compares separately allocated values regardless of key order', () => {
+        expect(fieldsEqual(example, { values: [1, 2], label: 'first', id: 1 }, comparators)).toBe(true);
+    });
+
+    it.each([{ id: 2 }, { label: 'second' }, { label: undefined }, { values: [1, 3] }, { values: [1] }])(
+        'detects a changed field: %j',
+        (change) => {
+            expect(fieldsEqual(example, { ...example, ...change }, comparators)).toBe(false);
+        }
+    );
+
+    it('handles missing objects and identical references', () => {
+        expect(fieldsEqual(undefined, undefined, comparators)).toBe(true);
+        expect(fieldsEqual(example, undefined, comparators)).toBe(false);
+        expect(fieldsEqual(undefined, example, comparators)).toBe(false);
+        expect(fieldsEqual(example, example, comparators)).toBe(true);
+    });
+
+    it('compares empty objects', () => {
+        expect(fieldsEqual({}, {}, {})).toBe(true);
+    });
+
+    it.each([
+        { content: 'first', color: 'red', expected: true },
+        { content: 'first', color: 'blue', expected: true },
+        { content: 'second', color: 'red', expected: false },
+        { content: 'second', color: 'blue', expected: false },
+    ])('accepts allowed differences per field: %j', ({ content, color, expected }) => {
+        const original = { content: 'first', color: 'red' };
+        const equality: FieldComparators<typeof original> = {
+            content: (a, b) => a === b,
+            color: (a, b) => a === b,
+        };
+        const allowedDifferences: FieldComparators<typeof original> = {
+            content: () => false,
+            color: () => true,
+        };
+        expect(fieldsEqual(original, { content, color }, equality, allowedDifferences)).toBe(expected);
+    });
+});
+
+describe('compareField', () => {
+    it('uses the selected field comparator', () => {
+        const changed: Example = { id: 2, values: [1, 2] };
+        expect(compareField('id', example, changed, comparators)).toBe(false);
+        expect(compareField('values', example, changed, comparators)).toBe(true);
+        expect(compareField('label', example, changed, comparators)).toBe(false);
+    });
 });
