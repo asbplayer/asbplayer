@@ -35,6 +35,7 @@ const reader = (
         regexFilterTextReplacement: options.replacement ?? '',
         subtitleHtml: options.subtitleHtml ?? SubtitleHtml.render,
         convertNetflixRuby: options.convertNetflixRuby ?? false,
+        convertHindiToUrdu: false,
         pgsParserWorkerFactory: () => Promise.reject(new Error('PGS worker is not used in these tests')),
     });
 

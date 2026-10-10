@@ -504,6 +504,7 @@
         "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "Substituição de texto do filtro regex da legenda",
         "convertNetflixRuby": "Detect and Display Ruby",
+        "convertHindiToUrdu": "Convert Hindi Subtitles to Urdu Script",
         "subtitleHtml": "HTML da Legenda",
         "subtitleHtmlRemove": "Remover",
         "subtitleHtmlRender": "Renderizar",

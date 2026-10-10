@@ -24,6 +24,7 @@ const createReader = (options: Partial<ConstructorParameters<typeof SubtitleRead
         regexFilterTextReplacement: '',
         subtitleHtml: SubtitleHtml.render,
         convertNetflixRuby: false,
+        convertHindiToUrdu: false,
         pgsParserWorkerFactory: () => Promise.reject(new Error('PGS worker is not used in these tests')),
         ...options,
     });
@@ -762,5 +763,30 @@ describe('SubtitleReader SRT override tag handling', () => {
     it('preserves unsupported blocks alongside whitelisted blocks', async () => {
         const [cue] = await createReader().subtitles([srtFile('{\\an8}Hello{\\unknown}{\\i1} world{\\i0}')]);
         expect(cue.text).toBe('Hello{\\unknown} world');
+    });
+});
+
+describe('SubtitleReader Hindi to Urdu script conversion', () => {
+    const hindi = 'मुझे हिंदी और उर्दू दोनों पसंद हैं।';
+    const urdu = 'مجھے ہندی اور اردو دونوں پسند ہیں۔';
+
+    it.each(['srt', 'vtt'])('converts Devanagari text from %s when enabled', async (extension) => {
+        const [subtitle] = await createReader({ convertHindiToUrdu: true }).subtitles([
+            extension === 'srt' ? srtFile(hindi) : vttFile(hindi, extension),
+        ]);
+
+        expect(subtitle.text).toBe(urdu);
+    });
+
+    it('leaves Devanagari text unchanged when disabled', async () => {
+        const [subtitle] = await createReader({ convertHindiToUrdu: false }).subtitles([srtFile(hindi)]);
+
+        expect(subtitle.text).toBe(hindi);
+    });
+
+    it('leaves text without Devanagari unchanged when enabled', async () => {
+        const [subtitle] = await createReader({ convertHindiToUrdu: true }).subtitles([srtFile('Hello, world!')]);
+
+        expect(subtitle.text).toBe('Hello, world!');
     });
 });

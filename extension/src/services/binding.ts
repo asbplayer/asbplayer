@@ -1372,6 +1372,10 @@ export default class Binding {
             this.subtitleController.convertNetflixRuby !== currentSettings.convertNetflixRuby;
         this.subtitleController.convertNetflixRuby = currentSettings.convertNetflixRuby;
 
+        const convertHindiToUrduChanged =
+            this.subtitleController.convertHindiToUrdu !== currentSettings.convertHindiToUrdu;
+        this.subtitleController.convertHindiToUrdu = currentSettings.convertHindiToUrdu;
+
         const subtitleHtmlChanged = this.subtitleController.subtitleHtml !== currentSettings.subtitleHtml;
         this.subtitleController.subtitleHtml = currentSettings.subtitleHtml;
 
@@ -1382,7 +1386,7 @@ export default class Binding {
         }
         this.subtitleController.setSubtitleSettings(currentSettings);
 
-        if (convertNetflixRubyChanged || subtitleHtmlChanged) {
+        if (convertNetflixRubyChanged || convertHindiToUrduChanged || subtitleHtmlChanged) {
             this.subtitleController.cacheHtml();
         }
 
@@ -1917,12 +1921,14 @@ export default class Binding {
             subtitleRegexFilterTextReplacement,
             subtitleHtml,
             convertNetflixRuby: convertNetflixRuby,
+            convertHindiToUrdu,
         } = await this.settings.get([
             'streamingSubtitleListPreference',
             'subtitleRegexFilter',
             'subtitleRegexFilterTextReplacement',
             'subtitleHtml',
             'convertNetflixRuby',
+            'convertHindiToUrdu',
         ]);
         const syncWithAsbplayerTab = async (withSyncedAsbplayerOnly: boolean, withAsbplayerId: string | undefined) => {
             const syncMessage: VideoToExtensionCommand<ExtensionSyncMessage> = {
@@ -1954,6 +1960,7 @@ export default class Binding {
                     regexFilterTextReplacement: subtitleRegexFilterTextReplacement,
                     subtitleHtml: subtitleHtml,
                     convertNetflixRuby: convertNetflixRuby,
+                    convertHindiToUrdu,
                     pgsParserWorkerFactory: pgsParserWorkerFactory,
                 });
                 const offset = this.playbackEngine.lastSubtitleOffset;

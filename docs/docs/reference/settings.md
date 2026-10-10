@@ -741,6 +741,12 @@ How to handle HTML that appears in subtitle files.
 
 When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
 
+### Convert Hindi Subtitles to Urdu Script {#convert-hindi-subtitles-to-urdu-script}
+
+When enabled, subtitle text written in Devanagari (Hindi) is transliterated into Urdu (Perso-Arabic) script when subtitles are loaded. Hindi and Urdu are the same spoken language, so this lets Hindi captions, such as YouTube's auto-generated ones, be read in Urdu script. Text that is not Devanagari, including Latin text and punctuation, is left unchanged.
+
+The conversion is a letter-by-letter heuristic, not a dictionary lookup. Short vowel marks are omitted, as in everyday Urdu writing, and loanword spellings and _izafat_ are not handled, so the output may differ from standard Urdu orthography. The conversion happens when a subtitle file is parsed, so it applies to subtitles loaded after the setting is enabled.
+
 ### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
 
 Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.

@@ -685,6 +685,9 @@ const settingsSchema = {
         convertNetflixRuby: {
             type: 'boolean',
         },
+        convertHindiToUrdu: {
+            type: 'boolean',
+        },
         language: {
             type: 'string',
         },

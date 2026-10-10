@@ -504,6 +504,7 @@
         "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "Penggantian teks filter regex takarir",
         "convertNetflixRuby": "Detect and Display Ruby",
+        "convertHindiToUrdu": "Convert Hindi Subtitles to Urdu Script",
         "subtitleHtml": "HTML Takarir",
         "subtitleHtmlRemove": "Hapus",
         "subtitleHtmlRender": "Render",

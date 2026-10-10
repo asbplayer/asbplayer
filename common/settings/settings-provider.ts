@@ -281,6 +281,7 @@ export const defaultSettings: AsbplayerSettings = {
     subtitleRegexFilter: '',
     subtitleRegexFilterTextReplacement: '',
     convertNetflixRuby: false,
+    convertHindiToUrdu: false,
     language: 'en',
     customAnkiFields: {},
     tags: [],

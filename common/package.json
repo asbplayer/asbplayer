@@ -6,6 +6,7 @@
     "dependencies": {
         "@project/common": "workspace:^",
         "@flatten-js/interval-tree": "^1.0.19",
+        "@indic-transliteration/sanscript": "^1.3.3",
         "@mui/icons-material": "^6.4.8",
         "@mui/material": "^6.4.8",
         "@mui/styles": "^6.4.8",

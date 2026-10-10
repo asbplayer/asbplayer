@@ -504,6 +504,7 @@
         "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "字幕の正規表現フィルタの置き換えテキスト",
         "convertNetflixRuby": "ルビーを検出して表示",
+        "convertHindiToUrdu": "Convert Hindi Subtitles to Urdu Script",
         "subtitleHtml": "字幕に含まれるHTML",
         "subtitleHtmlRemove": "削除する",
         "subtitleHtmlRender": "レンダリングする",

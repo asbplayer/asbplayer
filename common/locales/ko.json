@@ -504,6 +504,7 @@
         "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "자막 정규식 필터 텍스트 치환",
         "convertNetflixRuby": "Detect and Display Ruby",
+        "convertHindiToUrdu": "Convert Hindi Subtitles to Urdu Script",
         "subtitleHtml": "자막 HTML",
         "subtitleHtmlRemove": "삭제",
         "subtitleHtmlRender": "렌더링",
