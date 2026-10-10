@@ -472,6 +472,7 @@ export class Yomitan {
     resetCache() {
         asbTrace('yomitan/cache', 'Resetting Yomitan caches', {
             frequencyCount: this.frequencyCache.size,
+            glossCount: this.glossCache.size,
             lemmaCount: this.lemmatizeCache.size,
             pitchAccentCount: this.pitchAccentCache.size,
             tokenizeCount: this.tokenizeCache.size,
@@ -1152,6 +1153,8 @@ export class Yomitan {
     ): Promise<void> {
         let batchError = false;
         const startedAt = Date.now();
+        let resolvedGlossCount = 0;
+        let missingGlossCount = 0;
         asbTrace('yomitan/termEntries', 'Starting bulk term entry request', {
             batchSize,
             tokenCount: tokens.length,
@@ -1228,7 +1231,8 @@ export class Yomitan {
                                 modified = true;
                             }
                             if (!this.glossCache.has(token)) {
-                                this.extractGloss(token, entries);
+                                if (this.extractGloss(token, entries) === null) missingGlossCount++;
+                                else resolvedGlossCount++;
                                 modified = true;
                             }
                             if (!this.pitchAccentCache.has(token)) {
@@ -1247,6 +1251,8 @@ export class Yomitan {
                 durationMs: Date.now() - startedAt,
                 tokenCount: tokens.length,
                 fetchedTokenCount: tokensToFetch.size,
+                resolvedGlossCount,
+                missingGlossCount,
             });
         } catch (e) {
             asbTrace('yomitan/termEntries', 'Bulk term entry request failed', {

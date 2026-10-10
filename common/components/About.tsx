@@ -944,7 +944,12 @@ const About = ({ appVersionRepoPath, extensionVersion }: Props) => {
             <p />
             <SettingsSection>{t('about.license')}</SettingsSection>
             <Paper variant="outlined" style={{ padding: theme.spacing(2), maxHeight: '40vh', overflowY: 'auto' }}>
-                <Typography component="pre" variant="body2" style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                <Typography
+                    component="pre"
+                    variant="body2"
+                    align="center"
+                    style={{ margin: 0, whiteSpace: 'pre-line' }}
+                >
                     {licenseText}
                 </Typography>
             </Paper>

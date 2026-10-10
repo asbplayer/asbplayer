@@ -334,10 +334,13 @@ const renderInterval = (value: TimelineInterval, rowStartSeconds: number): strin
 const renderModeToggle = (className: string, label: string, color: string, checked: boolean): string =>
     `<label class="mode-toggle"><input type="checkbox" data-mode="${className}"${checked ? ' checked' : ''}><span class="legend-swatch ${className}" style="background:${color}"></span>${label}</label>`;
 
-const renderTrackSelector = (tracks: readonly PlaybackTimelineTrack[]): string =>
-    `<select class="track-selector" data-track-select>${tracks
-        .map(({ track, label }) => `<option value="${track}">${escapeHtml(label)}</option>`)
-        .join('')}</select>`;
+const renderTrackToggles = (tracks: readonly PlaybackTimelineTrack[]): string =>
+    `<div class="track-controls">${tracks
+        .map(
+            ({ track, label }, index) =>
+                `<label class="track-toggle"><input type="checkbox" data-track="${track}"${index === 0 ? ' checked' : ''}>${escapeHtml(label)}</label>`
+        )
+        .join('')}</div>`;
 
 const renderTicks = (rowStartSeconds: number, rowEndSeconds: number): string =>
     Array.from({ length: 10 }, (_, index) => index + 1)
@@ -495,7 +498,7 @@ export const playbackTimelineToHtml = <T extends IndexedSubtitleModel>({
             initialModeVisibility.autoPauseAtEnd ||
             initialModeVisibility.repeat
         );
-    const renderedTrackSelector = renderTrackSelector(timelineTracks);
+    const renderedTrackToggles = renderTrackToggles(timelineTracks);
     const timelineScript = String.raw`
 const timelineData = ${timelineData};
 const timelineColors = ${JSON.stringify(playbackTimelineColors)};
@@ -704,12 +707,22 @@ const readTimelineSettings = () => {
     });
     return settings;
 };
-const readSelectedTracks = () => new Set([Number(document.querySelector('select[data-track-select]')?.value)]);
+const readSelectedTracks = () => new Set(
+    [...document.querySelectorAll('input[data-track]:checked')].map((input) => Number(input.getAttribute('data-track')))
+);
 const rebuildTimeline = () => {
     document.querySelector('.timeline').innerHTML = renderTimeline(readTimelineSettings(), readSelectedTracks());
 };
 document.querySelectorAll('input[data-setting]').forEach((input) => input.addEventListener('input', rebuildTimeline));
-document.querySelectorAll('select[data-track-select]').forEach((select) => select.addEventListener('change', rebuildTimeline));
+document.querySelectorAll('input[data-track]').forEach((input) => {
+    input.addEventListener('change', () => {
+        if (!input.checked && !document.querySelector('input[data-track]:checked')) {
+            input.checked = true; // At least one track must stay selected
+            return;
+        }
+        rebuildTimeline();
+    });
+});
 document.querySelectorAll('input[data-mode]').forEach((checkbox) => {
     checkbox.addEventListener('change', () => {
         const mode = checkbox.getAttribute('data-mode');
@@ -763,7 +776,7 @@ rebuildTimeline();
 body { margin: 0; padding: 24px; color: #e6edf3; background: #0f1115; font-family: system-ui, sans-serif; }
 h1 { margin: 0 0 16px; font-size: 1.35rem; }
 .settings-summary { margin-bottom: 16px; padding: 12px; border: 1px solid #30363d; border-radius: 6px; background: #161b22; }
-.settings-heading { display: flex; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 8px; }
+.settings-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 8px; }
 .settings-summary h2 { margin: 0; font-size: 1rem; }
 .settings-summary dl { display: grid; gap: 6px; margin: 0; }
 .settings-options-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
@@ -772,10 +785,10 @@ h1 { margin: 0 0 16px; font-size: 1.35rem; }
 .settings-row dd { margin: 0; overflow-wrap: anywhere; }
 .settings-row input { width: 120px; padding: 3px 5px; color: #e6edf3; background: #0f1115; border: 1px solid #484f58; border-radius: 4px; }
 .settings-unit { margin-left: 6px; color: #8b949e; }
-.track-selector { min-width: 120px; padding: 3px 6px; color: #e6edf3; background: #0f1115; border: 1px solid #484f58; border-radius: 4px; font-size: .9rem; }
-.mode-controls { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 12px; font-size: .9rem; }
-.mode-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.mode-toggle input { margin: 0; accent-color: var(--normal-color); }
+.track-controls, .mode-controls { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: .9rem; }
+.mode-controls { margin-top: 12px; }
+.track-toggle, .mode-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.track-toggle input, .mode-toggle input { margin: 0; accent-color: var(--normal-color); }
 .legend-swatch { display: inline-block; width: 18px; height: 12px; border-radius: 3px; }
 .legend-swatch.autoPause-start, .legend-swatch.autoPause-end, .legend-swatch.repeat { width: 4px; border-radius: 0; }
 .timeline { width: 100%; }
@@ -801,7 +814,7 @@ h1 { margin: 0 0 16px; font-size: 1.35rem; }
 </head>
 <body class="${initialHiddenModes}">
 <h1>${escapedTitle}</h1>
-<section class="settings-summary"><div class="settings-heading"><h2>${escapeHtml(timelineOptionsTitle)}</h2>${renderedTrackSelector}</div><dl>${renderedTimelineOptions}</dl><div class="mode-controls" aria-label="Timeline layers">${renderModeToggle('normal', escapeHtml(modeLabels.normal), playbackTimelineColors.normal, initialNormalModeVisibility)}${renderModeToggle('fast-forward', escapeHtml(modeLabels.fastForward), playbackTimelineColors.fastForward, initialModeVisibility.fastForward)}${renderModeToggle('condensed', escapeHtml(modeLabels.condensed), playbackTimelineColors.condensed, initialModeVisibility.condensed)}${renderModeToggle('autoPause-start', escapeHtml(modeLabels.autoPauseAtStart), playbackTimelineColors.autoPause, initialModeVisibility.autoPauseAtStart)}${renderModeToggle('autoPause-end', escapeHtml(modeLabels.autoPauseAtEnd), playbackTimelineColors.autoPause, initialModeVisibility.autoPauseAtEnd)}${renderModeToggle('repeat', escapeHtml(modeLabels.repeat), playbackTimelineColors.repeat, initialModeVisibility.repeat)}</div></section>
+<section class="settings-summary"><div class="settings-heading"><h2>${escapeHtml(timelineOptionsTitle)}</h2>${renderedTrackToggles}</div><dl>${renderedTimelineOptions}</dl><div class="mode-controls" aria-label="Timeline layers">${renderModeToggle('normal', escapeHtml(modeLabels.normal), playbackTimelineColors.normal, initialNormalModeVisibility)}${renderModeToggle('fast-forward', escapeHtml(modeLabels.fastForward), playbackTimelineColors.fastForward, initialModeVisibility.fastForward)}${renderModeToggle('condensed', escapeHtml(modeLabels.condensed), playbackTimelineColors.condensed, initialModeVisibility.condensed)}${renderModeToggle('autoPause-start', escapeHtml(modeLabels.autoPauseAtStart), playbackTimelineColors.autoPause, initialModeVisibility.autoPauseAtStart)}${renderModeToggle('autoPause-end', escapeHtml(modeLabels.autoPauseAtEnd), playbackTimelineColors.autoPause, initialModeVisibility.autoPauseAtEnd)}${renderModeToggle('repeat', escapeHtml(modeLabels.repeat), playbackTimelineColors.repeat, initialModeVisibility.repeat)}</div></section>
 <main class="timeline">${renderedRows}</main>
 <script>${timelineScript}</script>
 </body>

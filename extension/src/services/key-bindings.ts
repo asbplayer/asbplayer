@@ -289,14 +289,23 @@ export default class KeyBindings {
         this._unbindJumpToToken = this._keyBinder.bindJumpToToken(
             (event, target, forward) => {
                 const subtitles = context.subtitleController.subtitles;
+                const currentSelection = context.subtitleController.currentTokenSelectionLocation();
                 const match = findAdjacentTokenJumpMatch(
                     subtitles,
                     target,
                     forward,
                     context.currentTimeMs,
                     context.seekableTracks,
-                    context.subtitleController.currentTokenSelectionLocation()
+                    currentSelection
                 );
+                asbTrace('annotations/navigation', 'Resolved streaming token jump', {
+                    target,
+                    forward,
+                    timestampMs: context.currentTimeMs,
+                    seekableTracks: context.seekableTracks,
+                    currentSelection,
+                    match: match ? { subtitleIndex: match.subtitleIndex, tokenStart: match.tokenStart } : null,
+                });
                 if (!match) return false;
 
                 event.preventDefault();
@@ -557,9 +566,27 @@ export default class KeyBindings {
 
     private _requestTokenSelection(context: Binding, target: TokenSelectionLocation) {
         this._cancelTokenSelectionRetry?.();
+        const maxAttempts = 60;
+        let attempts = 0;
+        asbTrace('annotations/selection', 'Requested streaming token selection', {
+            subtitleIndex: target.subtitleIndex,
+            tokenStart: target.tokenStart,
+            maxAttempts,
+        });
         this._cancelTokenSelectionRetry = retryWithAnimationFrame(
-            () => context.subtitleController.selectToken(target, { focusContainer: false }),
-            60,
+            () => {
+                attempts++;
+                const selected = context.subtitleController.selectToken(target, { focusContainer: false });
+                if (selected || attempts >= maxAttempts) {
+                    asbTrace(
+                        'annotations/selection',
+                        selected ? 'Selected streaming token' : 'Streaming token selection retry limit reached',
+                        { subtitleIndex: target.subtitleIndex, tokenStart: target.tokenStart, attempts }
+                    );
+                }
+                return selected;
+            },
+            maxAttempts,
             { runImmediately: true }
         );
     }

@@ -531,12 +531,11 @@ describe('DictionaryStatistics', () => {
 
         await statistics.refreshDictionaryTokens('profile');
 
-        expect((storage.getAllTokens.mock.calls as any[][]).map((call) => call[1])).toEqual([0, 2]);
-
         const snapshot = lastPublishedSnapshot(storage)!;
         expect(snapshot.settings).toEqual({
             dictionaryTracks: await settingsProvider.getSingle('dictionaryTracks'),
         });
+        expect(snapshot.snapshots.map((trackSnapshot) => trackSnapshot.track)).toEqual([0, 2]);
         expect(snapshot.snapshots[0].stats.dictionary.tokens).toEqual({
             alpha: { source: DictionaryTokenSource.LOCAL, statuses: [], states: [] },
         });

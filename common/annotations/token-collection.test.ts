@@ -7,7 +7,7 @@ import {
     TokenStatus,
 } from '@project/common/settings';
 import { getTokenStatus } from '@project/common/util';
-import { TrackState } from '@project/common/annotations/subtitle-annotations';
+import { TrackState } from '@project/common/annotations/track-state';
 import { resolveTokenStatus } from '@project/common/annotations/token-collection';
 import { makeDictionaryTrack } from '@project/common/annotations/annotations-test-utils';
 
