@@ -6,7 +6,12 @@ import AnimatedWebpRecorder from '@project/extension/src/services/animated-webp-
 import * as animatedWebpMedia from '@project/extension/src/services/animated-webp-media';
 import * as videoCapturer from '@project/extension/src/services/video-capturer';
 
-jest.mock('@project/extension/src/services/video-capturer');
+jest.mock('@project/extension/src/services/video-capturer', () => ({
+    ...jest.requireActual<object>('@project/extension/src/services/video-capturer'),
+    recordAnimatedWebp: jest.fn(),
+    startAnimatedWebp: jest.fn(),
+    stopAnimatedWebp: jest.fn(),
+}));
 jest.mock('@project/extension/src/services/animated-webp-media', () => ({ negotiateAnimatedWebp: jest.fn() }));
 jest.mock('@project/extension/src/services/offscreen-document', () => ({
     ensureOffscreenAudioServiceDocument: jest.fn(async () => undefined),
@@ -79,8 +84,9 @@ describe('AnimatedWebpRecorder', () => {
         });
 
         it('negotiates a stream and retries when the armed capture was discarded', async () => {
-            const missing: RecordAnimatedWebpResponse = { base64: '', error: 'gone', armedCaptureMissing: true };
-            capturer.recordAnimatedWebp.mockResolvedValueOnce(missing).mockResolvedValueOnce(webp);
+            capturer.recordAnimatedWebp
+                .mockRejectedValueOnce(new videoCapturer.ArmedCaptureMissingError('gone'))
+                .mockResolvedValueOnce(webp);
 
             const response = await recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true });
 

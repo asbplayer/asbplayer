@@ -1,4 +1,3 @@
-import { asbError } from '@project/common/util/log';
 import type {
     ExtensionToVideoCommand,
     ImageCaptureParams,
@@ -18,9 +17,26 @@ export const tabCaptureStreamId = (tabId: number): Promise<string> =>
         )
     );
 
+// The capture armed ahead of the mining seek was gone (discarded after a timeout) and the request carried no
+// stream to arm another from, so a new one has to be negotiated
+export class ArmedCaptureMissingError extends Error {}
+
+// The content script reports a failed capture in its response, since errors can't be sent across contexts
+const throwIfFailed = (response: RecordAnimatedWebpResponse) => {
+    if (response.armedCaptureMissing) {
+        throw new ArmedCaptureMissingError(response.error);
+    }
+
+    if (response.error) {
+        throw new Error(response.error);
+    }
+
+    return response;
+};
+
 // Asks the content script to capture the tab stream, encoding its video frames into a cropped animated
-// WebP and recording the audio in parallel. Returns the webp (empty string on failure) plus the audio
-// webm when requested. streamId/fps/quality can be omitted when the content script already has a
+// WebP and recording the audio in parallel. Returns the webp plus the audio webm when requested, and throws
+// if the capture failed. streamId/fps/quality can be omitted when the content script already has a
 // capture armed from a prior PrepareAnimatedWebpRecordingMessage - it uses that instead.
 export const recordAnimatedWebp = async (
     tabId: number,
@@ -37,13 +53,7 @@ export const recordAnimatedWebp = async (
         src,
     };
 
-    const response: RecordAnimatedWebpResponse = await browser.tabs.sendMessage(tabId, command);
-
-    if (response.error) {
-        asbError('recording/animated-webp', response.error);
-    }
-
-    return response;
+    return throwIfFailed(await browser.tabs.sendMessage(tabId, command));
 };
 
 // Asks the content script to begin an open-ended capture (manual recording), responding as soon as the
@@ -64,7 +74,7 @@ export const startAnimatedWebp = async (
     return browser.tabs.sendMessage(tabId, command);
 };
 
-// Ends the capture in progress (open-ended or timed) and returns whatever it recorded.
+// Ends the capture in progress (open-ended or timed) and returns whatever it recorded. Throws if it failed.
 export const stopAnimatedWebp = async (tabId: number, src: string): Promise<RecordAnimatedWebpResponse> => {
     const command: ExtensionToVideoCommand<StopAnimatedWebpMessage> = {
         sender: 'asbplayer-extension-to-video',
@@ -72,11 +82,5 @@ export const stopAnimatedWebp = async (tabId: number, src: string): Promise<Reco
         src,
     };
 
-    const response: RecordAnimatedWebpResponse = await browser.tabs.sendMessage(tabId, command);
-
-    if (response.error) {
-        asbError('recording/animated-webp', response.error);
-    }
-
-    return response;
+    return throwIfFailed(await browser.tabs.sendMessage(tabId, command));
 };

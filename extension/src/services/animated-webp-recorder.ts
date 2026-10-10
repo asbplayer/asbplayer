@@ -17,6 +17,7 @@ import type {
 import { negotiateAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
 import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
 import {
+    ArmedCaptureMissingError,
     recordAnimatedWebp,
     startAnimatedWebp,
     stopAnimatedWebp,
@@ -62,15 +63,18 @@ export default class AnimatedWebpRecorder {
         // When the content script already armed a capture before the seek (see binding.ts), skip negotiating a
         // stream - it would just be discarded, and doing it here is exactly the latency arming avoids.
         const negotiation = armed ? undefined : await negotiateAnimatedWebp(this._settings, tabId);
-        const response = await recordAnimatedWebp(tabId, src, time, true, captureParams, negotiation);
 
-        if (response.armedCaptureMissing) {
+        try {
+            return await recordAnimatedWebp(tabId, src, time, true, captureParams, negotiation);
+        } catch (e) {
+            if (!(e instanceof ArmedCaptureMissingError)) {
+                throw e;
+            }
+
             // The armed capture was discarded (e.g. after a slow seek), so open a new one
             const renegotiation = await negotiateAnimatedWebp(this._settings, tabId);
             return recordAnimatedWebp(tabId, src, time, true, captureParams, renegotiation);
         }
-
-        return response;
     }
 
     // Starts an open-ended recording, collected on stop.
@@ -126,7 +130,8 @@ export default class AnimatedWebpRecorder {
         };
     }
 
-    // A failed capture still produces a recording, with an empty image, so the card can be published anyway.
+    // A failed capture still produces a recording, with an empty image, so the card can be published anyway,
+    // like when a screenshot fails.
     private async _recordedMedia(
         recording: Promise<RecordAnimatedWebpResponse>,
         encodeAsMp3: boolean
