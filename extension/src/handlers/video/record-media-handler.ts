@@ -68,7 +68,10 @@ export default class RecordMediaHandler {
         // An animated WebP is recorded together with the audio, so it's requested from the recorder and takes
         // the place of the screenshot.
         const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = message;
-        const image: ImageRecordingRequest | undefined = (await shouldUseAnimatedWebp(this._settingsProvider, message))
+        const imageRecordingRequest: ImageRecordingRequest | undefined = (await shouldUseAnimatedWebp(
+            this._settingsProvider,
+            message
+        ))
             ? {
                   captureParams: { maxWidth, maxHeight, rect, frameId, trimBlackBars },
                   armed: Boolean(message.animatedWebpArmed),
@@ -89,11 +92,11 @@ export default class RecordMediaHandler {
                     src: recordMediaCommand.src,
                     tabId,
                 },
-                image
+                imageRecordingRequest
             );
         }
 
-        if (message.screenshot && image === undefined) {
+        if (message.screenshot && imageRecordingRequest === undefined) {
             const screenshotDelay = Math.max(
                 0,
                 message.record
@@ -143,7 +146,7 @@ export default class RecordMediaHandler {
                     error: AudioErrorCode.drmProtected,
                 };
             } finally {
-                if (image) {
+                if (imageRecordingRequest) {
                     // Restore the subtitles/controls that were hidden for a clean capture
                     this._notifyScreenshotTaken(recordMediaCommand.src, tabId);
                 }

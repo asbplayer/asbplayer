@@ -55,7 +55,7 @@ export default class StartRecordingMediaHandler {
         // An animated WebP is recorded together with the audio and collected when recording stops. It takes the
         // place of the screenshot, so the subtitles/controls hidden for a clean capture stay hidden until then.
         const { maxWidth, maxHeight, rect, frameId, trimBlackBars } = startRecordingCommand.message;
-        const image: ImageRecordingRequest | undefined = (await shouldUseAnimatedWebp(
+        const imageRecordingRequest: ImageRecordingRequest | undefined = (await shouldUseAnimatedWebp(
             this._settings,
             startRecordingCommand.message
         ))
@@ -64,7 +64,7 @@ export default class StartRecordingMediaHandler {
 
         if (startRecordingCommand.message.record) {
             try {
-                await this._audioRecorder.start({ src: startRecordingCommand.src, tabId }, image);
+                await this._audioRecorder.start({ src: startRecordingCommand.src, tabId }, imageRecordingRequest);
             } catch (e) {
                 if (!(e instanceof DrmProtectedStreamError)) {
                     throw e;
@@ -76,7 +76,7 @@ export default class StartRecordingMediaHandler {
 
         let imageModel: ImageModel | undefined;
 
-        if (startRecordingCommand.message.screenshot && image === undefined) {
+        if (startRecordingCommand.message.screenshot && imageRecordingRequest === undefined) {
             const imageDelay = startRecordingCommand.message.record ? startRecordingCommand.message.imageDelay : 0;
             try {
                 const imageBase64 = await this._imageCapturer.capture(tabId, startRecordingCommand.src, imageDelay, {
