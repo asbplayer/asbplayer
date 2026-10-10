@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { ImageCaptureParams, RecordAnimatedWebpResponse } from '@project/common';
-import { StopRecordingErrorCode } from '@project/common';
+import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
 import AnimatedWebpRecorder from '@project/extension/src/services/animated-webp-recorder';
 import * as animatedWebpMedia from '@project/extension/src/services/animated-webp-media';
@@ -173,6 +173,55 @@ describe('AnimatedWebpRecorder', () => {
                 error: { code: StopRecordingErrorCode.other },
             });
             expect(capturer.stopAnimatedWebp).not.toHaveBeenCalled();
+        });
+    });
+    describe('concurrent recordings', () => {
+        const inProgress = { started: false, error: { code: StartRecordingErrorCode.recordingInProgress } };
+
+        it('declines a new recording while a timed one is in progress', async () => {
+            const capture = deferred<RecordAnimatedWebpResponse>();
+            capturer.recordAnimatedWebp.mockReturnValue(capture.promise);
+            await recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true });
+            expect(recorder.recording).toBe(true);
+
+            await expect(
+                recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true })
+            ).resolves.toMatchObject(inProgress);
+            await expect(recorder.start(requester, { captureParams, armed: false })).resolves.toMatchObject(inProgress);
+            expect(capturer.recordAnimatedWebp).toHaveBeenCalledTimes(1);
+            expect(capturer.startAnimatedWebp).not.toHaveBeenCalled();
+        });
+
+        it('declines a new recording while a manual one is starting', async () => {
+            const started = deferred<{ started: boolean }>();
+            capturer.startAnimatedWebp.mockReturnValue(started.promise);
+            const first = recorder.start(requester, { captureParams, armed: false });
+
+            await expect(
+                recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true })
+            ).resolves.toMatchObject(inProgress);
+
+            started.resolve({ started: true });
+            await expect(first).resolves.toMatchObject({ started: true });
+            expect(recorder.recording).toBe(true);
+        });
+
+        it('accepts a new recording once the previous one is done', async () => {
+            capturer.recordAnimatedWebp.mockResolvedValue(webp);
+            const first = await recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true });
+            await first.result;
+            expect(recorder.recording).toBe(false);
+
+            const second = await recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true });
+            expect(second.started).toBe(true);
+        });
+
+        it('is free again when a manual recording fails to start', async () => {
+            capturer.startAnimatedWebp.mockResolvedValue({ started: false, error: 'no stream' });
+
+            await recorder.start(requester, { captureParams, armed: false });
+
+            expect(recorder.recording).toBe(false);
         });
     });
 });

@@ -37,9 +37,6 @@ export default class AudioRecorderService {
     private mediaResolve?: (value: RecordedMedia) => void;
     private mediaReject?: (error: any) => void;
     private currentRecordRequestId: string | undefined;
-    // Set while a recording that also captures an image is starting or in progress. It holds the tab's only
-    // tabCapture stream, so nothing else can start until it's done.
-    private imageRecordingRequestId: string | undefined;
 
     constructor(tabRegistry: TabRegistry, delegate: AudioRecorderDelegate) {
         this._tabRegistry = tabRegistry;
@@ -80,7 +77,6 @@ export default class AudioRecorderService {
         const requestId = uuidv4();
 
         try {
-            this._assertCanStart(requestId, requester, image);
             const response = await this._delegate.startWithTimeout(time, encodeAsMp3, requestId, requester, image);
 
             if (response.started) {
@@ -90,54 +86,25 @@ export default class AudioRecorderService {
 
             throw this._handleStartError(response, requester);
         } finally {
-            this._endImageRecording(requestId);
             this._notifyRecordingFinished(requester);
         }
     }
 
     async start(requester: Requester, image?: ImageRecordingRequest) {
-        const requestId = uuidv4();
-
         try {
-            this._assertCanStart(requestId, requester, image);
+            const requestId = uuidv4();
             const response = await this._delegate.start(requestId, requester, image);
 
             if (!response.started) {
                 throw this._handleStartError(response, requester);
             }
 
-            const end = () => this._endImageRecording(requestId);
-            void this._prepareForMediaResponse(requestId, response.result).then(end, end);
+            void this._prepareForMediaResponse(requestId, response.result);
             this._notifyRecordingStarted(requester);
         } catch (e) {
-            this._endImageRecording(requestId);
             this._notifyRecordingFinished(requester);
             throw e;
         }
-    }
-
-    // A new audio-only recording replaces a pending audio-only one, but a recording that captures an image
-    // can't be replaced or replace another one, since the tab can only be captured once at a time.
-    private _assertCanStart(requestId: string, requester: Requester, image?: ImageRecordingRequest) {
-        if (this.imageRecordingRequestId !== undefined || (image !== undefined && this.mediaPromise !== undefined)) {
-            throw this._recordingInProgress(requester);
-        }
-
-        if (image !== undefined) {
-            this.imageRecordingRequestId = requestId;
-        }
-    }
-
-    private _endImageRecording(requestId: string) {
-        if (this.imageRecordingRequestId === requestId) {
-            this.imageRecordingRequestId = undefined;
-        }
-    }
-
-    private _recordingInProgress(requester: Requester) {
-        const errorMessage = 'Cannot start recording: another recording is already in progress';
-        this._notifyError(errorMessage, requester);
-        return new RecordingInProgressError(errorMessage);
     }
 
     private _handleStartError(response: StartRecordingResponse, { tabId, src }: Requester): Error {
@@ -155,6 +122,11 @@ export default class AudioRecorderService {
                 return new Error(errorMessage);
             case StartRecordingErrorCode.drmProtected:
                 return new DrmProtectedStreamError();
+            case StartRecordingErrorCode.recordingInProgress: {
+                const inProgressMessage = 'Cannot start recording: another recording is already in progress';
+                this._notifyError(inProgressMessage, { tabId, src });
+                return new RecordingInProgressError(inProgressMessage);
+            }
         }
     }
 

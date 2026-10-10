@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { ImageCaptureParams } from '@project/common';
 import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
-import type {
-    AudioRecorderDelegate,
-    RecordedMedia,
-    StartMediaRecordingResponse,
-} from '@project/extension/src/services/audio-recorder-delegate';
+import type { AudioRecorderDelegate, RecordedMedia } from '@project/extension/src/services/audio-recorder-delegate';
+import { recordingInProgressResponse } from '@project/extension/src/services/audio-recorder-delegate';
 import AudioRecorderService, {
     NoRecordingInProgressServiceError,
     RecordingInProgressError,
@@ -125,91 +122,38 @@ describe('AudioRecorderService', () => {
             await expect(second).resolves.toEqual({ audioBase64: 'audio', image: null });
         });
 
-        it('rejects a recording with an image while audio is being recorded', async () => {
-            await service.start(requester);
+        it('declines with an error notification when the recorder reports a recording in progress', async () => {
+            delegate.startWithTimeout.mockResolvedValue(recordingInProgressResponse);
+            delegate.start.mockResolvedValue(recordingInProgressResponse);
 
             await expect(service.startWithTimeout(1000, false, requester, image)).rejects.toBeInstanceOf(
                 RecordingInProgressError
             );
-            expect(delegate.startWithTimeout).not.toHaveBeenCalled();
+            await expect(service.start(requester)).rejects.toBeInstanceOf(RecordingInProgressError);
+
+            const errors = sendMessage.mock.calls.filter(([, command]) => command.message.command === 'notify-error');
+            expect(errors).toHaveLength(2);
+            // Lets the requester leave its recording-requested state
+            expect(signals()).toEqual(['recording-finished', 'recording-finished']);
         });
 
-        it('rejects any recording while one with an image is in progress, and leaves it alone', async () => {
+        it('leaves a pending recording alone when a new one is declined', async () => {
             const result = deferred<RecordedMedia>();
-            delegate.startWithTimeout.mockResolvedValue({ started: true, result: result.promise });
+            delegate.startWithTimeout
+                .mockResolvedValueOnce({ started: true, result: result.promise })
+                .mockResolvedValueOnce(recordingInProgressResponse);
             const recording = service.startWithTimeout(1000, false, requester, image);
             await flush();
 
             await expect(service.startWithTimeout(1000, false, requester)).rejects.toBeInstanceOf(
                 RecordingInProgressError
             );
-            await expect(service.start(requester, image)).rejects.toBeInstanceOf(RecordingInProgressError);
-            expect(delegate.startWithTimeout).toHaveBeenCalledTimes(1);
-            expect(delegate.start).not.toHaveBeenCalled();
 
             result.resolve(media);
             await expect(recording).resolves.toEqual(media);
-
-            // Free again once it's done
-            await service.start(requester);
-            expect(delegate.start).toHaveBeenCalledTimes(1);
         });
 
-        it('rejects a recording while one with an image is still starting', async () => {
-            const response = deferred<StartMediaRecordingResponse>();
-            delegate.startWithTimeout.mockReturnValue(response.promise);
-            const recording = service.startWithTimeout(1000, false, requester, image);
-
-            await expect(service.startWithTimeout(1000, false, requester)).rejects.toBeInstanceOf(
-                RecordingInProgressError
-            );
-
-            response.resolve({ started: true, result: Promise.resolve(media) });
-            await expect(recording).resolves.toEqual(media);
-        });
-
-        it('lets the requester leave its recording-requested state when rejected', async () => {
-            delegate.startWithTimeout.mockResolvedValue({
-                started: true,
-                result: deferred<RecordedMedia>().promise,
-            });
-            void service.startWithTimeout(1000, false, requester, image);
-            await flush();
-            sendMessage.mockClear();
-
-            await expect(
-                service.startWithTimeout(1000, false, { tabId: 2, src: 'blob:other' }, image)
-            ).rejects.toBeInstanceOf(RecordingInProgressError);
-
-            const finishedForOtherTab = sendMessage.mock.calls.filter(
-                ([tabId, command]) => tabId === 2 && command.message.command === 'recording-finished'
-            );
-            expect(finishedForOtherTab).toHaveLength(1);
-        });
-
-        it('blocks other recordings until a manual recording with an image is stopped', async () => {
-            const result = deferred<RecordedMedia>();
-            delegate.start.mockResolvedValue({ started: true, result: result.promise });
-            delegate.stop.mockImplementation(async () => {
-                result.resolve(media);
-                return { stopped: true };
-            });
-            await service.start(requester, image);
-
-            await expect(service.startWithTimeout(1000, false, requester)).rejects.toBeInstanceOf(
-                RecordingInProgressError
-            );
-
-            await expect(service.stop(false, requester)).resolves.toEqual(media);
-            await flush();
-
-            // Free again once stopped
-            void service.startWithTimeout(1000, false, requester, image);
-            await flush();
-            expect(delegate.startWithTimeout).toHaveBeenCalledTimes(1);
-        });
-
-        it('frees the recorder when a recording with an image fails to start', async () => {
+        it('lets the requester recover when a recording fails to start', async () => {
             delegate.start.mockResolvedValueOnce({
                 started: false,
                 error: { code: StartRecordingErrorCode.other, message: 'no stream' },
@@ -217,9 +161,6 @@ describe('AudioRecorderService', () => {
 
             await expect(service.start(requester, image)).rejects.toThrow('no stream');
             expect(signals()).toEqual(['recording-finished']);
-
-            await service.start(requester, image);
-            expect(delegate.start).toHaveBeenCalledTimes(2);
         });
     });
 

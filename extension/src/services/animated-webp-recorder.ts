@@ -14,6 +14,7 @@ import type {
     Requester,
     StartMediaRecordingResponse,
 } from '@project/extension/src/services/audio-recorder-delegate';
+import { recordingInProgressResponse } from '@project/extension/src/services/audio-recorder-delegate';
 import { negotiateAnimatedWebp } from '@project/extension/src/services/animated-webp-media';
 import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
 import {
@@ -31,9 +32,15 @@ export default class AnimatedWebpRecorder {
     private readonly _settings: SettingsProvider;
     private _timed?: Requester;
     private _manual?: { requester: Requester; resolve: (media: RecordedMedia) => void };
+    private _startingManual = false;
 
     constructor(settings: SettingsProvider) {
         this._settings = settings;
+    }
+
+    // A recording holds the tab capture until it's done, so it can't be replaced by another one
+    get recording() {
+        return this._timed !== undefined || this._manual !== undefined || this._startingManual;
     }
 
     // The content script only answers once the clip is finished, so the recording counts as started right
@@ -44,6 +51,10 @@ export default class AnimatedWebpRecorder {
         requester: Requester,
         { captureParams, armed }: ImageRecordingRequest
     ): Promise<StartMediaRecordingResponse> {
+        if (this.recording) {
+            return recordingInProgressResponse;
+        }
+
         this._timed = requester;
         const result = this._recordedMedia(this._recordWithTimeout(time, requester, captureParams, armed), encodeAsMp3);
         void result.finally(() => {
@@ -79,6 +90,12 @@ export default class AnimatedWebpRecorder {
 
     // Starts an open-ended recording, collected on stop.
     async start(requester: Requester, { captureParams }: ImageRecordingRequest): Promise<StartMediaRecordingResponse> {
+        if (this.recording) {
+            return recordingInProgressResponse;
+        }
+
+        this._startingManual = true;
+
         try {
             const negotiation = await negotiateAnimatedWebp(this._settings, requester.tabId);
             const response = await startAnimatedWebp(requester.tabId, requester.src, true, captureParams, negotiation);
@@ -88,6 +105,8 @@ export default class AnimatedWebpRecorder {
             }
         } catch (e) {
             return this._startError(e instanceof Error ? e.message : String(e));
+        } finally {
+            this._startingManual = false;
         }
 
         const result = new Promise<RecordedMedia>((resolve) => {

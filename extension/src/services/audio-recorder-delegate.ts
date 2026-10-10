@@ -10,6 +10,7 @@ import type {
     StopRecordingAudioMessage,
     StopRecordingResponse,
 } from '@project/common';
+import { StartRecordingErrorCode } from '@project/common';
 import { ensureOffscreenAudioServiceDocument } from '@project/extension/src/services/offscreen-document';
 import type AnimatedWebpRecorder from '@project/extension/src/services/animated-webp-recorder';
 
@@ -41,6 +42,11 @@ export interface StartMediaRecordingResponse extends StartRecordingResponse {
     // later with an audio-base64 message.
     result?: Promise<RecordedMedia>;
 }
+
+export const recordingInProgressResponse: StartMediaRecordingResponse = {
+    started: false,
+    error: { code: StartRecordingErrorCode.recordingInProgress, message: 'Another recording is already in progress' },
+};
 
 export interface AudioRecorderDelegate {
     startWithTimeout: (
@@ -120,25 +126,26 @@ export class OffscreenAudioRecorder implements AudioRecorderDelegate {
 }
 
 // Chrome can only capture a tab once at a time, so a recording that also captures an image takes the place of
-// the offscreen audio recording instead of running alongside it.
+// the offscreen audio recording instead of running alongside it. While it's in progress, nothing else can start.
 export class ChromeMediaRecorder implements AudioRecorderDelegate {
     private readonly _audioRecorder: OffscreenAudioRecorder;
     private readonly _animatedWebpRecorder: AnimatedWebpRecorder;
-    private _recordingImage = false;
 
     constructor(audioRecorder: OffscreenAudioRecorder, animatedWebpRecorder: AnimatedWebpRecorder) {
         this._audioRecorder = audioRecorder;
         this._animatedWebpRecorder = animatedWebpRecorder;
     }
 
-    startWithTimeout(
+    async startWithTimeout(
         time: number,
         encodeAsMp3: boolean,
         requestId: string,
         requester: Requester,
         image?: ImageRecordingRequest
     ) {
-        this._recordingImage = image !== undefined;
+        if (this._animatedWebpRecorder.recording) {
+            return recordingInProgressResponse;
+        }
 
         if (image === undefined) {
             return this._audioRecorder.startWithTimeout(time, encodeAsMp3, requestId, requester);
@@ -147,8 +154,10 @@ export class ChromeMediaRecorder implements AudioRecorderDelegate {
         return this._animatedWebpRecorder.startWithTimeout(time, encodeAsMp3, requester, image);
     }
 
-    start(requestId: string, requester: Requester, image?: ImageRecordingRequest) {
-        this._recordingImage = image !== undefined;
+    async start(requestId: string, requester: Requester, image?: ImageRecordingRequest) {
+        if (this._animatedWebpRecorder.recording) {
+            return recordingInProgressResponse;
+        }
 
         if (image === undefined) {
             return this._audioRecorder.start(requestId, requester);
@@ -158,7 +167,7 @@ export class ChromeMediaRecorder implements AudioRecorderDelegate {
     }
 
     stop(encodeAsMp3: boolean) {
-        return this._recordingImage
+        return this._animatedWebpRecorder.recording
             ? this._animatedWebpRecorder.stop(encodeAsMp3)
             : this._audioRecorder.stop(encodeAsMp3);
     }

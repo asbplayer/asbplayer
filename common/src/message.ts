@@ -684,6 +684,7 @@ export enum StartRecordingErrorCode {
     noActiveTabPermission = 1,
     drmProtected = 2,
     other = 3,
+    recordingInProgress = 4,
 }
 
 export interface StartRecordingResponse {
