@@ -77,6 +77,15 @@ describe('prepareHint', () => {
         });
     });
 
+    it('tries the custom regex before built-in patterns and falls back when it does not match', () => {
+        expect(prepareHint('Title #3 S01E05', '#(\\d+)')).toEqual({ episode: 3, cleaned: 'Title S01E05' });
+        expect(prepareHint('Title S01E05', '^(\\d+)$')).toEqual({ episode: 5, cleaned: 'Title' });
+    });
+
+    it('ignores an invalid custom regex', () => {
+        expect(prepareHint('Title S01E05', '(')).toEqual({ episode: 5, cleaned: 'Title' });
+    });
+
     it('preserves the full title when no episode is detected and there is no suffix separator', () => {
         expect(prepareHint('Plain Title')).toEqual({ episode: undefined, cleaned: 'Plain Title' });
     });

@@ -806,6 +806,8 @@
         "noFiles": "No files",
         "searchCategory": "搜索类别",
         "categoryAnime": "动画",
-        "categoryDrama": "剧集"
+        "categoryDrama": "剧集",
+        "episodeRegex": "自定义集数正则",
+        "episodeRegexHint": "从页面标题识别集数，自动筛选文件。第 1 个捕获组为集数，未匹配时使用内置规则。按回车应用。"
     }
 }

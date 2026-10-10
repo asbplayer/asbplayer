@@ -22,7 +22,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next';
 import { JimakuClient } from '@project/common/subtitle-sources';
 import type { JimakuEntry, JimakuFile } from '@project/common/subtitle-sources';
-import { prepareHint } from '@project/common/subtitle-sources/jimaku-episode-patterns';
+import { isValidEpisodeRegex, prepareHint } from '@project/common/subtitle-sources/jimaku-episode-patterns';
 import type { JimakuCachedWork } from '@project/common/global-state';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
@@ -30,6 +30,7 @@ import Toolbar from '@mui/material/Toolbar';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { asbError, asbWarn } from '@project/common/util/log';
 
 interface OnlineSubtitleImportCandidate {
@@ -49,6 +50,8 @@ interface Props {
     onJimakuSearchCategoryChange: (category: 'anime' | 'drama') => void;
     jimakuRecentWorks: JimakuCachedWork[];
     onJimakuRecentWorksChange: (recentWorks: JimakuCachedWork[]) => void;
+    jimakuEpisodeRegex: string;
+    onJimakuEpisodeRegexChange: (jimakuEpisodeRegex: string) => void;
 }
 
 const SUPPORTED_JIMAKU_EXTENSIONS = ['.srt', '.ass'];
@@ -93,6 +96,8 @@ export default function OnlineSubtitleSourceDialog({
     onJimakuSearchCategoryChange,
     jimakuRecentWorks,
     onJimakuRecentWorksChange,
+    jimakuEpisodeRegex,
+    onJimakuEpisodeRegexChange,
 }: Props) {
     const { t } = useTranslation();
     const [searching, setSearching] = useState(false);
@@ -106,9 +111,9 @@ export default function OnlineSubtitleSourceDialog({
     const [jimakuSelectedEntry, setJimakuSelectedEntry] = useState<{ id: number; name: string }>();
     const [jimakuFiles, setJimakuFiles] = useState<OnlineSubtitleImportCandidate[]>();
     const [loadingJimakuFiles, setLoadingJimakuFiles] = useState(false);
-    const [detectedEpisode, setDetectedEpisode] = useState<number | undefined>(undefined);
     const [activeEpisodeFilter, setActiveEpisodeFilter] = useState<number | undefined>(undefined);
     const [showJimakuApiKey, setShowJimakuApiKey] = useState(false);
+    const [showEpisodeRegex, setShowEpisodeRegex] = useState(false);
     const resultsCache = useRef<Map<string, { anime: JimakuEntry[]; drama: JimakuEntry[] }>>(new Map());
 
     // Ref to avoid stale closure in upsertRecentWork
@@ -128,10 +133,14 @@ export default function OnlineSubtitleSourceDialog({
         [onJimakuRecentWorksChange]
     );
 
-    const { episode: hintEpisode, cleaned: cleanedHint } = useMemo(
-        () => prepareHint(detectedTitleHint),
-        [detectedTitleHint]
+    const { episode: detectedEpisode, cleaned: cleanedHint } = useMemo(
+        () => prepareHint(detectedTitleHint, jimakuEpisodeRegex),
+        [detectedTitleHint, jimakuEpisodeRegex]
     );
+    // Read via ref so editing the episode regex does not reset the open dialog
+    const cleanedHintRef = useRef(cleanedHint);
+    cleanedHintRef.current = cleanedHint;
+    const episodeRegexValid = useMemo(() => isValidEpisodeRegex(jimakuEpisodeRegex.trim()), [jimakuEpisodeRegex]);
     const isApiKeyMissing = jimakuApiKey.trim().length === 0;
     const jimakuApiKeyVisible = showJimakuApiKey || !jimakuApiKey;
     const isSearchDisabled =
@@ -153,6 +162,7 @@ export default function OnlineSubtitleSourceDialog({
         setLastSearchCategory(undefined);
         setActiveEpisodeFilter(undefined);
         setShowJimakuApiKey(false);
+        setShowEpisodeRegex(false);
         selectedEntryIdRef.current = undefined;
         fileLoadRequestIdRef.current += 1;
     }, []);
@@ -160,10 +170,9 @@ export default function OnlineSubtitleSourceDialog({
     useEffect(() => {
         if (open) {
             resetState();
-            setQuery(cleanedHint);
-            setDetectedEpisode(hintEpisode);
+            setQuery(cleanedHintRef.current);
         }
-    }, [open, cleanedHint, hintEpisode, resetState]);
+    }, [open, detectedTitleHint, resetState]);
 
     useEffect(() => {
         resultsCache.current.clear();
@@ -487,17 +496,45 @@ export default function OnlineSubtitleSourceDialog({
                                 {jimakuFiles !== undefined && (
                                     <Typography variant="subtitle1">&nbsp;({jimakuFiles.length})</Typography>
                                 )}
-                                {activeEpisodeFilter !== undefined && (
-                                    <Chip
-                                        size="small"
-                                        color="primary"
-                                        variant="outlined"
-                                        sx={{ ml: 'auto' }}
-                                        label={`EP ${activeEpisodeFilter}`}
-                                        onDelete={handleClearEpisodeFilter}
-                                    />
-                                )}
+                                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+                                    {activeEpisodeFilter !== undefined && (
+                                        <Chip
+                                            size="small"
+                                            color="primary"
+                                            variant="outlined"
+                                            label={`EP ${activeEpisodeFilter}`}
+                                            onDelete={handleClearEpisodeFilter}
+                                        />
+                                    )}
+                                    {detectedTitleHint?.trim() && (
+                                        <IconButton
+                                            size="small"
+                                            color={jimakuEpisodeRegex.trim() ? 'primary' : 'default'}
+                                            onClick={() => setShowEpisodeRegex((show) => !show)}
+                                        >
+                                            <SettingsIcon fontSize="small" />
+                                        </IconButton>
+                                    )}
+                                </Box>
                             </Box>
+                            {showEpisodeRegex && detectedTitleHint?.trim() && (
+                                <TextField
+                                    size="small"
+                                    fullWidth
+                                    autoFocus
+                                    label={t('onlineSubtitleSources.episodeRegex')}
+                                    placeholder="^(\d+)$"
+                                    value={jimakuEpisodeRegex}
+                                    error={!episodeRegexValid}
+                                    helperText={t('onlineSubtitleSources.episodeRegexHint')}
+                                    onChange={(e) => onJimakuEpisodeRegexChange(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && episodeRegexValid) {
+                                            handleLoadJimakuFiles(jimakuSelectedEntry);
+                                        }
+                                    }}
+                                />
+                            )}
                             <FilterTextField filterString={filterString} onChange={setFilterString} />
                             <List
                                 dense

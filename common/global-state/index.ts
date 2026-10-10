@@ -18,6 +18,7 @@ export interface OnlineSubtitleSourceConfig {
     jimakuApiKey: string;
     jimakuSearchCategory: 'anime' | 'drama';
     jimakuRecentWorks?: JimakuCachedWork[];
+    jimakuEpisodeRegex?: string;
 }
 
 export type GenericParseType = 'off' | 'base' | 'aggressive';
