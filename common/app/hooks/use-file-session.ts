@@ -1,5 +1,6 @@
 import { asbError } from '@project/common/util/log';
 import { useCallback, useEffect, useState } from 'react';
+import type { FileWithId } from '@project/common/file-selector';
 import type { FileSessionRecord, FileSystemFileHandleWithId } from '@project/common/file-system-access';
 import { IndexedDBFileSessionRepository, supportsFileSystemAccess } from '@project/common/file-system-access';
 
@@ -20,7 +21,12 @@ export const useFileSession = () => {
         void fileSessionRepository
             .fetch()
             .then((record) => {
-                if (record && (record.videoHandle || record.subtitleHandles.length > 0)) {
+                if (
+                    record &&
+                    (record.videoHandle ||
+                        record.subtitleHandles.length > 0 ||
+                        (record.cachedSubtitleFiles?.length ?? 0) > 0)
+                ) {
                     setCanRestoreLastSession(true);
                 }
             })
@@ -30,7 +36,7 @@ export const useFileSession = () => {
     }, [fileSessionRepository]);
 
     const saveSession = useCallback(
-        async ({ videoHandle, subtitleHandles }: Omit<FileSessionRecord, 'id' | 'timestamp'>) => {
+        async ({ videoHandle, subtitleHandles }: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles'>) => {
             if (!fileSessionRepository) return;
 
             if (!videoHandle && subtitleHandles.length === 0) {
@@ -70,11 +76,21 @@ export const useFileSession = () => {
         await fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
 
+    const saveCachedSubtitleFilesToSession = useCallback(
+        async (files: FileWithId[]) => {
+            await fileSessionRepository?.setCachedSubtitleFiles(files);
+            if (files.length > 0) {
+                setCanRestoreLastSession(true);
+            }
+        },
+        [fileSessionRepository]
+    );
+
     useEffect(() => {
         void fileSessionRepository?.clearBuffered();
     }, [fileSessionRepository]);
 
-    const retainHandlesInSession = useCallback(
+    const retainSourcesInSession = useCallback(
         async (ids: string[]) => {
             await fileSessionRepository?.retain(ids);
         },
@@ -89,6 +105,7 @@ export const useFileSession = () => {
         saveBufferedHandlesToSession,
         promoteBufferedHandlesInSession,
         clearBufferedHandlesInSession,
-        retainHandlesInSession,
+        saveCachedSubtitleFilesToSession,
+        retainSourcesInSession,
     };
 };

@@ -440,7 +440,8 @@ function App({
         saveBufferedHandlesToSession: saveBufferedHandlesToFileSession,
         promoteBufferedHandlesInSession: promoteBufferedHandlesInFileSession,
         clearBufferedHandlesInSession: clearBufferedHandlesInFileSession,
-        retainHandlesInSession: retainHandlesInFileSession,
+        saveCachedSubtitleFilesToSession: saveCachedSubtitleFilesToFileSession,
+        retainSourcesInSession: retainSourcesInFileSession,
     } = useFileSession();
 
     const [lastError, setLastError] = useState<any>();
@@ -1068,7 +1069,7 @@ function App({
                     });
                     setLoadingSources(loadingSources);
 
-                    void retainHandlesInFileSession([
+                    void retainSourcesInFileSession([
                         ...sources.subtitleFiles.map((f) => f.id),
                         ...(sources.videoFile === undefined ? [] : [sources.videoFile.id]),
                     ]);
@@ -1087,7 +1088,7 @@ function App({
                 return false;
             }
         },
-        [handleError, retainHandlesInFileSession]
+        [handleError, retainSourcesInFileSession]
     );
 
     const persistFileSessionHandles = useCallback(
@@ -1148,13 +1149,14 @@ function App({
                 return;
             }
 
-            const { files, errors } = await resolveFiles(granted);
+            const { files: resolvedFiles, errors } = await resolveFiles(granted);
             if (errors.length > 0) {
                 handleError(t('error.restoreSessionFailed'));
                 await clearFileSession();
                 return;
             }
 
+            const files = [...resolvedFiles, ...(record.cachedSubtitleFiles ?? [])];
             if (!handleFiles({ files })) {
                 await clearFileSession();
             }
@@ -1738,6 +1740,7 @@ function App({
                 setSubtitleTrackSelectorDisabled(false);
                 try {
                     const files: FileWithId[] = [];
+                    const cachedSubtitleFiles: FileWithId[] = [];
                     for (const t of tracks) {
                         if (t.file !== undefined) {
                             files.push({ file: t.file, id: t.id });
@@ -1746,7 +1749,11 @@ function App({
                             const blob = await (await fetch(url)).blob();
                             const isEmptyTrack = t.id === '-';
                             const file = new File([blob], isEmptyTrack ? '.srt' : `${t.name}.${t.extension}`);
-                            files.push({ file, id: t.id });
+                            const fileWithId = { file, id: t.id };
+                            files.push(fileWithId);
+                            if (!isEmptyTrack) {
+                                cachedSubtitleFiles.push(fileWithId);
+                            }
                         } else {
                             asbWarn(
                                 'app/subtitles',
@@ -1756,10 +1763,12 @@ function App({
                         }
                     }
                     if (handleFiles({ files })) {
-                        void promoteBufferedHandlesInFileSession(files.map((f) => f.id));
+                        await saveCachedSubtitleFilesToFileSession(cachedSubtitleFiles);
+                        await promoteBufferedHandlesInFileSession(files.map((f) => f.id));
                         closeSubtitleTrackSelector();
                     }
                 } catch (e) {
+                    asbError('app/session', 'Failed to cache online subtitles:', e);
                     handleError(e);
                 } finally {
                     setSubtitleTrackSelectorDisabled(false);
@@ -1771,6 +1780,7 @@ function App({
             handleError,
             closeSubtitleTrackSelector,
             promoteBufferedHandlesInFileSession,
+            saveCachedSubtitleFilesToFileSession,
             setSubtitleTrackSelectorDisabled,
         ]
     );

@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import { v4 as uuidv4 } from 'uuid';
+import type { FileWithId } from '@project/common/file-selector';
 import { AsyncSemaphore } from '@project/common/util';
 
 export interface FileSessionRecord {
@@ -9,6 +10,9 @@ export interface FileSessionRecord {
     // A list of subtitle handles that can be promoted.
     // E.g. files loaded into the subtitle track selector, but not yet loaded into the player.
     bufferedSubtitleHandles?: FileSystemFileHandleWithId[];
+    // Subtitle files downloaded from online sources do not have file-system handles.
+    // Cache their contents so they can still be restored without downloading them again.
+    cachedSubtitleFiles?: FileWithId[];
     timestamp: number;
 }
 
@@ -52,7 +56,10 @@ class FileSessionDatabase extends Dexie {
 export interface FileSessionRepository {
     fetch: () => Promise<FileSessionRecord | undefined>;
     /** Merge new handles into the existing record, mirroring handleFiles' source-merge logic. */
-    merge: (incoming: Omit<FileSessionRecord, 'id' | 'timestamp'>) => Promise<void>;
+    merge: (
+        incoming: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles' | 'bufferedSubtitleHandles'>
+    ) => Promise<void>;
+    setCachedSubtitleFiles: (files: FileWithId[]) => Promise<void>;
     clear: () => Promise<void>;
 }
 
@@ -60,12 +67,21 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
     private readonly _db = new FileSessionDatabase();
     private readonly _semaphore = new AsyncSemaphore({ permits: 1 });
 
+    private async _replace(record: FileSessionRecord) {
+        await this._db.transaction('rw', this._db.sessions, async () => {
+            await this._db.sessions.clear();
+            await this._db.sessions.add(record);
+        });
+    }
+
     async fetch(): Promise<FileSessionRecord | undefined> {
         const records = await this._db.sessions.orderBy('timestamp').reverse().limit(1).toArray();
         return records.length > 0 ? records[0] : undefined;
     }
 
-    async merge(incoming: Omit<FileSessionRecord, 'id' | 'timestamp'>): Promise<void> {
+    async merge(
+        incoming: Pick<FileSessionRecord, 'videoHandle' | 'subtitleHandles' | 'bufferedSubtitleHandles'>
+    ): Promise<void> {
         const permit = await this._semaphore.acquire();
 
         try {
@@ -80,9 +96,9 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                     ...(existing?.bufferedSubtitleHandles ?? []),
                     ...(incoming?.bufferedSubtitleHandles ?? []),
                 ],
+                cachedSubtitleFiles: existing?.cachedSubtitleFiles,
             };
-            await this._db.sessions.clear();
-            await this._db.sessions.add({ ...merged, id: 1, timestamp: Date.now() });
+            await this._replace({ ...merged, id: 1, timestamp: Date.now() });
         } finally {
             void this._semaphore.release(permit);
         }
@@ -98,12 +114,12 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 return;
             }
 
-            const { videoHandle, subtitleHandles, bufferedSubtitleHandles } = existing;
-            await this._db.sessions.clear();
-            await this._db.sessions.add({
+            const { videoHandle, subtitleHandles, bufferedSubtitleHandles, cachedSubtitleFiles } = existing;
+            await this._replace({
                 videoHandle: videoHandle !== undefined && ids.includes(videoHandle.id) ? videoHandle : undefined,
                 subtitleHandles: subtitleHandles.filter((h) => ids.includes(h.id)),
                 bufferedSubtitleHandles: bufferedSubtitleHandles?.filter((h) => ids.includes(h.id)),
+                cachedSubtitleFiles: cachedSubtitleFiles?.filter((f) => ids.includes(f.id)),
                 id: 1,
                 timestamp: Date.now(),
             });
@@ -132,10 +148,10 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 ...existing.subtitleHandles,
                 ...bufferedSubtitleHandles.filter((h) => ids.includes(h.id)),
             ];
-            await this._db.sessions.clear();
-            await this._db.sessions.add({
+            await this._replace({
                 videoHandle: existing.videoHandle,
                 subtitleHandles,
+                cachedSubtitleFiles: existing.cachedSubtitleFiles,
                 id: 1,
                 timestamp: Date.now(),
             });
@@ -154,9 +170,37 @@ export class IndexedDBFileSessionRepository implements FileSessionRepository {
                 return;
             }
 
-            const { videoHandle, subtitleHandles } = existing;
-            await this._db.sessions.clear();
-            await this._db.sessions.add({ videoHandle, subtitleHandles, id: 1, timestamp: Date.now() });
+            const { videoHandle, subtitleHandles, cachedSubtitleFiles } = existing;
+            await this._replace({
+                videoHandle,
+                subtitleHandles,
+                cachedSubtitleFiles,
+                id: 1,
+                timestamp: Date.now(),
+            });
+        } finally {
+            void this._semaphore.release(permit);
+        }
+    }
+
+    async setCachedSubtitleFiles(cachedSubtitleFiles: FileWithId[]) {
+        const permit = await this._semaphore.acquire();
+
+        try {
+            const existing = await this.fetch();
+
+            if (!existing && cachedSubtitleFiles.length === 0) {
+                return;
+            }
+
+            await this._replace({
+                videoHandle: existing?.videoHandle,
+                subtitleHandles: existing?.subtitleHandles ?? [],
+                bufferedSubtitleHandles: existing?.bufferedSubtitleHandles,
+                cachedSubtitleFiles,
+                id: 1,
+                timestamp: Date.now(),
+            });
         } finally {
             void this._semaphore.release(permit);
         }
