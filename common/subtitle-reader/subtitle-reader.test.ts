@@ -64,6 +64,79 @@ const duplicateNfimscDocument = (count: number) =>
     Array.from({ length: count }, () => '<p begin="10000000t" end="30000000t">Duplicate cue</p>').join('') +
     '</div></body></tt>';
 
+const srv3File = (xml: string) => ({ name: 'test.ytsrv3', text: async () => xml }) as unknown as File;
+const srv3Document = (rows: string, mode = '0') =>
+    `<timedtext format="3"><head><ws id="0"/><ws id="1" mh="${mode}"/></head><body>` +
+    '<w t="0" id="1" ws="1"/>' +
+    rows +
+    '</body></timedtext>';
+
+describe('SubtitleReader YouTube pop-on captions', () => {
+    it('caps overlapping two-line cues at the next start', async () => {
+        const rows =
+            '<p t="0" d="6880" w="1">Walk into supermarkets in London, Delhi,\nor Johannesburg, and you&#39;ll find many of</p>' +
+            '<p t="4760" d="7640" w="1">the same global [music] food brands. Kit\nKats, Maggi, Cerelac, Fanta. The</p>' +
+            '<p t="9880" d="6920" w="1">packaging may look nearly identical, but\nturn it around to check the ingredients.</p>';
+
+        await expect(createReader().subtitles([srv3File(srv3Document(rows))])).resolves.toEqual([
+            {
+                start: 0,
+                end: 4760,
+                text: "Walk into supermarkets in London, Delhi,\nor Johannesburg, and you'll find many of",
+                track: 0,
+            },
+            {
+                start: 4760,
+                end: 9880,
+                text: 'the same global [music] food brands. Kit\nKats, Maggi, Cerelac, Fanta. The',
+                track: 0,
+            },
+            {
+                start: 9880,
+                end: 16800,
+                text: 'packaging may look nearly identical, but\nturn it around to check the ingredients.',
+                track: 0,
+            },
+        ]);
+    });
+
+    it('keeps newline-based shortening for the working roll-up response', async () => {
+        const rows =
+            '<p t="0" d="4760" w="1"><s>Walk</s><s t="400"> into supermarkets in London, Delhi,</s></p>' +
+            '<p t="2590" d="2170" w="1" a="1">\n</p>' +
+            '<p t="2600" d="4280" w="1"><s>or</s><s t="160"> Johannesburg, and you&#39;ll find many of</s></p>' +
+            '<p t="4750" d="2130" w="1" a="1">\n</p>';
+
+        await expect(createReader().subtitles([srv3File(srv3Document(rows, '2'))])).resolves.toEqual([
+            { start: 0, end: 2590, text: 'Walk into supermarkets in London, Delhi,', track: 0 },
+            { start: 2600, end: 4750, text: "or Johannesburg, and you'll find many of", track: 0 },
+        ]);
+    });
+
+    it.each([
+        { scenario: 'roll-up mode', mode: '2', nextWindow: '1', append: '0' },
+        { scenario: 'a different window', mode: '0', nextWindow: '2', append: '0' },
+        { scenario: 'an append event', mode: '0', nextWindow: '1', append: '1' },
+    ])('preserves overlaps for $scenario', async ({ mode, nextWindow, append }) => {
+        const rows =
+            '<p t="0" d="6000" w="1">First</p>' + `<p t="3000" d="6000" w="${nextWindow}" a="${append}">Second</p>`;
+
+        await expect(createReader().subtitles([srv3File(srv3Document(rows, mode))])).resolves.toEqual([
+            { start: 0, end: 6000, text: 'First', track: 0 },
+            { start: 3000, end: 9000, text: 'Second', track: 0 },
+        ]);
+    });
+
+    it('preserves gaps between non-overlapping pop-on cues', async () => {
+        const rows = '<p t="0" d="1000" w="1">First</p><p t="2000" d="1000" w="1">Second</p>';
+
+        await expect(createReader().subtitles([srv3File(srv3Document(rows))])).resolves.toEqual([
+            { start: 0, end: 1000, text: 'First', track: 0 },
+            { start: 2000, end: 3000, text: 'Second', track: 0 },
+        ]);
+    });
+});
+
 describe('SubtitleReader text content', () => {
     it('drops subtitles left with only invisible or whitespace characters (#669)', async () => {
         // A cue whose only content is a left-to-right mark (U+200E) has no meaningful

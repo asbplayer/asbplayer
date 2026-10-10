@@ -1,3 +1,6 @@
+import 'core-js/stable/structured-clone';
+import 'fake-indexeddb/auto';
+import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import {
     DictionaryBuildAnkiCacheStateErrorCode,
@@ -5,6 +8,7 @@ import {
     DictionaryBuildWaniKaniCacheStateErrorCode,
     DictionaryBuildWaniKaniCacheStateType,
 } from '@project/common';
+import type { Fetcher, TokenizedSubtitleModel } from '@project/common';
 import {
     ApplyStrategy,
     DictionaryTokenSource,
@@ -15,13 +19,17 @@ import {
     TokenReadingAnnotation,
     areDictionaryTracksRenderOnly,
     dictionaryStatusCollectionEnabled,
+    SettingsProvider,
 } from '@project/common/settings';
+import { DictionaryProvider } from '@project/common/dictionary-db';
+import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
+import { makeAnkiCardRecord, makeTokenRecord, privateDb } from '@project/common/dictionary-db/dictionary-db-test-utils';
+import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
 import { Anki } from '@project/common/anki';
 import { Yomitan } from '@project/common/yomitan';
 import { renderRichTextOntoSubtitles } from '@project/common/annotations/render-annotations';
 import { REVIEW_DUES } from '@project/common/dictionary-statistics';
-import type { SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
-import { needsReset, TrackState } from '@project/common/annotations/subtitle-annotations';
+import { needsReset, TrackState, SubtitleAnnotations } from '@project/common/annotations/subtitle-annotations';
 import {
     makeDictionaryTrack,
     makeDictionaryTracks,
@@ -29,7 +37,17 @@ import {
     makeSubtitle,
     makeSubtitleAnnotations,
     makeToken,
+    makeStorage,
 } from '@project/common/annotations/annotations-test-utils';
+
+const waitForAnnotationPublication = async (
+    updated: ReturnType<typeof makeSubtitleAnnotations>['subtitleAnnotationsUpdated'],
+    action: () => void | Promise<void>
+) => {
+    const published = new Promise<void>((resolve) => updated.mockImplementationOnce(() => resolve()));
+    await action();
+    await published;
+};
 
 const privateAnnotations = (subtitleAnnotations: SubtitleAnnotations) => subtitleAnnotations as any;
 
@@ -104,6 +122,225 @@ describe('TrackState', () => {
 });
 
 describe('SubtitleAnnotations', () => {
+    describe('ignored tokens', () => {
+        beforeEach(() => {
+            // Keep annotation building real; Yomitan is the external parser boundary.
+            jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('26.4.6');
+            jest.spyOn(Yomitan.prototype, 'tokenizeBulk').mockImplementation(async (texts) =>
+                texts.map((text) => [{ text, reading: '' }])
+            );
+            jest.spyOn(Yomitan.prototype, 'tokenize').mockImplementation(async (text) => [[{ text, reading: '' }]]);
+            jest.spyOn(Yomitan.prototype, 'lemmatize').mockImplementation(async (text) => [text]);
+            jest.spyOn(Yomitan.prototype, 'frequency').mockResolvedValue(null);
+            jest.spyOn(Yomitan.prototype, 'gloss').mockResolvedValue(null);
+            jest.spyOn(Yomitan.prototype, 'pitchAccent').mockResolvedValue(null);
+        });
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+        });
+
+        it.each([
+            [DictionaryTokenSource.LOCAL, TokenStatus.UNCOLLECTED],
+            [DictionaryTokenSource.ANKI_WORD, TokenStatus.UNKNOWN],
+        ])('keeps ignored tokens fully known when source %s reports status %s', async (source, status) => {
+            const { subtitleAnnotations, storage, subtitleAnnotationsUpdated } = makeSubtitleAnnotations(
+                makeSettings(
+                    makeDictionaryTracks(
+                        makeDictionaryTrack({
+                            dictionaryColorizeSubtitles: true,
+                            dictionaryTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                        })
+                    )
+                )
+            );
+            storage.getBulk.mockResolvedValue({
+                word: { source, statuses: [{ status, suspended: false }], states: [TokenState.IGNORED] },
+            });
+            try {
+                subtitleAnnotations.bind();
+                await waitForAnnotationPublication(subtitleAnnotationsUpdated, () =>
+                    subtitleAnnotations.setSubtitles([makeSubtitle()])
+                );
+                expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).toMatchObject({
+                    status: TokenStatus.MATURE,
+                    states: [TokenState.IGNORED],
+                });
+
+                storage.getBulk.mockResolvedValue({
+                    word: {
+                        source: DictionaryTokenSource.ANKI_WORD,
+                        statuses: [{ status: TokenStatus.LEARNING, suspended: false }],
+                        states: [],
+                    },
+                });
+                await waitForAnnotationPublication(subtitleAnnotationsUpdated, () =>
+                    subtitleAnnotations.tokensWereModified(['word'])
+                );
+                expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).toMatchObject({
+                    status: TokenStatus.LEARNING,
+                    states: [],
+                });
+            } finally {
+                subtitleAnnotations.unbind();
+            }
+        });
+    });
+
+    describe('saveTokenLocal', () => {
+        const lemma = 'うわ';
+        const inflection = 'うわー';
+        const sibling = 'うわーっ';
+        let dictionaryDB: DictionaryDB;
+        let settingsProvider: SettingsProvider;
+
+        beforeEach(async () => {
+            await Dexie.delete('DictionaryDatabase');
+            const settingsStorage = new MockSettingsStorage();
+            settingsStorage.setData(
+                makeSettings(
+                    makeDictionaryTracks(
+                        makeDictionaryTrack({
+                            dictionaryColorizeSubtitles: true,
+                            dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
+                            dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                        })
+                    )
+                )
+            );
+            settingsProvider = new SettingsProvider(settingsStorage);
+            dictionaryDB = new DictionaryDB(settingsProvider);
+        });
+
+        afterEach(async () => {
+            privateDb(dictionaryDB).close();
+            await Dexie.delete('DictionaryDatabase');
+        });
+
+        it.each([false, true])(
+            'persists local saves and refreshes sibling forms with an external match: %s',
+            async (hasExternalMatch) => {
+                if (hasExternalMatch) {
+                    await privateDb(dictionaryDB).tokens.put(
+                        makeTokenRecord({
+                            profile: 'Default',
+                            track: 0,
+                            token: sibling,
+                            lemmas: [lemma],
+                            source: DictionaryTokenSource.ANKI_WORD,
+                            status: null,
+                            cardIds: [1],
+                        })
+                    );
+                    await privateDb(dictionaryDB).ankiCards.put(
+                        makeAnkiCardRecord({ profile: 'Default', status: TokenStatus.MATURE })
+                    );
+                }
+                const fetcher: Fetcher = {
+                    fetch: jest.fn(async (url: string, request: { text?: string | string[] }) => {
+                        if (url.endsWith('/yomitanVersion')) return { version: '26.4.6' };
+                        if (url.endsWith('/tokenize')) {
+                            const texts = Array.isArray(request.text) ? request.text : [request.text];
+                            return texts.map((text, index) => {
+                                const headword = {
+                                    term: lemma,
+                                    reading: lemma,
+                                    sources: [
+                                        {
+                                            originalText: text,
+                                            deinflectedText: lemma,
+                                            isPrimary: true,
+                                            matchType: 'exact',
+                                        },
+                                    ],
+                                };
+                                return {
+                                    id: 'id',
+                                    source: 'source',
+                                    dictionary: 'dictionary',
+                                    index,
+                                    content: [[{ text, reading: '', headwords: [[headword]] }]],
+                                };
+                            });
+                        }
+                        if (url.endsWith('/termEntries')) return { dictionaryEntries: [] };
+                        throw new Error(`unexpected request: ${url}`);
+                    }),
+                };
+                const provider = new DictionaryProvider({
+                    ...makeStorage(),
+                    getBulk: dictionaryDB.getBulk.bind(dictionaryDB),
+                    getByLemmaBulk: dictionaryDB.getByLemmaBulk.bind(dictionaryDB),
+                    getAllTokens: dictionaryDB.getAllTokens.bind(dictionaryDB),
+                    saveRecordLocalBulk: dictionaryDB.saveRecordLocalBulk.bind(dictionaryDB),
+                } as any);
+                const updated = jest.fn<ConstructorParameters<typeof SubtitleAnnotations>[4]>();
+                const annotations = new SubtitleAnnotations(
+                    provider,
+                    settingsProvider,
+                    { showingCheckRadiusMs: 150 },
+                    'media-id',
+                    updated,
+                    undefined,
+                    fetcher
+                );
+                const subtitles = [
+                    makeSubtitle({ text: inflection, originalText: inflection }),
+                    makeSubtitle({ index: 1, text: sibling, originalText: sibling }),
+                ];
+                const expectedStatus = hasExternalMatch ? TokenStatus.MATURE : TokenStatus.UNCOLLECTED;
+                const expectTokens = (status: TokenStatus, ignored = true) => {
+                    expect(annotations.subtitles.map((s) => s.tokenization?.tokens[0])).toMatchObject([
+                        { status: ignored ? TokenStatus.MATURE : status, states: ignored ? [TokenState.IGNORED] : [] },
+                        { status, states: [] },
+                    ]);
+                };
+                try {
+                    annotations.bind();
+                    await waitForAnnotationPublication(updated, () => annotations.setSubtitles(subtitles));
+                    expectTokens(expectedStatus, false);
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, null, [TokenState.IGNORED], ApplyStrategy.TOGGLE)
+                    );
+                    expectTokens(expectedStatus);
+                    expect((await dictionaryDB.getRecords(undefined, undefined)).tokenRecords).toContainEqual(
+                        expect.objectContaining({
+                            token: inflection,
+                            lemmas: [lemma],
+                            source: DictionaryTokenSource.LOCAL,
+                            status: TokenStatus.UNCOLLECTED,
+                            states: [TokenState.IGNORED],
+                        })
+                    );
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, TokenStatus.UNKNOWN, [], ApplyStrategy.ADD)
+                    );
+                    expectTokens(TokenStatus.UNKNOWN);
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, TokenStatus.UNCOLLECTED, [], ApplyStrategy.ADD)
+                    );
+                    expectTokens(expectedStatus);
+
+                    await waitForAnnotationPublication(updated, () =>
+                        annotations.saveTokenLocal(0, inflection, null, [TokenState.IGNORED], ApplyStrategy.TOGGLE)
+                    );
+                    expectTokens(expectedStatus, false);
+                    expect(
+                        (await dictionaryDB.getRecords(undefined, undefined)).tokenRecords.some(
+                            (record) => record.source === DictionaryTokenSource.LOCAL
+                        )
+                    ).toBe(false);
+                } finally {
+                    annotations.unbind();
+                }
+            },
+            15000
+        );
+    });
+
     it('only needs a reset when subtitle source content or original tokenization changes', () => {
         const previous = [makeSubtitle({ text: 'annotated', originalText: 'word' })];
 
@@ -183,7 +420,8 @@ describe('SubtitleAnnotations', () => {
         expect(subtitleAnnotations.subtitles[0].tokenization?.tokens[0]).not.toHaveProperty('status');
     });
 
-    it('updates render-only settings without rebuilding annotation data', () => {
+    it('updates render-only settings without rebuilding annotation data', async () => {
+        jest.useFakeTimers();
         const initialTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: false });
         initialTrack.dictionaryTokenAnnotationConfig.onStatuses[TokenStatus.UNKNOWN].reading = true;
         const settings = makeSettings(makeDictionaryTracks(initialTrack));
@@ -210,6 +448,7 @@ describe('SubtitleAnnotations', () => {
         const renderOnlySettings = makeSettings(makeDictionaryTracks(renderOnlyTrack));
 
         subtitleAnnotations.settingsUpdated(renderOnlySettings, { force: false });
+        await jest.advanceTimersByTimeAsync(0);
 
         expect(buildAnnotations).not.toHaveBeenCalled();
         expect(subtitleAnnotations.subtitles[0].tokenization).toBe(tokenization);
@@ -301,7 +540,8 @@ describe('SubtitleAnnotations', () => {
         expect(buildAnnotations).not.toHaveBeenCalled();
     });
 
-    it('restores raw text and clears transient token state when an enabled track is disabled', () => {
+    it('restores raw text and clears transient token state when an enabled track is disabled', async () => {
+        jest.useFakeTimers();
         const enabledTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: true });
         const disabledTrack = makeDictionaryTrack({ dictionaryColorizeSubtitles: false });
         const settings = makeSettings(makeDictionaryTracks(enabledTrack));
@@ -319,6 +559,7 @@ describe('SubtitleAnnotations', () => {
         subtitleAnnotationsUpdated.mockClear();
 
         subtitleAnnotations.settingsUpdated(makeSettings(makeDictionaryTracks(disabledTrack)), { force: false });
+        await jest.advanceTimersByTimeAsync(0);
 
         expect(subtitleAnnotations.subtitles[0].text).toBe('raw');
         expect(subtitleAnnotations.subtitles[0].tokenization).toEqual({
@@ -997,6 +1238,7 @@ describe('SubtitleAnnotations', () => {
         });
 
         await expect(runtime._buildAnnotations(0, 1, true)).resolves.toBe(true);
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         expect(yomitan.tokenizeBulk).toHaveBeenCalledWith(['word']);
         expect(yomitan.termEntriesBulk).not.toHaveBeenCalled();
@@ -1090,5 +1332,345 @@ describe('SubtitleAnnotations', () => {
         expect(runtime.shouldCancelBuild).toBe(false);
         expect(runtime.annotationsBuilding).toBe(false);
         expect(runtime.initialized).toBe(false);
+    });
+
+    describe('publication queue', () => {
+        beforeEach(() => {
+            jest.useFakeTimers();
+            // Yomitan is the external boundary; building and publication stay real.
+            jest.spyOn(Yomitan.prototype, 'version').mockResolvedValue('26.4.6');
+            jest.spyOn(Yomitan.prototype, 'tokenizeBulk').mockImplementation(async (texts) =>
+                texts.map((text) => [{ text, reading: '' }])
+            );
+            jest.spyOn(Yomitan.prototype, 'tokenize').mockImplementation(async (text) => [[{ text, reading: '' }]]);
+            jest.spyOn(Yomitan.prototype, 'lemmatize').mockImplementation(async (text) => [text]);
+            jest.spyOn(Yomitan.prototype, 'frequency').mockResolvedValue(null);
+            jest.spyOn(Yomitan.prototype, 'gloss').mockResolvedValue(null);
+            jest.spyOn(Yomitan.prototype, 'pitchAccent').mockResolvedValue(null);
+        });
+
+        afterEach(() => {
+            jest.restoreAllMocks();
+            jest.useRealTimers();
+        });
+
+        const makeQueue = (
+            track = makeDictionaryTrack({ dictionaryColorizeSubtitles: true }),
+            getMediaTimeMs?: () => number
+        ) => {
+            const storage = makeStorage();
+            const settings = makeSettings(makeDictionaryTracks(track));
+            const settingsStorage = new MockSettingsStorage();
+            settingsStorage.setData(settings);
+            const updated = jest.fn<ConstructorParameters<typeof SubtitleAnnotations>[4]>();
+            const annotations = new SubtitleAnnotations(
+                new DictionaryProvider(storage as any),
+                new SettingsProvider(settingsStorage),
+                { showingCheckRadiusMs: 150 },
+                'media-id',
+                updated,
+                getMediaTimeMs
+            );
+            // setSubtitles/settingsUpdated start builds without returning their promises.
+            // Observe those promises so assertions can run before publication timers fire.
+            const runtime = annotations as any;
+            const build = runtime._buildAnnotations.bind(annotations);
+            let latestBuild: Promise<boolean> = Promise.resolve(true);
+            jest.spyOn(runtime, '_buildAnnotations').mockImplementation((...args: unknown[]) => {
+                latestBuild = build(...args);
+                return latestBuild;
+            });
+            annotations.settingsUpdated(settings, { force: false });
+            return { annotations, updated, settings, settingsStorage, storage, built: () => latestBuild };
+        };
+
+        const source = (count: number): TokenizedSubtitleModel[] =>
+            Array.from({ length: count }, (_, index) =>
+                makeSubtitle({ index, start: index * 2000, end: index * 2000 + 1000 })
+            );
+
+        const makeBuilt = async (count: number, track?: ReturnType<typeof makeDictionaryTrack>) => {
+            const result = makeQueue(track);
+            result.annotations.setSubtitles(source(count));
+            await result.built();
+            return result;
+        };
+
+        it('paces all build publications without blocking annotation building', async () => {
+            const { annotations, updated } = await makeBuilt(201);
+            expect(annotations.subtitles.every((subtitle) => (subtitle as any).__tokenized)).toBe(true);
+            expect(updated).not.toHaveBeenCalled();
+            await jest.advanceTimersByTimeAsync(0);
+            expect(updated.mock.calls.map(([batch]) => batch.length)).toEqual([100]);
+            await jest.advanceTimersByTimeAsync(999);
+            expect(updated).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(1);
+            await jest.advanceTimersByTimeAsync(1000);
+            expect(updated.mock.calls.map(([batch]) => batch.length)).toEqual([100, 100, 1]);
+            expect(updated.mock.calls.flatMap(([batch]) => batch.map((subtitle) => subtitle.index))).toEqual(
+                Array.from({ length: 201 }, (_, index) => index)
+            );
+        });
+
+        it.each(['render-only', 'disabled'] as const)(
+            'prioritizes the current annotation window at each drain after %s settings changes',
+            async (change) => {
+                let currentIndex = 0;
+                const { annotations, updated, settings, built } = makeQueue(undefined, () => currentIndex * 2000);
+                annotations.setSubtitles(source(301));
+                await built();
+                // The older pipeline has no public buildInitial method. Complete each window
+                // through its existing build entry point, as the polling interval does.
+                const runtime = annotations as any;
+                for (currentIndex = 11; currentIndex < 301; currentIndex += 11) {
+                    const { annotationsStartIndex, annotationsEndIndex } = runtime._getAnnotationsIndexes(true);
+                    await runtime._buildAnnotations(annotationsStartIndex, annotationsEndIndex, true);
+                }
+                currentIndex = 200;
+                const updatedSettings = {
+                    ...settings,
+                    dictionaryTracks:
+                        change === 'disabled'
+                            ? makeDictionaryTracks()
+                            : settings.dictionaryTracks.map((dt) => ({
+                                  ...dt,
+                                  dictionaryTokenStyling: TokenStyling.BACKGROUND,
+                              })),
+                };
+                annotations.settingsUpdated(updatedSettings, { force: false });
+                await built();
+                await jest.advanceTimersByTimeAsync(0);
+                expect(updated.mock.calls[0][0].slice(0, 11).map((subtitle) => subtitle.index)).toEqual(
+                    Array.from({ length: 11 }, (_, index) => 200 + index)
+                );
+                currentIndex = 290;
+                await jest.advanceTimersByTimeAsync(999);
+                expect(updated).toHaveBeenCalledTimes(1);
+                await jest.advanceTimersByTimeAsync(1);
+                expect(updated.mock.calls[1][0].slice(0, 11).map((subtitle) => subtitle.index)).toEqual(
+                    Array.from({ length: 11 }, (_, index) => 290 + index)
+                );
+                await jest.advanceTimersByTimeAsync(2000);
+                expect(updated.mock.calls.map(([batch]) => batch.length)).toEqual([100, 100, 100, 1]);
+                const published = updated.mock.calls.flatMap(([batch]) => batch);
+                expect(published.map((subtitle) => subtitle.index).sort((a, b) => a - b)).toEqual(
+                    Array.from({ length: 301 }, (_, index) => index)
+                );
+                for (const [, tracks] of updated.mock.calls) expect(tracks).toEqual(updatedSettings.dictionaryTracks);
+                if (change === 'disabled')
+                    expect(published.every((subtitle) => subtitle.tokenization === undefined)).toBe(true);
+            }
+        );
+
+        it.each([false, true])(
+            'waits for the build to finish before publishing its updates (reset: %s)',
+            async (reset) => {
+                let release!: () => void;
+                let started!: () => void;
+                const secondResponse = new Promise<void>((resolve) => {
+                    release = resolve;
+                });
+                const secondStarted = new Promise<void>((resolve) => {
+                    started = resolve;
+                });
+                jest.spyOn(Yomitan.prototype, 'tokenize').mockImplementation(async (text) => {
+                    if (text === 'second') {
+                        started();
+                        await secondResponse;
+                    }
+                    return [[{ text, reading: '' }]];
+                });
+                const { annotations, updated, built } = makeQueue();
+                annotations.setSubtitles([
+                    makeSubtitle(),
+                    makeSubtitle({ index: 1, text: 'second', originalText: 'second' }),
+                ]);
+                const building = built();
+                await secondStarted;
+                expect((annotations.subtitles[0] as any).__tokenized).toBe(true);
+                await jest.advanceTimersByTimeAsync(1000);
+                expect(updated).not.toHaveBeenCalled();
+                if (reset) annotations.reset();
+                release();
+                await expect(building).resolves.toBe(!reset);
+                await jest.advanceTimersByTimeAsync(1000);
+                if (reset) expect(updated).not.toHaveBeenCalled();
+                else expect(updated).toHaveBeenCalledWith(annotations.subtitles, expect.any(Array));
+            }
+        );
+
+        it('coalesces indexes and publishes the latest statuses, rendering settings, and timing', async () => {
+            const { annotations, settings, storage, updated } = await makeBuilt(
+                201,
+                makeDictionaryTrack({
+                    dictionaryColorizeSubtitles: true,
+                    dictionaryTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
+                })
+            );
+            await jest.advanceTimersByTimeAsync(0);
+            updated.mockClear();
+            storage.getBulk.mockResolvedValue({
+                word: {
+                    states: [],
+                    statuses: [{ status: TokenStatus.MATURE, suspended: false }],
+                    source: DictionaryTokenSource.LOCAL,
+                },
+            });
+            annotations.tokensWereModified(['word']);
+            await (annotations as any)._buildAnnotations(0, 201, true);
+            expect(annotations.subtitles[100].tokenization?.tokens[0].status).toBe(TokenStatus.MATURE);
+            const renderSettings = {
+                ...settings,
+                dictionaryTracks: settings.dictionaryTracks.map((dt) => ({
+                    ...dt,
+                    dictionaryTokenStyling: TokenStyling.BACKGROUND,
+                })),
+            };
+            annotations.settingsUpdated(renderSettings, { force: false });
+            annotations.settingsUpdated(settings, { force: false });
+            annotations.setSubtitles(
+                annotations.subtitles.map((subtitle) => ({ ...subtitle, start: subtitle.start + 500 }))
+            );
+            const current = annotations.subtitles;
+            await jest.advanceTimersByTimeAsync(3000);
+            const published = updated.mock.calls.flatMap(([batch]) => batch);
+            expect(published).toHaveLength(201);
+            expect(new Set(published.map((subtitle) => subtitle.index)).size).toBe(201);
+            for (const subtitle of published) {
+                expect(subtitle).toBe(current[subtitle.index]);
+                expect(subtitle.start).toBe(subtitle.index * 2000 + 500);
+                expect(subtitle.tokenization?.tokens[0].status).toBe(TokenStatus.MATURE);
+            }
+            for (const [, tracks] of updated.mock.calls) expect(tracks).toEqual(settings.dictionaryTracks);
+        });
+
+        it('discards pending render updates when settings rebuild an enabled track', async () => {
+            let currentIndex = 0;
+            const { annotations, settings, updated, built } = makeQueue(undefined, () => currentIndex * 2000);
+            annotations.setSubtitles(source(201));
+            await built();
+            const runtime = annotations as any;
+            for (currentIndex = 11; currentIndex < 201; currentIndex += 11) {
+                const { annotationsStartIndex, annotationsEndIndex } = runtime._getAnnotationsIndexes(true);
+                await runtime._buildAnnotations(annotationsStartIndex, annotationsEndIndex, true);
+            }
+            currentIndex = 0;
+            await jest.advanceTimersByTimeAsync(3000);
+            annotations.settingsUpdated(
+                {
+                    ...settings,
+                    dictionaryTracks: settings.dictionaryTracks.map((dt) => ({
+                        ...dt,
+                        dictionaryTokenStyling: TokenStyling.BACKGROUND,
+                    })),
+                },
+                { force: false }
+            );
+            await jest.advanceTimersByTimeAsync(0);
+            updated.mockClear();
+            const rebuildSettings = {
+                ...settings,
+                dictionaryTracks: settings.dictionaryTracks.map((dt) => ({
+                    ...dt,
+                    dictionaryYomitanScanLength: dt.dictionaryYomitanScanLength + 1,
+                })),
+            };
+            annotations.settingsUpdated(rebuildSettings, { force: false });
+            await built();
+            await jest.advanceTimersByTimeAsync(3000);
+            const published = updated.mock.calls.flatMap(([batch]) => batch);
+            expect(published.map((subtitle) => subtitle.index)).toEqual(
+                Array.from({ length: 11 }, (_, index) => index)
+            );
+            expect(published.every((subtitle) => subtitle.tokenization !== undefined)).toBe(true);
+            for (const [, tracks] of updated.mock.calls) expect(tracks).toEqual(rebuildSettings.dictionaryTracks);
+        });
+
+        it.each([false, true])('clears disabled tracks through the queue across resets (reset: %s)', async (reset) => {
+            const { annotations, settings, updated, built } = await makeBuilt(201);
+            await jest.advanceTimersByTimeAsync(0);
+            updated.mockClear();
+            const disabledSettings = { ...settings, dictionaryTracks: makeDictionaryTracks() };
+            annotations.settingsUpdated(disabledSettings, { force: false });
+            await built();
+            await jest.advanceTimersByTimeAsync(0);
+            if (reset) {
+                annotations.settingsUpdated(disabledSettings, { force: true });
+                await built();
+                await jest.advanceTimersByTimeAsync(0);
+            }
+            expect(annotations.subtitles.every((subtitle) => subtitle.tokenization === undefined)).toBe(true);
+            await jest.advanceTimersByTimeAsync(3000);
+            const published = updated.mock.calls.flatMap(([batch]) => batch);
+            expect(published).toHaveLength(201);
+            expect(new Set(published.map((subtitle) => subtitle.index)).size).toBe(201);
+            expect(published.every((subtitle) => subtitle.tokenization === undefined)).toBe(true);
+            for (const [, tracks] of updated.mock.calls) expect(tracks).toEqual(disabledSettings.dictionaryTracks);
+        });
+
+        it('discards queued publications when a replacement source reuses subtitle indexes', async () => {
+            const { annotations, updated, built } = await makeBuilt(201);
+            await jest.advanceTimersByTimeAsync(0);
+            updated.mockClear();
+            annotations.setSubtitles([makeSubtitle({ text: 'replacement', originalText: 'replacement', start: 5000 })]);
+            await built();
+            await jest.advanceTimersByTimeAsync(3000);
+            expect(updated).toHaveBeenCalledTimes(1);
+            expect(updated).toHaveBeenCalledWith(annotations.subtitles, expect.any(Array));
+        });
+
+        it('cancels publication when the subtitle source is cleared', async () => {
+            const { annotations, updated } = await makeBuilt(201);
+            await jest.advanceTimersByTimeAsync(0);
+            annotations.reset();
+            updated.mockClear();
+            await jest.advanceTimersByTimeAsync(3000);
+            expect(updated).not.toHaveBeenCalled();
+        });
+
+        it('preserves updates queued by a publication callback', async () => {
+            const { annotations, settings, updated } = await makeBuilt(1);
+            const renderSettings = {
+                ...settings,
+                dictionaryTracks: settings.dictionaryTracks.map((dt) => ({
+                    ...dt,
+                    dictionaryTokenStyling: TokenStyling.BACKGROUND,
+                })),
+            };
+            updated.mockImplementationOnce(() => annotations.settingsUpdated(renderSettings, { force: false }));
+            await jest.advanceTimersByTimeAsync(0);
+            expect(updated).toHaveBeenCalledTimes(1);
+            await jest.advanceTimersByTimeAsync(3000);
+            expect(updated).toHaveBeenCalledTimes(2);
+            expect(updated).toHaveBeenLastCalledWith(
+                [expect.objectContaining({ index: 0 })],
+                renderSettings.dictionaryTracks
+            );
+        });
+
+        it('applies statistics settings immediately while publication is queued', async () => {
+            const track = makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAutoGenerateStatistics: true,
+            });
+            const { annotations, settings, settingsStorage, storage, built } = await makeBuilt(201, track);
+            await jest.advanceTimersByTimeAsync(0);
+            const disabledSettings = {
+                ...settings,
+                dictionaryTracks: makeDictionaryTracks(
+                    makeDictionaryTrack({ ...track, dictionaryAutoGenerateStatistics: false })
+                ),
+            };
+            settingsStorage.setData(disabledSettings);
+            annotations.settingsUpdated(disabledSettings, { force: false });
+            await built();
+            annotations.setSubtitles([makeSubtitle()]);
+            await built();
+            storage.publishStatisticsSnapshot.mockClear();
+            annotations.bind();
+            await jest.advanceTimersByTimeAsync(1000);
+            annotations.unbind();
+            expect(storage.publishStatisticsSnapshot.mock.calls.filter((call) => call[1] !== undefined)).toEqual([]);
+        });
     });
 });

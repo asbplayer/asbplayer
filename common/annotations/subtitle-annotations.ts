@@ -67,6 +67,8 @@ const TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL = 10000;
 const TOKEN_CACHE_STATISTICS_REFRESH_INTERVAL = 1000;
 let tokenCacheRefreshInterval = TOKEN_CACHE_DEFAULT_REFRESH_INTERVAL;
 const YOMITAN_RETRY_DELAY = 10000;
+const ANNOTATIONS_UPDATE_BATCH_SIZE = 100;
+const ANNOTATIONS_UPDATE_BATCH_DELAY = 1000;
 const ANKI_REFRESH_INTERVAL = 10000; // We need to poll in-case the user mines to Anki outside of asbplayer (e.g directly from Yomitan), local requests so no rate concerns
 const WANIKANI_REFRESH_INTERVAL = 10000; // Only until the first successful refresh since users can't mine to it and it's an external server
 
@@ -94,7 +96,7 @@ export class TrackState {
 
         /**
          * The logic will need to be revisited if new states are added.
-         * It also currently relies on the fact that only local tokens can have states.
+         * States come from local records, even when an external record supplies the status.
          */
         const updateTokenStates = (normalizedToken: string, states: TokenState[]) => {
             if (!states.length) return;
@@ -286,6 +288,8 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         annotationsEndIndex: number;
         init?: boolean;
     };
+    private pendingPublicationIndexes = new Set<number>();
+    private publicationTimeout?: ReturnType<typeof setTimeout>;
     private tokenRequestFailedForTracks: Set<number>;
 
     private readonly subtitleAnnotationsUpdated: (
@@ -420,6 +424,9 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
     }
 
     private _resetCache() {
+        this.pendingPublicationIndexes.clear();
+        clearTimeout(this.publicationTimeout);
+        this.publicationTimeout = undefined;
         asbTrace('annotations/cache', 'Resetting annotation cache', {
             annotationsBuilding: this.annotationsBuilding,
             subtitleCount: this._subtitles.length,
@@ -506,9 +513,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                     if (ts && !areDictionaryTracksEqual(ts.dt, dt)) ts.updateDictionaryTrack(dt);
                 }
                 const tokenizedSubtitles = this._subtitles.filter((s) => s.tokenization);
-                if (tokenizedSubtitles.length) {
-                    this.subtitleAnnotationsUpdated(tokenizedSubtitles, settings.dictionaryTracks);
-                }
+                this._queuePublication(tokenizedSubtitles);
             } else {
                 asbTrace('annotations/settings', 'Ignoring unchanged annotation settings');
             }
@@ -521,6 +526,11 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
         );
 
         const subtitlesToReset: InternalSubtitleModel[] = []; // Tracks that went from enabled to disabled need all subscribers to purge their richText
+        for (const index of this.pendingPublicationIndexes) {
+            const subtitle = this._subtitles[index];
+            const newDt = settings.dictionaryTracks[subtitle.track];
+            if (!newDt || !dictionaryTrackEnabled(newDt)) subtitlesToReset.push(subtitle);
+        }
         for (const ts of this.trackStates) {
             if (!dictionaryTrackEnabled(ts.dt)) continue; // Already disabled
             const newDt = settings.dictionaryTracks[ts.track];
@@ -528,16 +538,14 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             subtitlesToReset.push(...this._subtitles.filter((s) => s.track === ts.track));
             ts.updateDictionaryTrack(newDt);
         }
+        this._resetCache();
+        this.trackStates = settings.dictionaryTracks.map((dt, track) => new TrackState(track, dt));
         if (subtitlesToReset.length) {
             asbTrace('annotations/settings', 'Clearing annotations for disabled tracks', {
                 subtitleCount: subtitlesToReset.length,
             });
-            for (const s of subtitlesToReset) {
-                untokenize(s);
-            }
-            this.subtitleAnnotationsUpdated(subtitlesToReset, settings.dictionaryTracks);
+            this._queuePublication(subtitlesToReset);
         }
-        this._resetCache();
         const { annotationsStartIndex, annotationsEndIndex } = this._getAnnotationsIndexes(true);
         asbTrace('annotations/settings', 'Scheduling annotation rebuild after settings update', {
             annotationsStartIndex,
@@ -548,6 +556,45 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
             this.pendingBuild = { annotationsStartIndex, annotationsEndIndex, init: true };
         } else {
             void this._buildAnnotations(annotationsStartIndex, annotationsEndIndex, true);
+        }
+    }
+
+    private _queuePublication(subtitles: readonly IndexedSubtitleModel[]): void {
+        for (const subtitle of subtitles) this.pendingPublicationIndexes.add(subtitle.index);
+        if (!this.pendingPublicationIndexes.size || this.publicationTimeout !== undefined) return;
+        this.publicationTimeout = setTimeout(() => this._publishQueuedAnnotations(), 0);
+    }
+
+    private _publishQueuedAnnotations(): void {
+        this.publicationTimeout = undefined;
+        if (!this.pendingPublicationIndexes.size) return;
+
+        const batch: InternalSubtitleModel[] = [];
+        if (this.getMediaTimeMs) {
+            const { annotationsStartIndex, annotationsEndIndex } = this._getAnnotationsIndexes(true);
+            const indexEnd = Math.min(annotationsEndIndex, this._subtitles.length);
+            for (
+                let index = annotationsStartIndex;
+                index < indexEnd && batch.length < ANNOTATIONS_UPDATE_BATCH_SIZE;
+                index++
+            ) {
+                if (this.pendingPublicationIndexes.delete(index)) batch.push(this._subtitles[index]);
+            }
+        }
+        for (const index of this.pendingPublicationIndexes) {
+            if (batch.length === ANNOTATIONS_UPDATE_BATCH_SIZE) break;
+            this.pendingPublicationIndexes.delete(index);
+            batch.push(this._subtitles[index]);
+        }
+
+        this.publicationTimeout = setTimeout(() => this._publishQueuedAnnotations(), ANNOTATIONS_UPDATE_BATCH_DELAY);
+        try {
+            this.subtitleAnnotationsUpdated(
+                batch,
+                this.trackStates.map((ts) => ts.dt)
+            );
+        } catch (error) {
+            asbError('annotations/publication', 'Failed to publish annotation updates:', error);
         }
     }
 
@@ -1196,6 +1243,8 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 this.annotationsBuildingCurrentIndexes.clear();
             }
 
+            const buildTrackStates = this.trackStates;
+            const updatedSubtitles: IndexedSubtitleModel[] = [];
             const statisticsTracksToUpdate = new Set<number>();
             await inBatches(
                 subtitles,
@@ -1230,7 +1279,6 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                                     return;
                                 }
                                 builtNewTokenization = true;
-                                const updatedSubtitles: IndexedSubtitleModel[] = [];
                                 if (tokenizationModel) {
                                     const { tokenization, reconstructedText } = tokenizationModel;
                                     const subtitle = this.subtitles[index];
@@ -1258,10 +1306,6 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                                         }
                                     }
                                 }
-                                this.subtitleAnnotationsUpdated(
-                                    updatedSubtitles,
-                                    this.trackStates.map((ts) => ts.dt)
-                                );
                             } catch (e) {
                                 tokenizationErrorCount++;
                                 asbError(
@@ -1283,6 +1327,7 @@ export class SubtitleAnnotations extends SubtitleCollection<IndexedSubtitleModel
                 },
                 { batchSize: TOKEN_CACHE_BATCH_SIZE }
             );
+            if (this.trackStates === buildTrackStates) this._queuePublication(updatedSubtitles);
 
             if (statisticsTracksToUpdate.size) {
                 for (const track of statisticsTracksToUpdate) {

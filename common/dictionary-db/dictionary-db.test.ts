@@ -18,6 +18,9 @@ import {
     makeMetaRecord,
     makeSettings,
     makeTokenRecord,
+    makeWaniKaniAssignmentRecord,
+    makeWaniKaniSpacedRepetitionSystem,
+    makeWaniKaniSubjectRecord,
     otherProfile,
     otherTrack,
     privateDb,
@@ -54,6 +57,165 @@ describe('DictionaryDB', () => {
     };
 
     const allTokenRecords = async () => privateDb(dictionaryDB).tokens.toArray() as Promise<DictionaryTokenRecord[]>;
+
+    describe('ignored tokens', () => {
+        const lemma = 'うわ';
+        const sibling = 'うわーっ';
+        const inflection = 'うわー';
+        const externalSources = [
+            DictionaryTokenSource.ANKI_WORD,
+            DictionaryTokenSource.WANIKANI,
+            DictionaryTokenSource.ANKI_SENTENCE,
+        ];
+        const saveLocal = (token: string, status: TokenStatus | null = null, states = [TokenState.IGNORED]) =>
+            dictionaryDB.saveRecordLocalBulk(
+                profile,
+                [{ token, status, states, lemmas: [lemma] }],
+                ApplyStrategy.REPLACE
+            );
+
+        const seedExternal = async (source: DictionaryTokenSource, token = sibling) => {
+            await seedTokens(makeTokenRecord({ token, lemmas: [lemma], source, track, status: null, cardIds: [1] }));
+            if (source !== DictionaryTokenSource.WANIKANI) {
+                await seedAnkiCards(makeAnkiCardRecord({ status: TokenStatus.MATURE }));
+                return;
+            }
+            await privateDb(dictionaryDB).waniKaniSubjects.put(makeWaniKaniSubjectRecord());
+            await privateDb(dictionaryDB).waniKaniAssignments.put(
+                makeWaniKaniAssignmentRecord({ data: { srs_stage: 9, hidden: false, available_at: null } })
+            );
+            await privateDb(dictionaryDB).meta.put(
+                makeMetaRecord({
+                    waniKaniMeta: {
+                        ...makeMetaRecord().waniKaniMeta,
+                        spacedRepetitionSystems: [makeWaniKaniSpacedRepetitionSystem()],
+                    },
+                })
+            );
+        };
+
+        it('returns a state-only local record as uncollected when no external match exists', async () => {
+            await saveLocal(lemma);
+            const result = {
+                source: DictionaryTokenSource.LOCAL,
+                statuses: [{ status: TokenStatus.UNCOLLECTED, suspended: false }],
+                states: [TokenState.IGNORED],
+            };
+
+            await expect(dictionaryDB.getBulk(profile, track, [lemma, sibling])).resolves.toMatchObject({
+                [lemma]: result,
+            });
+            await expect(dictionaryDB.getBulk(profile, track, [sibling])).resolves.toEqual({});
+            await expect(dictionaryDB.getByLemmaBulk(profile, track, [lemma])).resolves.toMatchObject({
+                [lemma]: [{ token: lemma, ...result }],
+            });
+        });
+
+        it.each(externalSources)(
+            'returns source %s alongside state-only local lemma records without propagating their states',
+            async (source) => {
+                await seedExternal(source);
+                await saveLocal(lemma);
+                const localResult = {
+                    source: DictionaryTokenSource.LOCAL,
+                    statuses: [{ status: TokenStatus.UNCOLLECTED, suspended: false }],
+                    states: [TokenState.IGNORED],
+                };
+                const externalResult = {
+                    source,
+                    statuses: [expect.objectContaining({ status: TokenStatus.MATURE })],
+                    states: [],
+                };
+
+                await expect(dictionaryDB.getBulk(profile, track, [lemma, sibling])).resolves.toMatchObject({
+                    [lemma]: localResult,
+                    [sibling]: externalResult,
+                });
+                await expect(dictionaryDB.getByLemmaBulk(profile, track, [lemma])).resolves.toMatchObject({
+                    [lemma]: [
+                        { token: lemma, ...localResult },
+                        { token: sibling, ...externalResult },
+                    ],
+                });
+            }
+        );
+
+        it.each(externalSources)(
+            'preserves ignored state when source %s supplies the same token status',
+            async (source) => {
+                await seedExternal(source);
+                await saveLocal(sibling);
+                const result = {
+                    source,
+                    statuses: [expect.objectContaining({ status: TokenStatus.MATURE })],
+                    states: [TokenState.IGNORED],
+                };
+
+                await expect(dictionaryDB.getBulk(profile, track, [sibling])).resolves.toMatchObject({
+                    [sibling]: result,
+                });
+                await expect(dictionaryDB.getAllTokens(profile, track)).resolves.toMatchObject({ [sibling]: result });
+            }
+        );
+
+        it('keeps explicit local knowledge above external knowledge while preserving other local states', async () => {
+            await seedExternal(DictionaryTokenSource.ANKI_WORD);
+            await saveLocal(lemma);
+            await saveLocal(inflection, TokenStatus.UNKNOWN, []);
+
+            await expect(dictionaryDB.getByLemmaBulk(profile, track, [lemma])).resolves.toMatchObject({
+                [lemma]: [
+                    {
+                        token: lemma,
+                        source: DictionaryTokenSource.LOCAL,
+                        statuses: [{ status: TokenStatus.UNCOLLECTED, suspended: false }],
+                        states: [TokenState.IGNORED],
+                    },
+                    {
+                        token: inflection,
+                        source: DictionaryTokenSource.LOCAL,
+                        statuses: [{ status: TokenStatus.UNKNOWN, suspended: false }],
+                        states: [],
+                    },
+                ],
+            });
+        });
+
+        it('clears a local status override without losing ignored state and restores external knowledge', async () => {
+            await seedExternal(DictionaryTokenSource.ANKI_WORD);
+            await saveLocal(sibling, TokenStatus.UNKNOWN);
+            await expect(dictionaryDB.getBulk(profile, track, [sibling])).resolves.toMatchObject({
+                [sibling]: {
+                    source: DictionaryTokenSource.LOCAL,
+                    statuses: [{ status: TokenStatus.UNKNOWN, suspended: false }],
+                    states: [TokenState.IGNORED],
+                },
+            });
+
+            await saveLocal(sibling, TokenStatus.UNCOLLECTED);
+            const externalResult = {
+                source: DictionaryTokenSource.ANKI_WORD,
+                statuses: [{ cardId: 1, status: TokenStatus.MATURE, suspended: false }],
+            };
+            await expect(dictionaryDB.getBulk(profile, track, [sibling])).resolves.toMatchObject({
+                [sibling]: { ...externalResult, states: [TokenState.IGNORED] },
+            });
+
+            await dictionaryDB.saveRecordLocalBulk(
+                profile,
+                [{ token: sibling, status: null, states: [TokenState.IGNORED], lemmas: [lemma] }],
+                ApplyStrategy.TOGGLE
+            );
+            await expect(dictionaryDB.getBulk(profile, track, [sibling])).resolves.toMatchObject({
+                [sibling]: { ...externalResult, states: [] },
+            });
+            expect(
+                (await dictionaryDB.getRecords(profile, undefined)).tokenRecords.some(
+                    (r) => r.source === DictionaryTokenSource.LOCAL
+                )
+            ).toBe(false);
+        });
+    });
 
     it('normalizes undefined profiles to Default and keeps explicit profile values unchanged', () => {
         expect((dictionaryDB as any)._getProfile(undefined)).toBe('Default');

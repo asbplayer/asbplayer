@@ -486,18 +486,21 @@ export class DictionaryDB {
         }
 
         const tokenResults: TokenResults = {};
+        const localStatesByToken = new Map<string, TokenState[]>();
 
-        // Prioritize local tokens
+        // Local states apply even when an external record supplies the status.
+        // Only collected local statuses override external records.
         for (const [token, tokenRecords] of tokenRecordMap.entries()) {
             for (const record of tokenRecords) {
                 if (record.source !== DictionaryTokenSource.LOCAL) continue;
+                localStatesByToken.set(token, record.states);
                 tokenResults[token] = {
                     source: record.source,
                     statuses: [{ status: record.status!, suspended: false }],
                     externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
                     states: record.states,
                 };
-                tokenRecordMap.delete(token);
+                if (record.status !== TokenStatus.UNCOLLECTED) tokenRecordMap.delete(token);
                 break;
             }
         }
@@ -516,7 +519,7 @@ export class DictionaryDB {
                 source: candidate.record.source,
                 statuses: candidate.statuses,
                 externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
-                states: candidate.record.states,
+                states: localStatesByToken.get(token) ?? candidate.record.states,
             };
             tokenRecordMap.delete(token);
         }
@@ -531,7 +534,7 @@ export class DictionaryDB {
                     source: record.source,
                     statuses,
                     externalCandidateStatuses: externalCandidateStatusesByToken.get(token),
-                    states: record.states,
+                    states: localStatesByToken.get(token) ?? record.states,
                 };
                 break;
             }
@@ -650,7 +653,8 @@ export class DictionaryDB {
 
                         const lemmaResults: LemmaResults = {};
 
-                        // Prioritize local tokens
+                        // Return state-only local records without suppressing external matches.
+                        // Their states belong to the stored token, not every form of the lemma.
                         for (const [lemma, records] of lemmaRecordMap.entries()) {
                             for (const record of records) {
                                 if (record.source !== DictionaryTokenSource.LOCAL) continue;
@@ -666,7 +670,7 @@ export class DictionaryDB {
                                     externalCandidateStatuses: externalCandidateStatusesByLemma.get(lemma),
                                     states: record.states,
                                 });
-                                lemmaRecordMap.delete(lemma);
+                                if (record.status !== TokenStatus.UNCOLLECTED) lemmaRecordMap.delete(lemma);
                             }
                         }
                         if (!lemmaRecordMap.size) return lemmaResults;

@@ -1,5 +1,6 @@
-import type { DictionaryTokenSource, TokenState, DictionaryTrack } from '@project/common/settings';
+import type { TokenState, DictionaryTrack } from '@project/common/settings';
 import {
+    DictionaryTokenSource,
     dictionaryTokenSourcePriority,
     externalWordSourcePriority,
     isExternalWordSource,
@@ -170,6 +171,9 @@ export class TokenCollection extends TokenCollectionBase<TokenStatusResult> {
     ): void {
         const normalizedKey = normalizeToken(key);
         this.updateTokenStates(normalizedKey, states);
+        if (source === DictionaryTokenSource.LOCAL && statuses.every((s) => s.status === TokenStatus.UNCOLLECTED)) {
+            return;
+        }
         const statusResult = this.tokenStatusResult(statuses, source, externalCandidateStatuses);
         const existing = this.collection.get(normalizedKey);
         this.collection.set(
@@ -212,6 +216,9 @@ export class TokenCollectionArray extends TokenCollectionBase<TokenStatusResult[
     ): void {
         const normalizedToken = normalizeToken(token);
         this.updateTokenStates(normalizedToken, states);
+        if (source === DictionaryTokenSource.LOCAL && statuses.every((s) => s.status === TokenStatus.UNCOLLECTED)) {
+            return;
+        }
         const statusResult = this.tokenStatusResult(statuses, source, externalCandidateStatuses, normalizedToken);
         const statusResults = this.collection.get(normalizedKey);
         if (!statusResults) {

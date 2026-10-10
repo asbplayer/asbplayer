@@ -300,6 +300,15 @@ export default class SubtitleReader {
             const text = await file.text();
             const xml = this._xmlParser().parse(text);
             const subtitleRows = xml['timedtext']['body']['p'];
+            const windowStyles = [xml['timedtext']['head']?.['ws'] ?? []].flat();
+            const windows = [xml['timedtext']['body']['w'] ?? []].flat();
+            const popOnWindows = new Set(
+                windows
+                    .filter((window) =>
+                        windowStyles.some((style) => style['@_id'] === window['@_ws'] && style['@_mh'] === '0')
+                    )
+                    .map((window) => window['@_id'])
+            );
             const subtitles: SubtitleNode[] = [];
 
             for (let i = 0; i < subtitleRows.length; i++) {
@@ -342,11 +351,17 @@ export default class SubtitleReader {
 
                 if (text) {
                     const nextRow = subtitleRows[i + 1];
+                    const nextReplacesPopOnWindow =
+                        popOnWindows.has(row['@_w']) &&
+                        nextRow?.['@_w'] === row['@_w'] &&
+                        (nextRow?.['@_a'] ?? '0') === '0';
 
-                    // Prevent subtitle from overlapping with next one by reading ahead to see where the next one starts.
-                    // Usually text rows are separated by empty newline rows.
+                    // Cap at a newline row or a replacement in the same pop-on window.
 
-                    if (nextRow?.['#text'] === '\n' && typeof nextRow['@_t'] === 'string') {
+                    if (
+                        (nextRow?.['#text'] === '\n' || nextReplacesPopOnWindow) &&
+                        typeof nextRow?.['@_t'] === 'string'
+                    ) {
                         const nextStart = Number(nextRow['@_t']);
 
                         if (!Number.isNaN(nextStart)) {

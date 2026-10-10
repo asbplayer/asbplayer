@@ -11,6 +11,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import Checkbox from '@mui/material/Checkbox';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
@@ -30,7 +31,7 @@ import {
 import { exportSettings, mergeImportedSettings, validateSettings } from '@project/common/settings/import-export';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AutoPausePreference, SubtitleHtml } from '..';
+import { AutoPausePreference, SubtitleHtml } from '@project/common';
 import { WebSocketClient } from '@project/common/web-socket-client';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
@@ -39,6 +40,7 @@ import SettingsSection, { SettingsSubSection } from '@project/common/components/
 import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
 import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
 import { normalizeAutoPauseDurationBounds } from '@project/common/playback/plan/playback-plan';
+import InfoIcon from '@mui/icons-material/Info';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLink';
 import LogViewerDialog from '@project/common/components/LogViewerDialog';
@@ -455,7 +457,26 @@ const MiscSettingTab: React.FC<Props> = ({
                     value={subtitleRegexFilter}
                     color="primary"
                     error={!validRegex}
-                    helperText={validRegex ? undefined : 'Invalid regular expression'}
+                    helperText={!validRegex ? 'Invalid regular expression' : undefined}
+                    slotProps={{
+                        input: {
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <Tooltip title={t('settings.subtitleRegexFilterDocs')}>
+                                        <IconButton
+                                            component="a"
+                                            href="https://docs.asbplayer.dev/docs/guides/subtitle-text-filtering"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            aria-label={t('settings.subtitleRegexFilterDocs')}
+                                        >
+                                            <InfoIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                </InputAdornment>
+                            ),
+                        },
+                    }}
                     onChange={(event) => onSettingChanged('subtitleRegexFilter', event.target.value)}
                 />
                 <SettingsTextField

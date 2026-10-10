@@ -505,6 +505,7 @@
         "subtitleBlurDescription": "Oculta as faixas de legendas selecionadas desfocando-as. Não pode ser desfocado ao passar o mouse.",
         "tabName": "Nome da guia",
         "subtitleRegexFilter": "Filtro regex da legenda",
+        "subtitleRegexFilterDocs": "Subtitle text filtering guide and examples",
         "subtitleRegexFilterTextReplacement": "Substituição de texto do filtro regex da legenda",
         "convertNetflixRuby": "Detect and Display Ruby",
         "subtitleHtml": "HTML da Legenda",
