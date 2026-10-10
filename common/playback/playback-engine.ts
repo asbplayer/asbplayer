@@ -616,11 +616,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
     }
 
-    playbackPositionKeysChanged(playbackPositionKeys: readonly string[]): void {
+    playbackPositionKeysChanged(playbackPositionKeys: readonly string[], options: { isNewSource: boolean }): void {
         asbTrace('playback/position', 'Playback position keys changed', {
+            isNewSource: options.isNewSource,
             keyCount: playbackPositionKeys.length,
         });
-        this.playbackPositionController.playbackPositionKeysChanged(playbackPositionKeys);
+        this.playbackPositionController.playbackPositionKeysChanged(playbackPositionKeys, options);
     }
 
     subtitlesChanged(subtitles: readonly T[]): void {

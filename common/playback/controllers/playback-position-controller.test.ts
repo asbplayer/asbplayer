@@ -264,7 +264,7 @@ describe('PlaybackPositionController', () => {
         });
 
         harness.controller.bind();
-        harness.controller.playbackPositionKeysChanged(['first.srt', 'second.srt']);
+        harness.controller.playbackPositionKeysChanged(['first.srt', 'second.srt'], { isNewSource: true });
 
         expect(harness.playbackPositionChanges).toEqual([61_000]);
         expect(harness.savedSettings).toEqual([]);
@@ -318,7 +318,7 @@ describe('PlaybackPositionController', () => {
         );
 
         const save = harness.controller.savePlaybackPosition(62_000);
-        harness.controller.playbackPositionKeysChanged(['second.mp4']);
+        harness.controller.playbackPositionKeysChanged(['second.mp4'], { isNewSource: true });
         resolveProviderRead([]);
         await save;
 
@@ -347,7 +347,7 @@ describe('PlaybackPositionController', () => {
         );
 
         const save = harness.controller.savePlaybackPosition(0);
-        harness.controller.playbackPositionKeysChanged(['second.mp4']);
+        harness.controller.playbackPositionKeysChanged(['second.mp4'], { isNewSource: true });
         resolveProviderRead([
             { fileName: 'first.mp4', position: 62_000 },
             { fileName: 'second.mp4', position: 63_000 },
