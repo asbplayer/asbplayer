@@ -454,12 +454,6 @@ const settingsSchema = {
         trimBlackBars: {
             type: 'boolean',
         },
-        animatedImageFps: {
-            type: 'number',
-        },
-        animatedImageQuality: {
-            type: 'number',
-        },
         surroundingSubtitlesCountRadius: {
             type: 'number',
         },
@@ -769,6 +763,15 @@ const settingsSchema = {
             type: 'number',
         },
         streamingScreenshotDelay: {
+            type: 'number',
+        },
+        streamingMediaFragmentFormat: {
+            type: 'string',
+        },
+        streamingAnimatedImageFps: {
+            type: 'number',
+        },
+        streamingAnimatedImageQuality: {
             type: 'number',
         },
         streamingSubtitleListPreference: {

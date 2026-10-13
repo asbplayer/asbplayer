@@ -166,8 +166,6 @@ export const defaultSettings: AsbplayerSettings = {
     mediaFragmentTrimEnd: 200,
     mediaFragmentMaxClipLength: 10000,
     trimBlackBars: false,
-    animatedImageFps: 10,
-    animatedImageQuality: 0.85,
     surroundingSubtitlesCountRadius: 2,
     surroundingSubtitlesTimeRadius: 10000,
     autoPausePreference: AutoPausePreference.atEnd,
@@ -299,6 +297,9 @@ export const defaultSettings: AsbplayerSettings = {
     streamingLastLanguagesSynced: {},
     streamingCondensedPlaybackMinimumSkipIntervalMs: 1000,
     streamingScreenshotDelay: 1000,
+    streamingMediaFragmentFormat: 'jpeg',
+    streamingAnimatedImageFps: 10,
+    streamingAnimatedImageQuality: 0.85,
     streamingSubtitleListPreference: SubtitleListPreference.noSubtitleList,
     streamingEnableOverlay: true,
     streamingPages: {

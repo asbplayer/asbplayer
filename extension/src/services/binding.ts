@@ -75,7 +75,7 @@ import {
     StopRecordingErrorCode,
     VideoDataUiOpenReason,
 } from '@project/common';
-import type { AsbplayerSettings, MediaFragmentFormatSetting, SeekableTracks } from '@project/common/settings';
+import type { AsbplayerSettings, SeekableTracks, StreamingMediaFragmentFormatSetting } from '@project/common/settings';
 import {
     calculateSeekableTracksValue,
     extractAnkiSettings,
@@ -247,7 +247,7 @@ export default class Binding {
     private cleanScreenshot: boolean;
     private audioPaddingStart: number;
     private audioPaddingEnd: number;
-    private mediaFragmentFormat: MediaFragmentFormatSetting;
+    private mediaFragmentFormat: StreamingMediaFragmentFormatSetting;
     private maxImageWidth: number;
     private maxImageHeight: number;
     private trimBlackBars = false;
@@ -1380,7 +1380,7 @@ export default class Binding {
         this.imageDelay = currentSettings.streamingScreenshotDelay;
         this.audioPaddingStart = currentSettings.audioPaddingStart;
         this.audioPaddingEnd = currentSettings.audioPaddingEnd;
-        this.mediaFragmentFormat = currentSettings.mediaFragmentFormat;
+        this.mediaFragmentFormat = currentSettings.streamingMediaFragmentFormat;
         this.clickToMineDefaultAction = currentSettings.clickToMineDefaultAction;
         this.maxImageWidth = currentSettings.maxImageWidth;
         this.maxImageHeight = currentSettings.maxImageHeight;

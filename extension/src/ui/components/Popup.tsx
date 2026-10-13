@@ -231,6 +231,7 @@ const Popup = ({
                             extensionSupportsAutoPauseResume
                             extensionSupportsExportCardBind
                             extensionSupportsPageSettings
+                            extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                             extensionSupportsDictionary
                             extensionSupportsDictionaryBrowser
                             extensionSupportsDictionaryWaniKani
@@ -241,7 +242,6 @@ const Popup = ({
                             extensionSupportsDictionaryYomitanMecab
                             extensionSupportsSubtitleTrackSelectorInWebApp
                             extensionSupportsSubtitleListCustomization
-                            extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
                             extensionSupportsUpdateLastWithSameSubtitleText
                             forceVerticalTabs={false}
                             anki={anki}

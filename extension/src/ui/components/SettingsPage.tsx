@@ -128,6 +128,7 @@ const SettingsPage = ({
                         extensionSupportsAutoPauseResume
                         extensionSupportsExportCardBind
                         extensionSupportsPageSettings
+                        extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                         extensionSupportsDictionary
                         extensionSupportsDictionaryBrowser
                         extensionSupportsDictionaryWaniKani
@@ -138,7 +139,6 @@ const SettingsPage = ({
                         extensionSupportsDictionaryYomitanMecab
                         extensionSupportsSubtitleTrackSelectorInWebApp
                         extensionSupportsSubtitleListCustomization
-                        extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
                         extensionSupportsUpdateLastWithSameSubtitleText
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}

@@ -186,6 +186,7 @@ interface Props {
     extensionSupportsAutoPauseResume: boolean;
     extensionSupportsExportCardBind: boolean;
     extensionSupportsPageSettings: boolean;
+    extensionSupportsAnimatedImageCapture?: boolean;
     extensionSupportsDictionary: boolean;
     extensionSupportsDictionaryBrowser: boolean;
     extensionSupportsDictionaryWaniKani: boolean;
@@ -196,7 +197,6 @@ interface Props {
     extensionSupportsDictionaryYomitanMecab: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
-    extensionSupportsAnimatedMediaFragment?: boolean;
     extensionSupportsUpdateLastWithSameSubtitleText: boolean;
     insideApp?: boolean;
     appVersionRepoPath?: string;
@@ -238,7 +238,6 @@ export default function SettingsForm({
     extensionSupportsSidePanel,
     extensionSupportsSubtitleTrackSelectorInWebApp,
     extensionSupportsSubtitleListCustomization,
-    extensionSupportsAnimatedMediaFragment,
     extensionSupportsOrderableAnkiFields,
     extensionSupportsTrackSpecificSettings,
     extensionSupportsSubtitlesWidthSetting,
@@ -248,6 +247,7 @@ export default function SettingsForm({
     extensionSupportsAutoPauseResume,
     extensionSupportsExportCardBind,
     extensionSupportsPageSettings,
+    extensionSupportsAnimatedImageCapture,
     extensionSupportsDictionary,
     extensionSupportsDictionaryBrowser,
     extensionSupportsDictionaryWaniKani,
@@ -523,7 +523,6 @@ export default function SettingsForm({
                         settings={settings}
                         onSettingChanged={handleSettingChanged}
                         showWebmMediaFragmentSettings={Boolean(insideApp)}
-                        animatedMediaFragmentSupported={Boolean(extensionSupportsAnimatedMediaFragment)}
                         supportsUpdateLastWithSameSubtitleText={
                             !extensionInstalled || extensionSupportsUpdateLastWithSameSubtitleText
                         }
@@ -592,6 +591,7 @@ export default function SettingsForm({
                         insideApp={insideApp}
                         extensionSupportsOverlay={extensionSupportsOverlay}
                         extensionSupportsPageSettings={extensionSupportsPageSettings}
+                        extensionSupportsAnimatedImageCapture={extensionSupportsAnimatedImageCapture}
                         pageConfigs={pageConfigs}
                     />
                 </TabPanel>

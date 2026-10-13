@@ -202,7 +202,7 @@ export type AnkiSettingsFieldKey =
     | 'track2Field'
     | 'track3Field';
 
-export type MediaFragmentFormatSetting = 'jpeg' | 'webm' | 'webp';
+export type MediaFragmentFormatSetting = 'jpeg' | 'webm';
 
 // Any setting being added here also needs to be added to SettingsAccessor in use-anki.ts
 export interface AnkiSettings {
@@ -236,8 +236,6 @@ export interface AnkiSettings {
     readonly mediaFragmentTrimEnd: number;
     readonly mediaFragmentMaxClipLength: number;
     readonly trimBlackBars: boolean;
-    readonly animatedImageFps: number;
-    readonly animatedImageQuality: number;
     readonly surroundingSubtitlesCountRadius: number;
     readonly surroundingSubtitlesTimeRadius: number;
     readonly ankiFieldSettings: AnkiFieldSettings;
@@ -295,8 +293,6 @@ const ankiSettingsKeysObject: { [key in keyof AnkiSettings]: boolean } = {
     mediaFragmentTrimEnd: true,
     mediaFragmentMaxClipLength: true,
     trimBlackBars: true,
-    animatedImageFps: true,
-    animatedImageQuality: true,
     surroundingSubtitlesCountRadius: true,
     surroundingSubtitlesTimeRadius: true,
     ankiFieldSettings: true,
@@ -633,6 +629,10 @@ export interface PageSettings {
     dreaming: Page;
 }
 
+// The extension captures animated images from the tab, which the website can't, so it has its own setting
+// instead of sharing mediaFragmentFormat
+export type StreamingMediaFragmentFormatSetting = 'jpeg' | 'webp';
+
 export interface StreamingVideoSettings {
     readonly streamingAppUrl: string;
     readonly streamingDisplaySubtitles: boolean;
@@ -647,6 +647,9 @@ export interface StreamingVideoSettings {
     // Used to auto-selecting a language in subtitle track selector, if it's available
     readonly streamingLastLanguagesSynced: { [key: string]: string[] };
     readonly streamingScreenshotDelay: number;
+    readonly streamingMediaFragmentFormat: StreamingMediaFragmentFormatSetting;
+    readonly streamingAnimatedImageFps: number;
+    readonly streamingAnimatedImageQuality: number;
     readonly streamingSubtitleListPreference: SubtitleListPreference;
     readonly streamingEnableOverlay: boolean;
     readonly streamingPages: PageSettings;
