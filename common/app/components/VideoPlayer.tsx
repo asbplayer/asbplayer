@@ -864,7 +864,9 @@ export default function VideoPlayer({
             setLengthMs(duration);
             setVideoFileName(videoFileName);
             videoFileNameRef.current = videoFileName;
-            playbackEngineRef.current?.playbackPositionKeysChanged(videoFileName ? [videoFileName] : []);
+            playbackEngineRef.current?.playbackPositionKeysChanged(videoFileName ? [videoFileName] : [], {
+                isNewSource: true,
+            });
         });
 
         playerChannel.onPlay(() => {

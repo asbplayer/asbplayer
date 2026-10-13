@@ -633,6 +633,8 @@ export default function VideoDataSyncDialog({
                 }
                 jimakuRecentWorks={onlineSubtitleSourceConfig.jimakuRecentWorks ?? []}
                 onJimakuRecentWorksChange={(jimakuRecentWorks) => onOnlineSourceConfigChanged({ jimakuRecentWorks })}
+                jimakuEpisodeRegex={onlineSubtitleSourceConfig.jimakuEpisodeRegex ?? ''}
+                onJimakuEpisodeRegexChange={(jimakuEpisodeRegex) => onOnlineSourceConfigChanged({ jimakuEpisodeRegex })}
             />
         </>
     );

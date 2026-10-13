@@ -3,15 +3,17 @@ import 'fake-indexeddb/auto';
 import { Dexie } from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DictionaryBuildAnkiCacheStateErrorCode, DictionaryBuildAnkiCacheStateType } from '@project/common';
+import type { DictionaryBuildAnkiCacheState } from '@project/common';
 import type { AsbplayerSettings } from '@project/common/settings';
-import { defaultSettings, DictionaryTokenSource, TokenState, TokenStatus } from '@project/common/settings';
+import { DictionaryTokenSource, TokenStatus } from '@project/common/settings';
 
 const mockAnkiInstances: any[] = [];
 const mockAnkiOverrides: any[] = [];
 const mockYomitanInstances: any[] = [];
 const mockYomitanOverrides: any[] = [];
 
-jest.mock('uuid', () => ({ v4: () => 'test-build-id' }));
+let mockBuildIdCount = 0;
+jest.mock('uuid', () => ({ v4: () => `test-build-id-${++mockBuildIdCount}` }));
 jest.mock('@project/common/anki', () => ({
     Anki: jest.fn().mockImplementation((settings) => {
         const instance = {
@@ -70,31 +72,11 @@ jest.mock('@project/common/yomitan/yomitan', () => ({
     }),
 }));
 
-import {
-    DictionaryDB,
-    _buildIdHealthCheck,
-    _clearBuildIds,
-    _ensureBuildId,
-    _gatherModifiedTokens,
-} from '@project/common/dictionary-db/dictionary-db';
-import {
-    _buildAnkiCardStatuses,
-    _buildTokensForTracks,
-    _deleteCardBulk,
-    _getAnkiCardKeys,
-    _getAnkiCardsByNoteIdBulk,
-    _orphanAllCardIds,
-    _processAnkiCardStatuses,
-    _processTracks,
-    _saveTokensForDB,
-    _syncTrackStatesWithAnki,
-    _updateBuildAnkiCacheProgress,
-} from '@project/common/dictionary-db/dictionary-db-anki';
+import { DictionaryDB } from '@project/common/dictionary-db/dictionary-db';
 import {
     makeAnkiCardRecord,
     makeDictionaryTrack,
     makeMetaRecord,
-    makeModifiedCard,
     makeNoteInfo,
     makeSettings,
     makeTokenRecord,
@@ -102,7 +84,6 @@ import {
     otherTrack,
     privateDb,
     profile,
-    tokenKey,
     track,
 } from '@project/common/dictionary-db/dictionary-db-test-utils';
 
@@ -113,46 +94,6 @@ describe('DictionaryDB Anki cache', () => {
     const useSettings = (dictionaryTracks = [makeDictionaryTrack()]) => {
         settings = makeSettings(dictionaryTracks);
         return settings;
-    };
-
-    const installHelperAdapters = () => {
-        const db = privateDb(dictionaryDB);
-        Object.assign(dictionaryDB as any, {
-            _buildAnkiCardStatuses,
-            _buildIdHealthCheck: (buildId: string, activeTracks: [string, number][]) =>
-                _buildIdHealthCheck(db, buildId, 'anki', activeTracks),
-            _buildTokensForTracks: (
-                ...args: Parameters<typeof _buildTokensForTracks> extends [any, ...infer Rest] ? Rest : never
-            ) => _buildTokensForTracks(db, ...args),
-            _clearBuildId: (key: [string, number], buildId: string) => _clearBuildIds(db, [key], buildId, 'anki'),
-            _clearBuildIds: (activeTracks: [string, number][], buildId: string) =>
-                _clearBuildIds(db, activeTracks, buildId, 'anki'),
-            _deleteCardBulk: (
-                profile: string,
-                orphanedTrackCardIds: Map<number, number[]>,
-                modifiedTokens: Set<string>
-            ) => _deleteCardBulk(db, profile, orphanedTrackCardIds, modifiedTokens),
-            _ensureBuildId: (key: [string, number], buildId: string, options: { buildTs: number }) =>
-                _ensureBuildId(db, key, buildId, 'anki', { mode: 'claim', buildTs: options.buildTs }),
-            _gatherModifiedTokens: (profile: string, modifiedTokens: Set<string>) =>
-                _gatherModifiedTokens(db, profile, modifiedTokens),
-            _getAnkiCardKeys: (profile: string) => _getAnkiCardKeys(db, profile),
-            _getAnkiCardsByNoteIdBulk: (profile: string, noteIds: number[]) =>
-                _getAnkiCardsByNoteIdBulk(db, profile, noteIds),
-            _orphanAllCardIds: (profile: string, tracks: number[]) => _orphanAllCardIds(db, profile, tracks),
-            _processAnkiCardStatuses,
-            _processTracks: (...args: Parameters<typeof _processTracks> extends [any, ...infer Rest] ? Rest : never) =>
-                _processTracks(db, ...args),
-            _saveTokensForDB: (
-                ...args: Parameters<typeof _saveTokensForDB> extends [any, ...infer Rest] ? Rest : never
-            ) => _saveTokensForDB(db, ...args),
-            _syncTrackStatesWithAnki: (
-                ...args: Parameters<typeof _syncTrackStatesWithAnki> extends [any, ...infer Rest] ? Rest : never
-            ) => _syncTrackStatesWithAnki(db, ...args),
-            _updateBuildAnkiCacheProgress: (
-                ...args: Parameters<typeof _updateBuildAnkiCacheProgress> extends [any, ...infer Rest] ? Rest : never
-            ) => _updateBuildAnkiCacheProgress(db, ...args),
-        });
     };
 
     beforeEach(async () => {
@@ -166,7 +107,6 @@ describe('DictionaryDB Anki cache', () => {
             getAll: jest.fn(async () => settings),
             getSingle: jest.fn(async (key: keyof AsbplayerSettings) => settings[key]),
         } as any);
-        installHelperAdapters();
     });
 
     afterEach(async () => {
@@ -183,1049 +123,357 @@ describe('DictionaryDB Anki cache', () => {
         await privateDb(dictionaryDB).ankiCards.bulkPut(records);
     };
 
-    const waitForAnkiBuildToFinish = async (key: [string, number] = [profile, track]) => {
-        for (let i = 0; i < 20; i++) {
-            const meta = await privateDb(dictionaryDB).meta.get(key);
-            if (meta?.ankiMeta.buildId === null) return;
-            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const stageAnkiNotes = (
+        notes: ReturnType<typeof makeNoteInfo>[],
+        options: {
+            cardMods?: Record<number, number>;
+            cardDecks?: Record<number, string>;
+            suspendedCards?: number[];
+            findCards?: (query: string) => number[];
+            trackCount?: number;
+        } = {}
+    ) => {
+        const cardIds = notes.flatMap((note) => note.cards);
+        mockAnkiOverrides.push({
+            findNotes: jest.fn<() => Promise<number[]>>().mockResolvedValue(notes.map((note) => note.noteId)),
+            notesInfo: jest.fn<() => Promise<ReturnType<typeof makeNoteInfo>[]>>().mockResolvedValue(notes),
+            cardsModTime: jest
+                .fn<() => Promise<{ cardId: number; mod: number }[]>>()
+                .mockResolvedValue(cardIds.map((cardId) => ({ cardId, mod: options.cardMods?.[cardId] ?? 100 }))),
+            cardsInfo: jest
+                .fn<() => Promise<{ cardId: number; deckName: string; modelName: string; due: number }[]>>()
+                .mockResolvedValue(
+                    cardIds.map((cardId) => ({
+                        cardId,
+                        deckName: options.cardDecks?.[cardId] ?? 'Japanese',
+                        modelName: 'Model',
+                        due: 0,
+                    }))
+                ),
+            areSuspended: jest
+                .fn<() => Promise<boolean[]>>()
+                .mockResolvedValue(cardIds.map((cardId) => options.suspendedCards?.includes(cardId) ?? false)),
+            findCards: jest.fn<(query: string) => Promise<number[]>>(
+                async (query) => options.findCards?.(query) ?? (query.startsWith('is:new ') ? cardIds : [])
+            ),
+        });
+        for (let i = 0; i < (options.trackCount ?? 1); i++) {
+            mockYomitanOverrides.push({
+                tokenize: jest.fn<(text: string) => Promise<{ text: string }[][]>>(async (text) => [[{ text }]]),
+                lemmatize: jest.fn<(token: string) => Promise<string[]>>(async (token) => [token]),
+            });
         }
-        throw new Error('Timed out waiting for Anki build to finish');
     };
 
-    it('uses exact deck, child deck, and field matches when building Anki card statuses', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese', 'Mining'],
-            dictionaryAnkiWordFields: ['Word'],
-            dictionaryAnkiSentenceFields: ['Sentence'],
-            dictionaryAnkiMatureCutoff: 20,
+    /**
+     * Mimics Anki's search for `is:new` card queries: a card matches when its deck satisfies the query's deck clause
+     * (if any) and it has at least one of the queried fields.
+     */
+    const newCardsMatching =
+        (cards: { cardId: number; deck: string; fields: string[] }[]) =>
+        (query: string): number[] => {
+            if (!query.startsWith('is:new ')) return [];
+            const queryDecks = Array.from(query.matchAll(/"deck:([^"]+)"/g), (match) => match[1]);
+            const queryFields = Array.from(query.matchAll(/"([^":]+):_\*"/g), (match) => match[1]);
+            return cards
+                .filter(
+                    ({ deck, fields }) =>
+                        (!queryDecks.length || queryDecks.some((d) => deck === d || deck.startsWith(`${d}::`))) &&
+                        fields.some((field) => queryFields.includes(field))
+                )
+                .map(({ cardId }) => cardId);
+        };
+
+    const buildUntilComplete = async (statusUpdates = jest.fn<(state: DictionaryBuildAnkiCacheState) => void>()) => {
+        let finish!: () => void;
+        const finished = new Promise<void>((resolve) => {
+            finish = resolve;
         });
-        const modifiedCards = new Map<number, any>([
-            [
-                1,
-                makeModifiedCard({
-                    noteId: 1,
-                    deckName: 'Japanese',
-                    fields: new Map([['Word', 'alpha']]),
-                    modifiedAt: 100,
-                    statuses: new Map(),
-                    suspended: false,
-                }),
-            ],
-            [
-                2,
-                makeModifiedCard({
-                    noteId: 2,
-                    deckName: 'Japanese::Anime',
-                    fields: new Map([['Sentence', 'sentence']]),
-                    modifiedAt: 100,
-                    statuses: new Map(),
-                    suspended: false,
-                }),
-            ],
-            [
-                3,
-                makeModifiedCard({
-                    noteId: 3,
-                    deckName: 'Other',
-                    fields: new Map([['Word', 'beta']]),
-                    modifiedAt: 100,
-                    statuses: new Map(),
-                    suspended: false,
-                }),
-            ],
-            [
-                4,
-                makeModifiedCard({
-                    noteId: 4,
-                    deckName: 'Mining',
-                    fields: new Map([['Unrelated', 'gamma']]),
-                    modifiedAt: 100,
-                    statuses: new Map(),
-                    suspended: false,
-                }),
-            ],
-        ]);
-        const anki = { findCards: jest.fn<(query: string) => Promise<number[]>>() };
-        anki.findCards.mockResolvedValueOnce([1, 2, 3, 4]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-
-        await (dictionaryDB as any)._buildAnkiCardStatuses(track, { dt: dictionaryTrack }, modifiedCards, anki);
-
-        expect(anki.findCards).toHaveBeenCalledTimes(1);
-        expect(anki.findCards.mock.calls[0][0]).toBe(
-            'is:new (("deck:Japanese" OR "deck:Mining") ("Word:_*" OR "Sentence:_*"))'
-        );
-        expect(modifiedCards.get(1).statuses.get(track)).toBe(TokenStatus.UNKNOWN);
-        expect(modifiedCards.get(2).statuses.get(track)).toBe(TokenStatus.UNKNOWN);
-        expect(modifiedCards.get(3).statuses.has(track)).toBe(false);
-        expect(modifiedCards.get(4).statuses.has(track)).toBe(false);
-    });
-
-    it('treats an empty deck list as all decks when building Anki card statuses', async () => {
-        const dictionaryTrack = makeDictionaryTrack({ dictionaryAnkiDecks: [], dictionaryAnkiWordFields: ['Word'] });
-        const modifiedCards = new Map<number, any>([
-            [
-                1,
-                makeModifiedCard({
-                    noteId: 1,
-                    deckName: 'Any Deck',
-                    fields: new Map([['Word', 'alpha']]),
-                    modifiedAt: 100,
-                    statuses: new Map(),
-                    suspended: false,
-                }),
-            ],
-        ]);
-        const anki = { findCards: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValueOnce([1]) };
-
-        await (dictionaryDB as any)._buildAnkiCardStatuses(track, { dt: dictionaryTrack }, modifiedCards, anki);
-
-        expect(anki.findCards).toHaveBeenCalledWith('is:new ("Word:_*")');
-        expect(modifiedCards.get(1).statuses.get(track)).toBe(TokenStatus.UNKNOWN);
-    });
-
-    it('fetches Anki card keys and groups cards by note ID within a profile', async () => {
-        const firstCard = makeAnkiCardRecord({ cardId: 1, noteId: 10 });
-        const secondCard = makeAnkiCardRecord({ cardId: 2, noteId: 10 });
-        const otherProfileCard = makeAnkiCardRecord({ cardId: 3, noteId: 20, profile: otherProfile });
-
-        await seedAnkiCards(firstCard, secondCard, otherProfileCard);
-
-        await expect((dictionaryDB as any)._getAnkiCardKeys(profile)).resolves.toEqual([
-            [1, track, profile],
-            [2, track, profile],
-        ]);
-        await expect((dictionaryDB as any)._getAnkiCardsByNoteIdBulk(profile, [])).resolves.toEqual(new Map());
-        await expect((dictionaryDB as any)._getAnkiCardsByNoteIdBulk(profile, [10, 20])).resolves.toEqual(
-            new Map([[10, [firstCard, secondCard]]])
-        );
-    });
-
-    it('orphans and deletes Anki cards while updating related token modifications', async () => {
-        const modifiedTokens = new Set<string>();
-        await seedTokens(
-            makeTokenRecord({
-                token: 'alpha',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['lemma-alpha'],
-                cardIds: [1, 2],
-            }),
-            makeTokenRecord({
-                token: 'beta',
-                track,
-                source: DictionaryTokenSource.ANKI_SENTENCE,
-                status: null,
-                lemmas: ['lemma-beta'],
-                cardIds: [1],
-            }),
-            makeTokenRecord({
-                token: 'other-track',
-                track: otherTrack,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['other-track'],
-                cardIds: [3],
-            })
-        );
-        await seedAnkiCards(
-            makeAnkiCardRecord({ cardId: 1 }),
-            makeAnkiCardRecord({ cardId: 2 }),
-            makeAnkiCardRecord({ cardId: 3, track: otherTrack })
-        );
-
-        await (dictionaryDB as any)._deleteCardBulk(profile, new Map([[track, []]]), modifiedTokens);
-        await expect(privateDb(dictionaryDB).ankiCards.count()).resolves.toBe(3);
-
-        await (dictionaryDB as any)._deleteCardBulk(profile, new Map([[track, [1]]]), modifiedTokens);
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('alpha', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toMatchObject({
-            status: null,
-            states: [],
-            cardIds: [2],
+        await dictionaryDB.buildAnkiCache(profile, (state) => {
+            statusUpdates(state);
+            if (
+                state.type === DictionaryBuildAnkiCacheStateType.error ||
+                (state.type === DictionaryBuildAnkiCacheStateType.stats &&
+                    state.body !== undefined &&
+                    'orphanedCards' in state.body)
+            )
+                finish();
         });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('beta', DictionaryTokenSource.ANKI_SENTENCE, track))
-        ).resolves.toBeUndefined();
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toBeUndefined();
-        expect(modifiedTokens).toEqual(new Set(['alpha', 'lemma-alpha', 'beta', 'lemma-beta']));
+        await finished;
+        return statusUpdates;
+    };
 
-        await expect((dictionaryDB as any)._orphanAllCardIds(profile, [])).resolves.toEqual(new Map());
-        await expect((dictionaryDB as any)._orphanAllCardIds(profile, [track, otherTrack])).resolves.toEqual(
-            new Map([
-                [track, [2]],
-                [otherTrack, [3]],
+    it('builds only matching deck and field cards through the public cache boundary', async () => {
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiDecks: ['Japanese', 'Mining'],
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiSentenceFields: ['Sentence'],
+            }),
+        ]);
+        stageAnkiNotes(
+            [
+                makeNoteInfo({ noteId: 10, cards: [1], fields: { Word: { value: ' alpha ', order: 0 } } }),
+                makeNoteInfo({ noteId: 20, cards: [2], fields: { Sentence: { value: ' sentence ', order: 0 } } }),
+                makeNoteInfo({ noteId: 30, cards: [3], fields: { Word: { value: 'other', order: 0 } } }),
+                makeNoteInfo({ noteId: 40, cards: [4], fields: { Unrelated: { value: 'ignored', order: 0 } } }),
+            ],
+            { cardDecks: { 2: 'Japanese::Anime', 3: 'Other', 4: 'Mining' }, suspendedCards: [2] }
+        );
+
+        await buildUntilComplete();
+
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(Object.keys(records.ankiCardRecords[track] ?? {})).toEqual(['1', '2']);
+        expect(records.ankiCardRecords[track][1]).toMatchObject({ status: TokenStatus.UNKNOWN, suspended: false });
+        expect(records.ankiCardRecords[track][2]).toMatchObject({ status: TokenStatus.UNKNOWN, suspended: true });
+        expect(records.tokenRecords.filter((record) => record.source !== DictionaryTokenSource.LOCAL)).toEqual([
+            expect.objectContaining({ token: 'alpha', source: DictionaryTokenSource.ANKI_WORD, cardIds: [1] }),
+            expect.objectContaining({ token: 'sentence', source: DictionaryTokenSource.ANKI_SENTENCE, cardIds: [2] }),
+        ]);
+        expect(mockYomitanInstances[0].tokenize.mock.calls.map(([text]: [string]) => text)).toEqual([
+            'alpha',
+            'sentence',
+        ]);
+    });
+
+    it('replaces changed card tokens while retaining references from unchanged cards', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([
+            makeNoteInfo({ noteId: 10, cards: [1], fields: { Word: { value: 'old', order: 0 } } }),
+            makeNoteInfo({ noteId: 20, cards: [2], fields: { Word: { value: 'old', order: 0 } } }),
+        ]);
+        await buildUntilComplete();
+
+        stageAnkiNotes(
+            [
+                makeNoteInfo({ noteId: 10, cards: [1], mod: 150, fields: { Word: { value: 'new', order: 0 } } }),
+                makeNoteInfo({ noteId: 20, cards: [2], fields: { Word: { value: 'old', order: 0 } } }),
+            ],
+            { cardMods: { 1: 150 } }
+        );
+        await buildUntilComplete();
+
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.tokenRecords).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ token: 'old', cardIds: [2] }),
+                expect.objectContaining({ token: 'new', cardIds: [1] }),
             ])
         );
+        expect(records.ankiCardRecords[track][1].modifiedAt).toBe(150);
+        expect(records.ankiCardRecords[track][2].modifiedAt).toBe(100);
     });
 
-    it('manages build IDs, health checks, clearing, and progress expiration', async () => {
-        const key = [profile, track];
-        const statusUpdates = jest.fn();
-        const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        const dateNow = jest.spyOn(Date, 'now').mockReturnValue(2000);
+    it('updates a reviewed card while leaving an unchanged note cached', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const note = makeNoteInfo({ noteId: 10, cards: [1] });
+        stageAnkiNotes([note]);
+        await buildUntilComplete();
 
-        await expect((dictionaryDB as any)._ensureBuildId(key, 'build-1', { buildTs: 1000 })).resolves.toBe(true);
-        await expect((dictionaryDB as any)._ensureBuildId(key, 'build-2', { buildTs: 2000 })).resolves.toBe(false);
-        await expect((dictionaryDB as any)._buildIdHealthCheck('build-1', [key])).resolves.toBeUndefined();
-        await expect((dictionaryDB as any)._buildIdHealthCheck('build-2', [key])).rejects.toThrow(
-            'buildId was corrupted for track 1'
-        );
-        await expect((dictionaryDB as any)._ensureBuildId(key, 'build-2', { buildTs: 302000 })).resolves.toBe(true);
-        expect(consoleWarn).toHaveBeenCalledTimes(1);
+        stageAnkiNotes([note], {
+            cardMods: { 1: 150 },
+            suspendedCards: [1],
+            findCards: (query) => (query.startsWith('is:learn ') ? [1] : []),
+        });
+        await buildUntilComplete();
 
-        await (dictionaryDB as any)._updateBuildAnkiCacheProgress(
-            'build-2',
-            [key],
-            { current: 1, total: 3, startedAt: 1000 },
-            ['alpha'],
-            statusUpdates,
-            true
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.ankiCardRecords[track][1]).toMatchObject({
+            modifiedAt: 150,
+            status: TokenStatus.LEARNING,
+            suspended: true,
+        });
+        expect(records.tokenRecords).toEqual([expect.objectContaining({ token: 'alpha', cardIds: [1] })]);
+    });
+
+    it('reports an unclassifiable card through the public error callback', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([makeNoteInfo()], { findCards: () => [] });
+        const statusUpdates = await buildUntilComplete();
+
+        expect(statusUpdates).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.error,
+            body: expect.objectContaining({
+                code: DictionaryBuildAnkiCacheStateErrorCode.failedToSyncTrackStates,
+                msg: 'Anki changed during status build, some cards statuses could not be determined.',
+            }),
+        });
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track]).toBeUndefined();
+    });
+
+    it('classifies cards through interval fallback when FSRS data is unavailable', async () => {
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiMatureCutoff: 20,
+            }),
+        ]);
+        stageAnkiNotes(
+            [1, 2, 3].map((cardId) =>
+                makeNoteInfo({
+                    noteId: cardId * 10,
+                    cards: [cardId],
+                    fields: { Word: { value: `word${cardId}`, order: 0 } },
+                })
+            ),
+            {
+                cardDecks: { 1: 'Deck A', 2: 'Deck B', 3: 'Deck C' },
+                findCards: (query) => {
+                    if (query.includes('prop:ivl<10')) return [1];
+                    if (query.includes('prop:ivl>=10 prop:ivl<20')) return [2];
+                    if (query.includes('prop:ivl>=20')) return [3];
+                    return [];
+                },
+            }
         );
-        await expect(privateDb(dictionaryDB).meta.get(key)).resolves.toMatchObject({
-            ankiMeta: {
-                buildId: 'build-2',
-                lastBuildExpiresAt: 302000,
-            },
+
+        await buildUntilComplete();
+
+        const cards = (await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track];
+        expect([cards[1].status, cards[2].status, cards[3].status]).toEqual([
+            TokenStatus.GRADUATED,
+            TokenStatus.YOUNG,
+            TokenStatus.MATURE,
+        ]);
+    });
+
+    it('classifies cards through FSRS stability queries', async () => {
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiMatureCutoff: 20,
+            }),
+        ]);
+        stageAnkiNotes(
+            [1, 2, 3].map((cardId) =>
+                makeNoteInfo({
+                    noteId: cardId * 10,
+                    cards: [cardId],
+                    fields: { Word: { value: `word${cardId}`, order: 0 } },
+                })
+            ),
+            {
+                findCards: (query) => {
+                    if (query.startsWith('prop:s>=0 ')) return [1, 2, 3];
+                    if (query.includes('prop:s<10')) return [1];
+                    if (query.includes('prop:s>=10 prop:s<20')) return [2];
+                    if (query.includes('prop:s>=20')) return [3];
+                    return [];
+                },
+            }
+        );
+
+        await buildUntilComplete();
+
+        const cards = (await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track];
+        expect([cards[1].status, cards[2].status, cards[3].status]).toEqual([
+            TokenStatus.GRADUATED,
+            TokenStatus.YOUNG,
+            TokenStatus.MATURE,
+        ]);
+    });
+
+    it('removes orphaned cards and their tokens after Anki returns no notes', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([makeNoteInfo()]);
+        await buildUntilComplete();
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track][1]).toBeDefined();
+
+        stageAnkiNotes([]);
+        const statusUpdates = await buildUntilComplete();
+
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.ankiCardRecords[track]).toBeUndefined();
+        expect(records.tokenRecords).toEqual([]);
+        expect(statusUpdates).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ modifiedCards: 1, modifiedTokens: expect.arrayContaining(['alpha']) }),
+        });
+    });
+
+    it('builds 101 cards across batches without dropping progress or records', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes(
+            Array.from({ length: 101 }, (_, index) => {
+                const cardId = index + 1;
+                return makeNoteInfo({
+                    noteId: cardId * 10,
+                    cards: [cardId],
+                    fields: { Word: { value: `word${cardId}`, order: 0 } },
+                });
+            })
+        );
+        const statusUpdates = await buildUntilComplete();
+
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.tokenRecords).toHaveLength(101);
+        expect(Object.keys(records.ankiCardRecords[track])).toHaveLength(101);
+        expect(mockYomitanInstances[0].tokenizeBulk.mock.calls.map(([texts]: [string[]]) => texts.length)).toEqual([
+            100, 1,
+        ]);
+        expect(statusUpdates).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.progress,
+            body: expect.objectContaining({ current: 100, total: 101 }),
         });
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.progress,
-            body: { current: 1, total: 3, buildTimestamp: 1000, modifiedTokens: ['alpha'], forAnkiSync: true },
+            body: expect.objectContaining({ current: 101, total: 101 }),
         });
-
-        await (dictionaryDB as any)._clearBuildId(key, 'wrong-build');
-        await expect(privateDb(dictionaryDB).meta.get(key)).resolves.toMatchObject({
-            ankiMeta: { buildId: 'build-2' },
-        });
-        await (dictionaryDB as any)._clearBuildIds([key], 'build-2');
-        await expect(privateDb(dictionaryDB).meta.get(key)).resolves.toMatchObject({ ankiMeta: { buildId: null } });
-        dateNow.mockRestore();
     });
 
-    it('processes Anki card status assignments once per card and skips irrelevant cards', () => {
-        const modifiedCards = new Map<number, any>([
-            [1, makeModifiedCard({ statuses: new Map() })],
-            [2, makeModifiedCard({ statuses: new Map([[track, TokenStatus.UNKNOWN]]) })],
-            [3, makeModifiedCard({ statuses: new Map() })],
+    it('skips card details and tokenization when a subsequent build has no changes', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const note = makeNoteInfo();
+        stageAnkiNotes([note]);
+        await buildUntilComplete();
+
+        stageAnkiNotes([note]);
+        const statusUpdates = await buildUntilComplete();
+
+        expect(mockAnkiInstances[1].cardsInfo).not.toHaveBeenCalled();
+        expect(mockYomitanInstances[1].tokenize).not.toHaveBeenCalled();
+        expect((await dictionaryDB.getRecords(profile, track)).tokenRecords).toEqual([
+            expect.objectContaining({ token: 'alpha', cardIds: [1] }),
         ]);
-
-        expect(
-            (dictionaryDB as any)._processAnkiCardStatuses(
-                track,
-                [99, 1, 1, 2, 3],
-                modifiedCards,
-                TokenStatus.MATURE,
-                2
-            )
-        ).toBe(0);
-        expect(modifiedCards.get(1).statuses.get(track)).toBe(TokenStatus.MATURE);
-        expect(modifiedCards.get(2).statuses.get(track)).toBe(TokenStatus.UNKNOWN);
-        expect(modifiedCards.get(3).statuses.get(track)).toBe(TokenStatus.MATURE);
-    });
-
-    it('builds Anki statuses through learn, FSRS, and interval fallback queries', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiWordFields: ['Word'],
-            dictionaryAnkiMatureCutoff: 20,
-        });
-        const modifiedCards = new Map<number, any>([
-            [1, makeModifiedCard({ cardId: 1, statuses: new Map() })],
-            [2, makeModifiedCard({ cardId: 2, statuses: new Map() })],
-            [3, makeModifiedCard({ cardId: 3, statuses: new Map() })],
-        ]);
-        const anki = { findCards: jest.fn<(query: string) => Promise<number[]>>() };
-        anki.findCards
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([])
-            .mockResolvedValueOnce([1])
-            .mockResolvedValueOnce([2])
-            .mockResolvedValueOnce([3]);
-
-        await (dictionaryDB as any)._buildAnkiCardStatuses(track, { dt: dictionaryTrack }, modifiedCards, anki);
-
-        expect(anki.findCards.mock.calls.map((call) => call[0])).toEqual([
-            'is:new ("Word:_*")',
-            'is:learn ("Word:_*")',
-            'prop:s>=0 ("Word:_*")',
-            '-is:new -is:learn prop:ivl<10 ("Word:_*")',
-            '-is:new -is:learn prop:ivl>=10 prop:ivl<20 ("Word:_*")',
-            '-is:new -is:learn prop:ivl>=20 ("Word:_*")',
-        ]);
-        expect(modifiedCards.get(1).statuses.get(track)).toBe(TokenStatus.GRADUATED);
-        expect(modifiedCards.get(2).statuses.get(track)).toBe(TokenStatus.YOUNG);
-        expect(modifiedCards.get(3).statuses.get(track)).toBe(TokenStatus.MATURE);
-    });
-
-    it('throws when Anki status queries cannot classify all relevant cards', async () => {
-        const dictionaryTrack = makeDictionaryTrack({ dictionaryAnkiWordFields: ['Word'] });
-        const modifiedCards = new Map<number, any>([[1, makeModifiedCard({ statuses: new Map() })]]);
-        const anki = { findCards: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([]) };
-
-        await expect(
-            (dictionaryDB as any)._buildAnkiCardStatuses(track, { dt: dictionaryTrack }, modifiedCards, anki)
-        ).rejects.toThrow('Anki changed during status build, some cards statuses could not be determined.');
-    });
-
-    it('does not query Anki card statuses when there are no modified cards or configured Anki fields', async () => {
-        const anki = { findCards: jest.fn<(query: string) => Promise<number[]>>() };
-
-        await (dictionaryDB as any)._buildAnkiCardStatuses(
-            track,
-            { dt: makeDictionaryTrack({ dictionaryAnkiWordFields: ['Word'] }) },
-            new Map(),
-            anki
-        );
-        await (dictionaryDB as any)._buildAnkiCardStatuses(
-            track,
-            { dt: makeDictionaryTrack({ dictionaryAnkiWordFields: [], dictionaryAnkiSentenceFields: [] }) },
-            new Map([[1, makeModifiedCard({ statuses: new Map() })]]),
-            anki
-        );
-
-        expect(anki.findCards).not.toHaveBeenCalled();
-    });
-
-    it('syncs track states with Anki, trims fields, detects suspended cards, and records orphaned card IDs', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const trackStates = new Map([[track, { dt: dictionaryTrack, yomitan: {} }]]);
-        const modifiedCards = new Map<number, any>();
-        const orphanedTrackCardIds = new Map<number, number[]>();
-        const anki = {
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest.fn<(noteIds: number[]) => Promise<any[]>>().mockResolvedValue([
-                makeNoteInfo({
-                    noteId: 10,
-                    fields: { Word: { value: ' alpha ', order: 0 }, Empty: { value: '   ', order: 1 } },
-                    cards: [1, 2],
-                    mod: 100,
-                }),
-            ]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([
-                    { cardId: 1, mod: 110 },
-                    { cardId: 2, mod: 110 },
-                ]),
-            cardsInfo: jest
-                .fn<(cardIds: number[], progress?: (progress: any) => Promise<void>) => Promise<any[]>>()
-                .mockResolvedValue([
-                    { cardId: 1, deckName: 'Japanese' },
-                    { cardId: 2, deckName: 'Other' },
-                ]),
-            areSuspended: jest.fn<(cardIds: number[]) => Promise<boolean[]>>().mockResolvedValue([false, true]),
-        };
-        await seedAnkiCards(
-            makeAnkiCardRecord({ cardId: 2, noteId: 10, modifiedAt: 50 }),
-            makeAnkiCardRecord({ cardId: 3, noteId: 11, modifiedAt: 50 })
-        );
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                modifiedCards,
-                orphanedTrackCardIds,
-                anki,
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).resolves.toBe(3);
-
-        expect(anki.findNotes).toHaveBeenCalledWith('("deck:Japanese") ("Word:_*")');
-        expect(modifiedCards.get(1)).toMatchObject({
-            noteId: 10,
-            modifiedAt: 110,
-            suspended: false,
-            data: { deckName: 'Japanese' },
-        });
-        expect(modifiedCards.get(1).fields).toEqual(new Map([['Word', 'alpha']]));
-        expect(modifiedCards.get(2)).toMatchObject({
-            noteId: 10,
-            modifiedAt: 110,
-            suspended: true,
-            data: { deckName: 'Other' },
-        });
-        expect(orphanedTrackCardIds).toEqual(new Map([[track, [2, 3]]]));
-    });
-
-    it('does not sync unchanged notes/cards and does not call expensive card details APIs', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const trackStates = new Map([[track, { dt: dictionaryTrack, yomitan: {} }]]);
-        const modifiedCards = new Map<number, any>();
-        const orphanedTrackCardIds = new Map<number, number[]>();
-        const anki = {
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest
-                .fn<(noteIds: number[]) => Promise<any[]>>()
-                .mockResolvedValue([makeNoteInfo({ noteId: 10, cards: [1], mod: 100 })]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([{ cardId: 1, mod: 100 }]),
-            cardsInfo: jest.fn<(cardIds: number[], progress?: (progress: any) => Promise<void>) => Promise<any[]>>(),
-            areSuspended: jest.fn<(cardIds: number[]) => Promise<boolean[]>>(),
-        };
-        await seedAnkiCards(makeAnkiCardRecord({ cardId: 1, noteId: 10, modifiedAt: 100 }));
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                modifiedCards,
-                orphanedTrackCardIds,
-                anki,
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).resolves.toBe(0);
-
-        expect(modifiedCards.size).toBe(0);
-        expect(orphanedTrackCardIds).toEqual(new Map([[track, []]]));
-        expect(anki.cardsInfo).not.toHaveBeenCalled();
-        expect(anki.areSuspended).not.toHaveBeenCalled();
-    });
-
-    it('syncs card-only review/suspension changes even when note fields are unchanged', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const trackStates = new Map([[track, { dt: dictionaryTrack, yomitan: {} }]]);
-        const modifiedCards = new Map<number, any>();
-        const orphanedTrackCardIds = new Map<number, number[]>();
-        const anki = {
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest
-                .fn<(noteIds: number[]) => Promise<any[]>>()
-                .mockResolvedValue([makeNoteInfo({ noteId: 10, cards: [1], mod: 100 })]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([{ cardId: 1, mod: 150 }]),
-            cardsInfo: jest
-                .fn<(cardIds: number[], progress?: (progress: any) => Promise<void>) => Promise<any[]>>()
-                .mockResolvedValue([{ cardId: 1, deckName: 'Japanese' }]),
-            areSuspended: jest.fn<(cardIds: number[]) => Promise<boolean[]>>().mockResolvedValue([true]),
-        };
-        await seedAnkiCards(makeAnkiCardRecord({ cardId: 1, noteId: 10, modifiedAt: 100, suspended: false }));
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                modifiedCards,
-                orphanedTrackCardIds,
-                anki,
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).resolves.toBe(1);
-
-        expect(modifiedCards.get(1)).toMatchObject({
-            modifiedAt: 150,
-            suspended: true,
-            data: { deckName: 'Japanese' },
-        });
-        expect(orphanedTrackCardIds).toEqual(new Map([[track, []]]));
-    });
-
-    it('ignores notes that do not contain configured fields when syncing track states', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const trackStates = new Map([[track, { dt: dictionaryTrack, yomitan: {} }]]);
-        const modifiedCards = new Map<number, any>();
-        const orphanedTrackCardIds = new Map<number, number[]>();
-        const anki = {
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest.fn<(noteIds: number[]) => Promise<any[]>>().mockResolvedValue([
-                makeNoteInfo({
-                    noteId: 10,
-                    fields: { Sentence: { value: 'alpha', order: 0 } },
-                    cards: [1],
-                    mod: 150,
-                }),
-            ]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([{ cardId: 1, mod: 150 }]),
-            cardsInfo: jest.fn<(cardIds: number[], progress?: (progress: any) => Promise<void>) => Promise<any[]>>(),
-            areSuspended: jest.fn<(cardIds: number[]) => Promise<boolean[]>>(),
-        };
-        await seedAnkiCards(makeAnkiCardRecord({ cardId: 1, noteId: 10, modifiedAt: 100 }));
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                modifiedCards,
-                orphanedTrackCardIds,
-                anki,
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).resolves.toBe(0);
-
-        expect(modifiedCards.size).toBe(0);
-        expect(orphanedTrackCardIds).toEqual(new Map([[track, []]]));
-        expect(anki.cardsInfo).not.toHaveBeenCalled();
-        expect(anki.areSuspended).not.toHaveBeenCalled();
-    });
-
-    it('throws when Anki note or card modification responses are incomplete during sync', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const trackStates = new Map([[track, { dt: dictionaryTrack, yomitan: {} }]]);
-        const makeAnki = (overrides: Record<string, unknown> = {}) => ({
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest
-                .fn<(noteIds: number[]) => Promise<any[]>>()
-                .mockResolvedValue([makeNoteInfo({ cards: [1, 2] })]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([{ cardId: 1, mod: 100 }]),
-            cardsInfo: jest.fn<(cardIds: number[], progress?: (progress: any) => Promise<void>) => Promise<any[]>>(),
-            areSuspended: jest.fn<(cardIds: number[]) => Promise<boolean[]>>(),
-            ...overrides,
-        });
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                new Map(),
-                new Map(),
-                makeAnki({ notesInfo: jest.fn<(noteIds: number[]) => Promise<any[]>>().mockResolvedValue([]) }),
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).rejects.toThrow('Anki changed during cards record build, some notes info could not be retrieved.');
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                new Map(),
-                new Map(),
-                makeAnki(),
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).rejects.toThrow('Anki changed during cards record build, some cards mod time could not be retrieved.');
-    });
-
-    it('orphans all existing cards for active tracks when Anki returns no notes', async () => {
-        const dictionaryTrack = makeDictionaryTrack({ dictionaryAnkiWordFields: ['Word'] });
-        const trackStates = new Map([[track, { dt: dictionaryTrack, yomitan: {} }]]);
-        const orphanedTrackCardIds = new Map<number, number[]>();
-        const anki = { findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([]) };
-        await seedAnkiCards(makeAnkiCardRecord({ cardId: 1 }), makeAnkiCardRecord({ cardId: 2, track: otherTrack }));
-
-        await expect(
-            (dictionaryDB as any)._syncTrackStatesWithAnki(
-                profile,
-                trackStates,
-                new Map(),
-                orphanedTrackCardIds,
-                anki,
-                'build',
-                [[profile, track]],
-                jest.fn()
-            )
-        ).resolves.toBe(1);
-        expect(orphanedTrackCardIds).toEqual(new Map([[track, [1]]]));
-    });
-
-    it('saves new Anki tokens and removes stale token card references from the DB', async () => {
-        const modifiedTokens = new Set<string>();
-        const currentRecord = makeTokenRecord({
-            token: 'current',
-            track,
-            source: DictionaryTokenSource.ANKI_WORD,
-            status: null,
-            lemmas: ['current-lemma'],
-            cardIds: [1],
-        });
-        const ankiCard = makeAnkiCardRecord({ cardId: 1, status: TokenStatus.LEARNING });
-        const partialTokenRecordsByTrack = new Map([
-            [
-                track,
-                new Map([
-                    [
-                        DictionaryTokenSource.ANKI_WORD,
-                        new Map([['current', { lemmas: ['current-lemma'], cardIds: new Set([1]) }]]),
-                    ],
-                    [DictionaryTokenSource.ANKI_SENTENCE, new Map()],
-                ]),
-            ],
-        ]);
-        await seedTokens(
-            makeTokenRecord({
-                token: 'stale-delete',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['stale-delete-lemma'],
-                cardIds: [1],
-            }),
-            makeTokenRecord({
-                token: 'stale-retain',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['stale-retain-lemma'],
-                cardIds: [1, 2],
-            })
-        );
-
-        await (dictionaryDB as any)._saveTokensForDB(
-            profile,
-            new Map([[track, { dt: makeDictionaryTrack(), yomitan: {} }]]),
-            [currentRecord],
-            [ankiCard],
-            new Map([[1, makeModifiedCard()]]),
-            partialTokenRecordsByTrack,
-            modifiedTokens
-        );
-
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('current', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toEqual(currentRecord);
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('stale-delete', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeUndefined();
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('stale-retain', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toMatchObject({
-            cardIds: [2],
-        });
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toEqual(ankiCard);
-        expect(modifiedTokens).toEqual(
-            new Set([
-                'current',
-                'current-lemma',
-                'stale-delete',
-                'stale-delete-lemma',
-                'stale-retain',
-                'stale-retain-lemma',
-            ])
-        );
-    });
-
-    it('gathers modified tokens through lemma relationships within the same profile', async () => {
-        const modifiedTokens = new Set(['alpha']);
-        await seedTokens(
-            makeTokenRecord({ token: 'related', lemmas: ['alpha', 'related-lemma'] }),
-            makeTokenRecord({ token: 'other-profile-related', profile: otherProfile, lemmas: ['alpha'] })
-        );
-
-        await (dictionaryDB as any)._gatherModifiedTokens(profile, modifiedTokens);
-
-        expect(modifiedTokens).toEqual(new Set(['alpha', 'related', 'related-lemma']));
-    });
-
-    it('returns without tokenization or progress when there are no modified cards to build', async () => {
-        const yomitan = {
-            tokenizeBulk: jest.fn(),
-            tokenize: jest.fn(),
-            verifyTokenizeResult: jest.fn(),
-            lemmatize: jest.fn(),
-            resetCache: jest.fn(),
-        };
-        const statusUpdates = jest.fn();
-
-        await (dictionaryDB as any)._buildTokensForTracks(
-            profile,
-            new Map([[track, { dt: makeDictionaryTrack({ dictionaryAnkiWordFields: ['Word'] }), yomitan }]]),
-            new Map(),
-            'build',
-            [[profile, track]],
-            { current: 0, total: 0, startedAt: 1000 },
-            statusUpdates
-        );
-
-        expect(yomitan.tokenizeBulk).not.toHaveBeenCalled();
-        expect(yomitan.tokenize).not.toHaveBeenCalled();
-        expect(yomitan.resetCache).not.toHaveBeenCalled();
-        expect(statusUpdates).not.toHaveBeenCalled();
-    });
-
-    it('builds modified cards in 100-card batches without losing progress or records', async () => {
-        const dictionaryTrack = makeDictionaryTrack({ dictionaryAnkiWordFields: ['Word'] });
-        const tokenize = jest.fn<(text: string) => Promise<{ text: string }[][]>>((text) =>
-            Promise.resolve([[{ text }]])
-        );
-        const lemmatize = jest.fn<(token: string) => Promise<string[]>>((token) => Promise.resolve([token]));
-        const yomitan = {
-            tokenizeBulk: jest.fn(),
-            tokenize,
-            verifyTokenizeResult: jest.fn(),
-            lemmatize,
-            resetCache: jest.fn(),
-        };
-        const modifiedCards = new Map(
-            Array.from({ length: 101 }, (_, index) => {
-                const cardId = index + 1;
-                return [
-                    cardId,
-                    makeModifiedCard({
-                        noteId: cardId * 10,
-                        fields: new Map([['Word', `word${cardId}`]]),
-                        statuses: new Map([[track, TokenStatus.UNKNOWN]]),
-                    }),
-                ] as const;
-            })
-        );
-        const statusUpdates = jest.fn();
-        const key = [profile, track];
-        await (dictionaryDB as any)._ensureBuildId(key, 'build', { buildTs: 1000 });
-
-        await (dictionaryDB as any)._buildTokensForTracks(
-            profile,
-            new Map([[track, { dt: dictionaryTrack, yomitan }]]),
-            modifiedCards,
-            'build',
-            [key],
-            { current: 0, total: 101, startedAt: 1000 },
-            statusUpdates
-        );
-
-        expect(yomitan.tokenizeBulk.mock.calls.map(([texts]) => (texts as string[]).length)).toEqual([100, 1]);
-        expect(tokenize).toHaveBeenCalledTimes(101);
-        expect(lemmatize).toHaveBeenCalledTimes(101);
-        await expect(privateDb(dictionaryDB).tokens.count()).resolves.toBe(101);
-        await expect(privateDb(dictionaryDB).ankiCards.count()).resolves.toBe(101);
-        expect(statusUpdates.mock.calls.map(([state]) => (state as any).body.current)).toEqual([100, 101]);
-    });
-
-    it('builds tokens for tracks, preserving surviving card IDs while clearing local-only Anki fields and reporting progress', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-            dictionaryAnkiSentenceFields: ['Sentence'],
-        });
-        const tokenize = jest.fn<(text: string) => Promise<{ text: string }[][]>>((text) => {
-            if (text === 'alpha 123 beta')
-                return Promise.resolve([[{ text: 'alpha' }], [{ text: '123' }], [{ text: 'beta' }]]);
-            if (text === 'sentence') return Promise.resolve([[{ text: 'sentence' }]]);
-            return Promise.resolve([]);
-        });
-        const lemmatize = jest.fn<(token: string) => Promise<string[]>>((token) => {
-            if (token === 'alpha') return Promise.resolve(['lemma-alpha']);
-            if (token === 'sentence') return Promise.resolve(['lemma-sentence']);
-            return Promise.resolve([]);
-        });
-        const yomitan = {
-            tokenizeBulk: jest.fn(),
-            tokenize,
-            verifyTokenizeResult: jest.fn(),
-            lemmatize,
-            resetCache: jest.fn(),
-        };
-        const statusUpdates = jest.fn();
-        const key = [profile, track];
-        await (dictionaryDB as any)._ensureBuildId(key, 'build', { buildTs: 1000 });
-        await seedTokens(
-            makeTokenRecord({
-                token: 'alpha',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['old-alpha'],
-                states: [TokenState.IGNORED],
-                cardIds: [2],
-            })
-        );
-
-        await (dictionaryDB as any)._buildTokensForTracks(
-            profile,
-            new Map([[track, { dt: dictionaryTrack, yomitan }]]),
-            new Map([
-                [
-                    10,
-                    makeModifiedCard({
-                        fields: new Map([
-                            ['Word', 'alpha 123 beta'],
-                            ['Sentence', 'sentence'],
-                        ]),
-                    }),
-                ],
-            ]),
-            'build',
-            [key],
-            { current: 0, total: 1, startedAt: 1000 },
-            statusUpdates
-        );
-
-        expect(yomitan.tokenizeBulk).toHaveBeenCalledWith(['alpha 123 beta', 'sentence']);
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('alpha', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toMatchObject({
-            status: null,
-            lemmas: ['lemma-alpha'],
-            states: [],
-            cardIds: [2, 10],
-        });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('sentence', DictionaryTokenSource.ANKI_SENTENCE, track))
-        ).resolves.toMatchObject({
-            status: null,
-            states: [],
-            lemmas: ['lemma-sentence'],
-            cardIds: [10],
-        });
-        await expect(privateDb(dictionaryDB).ankiCards.get([10, track, profile])).resolves.toMatchObject({
-            cardId: 10,
-            status: TokenStatus.UNKNOWN,
-        });
-        expect(statusUpdates).toHaveBeenCalledWith(
-            expect.objectContaining({
-                type: DictionaryBuildAnkiCacheStateType.progress,
-                body: expect.objectContaining({ current: 1, total: 1 }),
-            })
-        );
-    });
-
-    it('drops generated Anki tokens without card IDs when saving build output', async () => {
-        const modifiedTokens = new Set<string>();
-
-        await (dictionaryDB as any)._saveTokensForDB(
-            profile,
-            new Map([[track, { dt: makeDictionaryTrack(), yomitan: {} }]]),
-            [
-                makeTokenRecord({
-                    token: 'no-card-ids',
-                    track,
-                    source: DictionaryTokenSource.ANKI_WORD,
-                    status: TokenStatus.UNKNOWN,
-                    lemmas: ['lemma-no-card-ids'],
-                    states: [TokenState.IGNORED],
-                    cardIds: [],
-                }),
-            ],
-            [],
-            new Map(),
-            new Map([
-                [
-                    track,
-                    new Map([
-                        [DictionaryTokenSource.ANKI_WORD, new Map()],
-                        [DictionaryTokenSource.ANKI_SENTENCE, new Map()],
-                    ]),
-                ],
-            ]),
-            modifiedTokens
-        );
-
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('no-card-ids', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeUndefined();
-        expect(modifiedTokens).toEqual(new Set(['no-card-ids', 'lemma-no-card-ids']));
-    });
-
-    it('replaces stale tokens when a modified card produces different tokens', async () => {
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryAnkiDecks: ['Japanese'],
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const yomitan = {
-            tokenizeBulk: jest.fn(),
-            tokenize: jest
-                .fn<(text: string) => Promise<{ text: string }[][]>>()
-                .mockResolvedValue([[{ text: 'new-token' }]]),
-            verifyTokenizeResult: jest.fn(),
-            lemmatize: jest.fn<(token: string) => Promise<string[]>>().mockResolvedValue(['new-lemma']),
-            resetCache: jest.fn(),
-        };
-        const statusUpdates = jest.fn();
-        const key = [profile, track];
-        await (dictionaryDB as any)._ensureBuildId(key, 'build', { buildTs: 1000 });
-        await seedTokens(
-            makeTokenRecord({
-                token: 'old-delete',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['old-delete-lemma'],
-                cardIds: [1],
-            }),
-            makeTokenRecord({
-                token: 'old-retain',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['old-retain-lemma'],
-                cardIds: [1, 2],
-            }),
-            makeTokenRecord({
-                token: 'other-profile-retain',
-                profile: otherProfile,
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['other-profile-retain-lemma'],
-                cardIds: [1],
-            }),
-            makeTokenRecord({
-                token: 'other-track-retain',
-                track: otherTrack,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['other-track-retain-lemma'],
-                cardIds: [1],
-            }),
-            makeTokenRecord({
-                token: 'local-retain',
-                track,
-                source: DictionaryTokenSource.LOCAL,
-                status: TokenStatus.UNKNOWN,
-                lemmas: ['local-retain-lemma'],
-                cardIds: [1],
-            })
-        );
-
-        await (dictionaryDB as any)._buildTokensForTracks(
-            profile,
-            new Map([[track, { dt: dictionaryTrack, yomitan }]]),
-            new Map([[1, makeModifiedCard({ fields: new Map([['Word', 'new-token']]) })]]),
-            'build',
-            [key],
-            { current: 0, total: 1, startedAt: 1000 },
-            statusUpdates
-        );
-
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('new-token', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toMatchObject({
-            lemmas: ['new-lemma'],
-            cardIds: [1],
-        });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('old-delete', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeUndefined();
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('old-retain', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toMatchObject({
-            cardIds: [2],
-        });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(
-                tokenKey('other-profile-retain', DictionaryTokenSource.ANKI_WORD, track, otherProfile)
-            )
-        ).resolves.toMatchObject({
-            cardIds: [1],
-        });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(
-                tokenKey('other-track-retain', DictionaryTokenSource.ANKI_WORD, otherTrack)
-            )
-        ).resolves.toMatchObject({
-            cardIds: [1],
-        });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('local-retain', DictionaryTokenSource.LOCAL, track))
-        ).resolves.toMatchObject({
-            cardIds: [1],
-        });
-        expect(statusUpdates).toHaveBeenCalledWith(
-            expect.objectContaining({
-                type: DictionaryBuildAnkiCacheStateType.progress,
-                body: expect.objectContaining({
-                    modifiedTokens: expect.arrayContaining([
-                        'new-token',
-                        'new-lemma',
-                        'old-delete',
-                        'old-delete-lemma',
-                        'old-retain',
-                        'old-retain-lemma',
-                    ]),
-                }),
-            })
-        );
-    });
-
-    it('processes tracks by deleting orphaned cards, clearing build IDs, gathering related tokens, and publishing stats', async () => {
-        const statusUpdates = jest.fn();
-        const key = [profile, track];
-        await (dictionaryDB as any)._ensureBuildId(key, 'build', { buildTs: 1000 });
-        await seedTokens(makeTokenRecord({ token: 'related', lemmas: ['alpha'] }));
-
-        await (dictionaryDB as any)._processTracks(
-            profile,
-            'build',
-            new Map([[track, { dt: makeDictionaryTrack(), yomitan: {} }]]),
-            new Map(),
-            new Map([[track, []]]),
-            [],
-            0,
-            new Set(['alpha']),
-            [key],
-            1,
-            123,
-            statusUpdates
-        );
-
-        await expect(privateDb(dictionaryDB).meta.get(key)).resolves.toMatchObject({ ankiMeta: { buildId: null } });
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.stats,
-            body: {
-                buildTimestamp: 123,
-                tracksToBuild: [track],
-                modifiedCards: 1,
-                orphanedCards: 0,
-                tracksToClear: [],
-                modifiedTokens: expect.arrayContaining(['alpha', 'related']),
-            },
+            body: expect.objectContaining({ modifiedCards: 0, orphanedCards: 0 }),
         });
     });
 
-    it('reports build failures from processTracks and still clears build IDs', async () => {
-        const statusUpdates = jest.fn();
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
-        const key = [profile, track];
-        await (dictionaryDB as any)._ensureBuildId(key, 'build', { buildTs: 1000 });
-        const yomitan = {
-            tokenizeBulk: jest
-                .fn<(texts: string[]) => Promise<unknown>>()
-                .mockRejectedValue(new Error('tokenize failed')),
-            tokenize: jest.fn(),
-            verifyTokenizeResult: jest.fn(),
-            lemmatize: jest.fn(),
-            resetCache: jest.fn(),
-        };
+    it('reports incomplete card modification data through the public error callback', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([makeNoteInfo()]);
+        mockAnkiOverrides[0].cardsModTime = jest.fn<() => Promise<[]>>().mockResolvedValue([]);
 
-        await (dictionaryDB as any)._processTracks(
-            profile,
-            'build',
-            new Map([[track, { dt: makeDictionaryTrack({ dictionaryAnkiWordFields: ['Word'] }), yomitan }]]),
-            new Map([[1, makeModifiedCard()]]),
-            new Map([[track, []]]),
-            [],
-            0,
-            new Set<string>(),
-            [key],
-            1,
-            123,
-            statusUpdates
-        );
+        const statusUpdates = await buildUntilComplete();
 
-        expect(consoleError).toHaveBeenCalled();
-        await expect(privateDb(dictionaryDB).meta.get(key)).resolves.toMatchObject({ ankiMeta: { buildId: null } });
+        expect(statusUpdates).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.error,
+            body: expect.objectContaining({
+                code: DictionaryBuildAnkiCacheStateErrorCode.failedToSyncTrackStates,
+                msg: 'Anki changed during cards record build, some cards mod time could not be retrieved.',
+            }),
+        });
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track]).toBeUndefined();
+    });
+
+    it('reports tokenization failure and leaves no partial cache output', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([makeNoteInfo()]);
+        mockYomitanOverrides[0].tokenizeBulk = jest
+            .fn<() => Promise<void>>()
+            .mockRejectedValue(new Error('tokenize failed'));
+
+        const statusUpdates = await buildUntilComplete();
+
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: expect.objectContaining({
@@ -1233,6 +481,9 @@ describe('DictionaryDB Anki cache', () => {
                 msg: 'tokenize failed',
             }),
         });
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.tokenRecords).toEqual([]);
+        expect(records.ankiCardRecords[track]).toBeUndefined();
     });
 
     it('reports noAnki when buildAnkiCache cannot obtain Anki permission', async () => {
@@ -1258,20 +509,16 @@ describe('DictionaryDB Anki cache', () => {
         });
     });
 
-    it('reports noYomitan and clears build IDs when Yomitan is unavailable', async () => {
-        const statusUpdates = jest.fn();
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    it('reports unavailable Yomitan and allows a subsequent build', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
         mockYomitanOverrides.push({
             version: jest.fn<() => Promise<string>>().mockRejectedValue(new Error('offline')),
         });
-
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const statusUpdates = jest.fn();
+
         await dictionaryDB.buildAnkiCache(profile, statusUpdates);
 
-        expect(consoleError).toHaveBeenCalled();
-        await expect(privateDb(dictionaryDB).meta.get([profile, track])).resolves.toMatchObject({
-            ankiMeta: { buildId: null },
-        });
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: expect.objectContaining({
@@ -1280,11 +527,17 @@ describe('DictionaryDB Anki cache', () => {
                 data: { track },
             }),
         });
+        stageAnkiNotes([]);
+        const retry = await buildUntilComplete();
+        expect(retry).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ tracksToBuild: [track] }),
+        });
     });
 
-    it('reports concurrentBuild without syncing when an unexpired build is already active', async () => {
-        const statusUpdates = jest.fn();
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    it('reports a concurrent build and allows work after its expiration', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
+        jest.spyOn(console, 'warn').mockImplementation(() => undefined);
         const dateNow = jest.spyOn(Date, 'now').mockReturnValue(1000);
         await privateDb(dictionaryDB).meta.put(
             makeMetaRecord({
@@ -1296,15 +549,11 @@ describe('DictionaryDB Anki cache', () => {
                 },
             })
         );
-
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const statusUpdates = jest.fn();
+
         await dictionaryDB.buildAnkiCache(profile, statusUpdates);
 
-        expect(consoleError).toHaveBeenCalled();
-        expect(mockYomitanInstances).toHaveLength(0);
-        await expect(privateDb(dictionaryDB).meta.get([profile, track])).resolves.toMatchObject({
-            ankiMeta: { buildId: 'other-build' },
-        });
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: expect.objectContaining({
@@ -1312,24 +561,28 @@ describe('DictionaryDB Anki cache', () => {
                 data: { expiration: 2000 },
             }),
         });
-        dateNow.mockRestore();
+        expect(mockYomitanInstances).toHaveLength(0);
+
+        dateNow.mockReturnValue(3000);
+        stageAnkiNotes([]);
+        const afterExpiration = await buildUntilComplete();
+        expect(afterExpiration).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ tracksToBuild: [track] }),
+        });
     });
 
-    it('reports sync failures from buildAnkiCache and clears active build IDs', async () => {
-        const statusUpdates = jest.fn();
-        const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    it('reports missing note details and allows a subsequent build', async () => {
+        jest.spyOn(console, 'error').mockImplementation(() => undefined);
         mockAnkiOverrides.push({
             findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
             notesInfo: jest.fn<(noteIds: number[]) => Promise<any[]>>().mockResolvedValue([]),
         });
-
         useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const statusUpdates = jest.fn();
+
         await dictionaryDB.buildAnkiCache(profile, statusUpdates);
 
-        expect(consoleError).toHaveBeenCalled();
-        await expect(privateDb(dictionaryDB).meta.get([profile, track])).resolves.toMatchObject({
-            ankiMeta: { buildId: null },
-        });
         expect(statusUpdates).toHaveBeenCalledWith({
             type: DictionaryBuildAnkiCacheStateType.error,
             body: expect.objectContaining({
@@ -1337,64 +590,54 @@ describe('DictionaryDB Anki cache', () => {
                 msg: 'Anki changed during cards record build, some notes info could not be retrieved.',
             }),
         });
+        stageAnkiNotes([]);
+        const retry = await buildUntilComplete();
+        expect(retry).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ tracksToBuild: [track] }),
+        });
     });
 
-    it('orchestrates the build Anki cache pipeline for enabled tracks', async () => {
-        const statusUpdates = jest.fn();
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryColorizeSubtitles: true,
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        mockAnkiOverrides.push({
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest
-                .fn<(noteIds: number[]) => Promise<any[]>>()
-                .mockResolvedValue([makeNoteInfo({ noteId: 10, cards: [1], mod: 100 })]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([{ cardId: 1, mod: 100 }]),
-            cardsInfo: jest
-                .fn<(cardIds: number[], progress?: (progress: any) => Promise<void>) => Promise<any[]>>()
-                .mockResolvedValue([{ cardId: 1, deckName: 'Japanese', modelName: 'Model', due: 0 }]),
-            areSuspended: jest.fn<(cardIds: number[]) => Promise<boolean[]>>().mockResolvedValue([false]),
-            findCards: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValueOnce([1]),
-        });
-        mockYomitanOverrides.push({
-            tokenize: jest
-                .fn<(text: string) => Promise<{ text: string }[][]>>()
-                .mockResolvedValue([[{ text: 'alpha' }]]),
-            lemmatize: jest.fn<(token: string) => Promise<string[]>>().mockResolvedValue(['alpha']),
-        });
+    it('publishes cached cards, tokens, and related lemma modifications', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([makeNoteInfo()]);
+        await seedTokens(
+            makeTokenRecord({ token: 'related', lemmas: ['alpha', 'related-lemma'] }),
+            makeTokenRecord({ token: 'other-profile-related', profile: otherProfile, lemmas: ['alpha'] })
+        );
 
-        useSettings([dictionaryTrack]);
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
-        await waitForAnkiBuildToFinish();
+        const statusUpdates = await buildUntilComplete();
 
-        expect(mockAnkiInstances).toHaveLength(1);
-        expect(mockYomitanInstances).toHaveLength(1);
-        expect(mockYomitanInstances[0].version).toHaveBeenCalled();
-        expect(mockAnkiInstances[0].findNotes).toHaveBeenCalledWith('"Word:_*"');
-        expect(mockAnkiInstances[0].findCards).toHaveBeenCalledWith('is:new ("Word:_*")');
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toMatchObject({
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.ankiCardRecords[track][1]).toMatchObject({
             cardId: 1,
             status: TokenStatus.UNKNOWN,
             data: { deckName: 'Japanese' },
         });
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('alpha', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toMatchObject({ cardIds: [1], lemmas: ['alpha'] });
+        expect(records.tokenRecords).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    token: 'alpha',
+                    source: DictionaryTokenSource.ANKI_WORD,
+                    cardIds: [1],
+                    lemmas: ['alpha'],
+                }),
+            ])
+        );
         expect(statusUpdates).toHaveBeenCalledWith(
             expect.objectContaining({ type: DictionaryBuildAnkiCacheStateType.start })
         );
         expect(statusUpdates).toHaveBeenCalledWith({
-            type: DictionaryBuildAnkiCacheStateType.stats,
-            body: expect.objectContaining({ tracksToBuild: [track], modifiedCards: 1, modifiedTokens: [] }),
+            type: DictionaryBuildAnkiCacheStateType.progress,
+            body: expect.objectContaining({
+                modifiedTokens: expect.arrayContaining(['alpha', 'related', 'related-lemma']),
+            }),
         });
+        const publishedTokens = statusUpdates.mock.calls.flatMap(([state]) => state.body?.modifiedTokens ?? []);
+        expect(publishedTokens).not.toContain('other-profile-related');
     });
 
-    it('does not sync disabled tracks and keeps existing cache records', async () => {
-        const statusUpdates = jest.fn();
-        const syncSpy = jest.spyOn(dictionaryDB as any, '_syncTrackStatesWithAnki');
+    it('retains cached records when a track is disabled', async () => {
         await seedTokens(
             makeTokenRecord({
                 token: 'cached',
@@ -1406,25 +649,21 @@ describe('DictionaryDB Anki cache', () => {
             })
         );
         await seedAnkiCards(makeAnkiCardRecord({ cardId: 1 }));
-
         useSettings([makeDictionaryTrack()]);
+        const statusUpdates = jest.fn();
+
         await dictionaryDB.buildAnkiCache(profile, statusUpdates);
 
-        expect(mockYomitanInstances).toHaveLength(0);
-        expect(syncSpy).not.toHaveBeenCalled();
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('cached', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeDefined();
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toBeDefined();
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.tokenRecords).toEqual([expect.objectContaining({ token: 'cached', cardIds: [1] })]);
+        expect(records.ankiCardRecords[track][1]).toBeDefined();
         expect(statusUpdates).toHaveBeenLastCalledWith({
             type: DictionaryBuildAnkiCacheStateType.stats,
             body: expect.objectContaining({ modifiedTokens: [] }),
         });
     });
 
-    it('clears Anki cache without syncing when an enabled track has no Anki fields', async () => {
-        const statusUpdates = jest.fn();
-        const syncSpy = jest.spyOn(dictionaryDB as any, '_syncTrackStatesWithAnki');
+    it('clears cached records when an enabled track has no Anki fields', async () => {
         await seedTokens(
             makeTokenRecord({
                 token: 'cached',
@@ -1436,7 +675,6 @@ describe('DictionaryDB Anki cache', () => {
             })
         );
         await seedAnkiCards(makeAnkiCardRecord({ cardId: 1 }));
-
         useSettings([
             makeDictionaryTrack({
                 dictionaryColorizeSubtitles: true,
@@ -1444,119 +682,323 @@ describe('DictionaryDB Anki cache', () => {
                 dictionaryAnkiSentenceFields: [],
             }),
         ]);
+        const statusUpdates = jest.fn();
+
         await dictionaryDB.buildAnkiCache(profile, statusUpdates);
 
-        expect(mockYomitanInstances).toHaveLength(0);
-        expect(syncSpy).not.toHaveBeenCalled();
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('cached', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeUndefined();
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toBeUndefined();
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.tokenRecords).toEqual([]);
+        expect(records.ankiCardRecords[track]).toBeUndefined();
         expect(statusUpdates).toHaveBeenLastCalledWith({
             type: DictionaryBuildAnkiCacheStateType.stats,
             body: expect.objectContaining({ tracksToClear: [track], orphanedCards: 1 }),
         });
     });
 
-    it('clears existing Anki cache when Anki cache settings change before syncing', async () => {
-        const statusUpdates = jest.fn();
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryColorizeSubtitles: true,
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        await seedTokens(
-            makeTokenRecord({
-                token: 'cached',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['cached-lemma'],
-                cardIds: [1],
-            })
-        );
-        await seedAnkiCards(makeAnkiCardRecord({ cardId: 1 }));
-        await privateDb(dictionaryDB).meta.put(
-            makeMetaRecord({
-                ankiMeta: {
-                    lastBuildStartedAt: 1,
-                    lastBuildExpiresAt: 2,
-                    buildId: null,
-                    settings: JSON.stringify({ stale: true }),
-                },
-            })
-        );
+    it('clears the old cache after Anki field settings change', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([makeNoteInfo()]);
+        await buildUntilComplete();
+        expect((await dictionaryDB.getRecords(profile, track)).tokenRecords).toHaveLength(1);
 
-        useSettings([dictionaryTrack]);
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
-        await waitForAnkiBuildToFinish();
+        useSettings([
+            makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiSentenceFields: ['Sentence'] }),
+        ]);
+        stageAnkiNotes([]);
+        const statusUpdates = await buildUntilComplete();
 
-        expect(mockYomitanInstances).toHaveLength(1);
-        expect(mockAnkiInstances[0].findNotes).toHaveBeenCalled();
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('cached', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeUndefined();
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toBeUndefined();
-        await expect(privateDb(dictionaryDB).meta.get([profile, track])).resolves.toMatchObject({
-            ankiMeta: { settings: expect.stringContaining('dictionaryAnkiWordFields') },
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.tokenRecords).toEqual([]);
+        expect(records.ankiCardRecords[track]).toBeUndefined();
+        expect(statusUpdates).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ tracksToClear: [track], orphanedCards: 1 }),
         });
     });
 
-    it('does not clear existing Anki cache when cache settings are unchanged', async () => {
-        const statusUpdates = jest.fn();
-        const dictionaryTrack = makeDictionaryTrack({
-            dictionaryColorizeSubtitles: true,
-            dictionaryAnkiWordFields: ['Word'],
-        });
-        const currentSettings = {
-            ankiConnectUrl: defaultSettings.ankiConnectUrl,
-            dictionaryYomitanUrl: dictionaryTrack.dictionaryYomitanUrl,
-            dictionaryYomitanParser: dictionaryTrack.dictionaryYomitanParser,
-            dictionaryYomitanScanLength: dictionaryTrack.dictionaryYomitanScanLength,
-            dictionaryAnkiDecks: dictionaryTrack.dictionaryAnkiDecks,
-            dictionaryAnkiWordFields: dictionaryTrack.dictionaryAnkiWordFields,
-            dictionaryAnkiSentenceFields: dictionaryTrack.dictionaryAnkiSentenceFields,
-            dictionaryAnkiMatureCutoff: dictionaryTrack.dictionaryAnkiMatureCutoff,
-        };
-        mockAnkiOverrides.push({
-            findNotes: jest.fn<(query: string) => Promise<number[]>>().mockResolvedValue([10]),
-            notesInfo: jest
-                .fn<(noteIds: number[]) => Promise<any[]>>()
-                .mockResolvedValue([makeNoteInfo({ noteId: 10, cards: [1], mod: 100 })]),
-            cardsModTime: jest
-                .fn<(cardIds: number[]) => Promise<{ cardId: number; mod: number }[]>>()
-                .mockResolvedValue([{ cardId: 1, mod: 100 }]),
-        });
-        await seedTokens(
-            makeTokenRecord({
-                token: 'cached',
-                track,
-                source: DictionaryTokenSource.ANKI_WORD,
-                status: null,
-                lemmas: ['cached-lemma'],
-                cardIds: [1],
-            })
-        );
-        await seedAnkiCards(makeAnkiCardRecord({ cardId: 1 }));
-        await privateDb(dictionaryDB).meta.put(
-            makeMetaRecord({
-                ankiMeta: {
-                    lastBuildStartedAt: 1,
-                    lastBuildExpiresAt: 2,
-                    buildId: null,
-                    settings: JSON.stringify(currentSettings),
+    it('restricts Anki searches to configured decks unless a track searches all decks', async () => {
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiDecks: ['Mining'],
+            }),
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiDecks: ['Japanese'],
+            }),
+        ]);
+        stageAnkiNotes([makeNoteInfo()], { cardDecks: { 1: 'Mining' }, trackCount: 2 });
+        await buildUntilComplete();
+
+        expect(mockAnkiInstances[0].findNotes).toHaveBeenCalledWith('("deck:Mining" OR "deck:Japanese") ("Word:_*")');
+        expect(mockAnkiInstances[0].findCards).toHaveBeenCalledWith('is:new (("deck:Mining") ("Word:_*"))');
+
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiDecks: ['Mining'],
+            }),
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiDecks: [],
+            }),
+        ]);
+        stageAnkiNotes([makeNoteInfo()], { cardDecks: { 1: 'Mining' }, trackCount: 2 });
+        await buildUntilComplete();
+
+        expect(mockAnkiInstances[1].findNotes).toHaveBeenCalledWith('"Word:_*"');
+    });
+
+    it('requests card details only for notes that contain configured fields', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([
+            makeNoteInfo({ noteId: 10, cards: [1] }),
+            makeNoteInfo({ noteId: 40, cards: [4], fields: { Unrelated: { value: 'ignored', order: 0 } } }),
+        ]);
+
+        await buildUntilComplete();
+
+        expect(mockAnkiInstances[0].cardsInfo).toHaveBeenCalledWith([1], expect.any(Function));
+        expect(Object.keys((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track])).toEqual(['1']);
+    });
+
+    it('prefers FSRS stability over the interval fallback when a card matches both', async () => {
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiMatureCutoff: 20,
+            }),
+        ]);
+        stageAnkiNotes(
+            [1, 2].map((cardId) =>
+                makeNoteInfo({
+                    noteId: cardId * 10,
+                    cards: [cardId],
+                    fields: { Word: { value: `word${cardId}`, order: 0 } },
+                })
+            ),
+            {
+                findCards: (query) => {
+                    if (query.startsWith('prop:s>=0 ')) return [1];
+                    if (query.includes('prop:s<10')) return [1];
+                    if (query.includes('prop:ivl>=20')) return [1, 2];
+                    return [];
                 },
-            })
+            }
         );
 
-        useSettings([dictionaryTrack]);
-        await dictionaryDB.buildAnkiCache(profile, statusUpdates);
-        await waitForAnkiBuildToFinish();
+        await buildUntilComplete();
 
-        expect(mockYomitanInstances).toHaveLength(1);
-        expect(mockAnkiInstances[0].cardsInfo).not.toHaveBeenCalled();
-        await expect(
-            privateDb(dictionaryDB).tokens.get(tokenKey('cached', DictionaryTokenSource.ANKI_WORD, track))
-        ).resolves.toBeDefined();
-        await expect(privateDb(dictionaryDB).ankiCards.get([1, track, profile])).resolves.toBeDefined();
+        const cards = (await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track];
+        expect([cards[1].status, cards[2].status]).toEqual([TokenStatus.GRADUATED, TokenStatus.MATURE]);
+    });
+
+    it('moves a token to the card that now contains it when both cards change in one build', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes([
+            makeNoteInfo({ noteId: 10, cards: [1], fields: { Word: { value: 'alpha', order: 0 } } }),
+            makeNoteInfo({ noteId: 30, cards: [3], fields: { Word: { value: 'gamma', order: 0 } } }),
+        ]);
+        await buildUntilComplete();
+
+        stageAnkiNotes(
+            [
+                makeNoteInfo({ noteId: 10, cards: [1], mod: 150, fields: { Word: { value: 'beta', order: 0 } } }),
+                makeNoteInfo({ noteId: 30, cards: [3], mod: 150, fields: { Word: { value: 'alpha', order: 0 } } }),
+            ],
+            { cardMods: { 1: 150, 3: 150 } }
+        );
+        await buildUntilComplete();
+
+        const tokens = (await dictionaryDB.getRecords(profile, track)).tokenRecords
+            .map(({ token, cardIds }) => ({ token, cardIds }))
+            .sort((lhs, rhs) => lhs.token.localeCompare(rhs.token));
+        expect(tokens).toEqual([
+            { token: 'alpha', cardIds: [3] },
+            { token: 'beta', cardIds: [1] },
+        ]);
+    });
+
+    it('removes a card from a track whose decks no longer include it while keeping it for a matching track', async () => {
+        useSettings([
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiDecks: ['Mining'],
+            }),
+            makeDictionaryTrack({
+                dictionaryColorizeSubtitles: true,
+                dictionaryAnkiWordFields: ['Word'],
+                dictionaryAnkiDecks: ['Other'],
+            }),
+        ]);
+        stageAnkiNotes([makeNoteInfo()], {
+            cardDecks: { 1: 'Mining' },
+            trackCount: 2,
+            findCards: newCardsMatching([{ cardId: 1, deck: 'Mining', fields: ['Word'] }]),
+        });
+        await buildUntilComplete();
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track][1]).toBeDefined();
+
+        stageAnkiNotes([makeNoteInfo()], {
+            cardMods: { 1: 150 },
+            cardDecks: { 1: 'Other' },
+            trackCount: 2,
+            findCards: newCardsMatching([{ cardId: 1, deck: 'Other', fields: ['Word'] }]),
+        });
+        await buildUntilComplete();
+
+        const moved = await dictionaryDB.getRecords(profile, track);
+        expect(moved.ankiCardRecords[track]).toBeUndefined();
+        expect(moved.tokenRecords).toEqual([]);
+        const destination = await dictionaryDB.getRecords(profile, otherTrack);
+        expect(destination.ankiCardRecords[otherTrack][1]).toMatchObject({ data: { deckName: 'Other' } });
+        expect(destination.tokenRecords).toEqual([expect.objectContaining({ token: 'alpha', cardIds: [1] })]);
+    });
+
+    it('removes a card from a track whose fields were removed from the note while keeping it for another track', async () => {
+        useSettings([
+            makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] }),
+            makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Expression'] }),
+        ]);
+        stageAnkiNotes(
+            [
+                makeNoteInfo({
+                    fields: { Word: { value: 'alpha', order: 0 }, Expression: { value: 'beta', order: 1 } },
+                }),
+            ],
+            {
+                trackCount: 2,
+                findCards: newCardsMatching([{ cardId: 1, deck: 'Japanese', fields: ['Word', 'Expression'] }]),
+            }
+        );
+        await buildUntilComplete();
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track][1]).toBeDefined();
+
+        stageAnkiNotes([makeNoteInfo({ mod: 150, fields: { Expression: { value: 'beta', order: 1 } } })], {
+            trackCount: 2,
+            findCards: newCardsMatching([{ cardId: 1, deck: 'Japanese', fields: ['Expression'] }]),
+        });
+        await buildUntilComplete();
+
+        const removed = await dictionaryDB.getRecords(profile, track);
+        expect(removed.ankiCardRecords[track]).toBeUndefined();
+        expect(removed.tokenRecords).toEqual([]);
+        const kept = await dictionaryDB.getRecords(profile, otherTrack);
+        expect(kept.ankiCardRecords[otherTrack][1]).toBeDefined();
+        expect(kept.tokenRecords).toEqual([expect.objectContaining({ token: 'beta', cardIds: [1] })]);
+    });
+
+    it('leaves another profile with the same card IDs untouched when cards change or are removed', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const otherProfileToken = makeTokenRecord({
+            profile: otherProfile,
+            track,
+            source: DictionaryTokenSource.ANKI_WORD,
+            status: null,
+            cardIds: [1],
+        });
+        await seedTokens(otherProfileToken);
+        await seedAnkiCards(makeAnkiCardRecord({ profile: otherProfile }));
+        const expectOtherProfileUnchanged = async () => {
+            const records = await dictionaryDB.getRecords(otherProfile, track);
+            expect(records.tokenRecords).toEqual([expect.objectContaining({ token: 'alpha', cardIds: [1] })]);
+            expect(records.ankiCardRecords[track][1]).toBeDefined();
+        };
+        stageAnkiNotes([makeNoteInfo()]);
+        await buildUntilComplete();
+
+        stageAnkiNotes([makeNoteInfo({ mod: 150, fields: { Word: { value: 'beta', order: 0 } } })], {
+            cardMods: { 1: 150 },
+        });
+        await buildUntilComplete();
+        await expectOtherProfileUnchanged();
+
+        stageAnkiNotes([]);
+        await buildUntilComplete();
+        await expectOtherProfileUnchanged();
+        expect((await dictionaryDB.getRecords(profile, track)).tokenRecords).toEqual([]);
+    });
+
+    it('drops a card whose configured fields became blank without failing the build', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        // Anki's `"Word:_*"` search matches whitespace-only values, so the card is still returned by status queries
+        const findCards = newCardsMatching([{ cardId: 1, deck: 'Japanese', fields: ['Word'] }]);
+        stageAnkiNotes([makeNoteInfo()], { findCards });
+        await buildUntilComplete();
+        expect((await dictionaryDB.getRecords(profile, track)).ankiCardRecords[track][1]).toBeDefined();
+
+        const blankNote = makeNoteInfo({ mod: 150, fields: { Word: { value: '   ', order: 0 } } });
+        stageAnkiNotes([blankNote], { findCards });
+        const statusUpdates = await buildUntilComplete();
+
+        expect(statusUpdates).not.toHaveBeenCalledWith(
+            expect.objectContaining({ type: DictionaryBuildAnkiCacheStateType.error })
+        );
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(records.ankiCardRecords[track]).toBeUndefined();
+        expect(records.tokenRecords).toEqual([]);
+
+        stageAnkiNotes([blankNote], { findCards });
+        const nextBuild = await buildUntilComplete();
+        expect(mockAnkiInstances[2].cardsInfo).not.toHaveBeenCalled();
+        expect(nextBuild).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ modifiedCards: 0, orphanedCards: 0 }),
+        });
+    });
+
+    it('classifies other cards when a modified card has only blank configured fields', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        stageAnkiNotes(
+            [
+                makeNoteInfo({ noteId: 10, cards: [1], fields: { Word: { value: ' ', order: 0 } } }),
+                makeNoteInfo({ noteId: 20, cards: [2], fields: { Word: { value: 'beta', order: 0 } } }),
+            ],
+            {
+                findCards: newCardsMatching([
+                    { cardId: 1, deck: 'Japanese', fields: ['Word'] },
+                    { cardId: 2, deck: 'Japanese', fields: ['Word'] },
+                ]),
+            }
+        );
+
+        const statusUpdates = await buildUntilComplete();
+
+        expect(statusUpdates).not.toHaveBeenCalledWith(
+            expect.objectContaining({ type: DictionaryBuildAnkiCacheStateType.error })
+        );
+        const records = await dictionaryDB.getRecords(profile, track);
+        expect(Object.keys(records.ankiCardRecords[track])).toEqual(['2']);
+        expect(records.tokenRecords).toEqual([expect.objectContaining({ token: 'beta', cardIds: [2] })]);
+    });
+
+    it('does not reprocess an uncached blank-field card on later builds', async () => {
+        useSettings([makeDictionaryTrack({ dictionaryColorizeSubtitles: true, dictionaryAnkiWordFields: ['Word'] })]);
+        const notes = [
+            makeNoteInfo({ noteId: 10, cards: [1], fields: { Word: { value: ' ', order: 0 } } }),
+            makeNoteInfo({ noteId: 20, cards: [2], fields: { Word: { value: 'beta', order: 0 } } }),
+        ];
+        const findCards = newCardsMatching([
+            { cardId: 1, deck: 'Japanese', fields: ['Word'] },
+            { cardId: 2, deck: 'Japanese', fields: ['Word'] },
+        ]);
+        stageAnkiNotes(notes, { findCards });
+        await buildUntilComplete();
+        expect(mockAnkiInstances[0].cardsInfo).toHaveBeenCalledWith([2], expect.any(Function));
+
+        stageAnkiNotes(notes, { findCards });
+        const statusUpdates = await buildUntilComplete();
+
+        expect(mockAnkiInstances[1].cardsInfo).not.toHaveBeenCalled();
+        expect(statusUpdates).toHaveBeenCalledWith({
+            type: DictionaryBuildAnkiCacheStateType.stats,
+            body: expect.objectContaining({ modifiedCards: 0, orphanedCards: 0 }),
+        });
     });
 });

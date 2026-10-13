@@ -12,7 +12,7 @@ import {
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import { asbTrace } from '@project/common/util/log';
 import { getTokenStatus, dedupeTokenStatusInfos, isKanaOnly, normalizeToken } from '@project/common/util';
-import type { TrackState } from '@project/common/annotations';
+import type { TrackState } from '@project/common/annotations/track-state';
 
 /**
  * The processed data from the db.

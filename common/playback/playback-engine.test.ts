@@ -1863,7 +1863,7 @@ describe('PlaybackEngine', () => {
         });
 
         harness.playbackEngine.bind();
-        harness.playbackEngine.playbackPositionKeysChanged(['first.srt', 'second.srt']);
+        harness.playbackEngine.playbackPositionKeysChanged(['first.srt', 'second.srt'], { isNewSource: true });
         expect(harness.playbackPositionChanges).toEqual([63_000]);
     });
 
@@ -1935,8 +1935,8 @@ describe('PlaybackEngine', () => {
         await flushPlaybackSaves();
 
         harness.playbackEngine.settingsChanged({ ...harness.settings, lastPlaybackPositions: [] });
-        harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4']);
-        harness.playbackEngine.playbackPositionKeysChanged(['video.mp4']);
+        harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4'], { isNewSource: true });
+        harness.playbackEngine.playbackPositionKeysChanged(['video.mp4'], { isNewSource: true });
 
         expect(harness.playbackPositionChanges).toEqual([]);
     });
@@ -1956,7 +1956,7 @@ describe('PlaybackEngine', () => {
             ...harness.settings,
             lastPlaybackPositions: [{ fileName: 'other-video.mp4', position: 63_000 }],
         });
-        harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4']);
+        harness.playbackEngine.playbackPositionKeysChanged(['other-video.mp4'], { isNewSource: true });
 
         expect(harness.playbackPositionChanges).toEqual([63_000]);
     });

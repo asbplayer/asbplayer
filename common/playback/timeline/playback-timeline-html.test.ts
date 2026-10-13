@@ -136,7 +136,10 @@ describe('playbackTimelineToHtml', () => {
         expect([...parsed.querySelectorAll('label')].map((label) => label.textContent)).toContain('Fast forward label');
         expect(parsed.querySelector('h2')?.textContent).toBe('Playback modes');
         expect(html).not.toContain('seekable');
-        expect(parsed.querySelector('select[data-track-select] option')?.textContent).toBe('Track 1');
+        const trackCheckbox = parsed.querySelector<HTMLInputElement>('input[type="checkbox"][data-track="0"]');
+        expect(trackCheckbox?.parentElement?.textContent).toBe('Track 1');
+        expect(trackCheckbox?.checked).toBe(true);
+        expect(parsed.querySelector('select')).toBeNull();
         expect(html).not.toContain('Subtitle Track');
         expect(html).not.toContain('>All<');
         expect(parsed.querySelector('.settings-summary')).not.toBeNull();
@@ -469,10 +472,14 @@ describe('playbackTimelineToHtml', () => {
 
         expect(document.querySelector('.timeline')?.innerHTML).toBe(expectedTimeline);
 
-        const trackSelect = document.querySelector<HTMLSelectElement>('select[data-track-select]');
-        expect(trackSelect).not.toBeNull();
-        trackSelect!.value = '1';
-        trackSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+        const firstTrackCheckbox = document.querySelector<HTMLInputElement>('input[data-track="0"]');
+        const secondTrackCheckbox = document.querySelector<HTMLInputElement>('input[data-track="1"]');
+        expect(firstTrackCheckbox).not.toBeNull();
+        expect(secondTrackCheckbox).not.toBeNull();
+        secondTrackCheckbox!.checked = true;
+        secondTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        firstTrackCheckbox!.checked = false;
+        firstTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
 
         const secondTrackHtml = playbackTimelineToHtml({
             plan: buildParityPlan([secondTrack]),
@@ -618,10 +625,27 @@ describe('playbackTimelineToHtml', () => {
             expect(document.querySelector('.timeline')?.innerHTML).toBe(expectedTimeline);
         }
 
-        const trackSelect = document.querySelector<HTMLSelectElement>('select[data-track-select]');
-        expect(trackSelect).not.toBeNull();
-        trackSelect!.value = '1';
-        trackSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+        const firstTrackCheckbox = document.querySelector<HTMLInputElement>('input[data-track="0"]');
+        const secondTrackCheckbox = document.querySelector<HTMLInputElement>('input[data-track="1"]');
+        expect(firstTrackCheckbox).not.toBeNull();
+        expect(secondTrackCheckbox).not.toBeNull();
+        secondTrackCheckbox!.checked = true;
+        secondTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const expectedCombinedHtml = playbackTimelineToHtml({
+            plan: buildParityPlan(allTracks, effectiveSettings),
+            themeColor: '#123456',
+            modeLabels,
+            ...parityOptions,
+            timelineSettings: effectiveSettings,
+        });
+        const expectedCombinedTimeline = new DOMParser()
+            .parseFromString(expectedCombinedHtml, 'text/html')
+            .querySelector('.timeline')?.innerHTML;
+        expect(document.querySelector('.timeline')?.innerHTML).toBe(expectedCombinedTimeline);
+
+        firstTrackCheckbox!.checked = false;
+        firstTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
 
         const expectedSecondTrackHtml = playbackTimelineToHtml({
             plan: buildParityPlan(secondTrack, effectiveSettings),
@@ -636,9 +660,9 @@ describe('playbackTimelineToHtml', () => {
         expect(document.querySelector('.timeline')?.innerHTML).toBe(expectedSecondTrackTimeline);
     });
 
-    it('can switch the timeline to another subtitle track', () => {
-        const firstTrack = makeTextSubtitle(1000, 2000, 'one', 0, 0);
-        const secondTrack = makeTextSubtitle(3000, 4000, 'two', 1, 1);
+    it('can combine subtitle tracks and remove a track but keeps the last track selected', () => {
+        const firstTrack = makeTextSubtitle(1000, 2000, 'one', 0, 1);
+        const secondTrack = makeTextSubtitle(3000, 4000, 'two', 1, 3);
         const html = playbackTimelineToHtml({
             plan: plan([firstTrack]),
             themeColor: '#123456',
@@ -646,8 +670,8 @@ describe('playbackTimelineToHtml', () => {
             ...htmlOptions,
             timelineSubtitles: [firstTrack, secondTrack],
             timelineTracks: [
-                { track: 0, label: 'Track 1' },
                 { track: 1, label: 'Track 2' },
+                { track: 3, label: '<Track 4 &>' },
             ],
         });
         const parsed = new DOMParser().parseFromString(html, 'text/html');
@@ -657,12 +681,67 @@ describe('playbackTimelineToHtml', () => {
         document.body.innerHTML = parsed.body.innerHTML;
 
         window.eval(scriptText ?? '');
-        const trackSelect = document.querySelector<HTMLSelectElement>('select[data-track-select]');
-        expect(trackSelect).not.toBeNull();
-        trackSelect!.value = '1';
-        trackSelect!.dispatchEvent(new Event('change', { bubbles: true }));
+        const firstTrackCheckbox = document.querySelector<HTMLInputElement>('input[type="checkbox"][data-track="1"]');
+        const secondTrackCheckbox = document.querySelector<HTMLInputElement>('input[type="checkbox"][data-track="3"]');
+        expect(firstTrackCheckbox?.checked).toBe(true);
+        expect(secondTrackCheckbox?.checked).toBe(false);
+        expect(secondTrackCheckbox?.parentElement?.textContent).toBe('<Track 4 &>');
+        const subtitleLabels = () => [...document.querySelectorAll('.event.normal')].map((event) => event.textContent);
+        expect(subtitleLabels()).toEqual(['0 | one']);
 
-        expect(document.querySelector('.event.normal')?.textContent).toContain('1 | two');
-        expect(document.querySelector('.event.normal')?.textContent).not.toContain('0 | one');
+        secondTrackCheckbox!.checked = true;
+        secondTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(firstTrackCheckbox?.checked).toBe(true);
+        expect(subtitleLabels()).toEqual(['0 | one', '1 | two']);
+
+        const input = document.querySelector<HTMLInputElement>('input[data-setting="subtitleTriggerStartOffsetMs"]');
+        input!.value = '500';
+        input!.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(subtitleLabels()).toEqual(['0 | one', '1 | two']);
+        const pauseStartPositions = () =>
+            [...document.querySelectorAll<HTMLElement>('.event.autoPause-start')].map((event) => event.style.left);
+        expect(pauseStartPositions()).toEqual(['15%', '35%']);
+
+        firstTrackCheckbox!.checked = false;
+        firstTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(subtitleLabels()).toEqual(['1 | two']);
+        expect(pauseStartPositions()).toEqual(['35%']);
+
+        const timelineWithOneTrack = document.querySelector('.timeline')?.innerHTML;
+        secondTrackCheckbox!.checked = false;
+        secondTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(secondTrackCheckbox?.checked).toBe(true);
+        expect(document.querySelector('.timeline')?.innerHTML).toBe(timelineWithOneTrack);
+
+        firstTrackCheckbox!.checked = true;
+        firstTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        secondTrackCheckbox!.checked = false;
+        secondTrackCheckbox!.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(subtitleLabels()).toEqual(['0 | one']);
+        expect(pauseStartPositions()).toEqual(['15%']);
+    });
+
+    it('keeps an empty timeline usable when there are no subtitle tracks', () => {
+        const html = playbackTimelineToHtml({
+            plan: plan([]),
+            themeColor: '#123456',
+            modeLabels,
+            ...htmlOptions,
+            timelineSubtitles: [],
+            timelineTracks: [],
+        });
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const script = parsed.querySelector('script');
+        const scriptText = script?.textContent;
+        script?.remove();
+        document.body.innerHTML = parsed.body.innerHTML;
+
+        window.eval(scriptText ?? '');
+
+        expect(document.querySelectorAll('input[data-track]')).toHaveLength(0);
+        expect(document.querySelectorAll('.row')).toHaveLength(2);
+        expect(
+            document.querySelector('.event.normal, .event.autoPause-start, .event.autoPause-end, .event.repeat')
+        ).toBeNull();
     });
 });

@@ -128,16 +128,22 @@ export default class PlaybackPositionController<T extends IndexedSubtitleModel> 
         this.restorePlaybackPosition();
     }
 
-    playbackPositionKeysChanged(playbackPositionKeys: readonly string[]): void {
+    playbackPositionKeysChanged(
+        playbackPositionKeys: readonly string[],
+        { isNewSource }: { isNewSource: boolean }
+    ): void {
         const restoreKeys = this.normalizePlaybackPositionKeys(playbackPositionKeys);
         if (this.samePlaybackPositionKeys(this.restoreKeys, restoreKeys)) return;
 
         asbTrace('playback/position', 'Changed playback position restore keys', {
+            isNewSource,
             keyCount: restoreKeys.length,
         });
-        this.dismissPlaybackPosition();
+        if (isNewSource) {
+            this.dismissPlaybackPosition();
+            this.hasOfferedRestorePosition = false;
+        }
         this.restoreKeys = restoreKeys;
-        this.hasOfferedRestorePosition = false;
         this.lastSavedTimestampMs = undefined;
         this.restorePlaybackPosition();
     }

@@ -64,9 +64,30 @@ export const EPISODE_PATTERNS: EpisodePattern[] = [
     { regex: /第([一二三四五六七八九十]+)[话集話]/, parse: parseKanji },
 ];
 
+export const isValidEpisodeRegex = (source: string) => {
+    try {
+        new RegExp(source);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+// Custom pattern goes first so it can only add coverage over the built-in ones
+const buildPatterns = (customRegex?: string): EpisodePattern[] => {
+    const source = customRegex?.trim() ?? '';
+    if (source.length === 0 || !isValidEpisodeRegex(source)) {
+        return EPISODE_PATTERNS;
+    }
+    return [
+        { regex: new RegExp(source), parse: (capture) => parseNumeric(capture) ?? parseKanji(capture) },
+        ...EPISODE_PATTERNS,
+    ];
+};
+
 // Detect episode and strip the matched marker from the title in one pass, so the
 // search query stays clean for every supported format (SxxExx, EP, CJK episode markers).
-export const prepareHint = (hint?: string): { episode: number | undefined; cleaned: string } => {
+export const prepareHint = (hint?: string, customRegex?: string): { episode: number | undefined; cleaned: string } => {
     const trimmed = hint?.trim() ?? '';
     if (trimmed.length === 0) {
         return { episode: undefined, cleaned: '' };
@@ -74,7 +95,7 @@ export const prepareHint = (hint?: string): { episode: number | undefined; clean
 
     let episode: number | undefined;
     let stripped = trimmed;
-    for (const { regex, parse } of EPISODE_PATTERNS) {
+    for (const { regex, parse } of buildPatterns(customRegex)) {
         const match = regex.exec(stripped);
         if (match?.[1] === undefined) {
             continue;

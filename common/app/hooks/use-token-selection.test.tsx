@@ -11,6 +11,8 @@ import {
 import type { TokenSelectionRequestOptions } from '@project/common/app/hooks/use-token-selection';
 import type { TokenSelectionLocation } from '@project/common/annotations';
 import type { TokenJumpTarget } from '@project/common/settings';
+import { configureLogProvider, LogProvider } from '@project/common/util/log';
+import type { LogLine } from '@project/common/util/log-utils';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -43,17 +45,19 @@ const TestPlayer = ({
     onMatch,
     subtitleData,
     exposeRequest,
+    maxAttempts = 1,
 }: {
     name: string;
     keyBinder: TestKeyBinder;
     onMatch: () => void;
     subtitleData: typeof subtitles;
     exposeRequest?: (request: (target: TokenSelectionLocation, options?: TokenSelectionRequestOptions) => void) => void;
+    maxAttempts?: number;
 }) => {
     const rootRef = useRef<HTMLDivElement>(null);
     const { requestTokenSelection } = useTokenSelection({
         rootRef,
-        maxAttempts: 1,
+        maxAttempts,
         keyBinder,
         subtitles: subtitleData,
         getCurrentTime: () => 0,
@@ -93,6 +97,54 @@ describe('useTokenSelection', () => {
         document.body.removeAttribute('tabindex');
         claimTokenSelectionFocus(null);
         jest.restoreAllMocks();
+    });
+
+    it.each([true, false])('traces only the request and final retry outcome (selected: %s)', async (selected) => {
+        const lines: LogLine[] = [];
+        const provider = new LogProvider({
+            append: async (batch) => {
+                lines.push(...batch);
+            },
+            getLogs: async () => ({ lines }),
+        });
+        await configureLogProvider(provider);
+        lines.length = 0;
+        const frames: FrameRequestCallback[] = [];
+        jest.mocked(window.requestAnimationFrame).mockImplementation((callback) => frames.push(callback));
+        let requestSelection!: (target: TokenSelectionLocation) => void;
+        act(() => {
+            root.render(
+                <TestPlayer
+                    name="subtitles"
+                    keyBinder={new TestKeyBinder()}
+                    subtitleData={subtitles}
+                    onMatch={jest.fn()}
+                    maxAttempts={3}
+                    exposeRequest={(request) => (requestSelection = request)}
+                />
+            );
+        });
+        const token = container.querySelector('[data-asb-token-start]')!;
+        const parent = token.parentElement!;
+        token.remove();
+        requestSelection({ subtitleIndex: 0, tokenStart: 0 });
+
+        for (let attempt = 0; attempt < 2; attempt++) {
+            frames.shift()!(0);
+            expect(await provider.getLogLines()).toHaveLength(1);
+        }
+        if (selected) parent.append(token);
+        frames.shift()!(0);
+
+        const traces = await provider.getLogLines();
+        expect(traces).toHaveLength(2);
+        expect(traces.every((line) => line.level === 'trace' && line.label === 'annotations/selection')).toBe(true);
+        expect(traces[1].msg).toContain(selected ? 'Selected token' : 'Token selection retry limit reached');
+        expect(traces[1].msg).toContain('"subtitleIndex":0');
+        expect(traces[1].msg).toContain('"tokenStart":0');
+        if (!selected) expect(traces[1].msg).toContain('"attempts":3');
+        expect(frames).toHaveLength(0);
+        expect(container.querySelector('.asb-token-selected') !== null).toBe(selected);
     });
 
     it('keeps shared token jumps with their last owning player', () => {

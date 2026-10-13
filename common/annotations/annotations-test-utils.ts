@@ -1,4 +1,4 @@
-import type { IndexedSubtitleModel, Token } from '@project/common';
+import type { Fetcher, IndexedSubtitleModel, Token } from '@project/common';
 import { jest } from '@jest/globals';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import {
@@ -132,7 +132,7 @@ export const makeStorage = () => ({
     _removeCallback: jest.fn(),
 });
 
-export const makeSubtitleAnnotations = (settings = makeSettings()) => {
+export const makeSubtitleAnnotations = (settings = makeSettings(), fetcher?: Fetcher) => {
     const storage = makeStorage();
     const provider = new DictionaryProvider(storage as any);
     const settingsStorage = new MockSettingsStorage();
@@ -144,7 +144,9 @@ export const makeSubtitleAnnotations = (settings = makeSettings()) => {
         settingsProvider,
         { showingCheckRadiusMs: 150 },
         'media-id',
-        subtitleAnnotationsUpdated
+        subtitleAnnotationsUpdated,
+        undefined,
+        fetcher
     );
 
     return { subtitleAnnotations, storage, settingsProvider, subtitleAnnotationsUpdated };

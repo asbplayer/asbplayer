@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from aqt import mw, gui_hooks
 from anki.notes import Note
 from anki.decks import DeckId
-from anki.collection import Collection, OpChanges
+from anki.collection import AddNoteRequest, Collection, OpChanges, OpChangesWithCount
 
 from .model.config import AddonConfig
 from .server.websocket_server import AsbplayerWebSocketServer, _log
@@ -14,10 +15,21 @@ config: AddonConfig | None = None
 server: AsbplayerWebSocketServer | None = None
 
 
-def _on_add_note(self: Collection, note: Note, deck_id: DeckId) -> OpChanges:
-    """Monkey-patched add_note that intercepts all note additions."""
-    res: OpChanges = Collection._original_add_note(self, note, deck_id)  # pyright: ignore[reportAttributeAccessIssue]
+def _on_add_note(self: Collection, note: Note, deck_id: DeckId) -> OpChangesWithCount:
+    """Monkey-patched add_note that intercepts single note additions."""
+    res: OpChangesWithCount = Collection._original_add_note(self, note, deck_id)  # pyright: ignore[reportAttributeAccessIssue]
     mw.taskman.run_on_main(lambda: _handle_note_added(note))
+    return res
+
+
+def _on_add_notes(self: Collection, requests: Sequence[AddNoteRequest]) -> OpChanges:
+    """Monkey-patched add_notes. AnkiConnect's addNote goes through this (as a batch of one)."""
+    res: OpChanges = Collection._original_add_notes(self, requests)  # pyright: ignore[reportAttributeAccessIssue]
+    if len(requests) == 1:
+        note = requests[0].note
+        mw.taskman.run_on_main(lambda: _handle_note_added(note))
+    else:
+        _log(f"Ignoring add_notes batch of {len(requests)} notes")
     return res
 
 
@@ -88,9 +100,20 @@ def on_config_updated(addon: str) -> None:
 
 
 def _setup_hooks() -> None:
-    """Set up monkey-patching for Collection.add_note."""
-    Collection._original_add_note = Collection.add_note  # pyright: ignore[reportAttributeAccessIssue]
+    """Set up monkey-patching for Collection.add_note and Collection.add_notes."""
+    # We monkey-patch because Anki has no usable "note was added" hook: anki.hooks.note_will_be_added
+    # fires before the add (note id is still 0), and gui_hooks.add_cards_did_add_note only fires for
+    # the Add dialog, not for add-ons like AnkiConnect that call Collection.add_note(s) directly.
+    #
+    # Both methods are needed:
+    # AnkiConnect 25.11.9.0 and earlier adds notes via add_note.
+    # AnkiConnect 26.10.11.0 and later uses add_notes, even for single note adds.
+    if not hasattr(Collection, "_original_add_note"):
+        Collection._original_add_note = Collection.add_note  # pyright: ignore[reportAttributeAccessIssue]
     Collection.add_note = _on_add_note  # pyright: ignore[reportAttributeAccessIssue]
+    if not hasattr(Collection, "_original_add_notes"):
+        Collection._original_add_notes = Collection.add_notes  # pyright: ignore[reportAttributeAccessIssue]
+    Collection.add_notes = _on_add_notes  # pyright: ignore[reportAttributeAccessIssue]
 
 
 config = AddonConfig(__name__)

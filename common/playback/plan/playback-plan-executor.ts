@@ -171,8 +171,8 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.startPauseSuppression = undefined;
         }
         if (resetPlaybackRate) {
-            this.callbacks.setPlaybackRate(plan.playbackRate);
             this._isFastForwarding = false;
+            this.callbacks.setPlaybackRate(plan.playbackRate);
             asbTrace('playback/executor', 'Reset playback rate while replacing plan', {
                 playbackRate: plan.playbackRate,
             });

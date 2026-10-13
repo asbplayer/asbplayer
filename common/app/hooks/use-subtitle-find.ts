@@ -9,6 +9,7 @@ import { Yomitan } from '@project/common/yomitan';
 import { findTokenContainingSearch } from '@project/common/annotations/token-navigation';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import type { TokenSelectionRequestOptions } from '@project/common/app/hooks/use-token-selection';
+import { asbTrace } from '@project/common/util/log';
 
 const findDelayMs = 300;
 
@@ -184,6 +185,13 @@ export const useSubtitleFind = ({
             if (!requestTokenSelection) return;
             const subtitle = subtitleListRef.current?.[subtitleIndex];
             const tokenSelection = findTokenContainingSearch(subtitle, findSearchTerms, parseRegexQuery(query));
+            asbTrace('annotations/find', 'Resolved search token highlight', {
+                subtitleIndex,
+                searchTermCount: findSearchTerms.length,
+                regex: parseRegexQuery(query) !== undefined,
+                hasTokenization: subtitle?.tokenization !== undefined,
+                tokenStart: tokenSelection?.tokenStart,
+            });
 
             if (tokenSelection) {
                 const findInputIsFocused = inputRef.current?.ownerDocument.activeElement === inputRef.current;

@@ -42,6 +42,70 @@ const makeController = () => {
 };
 
 describe('PlaybackStateController', () => {
+    it('publishes pause and layout changes immediately between forced notifications', () => {
+        const playbackStates: PlaybackState[] = [];
+        let visible = true;
+        let paused = false;
+        const controller = new PlaybackStateController({
+            paused: () => paused,
+            showingSubtitlesAt: () => [subtitles[0]],
+            invisibleSubtitlesAt: (timestampMs) => (timestampMs >= 600 ? [subtitles[1]] : []),
+            subtitlesVisible: () => visible,
+            playbackStateChanged: (state) => playbackStates.push(state),
+            now: () => 2000,
+        });
+        controller.bind();
+        controller.notify(500, { force: false });
+        controller.notify(525, { force: false });
+        controller.notify(550, { force: true });
+        paused = true;
+        controller.notify(575, { force: false });
+        controller.notify(600, { force: false });
+        controller.notify(625, { force: false });
+        visible = false;
+        controller.notify(700, { force: false });
+        controller.notify(750, { force: false });
+        controller.notify(800, { force: true });
+
+        expect(playbackStates).toEqual([
+            {
+                timestampMs: 500,
+                paused: false,
+                showingSubtitleIndexes: [0],
+            },
+            {
+                timestampMs: 550,
+                paused: false,
+                showingSubtitleIndexes: [0],
+            },
+            {
+                timestampMs: 575,
+                paused: true,
+                showingSubtitleIndexes: [0],
+            },
+            {
+                timestampMs: 600,
+                paused: true,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [1],
+            },
+            {
+                timestampMs: 700,
+                paused: true,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [1],
+                hiddenSubtitleIndexes: [0, 1],
+            },
+            {
+                timestampMs: 800,
+                paused: true,
+                showingSubtitleIndexes: [0],
+                invisibleSubtitleIndexes: [1],
+                hiddenSubtitleIndexes: [0, 1],
+            },
+        ]);
+    });
+
     it('publishes invisible indexes for layout placeholders', () => {
         const playbackStates: PlaybackState[] = [];
         const controller = new PlaybackStateController({
