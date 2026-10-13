@@ -1,6 +1,5 @@
 import { muxAnimatedWebp } from '@project/common';
 import type { ImageCaptureParams, RectModel } from '@project/common';
-import type Binding from '@project/extension/src/services/binding';
 import AudioRecorder from '@project/extension/src/services/audio-recorder';
 import { bufferToBase64 } from '@project/common/base64';
 
@@ -134,7 +133,6 @@ export interface AnimatedWebpCaptureOptions {
     readonly rect: RectModel;
     readonly maxWidth: number;
     readonly maxHeight: number;
-    readonly onRecordingStopped?: () => (() => void) | void;
 }
 
 export interface AnimatedWebpResult {
@@ -183,11 +181,10 @@ export const startAnimatedWebpCapture = (
     return handle;
 };
 
-// Options for capturing a clip of the video that `binding` owns. A video inside an iframe reports its rect
-// relative to that iframe, so it is offset by the iframe's position in the page.
+// Options for capturing a clip of a video. A video inside an iframe reports its rect relative to that iframe,
+// so it is offset by the iframe's position in the page.
 export const animatedWebpCaptureOptions = (
     params: ImageCaptureParams,
-    binding: Binding | undefined,
     iframesById: { [frameId: string]: HTMLIFrameElement } | undefined,
     durationMs?: number
 ): AnimatedWebpCaptureOptions => {
@@ -209,11 +206,6 @@ export const animatedWebpCaptureOptions = (
         rect,
         maxWidth: params.maxWidth,
         maxHeight: params.maxHeight,
-        onRecordingStopped: () => {
-            binding?.pause();
-            binding?.subtitleController.persistentNotification('info.processingClip');
-            return () => binding?.subtitleController.hideNotification();
-        },
     };
 };
 
@@ -249,7 +241,7 @@ export const releaseAnimatedWebpCapture = (handle: ActiveAnimatedWebpCapture) =>
 
 const captureAnimatedWebp = async (
     capture: ArmedAnimatedWebpCapture,
-    { durationMs, rect, maxWidth, maxHeight, onRecordingStopped }: AnimatedWebpCaptureOptions
+    { durationMs, rect, maxWidth, maxHeight }: AnimatedWebpCaptureOptions
 ): Promise<AnimatedWebpResult> => {
     const Processor = (window as any).MediaStreamTrackProcessor;
 
@@ -348,21 +340,14 @@ const captureAnimatedWebp = async (
         capture.stream.getTracks().forEach((t) => t.stop());
     }
 
-    // Capture done — pause the video and show the processing notification while muxing.
-    const removeOverlay = onRecordingStopped?.();
-
-    try {
-        if (frames.length === 0) {
-            throw new Error('No frames captured');
-        }
-
-        const muxFrames = frames.map((frame, i) => {
-            const nextUs = i + 1 < frames.length ? frames[i + 1].timestampUs : frame.timestampUs + frameIntervalUs;
-            return { data: frame.data, durationMs: Math.max(1, Math.round((nextUs - frame.timestampUs) / 1000)) };
-        });
-
-        return { base64: bufferToBase64(muxAnimatedWebp(muxFrames).buffer), audioBase64 };
-    } finally {
-        removeOverlay?.();
+    if (frames.length === 0) {
+        throw new Error('No frames captured');
     }
+
+    const muxFrames = frames.map((frame, i) => {
+        const nextUs = i + 1 < frames.length ? frames[i + 1].timestampUs : frame.timestampUs + frameIntervalUs;
+        return { data: frame.data, durationMs: Math.max(1, Math.round((nextUs - frame.timestampUs) / 1000)) };
+    });
+
+    return { base64: bufferToBase64(muxAnimatedWebp(muxFrames).buffer), audioBase64 };
 };

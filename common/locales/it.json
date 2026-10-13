@@ -336,7 +336,6 @@
         },
         "playbackRate": "Velocità di riproduzione: {{rate}}",
         "fastForwardPlaybackRate": "Fast-forward Playback Rate: {{rate}}",
-        "processingClip": "Processing clip…",
         "savedTimestamp": "Salvato: {{timestamp}}",
         "resumePlaybackPrompt": "Resume at {{time}}?",
         "resumePlaybackButton": "Resume",

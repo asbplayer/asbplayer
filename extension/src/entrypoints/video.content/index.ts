@@ -289,7 +289,6 @@ export default defineContentScript({
                                 capture,
                                 animatedWebpCaptureOptions(
                                     recordAnimatedWebpMessage,
-                                    bindings.find((b) => b.registeredVideoSrc === request.src),
                                     frameInfoListener?.iframesById,
                                     recordAnimatedWebpMessage.durationMs
                                 )
@@ -315,11 +314,7 @@ export default defineContentScript({
                             const capture = await takeOrArmAnimatedWebpCapture(startAnimatedWebpMessage);
                             startAnimatedWebpCapture(
                                 capture,
-                                animatedWebpCaptureOptions(
-                                    startAnimatedWebpMessage,
-                                    bindings.find((b) => b.registeredVideoSrc === request.src),
-                                    frameInfoListener?.iframesById
-                                )
+                                animatedWebpCaptureOptions(startAnimatedWebpMessage, frameInfoListener?.iframesById)
                             );
                         })()
                             .then(() => sendResponse({ started: true }))
