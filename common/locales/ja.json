@@ -76,6 +76,7 @@
         "applySelection": "選択範囲を適用する",
         "audio": "音声",
         "audioFileLinkLost": "ブラウザページを更新したため、音声ファイルの参照先が失われました",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "事前に録音されたため、音声クリップを更新できません",
         "copyToClipboard": "クリップボードにコピー",
         "definition": "詳細",

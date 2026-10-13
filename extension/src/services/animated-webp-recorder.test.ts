@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import type { ImageCaptureParams, RecordAnimatedWebpResponse } from '@project/common';
-import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
+import { AudioErrorCode, StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
 import AnimatedWebpRecorder from '@project/extension/src/services/animated-webp-recorder';
 import * as animatedWebpMedia from '@project/extension/src/services/animated-webp-media';
@@ -96,7 +96,7 @@ describe('AnimatedWebpRecorder', () => {
             expect(capturer.recordAnimatedWebp.mock.calls[1][5]).toEqual(negotiation);
         });
 
-        it('hands back an empty image when the capture fails', async () => {
+        it('hands back an empty image and an audio error when the capture fails', async () => {
             jest.spyOn(console, 'error').mockImplementation(() => undefined);
             capturer.recordAnimatedWebp.mockRejectedValue(new Error('capture failed'));
 
@@ -104,7 +104,38 @@ describe('AnimatedWebpRecorder', () => {
 
             await expect(response.result).resolves.toEqual({
                 audioBase64: '',
+                audioError: AudioErrorCode.captureFailed,
                 image: { base64: '', extension: 'webp' },
+            });
+        });
+
+        it('keeps the audio when only the image failed', async () => {
+            jest.spyOn(console, 'error').mockImplementation(() => undefined);
+            capturer.recordAnimatedWebp.mockResolvedValue({
+                base64: '',
+                audioBase64: 'audio',
+                imageError: 'No frames captured',
+            });
+
+            const response = await recorder.startWithTimeout(1000, false, requester, { captureParams, armed: true });
+
+            await expect(response.result).resolves.toEqual({
+                audioBase64: 'audio',
+                image: { base64: '', extension: 'webp' },
+            });
+        });
+
+        it('reports an audio error when the mp3 encoding fails', async () => {
+            jest.spyOn(console, 'error').mockImplementation(() => undefined);
+            capturer.recordAnimatedWebp.mockResolvedValue(webp);
+            sendMessage.mockRejectedValue(new Error('encoding failed'));
+
+            const response = await recorder.startWithTimeout(1000, true, requester, { captureParams, armed: true });
+
+            await expect(response.result).resolves.toEqual({
+                audioBase64: '',
+                audioError: AudioErrorCode.captureFailed,
+                image: { base64: 'webp', extension: 'webp' },
             });
         });
 

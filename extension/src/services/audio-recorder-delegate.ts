@@ -1,4 +1,5 @@
 import type {
+    AudioErrorCode,
     ExtensionToOffscreenDocumentCommand,
     ExtensionToVideoCommand,
     ImageCaptureParams,
@@ -33,6 +34,8 @@ export interface RecordedImage {
 
 export interface RecordedMedia {
     audioBase64: string;
+    // Set when the audio couldn't be recorded
+    audioError?: AudioErrorCode;
     // Only set when an image was requested and the recorder can capture one
     image: RecordedImage | null;
 }

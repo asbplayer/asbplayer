@@ -128,6 +128,7 @@ export default class RecordMediaHandler {
                 audioModel = {
                     ...baseAudioModel,
                     base64: media.audioBase64,
+                    error: media.audioError,
                 };
 
                 if (media.image) {

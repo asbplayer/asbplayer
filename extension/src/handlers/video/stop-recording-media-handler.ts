@@ -76,7 +76,7 @@ export default class StopRecordingMediaHandler {
                 encodeAsMp3 = await this._settingsProvider.getSingle('preferMp3');
             }
 
-            const { audioBase64, image } = await this._audioRecorder.stop(encodeAsMp3, {
+            const { audioBase64, audioError, image } = await this._audioRecorder.stop(encodeAsMp3, {
                 tabId,
                 src: stopRecordingCommand.src,
             });
@@ -91,6 +91,7 @@ export default class StopRecordingMediaHandler {
 
             const audioModel: AudioModel = {
                 base64: audioBase64,
+                error: audioError,
                 extension: encodeAsMp3 ? 'mp3' : 'webm',
                 paddingStart: 0,
                 paddingEnd: 0,

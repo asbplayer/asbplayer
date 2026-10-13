@@ -76,6 +76,7 @@
         "applySelection": "应用选中时间段",
         "audio": "音频",
         "audioFileLinkLost": "页面已刷新，音频文件链接丢失",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "无法更新音频片段，因其已被录制",
         "copyToClipboard": "复制到剪贴板",
         "definition": "释义",

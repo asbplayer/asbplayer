@@ -135,6 +135,7 @@ export type ImageModel = MediaFragmentModel;
 export enum AudioErrorCode {
     drmProtected = 1,
     fileLinkLost = 2,
+    captureFailed = 3,
 }
 
 export interface AudioModel {

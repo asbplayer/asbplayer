@@ -910,6 +910,8 @@ export default class AudioClip {
                 return 'audioCaptureFailed.message';
             case AudioErrorCode.fileLinkLost:
                 return 'ankiDialog.audioFileLinkLost';
+            case AudioErrorCode.captureFailed:
+                return 'ankiDialog.audioCaptureFailed';
         }
     }
 }

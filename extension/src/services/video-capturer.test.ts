@@ -41,6 +41,16 @@ describe('video capturer', () => {
         await expect(stopAnimatedWebp(1, 'blob:video')).rejects.toThrow('No frames captured');
     });
 
+    it('returns the audio when only the image failed', async () => {
+        sendMessage.mockResolvedValue({ base64: '', audioBase64: 'audio', imageError: 'No frames captured' });
+
+        await expect(recordAnimatedWebp(1, 'blob:video', 1000, true, captureParams)).resolves.toEqual({
+            base64: '',
+            audioBase64: 'audio',
+            imageError: 'No frames captured',
+        });
+    });
+
     it('throws a distinct error when the armed capture was discarded', async () => {
         sendMessage.mockResolvedValue({ base64: '', error: 'gone', armedCaptureMissing: true });
 

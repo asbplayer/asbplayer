@@ -76,6 +76,7 @@
         "applySelection": "Appliquer la sélection",
         "audio": "Audio",
         "audioFileLinkLost": "Le lien du fichier audio a été perdu suite au rechargement de la page",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "Le clip audio ne peut pas être mis à jour car il est préenregistré",
         "copyToClipboard": "Copier dans le presse-papier",
         "definition": "Définition",

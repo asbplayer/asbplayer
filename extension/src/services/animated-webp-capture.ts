@@ -138,6 +138,8 @@ export interface AnimatedWebpCaptureOptions {
 export interface AnimatedWebpResult {
     readonly base64: string;
     readonly audioBase64?: string;
+    // Set when the image couldn't be made. The audio is recorded separately, so it can still be there.
+    readonly imageError?: string;
 }
 
 export interface ActiveAnimatedWebpCapture {
@@ -258,6 +260,7 @@ const captureAnimatedWebp = async (
     let frameIntervalUs = timed ? Math.max(1e6 / fps, (limitMs * 1000) / animatedWebpMaxFrames) : 1e6 / fps;
     let frames: { timestampUs: number; data: Uint8Array }[] = [];
     let audioBase64: string | undefined;
+    let frameError: unknown;
 
     try {
         // The tab is briefly muted while capturing (piping the captured audio back to keep the tab
@@ -328,6 +331,8 @@ const captureAnimatedWebp = async (
                     frameIntervalUs *= 2;
                 }
             }
+        } catch (e) {
+            frameError = e;
         } finally {
             clearTimeout(stopTimeout);
             await reader.cancel().catch(() => {});
@@ -340,14 +345,23 @@ const captureAnimatedWebp = async (
         capture.stream.getTracks().forEach((t) => t.stop());
     }
 
-    if (frames.length === 0) {
-        throw new Error('No frames captured');
+    try {
+        if (frameError !== undefined) {
+            throw frameError;
+        }
+
+        if (frames.length === 0) {
+            throw new Error('No frames captured');
+        }
+
+        const muxFrames = frames.map((frame, i) => {
+            const nextUs = i + 1 < frames.length ? frames[i + 1].timestampUs : frame.timestampUs + frameIntervalUs;
+            return { data: frame.data, durationMs: Math.max(1, Math.round((nextUs - frame.timestampUs) / 1000)) };
+        });
+
+        return { base64: bufferToBase64(muxAnimatedWebp(muxFrames).buffer), audioBase64 };
+    } catch (e) {
+        // Keep the audio, which was recorded from the same stream, even though the image couldn't be made
+        return { base64: '', audioBase64, imageError: e instanceof Error ? e.message : String(e) };
     }
-
-    const muxFrames = frames.map((frame, i) => {
-        const nextUs = i + 1 < frames.length ? frames[i + 1].timestampUs : frame.timestampUs + frameIntervalUs;
-        return { data: frame.data, durationMs: Math.max(1, Math.round((nextUs - frame.timestampUs) / 1000)) };
-    });
-
-    return { base64: bufferToBase64(muxAnimatedWebp(muxFrames).buffer), audioBase64 };
 };

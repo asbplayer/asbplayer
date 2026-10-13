@@ -6,7 +6,7 @@ import type {
     RecordAnimatedWebpResponse,
     StopRecordingResponse,
 } from '@project/common';
-import { StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
+import { AudioErrorCode, StartRecordingErrorCode, StopRecordingErrorCode } from '@project/common';
 import type { SettingsProvider } from '@project/common/settings';
 import type {
     ImageRecordingRequest,
@@ -149,27 +149,35 @@ export default class AnimatedWebpRecorder {
         };
     }
 
-    // A failed capture still produces a recording, with an empty image, so the card can be published anyway,
-    // like when a screenshot fails.
+    // A failed capture still produces a recording, with an empty image and an audio error, so the card can be
+    // published anyway, like when a screenshot fails. The audio is kept when only the image failed.
     private async _recordedMedia(
         recording: Promise<RecordAnimatedWebpResponse>,
         encodeAsMp3: boolean
     ): Promise<RecordedMedia> {
-        const { base64, audioBase64 } = await recording.catch((e) => {
+        const { base64, audioBase64, imageError } = await recording.catch((e) => {
             asbError('recording/animated-webp', e);
             return failedRecording;
         });
         const image = { base64, extension: 'webp' as const };
 
-        if (!audioBase64 || !encodeAsMp3) {
-            return { audioBase64: audioBase64 ?? '', image };
+        if (imageError) {
+            asbError('recording/animated-webp', imageError);
+        }
+
+        if (!audioBase64) {
+            return { audioBase64: '', audioError: AudioErrorCode.captureFailed, image };
+        }
+
+        if (!encodeAsMp3) {
+            return { audioBase64, image };
         }
 
         try {
             return { audioBase64: await encodeMp3(audioBase64), image };
         } catch (e) {
             asbError('recording/animated-webp', e);
-            return { audioBase64: '', image };
+            return { audioBase64: '', audioError: AudioErrorCode.captureFailed, image };
         }
     }
 }

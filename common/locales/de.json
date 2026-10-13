@@ -76,6 +76,7 @@
         "applySelection": "Auswahl anwenden",
         "audio": "Audio",
         "audioFileLinkLost": "Audiodatei verloren aufgrund Seitenneuladens",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "Audiodatei bereits aufgenommen",
         "copyToClipboard": "In Zwischenablage kopieren",
         "definition": "Definition",

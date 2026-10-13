@@ -76,6 +76,7 @@
         "applySelection": "Apply Selection",
         "audio": "Audio",
         "audioFileLinkLost": "Audio file link lost because of page reload",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "Audio clip cannot be updated because it is pre-recorded",
         "copyToClipboard": "Copy to Clipboard",
         "definition": "Definition",

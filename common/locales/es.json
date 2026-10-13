@@ -76,6 +76,7 @@
         "applySelection": "Aplicar Selección",
         "audio": "Audio",
         "audioFileLinkLost": "Se perdió el link al archivo de audio al recargar la página",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "El clip de audio no puede ser actualizado porque ya ha sido grabado",
         "copyToClipboard": "Copiar al Portapapeles",
         "definition": "Definición",

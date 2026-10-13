@@ -615,6 +615,8 @@ export interface RecordAnimatedWebpResponse {
     readonly base64: string; // animated webp
     readonly audioBase64?: string; // audio webm, when recordAudio was requested
     readonly error?: string;
+    // The image couldn't be made, but the audio recorded alongside it may still be there
+    readonly imageError?: string;
     // The capture armed ahead of the seek was gone (discarded after a timeout) and the request carried no
     // stream to arm another from, so the sender should negotiate one and ask again
     readonly armedCaptureMissing?: boolean;

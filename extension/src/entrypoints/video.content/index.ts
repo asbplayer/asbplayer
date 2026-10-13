@@ -294,7 +294,9 @@ export default defineContentScript({
                                 )
                             ).result;
                         })()
-                            .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
+                            .then(({ base64, audioBase64, imageError }) =>
+                                sendResponse({ base64, audioBase64, imageError })
+                            )
                             .catch((e) => {
                                 asbError('recording/animated-webp', e);
                                 sendResponse({
@@ -334,7 +336,9 @@ export default defineContentScript({
 
                         active.stop();
                         active.result
-                            .then(({ base64, audioBase64 }) => sendResponse({ base64, audioBase64 }))
+                            .then(({ base64, audioBase64, imageError }) =>
+                                sendResponse({ base64, audioBase64, imageError })
+                            )
                             .catch((e) => {
                                 asbError('recording/animated-webp', e);
                                 sendResponse({ base64: '', error: String(e?.message ?? e) });

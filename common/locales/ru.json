@@ -76,6 +76,7 @@
         "applySelection": "Применить выбор",
         "audio": "Аудио",
         "audioFileLinkLost": "Ссылка на аудиофайл потеряна из-за перезагрузки страницы",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "Аудиоклип не может быть обновлен, так как он был предварительно записан",
         "copyToClipboard": "Копировать в буфер обмена",
         "definition": "Значение",

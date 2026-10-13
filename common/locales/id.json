@@ -76,6 +76,7 @@
         "applySelection": "Terapkan Pilihan",
         "audio": "Audio",
         "audioFileLinkLost": "Tautan berkas audio hilang karena halaman dimuat ulang",
+        "audioCaptureFailed": "Audio capture failed",
         "cannotUpdateAudio": "Klip audio tidak dapat diperbarui karena direkam sebelumnya",
         "copyToClipboard": "Salin ke Papan Klip",
         "definition": "Definisi",
