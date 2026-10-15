@@ -107,7 +107,7 @@ The full git history is available locally.
 
 ## Documents to audit
 
-Inventory everything first, then audit each: `README.md`, all of `docs/docs/**` (`intro.md`, `reference/settings.md`, `guides/*`, `common-issues.md`, `compatibility.md`, `contributing.md`, `acknowledgements.md`, `getting-started/*`), `docs/blog/*.mdx`, `plugins/anki/README.md`, and any other package READMEs.
+Inventory everything first, then audit each: `README.md`, `CONTRIBUTING.md`, all of `docs/docs/**` (`intro.md`, `reference/settings.md`, `guides/*`, `common-issues.md`, `compatibility.md`, `acknowledgements.md`, `getting-started/*`), `docs/blog/*.mdx`, `plugins/anki/README.md`, and any other package READMEs.
 
 ## Detection procedure
 
@@ -134,7 +134,7 @@ Record every finding with evidence from BOTH sides (file:line for the doc, file:
 
 6. **Cross-references and dead links**: verify anchors between `guides/*`, `common-issues.md`, and `reference/settings.md` headings (e.g. `#seek-keyboard-shortcuts`), internal doc links, image paths, and links to app URLs (`?view=...` routes must exist in the code).
 
-7. **Stale facts**: anything checkable against the repo — version numbers (vs `release-info.md`), commands (`pnpm` vs `yarn`), file paths, build instructions in README "Notes for AMO source code reviewers" and `docs/docs/contributing.md`.
+7. **Stale facts**: anything checkable against the repo — version numbers (vs `release-info.md`), commands (`pnpm` vs `yarn`), file paths, build instructions in README "Notes for AMO source code reviewers" and `CONTRIBUTING.md`.
 
 ## Output
 
