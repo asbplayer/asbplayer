@@ -11,6 +11,7 @@ import type { DictionarySettings } from '@project/common/settings/settings-dicti
 
 export const activeProfileKey = 'activeSettingsProfile';
 export const profilesKey = 'settingsProfiles';
+export const removedProfilesKey = 'removedSettingsProfiles';
 
 // Settings visible in UI probably shouldn't ever be here to prevent user confusion.
 export const saveOnlySettings: readonly (keyof AsbplayerSettings)[] = [
