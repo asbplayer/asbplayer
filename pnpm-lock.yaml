@@ -374,8 +374,8 @@ importers:
         specifier: ^3.4.13
         version: 3.4.16
       fast-xml-parser:
-        specifier: ^4.0.7
-        version: 4.0.7
+        specifier: ^5.11.2
+        version: 5.11.2
       hotkeys-js:
         specifier: ^3.10.0
         version: 3.10.0
@@ -626,8 +626,8 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1
       fast-xml-parser:
-        specifier: ^4.3.6
-        version: 4.5.7
+        specifier: ^5.11.2
+        version: 5.11.2
       flat:
         specifier: ^6.0.1
         version: 6.0.1
@@ -2734,6 +2734,9 @@ packages:
     resolution: {integrity: sha512-V1JJ1WTRUqHHrOSh597hURcMqVKVGL/ea3kv0gSnEdsEZ0/+VyPghM1lMNGc00z7CIQorSvbKpuJkxvuHbvdbg==}
     engines: {node: '>= 16'}
 
+  '@nodable/entities@3.1.0':
+    resolution: {integrity: sha512-LsS/DjHr+uDM647Gru/cA8+J3a3HfhttwCKLyuoyN7yXTFCxKBtSgMQBvrW9yNPa2/zDRUNuGPaH5QUFoa4arQ==}
+
   '@node-rs/jieba-android-arm-eabi@1.10.4':
     resolution: {integrity: sha512-MhyvW5N3Fwcp385d0rxbCWH42kqDBatQTyP8XbnYbju2+0BO/eTeCCLYj7Agws4pwxn2LtdldXRSKavT7WdzNA==}
     engines: {node: '>= 10'}
@@ -3979,6 +3982,9 @@ packages:
   anymatch@3.1.3:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
+
+  anynum@1.0.1:
+    resolution: {integrity: sha512-N6//FLET/tXYNM/F6ABca1oH6fWB+KlTt909Le28WMDBk8oaT4vY17DCrwg2MvmuqUKt3Ni4N5dGJ/EoBgcO6A==}
 
   arg@5.0.2:
     resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
@@ -5401,12 +5407,11 @@ packages:
   fast-uri@3.0.6:
     resolution: {integrity: sha512-Atfo14OibSv5wAp4VWNsFYE1AchQRTv9cBGWET4pZWHzYshFSS9NQI6I57rdKn9croWVMbYFbLhJ+yJvmZIIHw==}
 
-  fast-xml-parser@4.0.7:
-    resolution: {integrity: sha512-dMtibyus3kC7nbxj1CpVtysLzO13UOAZEFAb5vpQg3T4O6qvetmSePpXKFx5KPNCHKoGwjtgjfF5DOyn7s1ylQ==}
-    hasBin: true
+  fast-xml-builder@1.3.1:
+    resolution: {integrity: sha512-pIM/1n3ntFXKYrUZwW7QCK0gAW7XY+wzj1YMIV3tLDvPj/V+zTGJK5e3/4WJfwj0qWw2ElNXiTixda/R+3YSug==}
 
-  fast-xml-parser@4.5.7:
-    resolution: {integrity: sha512-a6Qh1RMCNbSrU1+sAyAAZH3rTe+OaWJbNZIq0S+ifZciUUOQtlVxBJwoTUE2bYhysmG/RYyI5WJFIKdBahJdrQ==}
+  fast-xml-parser@5.11.2:
+    resolution: {integrity: sha512-R9iDuNrQYeQut46cn2r2wHKn4HYzVDvDm5J1wW+koZewykv0yuO2HChTYeZtrULyHIDM9cj9TUXloCsueCQUog==}
     hasBin: true
 
   fastq@1.13.0:
@@ -6239,6 +6244,9 @@ packages:
 
   is-typedarray@1.0.0:
     resolution: {integrity: sha512-cyA56iCMHAh5CdzjJIa4aohJyeO1YbwLi3Jc35MmRU6poroFjIGZzUzupGiRPOjgHg9TLu43xbpwXk523fMxKA==}
+
+  is-unsafe@2.0.2:
+    resolution: {integrity: sha512-HgbIHPBH0KHHCcjLfGsCvhtPTVxjaAZlXjwdz7/GQC40SjSe4sfQsar8J5VFo8JOSbarkpV0OLG95bbaNd9aAQ==}
 
   is-utf8@0.2.1:
     resolution: {integrity: sha512-rMYPYvCzsXywIsldgLaSoPlw5PfoB/ssr7hY4pLfcodrA5M/eArza1a9VmTiNIBNMjOGr1Ow9mTyU2o69U6U9Q==}
@@ -7628,6 +7636,10 @@ packages:
     resolution: {integrity: sha512-RjhtfwJOxzcFmNOi6ltcbcu4Iu+FL3zEj83dk4kAS+fVpTxXLO1b38RvJgT/0QwvV/L3aY9TAnyv0EOqW4GoMQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
+  path-expression-matcher@1.6.2:
+    resolution: {integrity: sha512-enSlaiat05iasnzmgNxRj8reFdj3puY2QpNgP1aPIaVfT6nn9ICuPoFlKHk8EN22HcwewshO+mN2DGbkCEOtqQ==}
+    engines: {node: '>=14.0.0'}
+
   path-is-absolute@1.0.1:
     resolution: {integrity: sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg==}
     engines: {node: '>=0.10.0'}
@@ -8955,8 +8967,8 @@ packages:
     resolution: {integrity: sha512-k55yxKHwaXnpYGsOzg4Vl8+tDrWylxDEpknGjhTiZB8dFRU5rTo9CAzeycivxV3s+zlTKwrs6WxMxR95n26kwg==}
     engines: {node: '>=0.10.0'}
 
-  strnum@1.0.5:
-    resolution: {integrity: sha512-J8bbNyKKXl5qYcR36TIO8W3mVGVHrmmxsd5PAItGkmyzwJvybiw2IVq5nqd0i4LSNSkB/sx9VHllbfFdr9k1JA==}
+  strnum@2.5.1:
+    resolution: {integrity: sha512-UM4nTLWzQiDBseVxUGxN0wJzIk0UU89Qi7pKXz9qISo+lhviJikTuikBsK/oFRlpvYHvSdz0TVoLyQ+sEpYwxA==}
 
   stubborn-fs@1.2.5:
     resolution: {integrity: sha512-H2N9c26eXjzL/S/K+i/RHHcFanE74dptvvjM8iwzwbVcWY/zjBbgRqF3K0DY4+OD+uTTASTBvDoxPDaPN02D7g==}
@@ -9865,6 +9877,10 @@ packages:
   xml-name-validator@4.0.0:
     resolution: {integrity: sha512-ICP2e+jsHvAj2E2lIHxa5tjXRlKDJo4IdvPvCXbXQGdzSfmSpNVyIKMvoZHjDY9DP0zV17iI85o90vRFXNccRw==}
     engines: {node: '>=12'}
+
+  xml-naming@0.3.0:
+    resolution: {integrity: sha512-ghig2TBE/H11aOVgmahA3MhimvkBr6JIYknH/Dhdk10nXwdbIqBJsbfMxpvFPG8bAw77gN29aQWvKpmVoPlvPQ==}
+    engines: {node: '>=16.0.0'}
 
   xml2js@0.6.2:
     resolution: {integrity: sha512-T4rieHaC1EXcES0Kxxj4JWgaUQHDk+qwHcYOCFHfiwKz7tOVPLq7Hjq9dM1WCMhylqMEfP7hMcOIChvotiZegA==}
@@ -13211,6 +13227,8 @@ snapshots:
 
   '@noble/hashes@1.4.0': {}
 
+  '@nodable/entities@3.1.0': {}
+
   '@node-rs/jieba-android-arm-eabi@1.10.4':
     optional: true
 
@@ -14434,6 +14452,8 @@ snapshots:
     dependencies:
       normalize-path: 3.0.0
       picomatch: 2.3.1
+
+  anynum@1.0.1: {}
 
   arg@5.0.2: {}
 
@@ -16162,13 +16182,19 @@ snapshots:
 
   fast-uri@3.0.6: {}
 
-  fast-xml-parser@4.0.7:
+  fast-xml-builder@1.3.1:
     dependencies:
-      strnum: 1.0.5
+      path-expression-matcher: 1.6.2
+      xml-naming: 0.3.0
 
-  fast-xml-parser@4.5.7:
+  fast-xml-parser@5.11.2:
     dependencies:
-      strnum: 1.0.5
+      '@nodable/entities': 3.1.0
+      fast-xml-builder: 1.3.1
+      is-unsafe: 2.0.2
+      path-expression-matcher: 1.6.2
+      strnum: 2.5.1
+      xml-naming: 0.3.0
 
   fastq@1.13.0:
     dependencies:
@@ -17062,6 +17088,8 @@ snapshots:
       which-typed-array: 1.1.19
 
   is-typedarray@1.0.0: {}
+
+  is-unsafe@2.0.2: {}
 
   is-utf8@0.2.1: {}
 
@@ -19170,6 +19198,8 @@ snapshots:
 
   path-exists@5.0.0: {}
 
+  path-expression-matcher@1.6.2: {}
+
   path-is-absolute@1.0.1: {}
 
   path-is-inside@1.0.2: {}
@@ -20720,7 +20750,9 @@ snapshots:
     dependencies:
       escape-string-regexp: 1.0.5
 
-  strnum@1.0.5: {}
+  strnum@2.5.1:
+    dependencies:
+      anynum: 1.0.1
 
   stubborn-fs@1.2.5: {}
 
@@ -21821,6 +21853,8 @@ snapshots:
       sax: 1.4.1
 
   xml-name-validator@4.0.0: {}
+
+  xml-naming@0.3.0: {}
 
   xml2js@0.6.2:
     dependencies:

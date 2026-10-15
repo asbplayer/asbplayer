@@ -848,6 +848,7 @@ export default class SubtitleReader {
                 trimValues: false,
                 parseTagValue: false,
                 parseAttributeValue: false,
+                htmlEntities: true,
             });
         }
 
