@@ -205,6 +205,10 @@ export default class ChromeExtension {
         window.addEventListener('message', this.windowEventListener);
     }
 
+    get supportsDictionaryPlayback() {
+        return this.installed && gte(this.version, '1.23.0');
+    }
+
     get supportsAnimatedImageCapture() {
         return this.installed && gte(this.version, '1.23.0');
     }

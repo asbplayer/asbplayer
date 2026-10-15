@@ -33,7 +33,7 @@ export const cloneAnnotationConfig = (track: DictionaryTrack) => ({
     onStates: track.dictionaryTokenAnnotationConfig.onStates.map((config) => ({ ...config })),
 });
 
-export const makeDictionaryTrack = (overrides: Partial<DictionaryTrack> = {}): DictionaryTrack => {
+export const makeDictionaryTrack = (overrides?: Partial<DictionaryTrack>): DictionaryTrack => {
     const track = {
         ...defaultSettings.dictionaryTracks[0],
         dictionaryAnkiDecks: [...defaultSettings.dictionaryTracks[0].dictionaryAnkiDecks],
@@ -44,6 +44,23 @@ export const makeDictionaryTrack = (overrides: Partial<DictionaryTrack> = {}): D
             ...config,
         })),
         ...overrides,
+    };
+    const playback = track.dictionaryPlaybackConfig;
+    const clonePlaybackFeature = <T extends typeof playback.autoPause>(feature: T): T => ({
+        ...feature,
+        rules: { ...feature.rules },
+        onStatuses: feature.onStatuses.map((config) => ({ ...config })),
+        onStates: feature.onStates.map((config) => ({ ...config })),
+    });
+    const dictionaryPlaybackConfig = {
+        autoPause: clonePlaybackFeature(playback.autoPause),
+        condensed: clonePlaybackFeature(playback.condensed),
+        fastForward: {
+            ...clonePlaybackFeature(playback.fastForward),
+            rateByComprehension: { ...playback.fastForward.rateByComprehension },
+        },
+        repeat: clonePlaybackFeature(playback.repeat),
+        wordVisibility: clonePlaybackFeature(playback.wordVisibility),
     };
     const dictionaryTokenAnnotationConfig = cloneAnnotationConfig(track);
     dictionaryTokenAnnotationConfig.colorizeEnabled = track.dictionaryColorizeSubtitles;
@@ -70,7 +87,7 @@ export const makeDictionaryTrack = (overrides: Partial<DictionaryTrack> = {}): D
         track.dictionaryDisplayIgnoredTokenReadings &&
         track.dictionaryTokenReadingAnnotation !== TokenReadingAnnotation.NEVER;
 
-    return { ...track, dictionaryTokenAnnotationConfig };
+    return { ...track, dictionaryPlaybackConfig, dictionaryTokenAnnotationConfig };
 };
 
 export const makeDictionaryTracks = (track = makeDictionaryTrack()) =>

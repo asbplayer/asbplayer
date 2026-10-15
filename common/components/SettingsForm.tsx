@@ -24,6 +24,7 @@ import KeyboardShortcutsSettingsTab, {
 import type { KeyboardShortcutSection } from '@project/common/components/KeyboardShortcutsSettingsTab';
 import StreamingVideoSettingsTab from '@project/common/components/StreamingVideoSettingsTab';
 import MiscSettingsTab from '@project/common/components/MiscSettingsTab';
+import PlaybackSettingsTab from '@project/common/components/PlaybackSettingsTab';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import TutorialBubble from '@project/common/components/TutorialBubble';
@@ -159,6 +160,7 @@ type TabName =
     | 'anki-settings'
     | 'mining-settings'
     | 'annotation'
+    | 'playback'
     | 'subtitle-appearance'
     | 'keyboard-shortcuts'
     | 'streaming-video'
@@ -196,6 +198,7 @@ interface Props {
     extensionOwnsWebSocketClient?: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
+    extensionSupportsDictionaryPlayback: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
     extensionSupportsUpdateLastWithSameSubtitleText: boolean;
@@ -261,6 +264,7 @@ export default function SettingsForm({
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
     extensionSupportsUpdateLastWithSameSubtitleText,
+    extensionSupportsDictionaryPlayback,
     insideApp,
     appVersionRepoPath,
     scrollToId,
@@ -287,6 +291,7 @@ export default function SettingsForm({
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
+    const supportsDictionaryPlayback = !extensionInstalled || extensionSupportsDictionaryPlayback;
     const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
     const supportsSubtitleListCustomization = !extensionInstalled || extensionSupportsSubtitleListCustomization;
     const supportsAutoPauseResume = !extensionInstalled || extensionSupportsAutoPauseResume;
@@ -326,6 +331,7 @@ export default function SettingsForm({
             'subtitle-appearance',
             'keyboard-shortcuts',
             'annotation',
+            'playback',
             'streaming-video',
             'misc-settings',
             'about',
@@ -348,6 +354,7 @@ export default function SettingsForm({
     }, [scrollToId, tabIndicesById]);
 
     const [tabIndex, setTabIndex] = useState<number>(0);
+    const [selectedDictionaryTrack, setSelectedDictionaryTrack] = useState(0);
     const tabsOrientation = smallScreen ? 'horizontal' : 'vertical';
     const [tutorialStep, setTutorialStep] = useState<TutorialStep>(TutorialStep.ankiConnect);
 
@@ -363,6 +370,11 @@ export default function SettingsForm({
 
     const ankiPanelRef = useRef<HTMLDivElement>(null);
     const keyboardShortcutsPanelRef = useRef<HTMLDivElement>(null);
+
+    const viewSettingsSection = (tab: TabName, sectionId: string) => {
+        setTabIndex(tabIndicesById[tab]);
+        setTimeout(() => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' }), 0);
+    };
 
     const viewKeyboardShortcutSection = useCallback(
         (section: KeyboardShortcutSection) => {
@@ -484,20 +496,25 @@ export default function SettingsForm({
                             id="annotation"
                         />
                     )}
+                    <Tab
+                        tabIndex={4 + Number(supportsDictionary)}
+                        label={t('extension.settings.playback')}
+                        id="playback"
+                    />
                     {extensionSupportsAppIntegration && (
                         <Tab
-                            tabIndex={4 + Number(supportsDictionary)}
+                            tabIndex={5 + Number(supportsDictionary)}
                             label={t('settings.streamingVideo')}
                             id="streaming-video"
                         />
                     )}
                     <Tab
-                        tabIndex={4 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
+                        tabIndex={5 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
                         label={t('settings.misc')}
                         id="misc-settings"
                     />
                     <Tab
-                        tabIndex={5 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
+                        tabIndex={6 + Number(supportsDictionary) + Number(extensionSupportsAppIntegration)}
                         label={t('about.title')}
                         id="about"
                     />
@@ -546,8 +563,33 @@ export default function SettingsForm({
                         supportsDictionaryMatchAcrossScripts={supportsDictionaryMatchAcrossScripts}
                         supportsDictionaryTokenStatusDisplayAlpha={supportsDictionaryTokenStatusDisplayAlpha}
                         supportsDictionaryYomitanMecab={supportsDictionaryYomitanMecab}
+                        supportsDictionaryPlayback={supportsDictionaryPlayback}
+                        selectedDictionaryTrack={selectedDictionaryTrack}
+                        onSelectedDictionaryTrackChanged={setSelectedDictionaryTrack}
+                        onPlaybackSettingsClick={() => viewSettingsSection('playback', 'dictionary-playback-settings')}
                         onSettingChanged={handleSettingChanged}
                         onViewKeyboardShortcuts={() => viewKeyboardShortcutSection('annotation')}
+                    />
+                </TabPanel>
+                <TabPanel value={tabIndex} index={tabIndicesById.playback} tabsOrientation={tabsOrientation}>
+                    <PlaybackSettingsTab
+                        settings={settings}
+                        onSettingChanged={handleSettingChanged}
+                        onSettingsChanged={onSettingsChanged}
+                        extensionInstalled={extensionInstalled}
+                        extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
+                        extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
+                        supportsPlaybackEngine={supportsPlaybackEngine}
+                        supportsAutoPauseResume={supportsAutoPauseResume}
+                        onViewPlaybackModeKeyboardShortcuts={() => viewKeyboardShortcutSection('playback')}
+                        onViewPlaybackRateKeyboardShortcuts={() => viewKeyboardShortcutSection('playbackRate')}
+                        onViewSubtitleKeyboardShortcuts={() => viewKeyboardShortcutSection('subtitles')}
+                        supportsDictionaryPlayback={supportsDictionaryPlayback}
+                        selectedDictionaryTrack={selectedDictionaryTrack}
+                        onSelectedDictionaryTrackChanged={setSelectedDictionaryTrack}
+                        onAnnotationSettingsClick={() =>
+                            viewSettingsSection('annotation', 'dictionary-annotation-settings')
+                        }
                     />
                 </TabPanel>
                 <TabPanel
@@ -610,16 +652,10 @@ export default function SettingsForm({
                         insideApp={insideApp}
                         onImportSettings={onImportSettings}
                         extensionInstalled={extensionInstalled}
-                        extensionSupportsPauseOnHover={extensionSupportsPauseOnHover}
-                        extensionSupportsSeekableTrackSetting={extensionSupportsSeekableTrackSetting}
                         extensionSupportsAutoCopyableTrackSetting={extensionSupportsAutoCopyableTrackSetting}
                         extensionOwnsWebSocketClient={extensionOwnsWebSocketClient}
                         supportsSubtitleListCustomization={supportsSubtitleListCustomization}
                         supportsPlaybackEngine={supportsPlaybackEngine}
-                        supportsAutoPauseResume={supportsAutoPauseResume}
-                        onViewPlaybackModeKeyboardShortcuts={() => viewKeyboardShortcutSection('playback')}
-                        onViewPlaybackRateKeyboardShortcuts={() => viewKeyboardShortcutSection('playbackRate')}
-                        onViewSubtitleKeyboardShortcuts={() => viewKeyboardShortcutSection('subtitles')}
                     />
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['about']} tabsOrientation={tabsOrientation}>

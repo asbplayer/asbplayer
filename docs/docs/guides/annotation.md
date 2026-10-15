@@ -13,6 +13,7 @@ asbplayer can annotate subtitles to better assist with language learning. Annota
 - **Pitch Accent Annotation**: accent patterns displayed on furigana or kana words (requires at least one pitch accent dictionary)
 - **Glossary Annotation**: short definitions or explanations displayed for each word
 - **Statistics and Comprehension**: provides insights into your known words for the current media.
+- **Adaptive Playback**: uses playback modes and annotation data to optimize your learning experience.
 - **Word Browser**: manage local and view words synced from external sources.
 - **Many more features for future releases!**
 

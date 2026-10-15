@@ -59,17 +59,21 @@ const htmlOptions = {
     timelineSubtitles: [makeTextSubtitle(1000, 2000, 'one', 0)],
 };
 
-const plan = (subtitles: IndexedSubtitleModel[], playModes: PlayMode[] = [PlayMode.normal], durationMs = 20_000) =>
+const plan = (
+    subtitles: IndexedSubtitleModel[],
+    options?: { readonly playModes?: PlayMode[]; readonly durationMs?: number }
+) =>
     buildPlaybackPlan({
         subtitles,
-        durationMs,
-        playModes: new Set(playModes),
+        durationMs: options?.durationMs ?? 20_000,
+        playModes: new Set(options?.playModes ?? [PlayMode.normal]),
         autoPausePreference: AutoPausePreference.atStartAndEnd,
         subtitleTriggerStartOffset: 0,
         subtitleTriggerEndOffset: 0,
         subtitleTriggerGapEndOffset: 0,
         subtitleTriggerGapStartOffset: 0,
         repeatCountPreference: 1,
+        repeatsBeforeShowingSubtitles: 0,
         condensedPlaybackMinimumSkipIntervalMs: 500,
         playbackRate: 1,
         fastForwardModePlaybackRate: 2,
@@ -100,7 +104,10 @@ describe('playbackTimelineToHtml', () => {
         expect(exportPlan.condensed).toBeDefined();
         expect(exportPlan.condensed?.pauseAtStart).toBe(true);
         expect(exportPlan.timelineSubtitles.blocks[0].startAction).toBe(true);
-        expect(exportPlan.timelineSubtitles.blocks[0].endAction).toEqual({ pause: true, repeat: { count: 2 } });
+        expect(exportPlan.timelineSubtitles.blocks[0].endAction).toEqual({
+            pause: true,
+            repeat: { count: 2, repeatsBeforeShowingSubtitles: 0 },
+        });
     });
 
     it('renders full-width ten-second rows and escapes subtitle text', () => {
@@ -167,7 +174,10 @@ describe('playbackTimelineToHtml', () => {
 
     it('formats subtitle hover timestamps with millisecond precision', () => {
         const html = playbackTimelineToHtml({
-            plan: plan([makeTextSubtitle(101_580, 104_050, 'one', 0)], [PlayMode.normal], 120_000),
+            plan: plan([makeTextSubtitle(101_580, 104_050, 'one', 0)], {
+                playModes: [PlayMode.normal],
+                durationMs: 120_000,
+            }),
             themeColor: '#123456',
             modeLabels,
             ...htmlOptions,
@@ -178,10 +188,9 @@ describe('playbackTimelineToHtml', () => {
 
     it('renders playback modes using their distinct visual markers', () => {
         const html = playbackTimelineToHtml({
-            plan: plan(
-                [makeTextSubtitle(1000, 2000, 'one', 0), makeTextSubtitle(5000, 6000, 'two', 1)],
-                [PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat]
-            ),
+            plan: plan([makeTextSubtitle(1000, 2000, 'one', 0), makeTextSubtitle(5000, 6000, 'two', 1)], {
+                playModes: [PlayMode.fastForward, PlayMode.autoPause, PlayMode.repeat],
+            }),
             themeColor: '#123456',
             modeLabels,
             ...htmlOptions,
@@ -200,7 +209,7 @@ describe('playbackTimelineToHtml', () => {
 
     it('renders coincident auto-pause and repeat markers as stacked bands', () => {
         const html = playbackTimelineToHtml({
-            plan: plan([makeTextSubtitle(1000, 2000, 'one', 0)], [PlayMode.autoPause, PlayMode.repeat]),
+            plan: plan([makeTextSubtitle(1000, 2000, 'one', 0)], { playModes: [PlayMode.autoPause, PlayMode.repeat] }),
             themeColor: '#123456',
             modeLabels,
             ...htmlOptions,
@@ -230,10 +239,9 @@ describe('playbackTimelineToHtml', () => {
 
     it('renders condensed gaps and an empty timeline without throwing', () => {
         const condensedHtml = playbackTimelineToHtml({
-            plan: plan(
-                [makeTextSubtitle(1000, 2000, 'one', 0), makeTextSubtitle(5000, 6000, 'two', 1)],
-                [PlayMode.condensed]
-            ),
+            plan: plan([makeTextSubtitle(1000, 2000, 'one', 0), makeTextSubtitle(5000, 6000, 'two', 1)], {
+                playModes: [PlayMode.condensed],
+            }),
             themeColor: '#123456',
             modeLabels,
             ...htmlOptions,
@@ -402,6 +410,7 @@ describe('playbackTimelineToHtml', () => {
                 subtitleTriggerGapEndOffset: paritySettings.subtitleTriggerGapEndOffsetMs,
                 subtitleTriggerGapStartOffset: paritySettings.subtitleTriggerGapStartOffsetMs,
                 repeatCountPreference: 1,
+                repeatsBeforeShowingSubtitles: 0,
                 condensedPlaybackMinimumSkipIntervalMs: paritySettings.condensedMinimumSkipIntervalMs,
                 playbackRate: 1,
                 fastForwardModePlaybackRate: 2,
@@ -515,7 +524,7 @@ describe('playbackTimelineToHtml', () => {
         const allTracks = [...firstTrack, ...secondTrack];
         const buildParityPlan = (
             selectedSubtitles: IndexedSubtitleModel[],
-            settings: Partial<typeof paritySettings> = {}
+            settings?: Partial<typeof paritySettings>
         ) => {
             const effectiveSettings = { ...paritySettings, ...settings };
             const runtimePlan = buildPlaybackPlan({
@@ -529,6 +538,7 @@ describe('playbackTimelineToHtml', () => {
                 subtitleTriggerGapEndOffset: effectiveSettings.subtitleTriggerGapEndOffsetMs,
                 subtitleTriggerGapStartOffset: effectiveSettings.subtitleTriggerGapStartOffsetMs,
                 repeatCountPreference: 2,
+                repeatsBeforeShowingSubtitles: 0,
                 condensedPlaybackMinimumSkipIntervalMs: effectiveSettings.condensedMinimumSkipIntervalMs,
                 playbackRate: 1.25,
                 fastForwardModePlaybackRate: 2.5,

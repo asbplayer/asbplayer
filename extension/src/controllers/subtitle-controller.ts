@@ -30,14 +30,17 @@ import {
     ASB_SUBTITLE_CONTAINER_BOTTOM_CLASS,
     ASB_SUBTITLE_CONTAINER_TOP_CLASS,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
+    ASB_PLAYBACK_PAUSED_CLASS,
     clearTokenSelectionInRoot,
     currentTokenSelectionLocation,
     renderRichTextOntoSubtitles,
     getAnnotationsHtml,
     selectTokenInRoot,
+    clearAutoPauseTokenSelectionInRoot,
+    restorableTokenSelectionInRoot,
     SubtitleAnnotations,
 } from '@project/common/annotations';
-import type { SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
+import type { RestorableTokenSelection, SelectTokenInRootOptions } from '@project/common/annotations/dom-annotations';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     arrayEquals,
@@ -136,6 +139,8 @@ export default class SubtitleController {
     refreshCurrentSubtitle: boolean;
     _preCacheDom;
     dictionaryTrackSettings?: DictionaryTrack[];
+    private adaptiveWordVisibilityEnabled = true;
+    private playbackPaused = false;
     onOffsetChange?: (offset: number, previousOffset: number) => Promise<void>;
     onMouseOver?: (event: MouseEvent) => void;
     onMouseOut?: (event: MouseEvent) => void;
@@ -207,6 +212,32 @@ export default class SubtitleController {
             return true;
         }
         return false;
+    }
+
+    setAdaptiveWordVisibilityEnabled(enabled: boolean): void {
+        if (this.adaptiveWordVisibilityEnabled === enabled) return;
+        this.adaptiveWordVisibilityEnabled = enabled;
+        this.cacheHtml();
+        this.refreshCurrentSubtitle = true;
+        this.refreshShowingSubtitles();
+    }
+
+    clearAutoPauseTokenSelection(): void {
+        for (const root of this._tokenSelectionRoots()) clearAutoPauseTokenSelectionInRoot(root);
+    }
+
+    setPlaybackPaused(paused: boolean): void {
+        if (this.playbackPaused === paused) return;
+        this.playbackPaused = paused;
+        this.bottomSubtitlesElementOverlay.refresh();
+        this.topSubtitlesElementOverlay.refresh();
+    }
+
+    private _restorableTokenSelection(): RestorableTokenSelection | undefined {
+        for (const root of this._tokenSelectionRoots()) {
+            const selection = restorableTokenSelectionInRoot(root);
+            if (selection) return selection;
+        }
     }
 
     private _tokenSelectionRoots(): HTMLElement[] {
@@ -385,6 +416,8 @@ export default class SubtitleController {
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.bottom,
             contentWidth: -1,
+            onContainerStyles: (container) =>
+                container.classList.toggle(ASB_PLAYBACK_PAUSED_CLASS, this.playbackPaused),
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
@@ -396,6 +429,8 @@ export default class SubtitleController {
             fullscreenContentClassName: 'asbplayer-fullscreen-subtitles',
             offsetAnchor: OffsetAnchor.top,
             contentWidth: -1,
+            onContainerStyles: (container) =>
+                container.classList.toggle(ASB_PLAYBACK_PAUSED_CLASS, this.playbackPaused),
             onMouseOver: (event: MouseEvent) => this.onMouseOver?.(event),
             onMouseOut: (event: MouseEvent) => this.onMouseOut?.(event),
         };
@@ -428,6 +463,7 @@ export default class SubtitleController {
     }
 
     private _subtitleAnnotationsUpdated(updatedSubtitles: readonly IndexedSubtitleModel[]): void {
+        const tokenSelection = this._restorableTokenSelection();
         if (updatedSubtitles.length) {
             const htmls = this._buildSubtitlesHtml(updatedSubtitles);
             for (const [index, updatedSubtitle] of updatedSubtitles.entries()) {
@@ -452,6 +488,7 @@ export default class SubtitleController {
                     this.refreshCurrentSubtitle = true;
                 }
             }
+            this.context.subtitlesChanged({ timingChanged: false });
         }
         const command: VideoToExtensionCommand<SubtitlesUpdatedFromVideoMessage> = {
             sender: 'asbplayer-video',
@@ -463,6 +500,9 @@ export default class SubtitleController {
         };
         void browser.runtime.sendMessage(command);
         if (this.refreshCurrentSubtitle) this.refreshShowingSubtitles();
+        if (tokenSelection) {
+            this.selectToken(tokenSelection.location, { ...tokenSelection.options, focusContainer: false });
+        }
     }
 
     bind() {
@@ -519,7 +559,7 @@ export default class SubtitleController {
         }
         if (!subtitlesAreNew && !shouldRenderOffset && !this.refreshCurrentSubtitle) return;
 
-        const tokenSelection = this.currentTokenSelectionLocation();
+        const tokenSelection = this._restorableTokenSelection();
 
         this.refreshCurrentSubtitle = false;
         this._resetUnblurState();
@@ -545,7 +585,9 @@ export default class SubtitleController {
             this.showingOffset = undefined;
         }
 
-        if (tokenSelection) this.selectToken(tokenSelection, { focusContainer: false });
+        if (tokenSelection) {
+            this.selectToken(tokenSelection.location, { ...tokenSelection.options, focusContainer: false });
+        }
     }
 
     private _renderSubtitles(
@@ -613,7 +655,9 @@ export default class SubtitleController {
     }
 
     private _buildSubtitlesHtml(subtitles: readonly IndexedSubtitleModel[]) {
-        const buffer = renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings);
+        const buffer = renderRichTextOntoSubtitles(subtitles, 'video', this.dictionaryTrackSettings, {
+            adaptiveWordVisibilityEnabled: this.adaptiveWordVisibilityEnabled,
+        });
 
         return subtitles.map((subtitle) => {
             const rendered = buffer.get(subtitle.index);

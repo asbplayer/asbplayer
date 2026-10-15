@@ -53,6 +53,7 @@ describe('VideoChannel playback intents', () => {
             subtitleTriggerGapEndOffset: -150,
             subtitleTriggerGapStartOffset: 300,
             streamingCondensedPlaybackMinimumSkipIntervalMs: 750,
+            repeatsBeforeShowingSubtitles: 1,
         });
 
         expect(protocol.sent).toEqual([
@@ -64,6 +65,7 @@ describe('VideoChannel playback intents', () => {
                     subtitleTriggerGapEndOffset: -150,
                     subtitleTriggerGapStartOffset: 300,
                     streamingCondensedPlaybackMinimumSkipIntervalMs: 750,
+                    repeatsBeforeShowingSubtitles: 1,
                 }),
             }),
         ]);
