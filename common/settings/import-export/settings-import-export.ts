@@ -765,6 +765,15 @@ const settingsSchema = {
         streamingScreenshotDelay: {
             type: 'number',
         },
+        streamingMediaFragmentFormat: {
+            type: 'string',
+        },
+        streamingAnimatedImageFps: {
+            type: 'number',
+        },
+        streamingAnimatedImageQuality: {
+            type: 'number',
+        },
         streamingSubtitleListPreference: {
             type: 'string',
         },

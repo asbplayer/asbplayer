@@ -629,6 +629,10 @@ export interface PageSettings {
     dreaming: Page;
 }
 
+// The extension captures animated images from the tab, which the website can't, so it has its own setting
+// instead of sharing mediaFragmentFormat
+export type StreamingMediaFragmentFormatSetting = 'jpeg' | 'webp';
+
 export interface StreamingVideoSettings {
     readonly streamingAppUrl: string;
     readonly streamingDisplaySubtitles: boolean;
@@ -643,6 +647,9 @@ export interface StreamingVideoSettings {
     // Used to auto-selecting a language in subtitle track selector, if it's available
     readonly streamingLastLanguagesSynced: { [key: string]: string[] };
     readonly streamingScreenshotDelay: number;
+    readonly streamingMediaFragmentFormat: StreamingMediaFragmentFormatSetting;
+    readonly streamingAnimatedImageFps: number;
+    readonly streamingAnimatedImageQuality: number;
     readonly streamingSubtitleListPreference: SubtitleListPreference;
     readonly streamingEnableOverlay: boolean;
     readonly streamingPages: PageSettings;

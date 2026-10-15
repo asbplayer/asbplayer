@@ -124,7 +124,7 @@ export enum MediaFragmentErrorCode {
 
 export interface MediaFragmentModel {
     readonly base64: string;
-    readonly extension: 'jpeg' | 'webm';
+    readonly extension: 'jpeg' | 'webm' | 'webp';
     readonly error?: MediaFragmentErrorCode;
 }
 
@@ -135,6 +135,7 @@ export type ImageModel = MediaFragmentModel;
 export enum AudioErrorCode {
     drmProtected = 1,
     fileLinkLost = 2,
+    captureFailed = 3,
 }
 
 export interface AudioModel {

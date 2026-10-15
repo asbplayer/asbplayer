@@ -30,6 +30,7 @@
         "ankiDialog.applySelection": "\"Selection\" refers to the selected time range using the slider at the bottom of the card creator.",
         "ankiDialog.audio": "Field label for the \"audio\" input field of the card creator.",
         "ankiDialog.audioFileLinkLost": "File link, or \"file reference.\" \"Page reload\" in the context of the browser.",
+        "ankiDialog.audioCaptureFailed": "Shown when the audio recorded alongside an animated image could not be captured.",
         "ankiDialog.cannotUpdateAudio": "Helper text that explains to the user that audio cannot be re-recorded because it has already been recorded once.",
         "ankiDialog.copyToClipboard": "Button to copy the screenshot to clipboard. ",
         "ankiDialog.definition": "Field label for the \"definition\" input field of the card creator.",

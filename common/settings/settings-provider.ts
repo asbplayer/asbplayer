@@ -297,6 +297,9 @@ export const defaultSettings: AsbplayerSettings = {
     streamingLastLanguagesSynced: {},
     streamingCondensedPlaybackMinimumSkipIntervalMs: 1000,
     streamingScreenshotDelay: 1000,
+    streamingMediaFragmentFormat: 'jpeg',
+    streamingAnimatedImageFps: 10,
+    streamingAnimatedImageQuality: 0.85,
     streamingSubtitleListPreference: SubtitleListPreference.noSubtitleList,
     streamingEnableOverlay: true,
     streamingPages: {
