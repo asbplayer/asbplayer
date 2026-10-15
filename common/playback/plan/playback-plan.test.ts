@@ -139,6 +139,7 @@ describe('buildPlaybackPlan', () => {
                     pause: true,
                     repeat: {
                         count: 2,
+                        repeatsBeforeShowingSubtitles: 0,
                     },
                 },
             })
@@ -177,6 +178,7 @@ describe('buildPlaybackPlan', () => {
                 pause: expectedPauseAtEnd,
                 repeat: {
                     count: 1,
+                    repeatsBeforeShowingSubtitles: 0,
                 },
             });
         }
@@ -198,6 +200,7 @@ describe('buildPlaybackPlan', () => {
                     pause: false,
                     repeat: {
                         count: 1,
+                        repeatsBeforeShowingSubtitles: 0,
                     },
                 },
             })
@@ -215,8 +218,22 @@ describe('buildPlaybackPlan', () => {
             pause: true,
             repeat: {
                 count: 2,
+                repeatsBeforeShowingSubtitles: 0,
             },
         });
+    });
+
+    it('caps subtitle reveal to the finite repeat count', () => {
+        const finite = makePlan([PlayMode.repeat], {
+            repeatCountPreference: 2,
+            repeatsBeforeShowingSubtitles: 5,
+        });
+        const unlimited = makePlan([PlayMode.repeat], {
+            repeatCountPreference: 0,
+            repeatsBeforeShowingSubtitles: 5,
+        });
+        expect(finite.timelineSubtitles.blocks[0].endAction?.repeat?.repeatsBeforeShowingSubtitles).toBe(2);
+        expect(unlimited.timelineSubtitles.blocks[0].endAction?.repeat?.repeatsBeforeShowingSubtitles).toBe(5);
     });
 
     it('normalizes a negative repeat count to unlimited playback', () => {

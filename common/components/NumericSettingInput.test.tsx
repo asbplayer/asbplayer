@@ -114,4 +114,65 @@ describe('NumericSettingInput', () => {
         });
         expect(input.value).toBe('5');
     });
+
+    it('keeps draft input through external updates and commits once on Enter', () => {
+        const onValueChange = jest.fn();
+        const render = (value: number) => {
+            act(() =>
+                root.render(
+                    <NumericSettingInput label="Value" value={value} onValueChange={onValueChange} commitOnBlur />
+                )
+            );
+        };
+        render(20);
+        const input = container.querySelector('input')!;
+        act(() => {
+            input.focus();
+            setInputValue(input, '3');
+        });
+        render(25);
+        expect(input.value).toBe('3');
+        act(() => setInputValue(input, '30'));
+        expect(onValueChange).not.toHaveBeenCalled();
+        act(() => {
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        });
+        expect(onValueChange.mock.calls).toEqual([[30]]);
+        expect(input.value).toBe('30');
+        act(() => input.blur());
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('applies the current bound only after editing finishes and restores invalid drafts', () => {
+        const onValueChange = jest.fn();
+        act(() =>
+            root.render(
+                <NumericSettingInput
+                    label="Value"
+                    value={5}
+                    onValueChange={onValueChange}
+                    normalizeValue={(value) => Math.max(0, Math.min(10, value))}
+                    commitOnBlur
+                    integerOnly
+                />
+            )
+        );
+        const input = container.querySelector('input')!;
+        act(() => {
+            input.focus();
+            setInputValue(input, '15');
+        });
+        expect(input.value).toBe('15');
+        expect(onValueChange).not.toHaveBeenCalled();
+        act(() => input.blur());
+        expect(input.value).toBe('10');
+        expect(onValueChange.mock.calls).toEqual([[10]]);
+        act(() => {
+            input.focus();
+            setInputValue(input, '');
+            input.blur();
+        });
+        expect(input.value).toBe('5');
+        expect(onValueChange).toHaveBeenCalledTimes(1);
+    });
 });

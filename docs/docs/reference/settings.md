@@ -204,7 +204,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V |
 | Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R |
 
-### [Playback](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#playback-keyboard-shortcuts}
+### [Playback](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#playback-keyboard-shortcuts}
 
 | Behavior                        | Default shortcut |
 | ------------------------------- | ---------------- |
@@ -217,7 +217,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Toggle when subtitles are shown |                  |
 | Cycle auto-pause resume mode    |                  |
 
-### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#seek-keyboard-shortcuts}
+### [Seek](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#seek-keyboard-shortcuts}
 
 | Behavior                                                                  | Default shortcut |
 | ------------------------------------------------------------------------- | ---------------- |
@@ -227,14 +227,14 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Seek to next subtitle                                                     | →                |
 | Seek to beginning of current/previous subtitle                            | ↑                |
 
-### [Playback rate](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### [Playback rate](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#playback-rate-keyboard-shortcuts}
 
 | Behavior               | Default shortcut |
 | ---------------------- | ---------------- |
 | Increase playback rate | Ctrl + Shift + ] |
 | Decrease playback rate | Ctrl + Shift + [ |
 
-### [Subtitle offset](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### [Subtitle offset](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
 
 | Behavior                                                                 | Default shortcut |
 | ------------------------------------------------------------------------ | ---------------- |
@@ -613,133 +613,11 @@ For how Anki Card statuses are determined, see [**Mature Anki stability/interval
 For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
 :::
 
-## [Streaming video](https://app.asbplayer.dev/?view=settings#streaming-video) (extension only) {#streaming-video}
-
-Streaming video settings are available only when the browser extension is installed.
-
-### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
-
-Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
-
-### App URL {#app-url}
-
-Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
-
-### Enable controls overlay {#enable-controls-overlay}
-
-Display the overlay UI on video elements with loaded subtitles.
-
-### Display subtitles {#display-subtitles}
-
-Display loaded subtitles on video elements.
-
-### Record audio when mining {#record-audio-when-mining}
-
-When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
-
-### Take screenshot when mining {#take-screenshot-when-mining}
-
-When mining a subtitle, take a screenshot for inclusion in the flashcard.
-
-### Clean screenshot when mining {#clean-screenshot-when-mining}
-
-When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
-
-### Crop screenshot when mining {#crop-screenshot-when-mining}
-
-When mining a subtitle, crop the screenshot to the video element.
-
-### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
-
-Allow subtitle files to be drag-and-dropped into video elements.
-
-### Auto-load detected subtitles {#auto-load-detected-subtitles}
-
-If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
-
-### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
-
-When automatic subtitle loading fails, prompt before trying to load detected subtitles.
-
-### Pages {#pages}
-
-Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
-
-#### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
-
-Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
-
-## [Misc](https://app.asbplayer.dev/?view=settings#misc-settings) {#misc}
-
-### Import/export settings {#import-export-settings}
-
-Imports or exports settings as a `json` file.
-
-### Theme {#theme}
-
-Display all asbplayer in a light or dark theme.
-
-### Language {#language}
-
-Language to display UI in.
-
-Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
-
-### Auto-maximize local video {#auto-maximize-local-video}
-
-Automatically maximize the local video when the subtitle panel is opened.
-
-### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
-
-When enabled, shows a mining button next to each subtitle in the subtitle list.
-
-### Subtitle list timestamps {#subtitle-list-timestamps}
-
-Controls how timestamps are displayed in the subtitle list.
-
-- **Hidden**: Not shown.
-- **Start**: Shows subtitle's start timestamp only.
-- **Start and end**: Shows both start and end timestamps of the subtitle.
-
-### Remember subtitle offset {#remember-subtitle-offset}
-
-When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
-
-### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
-
-Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
-
-### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
-
-Specifies which tracks will be auto-copied when the `Auto-copy current subtitle to clipboard` setting is enabled.
+## [Playback](https://app.asbplayer.dev/?view=settings#playback) {#playback}
 
 ### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
 
 Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
-
-### Show preview thumbnails {#show-preview-thumbnails}
-
-Shows preview thumbnails in the subtitle list.
-
-### Subtitle above thumbnail {#subtitle-above-thumbnail}
-
-Shows the subtitle above the preview thumbnail in the subtitle list.
-
-### Subtitle regex filter {#subtitle-regex-filter}
-
-Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
-
-### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
-
-Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
-
-### Subtitle HTML {#subtitle-html}
-
-How to handle HTML that appears in subtitle files.
-
-### Detect and Display Ruby {#detect-and-display-ruby}
-
-When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
 
 ### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
 
@@ -757,14 +635,6 @@ Controls the normal media playback speed, including the speed used inside subtit
 
 Shows a notification when the playback rate changes outside fast-forward playback.
 
-### Remember last playback rate {#remember-last-playback-rate}
-
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
-
-### Remember last playback modes {#remember-last-playback-modes}
-
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
-
 ### Auto-pause preference {#auto-pause-preference}
 
 When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
@@ -772,6 +642,10 @@ When auto-pause is enabled, whether to auto-pause at the start, end, or both edg
 ### Repeat count preference {#repeat-count-preference}
 
 Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+
+### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+
+Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
 
 ### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
 
@@ -831,9 +705,197 @@ In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phase
 
 - **While paused**: Subtitles appear only when they are due and playback is paused.
 
+- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+
 ### Primed listening {#primed-listening}
 
 Primed listening is a technique for language learning where you read the native-language subtitle, watch it disappear, and then hear the target-language audio without subtitles. This can be achieved by combining [Auto-pause preference](#auto-pause-preference), **Subtitle length** under [Auto-pause resume mode](#auto-pause-resume-mode), **While paused** under [Show subtitles](#show-subtitles), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+## [Playback > Annotation](https://app.asbplayer.dev/?view=settings#playback) {#playback-annotation}
+
+These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+
+### Subtitle track {#playback-annotation-track}
+
+Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+
+Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+
+### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+
+When auto-pause mode is on, pause only on subtitles containing a matching word. The first matching word is selected when playback pauses.
+
+### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+
+When repeat mode is on, repeat only subtitles containing a matching word.
+
+### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+
+When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+
+### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+
+When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+
+### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+
+While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+
+At 60% comprehension or less, use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+
+Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+
+### Show these words during playback {#show-these-words-during-playback}
+
+Select the statuses and states whose words should remain visible.
+
+### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+
+Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+
+### Hide nonmatching words individually before the threshold {#hide-nonmatching-words-before-threshold}
+
+When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+
+### Only when this status or state has at most this many words {#only-when-this-status-or-state-has-at-most-this-many-words}
+
+Each selected status and state is counted separately within a subtitle. If its count exceeds this limit, words matching that status or state do not trigger that rule. `0` disables the limit.
+
+### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+
+A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+
+## [Streaming video](https://app.asbplayer.dev/?view=settings#streaming-video) (extension only) {#streaming-video}
+
+Streaming video settings are available only when the browser extension is installed.
+
+### When loading subtitles, also open subtitle list via the app in a separate tab {#open-subtitle-list-in-tab}
+
+Anytime subtitles are loaded into a video element, opens the website, and syncs the loaded subtitles with the website in a separate tab.
+
+### App URL {#app-url}
+
+Determines where the extension fetches some configuration, and what URL to open when syncing subtitles to the website running in a separate tab. Essentially the website URL.
+
+### Enable controls overlay {#enable-controls-overlay}
+
+Display the overlay UI on video elements with loaded subtitles.
+
+### Display subtitles {#display-subtitles}
+
+Display loaded subtitles on video elements.
+
+### Record audio when mining {#record-audio-when-mining}
+
+When mining a subtitle, record the audio covered by the subtitle for inclusion in the flashcard.
+
+### Take screenshot when mining {#take-screenshot-when-mining}
+
+When mining a subtitle, take a screenshot for inclusion in the flashcard.
+
+### Clean screenshot when mining {#clean-screenshot-when-mining}
+
+When mining a subtitle and screenshots are enabled, keep the screenshot "clean" by removing any HTML elements on top of the video element before taking the screenshot.
+
+### Crop screenshot when mining {#crop-screenshot-when-mining}
+
+When mining a subtitle, crop the screenshot to the video element.
+
+### Allow subtitle file drag-and-drop {#allow-subtitle-file-drag-and-drop}
+
+Allow subtitle files to be drag-and-dropped into video elements.
+
+### Auto-load detected subtitles {#auto-load-detected-subtitles}
+
+If subtitle auto-detection is supported on the current website, load them automatically. If multiple tracks are detected, load the track for the preferred language. The preferred language is the one that was last loaded with the "remember these track choices" box checked.
+
+### Prompt when auto-loading detected subtitles fails {#prompt-on-subtitle-autoload-failure}
+
+When automatic subtitle loading fails, prompt before trying to load detected subtitles.
+
+## [Streaming video > Pages](https://app.asbplayer.dev/?view=settings#streaming-video) {#pages}
+
+Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
+
+### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+
+Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
+
+## [Misc](https://app.asbplayer.dev/?view=settings#misc-settings) {#misc}
+
+### Import/export settings {#import-export-settings}
+
+Imports or exports settings as a `json` file.
+
+### Theme {#theme}
+
+Display all asbplayer in a light or dark theme.
+
+### Language {#language}
+
+Language to display UI in.
+
+Note: not all strings have been localized in every language that asbplayer supports. Unlocalized will be displayed in English. Feel free to help out with localization at the [Crowdin project](https://crowdin.com/project/asbplayer).
+
+### Auto-maximize local video {#auto-maximize-local-video}
+
+Automatically maximize the local video when the subtitle panel is opened.
+
+### Show mining button in subtitle list {#show-mining-button-in-subtitle-list}
+
+When enabled, shows a mining button next to each subtitle in the subtitle list.
+
+### Subtitle list timestamps {#subtitle-list-timestamps}
+
+Controls how timestamps are displayed in the subtitle list.
+
+- **Hidden**: Not shown.
+- **Start**: Shows subtitle's start timestamp only.
+- **Start and end**: Shows both start and end timestamps of the subtitle.
+
+### Remember subtitle offset {#remember-subtitle-offset}
+
+When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
+
+### Remember last playback rate {#remember-last-playback-rate}
+
+Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+
+### Remember last playback modes {#remember-last-playback-modes}
+
+Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+
+### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
+
+Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
+
+### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
+
+Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
+
+### Show preview thumbnails {#show-preview-thumbnails}
+
+Shows preview thumbnails in the subtitle list.
+
+### Subtitle above thumbnail {#subtitle-above-thumbnail}
+
+Shows the subtitle above the preview thumbnail in the subtitle list.
+
+### Subtitle regex filter {#subtitle-regex-filter}
+
+Substrings matched by this regex will be replaced by the value of [Subtitle regex filter text replacement](#subtitle-regex-filter-text-replacement)
+
+### Subtitle regex filter text replacement {#subtitle-regex-filter-text-replacement}
+
+Substrings matched by the regex above are replaced with the value of this setting. If left empty, matched substrings are simply removed.
+
+### Subtitle HTML {#subtitle-html}
+
+How to handle HTML that appears in subtitle files.
+
+### Detect and Display Ruby {#detect-and-display-ruby}
+
+When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
 
 ### Enable WebSocket client {#enable-websocket-client}
 

@@ -13,7 +13,8 @@ import type {
     TokenReading,
 } from '@project/common/src/model';
 import type { SeekableTracks, TextSubtitleSettings } from '@project/common/settings';
-import { isTrackSeekable, TokenStatus } from '@project/common/settings';
+import { isTrackSeekable } from '@project/common/settings/settings';
+import { TokenStatus } from '@project/common/settings/settings-dictionary';
 import type { Progress } from '..';
 import type { TokenStatusInfo } from '@project/common/dictionary-db';
 import type { PitchAccentPosition } from '@project/common/yomitan';
@@ -109,6 +110,39 @@ export function mapSubtitlesForDisplay<T extends Pick<SubtitleModel, 'track' | '
         }
     }
     return result;
+}
+
+/** Requires a comparator for every field, including optional fields. */
+export type FieldComparators<T> = {
+    [K in keyof T]-?: (a: T[K], b: T[K]) => boolean;
+};
+
+export function compareField<T, K extends keyof T>(key: K, a: T, b: T, comparators: FieldComparators<T>): boolean {
+    return comparators[key](a[key], b[key]);
+}
+
+/**
+ * Compares fields using the supplied table, independent of object key order.
+ * Alternative comparators can accept differences such as presentation-only changes.
+ */
+export function fieldsEqual<T extends object>(
+    a: T | undefined,
+    b: T | undefined,
+    comparators: FieldComparators<T>,
+    alternativeComparators?: FieldComparators<T>
+): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    for (const key in comparators) {
+        const field = key as keyof T;
+        if (
+            !compareField(field, a, b, comparators) &&
+            (!alternativeComparators || !compareField(field, a, b, alternativeComparators))
+        ) {
+            return false;
+        }
+    }
+    return true;
 }
 
 export function keysAreEqual(a: any, b: any) {
@@ -956,59 +990,26 @@ export const getContiguousReading = (tokenText: string, token: Pick<Token, 'read
     return readingText;
 };
 
-type DimensionsComparators = {
-    [K in keyof DimensionsModel]: (a: DimensionsModel[K], b: DimensionsModel[K]) => boolean;
-};
-
-const dimensionsComparators: DimensionsComparators = {
+const dimensionsComparators: FieldComparators<DimensionsModel> = {
     width: (a, b) => a === b,
     height: (a, b) => a === b,
 };
 
-function compareDimensionsField<K extends keyof DimensionsModel>(key: K, a: DimensionsModel, b: DimensionsModel) {
-    return dimensionsComparators[key](a[key], b[key]);
-}
-
 function areDimensionsEqual(a: DimensionsModel, b: DimensionsModel): boolean {
-    if (a === b) return true;
-    for (const key in dimensionsComparators) {
-        if (!compareDimensionsField(key as keyof DimensionsModel, a, b)) return false;
-    }
-    return true;
+    return fieldsEqual(a, b, dimensionsComparators);
 }
 
-type SubtitleTextImageComparators = {
-    [K in keyof SubtitleTextImage]: (a: SubtitleTextImage[K], b: SubtitleTextImage[K]) => boolean;
-};
-
-const subtitleTextImageComparators: SubtitleTextImageComparators = {
+const subtitleTextImageComparators: FieldComparators<SubtitleTextImage> = {
     dataUrl: (a, b) => a === b,
     screen: (a, b) => areDimensionsEqual(a, b),
     image: (a, b) => areDimensionsEqual(a, b),
 };
 
-function compareSubtitleTextImageField<K extends keyof SubtitleTextImage>(
-    key: K,
-    a: SubtitleTextImage,
-    b: SubtitleTextImage
-) {
-    return subtitleTextImageComparators[key](a[key], b[key]);
-}
-
 function areSubtitleTextImagesEqual(a: SubtitleTextImage | undefined, b: SubtitleTextImage | undefined): boolean {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    for (const key in subtitleTextImageComparators) {
-        if (!compareSubtitleTextImageField(key as keyof SubtitleTextImage, a, b)) return false;
-    }
-    return true;
+    return fieldsEqual(a, b, subtitleTextImageComparators);
 }
 
-type SubtitleModelComparators = {
-    [K in keyof SubtitleModel]: (a: SubtitleModel[K], b: SubtitleModel[K]) => boolean;
-};
-
-const subtitleModelComparators: SubtitleModelComparators = {
+const subtitleModelComparators: FieldComparators<SubtitleModel> = {
     text: (a, b) => a === b,
     originalText: (a, b) => a === b,
     textImage: (a, b) => areSubtitleTextImagesEqual(a, b),
@@ -1021,22 +1022,18 @@ const subtitleModelComparators: SubtitleModelComparators = {
     track: (a, b) => a === b,
     index: (a, b) => a === b,
     tokenization: (a, b) => areTokenizationsEqual(a, b),
-} satisfies Required<SubtitleModelComparators>;
+};
 
 export function compareSubtitleModelField<K extends keyof SubtitleModel>(
     key: K,
     a: SubtitleModel,
     b: SubtitleModel
 ): boolean {
-    return subtitleModelComparators[key]!(a[key], b[key]);
+    return compareField(key, a, b, subtitleModelComparators);
 }
 
 export function areSubtitleModelsEqual(a: SubtitleModel, b: SubtitleModel): boolean {
-    if (a === b) return true;
-    for (const key in subtitleModelComparators) {
-        if (!compareSubtitleModelField(key as keyof SubtitleModel, a, b)) return false;
-    }
-    return true;
+    return fieldsEqual(a, b, subtitleModelComparators);
 }
 
 export function areTokenizationsEqual(a: Tokenization | undefined, b: Tokenization | undefined) {
@@ -1047,34 +1044,14 @@ export function areTokenizationsEqual(a: Tokenization | undefined, b: Tokenizati
     return arrayEquals(a.tokens, b.tokens, areTokensEqual);
 }
 
-type TokenReadingComparators = {
-    [K in keyof TokenReading]: (a: TokenReading[K], b: TokenReading[K]) => boolean;
-};
-
-const tokenReadingComparators: TokenReadingComparators = {
+const tokenReadingComparators: FieldComparators<TokenReading> = {
     pos: (a, b) => arrayEquals(a, b),
     reading: (a, b) => a === b,
-} satisfies Required<TokenReadingComparators>;
-
-function compareTokenReadingField<K extends keyof TokenReading>(key: K, a: TokenReading, b: TokenReading): boolean {
-    return tokenReadingComparators[key](a[key], b[key]);
-}
-
-const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) => {
-    if (a === b) return true;
-    for (const key in tokenReadingComparators) {
-        if (!compareTokenReadingField(key as keyof TokenReading, a, b)) {
-            return false;
-        }
-    }
-    return true;
 };
 
-type TokenComparators = {
-    [K in keyof Token]: (a: Token[K], b: Token[K]) => boolean;
-};
+const areTokenReadingsEqual = (a: TokenReading, b: TokenReading) => fieldsEqual(a, b, tokenReadingComparators);
 
-const tokenComparators: TokenComparators = {
+const tokenComparators: FieldComparators<Token> = {
     pos: (a, b) => arrayEquals(a, b),
     states: (a, b) => arrayEquals(a, b),
     status: (a, b) => a === b,
@@ -1085,20 +1062,32 @@ const tokenComparators: TokenComparators = {
     groupingKey: (a, b) => a === b,
     lemmasGroupingKey: (a, b) => a === b,
     externalCandidateStatuses: (a, b) => arrayEquals(a, b),
-} satisfies Required<TokenComparators>;
+};
 
-function compareTokenField<K extends keyof Token>(key: K, a: Token, b: Token): boolean {
-    return tokenComparators[key]!(a[key], b[key]);
-}
+const areTokensEqual = (aToken: Token, bToken: Token) => fieldsEqual(aToken, bToken, tokenComparators);
 
-const areTokensEqual = (aToken: Token, bToken: Token) => {
-    if (aToken === bToken) return true;
-    for (const key in tokenComparators) {
-        if (!compareTokenField(key as keyof Token, aToken, bToken)) {
-            return false;
+export const tokenStatusSelectionLabels = (
+    statuses: readonly TokenStatus[],
+    statusLabel: (status: TokenStatus) => string
+): string[] => {
+    const sortedStatuses = Array.from(new Set(statuses)).sort((lhs, rhs) => lhs - rhs);
+    const labels: string[] = [];
+
+    for (let blockStart = 0; blockStart < sortedStatuses.length; ) {
+        let blockEnd = blockStart;
+        while (blockEnd + 1 < sortedStatuses.length && sortedStatuses[blockEnd + 1] === sortedStatuses[blockEnd] + 1) {
+            ++blockEnd;
         }
+
+        if (blockEnd - blockStart + 1 >= 3) {
+            labels.push(`${statusLabel(sortedStatuses[blockStart])} \u2192 ${statusLabel(sortedStatuses[blockEnd])}`);
+        } else {
+            for (let i = blockStart; i <= blockEnd; ++i) labels.push(statusLabel(sortedStatuses[i]));
+        }
+        blockStart = blockEnd + 1;
     }
-    return true;
+
+    return labels;
 };
 
 /**
