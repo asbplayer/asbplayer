@@ -1,3 +1,4 @@
+import { ensureRecipeConsistency, normalizeRecipe } from '@project/common/settings/settings-recipes';
 import type {
     AnkiField,
     AnkiFieldSettings,
@@ -8,7 +9,6 @@ import type {
     SubtitleSettings,
     TextSubtitleSettings,
 } from '@project/common/settings/settings';
-import type { DictionaryTrack } from '@project/common/settings/settings-dictionary';
 import {
     AutoPauseResumeMode,
     SubtitleListPreference,
@@ -18,15 +18,8 @@ import {
     VideoSubtitleSplitBehavior,
 } from '@project/common/settings/settings';
 import {
-    dictionaryPlaybackFeatures,
-    TokenFrequencyAnnotation,
-    TokenMatchStrategy,
-    TokenMatchStrategyPriority,
-    TokenReadingAnnotation,
-    TokenState,
-    TokenStatus,
-    TokenStyling,
-    getFullyKnownTokenStatus,
+    defaultDictionaryTracks,
+    ensureDictionaryTracksConsistency,
 } from '@project/common/settings/settings-dictionary';
 import {
     AutoPausePreference,
@@ -55,92 +48,9 @@ const defaultSubtitleTextSettings = {
     subtitleBlur: false,
 };
 
-function makeDefaultDictionaryTokenAnnotationConfigs() {
-    return {
-        colorizeEnabled: false,
-        video: {
-            color: { onHoverEnabled: false, size: 1 },
-            reading: { onHoverEnabled: false, size: 0.5 },
-            frequency: { onHoverEnabled: false, size: 0.3 },
-            gloss: { onHoverEnabled: true, size: 0.5 },
-            pitchAccent: { onHoverEnabled: true, size: 0.1 },
-        },
-        subtitlePlayer: {
-            color: { onHoverEnabled: false, size: 1 },
-            reading: { onHoverEnabled: false, size: 0.5 },
-            frequency: { onHoverEnabled: false, size: 0.5 },
-            gloss: { onHoverEnabled: true, size: 0.5 },
-            pitchAccent: { onHoverEnabled: true, size: 0.1 },
-        },
-        onStatuses: [
-            { reading: false, frequency: false, gloss: false, pitchAccent: false },
-            { reading: false, frequency: false, gloss: false, pitchAccent: false },
-            { reading: false, frequency: false, gloss: false, pitchAccent: false },
-            { reading: false, frequency: false, gloss: false, pitchAccent: false },
-            { reading: false, frequency: false, gloss: false, pitchAccent: false },
-            { reading: false, frequency: false, gloss: false, pitchAccent: false },
-        ],
-        onStates: [{ reading: false, frequency: false, gloss: false, pitchAccent: false }],
-    };
-}
-
-const defaultDictionaryTokenAnnotationConfig = makeDefaultDictionaryTokenAnnotationConfigs();
-export const NUM_TOKEN_STATUSES = defaultDictionaryTokenAnnotationConfig.onStatuses.length;
-export const NUM_TOKEN_STATES = defaultDictionaryTokenAnnotationConfig.onStates.length;
-
-const makeDefaultDictionaryPlaybackConfig = (): DictionaryTrack['dictionaryPlaybackConfig'] => {
-    const feature = () => ({
-        rules: { minWords: 0, maxWords: 0, minFrequency: 0, maxFrequency: 0 },
-        onStatuses: Array.from({ length: NUM_TOKEN_STATUSES }, () => ({ enabled: false })),
-        onStates: Array.from({ length: NUM_TOKEN_STATES }, () => ({ enabled: false })),
-    });
-    return {
-        autoPause: feature(),
-        condensed: feature(),
-        fastForward: { ...feature(), rateByComprehension: { enabled: false } },
-        repeat: feature(),
-        wordVisibility: { ...feature(), hideWordsIndividuallyUntilThreshold: true, wholeSubtitleMatchThreshold: 1 },
-    };
-};
-
-const defaultDictionaryTrackSettings: DictionaryTrack = {
-    dictionaryColorizeSubtitles: false,
-    dictionaryAutoGenerateStatistics: false,
-    dictionaryColorizeOnHoverOnly: false,
-    dictionaryHighlightOnHover: true,
-    dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
-    dictionaryMatchAcrossScripts: true,
-    dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
-    dictionaryYomitanUrl: 'http://127.0.0.1:19633',
-    dictionaryYomitanParser: 'scanning-parser',
-    dictionaryYomitanScanLength: 16,
-    dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,
-    dictionaryDisplayIgnoredTokenReadings: false,
-    dictionaryTokenFrequencyAnnotation: TokenFrequencyAnnotation.NEVER,
-    dictionaryAnkiDecks: [],
-    dictionaryAnkiWordFields: [],
-    dictionaryAnkiSentenceFields: [],
-    dictionaryAnkiSentenceTokenMatchStrategy: TokenMatchStrategy.EXACT_FORM_COLLECTED,
-    dictionaryAnkiMatureCutoff: 21,
-    dictionaryAnkiTreatSuspended: 'NORMAL',
-    dictionaryWaniKaniApiToken: '',
-    dictionaryTokenStyling: TokenStyling.UNDERLINE,
-    dictionaryTokenStylingThickness: 3,
-    dictionaryColorizeFullyKnownTokens: false,
-    dictionaryTokenStatusColors: ['#FF0000', '#FFA500', '#FFFF00', '#00FF00', '#0000FF', '#FFFFFF'],
-    dictionaryTokenStatusConfig: [
-        { display: true, color: '#FF0000', alpha: 'FF' },
-        { display: true, color: '#FFA500', alpha: 'FF' },
-        { display: true, color: '#FFFF00', alpha: 'FF' },
-        { display: true, color: '#00FF00', alpha: 'FF' },
-        { display: true, color: '#0000FF', alpha: 'FF' },
-        { display: false, color: '#FFFFFF', alpha: 'FF' },
-    ],
-    dictionaryTokenAnnotationConfig: defaultDictionaryTokenAnnotationConfig,
-    dictionaryPlaybackConfig: makeDefaultDictionaryPlaybackConfig(),
-};
-
 export const defaultSettings: AsbplayerSettings = {
+    recipes: [],
+    activeRecipeId: null,
     ankiConnectUrl: 'http://127.0.0.1:8765',
     ankiConnectApiKey: '',
     ankiRefreshBrowserAfterUpdate: false,
@@ -217,6 +127,20 @@ export const defaultSettings: AsbplayerSettings = {
     lastPlaybackModes: [PlayMode.normal],
     lastPlaybackPositions: [],
     keyBindSet: {
+        cycleRecipesForward: { keys: '' },
+        cycleRecipesBackward: { keys: '' },
+        clearRecipe: { keys: '' },
+        selectRecipe1: { keys: '' },
+        selectRecipe2: { keys: '' },
+        selectRecipe3: { keys: '' },
+        selectRecipe4: { keys: '' },
+        selectRecipe5: { keys: '' },
+        selectRecipe6: { keys: '' },
+        selectRecipe7: { keys: '' },
+        selectRecipe8: { keys: '' },
+        selectRecipe9: { keys: '' },
+        selectRecipe10: { keys: '' },
+
         togglePlay: { keys: 'space' },
         toggleAutoPause: { keys: isMacOs ? '⇧+P' : 'shift+P' },
         toggleCondensedPlayback: { keys: isMacOs ? '⇧+O' : 'shift+O' },
@@ -357,10 +281,8 @@ export const defaultSettings: AsbplayerSettings = {
     webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
     pauseOnHoverMode: 0,
     lastSelectedAnkiExportMode: 'default',
-    dictionaryTracks: [defaultDictionaryTrackSettings, defaultDictionaryTrackSettings, defaultDictionaryTrackSettings],
+    dictionaryTracks: defaultDictionaryTracks,
 };
-
-export const NUM_DICTIONARY_TRACKS = defaultSettings.dictionaryTracks.length;
 
 export interface AnkiFieldUiModel {
     key: string;
@@ -550,7 +472,7 @@ const deepEquals = (a: any, b: any) => {
         return false;
     }
 
-    if (typeof a !== 'object') {
+    if (a === null || b === null || typeof a !== 'object') {
         return a === b;
     }
 
@@ -574,161 +496,6 @@ const deepEquals = (a: any, b: any) => {
     }
 
     return true;
-};
-
-const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<AsbplayerSettings>) => {
-    if (!dictionaryTracks) return;
-    const defaultTrack = defaultSettings.dictionaryTracks[0];
-    const fullyKnownStatus = getFullyKnownTokenStatus();
-    for (const dt of dictionaryTracks) {
-        // Ensure dictionaryTokenStatusColors exists and has the correct length
-        if (!dt.dictionaryTokenStatusColors) (dt as any).dictionaryTokenStatusColors = [];
-        while (dt.dictionaryTokenStatusColors.length < NUM_TOKEN_STATUSES) {
-            const color = defaultTrack.dictionaryTokenStatusColors[dt.dictionaryTokenStatusColors.length];
-            dt.dictionaryTokenStatusColors.push(color);
-        }
-        while (dt.dictionaryTokenStatusColors.length > NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenStatusColors.pop();
-        }
-
-        // Ensure dictionaryTokenStatusConfig exists and has the correct length
-        if (!dt.dictionaryTokenStatusConfig) (dt as any).dictionaryTokenStatusConfig = [];
-        while (dt.dictionaryTokenStatusConfig.length < NUM_TOKEN_STATUSES) {
-            const config = {
-                ...defaultTrack.dictionaryTokenStatusConfig[dt.dictionaryTokenStatusConfig.length],
-                color: dt.dictionaryTokenStatusColors[dt.dictionaryTokenStatusConfig.length],
-            };
-            dt.dictionaryTokenStatusConfig.push(config);
-        }
-        while (dt.dictionaryTokenStatusConfig.length > NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenStatusConfig.pop();
-        }
-
-        // Migrate dictionaryTokenStatusColors to dictionaryTokenStatusConfig, both are updated on settings change
-        for (let i = 0; i < NUM_TOKEN_STATUSES; ++i) {
-            if (dt.dictionaryTokenStatusConfig[i].color !== dt.dictionaryTokenStatusColors[i]) {
-                dt.dictionaryTokenStatusConfig[i] = {
-                    ...dt.dictionaryTokenStatusConfig[i],
-                    color: dt.dictionaryTokenStatusColors[i],
-                };
-            }
-        }
-        if (dt.dictionaryTokenStatusConfig[fullyKnownStatus].display !== dt.dictionaryColorizeFullyKnownTokens) {
-            dt.dictionaryTokenStatusConfig[fullyKnownStatus] = {
-                ...dt.dictionaryTokenStatusConfig[fullyKnownStatus],
-                display: dt.dictionaryColorizeFullyKnownTokens,
-            };
-        }
-
-        // Existing tracks predate playback settings; new statuses and states need a trigger row.
-        if (!dt.dictionaryPlaybackConfig) (dt as any).dictionaryPlaybackConfig = makeDefaultDictionaryPlaybackConfig();
-        for (const feature of dictionaryPlaybackFeatures) {
-            const playback = dt.dictionaryPlaybackConfig[feature];
-            for (const [triggers, count] of [
-                [playback.onStatuses, NUM_TOKEN_STATUSES],
-                [playback.onStates, NUM_TOKEN_STATES],
-            ] as const) {
-                while (triggers.length < count) triggers.push({ enabled: false });
-                if (triggers.length > count) triggers.length = count;
-            }
-        }
-
-        // Ensure dictionaryTokenAnnotationConfig exists
-        if (!dt.dictionaryTokenAnnotationConfig) {
-            const config = makeDefaultDictionaryTokenAnnotationConfigs();
-
-            // Migrate dictionaryColorizeOnHoverOnly to dictionaryTokenAnnotationConfig
-            config.video.color.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
-            config.video.reading.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
-            config.video.frequency.onHoverEnabled = dt.dictionaryColorizeOnHoverOnly;
-
-            // Migrate dictionaryTokenReadingAnnotation to dictionaryTokenAnnotationConfig
-            if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.ALWAYS) {
-                config.onStatuses.forEach((s) => (s.reading = true));
-                config.onStates[TokenState.IGNORED].reading = true;
-            } else if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.LEARNING_OR_BELOW) {
-                for (let tokenStatus: TokenStatus = 0; tokenStatus <= TokenStatus.LEARNING; ++tokenStatus) {
-                    config.onStatuses[tokenStatus].reading = true;
-                }
-            } else if (dt.dictionaryTokenReadingAnnotation === TokenReadingAnnotation.UNKNOWN_OR_BELOW) {
-                for (let tokenStatus: TokenStatus = 0; tokenStatus <= TokenStatus.UNKNOWN; ++tokenStatus) {
-                    config.onStatuses[tokenStatus].reading = true;
-                }
-            }
-            if (dt.dictionaryDisplayIgnoredTokenReadings) config.onStates[TokenState.IGNORED].reading = true;
-
-            // Migrate dictionaryTokenFrequencyAnnotation to dictionaryTokenAnnotationConfig
-            if (dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.ALWAYS) {
-                config.onStatuses.forEach((s) => (s.frequency = true));
-                config.onStates[TokenState.IGNORED].frequency = true;
-            } else if (dt.dictionaryTokenFrequencyAnnotation === TokenFrequencyAnnotation.UNCOLLECTED_ONLY) {
-                config.onStatuses[TokenStatus.UNCOLLECTED].frequency = true;
-            }
-
-            (dt as any).dictionaryTokenAnnotationConfig = config;
-        }
-        if (dt.dictionaryTokenAnnotationConfig.colorizeEnabled !== dt.dictionaryColorizeSubtitles) {
-            dt.dictionaryTokenAnnotationConfig.colorizeEnabled = dt.dictionaryColorizeSubtitles;
-        }
-
-        for (const [target, defaultTarget] of [
-            [dt.dictionaryTokenAnnotationConfig.video, defaultTrack.dictionaryTokenAnnotationConfig.video],
-            [
-                dt.dictionaryTokenAnnotationConfig.subtitlePlayer,
-                defaultTrack.dictionaryTokenAnnotationConfig.subtitlePlayer,
-            ],
-        ] as const) {
-            if (target.gloss === undefined) (target as any).gloss = { ...defaultTarget.gloss };
-        }
-        for (const trigger of [
-            ...dt.dictionaryTokenAnnotationConfig.onStatuses,
-            ...dt.dictionaryTokenAnnotationConfig.onStates,
-        ]) {
-            if (trigger.gloss === undefined) (trigger as any).gloss = false;
-        }
-
-        // Ensure dictionaryTokenAnnotationConfig has the correct length
-        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length < NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenAnnotationConfig.onStatuses.push({
-                reading: false,
-                frequency: false,
-                gloss: false,
-                pitchAccent: false,
-            });
-        }
-        while (dt.dictionaryTokenAnnotationConfig.onStatuses.length > NUM_TOKEN_STATUSES) {
-            dt.dictionaryTokenAnnotationConfig.onStatuses.pop();
-        }
-        while (dt.dictionaryTokenAnnotationConfig.onStates.length < NUM_TOKEN_STATES) {
-            dt.dictionaryTokenAnnotationConfig.onStates.push({
-                reading: false,
-                frequency: false,
-                gloss: false,
-                pitchAccent: false,
-            });
-        }
-        while (dt.dictionaryTokenAnnotationConfig.onStates.length > NUM_TOKEN_STATES) {
-            dt.dictionaryTokenAnnotationConfig.onStates.pop();
-        }
-
-        // Default for new settings
-        if (!dt.dictionaryYomitanParser) (dt as any).dictionaryYomitanParser = defaultTrack.dictionaryYomitanParser;
-        if (dt.dictionaryAutoGenerateStatistics === undefined) {
-            (dt as any).dictionaryAutoGenerateStatistics = defaultTrack.dictionaryAutoGenerateStatistics;
-        }
-        if (dt.dictionaryWaniKaniApiToken === undefined) {
-            (dt as any).dictionaryWaniKaniApiToken = defaultTrack.dictionaryWaniKaniApiToken;
-        }
-        if (dt.dictionaryMatchAcrossScripts === undefined) {
-            (dt as any).dictionaryMatchAcrossScripts = defaultTrack.dictionaryMatchAcrossScripts;
-        }
-    }
-    while (dictionaryTracks.length < NUM_DICTIONARY_TRACKS) {
-        dictionaryTracks.push(defaultTrack);
-    }
-    while (dictionaryTracks.length > NUM_DICTIONARY_TRACKS) {
-        dictionaryTracks.pop();
-    }
 };
 
 const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) => {
@@ -764,6 +531,7 @@ const ensureStreamingPagesConsistency = (settings: Partial<AsbplayerSettings>) =
 };
 
 export const ensureConsistencyOnRead = (settings: Partial<AsbplayerSettings>) => {
+    ensureRecipeConsistency(settings);
     ensureDictionaryTracksConsistency(settings);
     ensureStreamingPagesConsistency(settings);
 
@@ -836,7 +604,8 @@ export class SettingsProvider {
     }
 
     async get<K extends keyof AsbplayerSettings>(keys: K[]): Promise<Pick<AsbplayerSettings, K>> {
-        const parameters: Partial<AsbplayerSettings> = {};
+        const includeRecipes = keys.includes('activeRecipeId' as K) && !keys.includes('recipes' as K);
+        const parameters: Partial<AsbplayerSettings> = includeRecipes ? { recipes: defaultSettings.recipes } : {};
 
         for (const key of keys) {
             parameters[key] = defaultSettings[key];
@@ -862,7 +631,9 @@ export class SettingsProvider {
             }
         }
 
-        return ensureConsistencyOnRead(result) as Pick<AsbplayerSettings, K>;
+        const consistent = ensureConsistencyOnRead(result);
+        if (includeRecipes) delete (consistent as any).recipes;
+        return consistent as Pick<AsbplayerSettings, K>;
     }
 
     async set(settings: Partial<AsbplayerSettings>): Promise<void> {
@@ -870,6 +641,25 @@ export class SettingsProvider {
     }
 
     private async _ensureConsistencyOnWrite(settings: Partial<AsbplayerSettings>) {
+        if (settings.recipes !== undefined) {
+            if (settings.activeRecipeId === undefined) {
+                settings = { ...settings, activeRecipeId: await this.getSingle('activeRecipeId') };
+            }
+            ensureRecipeConsistency(settings);
+        } else if (settings.activeRecipeId !== undefined) {
+            // Only write the selection: writing a list read here could overwrite another context's recipe edits.
+            const current = await this._storage.get({ recipes: defaultSettings.recipes });
+            const validIndexes = Array.isArray(current.recipes)
+                ? current.recipes.flatMap((recipe, index) => (normalizeRecipe(recipe) ? [index] : []))
+                : [];
+            settings = {
+                ...settings,
+                activeRecipeId:
+                    settings.activeRecipeId !== null && Number.isSafeInteger(settings.activeRecipeId)
+                        ? (validIndexes[settings.activeRecipeId] ?? null)
+                        : null,
+            };
+        }
         ensureDictionaryTracksConsistency(settings);
 
         if (settings.customAnkiFields === undefined) {

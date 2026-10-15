@@ -1,3 +1,4 @@
+import RecipeSelect from '@project/common/components/RecipeSelect';
 import type { MutableRefObject } from 'react';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,7 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import type { AudioTrackModel, PlayMode, VideoTabModel } from '@project/common';
-import type { SubtitleAlignment } from '@project/common/settings';
+import type { Recipe, SubtitleAlignment } from '@project/common/settings';
 import type Clock from '@project/common/playback/timing/clock';
 import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
 import Tooltip from '@project/common/components/Tooltip';
@@ -611,6 +612,9 @@ interface ControlsProps {
     closeEnabled?: boolean;
     onClose?: () => void;
     volumeEnabled?: boolean;
+    recipes?: readonly Recipe[];
+    activeRecipeId?: number | null;
+    onRecipeSelect?: (index: number | null) => void;
     playModes?: Set<PlayMode>;
     previewEnabled: boolean;
     playModeEnabled?: boolean;
@@ -672,6 +676,9 @@ export default function Controls({
     closeEnabled,
     onClose,
     volumeEnabled,
+    recipes,
+    activeRecipeId,
+    onRecipeSelect,
     playModes,
     playModeEnabled,
     onPlayMode,
@@ -1194,6 +1201,13 @@ export default function Controls({
                                                 />
                                             </IconButton>
                                         </Tooltip>
+                                    )}
+                                    {recipes && onRecipeSelect && (
+                                        <RecipeSelect
+                                            recipes={recipes}
+                                            activeRecipeId={activeRecipeId ?? null}
+                                            onSelect={onRecipeSelect}
+                                        />
                                     )}
                                     {popOutEnabled && (
                                         <Tooltip title={popOut ? t('controls.popIn') : t('controls.popOut')}>

@@ -779,6 +779,8 @@ export default class VideoChannel {
         const message: MiscSettingsToVideoMessage = {
             command: 'miscSettings',
             value: {
+                recipes: settings.recipes,
+                activeRecipeId: settings.activeRecipeId,
                 themeType,
                 videoSubtitleSplitBehavior,
                 showSubtitleListMiningButton,

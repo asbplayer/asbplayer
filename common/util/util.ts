@@ -1210,3 +1210,23 @@ export class AsyncSemaphore {
         }
     }
 }
+
+export const minimumPlaybackRate = 0.01;
+export const maximumPlaybackRate = 16;
+
+export const roundPlaybackRate = (playbackRate: number): number => Math.round(playbackRate * 1000) / 1000;
+
+export const normalizePlaybackRate = (playbackRate: number): number | undefined => {
+    if (!Number.isFinite(playbackRate)) return;
+    return Math.min(maximumPlaybackRate, Math.max(minimumPlaybackRate, roundPlaybackRate(playbackRate)));
+};
+
+export const normalizeAutoPauseDurationBounds = (minimumDurationMs: number, maximumDurationMs: number) => {
+    const minimum = normalizeNonNegative(minimumDurationMs);
+    const maximum = normalizeNonNegative(maximumDurationMs);
+
+    return {
+        minimumDurationMs: minimum,
+        maximumDurationMs: maximum === 0 ? 0 : Math.max(minimum, maximum),
+    };
+};

@@ -1,5 +1,17 @@
+import {
+    normalizeAutoPauseDurationBounds,
+    areSubtitleModelsEqual,
+    arrayEquals,
+    fieldsEqual,
+    normalizeFinite,
+    normalizeNonNegative,
+    normalizeNonPositive,
+} from '@project/common/util';
+import type { FieldComparators } from '@project/common/util';
+
 import { AutoPausePreference, PlayMode } from '@project/common';
 import type { IndexedSubtitleModel, Token } from '@project/common';
+
 import type {
     PlaybackTimelineBlock,
     PlaybackTimelineAdaptiveRate,
@@ -14,6 +26,7 @@ import {
     SubtitleVisibility,
 } from '@project/common/settings';
 import type { DictionaryTrack, DictionaryPlaybackConfig, DictionaryPlaybackFeature } from '@project/common/settings';
+
 import {
     subtitleWordVisibility,
     matchingPlaybackTokens,
@@ -22,15 +35,7 @@ import {
 import { sentenceComprehensionPercent } from '@project/common/dictionary-statistics/dictionary-statistics-view';
 import { compilePlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
 import type { PlaybackTimelineSubtitles } from '@project/common/playback/timeline/playback-timeline-compiler';
-import {
-    areSubtitleModelsEqual,
-    arrayEquals,
-    fieldsEqual,
-    normalizeFinite,
-    normalizeNonNegative,
-    normalizeNonPositive,
-} from '@project/common/util';
-import type { FieldComparators } from '@project/common/util';
+
 import { asbTrace } from '@project/common/util/log';
 
 export const playbackPlanCorrectionToleranceMs = 0.5;
@@ -116,16 +121,6 @@ const autoPausePreferenceIncludes = (
 ) => preference === edge || preference === AutoPausePreference.atStartAndEnd;
 
 export const timestampComparisonToleranceMs = 1e-6;
-
-export const normalizeAutoPauseDurationBounds = (minimumDurationMs: number, maximumDurationMs: number) => {
-    const minimum = normalizeNonNegative(minimumDurationMs);
-    const maximum = normalizeNonNegative(maximumDurationMs);
-
-    return {
-        minimumDurationMs: minimum,
-        maximumDurationMs: maximum === 0 ? 0 : Math.max(minimum, maximum),
-    };
-};
 
 interface DictionaryPlaybackContext {
     readonly playbackConfig: (track: number) => DictionaryPlaybackConfig | undefined;

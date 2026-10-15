@@ -707,10 +707,6 @@ In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phase
 
 - **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
 
-### Primed listening {#primed-listening}
-
-Primed listening is a technique for language learning where you read the native-language subtitle, watch it disappear, and then hear the target-language audio without subtitles. This can be achieved by combining [Auto-pause preference](#auto-pause-preference), **Subtitle length** under [Auto-pause resume mode](#auto-pause-resume-mode), **While paused** under [Show subtitles](#show-subtitles), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
-
 ## [Playback > Annotation](https://app.asbplayer.dev/?view=settings#playback) {#playback-annotation}
 
 These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.

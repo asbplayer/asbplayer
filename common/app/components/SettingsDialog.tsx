@@ -48,6 +48,7 @@ const useStyles = makeStyles<Theme>((theme) => ({
 interface Props {
     anki: Anki;
     extension: ChromeExtension;
+    supportsDictionaryPlayback: boolean;
     open: boolean;
     dictionaryProvider: DictionaryProvider;
     logProvider: LogProvider;
@@ -65,6 +66,7 @@ interface Props {
 export default function SettingsDialog({
     anki,
     extension,
+    supportsDictionaryPlayback,
     open,
     dictionaryProvider,
     logProvider,
@@ -127,7 +129,7 @@ export default function SettingsDialog({
                     extensionSupportsDictionaryTokenStatusDisplayAlpha={
                         extension.supportsDictionaryTokenStatusDisplayAlpha
                     }
-                    extensionSupportsDictionaryPlayback={extension.supportsDictionaryPlayback}
+                    supportsDictionaryPlayback={supportsDictionaryPlayback}
                     extensionSupportsDictionaryYomitanMecab={extension.supportsDictionaryYomitanMecab}
                     extensionSupportsSubtitleTrackSelectorInWebApp={extension.supportsSubtitleTrackSelectorInWebApp}
                     extensionSupportsSubtitleListCustomization={extension.supportsSubtitleListCustomization}

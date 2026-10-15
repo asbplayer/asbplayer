@@ -1,10 +1,13 @@
-import type { MutableRefObject } from 'react';
+import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import React, { useEffect, useState, useMemo, useCallback, useRef, useImperativeHandle } from 'react';
+import type { MutableRefObject } from 'react';
+
 import { makeStyles } from '@mui/styles';
 import type { Theme } from '@mui/material';
 import Button from '@mui/material/Button';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
+import { AutoPausePreference, PlayMode, PostMinePlayback } from '@project/common';
 import type {
     AudioTrackModel,
     CardModel,
@@ -17,9 +20,10 @@ import type {
     TokenizedSubtitleModel,
     VideoTabModel,
 } from '@project/common';
-import { AutoPausePreference, PlayMode, PostMinePlayback } from '@project/common';
-import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+
 import { ApplyStrategy, isTrackAutoCopyable, TokenState, VideoSubtitleSplitBehavior } from '@project/common/settings';
+import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import { SubtitleCollection } from '@project/common/subtitle-collection';
 import { HoveredToken, SubtitleAnnotations } from '@project/common/annotations';
@@ -34,11 +38,17 @@ import {
     timeDurationDisplay,
     ensureStoragePersisted,
 } from '@project/common/util';
+import PlaybackEngine, {
+    formatRecipeNotification,
+    formatRecipeSettingLockedNotification,
+} from '@project/common/playback/playback-engine';
+import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
 import BroadcastChannelVideoProtocol from '@project/common/app/services/broadcast-channel-video-protocol';
 import ChromeTabVideoProtocol from '@project/common/app/services/chrome-tab-video-protocol';
 import Clock from '@project/common/playback/timing/clock';
-import type { Point } from '@project/common/app/components/Controls';
 import Controls from '@project/common/app/components/Controls';
+import type { Point } from '@project/common/app/components/Controls';
+
 import Grid from '@mui/material/Grid';
 import MediaAdapter from '@project/common/app/services/media-adapter';
 import SubtitlePlayer, { minSubtitlePlayerWidth } from '@project/common/app/components/SubtitlePlayer';
@@ -56,8 +66,7 @@ import {
 } from '@project/common/app/components/video-subtitle-split';
 import type { FileWithId } from '@project/common/file-selector';
 import AnimationFrameTimingDriver from '@project/common/playback/timing/animation-frame-timing-driver';
-import PlaybackEngine from '@project/common/playback/playback-engine';
-import { playbackModeNotificationJoin } from '@project/common/playback/controllers/playback-mode-controller';
+
 import {
     buildPlaybackTimelineExportPlan,
     playbackTimelineSettingsSummary,
@@ -67,9 +76,11 @@ import type {
     PlaybackTimelineModeLabels,
     PlaybackTimelineOptionLabels,
 } from '@project/common/playback/timeline/playback-timeline-html';
+
 import { createTheme } from '@project/common/theme/theme';
 import Alert from '@project/common/app/components/Alert';
 import type { AlertNotification } from '@project/common/app/components/Alert';
+
 import useSnackbar from '@project/common/hooks/use-snackbar';
 import {
     claimTokenSelectionFocus,
@@ -141,11 +152,12 @@ interface PlayerProps {
     dictionaryProvider: DictionaryProvider;
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
-    onSettingsChanged?: (settings: Partial<AsbplayerSettings>) => void;
+    onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     profile?: string;
     playbackPreferences: PlaybackPreferenceController;
     keyBinder: KeyBinder;
     extension: ChromeExtension;
+    supportsDictionaryPlayback: boolean;
     videoFrameRef?: MutableRefObject<HTMLIFrameElement | null>;
     videoChannelRef?: MutableRefObject<VideoChannel | null>;
     drawerOpen: boolean;
@@ -204,6 +216,7 @@ function PlayerComponent(
         playbackPreferences,
         keyBinder,
         extension,
+        supportsDictionaryPlayback,
         videoFrameRef,
         videoChannelRef,
         drawerOpen,
@@ -243,6 +256,7 @@ function PlayerComponent(
     ref: React.ForwardedRef<PlayerRef>
 ) {
     const { t } = useTranslation();
+    const playbackSettings = useMemo(() => effectiveSettings(settings), [settings]);
     const [playModes, setPlayModes] = useState<Set<PlayMode>>(() => new Set([PlayMode.normal]));
     const playModesRef = useRef<Set<PlayMode>>(playModes);
     playModesRef.current = playModes;
@@ -319,7 +333,7 @@ function PlayerComponent(
 
     const handleDownloadSubtitleTimeline = useCallback(() => {
         const displaySubtitles = subtitlesRef.current ?? [];
-        const timelineSettingsSummary = playbackTimelineSettingsSummary(settings, playbackTimelineOptionLabels);
+        const timelineSettingsSummary = playbackTimelineSettingsSummary(playbackSettings, playbackTimelineOptionLabels);
         const timelineTracks = [...new Set(displaySubtitles.map((subtitle) => subtitle.track))]
             .sort((left, right) => left - right)
             .map((track) => ({
@@ -333,7 +347,7 @@ function PlayerComponent(
         const playbackPlan = buildPlaybackTimelineExportPlan({
             subtitles: playbackSubtitles,
             durationMs: calculateLengthMs(videoDurationRef, displaySubtitles),
-            settings,
+            settings: playbackSettings,
             playbackRate,
         });
         const title = playbackTimelineFileName ?? 'Subtitle playback timeline';
@@ -342,7 +356,7 @@ function PlayerComponent(
                 [
                     playbackTimelineToHtml({
                         plan: playbackPlan,
-                        themeColor: createTheme(settings.themeType).palette.primary.main,
+                        themeColor: createTheme(playbackSettings.themeType).palette.primary.main,
                         title,
                         modeLabels: playbackTimelineModeLabels,
                         timelineOptionsTitle: timelineSettingsSummary.title,
@@ -355,10 +369,10 @@ function PlayerComponent(
                             condensed: currentPlayModes.has(PlayMode.condensed),
                             autoPauseAtStart:
                                 currentPlayModes.has(PlayMode.autoPause) &&
-                                settings.autoPausePreference !== AutoPausePreference.atEnd,
+                                playbackSettings.autoPausePreference !== AutoPausePreference.atEnd,
                             autoPauseAtEnd:
                                 currentPlayModes.has(PlayMode.autoPause) &&
-                                settings.autoPausePreference !== AutoPausePreference.atStart,
+                                playbackSettings.autoPausePreference !== AutoPausePreference.atStart,
                             repeat: currentPlayModes.has(PlayMode.repeat),
                         },
                         timelineSubtitles: displaySubtitles,
@@ -368,7 +382,13 @@ function PlayerComponent(
             ),
             `${title}.html`
         );
-    }, [playbackRate, playbackTimelineFileName, playbackTimelineModeLabels, playbackTimelineOptionLabels, settings]);
+    }, [
+        playbackRate,
+        playbackTimelineFileName,
+        playbackTimelineModeLabels,
+        playbackTimelineOptionLabels,
+        playbackSettings,
+    ]);
 
     useImperativeHandle(ref, () => ({ downloadSubtitleTimeline: handleDownloadSubtitleTimeline }), [
         handleDownloadSubtitleTimeline,
@@ -516,9 +536,34 @@ function PlayerComponent(
                 },
                 playbackStateChanged: setPlaybackState,
                 playbackPositionChanged: setPendingPlaybackPosition,
-                saveSettings: (settings) => {
-                    if (onSettingsChanged !== undefined) onSettingsChanged(settings);
-                    else void settingsProvider.set(settings).catch(onError);
+                saveSettings: onSettingsChanged,
+                settingChangeBlocked: (settingLocKey) => {
+                    const notification = formatRecipeSettingLockedNotification(settingLocKey);
+                    setAlert({
+                        open: true,
+                        notifications: [
+                            {
+                                key: notification.key,
+                                message: notification.text(t),
+                                severity: 'info',
+                            },
+                        ],
+                    });
+                },
+                recipeChanged: (name, transition) => {
+                    synchronizePlaybackModes(transition.modes);
+                    if (!subtitlesRef.current?.length) return;
+                    const notification = formatRecipeNotification(name);
+                    setAlert({
+                        open: true,
+                        notifications: [
+                            {
+                                key: notification.key,
+                                message: notification.text(t),
+                                severity: 'info',
+                            },
+                        ],
+                    });
                 },
                 playbackModesChanged: ({ modes }) => synchronizePlaybackModes(modes),
                 initialPlaybackSettingsChanged: (settings) => {
@@ -533,17 +578,24 @@ function PlayerComponent(
                             : t(notification.notification.locKey, notification.notification.replacements)
                     );
                     synchronizePlaybackModes(settings.playbackModeTransition.modes);
-                    if (!notifications.length) return;
-                    setAlert({
-                        open: true,
-                        notifications: [
-                            {
-                                message: notifications.join(playbackModeNotificationJoin),
-                                severity: 'info',
-                                autoHideDuration: settings.autoHideDuration,
-                            },
-                        ],
-                    });
+                    const alerts: AlertNotification[] = [];
+                    if (notifications.length) {
+                        alerts.push({
+                            message: notifications.join(playbackModeNotificationJoin),
+                            severity: 'info',
+                            autoHideDuration: settings.autoHideDuration,
+                        });
+                    }
+                    if (settings.recipeName !== null) {
+                        const notification = formatRecipeNotification(settings.recipeName);
+                        alerts.push({
+                            key: notification.key,
+                            message: notification.text(t),
+                            severity: 'info',
+                            autoHideDuration: settings.autoHideDuration,
+                        });
+                    }
+                    if (alerts.length) setAlert({ open: true, notifications: alerts });
                 },
                 onError: (error) => {
                     asbTrace('playback/player', 'Synthetic playback owner reported an error', { error });
@@ -1285,12 +1337,14 @@ function PlayerComponent(
     const handlePlaybackRateChange = useCallback(
         (playbackRate: number) => {
             if (syntheticPlaybackEngineRef.current) {
-                notifyPlaybackRate(syntheticPlaybackEngineRef.current.playbackRateChanged(playbackRate));
+                notifyPlaybackRate(
+                    syntheticPlaybackEngineRef.current.playbackRateChanged(playbackRate, { notifyBlocked: true })
+                );
                 return;
             }
-            updatePlaybackRate(playbackRate, true);
+            mediaAdapter.playbackRate(playbackRate);
         },
-        [notifyPlaybackRate, updatePlaybackRate]
+        [notifyPlaybackRate, mediaAdapter]
     );
 
     const handlePlayMode = useCallback(
@@ -1628,6 +1682,9 @@ function PlayerComponent(
                             onAudioTrackSelected={handleAudioTrackSelected}
                             onTabSelected={onTabSelected}
                             onOffsetChange={handleOffsetChange}
+                            recipes={supportsDictionaryPlayback ? settings.recipes : undefined}
+                            activeRecipeId={settings.activeRecipeId}
+                            onRecipeSelect={(activeRecipeId) => onSettingsChanged({ activeRecipeId })}
                             onPlayMode={handlePlayMode}
                             onLoadSubtitles={onLoadSubtitles}
                             disableKeyEvents={disableKeyEvents}
@@ -1637,6 +1694,7 @@ function PlayerComponent(
                         />
                     )}
                     <SubtitlePlayer
+                        onSettingsChanged={onSettingsChanged}
                         subtitles={subtitles}
                         subtitleCollection={subtitleCollection}
                         playbackState={playbackState}

@@ -4,7 +4,15 @@ import type { KeyBindSet, SeekableTracks, TokenJumpTarget } from '@project/commo
 import { isTrackSeekable, TokenState, TokenStatus } from '@project/common/settings';
 import { adjacentSubtitle } from '@project/common/util';
 
+export type RecipeShortcut = 'cycleForward' | 'cycleBackward' | 'clear' | number;
+
 export interface KeyBinder {
+    bindRecipes(
+        onRecipe: (event: KeyboardEvent, action: RecipeShortcut) => void,
+        disabledGetter: () => boolean,
+        subtitlesGetter: () => readonly SubtitleModel[] | undefined,
+        capture?: boolean
+    ): () => void;
     bindCopy<T extends SubtitleModel = SubtitleModel>(
         onCopy: (event: KeyboardEvent, subtitle: T) => void,
         disabledGetter: () => boolean,
@@ -964,6 +972,33 @@ export class DefaultKeyBinder implements KeyBinder {
         };
 
         return this._bind(shortcut, capture, handler);
+    }
+
+    bindRecipes(
+        onRecipe: (event: KeyboardEvent, action: RecipeShortcut) => void,
+        disabledGetter: () => boolean,
+        subtitlesGetter: () => readonly SubtitleModel[] | undefined,
+        capture = false
+    ): () => void {
+        const bindings: [keyof KeyBindSet, RecipeShortcut][] = [
+            ['cycleRecipesForward', 'cycleForward'],
+            ['cycleRecipesBackward', 'cycleBackward'],
+            ['clearRecipe', 'clear'],
+            ...Array.from({ length: 10 }, (_, index): [keyof KeyBindSet, number] => [
+                `selectRecipe${index + 1}` as keyof KeyBindSet,
+                index,
+            ]),
+        ];
+        const unbind = bindings
+            .filter(([key]) => this.keyBindSet[key].keys)
+            .map(([key, action]) =>
+                this._bind(this.keyBindSet[key].keys, capture, (event: KeyboardEvent) => {
+                    if (disabledGetter() || !subtitlesGetter()?.length) return false;
+                    onRecipe(event, action);
+                    return true;
+                })
+            );
+        return () => unbind.forEach((callback) => callback());
     }
 
     bindToggleRepeat(onToggleRepeat: (event: KeyboardEvent) => void, disabledGetter: () => boolean, capture = false) {

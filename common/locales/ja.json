@@ -179,7 +179,11 @@
         "jumpToNextToken": "Jump to next {{type}} word",
         "jumpToPreviousToken": "Jump to previous {{type}} word",
         "jumpToTokenHelperText": "Use these shortcuts with Yomitan's 'Scan selected text' shortcut for keyboard only control and lookups.",
-        "openStatistics": "統計を開く"
+        "openStatistics": "統計を開く",
+        "cycleRecipesForward": "Cycle through recipes forward",
+        "cycleRecipesBackward": "Cycle through recipes backward",
+        "clearRecipe": "Disable recipe",
+        "selectRecipe": "Select recipe #{{number}}"
     },
     "controls": {
         "autoPauseMode": "自動一時停止",
@@ -828,5 +832,19 @@
         "categoryDrama": "Drama",
         "episodeRegex": "カスタム話数正規表現",
         "episodeRegexHint": "ページタイトルから話数を検出し、ファイルを自動で絞り込みます。1番目のキャプチャグループが話数で、一致しない場合は組み込みルールを使用します。Enterで適用。"
+    },
+    "recipes": {
+        "recipe": "Recipe",
+        "edit": "Edit Recipe",
+        "save": "Save Recipe",
+        "import": "Import Recipe",
+        "paste": "Paste recipe JSON",
+        "invalid": "This recipe is invalid, check for any formatting errors.",
+        "importUrl": "Import URL",
+        "readOnly": "Playback settings are read only while a recipe is active, disable or edit the recipe to change settings.",
+        "introduction": "Recipes combine playback modes and settings for different learning activities. <docs>Learn about recipes and importing presets</docs>.",
+        "notification": "Recipe: {{name}}",
+        "settingLocked": "{{setting}} can't be changed while a Recipe is active",
+        "confirmDelete": "Delete \"{{name}}\"?"
     }
 }

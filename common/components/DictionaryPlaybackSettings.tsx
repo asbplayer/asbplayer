@@ -1,3 +1,13 @@
+import {
+    minimumWholeSubtitleMatchThreshold,
+    maximumWholeSubtitleMatchThreshold,
+    dictionaryPlaybackFeatures,
+    dictionaryPlaybackGroupSettingsEnabled,
+    NUM_TOKEN_STATUSES,
+    NUM_TOKEN_STATES,
+    TokenState,
+} from '@project/common/settings';
+import type { DictionaryPlaybackConfig, DictionaryPlaybackFeature } from '@project/common/settings';
 import React from 'react';
 import { tokenStatusSelectionLabels } from '@project/common/util';
 import { useTranslation } from 'react-i18next';
@@ -11,14 +21,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
-import type { DictionaryPlaybackConfig, DictionaryPlaybackFeature } from '@project/common/settings';
-import {
-    dictionaryPlaybackFeatures,
-    dictionaryPlaybackGroupSettingsEnabled,
-    NUM_TOKEN_STATUSES,
-    NUM_TOKEN_STATES,
-    TokenState,
-} from '@project/common/settings';
+
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
@@ -26,6 +29,7 @@ import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettin
 
 interface Props {
     config: DictionaryPlaybackConfig;
+    disabled?: boolean;
     onChange: (config: DictionaryPlaybackConfig) => void;
 }
 
@@ -43,7 +47,7 @@ const optionValues = (value: unknown): number[] => {
     return [];
 };
 
-const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
+const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange, disabled = false }) => {
     const { t } = useTranslation();
     const label = (value: number) =>
         value < NUM_TOKEN_STATUSES
@@ -85,6 +89,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                         <Stack spacing={1}>
                             <SettingsTextField
                                 select
+                                disabled={disabled}
                                 fullWidth
                                 color="primary"
                                 variant="outlined"
@@ -142,7 +147,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                         fullWidth
                                         color="primary"
                                         label={t('settings.dictionaryPlaybackMinWords')}
-                                        disabled={!selected.length}
+                                        disabled={disabled || !selected.length}
                                         value={rules.minWords}
                                         commitOnBlur
                                         normalizeValue={(value) =>
@@ -155,7 +160,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                         fullWidth
                                         color="primary"
                                         label={t('settings.dictionaryPlaybackMaxWords')}
-                                        disabled={!selected.length}
+                                        disabled={disabled || !selected.length}
                                         value={rules.maxWords}
                                         commitOnBlur
                                         normalizeValue={(value) =>
@@ -174,7 +179,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                     fullWidth
                                     color="primary"
                                     label={t('settings.dictionaryPlaybackMinFrequency')}
-                                    disabled={!selected.length}
+                                    disabled={disabled || !selected.length}
                                     value={rules.minFrequency}
                                     commitOnBlur
                                     normalizeValue={(value) =>
@@ -187,7 +192,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                     fullWidth
                                     color="primary"
                                     label={t('settings.dictionaryPlaybackMaxFrequency')}
-                                    disabled={!selected.length}
+                                    disabled={disabled || !selected.length}
                                     value={rules.maxFrequency}
                                     commitOnBlur
                                     normalizeValue={(value) =>
@@ -206,9 +211,14 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                         fullWidth
                                         color="primary"
                                         label={t('settings.dictionaryPlaybackWholeSubtitleMatchThreshold')}
-                                        disabled={!selected.length}
+                                        disabled={disabled || !selected.length}
                                         value={config.wordVisibility.wholeSubtitleMatchThreshold * 100}
-                                        normalizeValue={(value) => Math.min(100, Math.max(1, Math.floor(value)))}
+                                        normalizeValue={(value) =>
+                                            Math.min(
+                                                maximumWholeSubtitleMatchThreshold * 100,
+                                                Math.max(minimumWholeSubtitleMatchThreshold * 100, Math.floor(value))
+                                            )
+                                        }
                                         onValueChange={(value) =>
                                             onChange({
                                                 ...config,
@@ -220,13 +230,17 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                         }
                                         slotProps={{
                                             input: { endAdornment: <InputAdornment position="end">%</InputAdornment> },
-                                            htmlInput: { min: 1, max: 100, step: 1 },
+                                            htmlInput: {
+                                                min: minimumWholeSubtitleMatchThreshold * 100,
+                                                max: maximumWholeSubtitleMatchThreshold * 100,
+                                                step: 1,
+                                            },
                                         }}
                                     />
                                     <SwitchLabelWithHoverEffect
                                         control={
                                             <Switch
-                                                disabled={!selected.length}
+                                                disabled={disabled || !selected.length}
                                                 checked={config.wordVisibility.hideWordsIndividuallyUntilThreshold}
                                                 onChange={(event) =>
                                                     onChange({
@@ -248,6 +262,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                 <SwitchLabelWithHoverEffect
                                     control={
                                         <Switch
+                                            disabled={disabled}
                                             checked={config.fastForward.rateByComprehension.enabled}
                                             onChange={(event) =>
                                                 onChange({

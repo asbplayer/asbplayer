@@ -1,16 +1,35 @@
-import { defaultSettings, isTrackSeekable } from '@project/common/settings';
+import { formatAsSignedMs, minimumPlaybackRate, normalizePlaybackRate } from '@project/common/util';
+import PlaybackModeController, {
+    playbackModesFromSettings,
+} from '@project/common/playback/controllers/playback-mode-controller';
+import AutoPauseController, {
+    formatAutoPauseResumeModeNotification,
+    nextAutoPauseResumeMode,
+} from '@project/common/playback/controllers/auto-pause-controller';
+import SubtitleVisibilityController, {
+    formatSubtitleVisibilityNotification,
+    nextSubtitleVisibility,
+} from '@project/common/playback/controllers/subtitle-visibility-controller';
+import type { PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
+import type { AutoPauseResumeModeNotification } from '@project/common/playback/controllers/auto-pause-controller';
+import type { SubtitleVisibilityNotification } from '@project/common/playback/controllers/subtitle-visibility-controller';
+
+import { activeRecipe, effectiveSettings, defaultSettings, isTrackSeekable } from '@project/common/settings';
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
+
+import { PlayMode } from '@project/common';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
 import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
-import { PlayMode } from '@project/common';
+
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
-import { formatAsSignedMs } from '@project/common/util';
+
 import {
     buildPlaybackPlan,
     playbackPlansEqual,
     playbackPlanCorrectionToleranceMs,
 } from '@project/common/playback/plan/playback-plan';
 import type { PlaybackPlan } from '@project/common/playback/plan/playback-plan';
+
 import PlaybackPlanExecutor, {
     maximumInternalSeekMismatchMs,
 } from '@project/common/playback/plan/playback-plan-executor';
@@ -18,31 +37,16 @@ import type {
     PlaybackPlanExecutorCallbacks,
     PlaybackTimelineTransitionCause,
 } from '@project/common/playback/plan/playback-plan-executor';
-import PlaybackModeController, {
-    minimumPlaybackRate,
-    normalizePlaybackRate,
-    playbackModesFromSettings,
-} from '@project/common/playback/controllers/playback-mode-controller';
-import type { PlayModeTransition } from '@project/common/playback/controllers/playback-mode-controller';
-import AutoPauseController, {
-    formatAutoPauseResumeModeNotification,
-    nextAutoPauseResumeMode,
-} from '@project/common/playback/controllers/auto-pause-controller';
-import type { AutoPauseResumeModeNotification } from '@project/common/playback/controllers/auto-pause-controller';
+
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
-import SubtitleVisibilityController, {
-    formatSubtitleVisibilityNotification,
-    nextSubtitleVisibility,
-} from '@project/common/playback/controllers/subtitle-visibility-controller';
-import type { SubtitleVisibilityNotification } from '@project/common/playback/controllers/subtitle-visibility-controller';
+
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
 
 const internalSeekWatchdogMs = 10_000;
 const subtitleOffsetStorageKey = 'offset';
 const initialPlaybackSettingsAutoHideDurationMs = 6000;
-const playbackRateNotificationKey = 'playback-rate';
 const subtitleOffsetNotificationKey = 'subtitle-offset';
 
 const playbackPlanTraceDetails = <T extends IndexedSubtitleModel>(plan: PlaybackPlan<T>) => ({
@@ -62,17 +66,7 @@ const playbackModeTransitionTraceDetails = ({ modes, added, removed }: PlayModeT
     removed: [...removed],
 });
 
-export interface SubtitleOffsetOptions {
-    readonly notifyPlayer: boolean;
-}
-
-export interface InitialPlaybackSettings {
-    readonly autoHideDuration: number;
-    readonly playbackRate: number;
-    readonly subtitleOffset: number;
-    readonly playbackModeTransition: PlayModeTransition;
-    readonly notifications: InitialPlaybackSettingsNotifications;
-}
+const playbackRateNotificationKey = 'playback-rate';
 
 export interface PlaybackRateNotification {
     readonly key: typeof playbackRateNotificationKey;
@@ -88,6 +82,32 @@ export function formatPlaybackRateNotification(playbackRate: number, locKey: str
             rate: String(Number(playbackRate.toFixed(2))),
         },
     };
+}
+
+type Localizer = (locKey: string, replacements?: Record<string, unknown>) => string;
+
+export const formatRecipeNotification = (name: string | null) => ({
+    key: 'recipe',
+    text: (localize: Localizer) =>
+        localize('recipes.notification', { name: name ?? localize('pauseOnHoverMode.disabled') }),
+});
+
+export const formatRecipeSettingLockedNotification = (settingLocKey: string) => ({
+    key: 'recipe-setting-locked',
+    text: (localize: Localizer) => localize('recipes.settingLocked', { setting: localize(settingLocKey) }),
+});
+
+export interface SubtitleOffsetOptions {
+    readonly notifyPlayer: boolean;
+}
+
+export interface InitialPlaybackSettings {
+    readonly autoHideDuration: number;
+    readonly playbackRate: number;
+    readonly subtitleOffset: number;
+    readonly playbackModeTransition: PlayModeTransition;
+    readonly notifications: InitialPlaybackSettingsNotifications;
+    readonly recipeName: string | null;
 }
 
 export type InitialPlaybackNotification =
@@ -115,6 +135,8 @@ export interface PlaybackEngineCallbacks {
     readonly playbackStateChanged: (state: PlaybackState) => void;
     readonly playbackPositionChanged: (position: number | undefined) => void;
     readonly saveSettings: (settings: Partial<AsbplayerSettings>) => void;
+    readonly recipeChanged: (name: string | null, transition: PlayModeTransition) => void;
+    readonly settingChangeBlocked: (settingLocKey: string) => void;
     readonly playbackModesChanged: (transition: PlayModeTransition) => void;
     readonly initialPlaybackSettingsChanged: (settings: InitialPlaybackSettings) => void;
     readonly onError: (error: unknown) => void;
@@ -159,6 +181,8 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  */
 export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private settings: AsbplayerSettings;
+    private underlyingSettings: AsbplayerSettings = defaultSettings;
+    private underlyingPlaybackModes?: Set<PlayMode>;
     private readonly appIntegration: boolean;
     private readonly autoPauseCorrectionDisabled: boolean;
     private readonly subtitleOffsetStorage = new CachedLocalStorage();
@@ -481,11 +505,16 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     });
                     return;
                 }
-                this.settings = settings;
+                this.underlyingPlaybackModes = undefined;
+                this.underlyingSettings = settings;
+                this.settings = effectiveSettings(settings);
                 this.lastProfile = profile;
                 this.playbackPositionController.setSettings(this.settings);
                 this.ready.settings = true;
                 asbTrace('playback/settings', 'Playback settings initialized', {
+                    activeRecipeId: settings.activeRecipeId,
+                    recipeName: activeRecipe(this.settings)?.name ?? null,
+                    recipeSettingKeys: Object.keys(activeRecipe(this.settings)?.settings ?? {}),
                     lastPlaybackModes: settings.lastPlaybackModes,
                     profile,
                     settingsChangedOperationId,
@@ -552,7 +581,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         this.timingDriver.bind();
         this.playbackPositionController.bind();
 
-        const playbackModeTransition = this.playbackModeController.setModes(playbackModesFromSettings(this.settings));
+        const playbackModeTransition = this.playbackModeController.setModes(this.recipePlaybackModes());
         this.timingDriver.onDurationChange();
         this.rebuildPlan({ initializePlaybackRate: true });
 
@@ -571,8 +600,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             subtitleOffset,
             playbackModeTransition,
             notifications,
+            recipeName: activeRecipe(this.settings)?.name ?? null,
         });
         asbTrace('playback/lifecycle', 'Playback engine bound', {
+            activeRecipeId: this.settings.activeRecipeId,
+            recipeName: activeRecipe(this.settings)?.name ?? null,
             initialPlaybackRate: playbackRate,
             modeTransition: playbackModeTransitionTraceDetails(playbackModeTransition),
             notifications: notifications.offsetAndRate.length,
@@ -624,10 +656,10 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         // Need to update these as PlaybackEngine doesn't keep them all synced with external settings.
         // lastPlaybackPositions are managed by the playbackPositionController and should not be explicitly saved here.
         this.callbacks.saveSettings({
-            lastPlaybackModes: this.settings.lastPlaybackModes,
+            ...(!activeRecipe(this.settings) ? { lastPlaybackModes: this.settings.lastPlaybackModes } : {}),
             ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
-            rememberPlaybackRate: this.settings.rememberPlaybackRate, // This is done to ensure everyone is notified as its not in saveOnlySettings
-            ...(this.settings.rememberPlaybackRate
+            rememberPlaybackRate: this.underlyingSettings.rememberPlaybackRate, // This is done to ensure everyone is notified as its not in saveOnlySettings
+            ...(this.settings.rememberPlaybackRate && !activeRecipe(this.settings)
                 ? {
                       playbackRate: this.settings.playbackRate,
                       fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
@@ -660,20 +692,47 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         // PlaybackEngine is the single source of truth for these settings and may not push updates to the settings from outside.
         // For playbackRate, this has a side effect of ignoring changes in the UI for the current playback. This is acceptable and
         // means that playback rate in the UI is for init only, live playback rate changes must be through other means.
-        this.settings = {
+        const previousRecipeId = this.settings.activeRecipeId;
+        const previousRecipe = activeRecipe(this.settings);
+        if (!previousRecipe) {
+            this.underlyingSettings = this.settings;
+            this.underlyingPlaybackModes = this.timingDriver.bound ? this.playbackModeController.playModes : undefined;
+        }
+        this.underlyingSettings = {
             ...settings,
-            playbackRate: this.settings.playbackRate,
-            fastForwardModePlaybackRate: this.settings.fastForwardModePlaybackRate,
-            lastPlaybackModes: this.settings.lastPlaybackModes,
+            playbackRate: this.underlyingSettings.playbackRate,
+            fastForwardModePlaybackRate: this.underlyingSettings.fastForwardModePlaybackRate,
+            lastPlaybackModes: this.underlyingSettings.lastPlaybackModes,
             ...(this.appIntegration ? { lastSubtitleOffset: this.settings.lastSubtitleOffset } : {}),
         };
+        this.settings = effectiveSettings(this.underlyingSettings);
+        const recipe = activeRecipe(this.settings);
+        const recipeChanged = JSON.stringify(previousRecipe) !== JSON.stringify(recipe);
+        if (recipeChanged) {
+            const modes = recipe
+                ? new Set(recipe.playbackModes)
+                : (this.underlyingPlaybackModes ?? playbackModesFromSettings(this.underlyingSettings));
+            const transition = this.playbackModeController.setModes(modes);
+            const planChanged = this.rebuildPlan({ initializePlaybackRate: true });
+            asbTrace('playback/recipe', 'Playback recipe changed', {
+                previousRecipeId,
+                activeRecipeId: this.settings.activeRecipeId,
+                previousRecipeName: previousRecipe?.name ?? null,
+                recipeName: recipe?.name ?? null,
+                recipeSettingKeys: Object.keys(recipe?.settings ?? {}),
+                modeTransition: playbackModeTransitionTraceDetails(transition),
+                planChanged,
+            });
+            this.callbacks.recipeChanged(recipe?.name ?? null, transition);
+        }
         this.playbackPositionController.settingsChanged(this.settings);
         this.bind();
-        if (rememberPlaybackModesNow) {
-            this.applyPlaybackModeTransition(
-                this.playbackModeController.setModes(playbackModesFromSettings(this.settings)),
-                { savePlaybackModes: false, rebuildWhenUnchanged: true }
-            );
+        if (recipeChanged) return;
+        if (rememberPlaybackModesNow && !activeRecipe(this.settings)) {
+            this.applyPlaybackModeTransition(this.playbackModeController.setModes(this.recipePlaybackModes()), {
+                savePlaybackModes: false,
+                rebuildWhenUnchanged: true,
+            });
         } else {
             this.rebuildPlan();
         }
@@ -722,7 +781,38 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
     }
 
-    playbackRateChanged(playbackRate: number):
+    private recipePlaybackModes(): Set<PlayMode> {
+        const recipe = activeRecipe(this.settings);
+        return recipe ? new Set(recipe.playbackModes) : playbackModesFromSettings(this.settings);
+    }
+
+    private recipeBlocks(
+        settingLocKey: string,
+        {
+            action,
+            requestedValue,
+            notifyBlocked = true,
+        }: { readonly action: string; readonly requestedValue?: number; readonly notifyBlocked?: boolean }
+    ): boolean {
+        const recipe = activeRecipe(this.settings);
+        if (!recipe) return false;
+        if (action !== 'change-playback-rate' || requestedValue !== this.executor.playbackRate || notifyBlocked) {
+            asbTrace('playback/recipe', 'Setting change blocked by playback recipe', {
+                activeRecipeId: this.settings.activeRecipeId,
+                recipeName: recipe.name,
+                settingLocKey,
+                action,
+                requestedValue,
+            });
+        }
+        if (notifyBlocked) this.callbacks.settingChangeBlocked(settingLocKey);
+        return true;
+    }
+
+    playbackRateChanged(
+        playbackRate: number,
+        { notifyBlocked = false }: { readonly notifyBlocked?: boolean } = {}
+    ):
         | {
               readonly notify: boolean;
               /** Effective media rate, including adaptive interpolation. */
@@ -733,6 +823,25 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         if (!this.timingDriver.bound) {
             asbTrace('playback/rate', 'Ignoring playback rate change while unbound', { playbackRate });
             return;
+        }
+        if (activeRecipe(this.settings)) {
+            this.recipeBlocks('settings.playbackRate', {
+                action: 'change-playback-rate',
+                requestedValue: playbackRate,
+                notifyBlocked,
+            });
+            if (this.timingDriver.playbackRate() !== this.executor.playbackRate) {
+                this.executor.reconcileAt(this.timingDriver.currentTimeMs(), { forcePlaybackRate: true });
+            }
+            const setting = this.playbackRateSetting();
+            return {
+                notify: false,
+                playbackRate: this.executor.playbackRate,
+                notification: formatPlaybackRateNotification(
+                    this.settings[setting],
+                    setting === 'fastForwardModePlaybackRate' ? 'info.fastForwardPlaybackRate' : 'info.playbackRate'
+                ),
+            };
         }
         const setting = this.playbackRateSetting();
         if (playbackRate === this.executor.playbackRate) {
@@ -816,6 +925,9 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     adjustPlaybackRate(delta: number): ReturnType<typeof this.playbackRateChanged> {
+        if (this.recipeBlocks('settings.playbackRate', { action: 'adjust-playback-rate', requestedValue: delta })) {
+            return;
+        }
         if (!this.timingDriver.bound) {
             asbTrace('playback/rate', 'Ignoring playback rate adjustment while unbound', { delta });
             return;
@@ -864,6 +976,11 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     togglePlaybackMode(targetMode: PlayMode): void {
+        if (
+            this.recipeBlocks('settings.playbackModes', { action: 'toggle-playback-mode', requestedValue: targetMode })
+        ) {
+            return;
+        }
         if (!this.timingDriver.bound) {
             asbTrace('playback/mode', 'Ignoring playback mode toggle while unbound', { targetMode });
             return;
@@ -873,6 +990,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     cycleAutoPauseResumeMode(): AutoPauseResumeModeNotification | undefined {
+        if (this.recipeBlocks('settings.autoPauseResumeMode', { action: 'cycle-auto-pause-resume-mode' })) return;
         if (!this.timingDriver.bound) {
             asbTrace('playback/auto-pause', 'Ignoring auto-pause resume mode change while unbound');
             return;
@@ -889,6 +1007,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     toggleSubtitleVisibility(): SubtitleVisibilityNotification | undefined {
+        if (this.recipeBlocks('settings.subtitleVisibility', { action: 'toggle-subtitle-visibility' })) return;
         if (!this.timingDriver.bound) {
             asbTrace('playback/subtitles', 'Ignoring subtitle visibility toggle while unbound');
             return;

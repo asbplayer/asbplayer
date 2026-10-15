@@ -138,6 +138,7 @@ const usePanelStyles = makeStyles<Theme, PanelStyleProps>((theme: Theme) => ({
 }));
 
 interface TabPanelProps {
+    keepMounted?: boolean;
     children?: React.ReactNode;
     index: any;
     value: any;
@@ -145,13 +146,13 @@ interface TabPanelProps {
 }
 
 const TabPanel = React.forwardRef<HTMLDivElement, TabPanelProps>(function TabPanel(
-    { children, value, index, tabsOrientation, ...other }: TabPanelProps,
+    { children, value, index, tabsOrientation, keepMounted, ...other }: TabPanelProps,
     ref
 ) {
     const classes = usePanelStyles({ tabsOrientation });
     return (
         <Box ref={ref} className={classes.panel} hidden={value !== index} {...other}>
-            {value === index && children}
+            {(value === index || keepMounted) && children}
         </Box>
     );
 });
@@ -196,7 +197,7 @@ interface Props {
     extensionSupportsAutoCopyableTrackSetting: boolean;
     extensionSupportsDictionaryTokenStatusDisplayAlpha: boolean;
     extensionSupportsDictionaryYomitanMecab: boolean;
-    extensionSupportsDictionaryPlayback: boolean;
+    supportsDictionaryPlayback: boolean;
     extensionSupportsSubtitleTrackSelectorInWebApp: boolean;
     extensionSupportsSubtitleListCustomization: boolean;
     extensionSupportsUpdateLastWithSameSubtitleText: boolean;
@@ -258,7 +259,7 @@ export default function SettingsForm({
     extensionSupportsDictionaryTokenStatusDisplayAlpha,
     extensionSupportsDictionaryYomitanMecab,
     extensionSupportsUpdateLastWithSameSubtitleText,
-    extensionSupportsDictionaryPlayback,
+    supportsDictionaryPlayback,
     insideApp,
     appVersionRepoPath,
     scrollToId,
@@ -284,7 +285,6 @@ export default function SettingsForm({
     const supportsDictionaryTokenStatusDisplayAlpha =
         !extensionInstalled || extensionSupportsDictionaryTokenStatusDisplayAlpha;
     const supportsDictionaryYomitanMecab = !extensionInstalled || extensionSupportsDictionaryYomitanMecab;
-    const supportsDictionaryPlayback = !extensionInstalled || extensionSupportsDictionaryPlayback;
     const supportsPlaybackEngine = !extensionInstalled || extensionSupportsPlaybackEngine;
     const supportsSubtitleListCustomization = !extensionInstalled || extensionSupportsSubtitleListCustomization;
     const supportsAutoPauseResume = !extensionInstalled || extensionSupportsAutoPauseResume;
@@ -564,8 +564,14 @@ export default function SettingsForm({
                         onViewKeyboardShortcuts={() => viewKeyboardShortcutSection('annotation')}
                     />
                 </TabPanel>
-                <TabPanel value={tabIndex} index={tabIndicesById.playback} tabsOrientation={tabsOrientation}>
+                <TabPanel
+                    keepMounted
+                    value={tabIndex}
+                    index={tabIndicesById.playback}
+                    tabsOrientation={tabsOrientation}
+                >
                     <PlaybackSettingsTab
+                        key={activeProfile ?? ''}
                         settings={settings}
                         onSettingChanged={handleSettingChanged}
                         onSettingsChanged={onSettingsChanged}
@@ -612,6 +618,7 @@ export default function SettingsForm({
                     tabsOrientation={tabsOrientation}
                 >
                     <KeyboardShortcutsSettingsTab
+                        supportsDictionaryPlayback={supportsDictionaryPlayback}
                         settings={settings}
                         onSettingChanged={handleSettingChanged}
                         chromeKeyBinds={chromeKeyBinds}

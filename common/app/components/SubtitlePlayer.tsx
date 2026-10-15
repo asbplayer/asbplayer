@@ -1,3 +1,4 @@
+import { effectiveSettings } from '@project/common/settings/settings-recipes';
 import type { ForwardedRef, ReactNode } from 'react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { makeStyles } from '@mui/styles';
@@ -49,6 +50,7 @@ import {
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
 } from '@project/common/annotations';
 import type { KeyBinder } from '@project/common/key-binder';
+import { useRecipeKeyBindings } from '@project/common/hooks/use-recipe-key-bindings';
 import SubtitleTextImage from '@project/common/components/SubtitleTextImage';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import CloseIcon from '@mui/icons-material/Close';
@@ -651,6 +653,7 @@ const ResizeHandle = React.forwardRef(function ResizeHandle(
 });
 
 interface SubtitlePlayerProps {
+    onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
     clock: Clock;
     extension: ChromeExtension;
     onSeek: (progress: number, shouldPlay: boolean) => void;
@@ -694,6 +697,7 @@ interface SubtitlePlayerProps {
 }
 
 export default function SubtitlePlayer({
+    onSettingsChanged,
     clock,
     extension,
     onSeek,
@@ -729,6 +733,8 @@ export default function SubtitlePlayer({
     initialWidth,
     webSocketClient,
 }: SubtitlePlayerProps) {
+    useRecipeKeyBindings(keyBinder, settings, onSettingsChanged, disableKeyEvents, subtitles);
+    const playbackSettings = useMemo(() => effectiveSettings(settings), [settings]);
     const { t } = useTranslation();
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
@@ -756,10 +762,10 @@ export default function SubtitlePlayer({
                 richTextWindowRef.current,
                 windowSubtitles,
                 'subtitlePlayer',
-                settings.dictionaryTracks
+                playbackSettings.dictionaryTracks
             );
         },
-        [settings.dictionaryTracks, handleVisibleRangeChanged]
+        [playbackSettings.dictionaryTracks, handleVisibleRangeChanged]
     );
 
     useEffect(() => {
@@ -771,10 +777,10 @@ export default function SubtitlePlayer({
                 richTextWindowRef.current,
                 windowSubtitles,
                 'subtitlePlayer',
-                settings.dictionaryTracks
+                playbackSettings.dictionaryTracks
             );
         }
-    }, [subtitles, settings.dictionaryTracks]);
+    }, [subtitles, playbackSettings.dictionaryTracks]);
 
     const subtitleCollectionRef = useRef<SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>>(
         subtitleCollection
@@ -830,7 +836,7 @@ export default function SubtitlePlayer({
     });
     const find = useSubtitleFind({
         subtitles,
-        dictionaryTracks: settings.dictionaryTracks,
+        dictionaryTracks: playbackSettings.dictionaryTracks,
         disableKeyEventsRef,
         hiddenRef,
         lastScrollTimestampRef,
@@ -997,9 +1003,9 @@ export default function SubtitlePlayer({
             () => disableKeyEvents,
             () => clock.time({ maxMs: length }),
             () => subtitles,
-            () => settings.seekableTracks
+            () => playbackSettings.seekableTracks
         );
-    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, settings.seekableTracks]);
+    }, [keyBinder, onOffsetChange, disableKeyEvents, clock, subtitles, length, playbackSettings.seekableTracks]);
 
     useEffect(() => {
         return keyBinder.bindSeekToSubtitle(
@@ -1319,8 +1325,8 @@ export default function SubtitlePlayer({
     // Avoid re-rendering the entire subtitle table by having handleCopy operate on refs
     const calculateSurroundingSubtitlesForIndexRef = useRef(calculateSurroundingSubtitlesForIndex);
     calculateSurroundingSubtitlesForIndexRef.current = calculateSurroundingSubtitlesForIndex;
-    const settingsRef = useRef(settings);
-    settingsRef.current = settings;
+    const settingsRef = useRef(playbackSettings);
+    settingsRef.current = playbackSettings;
     const onCopyRef = useRef(onCopy);
     onCopyRef.current = onCopy;
     const onSeekRef = useRef(onSeek);
@@ -1460,7 +1466,7 @@ export default function SubtitlePlayer({
             showCopyButton: showCopyButton && subtitleListCustomization.showMiningButton,
             timestampDisplay: subtitleListCustomization.timestampDisplay,
             disabledSubtitleTracks,
-            dictionaryTracks: settings.dictionaryTracks,
+            dictionaryTracks: playbackSettings.dictionaryTracks,
             richTextWindowRef,
             selectedSubtitleIndexes,
             highlightedJumpToSubtitleIndex,
@@ -1478,7 +1484,7 @@ export default function SubtitlePlayer({
             subtitleListCustomization.showMiningButton,
             subtitleListCustomization.timestampDisplay,
             disabledSubtitleTracks,
-            settings.dictionaryTracks,
+            playbackSettings.dictionaryTracks,
             selectedSubtitleIndexes,
             highlightedJumpToSubtitleIndex,
             currentSubtitleIndexes,

@@ -64,6 +64,19 @@ const keyBindSectionByName: { [key in KeyBindName]: KeyboardShortcutSection } = 
     takeScreenshot: 'mining',
     toggleRecording: 'mining',
     toggleSidePanel: 'playback',
+    cycleRecipesForward: 'playback',
+    cycleRecipesBackward: 'playback',
+    clearRecipe: 'playback',
+    selectRecipe1: 'playback',
+    selectRecipe2: 'playback',
+    selectRecipe3: 'playback',
+    selectRecipe4: 'playback',
+    selectRecipe5: 'playback',
+    selectRecipe6: 'playback',
+    selectRecipe7: 'playback',
+    selectRecipe8: 'playback',
+    selectRecipe9: 'playback',
+    selectRecipe10: 'playback',
     togglePlay: 'playback',
     toggleAutoPause: 'playback',
     toggleCondensedPlayback: 'playback',
@@ -303,6 +316,7 @@ interface Props {
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     chromeKeyBinds: { [key: string]: string | undefined };
     extensionInstalled?: boolean;
+    supportsDictionaryPlayback: boolean;
     extensionSupportsExportCardBind?: boolean;
     extensionSupportsSidePanel?: boolean;
     extensionSupportsAutoPauseResume?: boolean;
@@ -329,6 +343,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
     settings,
     onSettingChanged,
     chromeKeyBinds,
+    supportsDictionaryPlayback,
     extensionInstalled,
     extensionSupportsExportCardBind,
     extensionSupportsSidePanel,
@@ -401,6 +416,27 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
                 boundViaBrowser: isFirefox,
                 hide: !extensionInstalled || !extensionSupportsSidePanel,
             },
+            cycleRecipesForward: {
+                label: t('binds.cycleRecipesForward'),
+                boundViaBrowser: false,
+                hide: !supportsDictionaryPlayback,
+            },
+            cycleRecipesBackward: {
+                label: t('binds.cycleRecipesBackward'),
+                boundViaBrowser: false,
+                hide: !supportsDictionaryPlayback,
+            },
+            clearRecipe: { label: t('binds.clearRecipe'), boundViaBrowser: false, hide: !supportsDictionaryPlayback },
+            ...(Object.fromEntries(
+                Array.from({ length: 10 }, (_, index) => [
+                    `selectRecipe${index + 1}`,
+                    {
+                        label: t('binds.selectRecipe', { number: index + 1 }),
+                        boundViaBrowser: false,
+                        hide: !supportsDictionaryPlayback,
+                    },
+                ])
+            ) as Record<Extract<KeyBindName, `selectRecipe${number}`>, KeyBindProperties>),
             togglePlay: { label: t('binds.togglePlay'), boundViaBrowser: false },
             toggleAutoPause: {
                 label: t('binds.toggleAutoPause'),
@@ -643,6 +679,7 @@ const KeyboardShortcutsSettingsTab: React.FC<Props> = ({
         }),
         [
             t,
+            supportsDictionaryPlayback,
             extensionInstalled,
             extensionSupportsSidePanel,
             extensionSupportsExportCardBind,

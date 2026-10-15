@@ -134,7 +134,7 @@ const SettingsPage = ({
                         extensionSupportsSeekableTrackSetting
                         extensionSupportsAutoCopyableTrackSetting
                         extensionSupportsDictionaryTokenStatusDisplayAlpha
-                        extensionSupportsDictionaryPlayback
+                        supportsDictionaryPlayback
                         extensionSupportsDictionaryYomitanMecab
                         extensionSupportsSubtitleTrackSelectorInWebApp
                         extensionSupportsSubtitleListCustomization

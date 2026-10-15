@@ -1,3 +1,4 @@
+import RecipeSettings from '@project/common/components/RecipeSettings';
 import React, { useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import FormControl from '@mui/material/FormControl';
@@ -12,7 +13,6 @@ import Link from '@mui/material/Link';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import InputAdornment from '@mui/material/InputAdornment';
-import type { AsbplayerSettings } from '@project/common/settings';
 import {
     AutoPauseResumeMode,
     SubtitleVisibility,
@@ -22,6 +22,8 @@ import {
     autoPausePreferenceForCheckboxChange,
     NUM_DICTIONARY_TRACKS,
 } from '@project/common/settings';
+import type { AsbplayerSettings } from '@project/common/settings';
+
 import { AutoPausePreference } from '@project/common';
 import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
 import ResponsiveSettingsStack from '@project/common/components/ResponsiveSettingsStack';
@@ -30,10 +32,11 @@ import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLin
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 import DictionaryPlaybackSettings from '@project/common/components/DictionaryPlaybackSettings';
-import { normalizePlaybackRate } from '@project/common/playback/controllers/playback-mode-controller';
-import { normalizeAutoPauseDurationBounds } from '@project/common/playback/plan/playback-plan';
+import { normalizePlaybackRate, normalizeAutoPauseDurationBounds } from '@project/common/util';
 
 interface Props {
+    readOnly?: boolean;
+    modes?: React.ReactNode;
     settings: AsbplayerSettings;
     onSettingChanged: <K extends keyof AsbplayerSettings>(key: K, value: AsbplayerSettings[K]) => Promise<void>;
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
@@ -51,7 +54,9 @@ interface Props {
     onSelectedDictionaryTrackChanged: (track: number) => void;
 }
 
-const PlaybackSettingsTab: React.FC<Props> = ({
+const PlaybackSettingsFields: React.FC<Props> = ({
+    readOnly = false,
+    modes,
     settings,
     onSettingChanged,
     onSettingsChanged,
@@ -140,6 +145,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                         key={trackIndex}
                                         control={
                                             <Checkbox
+                                                disabled={readOnly}
                                                 checked={isTrackSeekable(seekableTracks, trackIndex)}
                                                 onChange={(event) => {
                                                     void onSettingChanged(
@@ -167,6 +173,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             <LabelWithHoverEffect
                                 control={
                                     <Radio
+                                        disabled={readOnly}
                                         checked={pauseOnHoverMode === PauseOnHoverMode.disabled}
                                         value={PauseOnHoverMode.disabled}
                                         onChange={(event) =>
@@ -180,6 +187,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             <LabelWithHoverEffect
                                 control={
                                     <Radio
+                                        disabled={readOnly}
                                         checked={pauseOnHoverMode === PauseOnHoverMode.inAndOut}
                                         value={PauseOnHoverMode.inAndOut}
                                         onChange={(event) =>
@@ -193,6 +201,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             <LabelWithHoverEffect
                                 control={
                                     <Radio
+                                        disabled={readOnly}
                                         checked={pauseOnHoverMode === PauseOnHoverMode.inNotOut}
                                         value={PauseOnHoverMode.inNotOut}
                                         onChange={(event) =>
@@ -210,9 +219,11 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                     {t('settings.playbackModes')}
                     <KeyboardShortcutLink onClick={onViewPlaybackModeKeyboardShortcuts} />
                 </SettingsSection>
+                {modes}
                 {supportsPlaybackEngine && (
                     <>
                         <NumericSettingInput
+                            disabled={readOnly}
                             fullWidth
                             label={
                                 <>
@@ -245,6 +256,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Checkbox
+                                            disabled={readOnly}
                                             checked={autoPauseAtStart}
                                             onChange={(event) =>
                                                 handleAutoPausePreferenceChanged(AutoPausePreference.atStart, {
@@ -258,6 +270,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Checkbox
+                                            disabled={readOnly}
                                             checked={autoPauseAtEnd}
                                             onChange={(event) =>
                                                 handleAutoPausePreferenceChanged(AutoPausePreference.atEnd, {
@@ -278,6 +291,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             <LabelWithHoverEffect
                                 control={
                                     <Radio
+                                        disabled={readOnly}
                                         checked={autoPausePreference === AutoPausePreference.atStart}
                                         value={AutoPausePreference.atStart}
                                         onChange={(event) =>
@@ -291,6 +305,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             <LabelWithHoverEffect
                                 control={
                                     <Radio
+                                        disabled={readOnly}
                                         checked={autoPausePreference === AutoPausePreference.atEnd}
                                         value={AutoPausePreference.atEnd}
                                         onChange={(event) =>
@@ -318,6 +333,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Radio
+                                            disabled={readOnly}
                                             checked={autoPauseResumeMode === AutoPauseResumeMode.manual}
                                             value={AutoPauseResumeMode.manual}
                                             onChange={(event) =>
@@ -331,6 +347,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Radio
+                                            disabled={readOnly}
                                             checked={autoPauseResumeMode === AutoPauseResumeMode.fixed}
                                             value={AutoPauseResumeMode.fixed}
                                             onChange={(event) =>
@@ -344,6 +361,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Radio
+                                            disabled={readOnly}
                                             checked={autoPauseResumeMode === AutoPauseResumeMode.subtitleLength}
                                             value={AutoPauseResumeMode.subtitleLength}
                                             onChange={(event) =>
@@ -362,6 +380,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                         {autoPauseResumeMode === AutoPauseResumeMode.fixed && (
                             <ResponsiveSettingsStack>
                                 <NumericSettingInput
+                                    disabled={readOnly}
                                     color="primary"
                                     fullWidth
                                     label={t('settings.autoPauseFixedDuration')}
@@ -373,6 +392,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                     }}
                                 />
                                 <NumericSettingInput
+                                    disabled={readOnly}
                                     color="primary"
                                     fullWidth
                                     label={t('settings.autoPauseResumeDelay')}
@@ -389,6 +409,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             <>
                                 <ResponsiveSettingsStack>
                                     <NumericSettingInput
+                                        disabled={readOnly}
                                         color="primary"
                                         fullWidth
                                         label={t('settings.autoPauseMinimumDuration')}
@@ -400,6 +421,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                         }}
                                     />
                                     <NumericSettingInput
+                                        disabled={readOnly}
                                         color="primary"
                                         fullWidth
                                         label={t('settings.autoPauseMaximumDuration')}
@@ -414,6 +436,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 </ResponsiveSettingsStack>
                                 <ResponsiveSettingsStack>
                                     <NumericSettingInput
+                                        disabled={readOnly}
                                         color="primary"
                                         fullWidth
                                         label={t('settings.autoPauseTimePerCharacter')}
@@ -427,6 +450,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                         }}
                                     />
                                     <NumericSettingInput
+                                        disabled={readOnly}
                                         color="primary"
                                         fullWidth
                                         label={t('settings.autoPauseResumeDelay')}
@@ -454,6 +478,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Radio
+                                            disabled={readOnly}
                                             checked={subtitleVisibility === SubtitleVisibility.whenDue}
                                             value={SubtitleVisibility.whenDue}
                                             onChange={(event) =>
@@ -467,6 +492,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 <LabelWithHoverEffect
                                     control={
                                         <Radio
+                                            disabled={readOnly}
                                             checked={subtitleVisibility === SubtitleVisibility.whilePaused}
                                             value={SubtitleVisibility.whilePaused}
                                             onChange={(event) =>
@@ -484,6 +510,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                     <LabelWithHoverEffect
                                         control={
                                             <Radio
+                                                disabled={readOnly}
                                                 checked={subtitleVisibility === SubtitleVisibility.whileManuallyPaused}
                                                 value={SubtitleVisibility.whileManuallyPaused}
                                                 onChange={(event) =>
@@ -506,6 +533,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                     <>
                         <ResponsiveSettingsStack>
                             <NumericSettingInput
+                                disabled={readOnly}
                                 color="primary"
                                 fullWidth
                                 label={t('settings.repeatCountPreference')}
@@ -533,6 +561,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             />
                             {supportsDictionaryPlayback && (
                                 <NumericSettingInput
+                                    disabled={readOnly}
                                     color="primary"
                                     fullWidth
                                     label={t('settings.repeatsBeforeShowingSubtitles')}
@@ -553,6 +582,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                         </ResponsiveSettingsStack>
                         <ResponsiveSettingsStack>
                             <NumericSettingInput
+                                disabled={readOnly}
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerStartOffset')}
@@ -568,6 +598,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 }}
                             />
                             <NumericSettingInput
+                                disabled={readOnly}
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerEndOffset')}
@@ -592,6 +623,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                 <ResponsiveSettingsStack>
                     {supportsPlaybackEngine && (
                         <NumericSettingInput
+                            disabled={readOnly}
                             color="primary"
                             fullWidth
                             label={t('settings.fastForwardPlaybackMinimumSkipInterval')}
@@ -611,6 +643,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                         />
                     )}
                     <NumericSettingInput
+                        disabled={readOnly}
                         fullWidth
                         label={t('settings.fastForwardModePlaybackRate')}
                         value={fastForwardModePlaybackRate}
@@ -626,6 +659,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                     />
                 </ResponsiveSettingsStack>
                 <NumericSettingInput
+                    disabled={readOnly}
                     color="primary"
                     fullWidth
                     label={t('settings.condensedPlaybackMinimumSkipInterval')}
@@ -647,6 +681,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                     <>
                         <ResponsiveSettingsStack>
                             <NumericSettingInput
+                                disabled={readOnly}
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerGapStartOffset')}
@@ -663,6 +698,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                                 }}
                             />
                             <NumericSettingInput
+                                disabled={readOnly}
                                 color="primary"
                                 fullWidth
                                 label={t('settings.subtitleTriggerGapEndOffset')}
@@ -715,6 +751,7 @@ const PlaybackSettingsTab: React.FC<Props> = ({
                             ))}
                         </SettingsTextField>
                         <DictionaryPlaybackSettings
+                            disabled={readOnly}
                             config={dictionaryTracks[selectedDictionaryTrack].dictionaryPlaybackConfig}
                             onChange={(dictionaryPlaybackConfig) => {
                                 const newTracks = [...dictionaryTracks];
@@ -731,5 +768,23 @@ const PlaybackSettingsTab: React.FC<Props> = ({
         </React.Fragment>
     );
 };
+
+const PlaybackSettingsTab: React.FC<Props> = (props) =>
+    props.supportsDictionaryPlayback ? (
+        <RecipeSettings settings={props.settings} onSettingsChanged={props.onSettingsChanged}>
+            {(settings, onChange, modes, readOnly) => (
+                <PlaybackSettingsFields
+                    {...props}
+                    settings={settings}
+                    modes={modes}
+                    readOnly={readOnly}
+                    onSettingsChanged={onChange}
+                    onSettingChanged={async (key, value) => onChange({ [key]: value })}
+                />
+            )}
+        </RecipeSettings>
+    ) : (
+        <PlaybackSettingsFields {...props} />
+    );
 
 export default PlaybackSettingsTab;

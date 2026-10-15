@@ -18,12 +18,13 @@
 - **Easily create high-quality, multimedia flashcards** out of subtitled videos.
 - **Load text-selectable subtitles onto most video sources**, including streaming sources. You can use **auto-detected subtitles** on popular streaming services like Netflix and YouTube, or your own **subtitle files**. A generic fallback subtitle detection algorithm allows asbplayer to detect subtitles on 85% of all other streaming services.
 - **Seek through subtitles** using a **navigable subtitle list**.
+- **Utilize customizable keyboard shortcuts** to access most of asbplayer's features.
 - **Optimize language acquisition** with **playback modes** like:
     - **Condensed playback**: Skip unsubtitled sections of video.
     - **Fast-forward playback**: Fast-forward through unsubtitled sections of video.
     - **Auto-pause**: Automatically pause at the beginning or end of every subtitle.
     - **Repeat**: Automatically repeat subtitles indefinitely or for a specified number of times.
-- **Use customizable keyboard shortcuts** to access most of asbplayer's features.
+- **Use customizable recipes** to create and import immersion presets with asbplayer's rich playback features.
 - **Annotate subtitles** with the help of tools such as [Yomitan](https://yomitan.wiki/)
     - **Word styling** (color/underline/outline, etc.) based on a word's status (uncollected/unknown/learning, etc.) synced from Anki, WaniKani, and/or tracked locally in asbplayer.
     - **Reading annotation** for reading displayed above each word or based on status.

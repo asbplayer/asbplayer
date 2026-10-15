@@ -1,3 +1,7 @@
+import {
+    minimumWholeSubtitleMatchThreshold,
+    maximumWholeSubtitleMatchThreshold,
+} from '@project/common/settings/settings-dictionary';
 import { Validator } from 'jsonschema';
 import type { AsbplayerSettings } from '@project/common/settings/settings';
 import { ensureConsistencyOnRead } from '@project/common/settings/settings-provider';
@@ -292,7 +296,11 @@ const dictionaryTrackSchema = {
                             required: ['minWords', 'maxWords', 'minFrequency', 'maxFrequency'],
                         },
                         hideWordsIndividuallyUntilThreshold: { type: 'boolean' },
-                        wholeSubtitleMatchThreshold: { type: 'number', minimum: 0.01, maximum: 1 },
+                        wholeSubtitleMatchThreshold: {
+                            type: 'number',
+                            minimum: minimumWholeSubtitleMatchThreshold,
+                            maximum: maximumWholeSubtitleMatchThreshold,
+                        },
                     },
                     required: [
                         'onStatuses',
@@ -716,6 +724,8 @@ const settingsSchema = {
         rememberPlaybackModes: {
             type: 'boolean',
         },
+        recipes: { type: 'array' },
+        activeRecipeId: { type: ['integer', 'null'] },
         lastPlaybackModes: {
             type: 'array',
             items: {
@@ -736,6 +746,19 @@ const settingsSchema = {
         keyBindSet: {
             type: 'object',
             properties: {
+                cycleRecipesForward: { $ref: '/KeyBind' },
+                cycleRecipesBackward: { $ref: '/KeyBind' },
+                clearRecipe: { $ref: '/KeyBind' },
+                selectRecipe1: { $ref: '/KeyBind' },
+                selectRecipe2: { $ref: '/KeyBind' },
+                selectRecipe3: { $ref: '/KeyBind' },
+                selectRecipe4: { $ref: '/KeyBind' },
+                selectRecipe5: { $ref: '/KeyBind' },
+                selectRecipe6: { $ref: '/KeyBind' },
+                selectRecipe7: { $ref: '/KeyBind' },
+                selectRecipe8: { $ref: '/KeyBind' },
+                selectRecipe9: { $ref: '/KeyBind' },
+                selectRecipe10: { $ref: '/KeyBind' },
                 togglePlay: { $ref: '/KeyBind' },
                 toggleAutoPause: { $ref: '/KeyBind' },
                 toggleCondensedPlayback: { $ref: '/KeyBind' },
@@ -1090,7 +1113,7 @@ const validateAllKnownKeys = (object: any, path: string[]) => {
 
         const value = object[key];
 
-        if (typeof value === 'object' && !Array.isArray(value)) {
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
             validateAllKnownKeys(value, [...path, key]);
         }
     }
