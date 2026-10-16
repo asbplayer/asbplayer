@@ -587,6 +587,7 @@
         "dictionaryYomitanMecabNotSupportedError": "MeCab 解析失败，安装说明请见 <0>此处</0>。建议安装 UniDic 词典以获最佳效果。",
         "dictionaryYomitanMecabLemmaNotSupportedError": "请在 <0>此处</0> 更新最新版 MeCab，并安装 UniDic 以获最佳效果。",
         "dictionaryYomitanScanLength": "最大扫描长度",
+        "dictionarySelectOnPause": "Select first matching word on pause",
         "dictionaryTokenReadingAnnotation": "上方注音显示（如假名/拼音）",
         "dictionaryTokenReadingAnnotationAlways": "始终显示",
         "dictionaryTokenReadingAnnotationLearningOrBelow": "仅对“学习中”及以下显示",

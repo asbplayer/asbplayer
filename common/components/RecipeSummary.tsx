@@ -33,6 +33,7 @@ const labels: Record<string, string> = {
     autoPauseResumeDelayMs: 'settings.autoPauseResumeDelay',
     fastForward: 'settings.dictionaryPlaybackFastForward',
     autoPause: 'settings.dictionaryPlaybackAutoPause',
+    selectOnPause: 'settings.dictionarySelectOnPause',
     repeat: 'settings.dictionaryPlaybackRepeat',
     condensed: 'settings.dictionaryPlaybackCondensed',
     wordVisibility: 'settings.dictionaryPlaybackWordVisibility',

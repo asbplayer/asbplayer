@@ -587,6 +587,7 @@
         "dictionaryYomitanMecabNotSupportedError": "Analisi con MeCab fallita; le istruzioni di configurazione sono <0>qui</0>. Installa UniDic per i migliori risultati.",
         "dictionaryYomitanMecabLemmaNotSupportedError": "Aggiorna al più recente installer di MeCab <0>qui</0> e installa UniDic per i migliori risultati.",
         "dictionaryYomitanScanLength": "Lunghezza massima parola",
+        "dictionarySelectOnPause": "Select first matching word on pause",
         "dictionaryTokenReadingAnnotation": "Mostra lettura delle parole",
         "dictionaryTokenReadingAnnotationAlways": "Sempre",
         "dictionaryTokenReadingAnnotationLearningOrBelow": "In apprendimento o inferiore",

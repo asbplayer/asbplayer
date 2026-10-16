@@ -53,6 +53,10 @@ export const makeDictionaryTrack = (overrides?: Partial<DictionaryTrack>): Dicti
         onStates: feature.onStates.map((config) => ({ ...config })),
     });
     const dictionaryPlaybackConfig = {
+        selectOnPause: {
+            onStatuses: playback.selectOnPause.onStatuses.map((trigger) => ({ ...trigger })),
+            onStates: playback.selectOnPause.onStates.map((trigger) => ({ ...trigger })),
+        },
         autoPause: clonePlaybackFeature(playback.autoPause),
         condensed: clonePlaybackFeature(playback.condensed),
         fastForward: {

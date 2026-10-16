@@ -587,6 +587,7 @@
         "dictionaryYomitanMecabNotSupportedError": "MeCabによる解析に失敗しました。MeCabのセットアップの手順は<0>こちら</0>です。なお、辞書はUniDicの使用を推奨します。",
         "dictionaryYomitanMecabLemmaNotSupportedError": "最新のMeCabのインストールの手順は<0>こちら</0>です。なお、辞書はUniDicの使用を推奨します。",
         "dictionaryYomitanScanLength": "単語の最大文字数",
+        "dictionarySelectOnPause": "Select first matching word on pause",
         "dictionaryTokenReadingAnnotation": "単語の読み方を表示",
         "dictionaryTokenReadingAnnotationAlways": "いつも",
         "dictionaryTokenReadingAnnotationLearningOrBelow": "学習中以下",

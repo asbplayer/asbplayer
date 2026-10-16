@@ -5,6 +5,7 @@ import {
     ASB_TOKEN_SELECTED_CLASS,
     ASB_TOKEN_START_ATTRIBUTE,
     clearTokenSelectionInRoot,
+    clearAutoPauseTokenSelectionInRoot,
     currentTokenSelectionLocation,
     selectTokenInRoot,
 } from '@project/common/annotations';
@@ -101,6 +102,29 @@ export const useTokenSelection = ({
         activeTokenSelectionOptionsRef.current = undefined;
         const root = rootRef.current;
         if (root) clearTokenSelectionInRoot(root);
+    }, [clearPendingTokenSelection, rootRef]);
+
+    const selectToken = useCallback(
+        (target: TokenSelectionLocation, options?: SelectTokenInRootOptions) => {
+            const root = rootRef.current;
+            if (!root || !selectTokenInRoot(root, target, options)) return false;
+            clearPendingTokenSelection();
+            lastTokenSelectionOwner = playerContainerFor(root);
+            onTokenSelectionClaimed?.();
+            activeTokenSelectionRef.current = target;
+            activeTokenSelectionOptionsRef.current = options;
+            return true;
+        },
+        [clearPendingTokenSelection, onTokenSelectionClaimed, rootRef]
+    );
+
+    const clearPauseTokenSelection = useCallback(() => {
+        if (activeTokenSelectionOptionsRef.current?.autoPause) {
+            clearPendingTokenSelection();
+            activeTokenSelectionRef.current = undefined;
+            activeTokenSelectionOptionsRef.current = undefined;
+        }
+        if (rootRef.current) clearAutoPauseTokenSelectionInRoot(rootRef.current);
     }, [clearPendingTokenSelection, rootRef]);
 
     const selectPendingToken = useCallback(() => {
@@ -263,5 +287,5 @@ export const useTokenSelection = ({
         rootRef,
     ]);
 
-    return { selectPendingToken, requestTokenSelection, clearTokenSelection };
+    return { selectToken, selectPendingToken, requestTokenSelection, clearTokenSelection, clearPauseTokenSelection };
 };

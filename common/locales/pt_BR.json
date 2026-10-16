@@ -587,6 +587,7 @@
         "dictionaryYomitanMecabNotSupportedError": "Failed to parse with MeCab, instructions to setup are <0>here</0>. Install UniDic for the best results.",
         "dictionaryYomitanMecabLemmaNotSupportedError": "Update to the latest MeCab installer <0>here</0> and install UniDic for the best results.",
         "dictionaryYomitanScanLength": "Comprimento máximo da palavra",
+        "dictionarySelectOnPause": "Select first matching word on pause",
         "dictionaryTokenReadingAnnotation": "Annotation for word readings",
         "dictionaryTokenReadingAnnotationAlways": "Always",
         "dictionaryTokenReadingAnnotationLearningOrBelow": "Learning or below",

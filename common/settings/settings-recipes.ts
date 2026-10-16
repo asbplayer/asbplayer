@@ -95,11 +95,11 @@ const validators: Record<RecipeSettingKey, (value: unknown) => boolean> = {
 const dictionaryConfig = (value: unknown): RecipePartial<DictionaryPlaybackConfig> | undefined => {
     if (!record(value)) return;
     const result: Record<string, unknown> = {};
-    for (const feature of dictionaryPlaybackFeatures) {
+    for (const feature of [...dictionaryPlaybackFeatures, 'selectOnPause'] as const) {
         const input = value[feature];
         if (!record(input)) continue;
         const output: Record<string, unknown> = {};
-        if (record(input.rules)) {
+        if (feature !== 'selectOnPause' && record(input.rules)) {
             const rules = Object.fromEntries(
                 Object.keys(defaultDictionaryTracks[0].dictionaryPlaybackConfig[feature].rules)
                     .filter((key) => integer((input.rules as Record<string, unknown>)[key]))
