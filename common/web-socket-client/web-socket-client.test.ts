@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { WebSocketClient } from '@project/common/web-socket-client';
-import type { SeekTimestampCommand } from '@project/common/web-socket-client';
+import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/web-socket-client';
 import { FakeWebSocket } from '@project/common/web-socket-client/fake-web-socket';
 
 const url = 'ws://localhost:8766/ws';
@@ -19,8 +19,8 @@ const deferred = () => {
 
 let client: WebSocketClient;
 
-const connect = async () => {
-    client = new WebSocketClient();
+const connect = async (options?: WebSocketClientOptions) => {
+    client = new WebSocketClient(undefined, options);
     const bound = client.bind(url);
     const socket = FakeWebSocket.last;
     socket.open();
@@ -78,7 +78,7 @@ describe('command dispatch', () => {
     it('dispatches mine-subtitle and responds with the handler result', async () => {
         const socket = await connect();
         const onMineSubtitle = jest.fn(async () => true);
-        client.onMineSubtitle = onMineSubtitle;
+        client.setHandlers({ onMineSubtitle: onMineSubtitle });
 
         await socket.receive(command('mine-subtitle', 'm1', { fields: { Word: 'ねこ' }, postMineAction: 1 }));
 
@@ -90,17 +90,17 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'm1', body: { published: true } }]);
     });
 
-    it('responds with published false when mine-subtitle is not handled', async () => {
+    it('does not respond to mine-subtitle when it is not handled', async () => {
         const socket = await connect();
 
         await socket.receive(command('mine-subtitle', 'm2', { fields: {}, postMineAction: 0 }));
 
-        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'm2', body: { published: false } }]);
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('responds with published false when the mine-subtitle handler returns false', async () => {
         const socket = await connect();
-        client.onMineSubtitle = async () => false;
+        client.setHandlers({ onMineSubtitle: async () => false });
 
         await socket.receive(command('mine-subtitle', 'm3', { fields: {}, postMineAction: 0 }));
 
@@ -110,7 +110,7 @@ describe('command dispatch', () => {
     it('dispatches load-subtitles and responds with an empty body', async () => {
         const socket = await connect();
         const onLoadSubtitles = jest.fn(async () => {});
-        client.onLoadSubtitles = onLoadSubtitles;
+        client.setHandlers({ onLoadSubtitles: onLoadSubtitles });
         const files = [{ base64: 'AAA', name: 'a.srt' }];
 
         await socket.receive(command('load-subtitles', 'l1', { files }));
@@ -123,18 +123,18 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'l1', body: {} }]);
     });
 
-    it('responds to load-subtitles even when it is not handled', async () => {
+    it('does not respond to load-subtitles when it is not handled', async () => {
         const socket = await connect();
 
         await socket.receive(command('load-subtitles', 'l2', {}));
 
-        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'l2', body: {} }]);
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('dispatches seek-timestamp and responds with an empty body', async () => {
         const socket = await connect();
         const onSeekTimestamp = jest.fn(async () => {});
-        client.onSeekTimestamp = onSeekTimestamp;
+        client.setHandlers({ onSeekTimestamp: onSeekTimestamp });
 
         await socket.receive(command('seek-timestamp', 's1', { timestamp: 12.5, mediaId: 'abc' }));
 
@@ -146,18 +146,18 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 's1', body: {} }]);
     });
 
-    it('responds to seek-timestamp even when it is not handled', async () => {
+    it('does not respond to seek-timestamp when it is not handled', async () => {
         const socket = await connect();
 
         await socket.receive(command('seek-timestamp', 's2', { timestamp: 1 }));
 
-        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 's2', body: {} }]);
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('dispatches get-bound-media and responds with the returned media', async () => {
         const socket = await connect();
         const media = [{ id: 'a', type: 'streaming' as const, loadedSubtitles: [], active: true }];
-        client.onGetBoundMedia = async () => media;
+        client.setHandlers({ onGetBoundMedia: async () => media });
 
         await socket.receive(command('get-bound-media', 'b1'));
 
@@ -176,7 +176,7 @@ describe('command dispatch', () => {
         const socket = await connect();
         const subtitles = [{ text: 'ねこ', start: 0, end: 100, track: 1 }];
         const onGetSubtitles = jest.fn(async () => subtitles);
-        client.onGetSubtitles = onGetSubtitles;
+        client.setHandlers({ onGetSubtitles: onGetSubtitles });
 
         await socket.receive(command('get-subtitles', 'g1', { mediaId: 'abc', trackNumbers: [1] }));
 
@@ -187,7 +187,7 @@ describe('command dispatch', () => {
     it('dispatches get-subtitles with undefined arguments when the body is empty', async () => {
         const socket = await connect();
         const onGetSubtitles = jest.fn(async () => []);
-        client.onGetSubtitles = onGetSubtitles;
+        client.setHandlers({ onGetSubtitles: onGetSubtitles });
 
         await socket.receive(command('get-subtitles', 'g2'));
 
@@ -213,7 +213,7 @@ describe('command dispatch', () => {
     it('preserves the message ID exactly', async () => {
         const socket = await connect();
         const messageId = 'aBc-123_ねこ/#?';
-        client.onSeekTimestamp = async () => {};
+        client.setHandlers({ onSeekTimestamp: async () => {} });
 
         await socket.receive(command('seek-timestamp', messageId, { timestamp: 0 }));
 
@@ -222,9 +222,11 @@ describe('command dispatch', () => {
 
     it('does not respond when a handler rejects', async () => {
         const socket = await connect();
-        client.onSeekTimestamp = async () => {
-            throw new Error('handler failed');
-        };
+        client.setHandlers({
+            onSeekTimestamp: async () => {
+                throw new Error('handler failed');
+            },
+        });
 
         await expect(socket.receive(command('seek-timestamp', 's3', { timestamp: 0 }))).rejects.toThrow(
             'handler failed'
@@ -239,13 +241,39 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([]);
     });
 
+    it('removes only the handlers a registration added when it is cleaned up', async () => {
+        const socket = await connect();
+        const unsetSeek = client.setHandlers({ onSeekTimestamp: async () => {} });
+        const unsetLoad = client.setHandlers({ onLoadSubtitles: async () => {} });
+        client.setHandlers({ onLoadSubtitles: async () => {} });
+
+        unsetSeek();
+        unsetLoad();
+        await socket.receive(command('seek-timestamp', 's', { timestamp: 1 }));
+        await socket.receive(command('load-subtitles', 'l', {}));
+
+        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 'l', body: {} }]);
+    });
+
+    it('ignores commands outside the ones it was created to accept', async () => {
+        const socket = await connect({ commands: ['seek-timestamp'] });
+        client.setHandlers({ onSeekTimestamp: async () => {}, onGetBoundMedia: async () => [] });
+
+        await socket.receive(command('get-bound-media', 'b'));
+        await socket.receive(command('seek-timestamp', 's', { timestamp: 1 }));
+
+        expect(socket.sentCommands).toEqual([{ command: 'response', messageId: 's', body: {} }]);
+    });
+
     it('completes concurrent commands independently and out of order', async () => {
         const socket = await connect();
         const slow = deferred();
         const fast = deferred();
-        client.onSeekTimestamp = async ({ messageId }: SeekTimestampCommand) => {
-            await (messageId === 'slow' ? slow : fast).promise;
-        };
+        client.setHandlers({
+            onSeekTimestamp: async ({ messageId }: SeekTimestampCommand) => {
+                await (messageId === 'slow' ? slow : fast).promise;
+            },
+        });
 
         const slowDispatch = socket.receive(command('seek-timestamp', 'slow', { timestamp: 1 }));
         const fastDispatch = socket.receive(command('seek-timestamp', 'fast', { timestamp: 2 }));
@@ -287,13 +315,8 @@ describe('reconnect and unbind', () => {
         expect(socket.sent).toEqual(['PING', 'PING']);
     });
 
-    it('closes the socket, rejects pending pings, and detaches handlers on unbind', async () => {
+    it('closes the socket and rejects pending pings on unbind', async () => {
         const socket = await connect();
-        client.onMineSubtitle = async () => true;
-        client.onLoadSubtitles = async () => {};
-        client.onSeekTimestamp = async () => {};
-        client.onGetBoundMedia = async () => [];
-        client.onGetSubtitles = async () => [];
         const pinged = client.ping();
 
         client.unbind();
@@ -301,11 +324,6 @@ describe('reconnect and unbind', () => {
         await expect(pinged).rejects.toEqual('Disconnecting');
         expect(socket.readyState).toEqual(socket.CLOSED);
         expect(client.socket).toBeUndefined();
-        expect(client.onMineSubtitle).toBeUndefined();
-        expect(client.onLoadSubtitles).toBeUndefined();
-        expect(client.onSeekTimestamp).toBeUndefined();
-        expect(client.onGetBoundMedia).toBeUndefined();
-        expect(client.onGetSubtitles).toBeUndefined();
     });
 
     it('does not log an error during expected teardown', async () => {

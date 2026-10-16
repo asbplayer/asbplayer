@@ -5,8 +5,11 @@ import type {
     ExtensionToVideoCommand,
     Message,
     VideoTabModel,
+    WebSocketCommandMessage,
+    WebSocketCommandResponseMessage,
 } from '@project/common';
-import { localMediaId, streamingMediaId } from '@project/extension/src/services/web-socket-media-id';
+import type { Response, WebSocketCommand } from '@project/common/web-socket-client';
+import { localMediaId, streamingMediaId } from '@project/common/web-socket-client/web-socket-media';
 
 export type MediaTarget = { videoElement: VideoTabModel } | { asbplayer: AsbplayerInstance };
 
@@ -72,18 +75,30 @@ export const publishToVideoElements = async <T extends Message>(
     );
 };
 
-export const publishToAsbplayers = async <T extends Message>(
+export const forwardToAsbplayers = async (
     tabRegistry: TabRegistry,
     targets: MediaTarget[],
-    commandFactory: (asbplayerId: string) => ExtensionToAsbPlayerCommand<T>
-) => {
-    const ids = new Set(targets.filter(isAsbplayerTarget).map(({ asbplayer }) => asbplayer.id));
-
-    if (ids.size === 0) {
-        return;
-    }
-
-    await tabRegistry.publishCommandToAsbplayers({
-        commandFactory: (asbplayer) => (ids.has(asbplayer.id) ? commandFactory(asbplayer.id) : undefined),
-    });
-};
+    command: WebSocketCommand
+): Promise<(Response<object> | undefined)[]> =>
+    Promise.all(
+        targets.filter(isAsbplayerTarget).map(async ({ asbplayer }) => {
+            // The app treats the command as targeted at its own media, so it never re-decides what is active.
+            const webSocketCommand = {
+                ...command,
+                body: { ...command.body, mediaId: localMediaId(asbplayer.id) },
+            } as WebSocketCommand;
+            const response = await tabRegistry.publishCommandToAsbplayersAndAwaitResponse<
+                WebSocketCommandMessage,
+                WebSocketCommandResponseMessage
+            >({
+                asbplayerId: asbplayer.id,
+                responseCommand: 'web-socket-command-response',
+                commandFactory: (_, messageId): ExtensionToAsbPlayerCommand<WebSocketCommandMessage> => ({
+                    sender: 'asbplayer-extension-to-player',
+                    message: { command: 'web-socket-command', messageId, webSocketCommand },
+                    asbplayerId: asbplayer.id,
+                }),
+            });
+            return response?.response;
+        })
+    );

@@ -49,7 +49,8 @@ import { useWindowSize } from '@project/common/app/hooks/use-window-size';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
 import { createBlobUrl } from '@project/common/blob-url';
 import type { MiningContext } from '@project/common/app/services/mining-context';
-import type { SeekTimestampCommand, WebSocketClient } from '@project/common/web-socket-client';
+import type { SeekTimestampCommand, WebSocketCommandDispatcher } from '@project/common/web-socket-client';
+import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
 import {
     resolveVideoSubtitleSplitLayout,
     useVideoAspectRatio,
@@ -178,7 +179,7 @@ interface PlayerProps {
     rewindSubtitle?: SubtitleModel;
     hideControls?: boolean;
     forceCompressedMode?: boolean;
-    webSocketClient?: WebSocketClient;
+    webSocketCommands?: WebSocketCommandDispatcher;
     playbackTimelineFileName?: string;
     playbackTimelineModeLabels: PlaybackTimelineModeLabels;
     playbackTimelineOptionLabels: PlaybackTimelineOptionLabels;
@@ -235,7 +236,7 @@ function PlayerComponent(
         rewindSubtitle,
         hideControls,
         forceCompressedMode,
-        webSocketClient,
+        webSocketCommands,
         playbackTimelineFileName,
         playbackTimelineModeLabels,
         playbackTimelineOptionLabels,
@@ -1506,15 +1507,19 @@ function PlayerComponent(
         };
     }, [clock, dictionaryProvider, handleCopyFromSubtitlePlayer, seek, settings]);
 
-    useEffect(() => {
-        if (!webSocketClient) {
-            return;
-        }
+    useEffect(
+        () =>
+            webSocketCommands?.setHandlers({
+                onSeekTimestamp: async ({ body: { timestamp, mediaId } }: SeekTimestampCommand) => {
+                    if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
+                        return;
+                    }
 
-        webSocketClient.onSeekTimestamp = async ({ body: { timestamp } }: SeekTimestampCommand) => {
-            void seek(timestamp * 1000, clock, true, { paused: !clock.running });
-        };
-    }, [webSocketClient, extension, seek, clock]);
+                    void seek(timestamp * 1000, clock, true, { paused: !clock.running });
+                },
+            }),
+        [webSocketCommands, extension, seek, clock]
+    );
 
     const [windowWidth, windowHeight] = useWindowSize(true);
 
@@ -1670,7 +1675,7 @@ function PlayerComponent(
                         maxResizeWidth={subtitlePlayerMaxResizeWidth}
                         settings={settings}
                         keyBinder={keyBinder}
-                        webSocketClient={webSocketClient}
+                        webSocketCommands={webSocketCommands}
                         initialWidth={subtitlePlayerInitialWidth}
                     />
                 </Grid>

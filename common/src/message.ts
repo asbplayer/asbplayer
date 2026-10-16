@@ -33,6 +33,10 @@ import type {
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import type {
+    Response as WebSocketResponse,
+    WebSocketCommand,
+} from '@project/common/web-socket-client/web-socket-commands';
+import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
     DictionaryTokenRecord,
@@ -806,6 +810,16 @@ export interface JumpToSubtitleMessage extends Message {
     readonly command: 'jump-to-subtitle';
     readonly subtitle: SubtitleModel;
     readonly subtitleFileName: string;
+}
+
+export interface WebSocketCommandMessage extends MessageWithId {
+    readonly command: 'web-socket-command';
+    readonly webSocketCommand: WebSocketCommand;
+}
+
+export interface WebSocketCommandResponseMessage extends MessageWithId {
+    readonly command: 'web-socket-command-response';
+    readonly response?: WebSocketResponse<object>;
 }
 
 export interface DownloadImageMessage extends Message, CardModel {

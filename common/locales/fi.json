@@ -346,6 +346,7 @@
         "subtitleVisibility": "Show subtitles: {{value}}",
         "connectionSucceeded": "Yhteys onnistui",
         "connectionFailed": "Yhteys epäonnistui",
+        "webSocketManagedByExtension": "Connection is managed by the asbplayer extension",
         "error": "Virhe: {{message}}",
         "errorNoMessage": "Virhe",
         "toggleSubtitlesShortcut": "Valitse tekstityksen näyttö painamalla \"{{keys}}\"",

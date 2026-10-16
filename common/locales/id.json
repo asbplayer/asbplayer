@@ -346,6 +346,7 @@
         "subtitleVisibility": "Show subtitles: {{value}}",
         "connectionSucceeded": "Koneksi berhasil",
         "connectionFailed": "Koneksi gagal",
+        "webSocketManagedByExtension": "Connection is managed by the asbplayer extension",
         "error": "Galat: {{message}}",
         "errorNoMessage": "Galat",
         "toggleSubtitlesShortcut": "Tekan \"{{keys}}\" untuk menampilkan/sembunyikan takarir",

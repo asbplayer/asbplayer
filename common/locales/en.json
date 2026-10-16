@@ -346,6 +346,7 @@
         "subtitleVisibility": "Show subtitles: {{value}}",
         "connectionSucceeded": "Connection succeeded",
         "connectionFailed": "Connection failed",
+        "webSocketManagedByExtension": "Connection is managed by the asbplayer extension",
         "error": "Error: {{message}}",
         "errorNoMessage": "Error",
         "toggleSubtitlesShortcut": "Press \"{{keys}}\" to toggle subtitle display",

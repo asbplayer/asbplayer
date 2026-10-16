@@ -65,12 +65,13 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import type Clock from '@project/common/playback/timing/clock';
 import { useAppBarHeight } from '@project/common/hooks/use-app-bar-height';
-import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-client';
+import type { MineSubtitleParams } from '@project/common/app/hooks/use-app-web-socket-commands';
 import { useSubtitleFind } from '@project/common/app/hooks/use-subtitle-find';
 import { isMobile } from 'react-device-detect';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
-import type { MineSubtitleCommand, WebSocketClient } from '@project/common/web-socket-client';
+import type { MineSubtitleCommand, WebSocketCommandDispatcher } from '@project/common/web-socket-client';
+import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
 import { clampSubtitlePlayerWidth } from '@project/common/app/components/video-subtitle-split';
 import { useTokenSelection } from '@project/common/app/hooks/use-token-selection';
 import '@project/common/app/components/subtitles.css';
@@ -690,7 +691,7 @@ interface SubtitlePlayerProps {
     keyBinder: KeyBinder;
     maxResizeWidth: number;
     initialWidth?: number;
-    webSocketClient?: WebSocketClient;
+    webSocketCommands?: WebSocketCommandDispatcher;
 }
 
 export default function SubtitlePlayer({
@@ -727,7 +728,7 @@ export default function SubtitlePlayer({
     keyBinder,
     maxResizeWidth,
     initialWidth,
-    webSocketClient,
+    webSocketCommands,
 }: SubtitlePlayerProps) {
     const { t } = useTranslation();
     const clockRef = useRef<Clock>(clock);
@@ -1216,15 +1217,13 @@ export default function SubtitlePlayer({
     );
 
     useEffect(() => {
-        if (!webSocketClient || extension.supportsWebSocketClient) {
-            // Do not handle mining commands here if the extension supports the web socket client.
-            // The extension will handle the commands for us.
-            return;
-        }
-
-        webSocketClient.onMineSubtitle = async ({
-            body: { fields: receivedFields, postMineAction: receivedPostMineAction },
+        const onMineSubtitle = async ({
+            body: { fields: receivedFields, postMineAction: receivedPostMineAction, mediaId },
         }: MineSubtitleCommand) => {
+            if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
+                return false;
+            }
+
             const fields = receivedFields ?? {};
             const word = fields[settings.wordField] || undefined;
             const definition = fields[settings.definitionField] || undefined;
@@ -1245,7 +1244,9 @@ export default function SubtitlePlayer({
             const postMineAction = receivedPostMineAction ?? PostMineAction.showAnkiDialog;
             return copyFromWebSocketClient({ postMineAction, text, word, definition, customFieldValues });
         };
-    }, [webSocketClient, extension, settings, copyFromWebSocketClient]);
+
+        return webSocketCommands?.setHandlers({ onMineSubtitle });
+    }, [webSocketCommands, extension, settings, copyFromWebSocketClient]);
 
     useEffect(() => {
         if (extension.installed) {

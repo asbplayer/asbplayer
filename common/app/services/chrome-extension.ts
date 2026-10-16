@@ -30,6 +30,7 @@ import type {
     RequestSubtitlesFromAppMessage,
     RequestSubtitlesResponse,
     LocalSubtitlesResponseMessage,
+    WebSocketCommandResponseMessage,
     SubtitleTrack,
     LoadSubtitlesMessage,
     RequestCopyHistoryMessage,
@@ -222,6 +223,10 @@ export default class ChromeExtension {
 
     get supportsSubtitleListCustomization() {
         return this.installed && gte(this.version, '1.21.0');
+    }
+
+    get supportsWebSocketClientOwnership() {
+        return this.installed && gte(this.version, '1.23.0');
     }
 
     get supportsPlaybackEngine() {
@@ -518,6 +523,18 @@ export default class ChromeExtension {
             sender: 'asbplayerv2',
             message: {
                 command: 'local-subtitles-response',
+                messageId,
+                response,
+            },
+        };
+        window.postMessage(command);
+    }
+
+    sendWebSocketCommandResponse(messageId: string, response: WebSocketCommandResponseMessage['response']) {
+        const command: AsbPlayerCommand<WebSocketCommandResponseMessage> = {
+            sender: 'asbplayerv2',
+            message: {
+                command: 'web-socket-command-response',
                 messageId,
                 response,
             },
