@@ -437,15 +437,15 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                                 key={index}
                                 customStyle={customStyle}
                                 onCustomStyle={(newCustomStyle: CustomStyle) => {
-                                    const newValue = [...settings.subtitleCustomStyles];
+                                    const newValue = [...subtitleCustomStyles];
                                     newValue[index] = { ...newCustomStyle };
                                     handleSubtitleTextSettingChanged('subtitleCustomStyles', newValue);
                                 }}
                                 onDelete={() => {
                                     const newValue: CustomStyle[] = [];
-                                    for (let j = 0; j < settings.subtitleCustomStyles.length; ++j) {
+                                    for (let j = 0; j < subtitleCustomStyles.length; ++j) {
                                         if (j !== index) {
-                                            newValue.push(settings.subtitleCustomStyles[j]);
+                                            newValue.push(subtitleCustomStyles[j]);
                                         }
                                     }
                                     handleSubtitleTextSettingChanged('subtitleCustomStyles', newValue);
@@ -458,7 +458,7 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                         onStyleKey={setCurrentStyleKey}
                         onAddCustomStyle={(styleKey) =>
                             handleSubtitleTextSettingChanged('subtitleCustomStyles', [
-                                ...settings.subtitleCustomStyles,
+                                ...subtitleCustomStyles,
                                 { key: styleKey, value: '' },
                             ])
                         }
