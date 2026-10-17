@@ -83,7 +83,6 @@
         "settings.unlockLocalFonts": "Click to unlock font menu",
         "settings.webSocketClientEnabled": "Enable WebSocket client",
         "settings.webSocketServerUrl": "WebSocket Server URL",
-        "settings.firefoxExtensionShortcutHelp": "Edit this shortcut from the Plugin manager at about:addons.",
         "settings.postMinePlayback": "Post-mining playback state",
         "subtitlePlayer.multiSubtitleSelectHelp": "Click, hold, and drag to mine multiple subtitles"
     },

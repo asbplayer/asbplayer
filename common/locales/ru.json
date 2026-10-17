@@ -527,7 +527,6 @@
         "missingFieldError": "Поле \"{{field}}\" не найдено в Anki-записи",
         "webSocketClientEnabled": "Включить WebSocket клиент",
         "webSocketServerUrl": "URL сервера WebSocket",
-        "firefoxExtensionShortcutHelp": "Эту горячую клавишу можно поменять в менеджере плагинов (по адресу about:addons).",
         "postMinePlayback": "Статус воспроизведения после завершения майнинга",
         "pauseOnHoverMode": "Автоматически ставить на паузу при наведении на субтитры",
         "playbackModes": "Playback Modes",

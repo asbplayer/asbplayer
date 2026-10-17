@@ -527,7 +527,6 @@
         "missingFieldError": "Kolom \"{{field}}\" tidak ditemukan di jenis catatan",
         "webSocketClientEnabled": "Aktifkan klien WebSocket",
         "webSocketServerUrl": "URL Server WebSocket",
-        "firefoxExtensionShortcutHelp": "Sunting pintasan ini dari Pengelola Plugin di about:addons.",
         "postMinePlayback": "Status pemutaran setelah penambangan",
         "pauseOnHoverMode": "Jeda otomatis saat kursor diarahkan ke takarir",
         "playbackModes": "Playback Modes",

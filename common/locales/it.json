@@ -527,7 +527,6 @@
         "missingFieldError": "Campo \"{{field}}\" non trovato nel tipo di nota",
         "webSocketClientEnabled": "Abilita client WebSocket",
         "webSocketServerUrl": "URL server WebSocket",
-        "firefoxExtensionShortcutHelp": "Modifica questa scorciatoia dal gestore Plugin in about:addons.",
         "postMinePlayback": "Stato di riproduzione post-estrazione",
         "pauseOnHoverMode": "Pausa automatica al passaggio del mouse sui sottotitoli",
         "playbackModes": "Playback Modes",

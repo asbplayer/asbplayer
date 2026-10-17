@@ -527,7 +527,6 @@
         "missingFieldError": "O campo \"{{field}}\" não foi encontrado no tipo de nota",
         "webSocketClientEnabled": "Ativar client WebSocket",
         "webSocketServerUrl": "URL do Servidor WebSocket",
-        "firefoxExtensionShortcutHelp": "Edite este atalho do Gerenciador de Plugins em about:addons.",
         "postMinePlayback": "Estado de reprodução pós-mineração",
         "pauseOnHoverMode": "Pausar automaticamente ao posicionar o mouse sobre as legendas",
         "playbackModes": "Playback Modes",

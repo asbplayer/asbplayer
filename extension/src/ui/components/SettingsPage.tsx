@@ -20,6 +20,7 @@ import { testCard } from '@project/common/settings';
 import { useTheme } from '@mui/material/styles';
 import type { Theme } from '@mui/material/styles';
 import { settingsPageConfigs } from '@/services/pages';
+import { openExtensionShortcuts } from '@/services/extension-shortcuts';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
@@ -93,10 +94,6 @@ const SettingsPage = ({
 
     const commands = useCommandKeyBinds();
 
-    const handleOpenExtensionShortcuts = useCallback(() => {
-        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
-    }, []);
-
     const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
     const { supportedLanguages } = useSupportedLanguages();
 
@@ -139,7 +136,7 @@ const SettingsPage = ({
                         extensionSupportsSubtitleListCustomization
                         extensionSupportsUpdateLastWithSameSubtitleText
                         chromeKeyBinds={commands}
-                        onOpenChromeExtensionShortcuts={handleOpenExtensionShortcuts}
+                        onOpenChromeExtensionShortcuts={openExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}
                         dictionaryProvider={dictionaryProvider}
                         logProvider={logProvider}

@@ -527,7 +527,6 @@
         "missingFieldError": "Le champ \"{{field}}\" est introuvable dans le type de note",
         "webSocketClientEnabled": "Activer le client WebSocket",
         "webSocketServerUrl": "URL du serveur WebSocket",
-        "firefoxExtensionShortcutHelp": "Modifiez ce raccourci depuis le gestionnaire d’extensions à l’adresse about:addons.",
         "postMinePlayback": "État de lecture après minage",
         "pauseOnHoverMode": "Pause automatique au survol des sous-titres",
         "playbackModes": "Playback Modes",

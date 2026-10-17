@@ -319,7 +319,6 @@
         "settings.extensionOverriddenBind": "Text that is shown when a the keyboard shortcut is overridden by the extension. This situation is possible because the extension has its own keyboard shortcut settings which may override the website's keyboard shortcut settings.",
         "settings.extensionShortcut": "Helper text that indicates a particular shortcut is defined through extension settings, and not through the website.",
         "settings.fastForwardModePlaybackRate": "Label for setting that controls how fast to fast-forward in fast-forward mode.",
-        "settings.firefoxExtensionShortcutHelp": "Helper text that explains how to edit Firefox extension shortcuts.",
         "settings.imageBasedSubtitleScaleFactor": "Setting that scales the size of image-based subtitles e.g. 2 = 2x the default size.",
         "settings.imageField": "The field of the Anki card that will be populated with image extracted from the video.",
         "settings.keyboardShortcuts": "Section heading for keyboard shortcut settings.",

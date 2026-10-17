@@ -527,7 +527,6 @@
         "missingFieldError": "Kenttä \"{{field}}\" ei löydy merkintätyypistä",
         "webSocketClientEnabled": "Ota WebSocket asiakasohjelma käyttöön",
         "webSocketServerUrl": "WebSocket-palvelimen URL",
-        "firefoxExtensionShortcutHelp": "Muokkaa tätä pikakuvaketta Plugin managerilta about:addons.",
         "postMinePlayback": "Jatka Ankiin lähettämisen jälkeen",
         "pauseOnHoverMode": "Pysäytä automaattisesti kun hiiri on tekstitysten päällä",
         "playbackModes": "Playback Modes",

@@ -22,6 +22,7 @@ import { StyledEngineProvider } from '@mui/material/styles';
 import { DictionaryProvider } from '@project/common/dictionary-db';
 import { ExtensionDictionaryStorage } from '@/services/extension-dictionary-storage';
 import { isFirefoxBuild } from '@/services/build-flags';
+import { openExtensionShortcuts } from '@/services/extension-shortcuts';
 import { extensionLogProvider } from '@/services/extension-log-provider';
 
 interface Props {
@@ -65,10 +66,6 @@ export function PopupUi({ commands }: Props) {
         },
         [settingsProvider]
     );
-
-    const handleOpenExtensionShortcuts = useCallback(() => {
-        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
-    }, []);
 
     const handleOpenApp = useCallback(async () => {
         if (settings?.streamingAppUrl) {
@@ -150,7 +147,7 @@ export function PopupUi({ commands }: Props) {
                             onSettingsChanged={handleSettingsChanged}
                             onOpenApp={handleOpenApp}
                             onOpenSidePanel={handleOpenSidePanel}
-                            onOpenExtensionShortcuts={handleOpenExtensionShortcuts}
+                            onOpenExtensionShortcuts={openExtensionShortcuts}
                             onOpenUserGuide={handleOpenUserGuide}
                             {...profilesContext}
                         />

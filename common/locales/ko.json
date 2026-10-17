@@ -527,7 +527,6 @@
         "missingFieldError": "노트 유형에서 '{{field}}' 필드를 찾을 수 없습니다",
         "webSocketClientEnabled": "WebSocket 클라이언트 활성화",
         "webSocketServerUrl": "WebSocket 서버 URL",
-        "firefoxExtensionShortcutHelp": "단축키를 변경하려면 about:addons의 플러그인 관리자에서 설정하세요.",
         "postMinePlayback": "자막 추출 후 재생 상태",
         "pauseOnHoverMode": "자막 위에 마우스를 올리면 자동 일시정지",
         "playbackModes": "Playback Modes",

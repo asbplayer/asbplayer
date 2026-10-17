@@ -527,7 +527,6 @@
         "missingFieldError": "笔记类型中未找到字段“{{field}}”",
         "webSocketClientEnabled": "启用 WebSocket 客户端",
         "webSocketServerUrl": "WebSocket 服务端链接",
-        "firefoxExtensionShortcutHelp": "请在 about:addons 插件管理器中编辑此快捷键。",
         "postMinePlayback": "挖掘后的播放状态",
         "pauseOnHoverMode": "鼠标悬停于字幕时自动暂停",
         "playbackModes": "Playback Modes",

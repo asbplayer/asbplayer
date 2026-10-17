@@ -527,7 +527,6 @@
         "missingFieldError": "No se pudo encontrar el campo \"{{field}}\" en el tipo de nota de Anki.",
         "webSocketClientEnabled": "Habilitar cliente WebSocket",
         "webSocketServerUrl": "URL del servidor WebSocket",
-        "firefoxExtensionShortcutHelp": "Edita este acceso directo desde el gestor de plugins en about:addons.",
         "postMinePlayback": "Estado de reproducción post-minado",
         "pauseOnHoverMode": "Pausa automática al pasar el cursor sobre los subtítulos",
         "playbackModes": "Playback Modes",

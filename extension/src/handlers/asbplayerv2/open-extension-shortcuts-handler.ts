@@ -1,3 +1,5 @@
+import { openExtensionShortcuts } from '@/services/extension-shortcuts';
+
 export default class OpenExtensionShortcutsHandler {
     get sender() {
         return 'asbplayerv2';
@@ -8,7 +10,7 @@ export default class OpenExtensionShortcutsHandler {
     }
 
     handle() {
-        void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
+        openExtensionShortcuts();
         return false;
     }
 }

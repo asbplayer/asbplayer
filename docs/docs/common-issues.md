@@ -52,9 +52,9 @@ Check the [keyboard shortcut settings](https://app.asbplayer.dev/?view=settings#
 
 Also, if using the extension:
 
-- Check `chrome://extensions/shortcuts`.
+- Check `chrome://extensions/shortcuts` in Chrome, or `about:addons` → gear icon → `Manage Extension Shortcuts` in Firefox.
 - Try refreshing the page and loading subtitles again.
-- Try uninstalling and reinstalling the extension, and restarting Chrome.
+- Try uninstalling and reinstalling the extension, and restarting your browser.
 - Make sure the extension isn't installed twice.
 
 ### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}

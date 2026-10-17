@@ -10,7 +10,6 @@ import Typography from '@mui/material/Typography';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
 import Switch from '@mui/material/Switch';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsTextField from '@project/common/components/SettingsTextField';
@@ -242,8 +241,6 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
         placeholder = t('settings.unboundBind');
     }
 
-    const firefoxExtensionShortcut = isFirefox && boundViaChrome;
-
     return (
         <Grid2 container className={classes.container} wrap={'nowrap'} spacing={1}>
             <Grid2
@@ -269,24 +266,9 @@ function KeyBindField({ label, keys, boundViaChrome, onKeysChange, onOpenExtensi
                             input: {
                                 endAdornment: (
                                     <InputAdornment position="end">
-                                        {!firefoxExtensionShortcut && (
-                                            <IconButton
-                                                ref={ref}
-                                                sx={{ marginRight: -1 }}
-                                                onClick={handleEditKeyBinding}
-                                            >
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
-                                        {firefoxExtensionShortcut && (
-                                            <Tooltip title={t('settings.firefoxExtensionShortcutHelp')}>
-                                                <span>
-                                                    <IconButton disabled={true}>
-                                                        <EditIcon fontSize="small" />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
-                                        )}
+                                        <IconButton ref={ref} sx={{ marginRight: -1 }} onClick={handleEditKeyBinding}>
+                                            <EditIcon fontSize="small" />
+                                        </IconButton>
                                     </InputAdornment>
                                 ),
                             },
