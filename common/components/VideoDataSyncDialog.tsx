@@ -110,7 +110,7 @@ export const emptySubtitleTrack = (t: TFunction) => {
 
 const initialTrackIds = ['-', '-', '-'];
 
-export const useVideoDataSyncDialogState = () => {
+export const useVideoDataSyncDialogState = (files?: FileWithId[]) => {
     const { t } = useTranslation();
     const [subtitleTrackSelectorOpen, setSubtitleTrackSelectorOpen] = useState<boolean>(false);
     const [subtitleTrackSelectorDisabled, setSubtitleTrackSelectorDisabled] = useState<boolean>(false);
@@ -126,7 +126,27 @@ export const useVideoDataSyncDialogState = () => {
     }, [t, subtitleTrackSelectorTracks]);
     const [subtitleTrackSelectorSelectedTrackIds, setSubtitleTrackSelectorSelectedTrackIds] =
         useState<string[]>(initialTrackIds);
-    const openSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(true), []);
+    const openSubtitleTrackSelector = useCallback(() => {
+        if (files !== undefined) {
+            const loadedTracks = new Map<string, VideoDataSubtitleTrack>();
+            for (const { file, id } of files) {
+                if (id === '-') continue;
+                loadedTracks.set(id, {
+                    id,
+                    label: file.name,
+                    file,
+                    extension: file.name.substring(file.name.lastIndexOf('.') + 1),
+                });
+            }
+            // Local confirmation consumes files directly; "-" is an extension-only URL sentinel.
+            setSubtitleTrackSelectorTracks([
+                { ...emptySubtitleTrack(t), file: new File([''], '.srt') },
+                ...loadedTracks.values(),
+            ]);
+            setSubtitleTrackSelectorSelectedTrackIds(initialTrackIds.map((_, index) => files[index]?.id ?? '-'));
+        }
+        setSubtitleTrackSelectorOpen(true);
+    }, [files, t]);
     const closeSubtitleTrackSelector = useCallback(() => setSubtitleTrackSelectorOpen(false), []);
 
     return {
