@@ -5,7 +5,11 @@ import { SettingsProvider, supportedLanguages as defaultSupportedLanguages } fro
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
 import type { PublicPath } from 'wxt/browser';
 
-const stringsKeyForLang = (lang: string) => `locStrings-${lang}`;
+// locRemote: strings as downloaded, locStrings: remote strings merged over bundled strings (what the UI reads)
+const stringsKeyPrefix = 'locStrings-';
+const remoteKeyPrefix = 'locRemote-';
+const stringsKeyForLang = (lang: string) => `${stringsKeyPrefix}${lang}`;
+const remoteKeyForLang = (lang: string) => `${remoteKeyPrefix}${lang}`;
 const versionKeyForLang = (lang: string) => `locVersion-${lang}`;
 const settings = new SettingsProvider(new ExtensionSettingsStorage());
 
@@ -15,7 +19,8 @@ export interface Localization {
 }
 
 export const fetchLocalization = async (lang: string): Promise<Localization> => {
-    if (import.meta.env.MODE === 'development') {
+    // Set WXT_BUNDLED_LOCALES=true to use only bundled strings, to preview edited strings before they are deployed
+    if (import.meta.env.WXT_BUNDLED_LOCALES === 'true') {
         return (await bundledStringsForLang(lang)) ?? (await bundledStringsForLang('en'))!;
     }
 
@@ -36,6 +41,23 @@ export const fetchSupportedLanguages = async (): Promise<string[]> => {
     return config.languages.map((c) => c.code);
 };
 
+// Rebuilds the merged strings for every language that has stored remote strings. Needs no network access.
+// Called on install and update, since the bundled strings may have changed.
+export const rebuildLocalizationCache = async (): Promise<void> => {
+    try {
+        const all = (await browser.storage.local.get(null)) ?? {};
+
+        for (const key of Object.keys(all)) {
+            if (key.startsWith(remoteKeyPrefix)) {
+                const lang = key.slice(remoteKeyPrefix.length);
+                await mergeAndCache(lang, all[key]);
+            }
+        }
+    } catch (e) {
+        asbError('i18n', e);
+    }
+};
+
 export const primeLocalization = async (lang: string): Promise<void> => {
     try {
         const config = await fetchExtensionConfig();
@@ -53,11 +75,15 @@ export const primeLocalization = async (lang: string): Promise<void> => {
         }
 
         const versionKey = versionKeyForLang(lang);
-        const result = await browser.storage.local.get(versionKey);
-        const version = result ? (result[versionKey] as number | undefined) : undefined;
+        const remoteKey = remoteKeyForLang(lang);
+        const stringsKey = stringsKeyForLang(lang);
+        const result = (await browser.storage.local.get([versionKey, remoteKey, stringsKey])) ?? {};
+        const version = result[versionKey] as number | undefined;
 
-        if (version === undefined || version < langConfig.version) {
+        if (version === undefined || result[remoteKey] === undefined || version < langConfig.version) {
             await fetchAndCache(langConfig);
+        } else if (result[stringsKey] === undefined) {
+            await mergeAndCache(lang, result[remoteKey]);
         }
     } catch (e) {
         asbError('i18n', e);
@@ -68,16 +94,43 @@ const fetchAndCache = async ({ code, url, version }: LocalizationConfig): Promis
     const asbplayerUrl = await settings.getSingle('streamingAppUrl');
     const effectiveUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `${asbplayerUrl}/${url}`;
     try {
-        const strings = await (await fetch(effectiveUrl)).json();
+        const remoteStrings = await (await fetch(effectiveUrl)).json();
 
-        if (typeof strings === 'object') {
-            const versionKey = versionKeyForLang(code);
-            const stringsKey = stringsKeyForLang(code);
-            await browser.storage.local.set({ [stringsKey]: strings, [versionKey]: version });
+        if (typeof remoteStrings === 'object' && remoteStrings !== null) {
+            await browser.storage.local.set({
+                [remoteKeyForLang(code)]: remoteStrings,
+                [versionKeyForLang(code)]: version,
+            });
+            await mergeAndCache(code, remoteStrings);
         }
     } catch (e) {
         asbError('i18n', e);
     }
+};
+
+// The remote strings can lag behind the bundled strings, so merge them over the bundled ones.
+const mergeAndCache = async (lang: string, remoteStrings: any): Promise<void> => {
+    const bundled = (await bundledStringsForLang(lang)) ?? (await bundledStringsForLang('en'))!;
+    const strings = mergeStrings(bundled.strings, remoteStrings);
+    await browser.storage.local.set({ [stringsKeyForLang(lang)]: strings });
+};
+
+const mergeStrings = (base: any, override: any): any => {
+    const merged = { ...base, ...override };
+
+    for (const key of Object.keys(base)) {
+        if (
+            key in override &&
+            typeof base[key] === 'object' &&
+            base[key] !== null &&
+            typeof override[key] === 'object' &&
+            override[key] !== null
+        ) {
+            merged[key] = mergeStrings(base[key], override[key]);
+        }
+    }
+
+    return merged;
 };
 
 const bundledStringsForLang = async (lang: string): Promise<Localization | undefined> => {

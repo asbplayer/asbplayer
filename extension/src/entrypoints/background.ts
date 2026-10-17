@@ -40,7 +40,7 @@ import type {
 } from '@project/common';
 import { PostMineAction } from '@project/common';
 import { SettingsProvider } from '@project/common/settings';
-import { fetchSupportedLanguages, primeLocalization } from '@/services/localization-fetcher';
+import { fetchSupportedLanguages, primeLocalization, rebuildLocalizationCache } from '@/services/localization-fetcher';
 import VideoDisappearedHandler from '@/handlers/video/video-disappeared-handler';
 import { ExtensionSettingsStorage } from '@/services/extension-settings-storage';
 import LoadSubtitlesHandler from '@/handlers/asbplayerv2/load-subtitles-handler';
@@ -126,6 +126,7 @@ export default defineBackground(() => {
 
     const installListener = async (details: Browser.runtime.InstalledDetails) => {
         if (details.reason === browser.runtime.OnInstalledReason.UPDATE) {
+            await rebuildLocalizationCache();
             await primeLocalization(await settings.getSingle('language'));
 
             // Existing users who upgrade to 1.14.0 should see the annotation tutorial
@@ -148,6 +149,7 @@ export default defineBackground(() => {
                 await settings.set({ language: defaultUiLanguage });
             }
 
+            await rebuildLocalizationCache();
             await primeLocalization(await settings.getSingle('language'));
 
             if (isMobile) {

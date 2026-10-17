@@ -11,6 +11,7 @@ stats.html
 stats-*.json
 .wxt
 web-ext.config.ts
+.env.local
 .env.submit
 
 # Editor directories and files
