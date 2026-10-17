@@ -70,9 +70,10 @@ export function PopupUi({ commands }: Props) {
         void browser.tabs.create({ active: true, url: 'chrome://extensions/shortcuts' });
     }, []);
 
-    const handleOpenApp = useCallback(async () => {
+    const handleOpenApp = useCallback(() => {
         if (settings?.streamingAppUrl) {
             void browser.tabs.create({ active: true, url: settings.streamingAppUrl });
+            window.close();
         }
     }, [settings]);
 
@@ -89,6 +90,7 @@ export function PopupUi({ commands }: Props) {
 
     const handleOpenUserGuide = useCallback(() => {
         void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        window.close();
     }, []);
 
     const { requestingActiveTabPermission, tabRequestingActiveTabPermission } = useRequestingActiveTabPermission();
