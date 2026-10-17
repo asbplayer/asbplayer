@@ -12,6 +12,28 @@ jest.mock('react-i18next', () => ({
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const subtitleFile = (id: string, name = `${id}.srt`): FileWithId => ({ id, file: new File([''], name) });
+const readFileBytes = (file: File) =>
+    new Promise<number[]>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(Array.from(new Uint8Array(reader.result as ArrayBuffer)));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(file);
+    });
+
+const subtitleExtensions = [
+    'srt',
+    'ass',
+    'vtt',
+    'sup',
+    'nfvtt',
+    'nfimsc',
+    'ytxml',
+    'ytsrv3',
+    'dfxp',
+    'ttml2',
+    'bbjson',
+];
+const binarySubtitleData = new Uint8Array([0x50, 0x47, 0x00, 0xff, 0x81, 0x00, 0x7f]);
 
 describe('local subtitle track selection', () => {
     let container: HTMLDivElement;
@@ -61,6 +83,44 @@ describe('local subtitle track selection', () => {
         expect(state.subtitleTrackSelectorTracks.map(({ id }) => id)).toEqual(['-', 'en']);
         expect(state.subtitleTrackSelectorTracks[0].file?.size).toBe(0);
         expect(state.subtitleTrackSelectorTracks[0].file?.name).toBe('.srt');
+    });
+
+    it.each(subtitleExtensions)('preserves the original %s file and its playback slot', async (extension) => {
+        const file = new File([binarySubtitleData], `字幕.en.${extension}`);
+        render([subtitleFile('-', '.srt'), { id: 'loaded', file }]);
+        open();
+
+        expect(state.subtitleTrackSelectorSelectedTrackIds).toEqual(['-', 'loaded', '-']);
+        expect(state.subtitleTrackSelectorTracks.map(({ id }) => id)).toEqual(['-', 'loaded']);
+        const track = state.subtitleTrackSelectorTracks[1];
+        expect(track.file).toBe(file);
+        expect(track.label).toBe(file.name);
+        expect(track.extension).toBe(extension);
+        expect(await readFileBytes(track.file!)).toEqual(Array.from(binarySubtitleData));
+        expect(state.subtitleTrackSelectorTracks[0].file?.size).toBe(0);
+    });
+
+    it('restores a mixed ASS, VTT and SUP playback order after reopening', async () => {
+        const files = ['ass', 'vtt', 'sup'].map((extension) => ({
+            id: extension,
+            file: new File([binarySubtitleData], `episode.${extension}`),
+        }));
+        render(files);
+        open();
+        expect(state.subtitleTrackSelectorSelectedTrackIds).toEqual(['ass', 'vtt', 'sup']);
+
+        act(() => state.closeSubtitleTrackSelector());
+        const reorderedFiles = [files[2], files[0], files[1]];
+        render(reorderedFiles);
+        open();
+
+        expect(state.subtitleTrackSelectorSelectedTrackIds).toEqual(['sup', 'ass', 'vtt']);
+        for (const [index, source] of reorderedFiles.entries()) {
+            const track = state.subtitleTrackSelectorTracks[index + 1];
+            expect(track.file).toBe(source.file);
+            expect(track.extension).toBe(source.id);
+        }
+        expect(await readFileBytes(state.subtitleTrackSelectorTracks[1].file!)).toEqual(Array.from(binarySubtitleData));
     });
 
     it('reopens with loaded files rather than cancelled draft choices', () => {

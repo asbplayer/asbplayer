@@ -138,7 +138,7 @@ export const useVideoDataSyncDialogState = (files?: FileWithId[]) => {
                     extension: file.name.substring(file.name.lastIndexOf('.') + 1),
                 });
             }
-            // Local confirmation consumes files directly; "-" is an extension-only URL sentinel.
+            // A zero-byte SRT preserves empty slots without making confirmation fetch the "-" URL.
             setSubtitleTrackSelectorTracks([
                 { ...emptySubtitleTrack(t), file: new File([''], '.srt') },
                 ...loadedTracks.values(),
