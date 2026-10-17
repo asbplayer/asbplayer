@@ -39,6 +39,7 @@ import SubtitleAppearanceTrackSelector from '@project/common/components/Subtitle
 import SubtitlePreview from '@project/common/components/SubtitlePreview';
 import Stack from '@mui/material/Stack';
 import SettingsTextField from '@project/common/components/SettingsTextField';
+import ColorPickerField from '@project/common/components/ColorPickerField';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsSection from '@project/common/components/SettingsSection';
@@ -270,13 +271,11 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
             />
             <SettingsSection>{t('settings.styling')}</SettingsSection>
             {subtitleColor !== undefined && (
-                <SettingsTextField
-                    type="color"
+                <ColorPickerField
                     label={t('settings.subtitleColor')}
                     fullWidth
                     value={subtitleColor}
-                    color="primary"
-                    onChange={(event) => handleSubtitleTextSettingChanged('subtitleColor', event.target.value)}
+                    onChange={(hex) => handleSubtitleTextSettingChanged('subtitleColor', hex)}
                 />
             )}
             {subtitleSize !== undefined && (
@@ -314,13 +313,11 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 </>
             )}
             {subtitleOutlineColor !== undefined && (
-                <SettingsTextField
-                    type="color"
+                <ColorPickerField
                     label={t('settings.subtitleOutlineColor')}
                     fullWidth
                     value={subtitleOutlineColor}
-                    color="primary"
-                    onChange={(event) => handleSubtitleTextSettingChanged('subtitleOutlineColor', event.target.value)}
+                    onChange={(hex) => handleSubtitleTextSettingChanged('subtitleOutlineColor', hex)}
                 />
             )}
             {subtitleOutlineThickness !== undefined && (
@@ -340,13 +337,11 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 />
             )}
             {subtitleShadowColor !== undefined && (
-                <SettingsTextField
-                    type="color"
+                <ColorPickerField
                     label={t('settings.subtitleShadowColor')}
                     fullWidth
                     value={subtitleShadowColor}
-                    color="primary"
-                    onChange={(event) => handleSubtitleTextSettingChanged('subtitleShadowColor', event.target.value)}
+                    onChange={(hex) => handleSubtitleTextSettingChanged('subtitleShadowColor', hex)}
                 />
             )}
             {subtitleShadowThickness !== undefined && (
@@ -365,15 +360,11 @@ const SubtitleAppearanceSettingsTab: React.FC<Props> = ({
                 />
             )}
             {subtitleBackgroundColor !== undefined && (
-                <SettingsTextField
-                    type="color"
+                <ColorPickerField
                     label={t('settings.subtitleBackgroundColor')}
                     fullWidth
                     value={subtitleBackgroundColor}
-                    color="primary"
-                    onChange={(event) =>
-                        handleSubtitleTextSettingChanged('subtitleBackgroundColor', event.target.value)
-                    }
+                    onChange={(hex) => handleSubtitleTextSettingChanged('subtitleBackgroundColor', hex)}
                 />
             )}
             {subtitleBackgroundOpacity !== undefined && (

@@ -30,7 +30,6 @@ import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
-import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
@@ -68,6 +67,7 @@ import { WaniKani } from '@project/common/wanikani';
 import { Yomitan } from '@project/common/yomitan';
 import SwitchLabelWithHoverEffect from '@project/common/components/SwitchLabelWithHoverEffect';
 import SettingsTextField from '@project/common/components/SettingsTextField';
+import ColorPickerField from '@project/common/components/ColorPickerField';
 import NumericSettingInput from '@project/common/components/NumericSettingInput';
 import SettingsSection, { SettingsSubSection } from '@project/common/components/SettingsSection';
 import type {
@@ -2280,16 +2280,14 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             />
                                         </div>
                                         <Stack direction="row" spacing={1} sx={{ flexGrow: 1, alignItems: 'end' }}>
-                                            <TextField
-                                                type="color"
+                                            <ColorPickerField
                                                 sx={{ width: '50%' }}
                                                 value={color}
-                                                color="primary"
                                                 disabled={!display}
-                                                onChange={(e) =>
+                                                onChange={(hex) =>
                                                     updateTokenStatusConfig({
                                                         ...selectedDictionary.dictionaryTokenStatusConfig[tokenStatus],
-                                                        color: e.target.value,
+                                                        color: hex,
                                                     })
                                                 }
                                             />
@@ -2349,20 +2347,18 @@ const DictionarySettingsTab: React.FC<Props> = ({
                             const tokenStatus: TokenStatus = NUM_TOKEN_STATUSES - 1 - i;
                             if (tokenStatus === tokenStylingToHide) return null;
                             return (
-                                <SettingsTextField
+                                <ColorPickerField
                                     key={i}
-                                    type="color"
                                     label={t(`settings.dictionaryTokenStatus${tokenStatus}`)}
                                     fullWidth
                                     value={selectedDictionary.dictionaryTokenStatusColors[tokenStatus]}
-                                    color="primary"
-                                    onChange={(e) => {
+                                    onChange={(hex) => {
                                         const newColors = [...selectedDictionary.dictionaryTokenStatusColors];
-                                        newColors[tokenStatus] = e.target.value;
+                                        newColors[tokenStatus] = hex;
                                         const newConfigs = [...selectedDictionary.dictionaryTokenStatusConfig];
                                         newConfigs[tokenStatus] = {
                                             ...newConfigs[tokenStatus],
-                                            color: e.target.value,
+                                            color: hex,
                                         };
 
                                         const newTracks = [...dictionaryTracks];
