@@ -54,6 +54,7 @@ import type VideoChannel from '@project/common/app/services/video-channel';
 import { addBlobUrl, createBlobUrl, revokeBlobUrl } from '@project/common/blob-url';
 import { useTranslation } from 'react-i18next';
 import { LocalizedError } from '@project/common/app/components/localized-error';
+import { mirrorLoadedSubtitles } from '@project/common/app/components/subtitle-track-selection';
 import { useCopyHistory } from '@project/common/app/hooks/use-copy-history';
 import { useFileSession } from '@project/common/app/hooks/use-file-session';
 import { useI18n } from '@project/common/app/hooks/use-i18n';
@@ -1733,6 +1734,16 @@ function App({
         subtitleTrackSelectorDisabled,
         setSubtitleTrackSelectorDisabled,
     } = useVideoDataSyncDialogState();
+
+    useEffect(() => {
+        const loaded = sources.subtitleFiles;
+        if (loaded.length === 0) {
+            return;
+        }
+
+        setSubtitleTrackSelectorTracks((tracks) => mirrorLoadedSubtitles(tracks, loaded).tracks);
+        setSubtitleTrackSelectorSelectedTrackIds(mirrorLoadedSubtitles([], loaded).selectedTrackIds);
+    }, [sources.subtitleFiles, setSubtitleTrackSelectorTracks, setSubtitleTrackSelectorSelectedTrackIds]);
 
     const handleConfirmSubtitleTrackSelection = useCallback(
         (tracks: ConfirmedVideoDataSubtitleTrack[]) => {
