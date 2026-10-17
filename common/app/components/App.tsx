@@ -1732,7 +1732,7 @@ function App({
         setSubtitleTrackSelectorTracks,
         subtitleTrackSelectorDisabled,
         setSubtitleTrackSelectorDisabled,
-    } = useVideoDataSyncDialogState();
+    } = useVideoDataSyncDialogState(sources.subtitleFiles);
 
     const handleConfirmSubtitleTrackSelection = useCallback(
         (tracks: ConfirmedVideoDataSubtitleTrack[]) => {
