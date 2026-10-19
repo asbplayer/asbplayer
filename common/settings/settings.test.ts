@@ -41,6 +41,9 @@ it('compares dictionary playback fields by value regardless of object key order'
     reordered.fastForward.rateByComprehension.enabled = true;
     expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
     reordered.fastForward.rateByComprehension.enabled = false;
+    reordered.fastForward.rateByComprehension.minimumPercent = 80;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.fastForward.rateByComprehension.minimumPercent = config.fastForward.rateByComprehension.minimumPercent;
     reordered.repeat.rules.maxFrequency = 1;
     expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
     reordered.repeat.rules.maxFrequency = 0;

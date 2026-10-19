@@ -245,27 +245,57 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange }) => {
                                 </>
                             )}
                             {feature === 'fastForward' && (
-                                <SwitchLabelWithHoverEffect
-                                    control={
-                                        <Switch
-                                            checked={config.fastForward.rateByComprehension.enabled}
-                                            onChange={(event) =>
+                                <>
+                                    <SwitchLabelWithHoverEffect
+                                        control={
+                                            <Switch
+                                                checked={config.fastForward.rateByComprehension.enabled}
+                                                onChange={(event) =>
+                                                    onChange({
+                                                        ...config,
+                                                        fastForward: {
+                                                            ...config.fastForward,
+                                                            rateByComprehension: {
+                                                                ...config.fastForward.rateByComprehension,
+                                                                enabled: event.target.checked,
+                                                            },
+                                                        },
+                                                    })
+                                                }
+                                            />
+                                        }
+                                        label={t('settings.dictionaryPlaybackFastForwardComprehension')}
+                                        labelPlacement="start"
+                                    />
+                                    {config.fastForward.rateByComprehension.enabled && (
+                                        <NumericSettingInput
+                                            fullWidth
+                                            color="primary"
+                                            label={t('settings.dictionaryPlaybackMinimumComprehension')}
+                                            value={config.fastForward.rateByComprehension.minimumPercent}
+                                            commitOnBlur
+                                            normalizeValue={(value) => Math.min(99, Math.max(0, Math.floor(value)))}
+                                            onValueChange={(value) =>
                                                 onChange({
                                                     ...config,
                                                     fastForward: {
                                                         ...config.fastForward,
                                                         rateByComprehension: {
                                                             ...config.fastForward.rateByComprehension,
-                                                            enabled: event.target.checked,
+                                                            minimumPercent: value,
                                                         },
                                                     },
                                                 })
                                             }
+                                            slotProps={{
+                                                input: {
+                                                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                                                },
+                                                htmlInput: { min: 0, max: 99, step: 1 },
+                                            }}
                                         />
-                                    }
-                                    label={t('settings.dictionaryPlaybackFastForwardComprehension')}
-                                    labelPlacement="start"
-                                />
+                                    )}
+                                </>
                             )}
                         </Stack>
                     </Box>

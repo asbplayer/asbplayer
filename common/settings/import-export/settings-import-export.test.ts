@@ -125,6 +125,7 @@ it('preserves dictionary playback rules through settings export and import', () 
     playback.autoPause.rules.minFrequency = 100001;
     playback.autoPause.rules.maxFrequency = 200000;
     playback.fastForward.rateByComprehension.enabled = true;
+    playback.fastForward.rateByComprehension.minimumPercent = 80;
     const settings = {
         ...defaultSettings,
         dictionaryTracks: defaultSettings.dictionaryTracks.map((track, index) =>
@@ -154,10 +155,26 @@ it('requires current playback fields when a dictionary playback config is presen
         (config: any) => delete config.wordVisibility.wholeSubtitleMatchThreshold,
         (config: any) => delete config.fastForward.rateByComprehension,
         (config: any) => delete config.fastForward.rateByComprehension.enabled,
+        (config: any) => delete config.fastForward.rateByComprehension.minimumPercent,
     ];
     for (const removeField of missingFields) {
         const settings = JSON.parse(JSON.stringify(defaultSettings));
         removeField(settings.dictionaryTracks[0].dictionaryPlaybackConfig);
+        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+    }
+});
+
+it('accepts only whole-number minimum comprehension percentages from zero through ninety-nine', () => {
+    for (const minimumPercent of [0, 60, 99]) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent =
+            minimumPercent;
+        expect(() => validateSettings(settings)).not.toThrow();
+    }
+    for (const minimumPercent of [-1, 100, 60.5, true]) {
+        const settings = JSON.parse(JSON.stringify(defaultSettings));
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent =
+            minimumPercent;
         expect(() => validateSettings(settings)).toThrow('Settings validation failed');
     }
 });

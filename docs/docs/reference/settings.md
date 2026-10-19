@@ -741,9 +741,13 @@ When fast-forward mode is on, play subtitles containing a matching word at the n
 
 While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
 
-At 60% comprehension or less, use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
 
 Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+
+### Minimum comprehension {#minimum-comprehension}
+
+Sets the percentage where acceleration starts (0–99%, default 60%).
 
 ### Show these words during playback {#show-these-words-during-playback}
 
@@ -753,13 +757,21 @@ Select the statuses and states whose words should remain visible.
 
 Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
 
-### Hide nonmatching words individually before the threshold {#hide-nonmatching-words-before-threshold}
+### Hide non-matching words individually {#hide-non-matching-words-individually}
 
 When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
 
-### Only when this status or state has at most this many words {#only-when-this-status-or-state-has-at-most-this-many-words}
+### Minimum words per selected category {#minimum-words-per-selected-category}
 
-Each selected status and state is counted separately within a subtitle. If its count exceeds this limit, words matching that status or state do not trigger that rule. `0` disables the limit.
+Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+
+### Maximum words per selected category {#maximum-words-per-selected-category}
+
+Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+
+### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+
+A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
 
 ### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
 

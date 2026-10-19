@@ -735,6 +735,45 @@ describe('compiled dictionary playback', () => {
         expect(executor.playbackRate).toBe(2.5);
     });
 
+    it.each([
+        { minimumPercent: 0, expectedRate: 2.375 },
+        { minimumPercent: 80, expectedRate: 1.875 },
+        { minimumPercent: 99, expectedRate: 1.25 },
+        { minimumPercent: -1, expectedRate: 2.375 },
+        { minimumPercent: 100, expectedRate: 1.25 },
+        { minimumPercent: 80.9, expectedRate: 1.875 },
+        { minimumPercent: NaN, expectedRate: 2.375 },
+        { minimumPercent: Infinity, expectedRate: 2.375 },
+        { minimumPercent: -Infinity, expectedRate: 2.375 },
+    ])('uses minimum comprehension $minimumPercent when calculating rates', ({ minimumPercent, expectedRate }) => {
+        const playback = config();
+        playback.fastForward.rateByComprehension = { enabled: true, minimumPercent };
+        const text = Array.from({ length: 10 }, () => 'a').join(' ');
+        const subtitles = [0, 9, 10].map((known, index) =>
+            subtitle(
+                text,
+                Array.from({ length: 10 }, (_, i) =>
+                    token(i * 2, i * 2 + 1, i < known ? TokenStatus.MATURE : TokenStatus.UNKNOWN, {
+                        groupingKey: `word-${i}`,
+                    })
+                ),
+                { index, start: 1000 + index * 2000 }
+            )
+        );
+        const plan = buildPlaybackPlan(
+            makePlaybackPlanInput(subtitles, {
+                durationMs: 7000,
+                playModes: new Set([PlayMode.fastForward]),
+                dictionaryTracks: tracksWith(playback),
+            })
+        );
+        const rates = plan.timelineSubtitles.blocks.map((block) => block.adaptiveRate?.playbackRate);
+        expect(rates).toHaveLength(3);
+        expect(rates[0]).toBe(1.25);
+        expect(rates[1]).toBeCloseTo(expectedRate);
+        expect(rates[2]).toBe(2.5);
+    });
+
     it('interpolates the compiled rate between 60 and 100 percent comprehension', () => {
         const playback = config();
         playback.fastForward.rateByComprehension.enabled = true;

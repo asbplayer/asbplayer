@@ -193,10 +193,15 @@ const buildSubtitleAdaptiveRates = <T extends IndexedSubtitleModel>(
     const subtitleRates = new Map<number, PlaybackTimelineAdaptiveRate>();
     if (!playModes.has(PlayMode.fastForward)) return subtitleRates;
     for (const subtitle of subtitles) {
+        const comprehensionConfig = playbackConfig(subtitle.track)?.fastForward.rateByComprehension;
         if (matches('fastForward', subtitle.index)) {
             subtitleRates.set(subtitle.index, { playbackRate, fraction: 0, comprehensionControlled: false });
-        } else if (playbackConfig(subtitle.track)?.fastForward.rateByComprehension.enabled) {
-            const fraction = Math.max(0, (sentenceComprehensionPercent(subtitle) - 60) / 40);
+        } else if (comprehensionConfig?.enabled) {
+            const minimumPercent = Math.min(99, normalizeNonNegative(Math.floor(comprehensionConfig.minimumPercent)));
+            const fraction = Math.max(
+                0,
+                (sentenceComprehensionPercent(subtitle) - minimumPercent) / (100 - minimumPercent)
+            );
             subtitleRates.set(subtitle.index, {
                 playbackRate: playbackRate + fraction * (fastForwardModePlaybackRate - playbackRate),
                 fraction,

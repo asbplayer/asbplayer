@@ -97,7 +97,7 @@ const makeDefaultDictionaryPlaybackConfig = (): DictionaryTrack['dictionaryPlayb
     return {
         autoPause: feature(),
         condensed: feature(),
-        fastForward: { ...feature(), rateByComprehension: { enabled: false } },
+        fastForward: { ...feature(), rateByComprehension: { enabled: false, minimumPercent: 60 } },
         repeat: feature(),
         wordVisibility: { ...feature(), hideWordsIndividuallyUntilThreshold: true, wholeSubtitleMatchThreshold: 1 },
     };

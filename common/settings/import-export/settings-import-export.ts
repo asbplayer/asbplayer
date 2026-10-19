@@ -256,8 +256,11 @@ const dictionaryTrackSchema = {
                         },
                         rateByComprehension: {
                             type: 'object',
-                            properties: { enabled: { type: 'boolean' } },
-                            required: ['enabled'],
+                            properties: {
+                                enabled: { type: 'boolean' },
+                                minimumPercent: { type: 'integer', minimum: 0, maximum: 99 },
+                            },
+                            required: ['enabled', 'minimumPercent'],
                         },
                     },
                     required: ['onStatuses', 'onStates', 'rules', 'rateByComprehension'],

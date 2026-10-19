@@ -210,7 +210,8 @@ export interface DictionaryPlaybackFeatureConfig<Rules = DictionaryPlaybackRules
 }
 
 export interface DictionaryPlaybackComprehensionConfig {
-    enabled: boolean; // May want to expose the comprehension thresholds and use non-linear interpolation in the future
+    enabled: boolean;
+    minimumPercent: number;
 }
 
 export interface DictionaryPlaybackFastForwardConfig extends DictionaryPlaybackFeatureConfig {
@@ -293,7 +294,8 @@ function areDictionaryPlaybackFastForwardConfigsEqual(
 ): boolean {
     return (
         areDictionaryPlaybackFeatureConfigsEqual(a, b) &&
-        a.rateByComprehension.enabled === b.rateByComprehension.enabled
+        a.rateByComprehension.enabled === b.rateByComprehension.enabled &&
+        a.rateByComprehension.minimumPercent === b.rateByComprehension.minimumPercent
     );
 }
 
