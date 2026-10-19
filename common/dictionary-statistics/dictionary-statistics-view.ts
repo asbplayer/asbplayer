@@ -200,7 +200,7 @@ export interface DictionaryStatisticsTrackSnapshot {
     numDictionaryKnownTokens: number;
     numDictionaryIgnoredTokens: number;
     numUniqueTokens: number;
-    consideredTokens: number;
+    numConsideredTokens: number;
     numIgnoredTokens: number;
     numIgnoredOccurrences: number;
     numKnownTokens: number;
@@ -875,7 +875,7 @@ function statusCountsAndFrequenciesForSnapshots(tokens: Iterable<ProcessedTokenS
         }
     }
 
-    const consideredTokens = Array.from(statusCounts.values()).reduce((sum, count) => sum + count.numUnique, 0);
+    const numConsideredTokens = Array.from(statusCounts.values()).reduce((sum, count) => sum + count.numUnique, 0);
 
     const frequencyBuckets: DictionaryStatisticsFrequencyBucket[] = dictionaryStatisticsFrequencyBuckets.map(
         (curr, index) => {
@@ -885,7 +885,7 @@ function statusCountsAndFrequenciesForSnapshots(tokens: Iterable<ProcessedTokenS
                 count: frequencyCounts[index],
                 statusCounts: frequencyStatusCounts[index],
                 numOccurrences: frequencyOccurrenceCounts[index],
-                percent: percent(frequencyCounts[index], consideredTokens),
+                percent: percent(frequencyCounts[index], numConsideredTokens),
             };
         }
     );
@@ -894,20 +894,20 @@ function statusCountsAndFrequenciesForSnapshots(tokens: Iterable<ProcessedTokenS
         count: overflowFrequencyCount,
         statusCounts: overflowFrequencyStatusCounts,
         numOccurrences: overflowFrequencyOccurrences,
-        percent: percent(overflowFrequencyCount, consideredTokens),
+        percent: percent(overflowFrequencyCount, numConsideredTokens),
     });
     frequencyBuckets.push({
         label: 'Unknown',
         count: unknownFrequencyCount,
         statusCounts: unknownFrequencyStatusCounts,
         numOccurrences: unknownFrequencyOccurrences,
-        percent: percent(unknownFrequencyCount, consideredTokens),
+        percent: percent(unknownFrequencyCount, numConsideredTokens),
     });
 
     return {
         statusCounts,
         frequencyBuckets,
-        consideredTokens,
+        numConsideredTokens,
         numIgnoredTokens,
         numIgnoredOccurrences,
         numKnownTokens,
@@ -1119,7 +1119,7 @@ function projectedRewatchSnapshot(
     sentenceFilterTokens: ProcessedTokenSnapshots,
     sentenceFilterSnapshots: ProcessedSentenceSnapshot[],
     currentKnownTokens: number,
-    consideredTokens: number,
+    numConsideredTokens: number,
     aggregateProjectedStatuses: Map<string, TokenStatus>,
     sentenceFilterProjectedStatuses: Map<string, TokenStatus>,
     projectionData: ProjectionData
@@ -1153,7 +1153,7 @@ function projectedRewatchSnapshot(
         rewatch,
         numKnownTokens: projectedKnownTokens,
         numDictionaryKnownTokens: dictionaryKnownTokens + (projectedKnownTokens - currentKnownTokens),
-        knownPercent: percent(projectedKnownTokens, consideredTokens),
+        knownPercent: percent(projectedKnownTokens, numConsideredTokens),
         comprehensionPercent,
         averageWordsPerSentence,
         averageKnownWordsPerSentence,
@@ -1172,7 +1172,7 @@ function rewatchSnapshotsFromRaw(
     sentenceFilterTokens: ProcessedTokenSnapshots,
     sentenceFilterSnapshots: ProcessedSentenceSnapshot[],
     currentKnownTokens: number,
-    consideredTokens: number,
+    numConsideredTokens: number,
     aggregateProjectionData: ProjectionData,
     sentenceFilterProjectionData: ProjectionData
 ): DictionaryStatisticsRewatchSnapshot[] {
@@ -1192,7 +1192,7 @@ function rewatchSnapshotsFromRaw(
             sentenceFilterTokens,
             sentenceFilterSnapshots,
             currentKnownTokens,
-            consideredTokens,
+            numConsideredTokens,
             aggregateProjectedStatuses(),
             sentenceFilterProjectedStatuses,
             aggregateProjectionData
@@ -1234,7 +1234,7 @@ function rewatchSnapshotsFromRaw(
                 sentenceFilterTokens,
                 sentenceFilterSnapshots,
                 currentKnownTokens,
-                consideredTokens,
+                numConsideredTokens,
                 aggregateProjectedStatuses(),
                 sentenceFilterProjectedStatuses,
                 aggregateProjectionData
@@ -1298,7 +1298,7 @@ function processDictionaryStatisticsTrackSnapshot(
     const {
         statusCounts,
         frequencyBuckets,
-        consideredTokens,
+        numConsideredTokens,
         numIgnoredTokens,
         numIgnoredOccurrences,
         numKnownTokens,
@@ -1322,7 +1322,7 @@ function processDictionaryStatisticsTrackSnapshot(
         sentenceFilterTokens,
         sentenceFilterSnapshots,
         sentenceTokenCounts.numKnownTokens,
-        sentenceTokenCounts.consideredTokens,
+        sentenceTokenCounts.numConsideredTokens,
         aggregateProjectedData,
         sentenceFilterProjectedData
     );
@@ -1335,11 +1335,11 @@ function processDictionaryStatisticsTrackSnapshot(
         numDictionaryKnownTokens: dictionaryCounts.numKnownTokens,
         numDictionaryIgnoredTokens: dictionaryCounts.numIgnoredTokens,
         numUniqueTokens: aggregateTokens.size,
-        consideredTokens,
+        numConsideredTokens,
         numIgnoredTokens,
         numIgnoredOccurrences,
         numKnownTokens,
-        knownPercent: percent(numKnownTokens, consideredTokens),
+        knownPercent: percent(numKnownTokens, numConsideredTokens),
         comprehensionPercent,
         averageWordsPerSentence,
         averageKnownWordsPerSentence,
@@ -1692,11 +1692,11 @@ export function processDictionaryStatisticsAnkiTrackSnapshot(
                     suspendedCards: deckSuspendedCardIds.get(deckName)?.size ?? 0,
                     modelSnapshots: Array.from(modelTokenSnapshots.entries())
                         .map(([modelName, modelTokens]) => {
-                            const { consideredTokens, frequencyBuckets } =
+                            const { numConsideredTokens, frequencyBuckets } =
                                 statusCountsAndFrequenciesForSnapshots(modelTokens);
                             return {
                                 modelName,
-                                uniqueWords: consideredTokens,
+                                uniqueWords: numConsideredTokens,
                                 frequencyBuckets,
                             };
                         })
@@ -1754,16 +1754,17 @@ export function processDictionaryStatisticsWaniKaniTrackSnapshot(
         });
     }
 
-    const { consideredTokens, frequencyBuckets } = statusCountsAndFrequenciesForSnapshots(waniKaniTokenSnapshots);
+    const { numConsideredTokens, frequencyBuckets } = statusCountsAndFrequenciesForSnapshots(waniKaniTokenSnapshots);
     return {
         available: waniKaniSnapshot?.available,
         dueCounts,
-        uniqueWords: consideredTokens,
+        uniqueWords: numConsideredTokens,
         frequencyBuckets,
     };
 }
 
 export interface DictionarySimplifiedStatisticsTrackSnapshot {
+    numConsideredTokens: number;
     comprehensionPercent: number;
     sentenceBuckets: DictionaryStatisticsSentenceBuckets;
     progress: Progress;
@@ -1787,12 +1788,12 @@ function processSimplifiedDictionaryStatisticsTrackSnapshot(
     const sentenceFilterSnapshots = processSentenceSnapshots(sentences, 'surface');
     const aggregateTokens = mergeSentenceTokenSnapshots(aggregateSentenceSnapshots);
     const sentenceFilterTokens = mergeSentenceTokenSnapshots(sentenceFilterSnapshots);
-    const { statusCounts } = statusCountsAndFrequencies(aggregateTokens);
+    const { statusCounts, numConsideredTokens } = statusCountsAndFrequencies(aggregateTokens);
     const evaluatedSentenceSnapshots = sentenceFilterSnapshots.map((sentenceSnapshot) =>
         evaluateSentenceSnapshot(sentenceSnapshot)
     );
     const sentenceBuckets = buildSentenceBucketData(evaluatedSentenceSnapshots, sentenceFilterTokens);
     const comprehensionPercent = comprehensionFromStatusOccurrences(statusCounts);
     const progress = trackSnapshot.progress;
-    return { comprehensionPercent, sentenceBuckets, progress };
+    return { numConsideredTokens, comprehensionPercent, sentenceBuckets, progress };
 }
