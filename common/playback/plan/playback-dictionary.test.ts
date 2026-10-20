@@ -108,6 +108,26 @@ describe('dictionary playback rules', () => {
         expect(matchingPlaybackTokens(subtitle('red blue', [selected, other]), playback, 'repeat')).toEqual([selected]);
     });
 
+    it.each(dictionaryPlaybackFeatures)('excludes ignored words from status matches and counts for %s', (feature) => {
+        const playback = config();
+        const selected = playback[feature];
+        selected.onStatuses[TokenStatus.UNKNOWN].enabled = true;
+        const ignored = token(0, 3, TokenStatus.UNKNOWN, { states: [TokenState.IGNORED] });
+        const other = token(4, 8, TokenStatus.UNKNOWN);
+        const sentence = subtitle('red blue', [ignored, other]);
+        expect(matchingPlaybackTokens(subtitle('red', [ignored]), playback, feature)).toEqual([]);
+        expect(matchingPlaybackTokens(sentence, playback, feature)).toEqual([other]);
+
+        selected.rules.minWords = 2;
+        expect(matchingPlaybackTokens(sentence, playback, feature)).toEqual([]);
+        selected.rules.minWords = 0;
+        selected.rules.maxWords = 1;
+        expect(matchingPlaybackTokens(sentence, playback, feature)).toEqual([other]);
+
+        selected.onStates[TokenState.IGNORED].enabled = true;
+        expect(matchingPlaybackTokens(sentence, playback, feature)).toEqual([ignored, other]);
+    });
+
     it.each([
         { minWords: 2, maxWords: 0, matches: [false, true, true] },
         { minWords: 2, maxWords: 2, matches: [false, true, false] },
@@ -121,9 +141,11 @@ describe('dictionary playback rules', () => {
             playback.repeat.onStates[TokenState.IGNORED].enabled = trigger === 'state';
             for (const count of [1, 2, 3]) {
                 const selected = [
-                    token(0, 3, TokenStatus.UNKNOWN, { states: [TokenState.IGNORED, TokenState.IGNORED] }),
-                    token(4, 8, TokenStatus.UNKNOWN, { states: [TokenState.IGNORED] }),
-                    token(9, 14, TokenStatus.UNKNOWN, { states: [TokenState.IGNORED] }),
+                    token(0, 3, TokenStatus.UNKNOWN, {
+                        states: trigger === 'state' ? [TokenState.IGNORED, TokenState.IGNORED] : [],
+                    }),
+                    token(4, 8, TokenStatus.UNKNOWN, { states: trigger === 'state' ? [TokenState.IGNORED] : [] }),
+                    token(9, 14, TokenStatus.UNKNOWN, { states: trigger === 'state' ? [TokenState.IGNORED] : [] }),
                 ].slice(0, count);
                 const other = token(15, 19, TokenStatus.MATURE);
                 const sentence = subtitle('red blue green gold', [...selected, other]);
@@ -134,20 +156,30 @@ describe('dictionary playback rules', () => {
         }
     });
 
-    it('combines count and frequency bounds, including missing frequency and disabled endpoints', () => {
+    it.each(['status', 'state'])('filters frequency before %s counts, treating missing frequency as one', (trigger) => {
         const playback = config();
-        playback.autoPause.onStatuses[TokenStatus.UNKNOWN].enabled = true;
-        Object.assign(playback.autoPause.rules, { minWords: 6, maxWords: 6, minFrequency: 2, maxFrequency: 3 });
+        playback.autoPause.onStatuses[TokenStatus.UNKNOWN].enabled = trigger === 'status';
+        playback.autoPause.onStates[TokenState.IGNORED].enabled = trigger === 'state';
+        Object.assign(playback.autoPause.rules, { minWords: 2, maxWords: 2, minFrequency: 2, maxFrequency: 3 });
         const tokens = [undefined, null, 1, 2, 3, 4].map((frequency, index) =>
-            token(index * 4, index * 4 + 3, TokenStatus.UNKNOWN, { frequency })
+            token(index * 4, index * 4 + 3, TokenStatus.UNKNOWN, {
+                frequency,
+                states: trigger === 'state' ? [TokenState.IGNORED] : [],
+            })
         );
         const sentence = subtitle('red red red red red red', tokens);
         expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual(tokens.slice(3, 5));
         playback.autoPause.rules.maxFrequency = 0;
+        expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual([]);
+        playback.autoPause.rules.maxWords = 0;
         expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual(tokens.slice(3));
+        playback.autoPause.rules.minWords = 4;
+        expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual([]);
         playback.autoPause.rules.minFrequency = 0;
         expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual(tokens);
         playback.autoPause.rules.maxFrequency = 1;
+        expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual([]);
+        playback.autoPause.rules.minWords = 0;
         expect(matchingPlaybackTokens(sentence, playback, 'autoPause')).toEqual(tokens.slice(0, 3));
     });
 
@@ -169,7 +201,7 @@ describe('dictionary playback rules', () => {
             hiddenTokens: new Set([tokens[0]]),
             hideWholeSubtitle: false,
         });
-        playback.wordVisibility.rules.minWords = 4;
+        playback.wordVisibility.rules.minWords = 3;
         expect(subtitleWordVisibility(sentence, playback)).toEqual({
             hiddenTokens: new Set(tokens),
             hideWholeSubtitle: true,

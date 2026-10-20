@@ -1,6 +1,6 @@
 import type { IndexedSubtitleModel, Token } from '@project/common';
 import type { DictionaryPlaybackConfig, DictionaryPlaybackFeature } from '@project/common/settings';
-import { dictionaryPlaybackFeatureEnabled } from '@project/common/settings';
+import { dictionaryPlaybackFeatureEnabled, TokenState } from '@project/common/settings';
 import { HAS_LETTER_REGEX } from '@project/common/util';
 
 type TokenizedText = Pick<IndexedSubtitleModel, 'text' | 'tokenization'>;
@@ -41,20 +41,25 @@ function matchingTokens(
     feature: DictionaryPlaybackFeature
 ): Token[] {
     const { rules, onStatuses, onStates } = config[feature];
+    const eligibleTokens = tokens.filter((token) => {
+        const frequency = token.frequency ?? 1;
+        return frequency >= rules.minFrequency && (!rules.maxFrequency || frequency <= rules.maxFrequency);
+    });
     const statusCounts = new Map<number, number>();
     const stateCounts = new Map<number, number>();
     if (rules.minWords || rules.maxWords) {
-        for (const token of tokens) {
-            if (token.status != null) statusCounts.set(token.status, (statusCounts.get(token.status) ?? 0) + 1);
+        for (const token of eligibleTokens) {
+            if (token.status != null && !token.states.includes(TokenState.IGNORED)) {
+                statusCounts.set(token.status, (statusCounts.get(token.status) ?? 0) + 1);
+            }
             for (const state of new Set(token.states)) stateCounts.set(state, (stateCounts.get(state) ?? 0) + 1);
         }
     }
     const matchesWordCount = (count: number) => count >= rules.minWords && (!rules.maxWords || count <= rules.maxWords);
-    return tokens.filter((token) => {
-        const frequency = token.frequency ?? 1;
-        if (frequency < rules.minFrequency || (rules.maxFrequency > 0 && frequency > rules.maxFrequency)) return false;
+    return eligibleTokens.filter((token) => {
         const statusMatches =
             token.status != null &&
+            !token.states.includes(TokenState.IGNORED) &&
             onStatuses[token.status].enabled &&
             matchesWordCount(statusCounts.get(token.status) ?? 0);
         const stateMatches = token.states.some(
