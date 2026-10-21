@@ -5,7 +5,10 @@
  */
 
 import type { FileWithId } from '@project/common/file-selector';
-import type { FileSystemFileHandleWithId } from '@project/common/file-system-access/file-system-access-repository';
+import type {
+    FileSessionRecord,
+    FileSystemFileHandleWithId,
+} from '@project/common/file-system-access/file-system-access-repository';
 import { v4 as uuidv4 } from 'uuid';
 
 export function supportsFileSystemAccess(): boolean {
@@ -59,6 +62,20 @@ export async function resolveFiles(
     }
 
     return { files, errors };
+}
+
+/** Reconstruct playback slots after resolving the session's local handles. */
+export function restoreSessionFiles(record: FileSessionRecord, resolvedFiles: FileWithId[]): FileWithId[] {
+    const files = [...resolvedFiles, ...(record.cachedSubtitleFiles ?? [])];
+    if (record.subtitleTrackIds === undefined) return files;
+
+    const filesById = new Map(files.map((file) => [file.id, file]));
+    const subtitleFiles = record.subtitleTrackIds.map((id) => {
+        const file = filesById.get(id);
+        return id !== '-' && file !== undefined ? file : { id: '-', file: new File([], '.srt') };
+    });
+
+    return [...resolvedFiles.filter(({ id }) => id === record.videoHandle?.id), ...subtitleFiles];
 }
 
 export async function showFilePicker(extensions: {
