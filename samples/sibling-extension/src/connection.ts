@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 
-import type { ExternalAuthenticationMessage, ExternalCommand, Response } from './protocol';
+import type { ExternalApprovalMessage, ExternalCommand, Response } from './protocol';
 
 /**
  * Request/response correlation over an external connection port, by `messageId` -- the same
@@ -107,7 +107,7 @@ export class ExternalConnection {
     }
 }
 
-export class ExternalAuthentication {
+export class ExternalApproval {
     private _approved = false;
 
     constructor(private readonly _onChanged: (approved: boolean) => void) {}
@@ -116,7 +116,7 @@ export class ExternalAuthentication {
         return this._approved;
     }
 
-    update(message: ExternalAuthenticationMessage) {
+    update(message: ExternalApprovalMessage) {
         const approved = message.approved === true;
 
         if (approved !== this._approved) {

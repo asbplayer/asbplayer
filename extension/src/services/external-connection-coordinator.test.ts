@@ -87,8 +87,8 @@ class FakePort {
         }
     }
 
-    authenticationFrames() {
-        return this.posted.filter((message) => (message as any).type === 'asbplayer-external-authentication');
+    approvalFrames() {
+        return this.posted.filter((message) => (message as any).type === 'asbplayer-external-approval');
     }
 
     responses() {
@@ -215,11 +215,11 @@ describe('external connection coordinator', () => {
         harness?.teardown();
     });
 
-    it('greets an unapproved connection with an unapproved authentication frame and drops its commands', async () => {
+    it('greets an unapproved connection with an unapproved approval frame and drops its commands', async () => {
         const port = harness.connect('sibling');
         await flush();
 
-        expect(authenticationFrames(port)).toEqual([{ type: 'asbplayer-external-authentication', approved: false }]);
+        expect(approvalFrames(port)).toEqual([{ type: 'asbplayer-external-approval', approved: false }]);
 
         await port.receive({ command: 'get-bound-media', messageId: 'm1', body: {} });
 
@@ -229,15 +229,15 @@ describe('external connection coordinator', () => {
         expect(Object.keys(harness.pendingEntries())).toEqual([]);
     });
 
-    it('records a pending entry on identify and alerts via badges', async () => {
+    it('records a pending entry on hello and alerts via badges', async () => {
         const port = harness.connect('sibling');
         await flush();
 
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Sibling' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
 
-        expect(authenticationFrames(port)).toEqual([
-            { type: 'asbplayer-external-authentication', approved: false },
-            { type: 'asbplayer-external-authentication', approved: false },
+        expect(approvalFrames(port)).toEqual([
+            { type: 'asbplayer-external-approval', approved: false },
+            { type: 'asbplayer-external-approval', approved: false },
         ]);
         expect(harness.pendingEntries()['sibling']).toEqual({
             name: 'Sibling',
@@ -253,32 +253,32 @@ describe('external connection coordinator', () => {
         const port = harness.connect('sibling');
         await flush();
 
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Sibling' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
 
         expect(harness.lastGlobalBadgeText()).toEqual('!');
         expect(harness.badgeAction.setBadgeText).not.toHaveBeenCalledWith({ tabId: 1, text: '!' });
     });
 
-    it('answers identify from an approved extension without recording a pending entry', async () => {
+    it('answers hello from an approved extension without recording a pending entry', async () => {
         harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
         await flush();
 
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Sibling' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
 
-        expect(authenticationFrames(port)).toEqual([
-            { type: 'asbplayer-external-authentication', approved: true },
-            { type: 'asbplayer-external-authentication', approved: true },
+        expect(approvalFrames(port)).toEqual([
+            { type: 'asbplayer-external-approval', approved: true },
+            { type: 'asbplayer-external-approval', approved: true },
         ]);
         expect(Object.keys(harness.pendingEntries())).toEqual([]);
     });
 
-    it('stores an identify name from an approved extension on its approval entry', async () => {
+    it('stores a hello name from an approved extension on its approval entry', async () => {
         harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
         await flush();
 
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Renamed Sibling' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Renamed Sibling' });
 
         expect(harness.approvedEntries()['sibling']).toEqual({
             name: 'Renamed Sibling',
@@ -345,15 +345,15 @@ describe('external connection coordinator', () => {
     it('approves a sibling with an open port by reacting to the storage change', async () => {
         const port = harness.connect('sibling');
         await flush();
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Sibling' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
         await flush();
 
         harness.externalConnectionsChanged(harness.pendingState(), harness.approvedState('sibling', 'Sibling'));
 
-        expect(authenticationFrames(port)).toEqual([
-            { type: 'asbplayer-external-authentication', approved: false },
-            { type: 'asbplayer-external-authentication', approved: false },
-            { type: 'asbplayer-external-authentication', approved: true },
+        expect(approvalFrames(port)).toEqual([
+            { type: 'asbplayer-external-approval', approved: false },
+            { type: 'asbplayer-external-approval', approved: false },
+            { type: 'asbplayer-external-approval', approved: true },
         ]);
 
         harness.dispatcher.dispatchCommand.mockResolvedValueOnce({ command: 'response', messageId: 'm4', body: {} });
@@ -368,9 +368,9 @@ describe('external connection coordinator', () => {
 
         harness.externalConnectionsChanged(harness.approvedState('sibling'), harness.emptyState());
 
-        expect(authenticationFrames(port)).toEqual([
-            { type: 'asbplayer-external-authentication', approved: true },
-            { type: 'asbplayer-external-authentication', approved: false },
+        expect(approvalFrames(port)).toEqual([
+            { type: 'asbplayer-external-approval', approved: true },
+            { type: 'asbplayer-external-approval', approved: false },
         ]);
 
         harness.dispatcher.dispatchCommand.mockResolvedValueOnce({ command: 'response', messageId: 'm5', body: {} });
@@ -382,18 +382,18 @@ describe('external connection coordinator', () => {
         const port1 = harness.connect('sibling');
         const port2 = harness.connect('sibling');
         await flush();
-        const port1Frames = authenticationFrames(port1);
-        const port2Frames = authenticationFrames(port2);
+        const port1Frames = approvalFrames(port1);
+        const port2Frames = approvalFrames(port2);
 
         harness.externalConnectionsChanged(harness.emptyState(), harness.approvedState('sibling'));
 
-        expect(authenticationFrames(port1)).toEqual([
+        expect(approvalFrames(port1)).toEqual([
             ...port1Frames,
-            { type: 'asbplayer-external-authentication', approved: true },
+            { type: 'asbplayer-external-approval', approved: true },
         ]);
-        expect(authenticationFrames(port2)).toEqual([
+        expect(approvalFrames(port2)).toEqual([
             ...port2Frames,
-            { type: 'asbplayer-external-authentication', approved: true },
+            { type: 'asbplayer-external-approval', approved: true },
         ]);
     });
 
@@ -411,7 +411,7 @@ describe('external connection coordinator', () => {
     it('clears external connection badges once no pending requests remain', async () => {
         const port = harness.connect('sibling');
         await flush();
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Sibling' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
         await flush();
         expect(harness.lastGlobalBadgeText()).toEqual('!');
 
@@ -436,7 +436,7 @@ describe('external connection coordinator', () => {
         const port = harness.connect('newcomer');
         await flush();
 
-        await port.receive({ type: 'asbplayer-external-identify', name: 'Newcomer' });
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Newcomer' });
 
         const pendingEntries = harness.pendingEntries();
         expect(Object.keys(pendingEntries)).toHaveLength(10);
@@ -453,10 +453,10 @@ describe('external connection coordinator', () => {
 
         expect(port.disconnected).toEqual(true);
         expect(port.posted).toEqual([]);
-        expect(port.authenticationFrames()).toEqual([]);
+        expect(port.approvalFrames()).toEqual([]);
     });
 });
 
-function authenticationFrames(port: FakePort) {
-    return port.authenticationFrames();
+function approvalFrames(port: FakePort) {
+    return port.approvalFrames();
 }

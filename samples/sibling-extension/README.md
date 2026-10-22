@@ -15,7 +15,7 @@ so a plugin extension can target everything the WebSocket API targets.
    you haven't already. Copy its **extension ID** from the extension's card on that page.
 3. Load `samples/sibling-extension/dist` as a second unpacked extension.
 4. Open the sample's popup, paste the asbplayer extension ID, and press **Connect**. The sample
-   sends an `identify` frame and then retries `get-bound-media` every 2 seconds until approval
+   sends a `hello` frame and then retries `get-bound-media` every 2 seconds until approval
    arrives. On subsequent popup opens it reconnects automatically using the saved extension ID.
 5. Play a video on a streaming site so the asbplayer extension sees media. Until you approve the
    sample, its requests receive no response and the log shows it awaiting approval.
@@ -33,8 +33,8 @@ Connection: `browser.runtime.connectExternal(<asbplayer extension ID>)` with por
 
 | Direction | Frame |
 | --------- | ----- |
-| sibling → asbplayer | `{ type: 'asbplayer-external-identify', name?, version? }` |
-| asbplayer → sibling | `{ type: 'asbplayer-external-authentication', approved: boolean }` |
+| sibling → asbplayer | `{ type: 'asbplayer-external-hello', name?, version? }` |
+| asbplayer → sibling | `{ type: 'asbplayer-external-approval', approved: boolean }` |
 | sibling → asbplayer | `{ command: <command>, messageId, body }` (see `src/protocol.ts`) |
 | asbplayer → sibling | `{ command: 'response', messageId, body }` |
 
@@ -46,7 +46,7 @@ Notes:
 - Unapproved extensions receive no responses to their commands, and commands the extension does
   not handle stay silent, so apply a per-request timeout (the sample uses 5 seconds) and treat
   silence as "not yet approved" or "not handled".
-- The `asbplayer-external-authentication` frame is posted both in response to `identify` and
+- The `asbplayer-external-approval` frame is posted both in response to `hello` and
   again whenever the user approves or revokes the extension while the port is open.
 - Approval state is keyed on the connecting extension's ID and managed by the user from the
   streaming video settings of the asbplayer extension popup, options page, or the asbplayer web

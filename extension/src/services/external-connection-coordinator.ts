@@ -1,10 +1,6 @@
 import { asbError } from '@project/common/util/log';
 import type { ExternalConnectionsState, GlobalStateProvider } from '@project/common/global-state';
-import type {
-    ExternalAuthenticationMessage,
-    ExternalCommand,
-    ExternalIdentifyMessage,
-} from '@project/common/external-commands';
+import type { ExternalApprovalMessage, ExternalCommand, ExternalHelloMessage } from '@project/common/external-commands';
 import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 import { externalCommandHandlers } from '@project/extension/src/services/external-command-handlers';
 import type { SettingsProvider } from '@project/common/settings';
@@ -16,7 +12,7 @@ import type { ExtensionBadgeController } from '@project/extension/src/services/e
 const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
 const maxPendingRequests = 10;
 
-const identifyType: ExternalIdentifyMessage['type'] = 'asbplayer-external-identify';
+const helloType: ExternalHelloMessage['type'] = 'asbplayer-external-hello';
 
 const badgeReason = 'externalConnections';
 
@@ -30,12 +26,12 @@ const badgeReason = 'externalConnections';
  * The port protocol is the external command wire format shared with the WebSocket server
  * integration: raw `ExternalCommand` frames are dispatched and answered with
  * `{command: 'response', messageId, body}` frames. Additionally:
- * - `{type: 'asbplayer-external-identify', name?, version?}` is sent by the sibling on connect and
- *   answered with an authentication frame reflecting the current approval state.
- * - `{type: 'asbplayer-external-authentication', approved}` is also posted whenever the approval
+ * - `{type: 'asbplayer-external-hello', name?, version?}` is sent by the sibling on connect and
+ *   answered with an approval frame reflecting the current approval state.
+ * - `{type: 'asbplayer-external-approval', approved}` is also posted whenever the approval
  *   state changes while the port is open.
  * Frames from unapproved extensions are dropped, not queued. Pending requests are recorded on
- * identify so the user can be alerted via badges.
+ * hello so the user can be alerted via badges.
  */
 export class ExternalConnectionCoordinator {
     private readonly _globalStateProvider: GlobalStateProvider;
@@ -120,14 +116,14 @@ export class ExternalConnectionCoordinator {
             }
         });
 
-        void this._postAuthentication(port);
+        void this._postApproval(port);
         port.onMessage.addListener((message) => void this._onMessage(senderId, port, message));
     }
 
     private async _onMessage(senderId: string, port: Browser.runtime.Port, message: unknown) {
-        if (typeof message === 'object' && message !== null && (message as { type?: unknown }).type === identifyType) {
-            await this._identify(senderId, message as ExternalIdentifyMessage);
-            await this._postAuthentication(port);
+        if (typeof message === 'object' && message !== null && (message as { type?: unknown }).type === helloType) {
+            await this._hello(senderId, message as ExternalHelloMessage);
+            await this._postApproval(port);
             return;
         }
 
@@ -159,7 +155,7 @@ export class ExternalConnectionCoordinator {
         }
     }
 
-    private async _identify(senderId: string, message: ExternalIdentifyMessage) {
+    private async _hello(senderId: string, message: ExternalHelloMessage) {
         const name = typeof message.name === 'string' && message.name.length > 0 ? message.name : undefined;
 
         await this._mutateExternalConnections((externalConnections) => {
@@ -199,13 +195,13 @@ export class ExternalConnectionCoordinator {
 
         for (const extensionId of newApproved) {
             if (!oldApproved.has(extensionId)) {
-                this._postAuthenticationToPorts(extensionId, true);
+                this._postApprovalToPorts(extensionId, true);
             }
         }
 
         for (const extensionId of oldApproved) {
             if (!newApproved.has(extensionId)) {
-                this._postAuthenticationToPorts(extensionId, false);
+                this._postApprovalToPorts(extensionId, false);
             }
         }
 
@@ -253,15 +249,15 @@ export class ExternalConnectionCoordinator {
         return new Set(Object.keys(externalConnections?.approved ?? {}));
     }
 
-    private async _postAuthentication(port: Browser.runtime.Port) {
+    private async _postApproval(port: Browser.runtime.Port) {
         const senderId = port.sender?.id;
         const approved = senderId !== undefined && (await this._approvedIds()).has(senderId);
-        const message: ExternalAuthenticationMessage = { type: 'asbplayer-external-authentication', approved };
+        const message: ExternalApprovalMessage = { type: 'asbplayer-external-approval', approved };
         this._post(port, message);
     }
 
-    private _postAuthenticationToPorts(extensionId: string, approved: boolean) {
-        const message: ExternalAuthenticationMessage = { type: 'asbplayer-external-authentication', approved };
+    private _postApprovalToPorts(extensionId: string, approved: boolean) {
+        const message: ExternalApprovalMessage = { type: 'asbplayer-external-approval', approved };
 
         for (const port of this._ports.get(extensionId) ?? []) {
             this._post(port, message);
