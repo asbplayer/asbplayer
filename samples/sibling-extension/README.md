@@ -15,7 +15,8 @@ so a plugin extension can target everything the WebSocket API targets.
    you haven't already. Copy its **extension ID** from the extension's card on that page.
 3. Load `samples/sibling-extension/dist` as a second unpacked extension.
 4. Open the sample's popup, paste the asbplayer extension ID, and press **Connect**. The sample
-   sends an `identify` frame and then retries `get-bound-media` every 2 seconds.
+   sends an `identify` frame and then retries `get-bound-media` every 2 seconds until approval
+   arrives. On subsequent popup opens it reconnects automatically using the saved extension ID.
 5. Play a video on a streaming site so the asbplayer extension sees media. Until you approve the
    sample, its requests receive no response and the log shows it awaiting approval.
 6. Approve it from the **streaming video settings tab**: open the asbplayer extension popup (or
