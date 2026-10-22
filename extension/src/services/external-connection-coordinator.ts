@@ -43,7 +43,7 @@ export class ExternalConnectionCoordinator {
     private readonly _tabRegistry: TabRegistry;
     private readonly _settings: SettingsProvider;
     private readonly _badgeController: ExtensionBadgeController;
-    private readonly _dispatcher = new ExternalCommandDispatcher();
+    private readonly _dispatcher: ExternalCommandDispatcher;
     private readonly _ports = new Map<string, Set<Browser.runtime.Port>>();
 
     constructor({
@@ -51,17 +51,24 @@ export class ExternalConnectionCoordinator {
         tabRegistry,
         settings,
         badgeController,
+        dispatcher,
     }: {
         globalStateProvider: GlobalStateProvider;
         tabRegistry: TabRegistry;
         settings: SettingsProvider;
         badgeController: ExtensionBadgeController;
+        /** Defaults to a dispatcher wired with the extension's external command handlers. */
+        dispatcher?: ExternalCommandDispatcher;
     }) {
         this._globalStateProvider = globalStateProvider;
         this._tabRegistry = tabRegistry;
         this._settings = settings;
         this._badgeController = badgeController;
-        this._dispatcher.setHandlers(externalCommandHandlers(settings, tabRegistry));
+        this._dispatcher = dispatcher ?? new ExternalCommandDispatcher();
+
+        if (dispatcher === undefined) {
+            this._dispatcher.setHandlers(externalCommandHandlers(settings, tabRegistry));
+        }
 
         browser.runtime.onConnectExternal.addListener((port) => this._onConnectExternal(port));
         browser.storage.local.onChanged.addListener((changes) => {
@@ -174,10 +181,13 @@ export class ExternalConnectionCoordinator {
             }
 
             const now = Date.now();
-            externalConnections.pending = {
-                ...this._prunePending(externalConnections.pending, now),
-                [senderId]: { name, requestedAt: now },
-            };
+            externalConnections.pending = this._prunePending(
+                {
+                    ...externalConnections.pending,
+                    [senderId]: { name, requestedAt: now },
+                },
+                now
+            );
             return true;
         });
 
@@ -235,7 +245,7 @@ export class ExternalConnectionCoordinator {
         mutate: (externalConnections: ExternalConnectionsState) => boolean
     ): Promise<void> {
         const state = await this._globalStateProvider.get(['externalConnections']);
-        const externalConnections: ExternalConnectionsState = structuredClone(state.externalConnections);
+        const externalConnections: ExternalConnectionsState = JSON.parse(JSON.stringify(state.externalConnections));
 
         if (!mutate(externalConnections)) {
             return;

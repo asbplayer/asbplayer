@@ -89,7 +89,7 @@ export const mutateExternalConnections = async (
     mutate: (externalConnections: ExternalConnectionsState) => boolean
 ): Promise<void> => {
     const state = await provider.get(['externalConnections']);
-    const externalConnections: ExternalConnectionsState = structuredClone(state.externalConnections);
+    const externalConnections: ExternalConnectionsState = JSON.parse(JSON.stringify(state.externalConnections));
 
     if (!mutate(externalConnections)) {
         return;
