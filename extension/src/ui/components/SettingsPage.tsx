@@ -26,6 +26,7 @@ import { openExtensionShortcuts } from '@/services/extension-shortcuts';
 import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import { useLocationHash } from '@project/common/hooks/use-location-hash';
+import { useExternalConnections } from '@project/extension/src/ui/hooks/use-external-connections';
 
 const useStyles = makeStyles<Theme>((theme) => ({
     root: {
@@ -76,6 +77,7 @@ const SettingsPage = ({
 }: Props) => {
     const { t } = useTranslation();
     const theme = useTheme();
+    const externalConnections = useExternalConnections();
     const anki = useMemo(
         () => (settings === undefined ? undefined : new Anki(settings, new HttpFetcher())),
         [settings]
@@ -140,6 +142,8 @@ const SettingsPage = ({
                         extensionSupportsSubtitleListCustomization
                         extensionSupportsUpdateLastWithSameSubtitleText
                         extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
+                        globalStateProvider={externalConnections.provider}
+                        onExternalConnectionsChanged={externalConnections.onExternalConnectionsChanged}
                         chromeKeyBinds={commands}
                         onOpenChromeExtensionShortcuts={openExtensionShortcuts}
                         onSettingsChanged={onSettingsChanged}

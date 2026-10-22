@@ -742,7 +742,8 @@
         "webSocketInterface": "Interfaccia WebSocket",
         "yomitanHelperText": "Le istruzioni per configurare l'API Yomitan sono <0>qui</0>.",
         "seekableTracks": "Tracce dei sottotitoli influenzate dalle modalità di riproduzione e dalle scorciatoie da tastiera",
-        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica"
+        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica",
+        "externalConnections": "External connections"
     },
     "statistics": {
         "title": "Statistiche",
@@ -851,5 +852,13 @@
         "notification": "Recipe: {{name}}",
         "settingLocked": "{{setting}} can't be changed while a Recipe is active",
         "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "pending": "Pending connection requests",
+        "approved": "Approved extensions",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove",
+        "unknownName": "Unnamed extension"
     }
 }

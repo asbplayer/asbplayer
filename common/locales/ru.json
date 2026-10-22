@@ -742,7 +742,8 @@
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
         "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy",
+        "externalConnections": "External connections"
     },
     "statistics": {
         "title": "Statistics",
@@ -851,5 +852,13 @@
         "notification": "Recipe: {{name}}",
         "settingLocked": "{{setting}} can't be changed while a Recipe is active",
         "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "pending": "Pending connection requests",
+        "approved": "Approved extensions",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove",
+        "unknownName": "Unnamed extension"
     }
 }
