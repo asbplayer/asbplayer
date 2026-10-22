@@ -33,10 +33,7 @@ import type {
 } from '@project/common/src/model';
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
-import type {
-    Response as ExternalResponse,
-    ExternalCommand,
-} from '@project/common/external-commands/commands';
+import type { Response as ExternalResponse, ExternalCommand } from '@project/common/external-commands/commands';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,

@@ -114,9 +114,9 @@ export class ExternalConnectionCoordinator {
 
         ports.add(port);
         port.onDisconnect.addListener(() => {
-            ports!.delete(port);
+            ports.delete(port);
 
-            if (ports!.size === 0) {
+            if (ports.size === 0) {
                 this._ports.delete(senderId);
             }
         });
@@ -126,11 +126,7 @@ export class ExternalConnectionCoordinator {
     }
 
     private async _onMessage(senderId: string, port: Browser.runtime.Port, message: unknown) {
-        if (
-            typeof message === 'object' &&
-            message !== null &&
-            (message as { type?: unknown }).type === identifyType
-        ) {
+        if (typeof message === 'object' && message !== null && (message as { type?: unknown }).type === identifyType) {
             await this._identify(senderId, message as ExternalIdentifyMessage);
             await this._postAuthentication(port);
             return;
@@ -165,8 +161,7 @@ export class ExternalConnectionCoordinator {
     }
 
     private async _identify(senderId: string, message: ExternalIdentifyMessage) {
-        const name =
-            typeof message.name === 'string' && message.name.length > 0 ? message.name : undefined;
+        const name = typeof message.name === 'string' && message.name.length > 0 ? message.name : undefined;
 
         await this._mutateExternalConnections((externalConnections) => {
             const approved = externalConnections.approved[senderId];

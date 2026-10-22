@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, jest } from '@jest/globals';
 import type { VideoTabModel } from '@project/common';
-import type {
-    ExternalConnectionsState,
-    GlobalState,
-    GlobalStateProvider,
-} from '@project/common/global-state';
+import type { ExternalConnectionsState, GlobalState, GlobalStateProvider } from '@project/common/global-state';
 import { initialGlobalState } from '@project/common/global-state';
-import type { ExternalCommandDispatcher } from '@project/common/external-commands';
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import { ExternalConnectionCoordinator } from '@project/extension/src/services/external-connection-coordinator';
@@ -104,7 +99,7 @@ class FakePort {
 class Harness {
     readonly globalStateProvider = new FakeGlobalStateProvider();
     readonly badgeAction = { setBadgeText: jest.fn() };
-    readonly badgeController = new ExtensionBadgeController(this.badgeAction as any);
+    readonly badgeController = new ExtensionBadgeController(this.badgeAction);
     readonly dispatcher: any = {
         setHandlers: jest.fn(),
         dispatchCommand: jest.fn(),
@@ -140,7 +135,7 @@ class Harness {
             tabRegistry: { activeVideoElements: async () => this.videoElements } as unknown as TabRegistry,
             settings: {} as unknown as SettingsProvider,
             badgeController: this.badgeController,
-            dispatcher: this.dispatcher as unknown as ExternalCommandDispatcher,
+            dispatcher: this.dispatcher,
         });
     }
 
@@ -197,7 +192,7 @@ class Harness {
     }
 
     lastGlobalBadgeText() {
-        const calls = (this.badgeAction.setBadgeText as jest.Mock).mock.calls as any[][];
+        const calls = this.badgeAction.setBadgeText.mock.calls as any[][];
         const globalCalls = calls.filter(([details]) => details.tabId === undefined);
         return globalCalls[globalCalls.length - 1]?.[0].text;
     }
@@ -392,8 +387,14 @@ describe('external connection coordinator', () => {
 
         harness.externalConnectionsChanged(harness.emptyState(), harness.approvedState('sibling'));
 
-        expect(authenticationFrames(port1)).toEqual([...port1Frames, { type: 'asbplayer-external-authentication', approved: true }]);
-        expect(authenticationFrames(port2)).toEqual([...port2Frames, { type: 'asbplayer-external-authentication', approved: true }]);
+        expect(authenticationFrames(port1)).toEqual([
+            ...port1Frames,
+            { type: 'asbplayer-external-authentication', approved: true },
+        ]);
+        expect(authenticationFrames(port2)).toEqual([
+            ...port2Frames,
+            { type: 'asbplayer-external-authentication', approved: true },
+        ]);
     });
 
     it('does not fail when posting to a port that disconnects concurrently', async () => {

@@ -4,7 +4,7 @@ import { ExtensionBadgeController } from '@project/extension/src/services/extens
 describe('extension badge controller', () => {
     it('shows the global alert while any reason is active and clears it when none is', () => {
         const action = { setBadgeText: jest.fn() };
-        const controller = new ExtensionBadgeController(action as any);
+        const controller = new ExtensionBadgeController(action);
 
         controller.setGlobalAlert('reasonA', true);
         expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: '!' });
@@ -21,7 +21,7 @@ describe('extension badge controller', () => {
 
     it('does not let one reason turning off clear another active reason', () => {
         const action = { setBadgeText: jest.fn() };
-        const controller = new ExtensionBadgeController(action as any);
+        const controller = new ExtensionBadgeController(action);
         controller.setGlobalAlert('reasonA', true);
         controller.setGlobalAlert('reasonB', true);
 
@@ -32,7 +32,7 @@ describe('extension badge controller', () => {
 
     it('sets per-tab alerts and clears the tabs it badged previously', () => {
         const action = { setBadgeText: jest.fn() };
-        const controller = new ExtensionBadgeController(action as any);
+        const controller = new ExtensionBadgeController(action);
 
         controller.setTabAlerts([1, 2]);
         expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '!' });

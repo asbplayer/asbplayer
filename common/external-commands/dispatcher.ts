@@ -1,8 +1,4 @@
-import type {
-    Response,
-    ExternalCommand,
-    ExternalCommandHandlers,
-} from '@project/common/external-commands/commands';
+import type { Response, ExternalCommand, ExternalCommandHandlers } from '@project/common/external-commands/commands';
 
 export class ExternalCommandDispatcher {
     private _handlers: Partial<ExternalCommandHandlers> = {};
