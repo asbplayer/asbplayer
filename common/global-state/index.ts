@@ -31,6 +31,22 @@ export interface GenericSubtitleParserState {
     };
 }
 
+export interface ApprovedExternalConnection {
+    name?: string;
+    approvedAt: number;
+}
+
+export interface PendingExternalConnection {
+    name?: string;
+    requestedAt: number;
+}
+
+export interface ExternalConnectionsState {
+    // Keyed by the sibling extension's runtime ID.
+    approved: { [extensionId: string]: ApprovedExternalConnection };
+    pending: { [extensionId: string]: PendingExternalConnection };
+}
+
 export const initialGlobalState: GlobalState = {
     ftueHasSeenAnkiDialogQuickSelectV2: false,
     ftueHasSeenSubtitleTrackSelector: false,
@@ -43,6 +59,10 @@ export const initialGlobalState: GlobalState = {
         jimakuSearchCategory: 'anime',
         jimakuRecentWorks: [],
     },
+    externalConnections: {
+        approved: {},
+        pending: {},
+    },
 };
 
 export interface GlobalState {
@@ -51,6 +71,7 @@ export interface GlobalState {
     ftueAnnotation: AnnotationTutorialState;
     genericSubtitleParser: GenericSubtitleParserState;
     onlineSubtitleSourceConfig: OnlineSubtitleSourceConfig;
+    externalConnections: ExternalConnectionsState;
 }
 
 export interface GlobalStateProvider {
