@@ -87,6 +87,22 @@ export interface GetSubtitlesResponseBody {
     subtitles: SubtitleCue[];
 }
 
+// Frames sent over the external connection port before any command is dispatched.
+// Commands themselves reuse the same `{command, messageId, body}` / `{command: 'response', messageId, body}`
+// wire format as the WebSocket server integration.
+
+export interface ExternalIdentifyMessage {
+    readonly type: 'asbplayer-external-identify';
+    // Self-reported, untrusted display name shown next to the (trusted) extension ID in the approval UI.
+    readonly name?: string;
+    readonly version?: string;
+}
+
+export interface ExternalAuthenticationMessage {
+    readonly type: 'asbplayer-external-authentication';
+    readonly approved: boolean;
+}
+
 export type ExternalCommand =
     | MineSubtitleCommand
     | LoadSubtitlesCommand

@@ -32,5 +32,9 @@ it('can retrieve all keys', async () => {
             jimakuSearchCategory: 'anime',
             jimakuRecentWorks: [],
         },
+        externalConnections: {
+            approved: {},
+            pending: {},
+        },
     });
 });

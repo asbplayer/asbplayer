@@ -56,6 +56,8 @@ import PublishCardHandler from '@/handlers/asbplayerv2/publish-card-handler';
 import BulkExportCancellationHandler from '@/handlers/asbplayerv2/bulk-export-cancellation-handler';
 import BulkExportStartedHandler from '@/handlers/asbplayerv2/bulk-export-started-handler';
 import { bindWebSocketClient, unbindWebSocketClient } from '@/services/web-socket-client-binding';
+import { ExternalConnectionCoordinator } from '@/services/external-connection-coordinator';
+import { ExtensionBadgeController } from '@/services/extension-badge-controller';
 import { isFirefoxBuild } from '@/services/build-flags';
 import { CaptureStreamAudioRecorder, OffscreenAudioRecorder } from '@/services/audio-recorder-delegate';
 import RequestModelHandler from '@/handlers/mobile-overlay/request-model-handler';
@@ -103,27 +105,12 @@ export default defineBackground(() => {
     };
 
     const globalStateProvider = new ExtensionGlobalStateProvider();
+    const badgeController = new ExtensionBadgeController(browser.action || browser.browserAction);
 
-    const updateBadgeForAnnotationTutorial = () => {
-        void browser.action.setBadgeText({ text: '!' });
-        browser.storage.local.onChanged.addListener((changes) => {
-            // Hide the "!" badge when the user views the annotation tutorial
-            for (const [key, { newValue }] of Object.entries(changes)) {
-                if (key === 'ftueAnnotation' && newValue !== AnnotationTutorialState.shouldSee) {
-                    void browser.action.setBadgeText({ text: '' });
-                }
-            }
-        });
+    const updateFtueBadge = async () => {
+        const { ftueAnnotation } = await globalStateProvider.get(['ftueAnnotation']);
+        badgeController.setGlobalAlert('ftueAnnotation', ftueAnnotation === AnnotationTutorialState.shouldSee);
     };
-
-    void globalStateProvider
-        .get(['ftueAnnotation'])
-        .then((s) => {
-            if (s.ftueAnnotation === AnnotationTutorialState.shouldSee) {
-                updateBadgeForAnnotationTutorial();
-            }
-        })
-        .catch((error) => asbError('background', 'Failed to load annotation tutorial state:', error));
 
     const installListener = async (details: Browser.runtime.InstalledDetails) => {
         if (details.reason === browser.runtime.OnInstalledReason.UPDATE) {
@@ -134,7 +121,7 @@ export default defineBackground(() => {
                 const annotationTutorialState = (await globalStateProvider.get(['ftueAnnotation'])).ftueAnnotation;
                 if (annotationTutorialState === AnnotationTutorialState.hasNotSeen) {
                     await globalStateProvider.set({ ftueAnnotation: AnnotationTutorialState.shouldSee });
-                    updateBadgeForAnnotationTutorial();
+                    void updateFtueBadge();
                 }
             }
             return;
@@ -186,6 +173,26 @@ export default defineBackground(() => {
     const imageCapturer = new ImageCapturer(settings);
     const cardPublisher = new CardPublisher(settings);
     const dictionaryDB = new DictionaryDB(settings);
+    const externalConnectionCoordinator = new ExternalConnectionCoordinator({
+        globalStateProvider,
+        tabRegistry,
+        settings,
+        badgeController,
+    });
+
+    // Recompute the FTUE badge contribution whenever the annotation tutorial state changes.
+    browser.storage.local.onChanged.addListener((changes) => {
+        if ('ftueAnnotation' in changes) {
+            void updateFtueBadge();
+        }
+    });
+
+    void updateFtueBadge().catch((error) =>
+        asbError('background', 'Failed to update the extension badge:', error)
+    );
+    void externalConnectionCoordinator.updateBadge().catch((error) =>
+        asbError('background', 'Failed to update the extension badge:', error)
+    );
 
     const handlers: CommandHandler[] = [
         new VideoHeartbeatHandler(tabRegistry),
