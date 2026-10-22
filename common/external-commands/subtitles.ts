@@ -1,5 +1,5 @@
 import type { SubtitleModel } from '@project/common/src/model';
-import type { SubtitleCue } from '@project/common/web-socket-client/web-socket-commands';
+import type { SubtitleCue } from '@project/common/external-commands/commands';
 
 export const filterByTracks = (subtitles: SubtitleModel[], trackNumbers: number[] | undefined) => {
     if (trackNumbers === undefined || trackNumbers.length === 0) {

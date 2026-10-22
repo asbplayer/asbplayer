@@ -34,9 +34,9 @@ import type {
 import type { AsbPlayerToVideoCommandV2 } from '@project/common/src/command';
 import type { LogLine, LogSnapshot } from '@project/common/util/log-utils';
 import type {
-    Response as WebSocketResponse,
-    WebSocketCommand,
-} from '@project/common/web-socket-client/web-socket-commands';
+    Response as ExternalResponse,
+    ExternalCommand,
+} from '@project/common/external-commands/commands';
 import type {
     DictionaryLocalTokenInput,
     DictionaryTokenKey,
@@ -881,14 +881,14 @@ export interface JumpToSubtitleMessage extends Message {
     readonly subtitleFileName: string;
 }
 
-export interface WebSocketCommandMessage extends MessageWithId {
-    readonly command: 'web-socket-command';
-    readonly webSocketCommand: WebSocketCommand;
+export interface ExternalCommandMessage extends MessageWithId {
+    readonly command: 'external-command';
+    readonly externalCommand: ExternalCommand;
 }
 
-export interface WebSocketCommandResponseMessage extends MessageWithId {
-    readonly command: 'web-socket-command-response';
-    readonly response?: WebSocketResponse<object>;
+export interface ExternalCommandResponseMessage extends MessageWithId {
+    readonly command: 'external-command-response';
+    readonly response?: ExternalResponse<object>;
 }
 
 export interface DownloadImageMessage extends Message, CardModel {

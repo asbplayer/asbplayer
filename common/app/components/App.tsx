@@ -63,10 +63,10 @@ import { useAppKeyBinder } from '@project/common/app/hooks/use-app-key-binder';
 import { useAnki } from '@project/common/app/hooks/use-anki';
 import { usePlaybackPreferences } from '@project/common/app/hooks/use-playback-preferences';
 import { MiningContext } from '@project/common/app/services/mining-context';
-import { useAppWebSocketCommands } from '@project/common/app/hooks/use-app-web-socket-commands';
-import { appWebSocketCommandHandlers } from '@project/common/app/services/app-web-socket-command-handlers';
-import type { LoadSubtitlesCommand } from '@project/common/web-socket-client';
-import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
+import { useAppExternalCommands } from '@project/common/app/hooks/use-app-external-commands';
+import { appExternalCommandHandlers } from '@project/common/app/services/app-external-command-handlers';
+import type { LoadSubtitlesCommand } from '@project/common/external-commands';
+import { localMediaId } from '@project/common/external-commands/media';
 import { ExtensionBridgedCopyHistoryRepository } from '@project/common/app/services/extension-bridged-copy-history-repository';
 import { IndexedDBCopyHistoryRepository } from '@project/common/copy-history';
 import type { FileSystemFileHandleWithId } from '@project/common/file-system-access';
@@ -393,7 +393,7 @@ function App({
     const anki = useAnki({ settings, fetcher });
     const searchParams = useMemo(() => new URLSearchParams(location.search), []);
     const inVideoPlayer = useMemo(() => searchParams.get('video') !== null, [searchParams]);
-    const webSocketCommands = useAppWebSocketCommands({ settings, extension, inVideoPlayer });
+    const externalCommands = useAppExternalCommands({ settings, extension, inVideoPlayer });
     const [videoFullscreen, setVideoFullscreen] = useState<boolean>(false);
     const keyBinder = useAppKeyBinder(settings.keyBindSet, extension);
     const videoFrameRef = useRef<HTMLIFrameElement>(null);
@@ -1225,7 +1225,7 @@ function App({
 
     useEffect(
         () =>
-            webSocketCommands.setHandlers({
+            externalCommands.setHandlers({
                 onLoadSubtitles: async ({ body: { files, mediaId } }: LoadSubtitlesCommand) => {
                     if (mediaId !== undefined && mediaId !== localMediaId(extension.id)) {
                         return;
@@ -1234,20 +1234,20 @@ function App({
                     handleFiles({ files: await decodeSubtitleFiles(files ?? []) });
                 },
             }),
-        [webSocketCommands, extension, handleFiles]
+        [externalCommands, extension, handleFiles]
     );
 
     useEffect(
         () =>
-            webSocketCommands.setHandlers(
-                appWebSocketCommandHandlers({
+            externalCommands.setHandlers(
+                appExternalCommandHandlers({
                     appId: extension.id,
                     subtitles,
                     subtitleFileNames: sources.subtitleFiles.map((f) => f.file.name),
                     isActive: () => document.visibilityState === 'visible',
                 })
             ),
-        [webSocketCommands, extension, subtitles, sources.subtitleFiles]
+        [externalCommands, extension, subtitles, sources.subtitleFiles]
     );
 
     useEffect(() => {
@@ -2132,7 +2132,7 @@ function App({
                                     disableKeyEvents={disableKeyEvents}
                                     miningContext={miningContext}
                                     keyBinder={keyBinder}
-                                    webSocketCommands={webSocketCommands}
+                                    externalCommands={externalCommands}
                                     playbackTimelineFileName={fileName}
                                     playbackTimelineModeLabels={{
                                         normal: t('controls.normalMode'),

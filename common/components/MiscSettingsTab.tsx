@@ -26,7 +26,7 @@ import { exportSettings, mergeImportedSettings, validateSettings } from '@projec
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SubtitleHtml } from '@project/common';
-import { WebSocketClient } from '@project/common/web-socket-client';
+import { WebSocketClient } from '@project/common/external-commands';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import RefreshIcon from '@mui/icons-material/Refresh';

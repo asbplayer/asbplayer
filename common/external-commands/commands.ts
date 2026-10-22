@@ -87,14 +87,14 @@ export interface GetSubtitlesResponseBody {
     subtitles: SubtitleCue[];
 }
 
-export type WebSocketCommand =
+export type ExternalCommand =
     | MineSubtitleCommand
     | LoadSubtitlesCommand
     | SeekTimestampCommand
     | GetBoundMediaCommand
     | GetSubtitlesCommand;
 
-export interface WebSocketCommandHandlers {
+export interface ExternalCommandHandlers {
     onMineSubtitle: (command: MineSubtitleCommand) => Promise<boolean>;
     onLoadSubtitles: (command: LoadSubtitlesCommand) => Promise<void>;
     onSeekTimestamp: (command: SeekTimestampCommand) => Promise<void>;

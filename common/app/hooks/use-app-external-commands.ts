@@ -1,8 +1,8 @@
 import { asbError } from '@project/common/util/log';
 import type { WebSocketClientSettings } from '@project/common/settings';
 import type { CardTextFieldValues, PostMineAction } from '@project/common/src/model';
-import type { WebSocketCommandMessage } from '@project/common';
-import { WebSocketClient, WebSocketCommandDispatcher } from '@project/common/web-socket-client';
+import type { ExternalCommandMessage } from '@project/common';
+import { WebSocketClient, ExternalCommandDispatcher } from '@project/common/external-commands';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import type { ExtensionMessage } from '@project/common/app/services/chrome-extension';
 import { useEffect, useState } from 'react';
@@ -14,7 +14,7 @@ export interface MineSubtitleParams extends CardTextFieldValues {
 // Extensions older than the forwarding release already handle the other commands for this app.
 const legacyExtensionCommands = ['seek-timestamp', 'load-subtitles'] as const;
 
-export const useAppWebSocketCommands = ({
+export const useAppExternalCommands = ({
     settings,
     extension,
     inVideoPlayer,
@@ -23,7 +23,7 @@ export const useAppWebSocketCommands = ({
     extension: ChromeExtension;
     inVideoPlayer: boolean;
 }) => {
-    const [dispatcher] = useState(() => new WebSocketCommandDispatcher());
+    const [dispatcher] = useState(() => new ExternalCommandDispatcher());
     const forwardedByExtension = extension.supportsWebSocketClientOwnership;
     const legacyExtension = extension.supportsWebSocketClient && !forwardedByExtension;
 
@@ -52,18 +52,18 @@ export const useAppWebSocketCommands = ({
         }
 
         return extension.subscribe((message: ExtensionMessage) => {
-            if (message.data.command !== 'web-socket-command') {
+            if (message.data.command !== 'external-command') {
                 return;
             }
 
-            const { messageId, webSocketCommand } = message.data as WebSocketCommandMessage;
+            const { messageId, externalCommand } = message.data as ExternalCommandMessage;
             void dispatcher
-                .dispatchCommand(webSocketCommand)
+                .dispatchCommand(externalCommand)
                 .catch((error) => {
-                    asbError('web-socket', error);
+                    asbError('external-command', error);
                     return undefined;
                 })
-                .then((response) => extension.sendWebSocketCommandResponse(messageId, response));
+                .then((response) => extension.sendExternalCommandResponse(messageId, response));
         });
     }, [dispatcher, extension, inVideoPlayer, forwardedByExtension]);
 
