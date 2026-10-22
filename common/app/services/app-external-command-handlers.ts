@@ -1,22 +1,22 @@
 import type { SubtitleModel } from '@project/common/src/model';
 import { buildSubtitleTracks } from '@project/common/util';
-import type { BoundMedia, SubtitleCue, WebSocketCommandHandlers } from '@project/common/web-socket-client';
-import { localMediaId, localMediaTitle } from '@project/common/web-socket-client/web-socket-media';
-import { filterByTracks, toSubtitleCues } from '@project/common/web-socket-client/web-socket-subtitles';
+import type { BoundMedia, SubtitleCue, ExternalCommandHandlers } from '@project/common/external-commands';
+import { localMediaId, localMediaTitle } from '@project/common/external-commands/media';
+import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/subtitles';
 
-export interface AppWebSocketMediaState {
+export interface AppExternalMediaState {
     appId: string;
     subtitles: SubtitleModel[];
     subtitleFileNames: string[];
     isActive: () => boolean;
 }
 
-export const appWebSocketCommandHandlers = ({
+export const appExternalCommandHandlers = ({
     appId,
     subtitles,
     subtitleFileNames,
     isActive,
-}: AppWebSocketMediaState): Pick<WebSocketCommandHandlers, 'onGetBoundMedia' | 'onGetSubtitles'> => ({
+}: AppExternalMediaState): Pick<ExternalCommandHandlers, 'onGetBoundMedia' | 'onGetSubtitles'> => ({
     onGetBoundMedia: async (): Promise<BoundMedia[]> => {
         if (subtitles.length === 0) {
             return [];

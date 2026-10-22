@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import type { SubtitleModel } from '@project/common/src/model';
-import { appWebSocketCommandHandlers } from '@project/common/app/services/app-web-socket-command-handlers';
-import { localMediaId } from '@project/common/web-socket-client/web-socket-media';
+import { appExternalCommandHandlers } from '@project/common/app/services/app-external-command-handlers';
+import { localMediaId } from '@project/common/external-commands/media';
 
 const appId = 'b2c9c0f4-6a7f-4a1a-9d6c-2c1a1d3e4f50';
 
@@ -19,7 +19,7 @@ const handlers = ({
     subtitleFileNames = [],
     active = true,
 }: Partial<{ subtitles: SubtitleModel[]; subtitleFileNames: string[]; active: boolean }> = {}) =>
-    appWebSocketCommandHandlers({ appId, subtitles, subtitleFileNames, isActive: () => active });
+    appExternalCommandHandlers({ appId, subtitles, subtitleFileNames, isActive: () => active });
 
 describe('get-bound-media', () => {
     it('reports no media when no subtitles are loaded', async () => {

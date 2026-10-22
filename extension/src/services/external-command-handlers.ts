@@ -8,8 +8,8 @@ import type {
     MineSubtitleResponseBody,
     SeekTimestampCommand,
     SubtitleCue,
-    WebSocketCommandHandlers,
-} from '@project/common/web-socket-client';
+    ExternalCommandHandlers,
+} from '@project/common/external-commands';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type {
     CardTextFieldValues,
@@ -19,15 +19,15 @@ import type {
 } from '@project/common';
 import { PostMineAction } from '@project/common';
 import { v4 as uuidv4 } from 'uuid';
-import { localMediaId, localMediaTitle, streamingMediaId } from '@project/common/web-socket-client/web-socket-media';
+import { localMediaId, localMediaTitle, streamingMediaId } from '@project/common/external-commands/media';
 import {
     forwardToAsbplayers,
     isVideoElementTarget,
     publishToVideoElements,
     resolveMediaTargets,
-} from '@project/extension/src/services/web-socket-media-targets';
-import { requestSubtitlesFromVideoElement } from '@project/extension/src/services/web-socket-subtitles';
-import { filterByTracks, toSubtitleCues } from '@project/common/web-socket-client/web-socket-subtitles';
+} from '@project/extension/src/services/external-media-targets';
+import { requestSubtitlesFromVideoElement } from '@project/extension/src/services/request-video-element-subtitles';
+import { filterByTracks, toSubtitleCues } from '@project/common/external-commands/subtitles';
 
 const ankiFieldValues = async (
     settings: SettingsProvider,
@@ -218,10 +218,10 @@ const getSubtitles = async (
     return (response?.body as GetSubtitlesResponseBody | undefined)?.subtitles ?? [];
 };
 
-export const webSocketCommandHandlers = (
+export const externalCommandHandlers = (
     settings: SettingsProvider,
     tabRegistry: TabRegistry
-): WebSocketCommandHandlers => ({
+): ExternalCommandHandlers => ({
     onMineSubtitle: (command) => mineSubtitle(settings, tabRegistry, command),
     onLoadSubtitles: (command) => loadSubtitles(tabRegistry, command),
     onSeekTimestamp: (command) => seekTimestamp(tabRegistry, command),

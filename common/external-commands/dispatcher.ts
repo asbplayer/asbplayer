@@ -1,19 +1,19 @@
 import type {
     Response,
-    WebSocketCommand,
-    WebSocketCommandHandlers,
-} from '@project/common/web-socket-client/web-socket-commands';
+    ExternalCommand,
+    ExternalCommandHandlers,
+} from '@project/common/external-commands/commands';
 
-export class WebSocketCommandDispatcher {
-    private _handlers: Partial<WebSocketCommandHandlers> = {};
+export class ExternalCommandDispatcher {
+    private _handlers: Partial<ExternalCommandHandlers> = {};
 
-    setHandlers(handlers: Partial<WebSocketCommandHandlers>) {
+    setHandlers(handlers: Partial<ExternalCommandHandlers>) {
         this._handlers = { ...this._handlers, ...handlers };
 
         return () => {
             const remaining = { ...this._handlers };
 
-            for (const key of Object.keys(handlers) as (keyof WebSocketCommandHandlers)[]) {
+            for (const key of Object.keys(handlers) as (keyof ExternalCommandHandlers)[]) {
                 if (remaining[key] === handlers[key]) {
                     delete remaining[key];
                 }
@@ -23,13 +23,13 @@ export class WebSocketCommandDispatcher {
         };
     }
 
-    async dispatch(data: string, commands?: readonly WebSocketCommand['command'][]) {
+    async dispatch(data: string, commands?: readonly ExternalCommand['command'][]) {
         return this.dispatchCommand(JSON.parse(data), commands);
     }
 
     async dispatchCommand(
-        command: WebSocketCommand,
-        commands?: readonly WebSocketCommand['command'][]
+        command: ExternalCommand,
+        commands?: readonly ExternalCommand['command'][]
     ): Promise<Response<object> | undefined> {
         if (commands !== undefined && !commands.includes(command.command)) {
             return undefined;
@@ -44,7 +44,7 @@ export class WebSocketCommandDispatcher {
         return { command: 'response', messageId: command.messageId, body };
     }
 
-    private async _body(command: WebSocketCommand): Promise<object | undefined> {
+    private async _body(command: ExternalCommand): Promise<object | undefined> {
         const { onMineSubtitle, onLoadSubtitles, onSeekTimestamp, onGetBoundMedia, onGetSubtitles } = this._handlers;
 
         // Unhandled commands stay silent so that another connected client which handles them can answer.
