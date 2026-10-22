@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Unlicense
+
 // Protocol types for asbplayer's external extension API, kept as a local copy so that a
 // plugin extension only needs this file and never asbplayer's packages.
 //

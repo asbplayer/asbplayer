@@ -3,7 +3,7 @@
     "private": true,
     "version": "1.0.0",
     "description": "Sample sibling extension for asbplayer's external extension API",
-    "license": "AGPL-3.0-or-later",
+    "license": "Unlicense",
     "type": "module",
     "scripts": {
         "build": "tsc --noEmit && vite build",

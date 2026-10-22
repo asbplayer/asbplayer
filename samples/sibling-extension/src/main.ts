@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Unlicense
+
 import { ExternalAuthentication, ExternalConnection } from './connection';
 import {
     BoundMedia,

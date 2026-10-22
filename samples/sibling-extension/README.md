@@ -70,3 +70,10 @@ npm install
 npm run build     # typecheck + bundle to dist/
 npm run watch     # rebuild on change; reload the unpacked extension in the browser
 ```
+
+## Licensing
+
+The sample, like everything under `samples/`, is released under the
+[Unlicense](../UNLICENSE) — copying and redistribution require no notice. This
+differs from the rest of the repository, which is AGPL-3.0-or-later. The sample
+must not import asbplayer source code; see [samples/README.md](../README.md).
