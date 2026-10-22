@@ -16,7 +16,7 @@ describe('extension badge controller', () => {
         expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: '!' });
 
         controller.setGlobalAlert('reasonB', false);
-        expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: undefined });
+        expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: '' });
     });
 
     it('does not let one reason turning off clear another active reason', () => {
@@ -39,11 +39,11 @@ describe('extension badge controller', () => {
         expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '!' });
 
         controller.setTabAlerts([2]);
-        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: undefined });
+        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '' });
         expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '!' });
-        expect(action.setBadgeText).not.toHaveBeenCalledWith({ tabId: 2, text: undefined });
+        expect(action.setBadgeText).not.toHaveBeenCalledWith({ tabId: 2, text: '' });
 
         controller.setTabAlerts([]);
-        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: undefined });
+        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '' });
     });
 });

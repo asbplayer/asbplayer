@@ -25,8 +25,7 @@ const badgeReason = 'externalConnections';
  *
  * Approval is keyed on the connecting extension's runtime ID and persisted in global state
  * (`externalConnections`). Any surface (popup, options page, or the asbplayer app) manages
- * approvals by writing global state; this coordinator reacts to those writes, so it is purely
- * reactive to approval changes.
+ * approvals by writing global state; this coordinator only reacts to those writes.
  *
  * The port protocol is the external command wire format shared with the WebSocket server
  * integration: raw `ExternalCommand` frames are dispatched and answered with
@@ -273,9 +272,9 @@ export class ExternalConnectionCoordinator {
         try {
             port.postMessage(message);
         } catch {
-            // The port may disconnect concurrently, e.g. when the sibling closes it. Posting to a
-            // disconnected port is not an error worth logging, mirroring the WebSocket client's
-            // handling of expected teardown.
+            // The port may disconnect concurrently, e.g. when the sibling closes it. Posting
+            // to a disconnected port throws, which is expected teardown rather than an error
+            // worth logging.
         }
     }
 }

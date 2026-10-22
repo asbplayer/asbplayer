@@ -1,6 +1,7 @@
 import { ExternalAuthentication, ExternalConnection } from './connection';
 import {
     BoundMedia,
+    ExternalAuthenticationMessage,
     ExternalCommand,
     ExternalIdentifyMessage,
     GetBoundMediaResponseBody,
@@ -109,6 +110,7 @@ function connect() {
     }
 
     connection = new ExternalConnection(port);
+    const newConnection = connection;
     awaitingApprovalLogged = false;
     authentication = new ExternalAuthentication((approved) => {
         setStatus();
@@ -119,10 +121,15 @@ function connect() {
     });
     connection.onMessage((message) => {
         if ((message as { type?: string }).type === 'asbplayer-external-authentication') {
-            authentication.update(message as never);
+            authentication.update(message as ExternalAuthenticationMessage);
         }
     });
     connection.onDisconnect(() => {
+        // A reconnect replaces the connection before the old port's disconnect event fires.
+        if (connection !== newConnection) {
+            return;
+        }
+
         log('Disconnected from asbplayer.');
         teardown();
     });
