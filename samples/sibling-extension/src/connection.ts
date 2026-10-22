@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Unlicense
+
 import type { ExternalAuthenticationMessage, ExternalCommand, Response } from './protocol';
 
 /**
