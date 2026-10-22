@@ -33,6 +33,7 @@ const getSubtitlesButton = document.querySelector<HTMLButtonElement>('#get-subti
 let connection: ExternalConnection | undefined;
 let authentication = new ExternalAuthentication((approved) => setStatus());
 let polling: ReturnType<typeof setInterval> | undefined;
+let awaitingApprovalLogged = false;
 let lastMedia: BoundMedia | undefined;
 
 function log(message: string) {
@@ -48,14 +49,6 @@ function setStatus() {
         button.disabled = connection === undefined;
     }
 }
-
-chrome.storage.local.get('asbplayerExtensionId').then((result) => {
-    const id = (result as Record<string, string | undefined>).asbplayerExtensionId;
-
-    if (id !== undefined && id !== '') {
-        extensionIdInput.value = id;
-    }
-});
 
 async function request<T>(command: ExternalCommand): Promise<void> {
     if (connection === undefined) {
@@ -116,8 +109,10 @@ function connect() {
     }
 
     connection = new ExternalConnection(port);
+    awaitingApprovalLogged = false;
     authentication = new ExternalAuthentication((approved) => {
         setStatus();
+        awaitingApprovalLogged = false;
         log(approved ? 'Approved! Commands are now dispatched.' : 'Approval was removed or denied.');
         stopPolling();
         startPolling();
@@ -148,28 +143,29 @@ function connect() {
 }
 
 function startPolling() {
-    if (polling !== undefined) {
+    if (polling !== undefined || connection === undefined) {
         return;
     }
 
-    // While unapproved, commands receive no response. Retry get-bound-media periodically so
-    // that the pending -> approved transition becomes observable. Once approved, a single
-    // request verifies that dispatch works.
+    // While unapproved, commands receive no response. Retry get-bound-media periodically so that
+    // the pending -> approved transition becomes observable without spamming the log, and stop
+    // as soon as approval arrives (after a single request that verifies dispatch works).
     polling = setInterval(() => {
         if (connection === undefined || connection.disconnected) {
             stopPolling();
             return;
         }
 
-        if (authentication.approved && lastMedia !== undefined) {
+        if (authentication.approved) {
             stopPolling();
-            log('get-bound-media verified: dispatch works.');
+            void getBoundMedia().then(() => log('Dispatch verified.'));
             return;
         }
 
         void getBoundMedia().then((media) => {
-            if (media === undefined && polling !== undefined && !authentication.approved) {
-                log('(still awaiting approval...)');
+            if (media === undefined && polling !== undefined && !awaitingApprovalLogged) {
+                awaitingApprovalLogged = true;
+                log('(no response yet - still awaiting approval...)');
             }
         });
     }, 2000);
@@ -263,4 +259,16 @@ getSubtitlesButton.addEventListener('click', async () => {
 });
 
 setStatus();
-log('Enter the asbplayer extension ID and press Connect. Approve this extension in the streaming video settings of the asbplayer extension popup, options page, or web app.');
+
+chrome.storage.local.get('asbplayerExtensionId').then((result) => {
+    const id = (result as Record<string, string | undefined>).asbplayerExtensionId;
+
+    if (id !== undefined && id !== '') {
+        extensionIdInput.value = id;
+        // Approval persists on the asbplayer side, so reconnect automatically whenever the
+        // popup opens. (The port itself cannot outlive the popup context.)
+        connect();
+    } else {
+        log('Enter the asbplayer extension ID and press Connect. Approve this extension in the streaming video settings of the asbplayer extension popup, options page, or web app.');
+    }
+});
