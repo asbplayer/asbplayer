@@ -91,15 +91,15 @@ export interface GetSubtitlesResponseBody {
 // Commands themselves reuse the same `{command, messageId, body}` / `{command: 'response', messageId, body}`
 // wire format as the WebSocket server integration.
 
-export interface ExternalIdentifyMessage {
-    readonly type: 'asbplayer-external-identify';
+export interface ExternalHelloMessage {
+    readonly type: 'asbplayer-external-hello';
     // Self-reported, untrusted display name shown next to the (trusted) extension ID in the approval UI.
     readonly name?: string;
     readonly version?: string;
 }
 
-export interface ExternalAuthenticationMessage {
-    readonly type: 'asbplayer-external-authentication';
+export interface ExternalApprovalMessage {
+    readonly type: 'asbplayer-external-approval';
     readonly approved: boolean;
 }
 

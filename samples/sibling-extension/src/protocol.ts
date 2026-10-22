@@ -6,27 +6,27 @@
 // Frames travel over a browser.runtime.connectExternal port named {@link portName}:
 //
 //   sibling -> asbplayer:
-//     { type: 'asbplayer-external-identify', name?, version? }
+//     { type: 'asbplayer-external-hello', name?, version? }
 //     { command: ExternalCommand['command'], messageId: string, body: object }
 //   asbplayer -> sibling:
-//     { type: 'asbplayer-external-authentication', approved: boolean }
+//     { type: 'asbplayer-external-approval', approved: boolean }
 //     { command: 'response', messageId: string, body: object }
 //
 // Commands are the same wire format the WebSocket server integration uses. Frames that
 // are not dispatched (unknown commands, unapproved extensions) receive no response, so
-// each request needs a timeout (see request.ts).
+// each request needs a timeout (see connection.ts).
 
 export const portName = 'asbplayer-external-v1';
 
-export interface ExternalIdentifyMessage {
-    readonly type: 'asbplayer-external-identify';
+export interface ExternalHelloMessage {
+    readonly type: 'asbplayer-external-hello';
     /** Self-reported, untrusted display name shown next to the extension ID in asbplayer's approval UI. */
     readonly name?: string;
     readonly version?: string;
 }
 
-export interface ExternalAuthenticationMessage {
-    readonly type: 'asbplayer-external-authentication';
+export interface ExternalApprovalMessage {
+    readonly type: 'asbplayer-external-approval';
     readonly approved: boolean;
 }
 

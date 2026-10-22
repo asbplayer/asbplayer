@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Unlicense
 
-import { ExternalAuthentication, ExternalConnection } from './connection';
+import { ExternalApproval, ExternalConnection } from './connection';
 import {
     BoundMedia,
-    ExternalAuthenticationMessage,
+    ExternalApprovalMessage,
     ExternalCommand,
-    ExternalIdentifyMessage,
+    ExternalHelloMessage,
     GetBoundMediaResponseBody,
     GetSubtitlesResponseBody,
     PostMineAction,
@@ -26,7 +26,7 @@ const disconnectButton = document.querySelector<HTMLButtonElement>('#disconnect'
 const statusSpan = document.querySelector<HTMLSpanElement>('#status')!;
 const logDiv = document.querySelector<HTMLDivElement>('#log')!;
 
-const identifyButton = document.querySelector<HTMLButtonElement>('#identify')!;
+const helloButton = document.querySelector<HTMLButtonElement>('#hello')!;
 const getBoundMediaButton = document.querySelector<HTMLButtonElement>('#get-bound-media')!;
 const mineSubtitleButton = document.querySelector<HTMLButtonElement>('#mine-subtitle')!;
 const seekButton = document.querySelector<HTMLButtonElement>('#seek-timestamp')!;
@@ -34,7 +34,7 @@ const loadSubtitlesButton = document.querySelector<HTMLButtonElement>('#load-sub
 const getSubtitlesButton = document.querySelector<HTMLButtonElement>('#get-subtitles')!;
 
 let connection: ExternalConnection | undefined;
-let authentication = new ExternalAuthentication((approved) => setStatus());
+let approval = new ExternalApproval((approved) => setStatus());
 let polling: ReturnType<typeof setInterval> | undefined;
 let awaitingApprovalLogged = false;
 let lastMedia: BoundMedia | undefined;
@@ -46,7 +46,7 @@ function log(message: string) {
 }
 
 function setStatus() {
-    statusSpan.textContent = connection === undefined ? 'Not connected' : authentication.approved ? 'Approved' : 'Awaiting approval...';
+    statusSpan.textContent = connection === undefined ? 'Not connected' : approval.approved ? 'Approved' : 'Awaiting approval...';
 
     for (const button of [getBoundMediaButton, mineSubtitleButton, seekButton, loadSubtitlesButton, getSubtitlesButton]) {
         button.disabled = connection === undefined;
@@ -114,7 +114,7 @@ function connect() {
     connection = new ExternalConnection(port);
     const newConnection = connection;
     awaitingApprovalLogged = false;
-    authentication = new ExternalAuthentication((approved) => {
+    approval = new ExternalApproval((approved) => {
         setStatus();
         awaitingApprovalLogged = false;
         log(approved ? 'Approved! Commands are now dispatched.' : 'Approval was removed or denied.');
@@ -122,8 +122,8 @@ function connect() {
         startPolling();
     });
     connection.onMessage((message) => {
-        if ((message as { type?: string }).type === 'asbplayer-external-authentication') {
-            authentication.update(message as ExternalAuthenticationMessage);
+        if ((message as { type?: string }).type === 'asbplayer-external-approval') {
+            approval.update(message as ExternalApprovalMessage);
         }
     });
     connection.onDisconnect(() => {
@@ -136,15 +136,15 @@ function connect() {
         teardown();
     });
 
-    // Tell asbplayer who we are; the response communicates the current approval state, and an
-    // authentication frame also arrives later if the user approves while this port is open.
-    const identify: ExternalIdentifyMessage = {
-        type: 'asbplayer-external-identify',
+    // Greet asbplayer; the response communicates the current approval state, and another
+    // approval frame arrives later if the user approves while this port is open.
+    const hello: ExternalHelloMessage = {
+        type: 'asbplayer-external-hello',
         name: selfName,
         version: chrome.runtime.getManifest().version,
     };
-    connection.post(identify);
-    log(`Identified as "${selfName}" to extension ${asbplayerExtensionId}. Waiting for approval if needed...`);
+    connection.post(hello);
+    log(`Said hello as "${selfName}" to extension ${asbplayerExtensionId}. Waiting for approval if needed...`);
 
     connectButton.textContent = 'Reconnect';
     setStatus();
@@ -165,7 +165,7 @@ function startPolling() {
             return;
         }
 
-        if (authentication.approved) {
+        if (approval.approved) {
             stopPolling();
             void getBoundMedia().then(() => log('Dispatch verified.'));
             return;
@@ -206,13 +206,13 @@ disconnectButton.addEventListener('click', () => {
     connection?.disconnect();
 });
 
-identifyButton.addEventListener('click', () => {
+helloButton.addEventListener('click', () => {
     connection?.post({
-        type: 'asbplayer-external-identify',
+        type: 'asbplayer-external-hello',
         name: selfName,
         version: chrome.runtime.getManifest().version,
-    } satisfies ExternalIdentifyMessage);
-    log('Re-sent identify frame.');
+    } satisfies ExternalHelloMessage);
+    log('Re-sent hello frame.');
 });
 
 getBoundMediaButton.addEventListener('click', () => void getBoundMedia());
