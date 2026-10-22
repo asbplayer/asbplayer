@@ -1,0 +1,17 @@
+{
+    "name": "asbplayer-sample-sibling-extension",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Sample sibling extension for asbplayer's external extension API",
+    "license": "AGPL-3.0-or-later",
+    "type": "module",
+    "scripts": {
+        "build": "tsc --noEmit && vite build",
+        "watch": "vite build --watch"
+    },
+    "devDependencies": {
+        "@types/chrome": "^0.3.6",
+        "typescript": "^5.8.3",
+        "vite": "^6.3.5"
+    }
+}
