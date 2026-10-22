@@ -747,7 +747,8 @@
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。",
         "seekableTracks": "操作対象の字幕トラック（プレイバックモード/ショートカット）",
-        "autoCopyableTracks": "自動コピー対象の字幕トラック"
+        "autoCopyableTracks": "自動コピー対象の字幕トラック",
+        "externalConnections": "External connections"
     },
     "statistics": {
         "title": "統計",
@@ -854,6 +855,15 @@
         "importUrl": "Import URL",
         "introduction": "Recipes combine playback modes and settings for different learning activities. <docs>Learn about recipes and importing presets</docs>.",
         "notification": "Recipe: {{name}}",
-        "settingLocked": "{{setting}} can't be changed while a Recipe is active"
+        "settingLocked": "{{setting}} can't be changed while a Recipe is active",
+        "confirmDelete": "Delete \"{{name}}\"?"
+    },
+    "externalConnections": {
+        "pending": "Pending connection requests",
+        "approved": "Approved extensions",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove",
+        "unknownName": "Unnamed extension"
     }
 }

@@ -29,6 +29,7 @@ import type { DictionaryProvider } from '@project/common/dictionary-db';
 import type { LogProvider } from '@project/common/util/log';
 import TutorialBubble from '@project/common/components/TutorialBubble';
 import type { TutorialBubbleProps } from '@project/common/components/TutorialBubble';
+import type { GlobalStateProvider } from '@project/common/global-state';
 
 interface AnnotationTutorialPosition {
     left: number;
@@ -204,6 +205,8 @@ interface Props {
     extensionSupportsSubtitleListCustomization: boolean;
     extensionSupportsUpdateLastWithSameSubtitleText: boolean;
     extensionSupportsAnimatedMediaFragment?: boolean;
+    globalStateProvider?: GlobalStateProvider;
+    onExternalConnectionsChanged?: (listener: () => void) => () => void;
     insideApp?: boolean;
     appVersionRepoPath?: string;
     dictionaryProvider: DictionaryProvider;
@@ -266,6 +269,8 @@ export default function SettingsForm({
     extensionSupportsDictionaryYomitanMecab,
     extensionSupportsUpdateLastWithSameSubtitleText,
     supportsDictionaryPlayback,
+    globalStateProvider,
+    onExternalConnectionsChanged,
     insideApp,
     appVersionRepoPath,
     scrollToId,
@@ -647,6 +652,8 @@ export default function SettingsForm({
                         extensionSupportsPageSettings={extensionSupportsPageSettings}
                         extensionSupportsAnimatedImageCapture={extensionSupportsAnimatedImageCapture}
                         pageConfigs={pageConfigs}
+                        globalStateProvider={globalStateProvider}
+                        onExternalConnectionsChanged={onExternalConnectionsChanged}
                     />
                 </TabPanel>
                 <TabPanel value={tabIndex} index={tabIndicesById['misc-settings']} tabsOrientation={tabsOrientation}>

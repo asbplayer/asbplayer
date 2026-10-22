@@ -30,6 +30,7 @@ import type { LogProvider } from '@project/common/util/log';
 import { useAnnotationTutorial } from '@project/common/hooks/use-annotation-tutorial';
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { uiTabRegistry, useMediaId, useLastMediaIdOnce } from '@project/extension/src/ui/hooks/use-media-id';
+import { useExternalConnections } from '@project/extension/src/ui/hooks/use-external-connections';
 import Statistics from '@project/common/components/Statistics';
 import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
@@ -153,6 +154,7 @@ const Popup = ({
     settingsRef.current = settings;
 
     const currentTabId = useCurrentTabId();
+    const externalConnections = useExternalConnections();
     const currentMediaIdWithSubtitles = useMediaId({
         whereAsbplayer: (a) => a.tab?.id === currentTabId,
         whereVideoElement: (v) => v.id === currentTabId,
@@ -257,6 +259,8 @@ const Popup = ({
                             extensionSupportsSubtitleListCustomization
                             extensionSupportsUpdateLastWithSameSubtitleText
                             extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
+                            globalStateProvider={externalConnections.provider}
+                            onExternalConnectionsChanged={externalConnections.onExternalConnectionsChanged}
                             forceVerticalTabs={false}
                             anki={anki}
                             chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}

@@ -79,3 +79,56 @@ export interface GlobalStateProvider {
     get: <K extends keyof GlobalState>(keys: K[]) => Promise<Pick<GlobalState, K>>;
     set: (state: Partial<GlobalState>) => Promise<void>;
 }
+
+/**
+ * Read-modify-write of the `externalConnections` global state key. Returns without writing when the
+ * mutator reports no change, so that storage change listeners are not re-triggered needlessly.
+ */
+export const mutateExternalConnections = async (
+    provider: GlobalStateProvider,
+    mutate: (externalConnections: ExternalConnectionsState) => boolean
+): Promise<void> => {
+    const state = await provider.get(['externalConnections']);
+    const externalConnections: ExternalConnectionsState = structuredClone(state.externalConnections);
+
+    if (!mutate(externalConnections)) {
+        return;
+    }
+
+    await provider.set({ externalConnections });
+};
+
+export const approveExternalConnection = async (
+    provider: GlobalStateProvider,
+    extensionId: string,
+    name?: string
+): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        const request = externalConnections.pending[extensionId];
+        delete externalConnections.pending[extensionId];
+        externalConnections.approved[extensionId] = { name: name ?? request?.name, approvedAt: Date.now() };
+        return true;
+    });
+};
+
+export const denyExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        if (!(extensionId in externalConnections.pending)) {
+            return false;
+        }
+
+        delete externalConnections.pending[extensionId];
+        return true;
+    });
+};
+
+export const removeExternalConnection = async (provider: GlobalStateProvider, extensionId: string): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        if (!(extensionId in externalConnections.approved)) {
+            return false;
+        }
+
+        delete externalConnections.approved[extensionId];
+        return true;
+    });
+};
