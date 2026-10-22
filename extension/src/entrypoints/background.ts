@@ -187,12 +187,10 @@ export default defineBackground(() => {
         }
     });
 
-    void updateFtueBadge().catch((error) =>
-        asbError('background', 'Failed to update the extension badge:', error)
-    );
-    void externalConnectionCoordinator.updateBadge().catch((error) =>
-        asbError('background', 'Failed to update the extension badge:', error)
-    );
+    void updateFtueBadge().catch((error) => asbError('background', 'Failed to update the extension badge:', error));
+    void externalConnectionCoordinator
+        .updateBadge()
+        .catch((error) => asbError('background', 'Failed to update the extension badge:', error));
 
     const handlers: CommandHandler[] = [
         new VideoHeartbeatHandler(tabRegistry),

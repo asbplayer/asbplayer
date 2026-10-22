@@ -3,10 +3,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type {
-    ExternalConnectionsState,
-    GlobalStateProvider,
-} from '@project/common/global-state';
+import type { ExternalConnectionsState, GlobalStateProvider } from '@project/common/global-state';
 import {
     approveExternalConnection,
     denyExternalConnection,
@@ -25,9 +22,7 @@ const ExternalConnections: React.FC<Props> = ({ provider, onExternalConnectionsC
     const [externalConnections, setExternalConnections] = useState<ExternalConnectionsState>();
 
     const refresh = useCallback(() => {
-        void provider
-            .get(['externalConnections'])
-            .then((state) => setExternalConnections(state.externalConnections));
+        void provider.get(['externalConnections']).then((state) => setExternalConnections(state.externalConnections));
     }, [provider]);
 
     useEffect(() => {
@@ -79,7 +74,12 @@ const ExternalConnections: React.FC<Props> = ({ provider, onExternalConnectionsC
                                     {extensionId}
                                 </Typography>
                             </Stack>
-                            <Button size="small" variant="contained" color="primary" onClick={() => handleApprove(extensionId)}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                color="primary"
+                                onClick={() => handleApprove(extensionId)}
+                            >
                                 {t('externalConnections.approve')}
                             </Button>
                             <Button size="small" onClick={() => handleDeny(extensionId)}>

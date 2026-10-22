@@ -127,9 +127,7 @@ export default function SettingsDialog({
                     extensionSupportsSeekableTrackSetting={extension.supportsSeekableTrackSetting}
                     extensionSupportsAutoCopyableTrackSetting={extension.supportsAutoCopyableTrackSetting}
                     extensionOwnsWebSocketClient={extension.supportsWebSocketClientOwnership}
-                    globalStateProvider={
-                        extension.supportsExternalConnections ? globalStateProvider : undefined
-                    }
+                    globalStateProvider={extension.supportsExternalConnections ? globalStateProvider : undefined}
                     extensionSupportsDictionaryTokenStatusDisplayAlpha={
                         extension.supportsDictionaryTokenStatusDisplayAlpha
                     }
