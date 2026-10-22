@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <style>
+            body {
+                font-family: system-ui, sans-serif;
+                font-size: 13px;
+                width: 420px;
+                margin: 8px;
+            }
+            fieldset {
+                margin-bottom: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            input[type='text'] {
+                width: 100%;
+                box-sizing: border-box;
+            }
+            button {
+                margin-right: 4px;
+                margin-top: 4px;
+            }
+            #log {
+                height: 180px;
+                overflow-y: auto;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 4px;
+                font-family: monospace;
+                font-size: 11px;
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            #status {
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <fieldset>
+            <legend>Connection</legend>
+            <label for="extension-id">asbplayer extension ID</label>
+            <input type="text" id="extension-id" placeholder="e.g. e4b27483-2e73-4762-b2ec-8d988a143a40" />
+            <div>
+                <button id="connect"></button>
+                <button id="disconnect">Disconnect</button>
+                <span id="status"></span>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Commands</legend>
+            <button id="identify">Identify</button>
+            <button id="get-bound-media">Get bound media</button>
+            <button id="mine-subtitle">Mine subtitle</button>
+            <button id="seek-timestamp">Seek to 30s</button>
+            <button id="load-subtitles">Load sample subtitles</button>
+            <button id="get-subtitles">Get subtitles</button>
+        </fieldset>
+        <div id="log"></div>
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>
