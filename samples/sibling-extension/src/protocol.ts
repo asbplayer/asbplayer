@@ -1,6 +1,5 @@
-// Protocol types for asbplayer's external extension API, duplicated here on purpose.
-// The protocol -- not asbplayer's code -- is the contract, so a plugin extension should
-// only need this file (kept in sync manually with asbplayer's protocol docs).
+// Protocol types for asbplayer's external extension API, kept as a local copy so that a
+// plugin extension only needs this file and never asbplayer's packages.
 //
 // Frames travel over a browser.runtime.connectExternal port named {@link portName}:
 //
@@ -110,7 +109,7 @@ export type ExternalCommand =
     | GetBoundMediaCommand
     | GetSubtitlesCommand;
 
-// Post-mine actions, mirroring asbplayer's PostMineAction enum values.
+// Post-mine actions, same values as asbplayer's PostMineAction enum.
 export const PostMineAction = {
     none: 0,
     showAnkiDialog: 1,

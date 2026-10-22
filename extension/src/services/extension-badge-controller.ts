@@ -20,7 +20,7 @@ export class ExtensionBadgeController {
             this._globalAlerts.delete(reason);
         }
 
-        this._action.setBadgeText({ text: this._globalAlerts.size > 0 ? '!' : undefined });
+        this._action.setBadgeText({ text: this._globalAlerts.size > 0 ? '!' : '' });
     }
 
     /** Sets a '!' badge on the given tabs and clears it from tabs badged previously. */
@@ -28,7 +28,7 @@ export class ExtensionBadgeController {
         const badgedTabIds = new Set(tabIds);
 
         for (const tabId of new Set([...this._tabIds, ...badgedTabIds])) {
-            this._action.setBadgeText({ tabId, text: badgedTabIds.has(tabId) ? '!' : undefined });
+            this._action.setBadgeText({ tabId, text: badgedTabIds.has(tabId) ? '!' : '' });
         }
 
         this._tabIds = [...badgedTabIds];

@@ -3,8 +3,8 @@ import type { ExternalAuthenticationMessage, ExternalCommand, Response } from '.
 /**
  * Request/response correlation over an external connection port, by `messageId` -- the same
  * scheme the WebSocket server integration uses. Frames that receive no response (unapproved
- * extensions, unhandled commands) reject after a timeout, mirroring the broker's
- * `RequestTimeout` behavior.
+ * extensions, unhandled commands) reject after a timeout, like the WebSocket server's
+ * RequestTimeout.
  */
 export class ExternalConnection {
     private readonly _port: chrome.runtime.Port;

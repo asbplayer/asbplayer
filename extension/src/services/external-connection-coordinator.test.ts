@@ -418,9 +418,9 @@ describe('external connection coordinator', () => {
         harness.externalConnectionsChanged(harness.pendingState(), harness.emptyState());
         await flush();
 
-        expect(harness.lastGlobalBadgeText()).toEqual(undefined);
-        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: undefined });
-        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: undefined });
+        expect(harness.lastGlobalBadgeText()).toEqual('');
+        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '' });
+        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '' });
     });
 
     it('prunes expired pending requests and caps the number retained', async () => {
