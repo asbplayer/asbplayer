@@ -1,0 +1,40 @@
+{
+    "name": "@project/ffmpeg",
+    "private": true,
+    "license": "AGPL-3.0-or-later",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./*": "./src/*.ts",
+        "./artifact-lock.json": "./artifact-lock.json",
+        "./build-config.json": "./build-config.json",
+        "./runtime-assets.json": "./runtime-assets.json",
+        "./project": "./src/project/index.ts",
+        "./release-names": "./scripts/release-names.mjs"
+    },
+    "scripts": {
+        "build:runtime": "bash scripts/build.sh",
+        "build:candidate": "pnpm run build:runtime && pnpm run package:candidate && pnpm run verify:candidate",
+        "package:candidate": "bash scripts/package-candidate.sh",
+        "fetch": "node scripts/fetch.mjs",
+        "verify:candidate": "node scripts/verify-artifacts.mjs --candidate",
+        "test:native-wasm": "bash scripts/test-native-wasm.sh",
+        "verify:locked:runtime": "node scripts/verify-artifacts.mjs",
+        "select:runtime": "node scripts/select-runtime.mjs",
+        "verify:reproducible": "bash scripts/verify-reproducible.sh",
+        "verify:code": "pnpm --workspace-root run check:ffmpeg-version && pnpm run test && pnpm run compile && pnpm --workspace-root exec eslint ffmpeg/src ffmpeg/scripts && pnpm --workspace-root exec prettier --check './ffmpeg/**/*.(js|mjs|cjs|ts|tsx|css)'",
+        "verify:release": "bash scripts/release-check.sh",
+        "compile": "tsc --noEmit",
+        "test": "jest --config jest.config.cjs"
+    },
+    "dependencies": {
+        "uuid": "11.1.1"
+    },
+    "devDependencies": {
+        "@types/jest": "^30.0.0",
+        "esbuild": "0.25.9",
+        "jest": "^30.0.5",
+        "ts-jest": "^29.4.0",
+        "typescript": "^5.8.3"
+    }
+}

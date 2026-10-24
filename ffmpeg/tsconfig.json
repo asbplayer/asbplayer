@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "lib": ["DOM", "DOM.Iterable", "ESNext"],
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "strict": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "types": ["@types/jest"]
+    },
+    "include": ["src"]
+}

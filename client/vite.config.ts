@@ -4,6 +4,13 @@ import { createHtmlPlugin } from 'vite-plugin-html';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import project from '../project.json' with { type: 'json' };
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import artifactLock from '@project/ffmpeg/artifact-lock.json';
+import ffmpegBuildConfig from '@project/ffmpeg/build-config.json';
+import { releaseNames } from '@project/ffmpeg/release-names';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd());
@@ -11,8 +18,45 @@ export default defineConfig(({ mode }) => {
     if (env.VITE_APP_DOMAIN) appUrl.host = env.VITE_APP_DOMAIN;
     const domain = appUrl.host;
     const base = env.VITE_APP_BASE_PATH || '/';
+    const candidate = ['1', 'true'].includes(env.VITE_FFMPEG_CANDIDATE?.toLowerCase());
+    const runtimeVersion = candidate ? project.artifacts.ffmpeg.version : artifactLock.runtimeVersion;
+    const ffmpegVersion = candidate ? ffmpegBuildConfig.ffmpeg.version : artifactLock.ffmpegVersion;
+    const runtimeArchiveFilename = releaseNames(runtimeVersion).runtimeArchive;
+    const candidateArchivePath = path.resolve(__dirname, `../ffmpeg/release/${runtimeArchiveFilename}`);
+    // Vite's static server labels stored *.gz files as Content-Encoding: gzip, so the browser would
+    // decode the archive before it can be verified. GitHub serves release assets as plain bytes.
+    const candidateArchiveServedName = runtimeArchiveFilename.replace(/\.tar\.gz$/, '.tgz');
+    let runtimeArchive = {
+        url: `${artifactLock.releaseBaseDownloadUrl}/${artifactLock.runtimeArchive.filename}`,
+        sha256: artifactLock.runtimeArchive.sha256,
+        bytes: artifactLock.runtimeArchive.bytes,
+    };
+    if (candidate) {
+        execFileSync(
+            process.execPath,
+            [path.resolve(__dirname, '../ffmpeg/scripts/verify-artifacts.mjs'), '--candidate'],
+            { stdio: 'inherit' }
+        );
+        const bytes = readFileSync(candidateArchivePath);
+        runtimeArchive = {
+            url: `${base.replace(/\/?$/, '/')}ffmpeg/${candidateArchiveServedName}`,
+            sha256: createHash('sha256').update(bytes).digest('hex'),
+            bytes: bytes.byteLength,
+        };
+    }
+    const releaseApiUrl = candidate
+        ? null
+        : artifactLock.releaseUrl
+              .replace('https://github.com/', 'https://api.github.com/repos/')
+              .replace('/releases/tag/', '/releases/tags/');
     return {
         base,
+        define: {
+            __ASB_FFMPEG_RUNTIME_ARCHIVE__: JSON.stringify(runtimeArchive),
+            __ASB_FFMPEG_RELEASE_API_URL__: JSON.stringify(releaseApiUrl),
+            __ASB_FFMPEG_RUNTIME_VERSION__: JSON.stringify(runtimeVersion),
+            __ASB_FFMPEG_VERSION__: JSON.stringify(ffmpegVersion),
+        },
         resolve: {
             tsconfigPaths: true,
         },
@@ -48,9 +92,13 @@ export default defineConfig(({ mode }) => {
                         src: '../common/extension.json',
                         dest: '',
                     },
+                    ...(candidate
+                        ? [{ src: candidateArchivePath, dest: 'ffmpeg', rename: candidateArchiveServedName }]
+                        : []),
                 ],
             }),
             VitePWA({
+                strategies: 'generateSW',
                 registerType: 'prompt',
                 includeAssets: ['locales/*.json', 'background-colored.png'],
                 manifest: {
@@ -82,6 +130,15 @@ export default defineConfig(({ mode }) => {
                 },
                 devOptions: {
                     enabled: false,
+                },
+                workbox: {
+                    clientsClaim: true,
+                    cleanupOutdatedCaches: true,
+                    navigateFallback: 'index.html',
+                    navigateFallbackDenylist: [/\/ffmpeg\//],
+                    globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,txt}'],
+                    globIgnores: ['**/ffmpeg/**'],
+                    sourcemap: true,
                 },
             }),
         ],

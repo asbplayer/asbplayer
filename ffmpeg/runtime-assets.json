@@ -1,0 +1,16 @@
+{
+    "executables": {
+        "worker": { "filename": "ffmpeg-worker.js", "type": "text/javascript" },
+        "core": { "filename": "ffmpeg-core.js", "type": "text/javascript" },
+        "wasm": { "filename": "ffmpeg-core.wasm", "type": "application/wasm" }
+    },
+    "notices": [
+        "asbplayer-AGPL-3.0-or-later.txt",
+        "FFmpeg-LGPL-2.1.txt",
+        "Emscripten-MIT.txt",
+        "musl-COPYRIGHT.txt",
+        "compiler-rt-LICENSE.txt",
+        "libcxx-Apache-2.0.txt",
+        "libcxxabi-LICENSE.txt"
+    ]
+}

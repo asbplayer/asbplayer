@@ -1,0 +1,86 @@
+name: Verify FFmpeg native and WASM
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    merge_group:
+        branches: [main]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pull-requests: read
+
+jobs:
+    changes:
+        runs-on: ubuntu-24.04
+        outputs:
+            native: ${{ steps.filter.outputs.native || 'true' }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+            - uses: dorny/paths-filter@v4
+              id: filter
+              if: github.event_name != 'workflow_dispatch'
+              with:
+                  base: ${{ github.event_name == 'push' && github.ref || '' }}
+                  filters: |
+                      native:
+                        - '.github/actions/setup-node-pnpm/**'
+                        - '.github/workflows/verify-ffmpeg-native.yml'
+                        - '.nvmrc'
+                        - 'package.json'
+                        - 'project.json'
+                        - 'ffmpeg/.dockerignore'
+                        - 'ffmpeg/Dockerfile'
+                        - 'ffmpeg/artifact-lock.json'
+                        - 'ffmpeg/build-config.json'
+                        - 'ffmpeg/native/**'
+                        - 'ffmpeg/package.json'
+                        - 'ffmpeg/scripts/**'
+                        - 'pnpm-workspace.yaml'
+                        - 'pnpm-lock.yaml'
+
+    native-tests:
+        name: native-tests
+        needs: changes
+        if: needs.changes.outputs.native == 'true'
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v7
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter @project/ffmpeg run test:native-wasm
+
+    native-gate:
+        name: native-gate
+        needs: [changes, native-tests]
+        if: always()
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Check native verification result
+              env:
+                  CHANGES_RESULT: ${{ needs.changes.result }}
+                  NATIVE_REQUIRED: ${{ needs.changes.outputs.native }}
+                  NATIVE_TEST_RESULT: ${{ needs.native-tests.result }}
+              run: |
+                  if [[ "$CHANGES_RESULT" != "success" ]]; then
+                      echo "Failed to determine whether native FFmpeg tests are required" >&2
+                      exit 1
+                  fi
+
+                  if [[ "$NATIVE_REQUIRED" == "true" && "$NATIVE_TEST_RESULT" != "success" ]]; then
+                      echo "Native FFmpeg tests were required but did not pass" >&2
+                      exit 1
+                  fi
+
+                  if [[ "$NATIVE_REQUIRED" != "true" && "$NATIVE_TEST_RESULT" != "skipped" ]]; then
+                      echo "Native FFmpeg tests were not required but did not skip" >&2
+                      exit 1
+                  fi
+
+                  echo "Native FFmpeg verification gate passed"

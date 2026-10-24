@@ -1,0 +1,73 @@
+name: Release FFmpeg
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: read
+        outputs:
+            release-tag: ${{ steps.release-info.outputs.tag }}
+            release-title: ${{ steps.release-info.outputs.title }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+            - run: pnpm install --frozen-lockfile
+            - name: Read FFmpeg release metadata
+              id: release-info
+              run: node ffmpeg/scripts/release-info.mjs >> "$GITHUB_OUTPUT"
+            - run: pnpm --filter @project/ffmpeg run build:candidate
+            - run: pnpm --filter @project/ffmpeg run verify:release
+            - uses: actions/upload-artifact@v7
+              with:
+                  name: ffmpeg-release-materials
+                  path: ffmpeg/release
+                  if-no-files-found: error
+
+    publish:
+        needs: build
+        runs-on: ubuntu-24.04
+        environment: ffmpeg-release
+        env:
+            GH_REPO: ${{ github.repository }}
+            RELEASE_TAG: ${{ needs.build.outputs.release-tag }}
+            RELEASE_TITLE: ${{ needs.build.outputs.release-title }}
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/download-artifact@v8
+              with:
+                  name: ffmpeg-release-materials
+                  path: ffmpeg/release
+            - name: Confirm version has not already been released
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+                      echo "FFmpeg release $RELEASE_TAG already exists" >&2
+                      exit 1
+                  fi
+
+                  if gh api --silent "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+                      echo "FFmpeg tag $RELEASE_TAG already exists" >&2
+                      exit 1
+                  fi
+            - name: Create draft independent runtime release
+              run: >-
+                  gh release create "$RELEASE_TAG"
+                  ffmpeg/release/*
+                  --draft
+                  --target "$GITHUB_SHA"
+                  --title "$RELEASE_TITLE"
+                  --notes "Minimal single-threaded LGPL FFmpeg runtime. The runtime archive includes license notices. The sources archive holds the unmodified upstream source tarballs; the asbplayer bridge and build scripts are in the source code archives for this tag."
+                  --latest=false
+              env:
+                  GH_TOKEN: ${{ github.token }}

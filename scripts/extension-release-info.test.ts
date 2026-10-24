@@ -11,8 +11,6 @@ test('keeps workflow filenames consistent with the WXT templates for every exten
         version: '2.3.4',
         artifacts: {
             extension: { prefix: 'example-player', tagPrefix: 'extension-v' },
-            ankiAddon: { version: '1.0.0', package: 'example-addon', tagPrefix: 'addon-v' },
-            webSocketServer: 'example-ws',
         },
     });
     for (const [browser, filename] of [

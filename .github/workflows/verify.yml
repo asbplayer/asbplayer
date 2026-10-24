@@ -5,6 +5,8 @@ on:
         branches: [main]
     pull_request:
         branches: [main]
+    merge_group:
+        branches: [main]
 
 jobs:
     build:
@@ -13,6 +15,8 @@ jobs:
 
         steps:
             - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
 
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
@@ -25,6 +29,13 @@ jobs:
                   node --experimental-strip-types scripts/sync-project-config.ts --check
                   uv lock --project plugins/anki --check
 
-            - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
+            - name: Check FFmpeg runtime version transition
+              env:
+                  VERSION_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+                  VERSION_HEAD_REF: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+              run: pnpm run check:ffmpeg-version --base "$VERSION_BASE_REF" --head "$VERSION_HEAD_REF"
+
+            - run: pnpm install --frozen-lockfile
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build
+            - run: pnpm --filter @project/ffmpeg run verify:code
