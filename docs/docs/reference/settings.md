@@ -204,7 +204,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V |
 | Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R |
 
-### [Playback](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#playback-keyboard-shortcuts}
+### [Playback](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#playback-keyboard-shortcuts}
 
 | Behavior                        | Default shortcut |
 | ------------------------------- | ---------------- |
@@ -217,7 +217,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Toggle when subtitles are shown |                  |
 | Cycle auto-pause resume mode    |                  |
 
-### [Seek](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#seek-keyboard-shortcuts}
+### [Seek](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#seek-keyboard-shortcuts}
 
 | Behavior                                                                  | Default shortcut |
 | ------------------------------------------------------------------------- | ---------------- |
@@ -227,14 +227,14 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Seek to next subtitle                                                     | →                |
 | Seek to beginning of current/previous subtitle                            | ↑                |
 
-### [Playback rate](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### [Playback rate](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#playback-rate-keyboard-shortcuts}
 
 | Behavior               | Default shortcut |
 | ---------------------- | ---------------- |
 | Increase playback rate | Ctrl + Shift + ] |
 | Decrease playback rate | Ctrl + Shift + [ |
 
-### [Subtitle offset](https://app.asbplayer.dev/?view=settings#misc-settings) keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### [Subtitle offset](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
 
 | Behavior                                                                 | Default shortcut |
 | ------------------------------------------------------------------------ | ---------------- |
@@ -613,6 +613,170 @@ For how Anki Card statuses are determined, see [**Mature Anki stability/interval
 For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
 :::
 
+## [Playback](https://app.asbplayer.dev/?view=settings#playback) {#playback}
+
+### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
+
+Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+
+### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
+
+Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
+
+### Playback modes {#playback-modes}
+
+Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
+
+### Playback rate {#playback-rate}
+
+Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
+
+### Show playback rate notification {#show-playback-rate-notification}
+
+Shows a notification when the playback rate changes outside fast-forward playback.
+
+### Auto-pause preference {#auto-pause-preference}
+
+When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
+
+### Repeat count preference {#repeat-count-preference}
+
+Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
+
+### Repeats before showing subtitles {#repeats-before-showing-subtitles}
+
+Suppress subtitles in a repeating segment until it has repeated this many times. `0` adds no suppression, `1` removes suppression from the first repeat.
+
+### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
+
+Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
+
+### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
+
+Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
+
+### Fast-forward playback rate {#fast-forward-playback-rate}
+
+How fast to fast-forward when fast-forward mode is enabled.
+
+### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
+
+When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
+
+### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
+
+Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
+
+### Auto-pause resume mode {#auto-pause-resume-mode}
+
+Controls how an automatic pause finishes.
+
+- **Manual**: Playback stays paused until you resume it.
+
+- **Fixed**: Every automatic pause lasts for the same configured time.
+    - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
+    - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+### Fixed pause duration {#fixed-pause-duration}
+
+The amount of time an automatic pause lasts in **Fixed** mode.
+
+### Minimum pause duration {#minimum-pause-duration}
+
+The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
+
+### Maximum pause duration {#maximum-pause-duration}
+
+The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
+
+### Pause time per character {#pause-time-per-character}
+
+The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
+
+### Resume delay after auto-pause {#resume-delay-after-auto-pause}
+
+In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
+
+### Show subtitles {#show-subtitles}
+
+- **When due**: Subtitles appear while their timing is active.
+
+- **While paused**: Subtitles appear only when they are due and playback is paused.
+
+- **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
+
+### Primed listening {#primed-listening}
+
+Primed listening is a technique for language learning where you read the native-language subtitle, watch it disappear, and then hear the target-language audio without subtitles. This can be achieved by combining [Auto-pause preference](#auto-pause-preference), **Subtitle length** under [Auto-pause resume mode](#auto-pause-resume-mode), **While paused** under [Show subtitles](#show-subtitles), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
+
+## [Playback > Annotation](https://app.asbplayer.dev/?view=settings#playback) {#playback-annotation}
+
+These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
+
+### Subtitle track {#playback-annotation-track}
+
+Selects the subtitle track whose annotation playback settings you are editing. The selected track is shared with the Annotation tab.
+
+Each of the word rules below has its own status and state selection, word-count limit, and frequency limit. A word must have a selected status or state and satisfy both limits.
+
+### Auto-pause subtitles containing these words {#auto-pause-subtitles-containing-these-words}
+
+When auto-pause mode is on, pause only on subtitles containing a matching word. The first matching word is selected when playback pauses.
+
+### Repeat subtitles containing these words {#repeat-subtitles-containing-these-words}
+
+When repeat mode is on, repeat only subtitles containing a matching word.
+
+### Play subtitles containing these words in condensed mode {#play-subtitles-containing-these-words-in-condensed-mode}
+
+When condensed mode is on, keep subtitles containing a matching word in the condensed timeline. Skip through other subtitles.
+
+### Play subtitles containing these words at normal speed in fast-forward mode {#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode}
+
+When fast-forward mode is on, play subtitles containing a matching word at the normal playback rate. Fast-forward through other subtitles.
+
+### Adjust fast-forward rate by comprehension {#adjust-fast-forward-rate-by-comprehension}
+
+While fast-forward mode is on, use the sentence comprehension score to choose the rate within a subtitle.
+
+At or below [**Minimum comprehension**](#minimum-comprehension), use the normal playback rate; at 100%, use the configured fast-forward rate. Rates between those points are interpolated.
+
+Changing the speed in a comprehension-controlled subtitle changes the configured fast-forward rate, then recalculates the applied rate from comprehension. This also applies when comprehension keeps the subtitle at normal speed. Keyboard shortcuts and player speed controls use the same behavior; the normal rate is unchanged.
+
+### Minimum comprehension {#minimum-comprehension}
+
+Sets the percentage where acceleration starts (0–99%, default 60%).
+
+### Show these words during playback {#show-these-words-during-playback}
+
+Select the statuses and states whose words should remain visible.
+
+### Hide the entire subtitle when at least this percentage of words would be hidden {#whole-subtitle-hidden-percentage}
+
+Hide the whole subtitle when at least this percentage of its words would be hidden by the show rule. For example, at **80%**, if four words in a five-word subtitle would be hidden, the entire subtitle is hidden, including the one word selected to show. Punctuation and other non-letter characters do not count.
+
+### Hide non-matching words individually {#hide-non-matching-words-individually}
+
+When enabled, words that do not meet the show rule are hidden individually while the subtitle is below the whole-subtitle threshold. When disabled, the subtitle stays fully visible until the threshold is reached.
+
+### Minimum words per selected category {#minimum-words-per-selected-category}
+
+Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count is below this limit, words in that category do not trigger the rule. `0` disables the limit.
+
+### Maximum words per selected category {#maximum-words-per-selected-category}
+
+Each selected category (such as **Uncollected** or **Ignored**) is counted separately within a subtitle. If its count exceeds this limit, words in that category do not trigger the rule. `0` disables the limit.
+
+### Only when word frequency is at least {#only-when-word-frequency-is-at-least}
+
+A matching word must have a frequency at or above this value. Missing frequency counts as `1`. `0` disables the limit.
+
+### Only when word frequency is at most {#only-when-word-frequency-is-at-most}
+
+A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
+
 ## [Streaming video](https://app.asbplayer.dev/?view=settings#streaming-video) (extension only) {#streaming-video}
 
 Streaming video settings are available only when the browser extension is installed.
@@ -675,11 +839,11 @@ If subtitle auto-detection is supported on the current website, load them automa
 
 When automatic subtitle loading fails, prompt before trying to load detected subtitles.
 
-### Pages {#pages}
+## [Streaming video > Pages](https://app.asbplayer.dev/?view=settings#streaming-video) {#pages}
 
 Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
 
-#### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
+### Target language codes for machine translation (YouTube only) {#youtube-translation-languages}
 
 Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
 
@@ -719,17 +883,21 @@ Controls how timestamps are displayed in the subtitle list.
 
 When enabled, timing offset is "sticky." Subtitles are loaded with the last-used offset.
 
+### Remember last playback rate {#remember-last-playback-rate}
+
+Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
+
+### Remember last playback modes {#remember-last-playback-modes}
+
+Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
+
 ### Auto-copy current subtitle to clipboard {#auto-copy-current-subtitle-to-clipboard}
 
 Automatically copies subtitle to clipboard when it appears on screen. Useful for sending subtitles to apps that can monitor the clipboard.
 
 ### Subtitle tracks eligible for auto-copy {#subtitle-tracks-eligible-for-auto-copy}
 
-Specifies which tracks will be auto-copied when the `Auto-copy current subtitle to clipboard` setting is enabled.
-
-### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
-
-Specifies which tracks will be considered when using the [Subtitles](#subtitles-keyboard-shortcuts) and [Seek](#seek-keyboard-shortcuts) keyboard shortcuts, or when using playback modes. For example, when condensed mode is enabled, blank space to be automatically skipped, is considered to be any part of the timeline without subtitles in the tracks specified by this option.
+Specifies which tracks will be auto-copied when the [Auto-copy current subtitle to clipboard](#auto-copy-current-subtitle-to-clipboard) setting is enabled.
 
 ### Show preview thumbnails {#show-preview-thumbnails}
 
@@ -754,100 +922,6 @@ How to handle HTML that appears in subtitle files.
 ### Detect and Display Ruby {#detect-and-display-ruby}
 
 When enabled, asbplayer will automatically detect Netflix-style word readings and display them stylistically using `ruby` tags. Netflix-style readings frequently appear in Japanese subtitles and look like `花子（はなこ）` where a reading in parentheses follows a word.
-
-### Auto-pause when mousing over subtitles {#auto-pause-when-mousing-over-subtitles}
-
-Auto-pause behavior when mousing over subtitles. "Enabled with auto-resume" means that playback will automatically resume when mousing off of subtitles.
-
-### Playback modes {#playback-modes}
-
-Playback modes can be toggled with the [Playback keyboard shortcuts](#playback-keyboard-shortcuts).
-
-### Playback rate {#playback-rate}
-
-Controls the normal media playback speed, including the speed used inside subtitles while fast-forward is enabled. New playback always starts at this rate. Use the [Playback rate keyboard shortcuts](#playback-rate-keyboard-shortcuts) to adjust it while watching.
-
-### Show playback rate notification {#show-playback-rate-notification}
-
-Shows a notification when the playback rate changes outside fast-forward playback.
-
-### Remember last playback rate {#remember-last-playback-rate}
-
-Updates the playback rate setting when the rate is changed on a video. When disabled, playback still starts at the configured playback rate, but changes made while watching remain temporary.
-
-### Remember last playback modes {#remember-last-playback-modes}
-
-Restores the last enabled playback modes when loading playback again. When disabled, playback starts in normal mode.
-
-### Auto-pause preference {#auto-pause-preference}
-
-When auto-pause is enabled, whether to auto-pause at the start, end, or both edges of subtitles. When both edges and repeat are enabled, repeats pauses at the end before repeating, but the start pause is skipped to prevent double pausing.
-
-### Repeat count preference {#repeat-count-preference}
-
-Controls how many times each subtitle repeats before playback continues. A value of `0` repeats indefinitely.
-
-### Subtitle trigger start and end offsets {#subtitle-trigger-start-and-end-offsets}
-
-Offsets the subtitle start and end triggers used by auto-pause and repeat in milliseconds. These offsets are applied after the global subtitle offset. Start and end offsets can be configured independently; positive values trigger playback effects later, while negative values trigger them earlier. Each shifted edge is limited by the media and neighboring subtitle-event boundaries. If the shifted start and end cross, their chronological roles are swapped.
-
-### Fast-forward minimum skip interval {#fast-forward-minimum-skip-interval}
-
-Fast-forward for the full gap between subtitles when the gap is at least this long. Shorter gaps stay at the normal playback rate.
-
-### Fast-forward playback rate {#fast-forward-playback-rate}
-
-How fast to fast-forward when fast-forward mode is enabled.
-
-### Condensed playback minimum skip interval {#condensed-playback-minimum-skip-interval}
-
-When condensed playback is enabled, skip to the next subtitle only if the next subtitle is at least this amount of time away.
-
-### Subtitle gap trigger start and end offsets {#subtitle-gap-trigger-start-and-end-offsets}
-
-Offsets the subtitle gap triggers used by fast-forward and condensed playback. The gap start offset is non-negative and moves the trigger later from the moment the subtitle ends; the gap end offset is non-positive and moves the trigger earlier from the moment before the next subtitle. Each gap is limited by the media and neighboring subtitle-event boundaries.
-
-### Auto-pause resume mode {#auto-pause-resume-mode}
-
-Controls how an automatic pause finishes.
-
-- **Manual**: Playback stays paused until you resume it.
-
-- **Fixed**: Every automatic pause lasts for the same configured time.
-    - Controls [Fixed pause duration](#fixed-pause-duration) and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
-
-- **Subtitle length**: The pause duration is calculated from the subtitle's character count. Only subtitles on seekable tracks are counted, so a translation track loaded alongside the target language does not inflate the pause.
-    - Controls [Minimum pause duration](#minimum-pause-duration), [Maximum pause duration](#maximum-pause-duration), [Pause time per character](#pause-time-per-character), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
-
-### Fixed pause duration {#fixed-pause-duration}
-
-The amount of time an automatic pause lasts in **Fixed** mode.
-
-### Minimum pause duration {#minimum-pause-duration}
-
-The shortest pause allowed in **Subtitle length** mode, regardless of the subtitle's character count.
-
-### Maximum pause duration {#maximum-pause-duration}
-
-The longest pause allowed in **Subtitle length** mode. A value of `0` means there is no upper limit. A nonzero maximum cannot be lower than the minimum pause duration.
-
-### Pause time per character {#pause-time-per-character}
-
-The number of milliseconds assigned to each character in **Subtitle length** mode. The character count multiplied by this value is clamped between the minimum and maximum pause durations.
-
-### Resume delay after auto-pause {#resume-delay-after-auto-pause}
-
-In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phases: the subtitle is shown for the configured pause duration, then hidden while playback stays paused for the resume delay. This setting controls the length of that second phase.
-
-### Show subtitles {#show-subtitles}
-
-- **When due**: Subtitles appear while their timing is active.
-
-- **While paused**: Subtitles appear only when they are due and playback is paused.
-
-### Primed listening {#primed-listening}
-
-Primed listening is a technique for language learning where you read the native-language subtitle, watch it disappear, and then hear the target-language audio without subtitles. This can be achieved by combining [Auto-pause preference](#auto-pause-preference), **Subtitle length** under [Auto-pause resume mode](#auto-pause-resume-mode), **While paused** under [Show subtitles](#show-subtitles), and [Resume delay after auto-pause](#resume-delay-after-auto-pause).
 
 ### Enable WebSocket client {#enable-websocket-client}
 

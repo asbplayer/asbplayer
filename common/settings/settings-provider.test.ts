@@ -5,6 +5,7 @@ import {
     VideoSubtitleSplitBehavior,
     changeForTextSubtitleSetting,
     defaultSettings,
+    dictionaryPlaybackFeatures,
     isSaveOnlySettings,
     saveOnlySettings,
     textSubtitleSettingsForTrack,
@@ -12,6 +13,30 @@ import {
 import { describe, expect, it } from '@jest/globals';
 import { PlayMode } from '@project/common';
 import { MockSettingsStorage } from '@project/common/settings/mock-settings-storage';
+
+it('adjusts each feature’s status and state trigger lengths without losing rules or selections', async () => {
+    const storage = new MockSettingsStorage();
+    const playback = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig));
+    for (const feature of dictionaryPlaybackFeatures) {
+        playback[feature].onStatuses[0].enabled = true;
+        playback[feature].onStatuses.pop();
+        playback[feature].onStates.push({ enabled: true });
+        playback[feature].rules.maxWords = 2;
+    }
+    const savedTrack = { ...defaultSettings.dictionaryTracks[0], dictionaryPlaybackConfig: playback };
+    storage.setData({ dictionaryTracks: [savedTrack] });
+    const tracks = (await new SettingsProvider(storage).getAll()).dictionaryTracks;
+    for (const feature of dictionaryPlaybackFeatures) {
+        const actual = tracks[0].dictionaryPlaybackConfig[feature];
+        const defaults = defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig[feature];
+        expect(actual.onStatuses).toHaveLength(defaults.onStatuses.length);
+        expect(actual.onStates).toHaveLength(defaults.onStates.length);
+        expect(actual.onStatuses[0].enabled).toBe(true);
+        expect(actual.onStatuses.at(-1)).toEqual({ enabled: false });
+        expect(actual.onStates).toEqual(defaults.onStates);
+        expect(actual.rules.maxWords).toBe(2);
+    }
+});
 
 it('starts at default settings', async () => {
     const provider = new SettingsProvider(new MockSettingsStorage());

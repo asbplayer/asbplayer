@@ -10,7 +10,7 @@ This page is intended to be an technical reference on asbplayer's external inter
 
 asbplayer, as a WebSocket client, responds to the following commands from a WebSocket server.
 
-### `mine-subtitle` {#mine-subtitle}
+## `mine-subtitle` {#mine-subtitle}
 
 Mines from the active tab by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media. If the media is not found or has no subtitles, `published` is `false`.
 
@@ -18,7 +18,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
 
 > `mediaId` and `noteId` require extension v1.20.0 or later.
 
-#### Request {#mine-subtitle-request}
+### Request {#mine-subtitle-request}
 
     ```javascript
     {
@@ -41,7 +41,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-#### Response {#mine-subtitle-response}
+### Response {#mine-subtitle-response}
 
     ```javascript
     {
@@ -55,13 +55,13 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
     }
     ```
 
-### `load-subtitles` {#load-subtitles}
+## `load-subtitles` {#load-subtitles}
 
 Loads the files into the active tab's media by default, showing the video selector when the tab has more than one video. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to load the files directly into that media.
 
 > `mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with a bound video
 
-#### Request {#load-subtitles-request}
+### Request {#load-subtitles-request}
 
 ```javascript
 {
@@ -81,7 +81,7 @@ Loads the files into the active tab's media by default, showing the video select
 }
 ```
 
-#### Response {#load-subtitles-response}
+### Response {#load-subtitles-response}
 
 ```javascript
 {
@@ -92,13 +92,13 @@ Loads the files into the active tab's media by default, showing the video select
 }
 ```
 
-### `seek-timestamp` {#seek-timestamp}
+## `seek-timestamp` {#seek-timestamp}
 
 Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`get-bound-media`](#get-bound-media) to target specific media.
 
 > `mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+
 
-#### Request {#seek-timestamp-request}
+### Request {#seek-timestamp-request}
 
 ```javascript
 {
@@ -114,7 +114,7 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-#### Response {#seek-timestamp-response}
+### Response {#seek-timestamp-response}
 
 ```javascript
 {
@@ -125,13 +125,13 @@ Seeks the active tab's media by default. Set `mediaId` to an ID returned by [`ge
 }
 ```
 
-### `get-bound-media` {#get-bound-media}
+## `get-bound-media` {#get-bound-media}
 
 > Requires extension v1.20.0+
 
 Returns the media asbplayer is currently tracking, including both `streaming` and `local` media.
 
-#### Request {#get-bound-media-request}
+### Request {#get-bound-media-request}
 
 ```javascript
 {
@@ -142,7 +142,7 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-#### Response {#get-bound-media-response}
+### Response {#get-bound-media-response}
 
 ```javascript
 {
@@ -173,14 +173,14 @@ Returns the media asbplayer is currently tracking, including both `streaming` an
 }
 ```
 
-### `get-subtitles` {#get-subtitles}
+## `get-subtitles` {#get-subtitles}
 
 > Requires extension v1.20.0+
 
 Returns the subtitles currently loaded for a piece of media. By default it targets the active tab's media; pass a `mediaId` from [`get-bound-media`](#get-bound-media) to target specific media.
 Returns an empty list when no matching media is found or no subtitles are loaded.
 
-#### Request {#get-subtitles-request}
+### Request {#get-subtitles-request}
 
 ```javascript
 {
@@ -196,7 +196,7 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 }
 ```
 
-#### Response {#get-subtitles-response}
+### Response {#get-subtitles-response}
 
 ```javascript
 {

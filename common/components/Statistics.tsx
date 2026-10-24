@@ -1647,7 +1647,7 @@ function TrackSnapshot({
                                     <Typography variant="body2" color="text.secondary">
                                         {countPercentOccurrencesDisplay(
                                             bucket.count,
-                                            trackSnapshot.consideredTokens,
+                                            trackSnapshot.numConsideredTokens,
                                             bucket.numOccurrences
                                         )}
                                     </Typography>
@@ -1658,7 +1658,7 @@ function TrackSnapshot({
                                     statusCounts={bucket.statusCounts}
                                     statusColors={trackSnapshot.statusColors}
                                     statusLabels={statusLabels}
-                                    totalConsideredCount={trackSnapshot.consideredTokens}
+                                    totalConsideredCount={trackSnapshot.numConsideredTokens}
                                 />
                             </Box>
                         );

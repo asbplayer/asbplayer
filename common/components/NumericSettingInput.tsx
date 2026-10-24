@@ -10,6 +10,7 @@ export interface NumericSettingInputProps extends Omit<TextFieldProps, 'onBlur' 
     onValueChange: (value: number) => void;
     normalizeValue?: (value: number) => number | undefined;
     integerOnly?: boolean;
+    commitOnBlur?: boolean;
     onBlur?: TextFieldProps['onBlur'];
 }
 
@@ -18,16 +19,21 @@ const NumericSettingInput: React.FC<NumericSettingInputProps> = ({
     onValueChange,
     normalizeValue = (value) => normalizeFinite(value, undefined),
     integerOnly = false,
+    commitOnBlur = false,
     onBlur,
+    onKeyDown,
     ...props
 }) => {
     const [inputValue, setInputValue] = useState(String(value));
     const lastReportedValue = useRef<number | undefined>(value);
+    const editing = useRef(false);
 
     useEffect(() => {
-        if (lastReportedValue.current !== value) setInputValue(String(value));
-        lastReportedValue.current = value;
-    }, [value]);
+        if (!commitOnBlur || !editing.current) {
+            if (lastReportedValue.current !== value) setInputValue(String(value));
+            lastReportedValue.current = value;
+        }
+    }, [value, commitOnBlur]);
 
     return (
         <SettingsTextField
@@ -37,6 +43,10 @@ const NumericSettingInput: React.FC<NumericSettingInputProps> = ({
             onChange={(event) => {
                 const nextInputValue = event.target.value;
                 setInputValue(nextInputValue);
+                if (commitOnBlur) {
+                    editing.current = true;
+                    return;
+                }
 
                 const parsedValue = Number(nextInputValue);
                 const normalizedValue =
@@ -52,6 +62,7 @@ const NumericSettingInput: React.FC<NumericSettingInputProps> = ({
                 }
             }}
             onBlur={(event) => {
+                editing.current = false;
                 const parsedValue = Number(inputValue);
                 const normalizedValue =
                     inputValue.trim() === '' || (integerOnly && !integerValueRegex.test(inputValue))
@@ -64,7 +75,16 @@ const NumericSettingInput: React.FC<NumericSettingInputProps> = ({
                     lastReportedValue.current = normalizedValue;
                     setInputValue(String(normalizedValue));
                 }
+                if (commitOnBlur && normalizedValue !== undefined) {
+                    lastReportedValue.current = normalizedValue;
+                    setInputValue(String(normalizedValue));
+                    if (normalizedValue !== value) onValueChange(normalizedValue);
+                }
                 onBlur?.(event);
+            }}
+            onKeyDown={(event) => {
+                if (commitOnBlur && event.key === 'Enter') (event.target as HTMLElement).blur();
+                onKeyDown?.(event);
             }}
         />
     );

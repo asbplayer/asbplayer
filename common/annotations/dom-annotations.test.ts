@@ -10,10 +10,12 @@ import {
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
     ASB_TOKEN_START_ATTRIBUTE,
     ASB_SUBTITLE_TOKEN_SELECTED_CLASS,
+    ASB_TOKEN_AUTO_PAUSE_SELECTED_CLASS,
     ASB_TOKEN_SELECTED_CLASS,
     clearTokenSelectionInRoot,
     currentTokenSelectionLocation,
     HoveredToken,
+    restorableTokenSelectionInRoot,
     selectTokenInRoot,
 } from '@project/common/annotations/dom-annotations';
 import { renderRichTextOntoSubtitles } from '@project/common/annotations/render-annotations';
@@ -97,7 +99,8 @@ describe('HoveredToken', () => {
         const richText = renderRichTextOntoSubtitles(
             [subtitle],
             'video',
-            makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: false }))
+            makeDictionaryTracks(makeDictionaryTrack({ dictionaryColorizeSubtitles: false })),
+            { adaptiveWordVisibilityEnabled: true }
         ).get(subtitle.index)?.richText;
         const wrapper = document.createElement('div');
         wrapper.dataset.track = '0';
@@ -284,6 +287,62 @@ describe('token jump navigation', () => {
 
         selectedRoot.remove();
         otherRoot.remove();
+    });
+
+    it('falls back to the marked token when the text selection is in a token outside the root', () => {
+        const selectedRoot = document.createElement('div');
+        const markedRoot = document.createElement('div');
+        selectedRoot.innerHTML =
+            '<span data-asb-subtitle-index="1"><span class="asb-token" data-asb-token-start="0">other</span></span>';
+        markedRoot.innerHTML = `<span data-asb-subtitle-index="12"><span class="asb-token ${ASB_TOKEN_SELECTED_CLASS}" data-asb-token-start="0">word</span></span>`;
+        document.body.append(selectedRoot, markedRoot);
+        const range = document.createRange();
+        range.selectNodeContents(selectedRoot.querySelector('.asb-token')!);
+        document.getSelection()?.removeAllRanges();
+        document.getSelection()?.addRange(range);
+        const subtitle = makeSubtitle({
+            index: 12,
+            text: 'word',
+            tokenization: { tokens: [makeToken({ pos: [0, 4] })] },
+        });
+
+        expect(currentTokenSelectionLocation([subtitle], markedRoot)).toEqual({ subtitleIndex: 12, tokenStart: 0 });
+
+        document.getSelection()?.removeAllRanges();
+        selectedRoot.remove();
+        markedRoot.remove();
+    });
+
+    it('restores a re-rendered token selection without taking a text selection from elsewhere', () => {
+        const root = document.createElement('div');
+        const outside = document.createElement('p');
+        outside.textContent = 'outside';
+        const html =
+            '<span data-asb-subtitle-index="3"><span class="asb-token" data-asb-token-start="0">word</span></span>';
+        root.innerHTML = html;
+        document.body.append(root, outside);
+        selectTokenInRoot(root, { subtitleIndex: 3, tokenStart: 0 }, { autoPause: true });
+        expect(restorableTokenSelectionInRoot(root)).toEqual({
+            location: { subtitleIndex: 3, tokenStart: 0 },
+            options: { autoPause: true, selectText: true },
+        });
+
+        const outsideRange = document.createRange();
+        outsideRange.selectNodeContents(outside);
+        document.getSelection()?.removeAllRanges();
+        document.getSelection()?.addRange(outsideRange);
+        const selection = restorableTokenSelectionInRoot(root)!;
+        expect(selection.options).toEqual({ autoPause: true, selectText: false });
+
+        root.innerHTML = html;
+        expect(selectTokenInRoot(root, selection.location, selection.options)).toBe(true);
+        expect(root.querySelector(`.${ASB_TOKEN_AUTO_PAUSE_SELECTED_CLASS}`)).not.toBeNull();
+        expect(document.getSelection()?.toString()).toBe('outside');
+        expect(restorableTokenSelectionInRoot(document.createElement('div'))).toBeUndefined();
+
+        document.getSelection()?.removeAllRanges();
+        root.remove();
+        outside.remove();
     });
 
     it('selects the requested token in a root and reports missing locations', () => {
