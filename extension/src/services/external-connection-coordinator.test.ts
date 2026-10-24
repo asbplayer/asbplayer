@@ -225,7 +225,7 @@ describe('external connection coordinator', () => {
 
         expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
         expect(port.responses()).toEqual([]);
-        // Not even a pending request, because the sibling never identified itself.
+        // Not even a pending request, because the external extension never identified itself.
         expect(Object.keys(harness.pendingEntries())).toEqual([]);
     });
 
@@ -342,7 +342,7 @@ describe('external connection coordinator', () => {
         expect(port.responses()).toEqual([]);
     });
 
-    it('approves a sibling with an open port by reacting to the storage change', async () => {
+    it('approves an external extension with an open port by reacting to the storage change', async () => {
         const port = harness.connect('sibling');
         await flush();
         await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
@@ -361,7 +361,7 @@ describe('external connection coordinator', () => {
         expect(port.responses()).toEqual([{ command: 'response', messageId: 'm4', body: {} }]);
     });
 
-    it('revokes a sibling with an open port and stops dispatching its commands', async () => {
+    it('revokes an external extension with an open port and stops dispatching its commands', async () => {
         harness.approve('sibling');
         const port = harness.connect('sibling');
         await flush();
@@ -378,7 +378,7 @@ describe('external connection coordinator', () => {
         expect(port.responses()).toEqual([]);
     });
 
-    it('notifies every open port of a sibling', async () => {
+    it('notifies every open port of an external extension', async () => {
         const port1 = harness.connect('sibling');
         const port2 = harness.connect('sibling');
         await flush();

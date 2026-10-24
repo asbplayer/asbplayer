@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Unlicense
 
-// Protocol types for asbplayer's external extension API, kept as a local copy so that a
-// plugin extension only needs this file and never asbplayer's packages.
+// Protocol types for asbplayer's external extension API, kept as a local copy so that an
+// external extension only needs this file and never asbplayer's packages.
 //
 // Frames travel over a browser.runtime.connectExternal port named {@link portName}:
 //
-//   sibling -> asbplayer:
+//   external extension -> asbplayer:
 //     { type: 'asbplayer-external-hello', name?, version? }
 //     { command: ExternalCommand['command'], messageId: string, body: object }
-//   asbplayer -> sibling:
+//   asbplayer -> external extension:
 //     { type: 'asbplayer-external-approval', approved: boolean }
 //     { command: 'response', messageId: string, body: object }
 //

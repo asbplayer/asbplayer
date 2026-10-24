@@ -42,7 +42,7 @@ export interface PendingExternalConnection {
 }
 
 export interface ExternalConnectionsState {
-    // Keyed by the sibling extension's runtime ID.
+    // Keyed by the external extension's runtime ID.
     approved: { [extensionId: string]: ApprovedExternalConnection };
     pending: { [extensionId: string]: PendingExternalConnection };
 }

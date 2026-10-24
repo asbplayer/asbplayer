@@ -1,8 +1,8 @@
 {
-    "name": "asbplayer-sample-sibling-extension",
+    "name": "asbplayer-sample-external-extension",
     "private": true,
     "version": "1.0.0",
-    "description": "Sample sibling extension for asbplayer's external extension API",
+    "description": "Sample external extension for asbplayer's external extension API",
     "license": "Unlicense",
     "type": "module",
     "scripts": {

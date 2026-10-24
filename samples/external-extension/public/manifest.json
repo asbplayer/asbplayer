@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "asbplayer sample companion",
-    "description": "Sample sibling extension demonstrating asbplayer's external extension API",
+    "description": "Sample external extension demonstrating asbplayer's external extension API",
     "version": "1.0.0",
     "action": {
         "default_popup": "popup.html",
