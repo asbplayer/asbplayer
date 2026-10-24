@@ -3,7 +3,7 @@
 // Protocol types for asbplayer's external extension API, kept as a local copy so that an
 // external extension only needs this file and never asbplayer's packages.
 //
-// Frames travel over a browser.runtime.connectExternal port named {@link portName}:
+// Frames travel over a browser.runtime.connect port named {@link portName}:
 //
 //   external extension -> asbplayer:
 //     { type: 'asbplayer-external-hello', name?, version? }
@@ -116,6 +116,6 @@ export const PostMineAction = {
     none: 0,
     showAnkiDialog: 1,
     updateLastCard: 2,
-    showUpdateCardDialog: 3,
-    exportCard: 4,
+    exportCard: 3,
+    showUpdateCardDialog: 4,
 } as const;
