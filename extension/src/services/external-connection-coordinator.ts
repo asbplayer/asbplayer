@@ -17,7 +17,7 @@ const helloType: ExternalHelloMessage['type'] = 'asbplayer-external-hello';
 const badgeReason = 'externalConnections';
 
 /**
- * Manages sibling browser extensions connecting over `browser.runtime.onConnectExternal`.
+ * Manages external browser extensions connecting over `browser.runtime.onConnectExternal`.
  *
  * Approval is keyed on the connecting extension's runtime ID and persisted in global state
  * (`externalConnections`). Any surface (popup, options page, or the asbplayer app) manages
@@ -26,8 +26,8 @@ const badgeReason = 'externalConnections';
  * The port protocol is the external command wire format shared with the WebSocket server
  * integration: raw `ExternalCommand` frames are dispatched and answered with
  * `{command: 'response', messageId, body}` frames. Additionally:
- * - `{type: 'asbplayer-external-hello', name?, version?}` is sent by the sibling on connect and
- *   answered with an approval frame reflecting the current approval state.
+ * - `{type: 'asbplayer-external-hello', name?, version?}` is sent by the external extension on
+ *   connect and answered with an approval frame reflecting the current approval state.
  * - `{type: 'asbplayer-external-approval', approved}` is also posted whenever the approval
  *   state changes while the port is open.
  * Frames from unapproved extensions are dropped, not queued. Pending requests are recorded on
@@ -268,7 +268,7 @@ export class ExternalConnectionCoordinator {
         try {
             port.postMessage(message);
         } catch {
-            // The port may disconnect concurrently, e.g. when the sibling closes it. Posting
+            // The port may disconnect concurrently, e.g. when the external extension closes it. Posting
             // to a disconnected port throws, which is expected teardown rather than an error
             // worth logging.
         }

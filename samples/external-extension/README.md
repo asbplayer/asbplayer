@@ -1,19 +1,19 @@
 # asbplayer sample companion
 
-A minimal [sibling extension](https://developer.chrome.com/docs/extensions/reference/api/runtime#event-onconnectexternal)
+A minimal [external extension](https://developer.chrome.com/docs/extensions/reference/api/runtime#event-onconnectexternal)
 that demonstrates how to integrate with [asbplayer](https://asbplayer.dev/) through its external
 extension API. Load it unpacked, approve it in asbplayer, and run its commands against any
 media the asbplayer extension sees.
 
-The sibling extension API shares its command set and wire format with asbplayer's WebSocket API,
-so a plugin extension can target everything the WebSocket API targets.
+The external extension API shares its command set and wire format with asbplayer's WebSocket API,
+so an external extension can target everything the WebSocket API targets.
 
 ## Try it
 
 1. Build the sample: `npm install && npm run build` (output in `dist/`).
 2. Open `chrome://extensions`, enable developer mode, and load the asbplayer extension unpacked if
    you haven't already. Copy its **extension ID** from the extension's card on that page.
-3. Load `samples/sibling-extension/dist` as a second unpacked extension.
+3. Load `samples/external-extension/dist` as a second unpacked extension.
 4. Open the sample's popup, paste the asbplayer extension ID, and press **Connect**. The sample
    sends a `hello` frame and then retries `get-bound-media` every 2 seconds until approval
    arrives. On subsequent popup opens it reconnects automatically using the saved extension ID.
@@ -33,10 +33,10 @@ Connection: `browser.runtime.connectExternal(<asbplayer extension ID>)` with por
 
 | Direction | Frame |
 | --------- | ----- |
-| sibling → asbplayer | `{ type: 'asbplayer-external-hello', name?, version? }` |
-| asbplayer → sibling | `{ type: 'asbplayer-external-approval', approved: boolean }` |
-| sibling → asbplayer | `{ command: <command>, messageId, body }` (see `src/protocol.ts`) |
-| asbplayer → sibling | `{ command: 'response', messageId, body }` |
+| external extension → asbplayer | `{ type: 'asbplayer-external-hello', name?, version? }` |
+| asbplayer → external extension | `{ type: 'asbplayer-external-approval', approved: boolean }` |
+| external extension → asbplayer | `{ command: <command>, messageId, body }` (see `src/protocol.ts`) |
+| asbplayer → external extension | `{ command: 'response', messageId, body }` |
 
 Notes:
 
@@ -56,8 +56,8 @@ Notes:
 
 `src/protocol.ts` defines the command set — `mine-subtitle`, `load-subtitles`, `seek-timestamp`,
 `get-bound-media`, and `get-subtitles` — with the same payloads the WebSocket API accepts. The
-types are duplicated here on purpose: the protocol, not asbplayer's code, is the contract, so a
-plugin extension never needs to depend on asbplayer's packages.
+types are duplicated here on purpose: the protocol, not asbplayer's code, is the contract, so an
+external extension never needs to depend on asbplayer's packages.
 
 ## Building
 
@@ -65,7 +65,7 @@ The sample is self-contained and intentionally excluded from the pnpm workspace,
 interferes with the asbplayer build:
 
 ```sh
-cd samples/sibling-extension
+cd samples/external-extension
 npm install
 npm run build     # typecheck + bundle to dist/
 npm run watch     # rebuild on change; reload the unpacked extension in the browser
