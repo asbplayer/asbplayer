@@ -10,6 +10,11 @@
             "prefix": "asbplayer",
             "tagPrefix": "v"
         },
+        "ffmpeg": {
+            "version": "0.0.0",
+            "prefix": "asbplayer-ffmpeg",
+            "tagPrefix": "ffmpeg-v"
+        },
         "ankiAddon": {
             "version": "1.0.0",
             "package": "asbplayer-addon",

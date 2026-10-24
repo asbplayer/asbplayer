@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type projectConfig from '../project.json';
 
-export function extensionReleaseInfo({ version, artifacts }: Pick<typeof projectConfig, 'version' | 'artifacts'>) {
+export function extensionReleaseInfo({
+    version,
+    artifacts,
+}: {
+    version: string;
+    artifacts: Pick<typeof projectConfig.artifacts, 'extension'>;
+}) {
     const { prefix, tagPrefix } = artifacts.extension;
     const artifactTemplate = `${prefix}-{{version}}-{{browser}}.zip`;
     const sourcesTemplate = `${prefix}-{{version}}-sources.zip`;

@@ -1,0 +1,24 @@
+{
+    "schemaVersion": 1,
+    "ffmpeg": {
+        "version": "9.0.2",
+        "revision": "n9.0.2",
+        "source": {
+            "url": "https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.gz",
+            "sha256": "84960df915059e8754fef2cd7c9afeb614062b1b5458ec471eecee619ee04e98"
+        }
+    },
+    "toolchain": {
+        "emscriptenVersion": "6.0.9",
+        "container": "emscripten/emsdk@sha256:3ba391c5b1554e06f9af0a69652ff20919dff14e771619339dba988bd62574b5",
+        "platform": "linux/amd64"
+    },
+    "nativeLibraries": ["libavutil"],
+    "limits": {
+        "initialMemoryBytes": 16777216,
+        "maximumMemoryBytes": 1073741824,
+        "stackBytes": 1048576,
+        "maximumWasmBytes": 1000000
+    },
+    "implementedOperations": ["inspect"]
+}
