@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { minimumPlaybackRate, maximumPlaybackRate } from '@project/common/util';
 import { gzipSync, Gunzip } from 'fflate';
 import { asbTrace } from '@project/common/util/log';
@@ -420,7 +421,7 @@ export const recipeImportUrl = (recipe: Recipe): string => {
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
-    const url = new URL('https://app.asbplayer.dev/');
+    const url = new URL(project.urls.app);
     url.searchParams.set('view', 'settings');
     url.hash = `playback?recipe=${payload}`;
     return url.toString();

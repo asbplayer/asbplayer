@@ -1,3 +1,4 @@
+import project from '../project.json';
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
@@ -6,7 +7,7 @@ const sidebars: SidebarsConfig = {
         {
             type: 'link',
             label: 'Contributing',
-            href: 'https://github.com/asbplayer/asbplayer/blob/main/CONTRIBUTING.md',
+            href: `${project.urls.repo}/blob/main/CONTRIBUTING.md`,
         },
     ],
 };

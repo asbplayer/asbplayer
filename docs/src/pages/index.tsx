@@ -1,3 +1,4 @@
+import project from '../../../project.json';
 import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
@@ -50,7 +51,7 @@ function HomepageHeader() {
                     <div className={styles.pillRow}>
                         <a
                             className={styles.pillButton}
-                            href="https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab"
+                            href={project.extension.chrome.storeUrl}
                             target="_blank"
                         >
                             <ChromeIcon />
@@ -58,13 +59,13 @@ function HomepageHeader() {
                         </a>
                         <a
                             className={styles.pillButton}
-                            href="https://addons.mozilla.org/firefox/addon/asbplayer-language-learning"
+                            href={project.extension.firefox.storeUrl}
                             target="_blank"
                         >
                             <FirefoxIcon />
                             Firefox
                         </a>
-                        <a className={styles.pillButton} href="https://app.asbplayer.dev" target="_blank">
+                        <a className={styles.pillButton} href={project.urls.app} target="_blank">
                             <WebAppIcon />
                             Web App
                         </a>
@@ -77,7 +78,7 @@ function HomepageHeader() {
 
 export default function Home(): ReactNode {
     return (
-        <Layout title={`asbplayer docs`} description="asbplayer docs">
+        <Layout title={`${project.names.short} docs`} description={`${project.names.short} docs`}>
             <HomepageHeader />
             <main className="container">
                 <div className={clsx('row', styles.featureSection)}>
@@ -135,7 +136,7 @@ export default function Home(): ReactNode {
                             <Link className="button button--secondary button--lg" to="/docs/intro">
                                 Learn more
                             </Link>
-                            <Link className={clsx('button', 'button--lg', styles.discordButton)} to="/docs/intro">
+                            <Link className={clsx('button', 'button--lg', styles.discordButton)} to={project.urls.discord}>
                                 <span className={styles.discordIcon} aria-hidden="true" />
                                 Join Discord
                             </Link>

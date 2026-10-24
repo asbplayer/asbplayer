@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -149,7 +150,7 @@ const NotificationUi = ({ bridge }: Props) => {
                                     color="primary"
                                     target="_blank"
                                     rel="noreferrer"
-                                    href={`https://github.com/asbplayer/asbplayer/releases/tag/v${newVersion}`}
+                                    href={`${project.urls.repo}/releases/tag/${encodeURIComponent(project.artifacts.extension.tagPrefix + newVersion)}`}
                                 >
                                     release notes
                                 </Link>,

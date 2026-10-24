@@ -414,7 +414,7 @@ func (forwarder forwarder) handleAsbplayerSubtitlesRequest(c echo.Context) error
 }
 
 func (forwarder forwarder) registerRoutes(e *echo.Echo) {
-	e.GET("/ws", forwarder.handleWebsocketClient)
+	e.GET(defaultWebSocketPath, forwarder.handleWebsocketClient)
 	e.POST("/disconnect-ws-clients", forwarder.disconnectWebsocketClients)
 	e.GET("/", forwarder.handleGetRequest)
 	e.POST("/", forwarder.handlePostRequest)
@@ -437,9 +437,9 @@ func (forwarder forwarder) disconnectWebsocketClients(c echo.Context) error {
 }
 
 func main() {
-	port := getenv("PORT", "8766")
-	ankiConnectUrl := getenv("ANKI_CONNECT_URL", "http://127.0.0.1:8765")
-	postMineAction, _ := strconv.Atoi(getenv("POST_MINE_ACTION", "2"))
+	port := getenv("PORT", defaultWebSocketPort)
+	ankiConnectUrl := getenv("ANKI_CONNECT_URL", defaultAnkiConnectURL)
+	postMineAction, _ := strconv.Atoi(getenv("POST_MINE_ACTION", defaultPostMineAction))
 	interceptField := getenv("INTERCEPT_FIELD", "")
 	interceptValue := getenv("INTERCEPT_VALUE", "")
 	fmt.Printf("Started with config:\n\n\tPORT=%v\n\tANKI_CONNECT_URL=%v\n\tPOST_MINE_ACTION=%v\n\tINTERCEPT_FIELD=%v\n\tINTERCEPT_VALUE=%v\n",

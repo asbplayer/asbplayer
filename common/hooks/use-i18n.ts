@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
@@ -10,7 +11,7 @@ let init: Promise<any> = i18n
     .init({
         partialBundledLanguages: true,
         resources: {},
-        fallbackLng: 'en',
+        fallbackLng: project.defaultLanguage,
         debug: import.meta.env.MODE === 'development',
         ns: 'translation',
         defaultNS: 'translation',

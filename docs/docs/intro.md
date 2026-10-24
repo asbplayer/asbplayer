@@ -2,6 +2,8 @@
 sidebar_position: 1
 ---
 
+import project from '@site/src/project';
+
 # What is asbplayer? {#what-is-asbplayer}
 
 ## A language-learning assistant {#a-language-learning-assistant}
@@ -34,7 +36,7 @@ sidebar_position: 1
 
 ## A website and browser extension {#a-website-and-browser-extension}
 
-In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a [website](https://app.asbplayer.dev) which works with local video files, and a [browser extension](https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab) which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
+In order to make asbplayer as widely available as possible, asbplayer comes in two different forms, a <a href={project.urls.app}>website</a> which works with local video files, and a <a href={project.extension.chrome.storeUrl}>browser extension</a> which works with streaming video. Neither one is required to use the other - however, they work together to make the asbplayer user experience as seamless as possible.
 
 ## Why use asbplayer? {#why-use-asbplayer}
 

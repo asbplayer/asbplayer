@@ -9,7 +9,7 @@ on:
     workflow_dispatch:
         inputs:
             version:
-                description: 'Extension version without the leading "v" (blank = read extension/wxt.config.ts)'
+                description: 'Extension version without the tag prefix (blank = read project.json)'
                 required: false
                 type: string
             target:
@@ -49,6 +49,10 @@ tools:
         min-integrity: none
 
 pre-agent-steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+          node-version-file: '.nvmrc'
     - name: Collect milestone items
       env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,7 +78,7 @@ safe-outputs:
                 contents: write
             inputs:
                 version:
-                    description: 'Extension version without the leading "v" (e.g. 1.22.0)'
+                    description: 'Extension version without the tag prefix (e.g. 1.22.0)'
                     required: true
                     type: string
                 body:
@@ -82,6 +86,19 @@ safe-outputs:
                     required: true
                     type: string
             steps:
+                - name: Read project metadata
+                  uses: actions/checkout@v7
+                  with:
+                      persist-credentials: false
+                      sparse-checkout: |
+                          project.json
+                          .nvmrc
+                          scripts/extension-release-info.ts
+                      sparse-checkout-cone-mode: false
+                - name: Setup Node.js
+                  uses: actions/setup-node@v7
+                  with:
+                      node-version-file: '.nvmrc'
                 - name: Create or preview draft release
                   env:
                       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -109,8 +126,8 @@ safe-outputs:
                         exit 1
                       fi
 
-                      tag="v$version"
-                      title="asbplayer-extension-v$version"
+                      tag=$(node --experimental-strip-types scripts/extension-release-info.ts tag "$version")
+                      title=$(node --experimental-strip-types scripts/extension-release-info.ts title "$version")
                       target=${TARGET:-main}
 
                       # Full Changelog compare URL. generate-notes needs write access, which this
@@ -130,7 +147,12 @@ safe-outputs:
                         fi
                       fi
 
-                      # Final body: agent notes + Full Changelog + static installation footer.
+                      chrome_store_url=$(jq -r '.extension.chrome.storeUrl' project.json)
+                      firefox_store_url=$(jq -r '.extension.firefox.storeUrl' project.json)
+                      firefox_android_store_url=$(jq -r '.extension.firefoxAndroid.storeUrl' project.json)
+                      docs_url=$(jq -r '.urls.docs' project.json)
+
+                      # Final body: agent notes + Full Changelog + installation footer from project metadata.
                       {
                         printf '%s\n' "$body"
                         echo
@@ -138,24 +160,24 @@ safe-outputs:
                           echo "**Full Changelog**: $compare_url"
                           echo
                         fi
-                        cat <<'FOOTER'
+                        cat <<FOOTER
                       ## Installation on Chromium-based browsers
-                      Install from the [Chrome web store listing](https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab).
+                      Install from the [Chrome web store listing]($chrome_store_url).
 
                       ## Installation on Firefox
                       > [!WARNING]
                       > The Firefox version cannot record audio from DRM-protected video streams.
 
-                      Install from the [addon page](https://addons.mozilla.org/en-US/firefox/addon/asbplayer-language-learning/).
+                      Install from the [addon page]($firefox_store_url).
 
                       ## Installation on Firefox for Android
                       > [!WARNING]
                       > The Firefox version of asbplayer has an even smaller feature-set than the Firefox version. In addition to all of the features the Firefox version is missing, it is also missing the side panel, keyboard shortcuts and screenshot capture. Anki integration can be achieved using [AnkiConnect for Android](https://github.com/KamWithK/AnkiconnectAndroid).
 
-                      Install from the [addon page](https://addons.mozilla.org/firefox/addon/asbplayer-android/).
+                      Install from the [addon page]($firefox_android_store_url).
 
                       ## Usage
-                      See the [user guide](https://docs.asbplayer.dev).
+                      See the [user guide]($docs_url).
                       FOOTER
                       } > full-body.md
 

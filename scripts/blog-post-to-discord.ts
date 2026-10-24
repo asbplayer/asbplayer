@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const DOCS_BASE_URL = 'https://docs.asbplayer.dev';
+const project = JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8'));
+
+export const DOCS_BASE_URL: string = project.urls.docs;
 export const DEFAULT_PREFIX = 'New blog post:';
 export const COMPONENTS_TEXT_LIMIT = 4000;
 export const MESSAGE_FLAGS = (1 << 15) | (1 << 2); // IS_COMPONENTS_V2 | SUPPRESS_EMBEDS

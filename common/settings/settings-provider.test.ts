@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import type { SubtitlesWidthUnit, PageSettings, SubtitleAlignment } from '@project/common/settings';
 import {
     SettingsProvider,
@@ -105,12 +106,14 @@ it('returns the same object references if the values inside do not change', asyn
 it('changes different keys for different profiles', async () => {
     const storage = new MockSettingsStorage();
     const provider = new SettingsProvider(storage);
-    const defaultProfileValue = 'https://foo.bar';
+    const defaultProfileValue = 'https://custom.example.com';
     await provider.set({ streamingAppUrl: defaultProfileValue });
     await storage.addProfile('profile');
     await storage.setActiveProfile('profile');
     const profileValue = await provider.getSingle('streamingAppUrl');
-    expect(profileValue).toEqual('https://app.asbplayer.dev');
+    expect(profileValue).toEqual(project.urls.app);
+    await storage.setActiveProfile(undefined);
+    expect(await provider.getSingle('streamingAppUrl')).toEqual(defaultProfileValue);
 });
 
 it('provides default values for unpopulated, nested settings', async () => {

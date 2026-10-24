@@ -3,10 +3,13 @@ import react from '@vitejs/plugin-react';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import project from '../project.json' with { type: 'json' };
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd());
-    const domain = env.VITE_APP_DOMAIN || 'app.asbplayer.dev';
+    const appUrl = new URL(project.urls.app);
+    if (env.VITE_APP_DOMAIN) appUrl.host = env.VITE_APP_DOMAIN;
+    const domain = appUrl.host;
     const base = env.VITE_APP_BASE_PATH || '/';
     return {
         base,
@@ -21,11 +24,13 @@ export default defineConfig(({ mode }) => {
             createHtmlPlugin({
                 inject: {
                     data: {
+                        projectName: project.names.short,
+                        defaultLanguage: project.defaultLanguage,
                         plausible:
                             mode === 'production'
                                 ? `<script defer data-domain="${domain}" src="https://plausible.io/js/script.js"></script>`
                                 : '',
-                        url: `https://${domain}${base}`,
+                        url: new URL(base, appUrl).href,
                     },
                 },
             }),
@@ -49,8 +54,8 @@ export default defineConfig(({ mode }) => {
                 registerType: 'prompt',
                 includeAssets: ['locales/*.json', 'background-colored.png'],
                 manifest: {
-                    short_name: 'asbplayer',
-                    name: 'a subtitle player',
+                    short_name: project.names.short,
+                    name: project.names.long,
                     description: 'A browser-based media player for mining sentences from subtitles',
                     icons: [
                         {
@@ -82,7 +87,8 @@ export default defineConfig(({ mode }) => {
         ],
         server: {
             open: true,
-            port: 3000,
+            host: project.development.host,
+            port: project.development.port,
         },
     };
 });

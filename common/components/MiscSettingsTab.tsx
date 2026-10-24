@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type { LogProvider } from '@project/common/util/log';
 import FormControl from '@mui/material/FormControl';
@@ -426,7 +427,7 @@ const MiscSettingTab: React.FC<Props> = ({
                                     <Tooltip title={t('settings.subtitleRegexFilterDocs')}>
                                         <IconButton
                                             component="a"
-                                            href="https://docs.asbplayer.dev/docs/guides/subtitle-text-filtering"
+                                            href={`${project.urls.docs}/docs/guides/subtitle-text-filtering`}
                                             target="_blank"
                                             rel="noreferrer"
                                             aria-label={t('settings.subtitleRegexFilterDocs')}

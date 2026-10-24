@@ -1,4 +1,5 @@
 [project]
+# name and version are synced from project.json by pnpm sync:project.
 name = "asbplayer-addon"
 version = "1.0.0"
 description = "Anki add-on for one-click mining support"

@@ -44,6 +44,19 @@ Documentation is under the `docs` folder in this repository. When adding new fea
 
 ## Development
 
+Shared project metadata and defaults live in [`project.json`](./project.json). App and extension code import it through `@project/common/project`; docs use `@site/src/project`, and build configuration imports the JSON directly. User settings and environment variables can still override service defaults.
+
+Use these values for current project defaults, links, and UI metadata. Keep user overrides, historical release links, compatibility versions, and independent test fixtures separate. `defaultLanguage` controls the app's initial/fallback language; English source content and documentation retain their own language. Docs can import `@site/src/project` in MDX links and examples.
+
+### Versions
+
+- `version` is the extension build version. A maintainer bumps it before a release, or anyone is free to bump it in their PR when a feature needs a new version for a runtime compatibility check (usually a minor version, never major). Most changes, fixes, and features should not change it. Existing feature compatibility checks keep the version in which that feature was introduced.
+- `publishedVersion` tracks the latest extension version published to **all stores**, including Chrome, Firefox, and Firefox for Android. A maintainer updates it only after that version is available in every store. It may lag behind `version` during development and store review.
+
+After editing `project.json`, run `pnpm sync:project` and include the generated changes in your commit. `pnpm check:project` (also part of `pnpm verify`) detects stale generated files. The Anki add-on and Go server packaging scripts also synchronize configuration before building, so their distributions do not need the repository at runtime.
+
+### Commands
+
 Use the Node version specified in `.nvmrc`, either via a node version manager (e.g. `nvm use`) or via nix, which has it locked down in `flake.lock`.
 
 Below are useful commands for development.

@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
@@ -88,7 +89,7 @@ export function PopupUi({ commands }: Props) {
     }, []);
 
     const handleOpenUserGuide = useCallback(() => {
-        void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        void browser.tabs.create({ active: true, url: `${project.urls.docs}/docs/intro` });
         window.close();
     }, []);
 

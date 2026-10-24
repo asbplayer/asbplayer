@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type { ExtensionConfig, LocalizationConfig } from '@project/extension/src/services/extension-config';
 import { fetchExtensionConfig } from '@project/extension/src/services/extension-config';
@@ -19,7 +20,7 @@ export const fetchLocalization = async (lang: string): Promise<Localization> => 
     return (
         (await cachedStringsForLang(lang)) ??
         (await bundledStringsForLang(lang)) ??
-        (await bundledStringsForLang('en'))!
+        (await bundledStringsForLang(project.defaultLanguage))!
     );
 };
 
@@ -83,7 +84,8 @@ const fetchAndCache = async ({ code, url, version }: LocalizationConfig): Promis
 
         if (typeof remoteStrings === 'object' && remoteStrings !== null) {
             // Downloaded strings may have removed keys that this build still uses, so keep the bundled ones as a base
-            const bundled = (await bundledStringsForLang(code)) ?? (await bundledStringsForLang('en'))!;
+            const bundled =
+                (await bundledStringsForLang(code)) ?? (await bundledStringsForLang(project.defaultLanguage))!;
             const strings = mergeStrings(bundled.strings, remoteStrings);
             await browser.storage.local.set({ [stringsKeyForLang(code)]: strings, [versionKeyForLang(code)]: version });
         }

@@ -1,4 +1,7 @@
 #!/bin/bash
+set -euo pipefail
+
+source "$(dirname -- "${BASH_SOURCE[0]}")/config"
 
 curl -H "content-type: application/json" \
-    -X GET "http://127.0.0.1:8766/asbplayer/bound-media"
+    -X GET "$ASBPLAYER_SERVER_URL/asbplayer/bound-media"

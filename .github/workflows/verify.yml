@@ -17,6 +17,14 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
 
+            - uses: astral-sh/setup-uv@v9
+
+            - name: Check generated metadata and Anki lockfile
+              run: |
+                  set -euo pipefail
+                  node --experimental-strip-types scripts/sync-project-config.ts --check
+                  uv lock --project plugins/anki --check
+
             - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
             - run: pnpm --filter @project/extension run zip
             - run: pnpm --filter @project/client run build

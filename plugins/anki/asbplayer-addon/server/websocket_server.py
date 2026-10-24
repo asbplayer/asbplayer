@@ -8,11 +8,16 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+
+ADDON_PACKAGE = json.loads(
+    (Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf-8")
+)["package"]
 
 
 def _log(msg: str) -> None:
     """Print debug message."""
-    print(f"[asbplayer-addon] {msg}")
+    print(f"[{ADDON_PACKAGE}] {msg}")
 
 
 try:
@@ -42,7 +47,7 @@ if WEBSOCKETS_AVAILABLE:
                 return True
 
             self._server = QWebSocketServer(
-                "asbplayer-addon", QWebSocketServer.SslMode.NonSecureMode, self
+                ADDON_PACKAGE, QWebSocketServer.SslMode.NonSecureMode, self
             )
 
             if not self._server.listen(QHostAddress.SpecialAddress.Any, self._port):

@@ -2,6 +2,8 @@
 sidebar_position: 5
 ---
 
+import project from '@site/src/project';
+
 # Common issues {#common-issues}
 
 ## General {#general}
@@ -48,7 +50,7 @@ Make sure that in the extension details, the extension has access to all sites.
 
 ### Keyboard shortcuts aren't working. {#keyboard-shortcuts-arent-working}
 
-Check the [keyboard shortcut settings](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts) or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
+Check the <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>keyboard shortcut settings</a> or the [keyboard shortcuts reference](./reference/settings.md#keyboard-shortcuts).
 
 Also, if using the extension:
 
@@ -59,7 +61,7 @@ Also, if using the extension:
 
 ### asbplayer isn't properly cropping screenshots from streaming video. {#screenshot-cropping-issues}
 
-Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the [extension settings](https://app.asbplayer.dev/?view=settings#misc-settings).
+Make sure the browser zoom setting is at 100%. Cropping can be disabled altogether from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>extension settings</a>.
 
 ### I'm having trouble creating cards using JP mining note. {#jp-mining-note-issues}
 
