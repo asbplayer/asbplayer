@@ -25,7 +25,8 @@ export const useFileSession = () => {
                     record &&
                     (record.videoHandle ||
                         record.subtitleHandles.length > 0 ||
-                        (record.cachedSubtitleFiles?.length ?? 0) > 0)
+                        (record.cachedSubtitleFiles?.length ?? 0) > 0 ||
+                        (record.subtitleTrackIds?.length ?? 0) > 0)
                 ) {
                     setCanRestoreLastSession(true);
                 }
@@ -91,8 +92,8 @@ export const useFileSession = () => {
     }, [fileSessionRepository]);
 
     const retainSourcesInSession = useCallback(
-        async (ids: string[]) => {
-            await fileSessionRepository?.retain(ids);
+        async (ids: string[], subtitleTrackIds: string[]) => {
+            await fileSessionRepository?.retain(ids, subtitleTrackIds);
         },
         [fileSessionRepository]
     );
