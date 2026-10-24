@@ -1,23 +1,37 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
+import {
+    approveExternalConnection,
+    denyExternalConnection,
+    removeExternalConnection,
+    viewPendingExternalConnection,
+} from '@project/common/global-state';
+import type { ExternalConnectionsState } from '@project/common/global-state';
 
-/**
- * Provides access to the `externalConnections` global state key for extension settings surfaces
- * (popup, options page). Reads and writes go through extension storage; changes are subscribed to
- * via `browser.storage.local.onChanged`.
- */
 export const useExternalConnections = () => {
     const provider = useMemo(() => new ExtensionGlobalStateProvider(), []);
-    const onExternalConnectionsChanged = useCallback((listener: () => void) => {
-        const handler = (changes: { [key: string]: Browser.storage.StorageChange }) => {
-            if ('externalConnections' in changes) {
-                listener();
-            }
-        };
+    const [externalConnections, setExternalConnetions] = useState<ExternalConnectionsState>();
 
-        browser.storage.local.onChanged.addListener(handler);
-        return () => browser.storage.local.onChanged.removeListener(handler);
-    }, []);
+    useEffect(() => {
+        void provider.get(['externalConnections']).then((s) => setExternalConnetions(s.externalConnections));
+        return provider.onUpdated((s) => {
+            if (s['externalConnections'] !== undefined) setExternalConnetions(s['externalConnections']);
+        });
+    }, [provider]);
 
-    return { provider, onExternalConnectionsChanged };
+    const approve = useCallback((extensionId: string) => approveExternalConnection(provider, extensionId), [provider]);
+    const deny = useCallback((extensionId: string) => denyExternalConnection(provider, extensionId), [provider]);
+    const remove = useCallback((extensionId: string) => removeExternalConnection(provider, extensionId), [provider]);
+    const viewPending = useCallback(
+        (extensionId: string) => viewPendingExternalConnection(provider, extensionId),
+        [provider]
+    );
+
+    return {
+        externalConnections,
+        approveExternalConnection: approve,
+        denyExternalConnection: deny,
+        removeExternalConnection: remove,
+        viewPendingExternalConnection: viewPending,
+    };
 };

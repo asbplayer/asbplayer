@@ -36,6 +36,7 @@ import Box from '@mui/material/Box';
 import { createStatisticsPopup } from '@/services/statistics-util';
 import Tooltip from '@project/common/components/Tooltip';
 import { useCurrentTabId } from '@project/extension/src/ui/hooks/use-current-tab-id';
+import ExternalConnections from '@/ui/components/ExternalConnections';
 
 const globalStateProvider = new ExtensionGlobalStateProvider();
 
@@ -154,7 +155,7 @@ const Popup = ({
     settingsRef.current = settings;
 
     const currentTabId = useCurrentTabId();
-    const externalConnections = useExternalConnections();
+    const { externalConnections } = useExternalConnections();
     const currentMediaIdWithSubtitles = useMediaId({
         whereAsbplayer: (a) => a.tab?.id === currentTabId,
         whereVideoElement: (v) => v.id === currentTabId,
@@ -174,139 +175,149 @@ const Popup = ({
         return { sourceString: sourceString ?? '' };
     }, []);
 
-    if (!i18nInitialized) {
+    if (!i18nInitialized || externalConnections === undefined) {
         return null;
     }
 
+    const hasUnviewedPendingExternalConnection =
+        externalConnections !== undefined &&
+        Object.values(externalConnections.pending).some((p) => p.viewedAt === undefined);
+
     return (
-        <Paper>
-            <Stack direction="column" spacing={1.5} sx={{ padding: theme.spacing(1.5) }}>
-                <ButtonGroup
-                    fullWidth
-                    size="small"
-                    variant="contained"
-                    color="primary"
-                    orientation="horizontal"
-                    sx={{
-                        '& .MuiButton-root': {
-                            height: '36px',
-                        },
-                    }}
-                >
-                    {mediaIdWithSubtitles !== undefined && (
-                        <>
-                            {statisticsOpen && (
+        <>
+            {hasUnviewedPendingExternalConnection && <ExternalConnections />}
+            {!hasUnviewedPendingExternalConnection && (
+                <Paper>
+                    <Stack direction="column" spacing={1.5} sx={{ padding: theme.spacing(1.5) }}>
+                        <ButtonGroup
+                            fullWidth
+                            size="small"
+                            variant="contained"
+                            color="primary"
+                            orientation="horizontal"
+                            sx={{
+                                '& .MuiButton-root': {
+                                    height: '36px',
+                                },
+                            }}
+                        >
+                            {mediaIdWithSubtitles !== undefined && (
+                                <>
+                                    {statisticsOpen && (
+                                        <NavButton
+                                            startIcon={<SettingsIcon />}
+                                            onClick={handleToggleStatistics}
+                                            label={t('bar.settings')}
+                                        />
+                                    )}
+                                    {!statisticsOpen && (
+                                        <NavButton
+                                            startIcon={<BarChartIcon />}
+                                            onClick={handleToggleStatistics}
+                                            label={t('statistics.title')}
+                                        />
+                                    )}
+                                </>
+                            )}
+                            <NavButton startIcon={<LaunchIcon />} onClick={onOpenApp} label={t('action.openApp')} />
+                            {!isMobile && (
                                 <NavButton
-                                    startIcon={<SettingsIcon />}
-                                    onClick={handleToggleStatistics}
-                                    label={t('bar.settings')}
+                                    startIcon={<PanelIcon />}
+                                    onClick={onOpenSidePanel}
+                                    label={t('action.openSidePanel')}
                                 />
                             )}
-                            {!statisticsOpen && (
-                                <NavButton
-                                    startIcon={<BarChartIcon />}
-                                    onClick={handleToggleStatistics}
-                                    label={t('statistics.title')}
-                                />
-                            )}
-                        </>
-                    )}
-                    <NavButton startIcon={<LaunchIcon />} onClick={onOpenApp} label={t('action.openApp')} />
-                    {!isMobile && (
-                        <NavButton
-                            startIcon={<PanelIcon />}
-                            onClick={onOpenSidePanel}
-                            label={t('action.openSidePanel')}
-                        />
-                    )}
-                    <NavButton startIcon={<TutorialIcon />} onClick={onOpenUserGuide} label={t('action.userGuide')} />
-                </ButtonGroup>
-                <Grid
-                    item
-                    style={{
-                        height: isMobile ? 'auto' : 390,
-                    }}
-                >
-                    {!statisticsOpen && (
-                        <SettingsForm
-                            onImportSettings={isFirefoxBuild ? handleFirefoxImportSettings : undefined}
-                            heightConstrained
-                            extensionInstalled
-                            extensionVersion={browser.runtime.getManifest().version}
-                            extensionSupportsAppIntegration
-                            extensionSupportsOverlay
-                            extensionSupportsSidePanel
-                            extensionSupportsOrderableAnkiFields
-                            extensionSupportsTrackSpecificSettings
-                            extensionSupportsSubtitlesWidthSetting
-                            extensionSupportsSubtitlesWidthInPixels
-                            extensionSupportsPauseOnHover
-                            extensionSupportsPlaybackEngine
-                            extensionSupportsAutoPauseResume
-                            extensionSupportsExportCardBind
-                            extensionSupportsPageSettings
-                            extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
-                            extensionSupportsDictionary
-                            extensionSupportsDictionaryBrowser
-                            extensionSupportsDictionaryWaniKani
-                            extensionSupportsDictionaryMatchAcrossScripts
-                            extensionSupportsSeekableTrackSetting
-                            extensionSupportsAutoCopyableTrackSetting
-                            extensionSupportsDictionaryTokenStatusDisplayAlpha
-                            supportsDictionaryPlayback
-                            extensionSupportsDictionaryYomitanMecab
-                            extensionSupportsSubtitleTrackSelectorInWebApp
-                            extensionSupportsSubtitleListCustomization
-                            extensionSupportsUpdateLastWithSameSubtitleText
-                            extensionSupportsAnimatedMediaFragment={!isFirefoxBuild}
-                            globalStateProvider={externalConnections.provider}
-                            onExternalConnectionsChanged={externalConnections.onExternalConnectionsChanged}
-                            forceVerticalTabs={false}
-                            anki={anki}
-                            chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
-                            dictionaryProvider={dictionaryProvider}
-                            logProvider={logProvider}
-                            settings={settings}
-                            profiles={profilesContext.profiles}
-                            activeProfile={profilesContext.activeProfile}
-                            pageConfigs={settingsPageConfigs}
-                            localFontsAvailable={localFontsAvailable}
-                            localFontsPermission={localFontsPermission}
-                            localFontFamilies={localFontFamilies}
-                            supportedLanguages={supportedLanguages}
-                            onSettingsChanged={onSettingsChanged}
-                            onOpenChromeExtensionShortcuts={onOpenExtensionShortcuts}
-                            onUnlockLocalFonts={handleUnlockLocalFonts}
-                            inAnnotationTutorial={inAnnotationTutorial}
-                            onAnnotationTutorialSeen={handleAnnotationTutorialSeen}
-                            scrollToId={scrollToId}
-                        />
-                    )}
-                    {statisticsOpen && (
-                        <Box sx={{ display: 'flex', width: '100%', height: '100%', overflowY: 'scroll' }}>
-                            <Statistics
-                                mediaId={mediaIdWithSubtitles}
-                                dictionaryProvider={dictionaryProvider}
-                                settings={settings}
-                                hasSubtitles={mediaIdWithSubtitles !== undefined}
-                                onViewAnnotationSettings={handleViewAnnotationSettings}
-                                onOpenOverlay={handleOpenStatisticsOverlay}
-                                onSeekWasRequested={uiTabRegistry.focusTabForMediaId}
-                                onMineWasRequested={uiTabRegistry.focusTabForMediaId}
-                                onOpenInNewWindow={createStatisticsPopup}
-                                mediaInfoFetcher={fetchStatisticsMediaInfo}
-                                sx={{ m: 1 }}
+                            <NavButton
+                                startIcon={<TutorialIcon />}
+                                onClick={onOpenUserGuide}
+                                label={t('action.userGuide')}
                             />
-                        </Box>
-                    )}
-                </Grid>
-                {!statisticsOpen && (
-                    <Grid item>
-                        <SettingsProfileSelectMenu {...profilesContext} />
-                    </Grid>
-                )}
-            </Stack>
-        </Paper>
+                        </ButtonGroup>
+                        <Grid
+                            item
+                            style={{
+                                height: isMobile ? 'auto' : 390,
+                            }}
+                        >
+                            {!statisticsOpen && (
+                                <SettingsForm
+                                    onImportSettings={isFirefoxBuild ? handleFirefoxImportSettings : undefined}
+                                    heightConstrained
+                                    extensionInstalled
+                                    extensionVersion={browser.runtime.getManifest().version}
+                                    extensionSupportsAppIntegration
+                                    extensionSupportsOverlay
+                                    extensionSupportsSidePanel
+                                    extensionSupportsOrderableAnkiFields
+                                    extensionSupportsTrackSpecificSettings
+                                    extensionSupportsSubtitlesWidthSetting
+                                    extensionSupportsSubtitlesWidthInPixels
+                                    extensionSupportsPauseOnHover
+                                    extensionSupportsPlaybackEngine
+                                    extensionSupportsAutoPauseResume
+                                    extensionSupportsExportCardBind
+                                    extensionSupportsPageSettings
+                                    extensionSupportsDictionary
+                                    extensionSupportsDictionaryBrowser
+                                    extensionSupportsDictionaryWaniKani
+                                    extensionSupportsDictionaryMatchAcrossScripts
+                                    extensionSupportsSeekableTrackSetting
+                                    extensionSupportsAutoCopyableTrackSetting
+                                    extensionSupportsDictionaryTokenStatusDisplayAlpha
+                                    supportsDictionaryPlayback
+                                    extensionSupportsDictionaryYomitanMecab
+                                    extensionSupportsSubtitleTrackSelectorInWebApp
+                                    extensionSupportsSubtitleListCustomization
+                                    extensionSupportsUpdateLastWithSameSubtitleText
+                                    extensionSupportsAnimatedImageCapture
+                                    forceVerticalTabs={false}
+                                    anki={anki}
+                                    chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
+                                    dictionaryProvider={dictionaryProvider}
+                                    logProvider={logProvider}
+                                    settings={settings}
+                                    profiles={profilesContext.profiles}
+                                    activeProfile={profilesContext.activeProfile}
+                                    pageConfigs={settingsPageConfigs}
+                                    localFontsAvailable={localFontsAvailable}
+                                    localFontsPermission={localFontsPermission}
+                                    localFontFamilies={localFontFamilies}
+                                    supportedLanguages={supportedLanguages}
+                                    onSettingsChanged={onSettingsChanged}
+                                    onOpenChromeExtensionShortcuts={onOpenExtensionShortcuts}
+                                    onUnlockLocalFonts={handleUnlockLocalFonts}
+                                    inAnnotationTutorial={inAnnotationTutorial}
+                                    onAnnotationTutorialSeen={handleAnnotationTutorialSeen}
+                                    scrollToId={scrollToId}
+                                />
+                            )}
+                            {statisticsOpen && (
+                                <Box sx={{ display: 'flex', width: '100%', height: '100%', overflowY: 'scroll' }}>
+                                    <Statistics
+                                        mediaId={mediaIdWithSubtitles}
+                                        dictionaryProvider={dictionaryProvider}
+                                        settings={settings}
+                                        hasSubtitles={mediaIdWithSubtitles !== undefined}
+                                        onViewAnnotationSettings={handleViewAnnotationSettings}
+                                        onOpenOverlay={handleOpenStatisticsOverlay}
+                                        onSeekWasRequested={uiTabRegistry.focusTabForMediaId}
+                                        onMineWasRequested={uiTabRegistry.focusTabForMediaId}
+                                        onOpenInNewWindow={createStatisticsPopup}
+                                        mediaInfoFetcher={fetchStatisticsMediaInfo}
+                                        sx={{ m: 1 }}
+                                    />
+                                </Box>
+                            )}
+                        </Grid>
+                        {!statisticsOpen && (
+                            <Grid item>
+                                <SettingsProfileSelectMenu {...profilesContext} />
+                            </Grid>
+                        )}
+                    </Stack>
+                </Paper>
+            )}
+        </>
     );
 };
 

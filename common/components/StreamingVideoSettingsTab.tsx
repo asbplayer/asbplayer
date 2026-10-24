@@ -23,7 +23,6 @@ import type { PageConfigMap } from '@project/common/components/SettingsForm';
 import { useState } from 'react';
 import PageSettingsForm from '@project/common/components/PageSettingsForm';
 import SettingsSection from '@project/common/components/SettingsSection';
-import ExternalConnections from '@project/common/components/ExternalConnections';
 import type { GlobalStateProvider } from '@project/common/global-state';
 
 const pageSettingsHasModifications = (page: Page) => {
@@ -61,8 +60,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
     extensionSupportsPageSettings,
     extensionSupportsAnimatedImageCapture,
     pageConfigs,
-    globalStateProvider,
-    onExternalConnectionsChanged,
 }) => {
     const { t } = useTranslation();
     const {
@@ -100,12 +97,6 @@ const StreamingVideoSettingsTab: React.FC<Props> = ({
                 />
             )}
             <Stack spacing={1}>
-                {globalStateProvider && (
-                    <ExternalConnections
-                        provider={globalStateProvider}
-                        onExternalConnectionsChanged={onExternalConnectionsChanged}
-                    />
-                )}
                 <SettingsSection>{t('settings.appIntegration')}</SettingsSection>
                 <SwitchLabelWithHoverEffect
                     control={

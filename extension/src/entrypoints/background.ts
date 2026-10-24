@@ -175,8 +175,8 @@ export default defineBackground(() => {
     const dictionaryDB = new DictionaryDB(settings);
     const externalConnectionCoordinator = new ExternalConnectionCoordinator({
         globalStateProvider,
-        tabRegistry,
         settings,
+        tabRegistry,
         badgeController,
     });
 

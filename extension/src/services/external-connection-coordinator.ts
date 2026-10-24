@@ -36,7 +36,6 @@ const badgeReason = 'externalConnections';
 export class ExternalConnectionCoordinator {
     private readonly _globalStateProvider: GlobalStateProvider;
     private readonly _tabRegistry: TabRegistry;
-    private readonly _settings: SettingsProvider;
     private readonly _badgeController: ExtensionBadgeController;
     private readonly _dispatcher: ExternalCommandDispatcher;
     private readonly _ports = new Map<string, Set<Browser.runtime.Port>>();
@@ -57,7 +56,6 @@ export class ExternalConnectionCoordinator {
     }) {
         this._globalStateProvider = globalStateProvider;
         this._tabRegistry = tabRegistry;
-        this._settings = settings;
         this._badgeController = badgeController;
         this._dispatcher = dispatcher ?? new ExternalCommandDispatcher();
 
@@ -85,10 +83,12 @@ export class ExternalConnectionCoordinator {
             this._tabRegistry.activeVideoElements(),
         ]);
 
-        const pendingCount = Object.keys(externalConnections?.pending ?? {}).length;
-        this._badgeController.setGlobalAlert(badgeReason, pendingCount > 0);
+        const unviewedPendingCount = Object.values(externalConnections?.pending ?? []).filter(
+            (p) => p.viewedAt === undefined
+        ).length;
+        this._badgeController.setGlobalAlert(badgeReason, unviewedPendingCount > 0);
         this._badgeController.setTabAlerts(
-            pendingCount > 0 ? videoElements.map((videoElement) => videoElement.id) : []
+            unviewedPendingCount > 0 ? videoElements.map((videoElement) => videoElement.id) : []
         );
     }
 
