@@ -1127,7 +1127,12 @@ const MiscSettingTab: React.FC<Props> = ({
                 multiple
                 hidden
             />
-            <LogViewerDialog open={logViewerOpen} onClose={() => setLogViewerOpen(false)} logProvider={logProvider} />
+            <LogViewerDialog
+                open={logViewerOpen}
+                onClose={() => setLogViewerOpen(false)}
+                logProvider={logProvider}
+                streamingAppUrl={settings.streamingAppUrl}
+            />
         </>
     );
 };

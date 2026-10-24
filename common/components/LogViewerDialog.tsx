@@ -10,7 +10,8 @@ import TextField from '@mui/material/TextField';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { download, getCurrentTimeString } from '@project/common/util';
-import { formatLogLine } from '@project/common/util/log-utils';
+import { defaultSettings } from '@project/common/settings';
+import { formatLogLine, formatRedactedLogText } from '@project/common/util/log-utils';
 import type { LogLevel, LogLine } from '@project/common/util/log-utils';
 import type { LogProvider } from '@project/common/util/log';
 import Toolbar from '@mui/material/Toolbar';
@@ -25,6 +26,7 @@ interface Props {
     open: boolean;
     onClose: () => void;
     logProvider: LogProvider;
+    streamingAppUrl: string;
 }
 
 const LOG_LEVEL_COLORS: Record<LogLevel, string> = {
@@ -37,7 +39,7 @@ const LOG_LEVEL_COLORS: Record<LogLevel, string> = {
 
 const DEFAULT_LOG_LINE_COUNT = 100;
 
-const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider }) => {
+const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider, streamingAppUrl }) => {
     const { t } = useTranslation();
     const [showTrace, setShowTrace] = useState(false);
     const [numberOfLines, setNumberOfLines] = useState(DEFAULT_LOG_LINE_COUNT);
@@ -85,13 +87,14 @@ const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider }) => {
 
     const handleExportLogs = useCallback(async () => {
         try {
-            const logText = await logProvider.getLogText();
+            const lines = await logProvider.getLogLines();
+            const logText = formatRedactedLogText(lines, streamingAppUrl, defaultSettings.streamingAppUrl);
             download(new Blob([logText], { type: 'text/plain' }), `asbplayer-logs-${getCurrentTimeString()}.txt`);
             setLoadError(undefined);
         } catch (error) {
             setLoadError(error instanceof Error ? error.message : String(error));
         }
-    }, [logProvider]);
+    }, [logProvider, streamingAppUrl]);
 
     useEffect(() => {
         if (!open) return;
@@ -104,7 +107,8 @@ const LogViewerDialog: React.FC<Props> = ({ open, onClose, logProvider }) => {
 
     const handleCopyLogs = async () => {
         try {
-            await navigator.clipboard.writeText(displayedLogLines.map(formatLogLine).join('\n'));
+            const logText = formatRedactedLogText(displayedLogLines, streamingAppUrl, defaultSettings.streamingAppUrl);
+            await navigator.clipboard.writeText(logText);
             setLoadError(undefined);
         } catch (error) {
             setLoadError(error instanceof Error ? error.message : String(error));
