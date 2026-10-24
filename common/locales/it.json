@@ -36,7 +36,10 @@
         "userGuide": "Guida Utente",
         "search": "Cerca",
         "reload": "Ricarica",
-        "findPlaceholder": "Search by text or /regex/"
+        "findPlaceholder": "Search by text or /regex/",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "A proposito di asbplayer",
@@ -742,8 +745,7 @@
         "webSocketInterface": "Interfaccia WebSocket",
         "yomitanHelperText": "Le istruzioni per configurare l'API Yomitan sono <0>qui</0>.",
         "seekableTracks": "Tracce dei sottotitoli influenzate dalle modalità di riproduzione e dalle scorciatoie da tastiera",
-        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica",
-        "externalConnections": "External connections"
+        "autoCopyableTracks": "Tracce dei sottotitoli idonee per la copia automatica"
     },
     "statistics": {
         "title": "Statistiche",
@@ -854,11 +856,7 @@
         "confirmDelete": "Delete \"{{name}}\"?"
     },
     "externalConnections": {
-        "pending": "Pending connection requests",
-        "approved": "Approved extensions",
-        "approve": "Approve",
-        "deny": "Deny",
-        "remove": "Remove",
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
         "unknownName": "Unnamed extension"
     }
 }

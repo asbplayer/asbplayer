@@ -36,7 +36,10 @@
         "userGuide": "Panduan Pengguna",
         "search": "Search",
         "reload": "Reload",
-        "findPlaceholder": "Search by text or /regex/"
+        "findPlaceholder": "Search by text or /regex/",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "Tentang asbplayer",
@@ -742,8 +745,7 @@
         "webSocketInterface": "WebSocket interface",
         "yomitanHelperText": "Instructions to setup Yomitan API are <0>here<0>.",
         "seekableTracks": "Subtitle tracks affected by playback modes and keyboard shortcuts",
-        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy",
-        "externalConnections": "External connections"
+        "autoCopyableTracks": "Subtitle tracks eligible for auto-copy"
     },
     "statistics": {
         "title": "Statistics",
@@ -854,11 +856,7 @@
         "confirmDelete": "Delete \"{{name}}\"?"
     },
     "externalConnections": {
-        "pending": "Pending connection requests",
-        "approved": "Approved extensions",
-        "approve": "Approve",
-        "deny": "Deny",
-        "remove": "Remove",
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
         "unknownName": "Unnamed extension"
     }
 }

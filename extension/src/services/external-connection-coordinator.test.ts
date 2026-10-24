@@ -1,44 +1,18 @@
 import { afterEach, beforeEach, describe, expect, jest } from '@jest/globals';
 import type { VideoTabModel } from '@project/common';
-import type { ExternalConnectionsState, GlobalState, GlobalStateProvider } from '@project/common/global-state';
-import { initialGlobalState } from '@project/common/global-state';
+import type { ExternalConnectionsState } from '@project/common/global-state';
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import { ExternalConnectionCoordinator } from '@project/extension/src/services/external-connection-coordinator';
 import { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
+import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
+import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
 
 const flush = async () => {
     for (let i = 0; i < 20; i++) {
         await Promise.resolve();
     }
 };
-
-class FakeGlobalStateProvider implements GlobalStateProvider {
-    private readonly _state: GlobalState = JSON.parse(JSON.stringify(initialGlobalState));
-
-    async getAll(): Promise<GlobalState> {
-        return JSON.parse(JSON.stringify(this._state));
-    }
-
-    async get<K extends keyof GlobalState>(keys: K[]): Promise<Pick<GlobalState, K>> {
-        return Object.fromEntries(keys.map((key) => [key, JSON.parse(JSON.stringify(this._state[key]))])) as Pick<
-            GlobalState,
-            K
-        >;
-    }
-
-    async set(state: Partial<GlobalState>): Promise<void> {
-        Object.assign(this._state, JSON.parse(JSON.stringify(state)));
-    }
-
-    seedExternalConnections(externalConnections: ExternalConnectionsState) {
-        this._state.externalConnections = JSON.parse(JSON.stringify(externalConnections));
-    }
-
-    externalConnections(): ExternalConnectionsState {
-        return JSON.parse(JSON.stringify(this._state.externalConnections));
-    }
-}
 
 class FakePort {
     readonly sender = { id: undefined as string | undefined };
@@ -97,7 +71,8 @@ class FakePort {
 }
 
 class Harness {
-    readonly globalStateProvider = new FakeGlobalStateProvider();
+    readonly storage = new MockStorageArea();
+    readonly globalStateProvider = new ExtensionGlobalStateProvider(this.storage);
     readonly badgeAction = { setBadgeText: jest.fn() };
     readonly badgeController = new ExtensionBadgeController(this.badgeAction);
     readonly dispatcher: any = {
@@ -111,7 +86,6 @@ class Harness {
     coordinator: ExternalConnectionCoordinator;
 
     private readonly _connectListeners: ((port: Browser.runtime.Port) => void)[] = [];
-    private readonly _storageChangeListeners: ((changes: { [key: string]: any }) => void)[] = [];
 
     constructor() {
         (globalThis as any).browser = {
@@ -122,12 +96,7 @@ class Harness {
                 },
             },
             storage: {
-                local: {
-                    onChanged: {
-                        addListener: (listener: (changes: { [key: string]: any }) => void) =>
-                            this._storageChangeListeners.push(listener),
-                    },
-                },
+                local: this.storage,
             },
         };
         this.coordinator = new ExternalConnectionCoordinator({
@@ -149,12 +118,24 @@ class Harness {
         return port;
     }
 
-    externalConnectionsChanged(oldValue: ExternalConnectionsState, newValue: ExternalConnectionsState) {
-        this.globalStateProvider.seedExternalConnections(newValue);
+    async externalConnectionsChanged(newValue: ExternalConnectionsState) {
+        await this.globalStateProvider.set({ externalConnections: newValue });
+    }
 
-        for (const listener of [...this._storageChangeListeners]) {
-            listener({ externalConnections: { oldValue, newValue } });
-        }
+    async approve(id: string, name?: string) {
+        await this.globalStateProvider.set({ externalConnections: this.approvedState(id, name) });
+    }
+
+    async seedPending(pending: ExternalConnectionsState['pending']) {
+        await this.globalStateProvider.set({ externalConnections: { approved: {}, pending } });
+    }
+
+    async pendingEntries(): Promise<ExternalConnectionsState['pending']> {
+        return (await this.globalStateProvider.get(['externalConnections'])).externalConnections.pending;
+    }
+
+    async approvedEntries(): Promise<ExternalConnectionsState['approved']> {
+        return (await this.globalStateProvider.get(['externalConnections'])).externalConnections.approved;
     }
 
     emptyState(): ExternalConnectionsState {
@@ -173,22 +154,6 @@ class Harness {
             approved: { [id]: { name, approvedAt: Date.now() } },
             pending: {},
         };
-    }
-
-    approve(id: string, name?: string) {
-        this.globalStateProvider.seedExternalConnections(this.approvedState(id, name));
-    }
-
-    seedPending(pending: ExternalConnectionsState['pending']) {
-        this.globalStateProvider.seedExternalConnections({ approved: {}, pending });
-    }
-
-    pendingEntries() {
-        return this.globalStateProvider.externalConnections().pending;
-    }
-
-    approvedEntries() {
-        return this.globalStateProvider.externalConnections().approved;
     }
 
     lastGlobalBadgeText() {
@@ -226,7 +191,7 @@ describe('external connection coordinator', () => {
         expect(harness.dispatcher.dispatchCommand).not.toHaveBeenCalled();
         expect(port.responses()).toEqual([]);
         // Not even a pending request, because the external extension never identified itself.
-        expect(Object.keys(harness.pendingEntries())).toEqual([]);
+        expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
     it('records a pending entry on hello and alerts via badges', async () => {
@@ -239,7 +204,7 @@ describe('external connection coordinator', () => {
             { type: 'asbplayer-external-approval', approved: false },
             { type: 'asbplayer-external-approval', approved: false },
         ]);
-        expect(harness.pendingEntries()['sibling']).toEqual({
+        expect((await harness.pendingEntries())['sibling']).toEqual({
             name: 'Sibling',
             requestedAt: expect.any(Number),
         });
@@ -260,7 +225,7 @@ describe('external connection coordinator', () => {
     });
 
     it('answers hello from an approved extension without recording a pending entry', async () => {
-        harness.approve('sibling', 'Sibling');
+        await harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
         await flush();
 
@@ -270,25 +235,25 @@ describe('external connection coordinator', () => {
             { type: 'asbplayer-external-approval', approved: true },
             { type: 'asbplayer-external-approval', approved: true },
         ]);
-        expect(Object.keys(harness.pendingEntries())).toEqual([]);
+        expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
     it('stores a hello name from an approved extension on its approval entry', async () => {
-        harness.approve('sibling', 'Sibling');
+        await harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
         await flush();
 
         await port.receive({ type: 'asbplayer-external-hello', name: 'Renamed Sibling' });
 
-        expect(harness.approvedEntries()['sibling']).toEqual({
+        expect((await harness.approvedEntries())['sibling']).toEqual({
             name: 'Renamed Sibling',
             approvedAt: expect.any(Number),
         });
-        expect(Object.keys(harness.pendingEntries())).toEqual([]);
+        expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
     it('dispatches commands from approved extensions and posts the response', async () => {
-        harness.approve('sibling');
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
         await flush();
 
@@ -308,7 +273,7 @@ describe('external connection coordinator', () => {
     });
 
     it('answers dispatch failures with an error body', async () => {
-        harness.approve('sibling');
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
         await flush();
 
@@ -319,7 +284,7 @@ describe('external connection coordinator', () => {
     });
 
     it('does not respond when the dispatcher does not handle the command', async () => {
-        harness.approve('sibling');
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
         await flush();
 
@@ -330,7 +295,7 @@ describe('external connection coordinator', () => {
     });
 
     it('ignores malformed frames', async () => {
-        harness.approve('sibling');
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
         await flush();
 
@@ -348,7 +313,7 @@ describe('external connection coordinator', () => {
         await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
         await flush();
 
-        harness.externalConnectionsChanged(harness.pendingState(), harness.approvedState('sibling', 'Sibling'));
+        await harness.externalConnectionsChanged(harness.approvedState('sibling', 'Sibling'));
 
         expect(approvalFrames(port)).toEqual([
             { type: 'asbplayer-external-approval', approved: false },
@@ -362,11 +327,11 @@ describe('external connection coordinator', () => {
     });
 
     it('revokes an external extension with an open port and stops dispatching its commands', async () => {
-        harness.approve('sibling');
+        await harness.approve('sibling');
         const port = harness.connect('sibling');
         await flush();
 
-        harness.externalConnectionsChanged(harness.approvedState('sibling'), harness.emptyState());
+        await harness.externalConnectionsChanged(harness.emptyState());
 
         expect(approvalFrames(port)).toEqual([
             { type: 'asbplayer-external-approval', approved: true },
@@ -385,7 +350,7 @@ describe('external connection coordinator', () => {
         const port1Frames = approvalFrames(port1);
         const port2Frames = approvalFrames(port2);
 
-        harness.externalConnectionsChanged(harness.emptyState(), harness.approvedState('sibling'));
+        await harness.externalConnectionsChanged(harness.approvedState('sibling'));
 
         expect(approvalFrames(port1)).toEqual([
             ...port1Frames,
@@ -403,7 +368,7 @@ describe('external connection coordinator', () => {
         const postedBeforeDisconnect = port.posted.length;
         port.disconnect();
 
-        harness.externalConnectionsChanged(harness.emptyState(), harness.approvedState('sibling'));
+        await harness.externalConnectionsChanged(harness.approvedState('sibling'));
 
         expect(port.posted).toHaveLength(postedBeforeDisconnect);
     });
@@ -415,7 +380,7 @@ describe('external connection coordinator', () => {
         await flush();
         expect(harness.lastGlobalBadgeText()).toEqual('!');
 
-        harness.externalConnectionsChanged(harness.pendingState(), harness.emptyState());
+        await harness.externalConnectionsChanged(harness.emptyState());
         await flush();
 
         expect(harness.lastGlobalBadgeText()).toEqual('');
@@ -432,13 +397,13 @@ describe('external connection coordinator', () => {
         }
 
         pending['expired'] = { name: 'Expired', requestedAt: now - 25 * 60 * 60 * 1000 };
-        harness.seedPending(pending);
+        await harness.seedPending(pending);
         const port = harness.connect('newcomer');
         await flush();
 
         await port.receive({ type: 'asbplayer-external-hello', name: 'Newcomer' });
 
-        const pendingEntries = harness.pendingEntries();
+        const pendingEntries = await harness.pendingEntries();
         expect(Object.keys(pendingEntries)).toHaveLength(10);
         expect(pendingEntries['newcomer']).toEqual({ name: 'Newcomer', requestedAt: expect.any(Number) });
         expect(pendingEntries['recent1']).toBeDefined();

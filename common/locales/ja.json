@@ -36,7 +36,10 @@
         "userGuide": "ユーザーガイド",
         "search": "検索",
         "reload": "再読み込み",
-        "findPlaceholder": "テキストまたは /regex/ で検索"
+        "findPlaceholder": "テキストまたは /regex/ で検索",
+        "approve": "Approve",
+        "deny": "Deny",
+        "remove": "Remove"
     },
     "about": {
         "title": "asbplayerについて",
@@ -742,8 +745,7 @@
         "webSocketInterface": "WebSocketインターフェース",
         "yomitanHelperText": "YomitanのAPIのセットアップは<0>こちら<0>をご参考にしてください。",
         "seekableTracks": "操作対象の字幕トラック（プレイバックモード/ショートカット）",
-        "autoCopyableTracks": "自動コピー対象の字幕トラック",
-        "externalConnections": "External connections"
+        "autoCopyableTracks": "自動コピー対象の字幕トラック"
     },
     "statistics": {
         "title": "統計",
@@ -854,11 +856,7 @@
         "confirmDelete": "Delete \"{{name}}\"?"
     },
     "externalConnections": {
-        "pending": "Pending connection requests",
-        "approved": "Approved extensions",
-        "approve": "Approve",
-        "deny": "Deny",
-        "remove": "Remove",
+        "incomingRequest": "An external extension is requesting to connect to asbplayer.",
         "unknownName": "Unnamed extension"
     }
 }

@@ -848,6 +848,11 @@ export interface SetGlobalStateMessage extends MessageWithId {
     readonly state: Partial<GlobalState>;
 }
 
+export interface GlobalStateUpdatedMessage extends Message {
+    readonly command: 'global-state-updated';
+    readonly state: Partial<GlobalState>;
+}
+
 export interface ForwardCommandMessage extends Message {
     readonly command: 'forward-command';
     readonly commandToForward: AsbPlayerToVideoCommandV2<Message>;

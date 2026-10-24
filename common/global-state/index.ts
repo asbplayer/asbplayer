@@ -39,6 +39,7 @@ export interface ApprovedExternalConnection {
 export interface PendingExternalConnection {
     name?: string;
     requestedAt: number;
+    viewedAt?: number;
 }
 
 export interface ExternalConnectionsState {
@@ -78,6 +79,7 @@ export interface GlobalStateProvider {
     getAll: () => Promise<GlobalState>;
     get: <K extends keyof GlobalState>(keys: K[]) => Promise<Pick<GlobalState, K>>;
     set: (state: Partial<GlobalState>) => Promise<void>;
+    onUpdated: (callback: (state: Partial<GlobalState>) => void) => () => void;
 }
 
 /**
@@ -129,6 +131,20 @@ export const removeExternalConnection = async (provider: GlobalStateProvider, ex
         }
 
         delete externalConnections.approved[extensionId];
+        return true;
+    });
+};
+
+export const viewPendingExternalConnection = async (
+    provider: GlobalStateProvider,
+    extensionId: string
+): Promise<void> => {
+    await mutateExternalConnections(provider, (externalConnections) => {
+        if (!(extensionId in externalConnections.pending)) {
+            return false;
+        }
+
+        externalConnections.pending[extensionId].viewedAt = Date.now();
         return true;
     });
 };
