@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { PlayMode } from '@project/common';
+import { AutoPausePreference, PlayMode } from '@project/common';
 import type { Message } from '@project/common';
 import { defaultSettings } from '@project/common/settings';
 import VideoChannel from '@project/common/app/services/video-channel';
@@ -48,24 +48,32 @@ describe('VideoChannel playback intents', () => {
 
         channel.miscSettings({
             ...defaultSettings,
+            autoPausePreference: AutoPausePreference.atStart,
             subtitleTriggerStartOffset: -250,
             subtitleTriggerEndOffset: 400,
             subtitleTriggerGapEndOffset: -150,
             subtitleTriggerGapStartOffset: 300,
             streamingCondensedPlaybackMinimumSkipIntervalMs: 750,
             repeatsBeforeShowingSubtitles: 1,
+            recipes: [{ name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } }],
+            activeRecipeId: 0,
         });
 
         expect(protocol.sent).toEqual([
             expect.objectContaining({
                 command: 'miscSettings',
                 value: expect.objectContaining({
+                    autoPausePreference: AutoPausePreference.atStart,
                     subtitleTriggerStartOffset: -250,
                     subtitleTriggerEndOffset: 400,
                     subtitleTriggerGapEndOffset: -150,
                     subtitleTriggerGapStartOffset: 300,
                     streamingCondensedPlaybackMinimumSkipIntervalMs: 750,
                     repeatsBeforeShowingSubtitles: 1,
+                    recipes: [
+                        { name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } },
+                    ],
+                    activeRecipeId: 0,
                 }),
             }),
         ]);

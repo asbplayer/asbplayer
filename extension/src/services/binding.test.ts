@@ -114,6 +114,7 @@ const makeSubtitle = (overrides: Partial<IndexedSubtitleModel> = {}): IndexedSub
 describe('Binding playback mode integration', () => {
     const runtimeListeners = new Set<(request: any, sender: any, sendResponse: (response?: any) => void) => void>();
     let storage: MockStorageArea;
+    let sendRuntimeMessage: jest.Mock<() => Promise<void>>;
 
     type FrameTestVideo = HTMLVideoElement & { presentFrame(timestampMs: number): void };
 
@@ -243,11 +244,12 @@ describe('Binding playback mode integration', () => {
         jest.spyOn(console, 'error').mockImplementation(() => undefined);
         runtimeListeners.clear();
         storage = new MockStorageArea();
+        sendRuntimeMessage = jest.fn(async () => undefined);
         (globalThis as any).browser = {
             storage: { local: storage },
             runtime: {
                 getURL: (path: string) => `moz-extension://test${path}`,
-                sendMessage: jest.fn(async () => undefined),
+                sendMessage: sendRuntimeMessage,
                 onMessage: {
                     addListener: (listener: (request: any, sender: any, sendResponse: () => void) => void) =>
                         runtimeListeners.add(listener),
@@ -609,6 +611,144 @@ describe('Binding playback mode integration', () => {
         const languages = (i18nInit as any).mock.calls.map(([language]: [string]) => language);
         binding.unbind();
         expect(languages.at(-1)).toBe('es');
+    });
+
+    const shortcutRecipes = [
+        { name: 'Reading', playbackModes: [PlayMode.normal], settings: { playbackRate: 0.8 } },
+        { name: 'Listening', playbackModes: [PlayMode.normal], settings: { playbackRate: 1.2 } },
+    ];
+
+    it.each([
+        { initialRecipeId: null, action: 0 as const, activeRecipeId: 0, playbackRate: 0.8 },
+        { initialRecipeId: 0, action: 0 as const, activeRecipeId: null, playbackRate: 1 },
+    ])('applies saved recipe action $action locally when its broadcast fails', async (selection) => {
+        await storage.set({ recipes: shortcutRecipes, activeRecipeId: selection.initialRecipeId });
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        sendSubtitles(binding, [makeSubtitle()]);
+        await flushPlaybackTiming();
+        const error = new Error('unavailable');
+        sendRuntimeMessage.mockRejectedValueOnce(error);
+
+        try {
+            await expect(binding.selectRecipe(selection.action)).rejects.toThrow(error);
+
+            expect(await binding.settings.getSingle('activeRecipeId')).toBe(selection.activeRecipeId);
+            expect(video.playbackRate).toBe(selection.playbackRate);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each([
+        { recipeCount: 0, action: 'cycleForward' as const, activeRecipeId: null },
+        { recipeCount: 1, action: 'cycleForward' as const, activeRecipeId: null },
+        { recipeCount: 2, action: 'cycleForward' as const, activeRecipeId: 1 },
+        { recipeCount: 0, action: 0, activeRecipeId: null },
+        { recipeCount: 1, action: 0, activeRecipeId: null },
+        { recipeCount: 2, action: 0, activeRecipeId: null },
+    ])(
+        'applies overlapping $action shortcuts with $recipeCount recipes',
+        async ({ recipeCount, action, activeRecipeId }) => {
+            const recipes = shortcutRecipes.slice(0, recipeCount);
+            await storage.set({ recipes, activeRecipeId: null });
+            const video = createVideo();
+            const binding = new Binding(video, bindingOptions(false, false));
+            binding.bind();
+            await flushPlaybackTiming();
+            sendSubtitles(binding, [makeSubtitle()]);
+            await flushPlaybackTiming();
+
+            try {
+                await Promise.all([binding.selectRecipe(action), binding.selectRecipe(action)]);
+
+                expect(await binding.settings.getSingle('activeRecipeId')).toBe(activeRecipeId);
+                expect(video.playbackRate).toBe(
+                    activeRecipeId === null
+                        ? defaultSettings.playbackRate
+                        : recipes[activeRecipeId].settings.playbackRate
+                );
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
+    it('cycles from a preceding overlapping recipe selection', async () => {
+        await storage.set({ recipes: shortcutRecipes, activeRecipeId: null });
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        sendSubtitles(binding, [makeSubtitle()]);
+        await flushPlaybackTiming();
+
+        try {
+            await Promise.all([binding.selectRecipe(0), binding.selectRecipe('cycleForward')]);
+
+            expect(await binding.settings.getSingle('activeRecipeId')).toBe(1);
+            expect(video.playbackRate).toBe(shortcutRecipes[1].settings.playbackRate);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each([
+        { boundary: 'save', activeRecipeId: 0 },
+        { boundary: 'notification', activeRecipeId: 1 },
+    ])('continues queued recipe selections after a failed $boundary', async ({ boundary, activeRecipeId }) => {
+        await storage.set({ recipes: shortcutRecipes, activeRecipeId: null });
+        const video = createVideo();
+        const binding = new Binding(video, bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        sendSubtitles(binding, [makeSubtitle()]);
+        await flushPlaybackTiming();
+        const error = new Error('unavailable');
+        if (boundary === 'save') jest.spyOn(storage, 'set').mockRejectedValueOnce(error);
+        else sendRuntimeMessage.mockRejectedValueOnce(error);
+
+        try {
+            const failedSelection = binding.selectRecipe('cycleForward');
+            const nextSelection = binding.selectRecipe('cycleForward');
+            await expect(failedSelection).rejects.toThrow(error);
+            await nextSelection;
+
+            expect(await binding.settings.getSingle('activeRecipeId')).toBe(activeRecipeId);
+            expect(video.playbackRate).toBe(shortcutRecipes[activeRecipeId].settings.playbackRate);
+        } finally {
+            binding.unbind();
+        }
+    });
+
+    it.each([
+        { synced: false, hasSubtitles: false },
+        { synced: true, hasSubtitles: false },
+        { synced: true, hasSubtitles: true },
+    ])('shows recipe text with synced $synced and subtitles $hasSubtitles', async ({ synced, hasSubtitles }) => {
+        await storage.set({
+            recipes: [{ name: 'Reading', playbackModes: [PlayMode.normal], settings: { playbackRate: 1.2 } }],
+            activeRecipeId: null,
+        });
+        const binding = new Binding(createVideo(), bindingOptions(false, false));
+        binding.bind();
+        await flushPlaybackTiming();
+        if (synced) sendSubtitles(binding, hasSubtitles ? [makeSubtitle()] : []);
+        await jest.advanceTimersByTimeAsync(6000);
+        const notification = jest.spyOn(binding.subtitleController, 'notification').mockImplementation(() => {});
+        await storage.set({ activeRecipeId: 0 });
+        const request = {
+            sender: 'asbplayer-extension-to-video',
+            src: binding.registeredVideoSrc,
+            message: { command: 'settings-updated' },
+        };
+        for (const listener of runtimeListeners) listener(request, {}, () => undefined);
+        await flushPlaybackTiming();
+        if (synced && hasSubtitles) expect(notification).toHaveBeenCalledWith({ text: 'recipes.notification' });
+        else expect(notification).not.toHaveBeenCalled();
+        binding.unbind();
     });
 
     it('applies playback modes through real video timing without overwriting the inactive rate', async () => {

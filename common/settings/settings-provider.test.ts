@@ -46,6 +46,10 @@ it('starts at default settings', async () => {
     expect(initialSettings.playbackRateNotificationEnabled).toBe(true);
     expect(initialSettings.rememberPlaybackRate).toBe(false);
     expect(initialSettings.fastForwardPlaybackMinimumSkipIntervalMs).toBe(500);
+    expect(initialSettings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension).toEqual({
+        enabled: false,
+        minimumPercent: 60,
+    });
     expect(initialSettings.repeatCountPreference).toBe(0);
     expect(initialSettings.rememberPlaybackModes).toBe(false);
     expect(initialSettings.lastPlaybackModes).toEqual([PlayMode.normal]);
