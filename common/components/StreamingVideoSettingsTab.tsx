@@ -23,7 +23,6 @@ import type { PageConfigMap } from '@project/common/components/SettingsForm';
 import { useState } from 'react';
 import PageSettingsForm from '@project/common/components/PageSettingsForm';
 import SettingsSection from '@project/common/components/SettingsSection';
-import type { GlobalStateProvider } from '@project/common/global-state';
 
 const pageSettingsHasModifications = (page: Page) => {
     return (
@@ -47,8 +46,6 @@ interface Props {
     extensionSupportsPageSettings?: boolean;
     extensionSupportsAnimatedImageCapture?: boolean;
     pageConfigs?: PageConfigMap;
-    globalStateProvider?: GlobalStateProvider;
-    onExternalConnectionsChanged?: (listener: () => void) => () => void;
 }
 
 const StreamingVideoSettingsTab: React.FC<Props> = ({

@@ -46,9 +46,16 @@ function log(message: string) {
 }
 
 function setStatus() {
-    statusSpan.textContent = connection === undefined ? 'Not connected' : approval.approved ? 'Approved' : 'Awaiting approval...';
+    statusSpan.textContent =
+        connection === undefined ? 'Not connected' : approval.approved ? 'Approved' : 'Awaiting approval...';
 
-    for (const button of [getBoundMediaButton, mineSubtitleButton, seekButton, loadSubtitlesButton, getSubtitlesButton]) {
+    for (const button of [
+        getBoundMediaButton,
+        mineSubtitleButton,
+        seekButton,
+        loadSubtitlesButton,
+        getSubtitlesButton,
+    ]) {
         button.disabled = connection === undefined;
     }
 }
@@ -136,8 +143,7 @@ function connect() {
         teardown();
     });
 
-    // Greet asbplayer; the response communicates the current approval state, and another
-    // approval frame arrives later if the user approves while this port is open.
+    // Greet asbplayer; the response reflects the current approval state.
     const hello: ExternalHelloMessage = {
         type: 'asbplayer-external-hello',
         name: selfName,
@@ -156,9 +162,8 @@ function startPolling() {
         return;
     }
 
-    // While unapproved, commands receive no response. Retry get-bound-media periodically so that
-    // the pending -> approved transition becomes observable without spamming the log, and stop
-    // as soon as approval arrives (after a single request that verifies dispatch works).
+    // While unapproved, commands receive no response, so retry get-bound-media periodically
+    // until approval arrives.
     polling = setInterval(() => {
         if (connection === undefined || connection.disconnected) {
             stopPolling();
@@ -274,10 +279,12 @@ chrome.storage.local.get('asbplayerExtensionId').then((result) => {
 
     if (id !== undefined && id !== '') {
         extensionIdInput.value = id;
-        // Approval persists on the asbplayer side, so reconnect automatically whenever the
-        // popup opens. (The port itself cannot outlive the popup context.)
+        // Approval persists on the asbplayer side, so reconnect automatically (the port cannot
+        // outlive the popup).
         connect();
     } else {
-        log('Enter the asbplayer extension ID and press Connect. Approve this extension in the streaming video settings of the asbplayer extension popup, options page, or web app.');
+        log(
+            'Enter the asbplayer extension ID and press Connect. Approve this extension from the asbplayer extension popup.'
+        );
     }
 });

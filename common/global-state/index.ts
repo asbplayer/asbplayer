@@ -39,7 +39,6 @@ export interface ApprovedExternalConnection {
 export interface PendingExternalConnection {
     name?: string;
     requestedAt: number;
-    viewedAt?: number;
 }
 
 export interface ExternalConnectionsState {
@@ -83,8 +82,8 @@ export interface GlobalStateProvider {
 }
 
 /**
- * Read-modify-write of the `externalConnections` global state key. Returns without writing when the
- * mutator reports no change, so that storage change listeners are not re-triggered needlessly.
+ * Read-modify-write of the `externalConnections` global state key. Skips the write when the
+ * mutator reports no change.
  */
 export const mutateExternalConnections = async (
     provider: GlobalStateProvider,
@@ -131,20 +130,6 @@ export const removeExternalConnection = async (provider: GlobalStateProvider, ex
         }
 
         delete externalConnections.approved[extensionId];
-        return true;
-    });
-};
-
-export const viewPendingExternalConnection = async (
-    provider: GlobalStateProvider,
-    extensionId: string
-): Promise<void> => {
-    await mutateExternalConnections(provider, (externalConnections) => {
-        if (!(extensionId in externalConnections.pending)) {
-            return false;
-        }
-
-        externalConnections.pending[extensionId].viewedAt = Date.now();
         return true;
     });
 };

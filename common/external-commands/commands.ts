@@ -87,8 +87,7 @@ export interface GetSubtitlesResponseBody {
     subtitles: SubtitleCue[];
 }
 
-// Frames sent over the external connection port before any command is dispatched.
-// Commands themselves reuse the same `{command, messageId, body}` / `{command: 'response', messageId, body}`
+// Frames sent over the external connection port. Commands reuse the same `{command, messageId, body}`
 // wire format as the WebSocket server integration.
 
 export interface ExternalHelloMessage {

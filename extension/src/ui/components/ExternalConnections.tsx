@@ -36,14 +36,6 @@ const ExternalConnections: React.FC = () => {
         },
         [removeExternalConnection]
     );
-
-    // const handleAcknowledge = useCallback(async () => {
-    //     // Sequential mutations - parallel read-modify-write calls on the same key could lose updates.
-    //     for (const [extensionId] of Object.entries(externalConnections?.pending ?? {})) {
-    //         await viewPendingExternalConnection(extensionId);
-    //     }
-    // }, [externalConnections, viewPendingExternalConnection]);
-
     const pending = Object.entries(externalConnections?.pending ?? {});
     const approved = Object.entries(externalConnections?.approved ?? {});
 
@@ -101,13 +93,6 @@ const ExternalConnections: React.FC = () => {
                         ))}
                     </Stack>
                 )}
-                {/*
-                Currently, it's not obvious how to give the user a reasonable way to return to this dialog manually.
-                So, for now removing any way for the user to dismiss the popup without approving or denying.
-
-                <Button fullWidth variant="outlined" color="inherit" sx={{ mt: 2 }} onClick={handleAcknowledge}>
-                    {pending.length > 0 ? t('action.close') : t('action.ok')}
-                </Button> */}
             </Box>
         </Paper>
     );

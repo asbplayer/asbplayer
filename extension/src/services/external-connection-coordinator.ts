@@ -7,8 +7,8 @@ import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
 
-// Pending connection requests are dropped after this long and at most this many are retained,
-// so that unapproved requests cannot accumulate indefinitely in global state.
+// Pending requests expire after this long, and at most this many are retained, so that
+// unapproved requests cannot accumulate indefinitely.
 const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
 const maxPendingRequests = 10;
 
@@ -19,17 +19,15 @@ const badgeReason = 'externalConnections';
 /**
  * Manages external browser extensions connecting over `browser.runtime.onConnectExternal`.
  *
- * Approval is keyed on the connecting extension's runtime ID and persisted in global state
- * (`externalConnections`). Any surface (popup, options page, or the asbplayer app) manages
- * approvals by writing global state; this coordinator only reacts to those writes.
+ * Approval is keyed on the connecting extension's runtime ID and persisted in the
+ * `externalConnections` global state key. Surfaces (popup, options page, or the asbplayer app)
+ * manage approvals by writing global state; this coordinator only reacts to those writes.
  *
  * The port protocol is the external command wire format shared with the WebSocket server
- * integration: raw `ExternalCommand` frames are dispatched and answered with
- * `{command: 'response', messageId, body}` frames. Additionally:
- * - `{type: 'asbplayer-external-hello', name?, version?}` is sent by the external extension on
- *   connect and answered with an approval frame reflecting the current approval state.
- * - `{type: 'asbplayer-external-approval', approved}` is also posted whenever the approval
- *   state changes while the port is open.
+ * integration, plus:
+ * - `{type: 'asbplayer-external-hello', name?, version?}` sent by the external extension on connect
+ * - `{type: 'asbplayer-external-approval', approved}` sent whenever the approval state changes
+ *
  * Frames from unapproved extensions are dropped, not queued. Pending requests are recorded on
  * hello so the user can be alerted via badges.
  */
@@ -39,6 +37,9 @@ export class ExternalConnectionCoordinator {
     private readonly _badgeController: ExtensionBadgeController;
     private readonly _dispatcher: ExternalCommandDispatcher;
     private readonly _ports = new Map<string, Set<Browser.runtime.Port>>();
+    // onUpdated carries no oldValue, so track approved IDs across updates to detect
+    // additions/revocations.
+    private _lastApprovedIds?: Set<string>;
 
     constructor({
         globalStateProvider,
@@ -64,16 +65,14 @@ export class ExternalConnectionCoordinator {
         }
 
         browser.runtime.onConnectExternal.addListener((port) => this._onConnectExternal(port));
-        browser.storage.local.onChanged.addListener((changes) => {
-            const change = changes['externalConnections'];
-
-            if (change !== undefined) {
-                void this._onExternalConnectionsChanged(
-                    change.oldValue as ExternalConnectionsState | undefined,
-                    change.newValue as ExternalConnectionsState | undefined
-                );
+        this._globalStateProvider.onUpdated((state) => {
+            if (state.externalConnections !== undefined) {
+                void this._onExternalConnectionsUpdated(state.externalConnections);
             }
         });
+        void this._globalStateProvider
+            .get(['externalConnections'])
+            .then((state) => this._seedLastApprovedIds(state.externalConnections));
     }
 
     /** Recomputes this feature's badge contributions from global state. */
@@ -83,12 +82,10 @@ export class ExternalConnectionCoordinator {
             this._tabRegistry.activeVideoElements(),
         ]);
 
-        const unviewedPendingCount = Object.values(externalConnections?.pending ?? []).filter(
-            (p) => p.viewedAt === undefined
-        ).length;
-        this._badgeController.setGlobalAlert(badgeReason, unviewedPendingCount > 0);
+        const pendingCount = Object.values(externalConnections?.pending ?? []).length;
+        this._badgeController.setGlobalAlert(badgeReason, pendingCount > 0);
         this._badgeController.setTabAlerts(
-            unviewedPendingCount > 0 ? videoElements.map((videoElement) => videoElement.id) : []
+            pendingCount > 0 ? videoElements.map((videoElement) => videoElement.id) : []
         );
     }
 
@@ -186,12 +183,15 @@ export class ExternalConnectionCoordinator {
         }
     }
 
-    private async _onExternalConnectionsChanged(
-        oldValue: ExternalConnectionsState | undefined,
-        newValue: ExternalConnectionsState | undefined
-    ) {
-        const oldApproved = new Set(Object.keys(oldValue?.approved ?? {}));
-        const newApproved = new Set(Object.keys(newValue?.approved ?? {}));
+    private async _onExternalConnectionsUpdated(externalConnections: ExternalConnectionsState) {
+        const newApproved = new Set(Object.keys(externalConnections.approved ?? {}));
+
+        if (this._lastApprovedIds === undefined) {
+            // The baseline fetch has not resolved yet.
+            this._lastApprovedIds = new Set();
+        }
+
+        const oldApproved = this._lastApprovedIds;
 
         for (const extensionId of newApproved) {
             if (!oldApproved.has(extensionId)) {
@@ -205,7 +205,21 @@ export class ExternalConnectionCoordinator {
             }
         }
 
+        this._lastApprovedIds = newApproved;
+
         // Prune expired/capped pending requests left behind by other writers of global state.
+        if (this._pendingRequestsNeedPrune(externalConnections.pending, Date.now())) {
+            await this._prunePendingRequests();
+        }
+
+        await this.updateBadge();
+    }
+
+    private _pendingRequestsNeedPrune(pending: ExternalConnectionsState['pending'], now: number): boolean {
+        return Object.keys(this._prunePending(pending, now)).length < Object.keys(pending).length;
+    }
+
+    private async _prunePendingRequests(): Promise<void> {
         await this._mutateExternalConnections((externalConnections) => {
             const pruned = this._prunePending(externalConnections.pending, Date.now());
 
@@ -216,7 +230,15 @@ export class ExternalConnectionCoordinator {
             externalConnections.pending = pruned;
             return true;
         });
-        await this.updateBadge();
+    }
+
+    private _seedLastApprovedIds(externalConnections: ExternalConnectionsState) {
+        if (this._lastApprovedIds !== undefined) {
+            // An update already initialized the baseline from newer state.
+            return;
+        }
+
+        this._lastApprovedIds = new Set(Object.keys(externalConnections.approved ?? {}));
     }
 
     private _prunePending(
@@ -268,9 +290,7 @@ export class ExternalConnectionCoordinator {
         try {
             port.postMessage(message);
         } catch {
-            // The port may disconnect concurrently, e.g. when the external extension closes it. Posting
-            // to a disconnected port throws, which is expected teardown rather than an error
-            // worth logging.
+            // The port may disconnect concurrently while posting; expected teardown, not an error.
         }
     }
 }

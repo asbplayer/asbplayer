@@ -179,14 +179,13 @@ const Popup = ({
         return null;
     }
 
-    const hasUnviewedPendingExternalConnection =
-        externalConnections !== undefined &&
-        Object.values(externalConnections.pending).some((p) => p.viewedAt === undefined);
+    const hasPendingExternalConnection =
+        externalConnections !== undefined && Object.values(externalConnections.pending).length > 0;
 
     return (
         <>
-            {hasUnviewedPendingExternalConnection && <ExternalConnections />}
-            {!hasUnviewedPendingExternalConnection && (
+            {hasPendingExternalConnection && <ExternalConnections />}
+            {!hasPendingExternalConnection && (
                 <Paper>
                     <Stack direction="column" spacing={1.5} sx={{ padding: theme.spacing(1.5) }}>
                         <ButtonGroup
@@ -269,7 +268,7 @@ const Popup = ({
                                     extensionSupportsSubtitleTrackSelectorInWebApp
                                     extensionSupportsSubtitleListCustomization
                                     extensionSupportsUpdateLastWithSameSubtitleText
-                                    extensionSupportsAnimatedImageCapture
+                                    extensionSupportsAnimatedImageCapture={!isFirefoxBuild}
                                     forceVerticalTabs={false}
                                     anki={anki}
                                     chromeKeyBinds={chromeCommandBindsToKeyBinds(commands)}
