@@ -52,6 +52,7 @@ import type { Point } from '@project/common/app/components/Controls';
 import Grid from '@mui/material/Grid';
 import MediaAdapter from '@project/common/app/services/media-adapter';
 import SubtitlePlayer, { minSubtitlePlayerWidth } from '@project/common/app/components/SubtitlePlayer';
+import type { SubtitlePlayerHandle } from '@project/common/app/components/SubtitlePlayer';
 import VideoChannel from '@project/common/app/services/video-channel';
 import type ChromeExtension from '@project/common/app/services/chrome-extension';
 import type PlaybackPreferenceController from '@project/common/playback/controllers/playback-preference-controller';
@@ -263,6 +264,7 @@ function PlayerComponent(
     playModesRef.current = playModes;
     const [subtitlesSentThroughChannel, setSubtitlesSentThroughChannel] = useState<boolean>();
     const subtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
+    const annotationSubtitlesRef = useRef<DisplaySubtitleModel[]>(undefined);
     subtitlesRef.current = subtitles;
     const [subtitleCollection, setSubtitleCollection] = useState<
         SubtitleAnnotations | SubtitleCollection<DisplaySubtitleModel>
@@ -319,6 +321,7 @@ function PlayerComponent(
     const clockRef = useRef<Clock>(clock);
     clockRef.current = clock;
     const syntheticPlaybackEngineRef = useRef<PlaybackEngine<DisplaySubtitleModel>>(undefined);
+    const subtitlePlayerRef = useRef<SubtitlePlayerHandle>(null);
     const profileRef = useRef(profile);
     const applyOffsetRef = useRef<(offset: number, forwardToVideo: boolean) => void>(undefined);
     const [pendingPlaybackPosition, setPendingPlaybackPosition] = useState<number>();
@@ -523,6 +526,8 @@ function PlayerComponent(
                 },
             }),
             callbacks: {
+                selectToken: (target, options) => subtitlePlayerRef.current?.selectPauseToken(target, options) ?? false,
+                clearAutoPauseTokenSelection: () => subtitlePlayerRef.current?.clearPauseTokenSelection(),
                 pause: () => clock.stop(),
                 play: async () => {
                     clock.start();
@@ -607,10 +612,12 @@ function PlayerComponent(
         syntheticPlaybackEngineRef.current = playbackEngine;
         asbTrace('playback/player', 'Binding synthetic playback owner');
         playbackEngine.bind();
+        const clearPauseTokenSelection = subtitlePlayerRef.current?.clearPauseTokenSelection;
 
         return () => {
             asbTrace('playback/player', 'Unbinding synthetic playback owner');
             playbackEngine.unbind();
+            clearPauseTokenSelection?.();
             if (syntheticPlaybackEngineRef.current === playbackEngine) {
                 syntheticPlaybackEngineRef.current = undefined;
             }
@@ -645,7 +652,9 @@ function PlayerComponent(
 
     useEffect(() => {
         if (!syntheticPlayback) return;
-        syntheticPlaybackEngineRef.current?.subtitlesChanged(subtitles);
+        syntheticPlaybackEngineRef.current?.subtitlesChanged(subtitles, {
+            timingChanged: subtitles !== annotationSubtitlesRef.current,
+        });
     }, [subtitles, syntheticPlayback]);
 
     useEffect(() => {
@@ -836,6 +845,7 @@ function PlayerComponent(
                             tokenization: s.tokenization,
                         };
                     }
+                    annotationSubtitlesRef.current = allSubtitles;
                     return allSubtitles;
                 });
             },
@@ -886,6 +896,7 @@ function PlayerComponent(
                         };
                     }
                 }
+                annotationSubtitlesRef.current = allSubtitles;
                 return allSubtitles;
             });
         });
@@ -1700,6 +1711,7 @@ function PlayerComponent(
                     )}
                     <SubtitlePlayer
                         onSettingsChanged={onSettingsChanged}
+                        ref={subtitlePlayerRef}
                         subtitles={subtitles}
                         subtitleCollection={subtitleCollection}
                         playbackState={playbackState}

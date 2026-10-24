@@ -13,7 +13,7 @@ import {
 } from '@project/common/settings';
 import { subtitleWordVisibility, matchingPlaybackTokens } from '@project/common/playback/plan/playback-dictionary';
 import { sentenceComprehensionPercent } from '@project/common/dictionary-statistics/dictionary-statistics-view';
-import { buildPlaybackPlan } from '@project/common/playback/plan/playback-plan';
+import { buildPlaybackPlan, playbackPlansEqual } from '@project/common/playback/plan/playback-plan';
 import { makePlaybackPlanInput, makeSubtitle } from '@project/common/playback/playback-test-utils';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import PlaybackPlanExecutor from '@project/common/playback/plan/playback-plan-executor';
@@ -322,7 +322,52 @@ describe('compiled dictionary playback', () => {
         expect(plan.timelineSubtitles.hiddenSubtitleIndexes).toEqual([excluded.index]);
     });
 
-    it('limits auto-pause and repeat to matching subtitles and selects the first matching token', () => {
+    it.each([PlayMode.normal, PlayMode.autoPause])(
+        'compiles pause selection independently of resume policy in mode %s',
+        (mode) => {
+            const playback = config();
+            playback.selectOnPause.onStatuses[TokenStatus.MATURE].enabled = true;
+            playback.autoPause.onStatuses[TokenStatus.UNKNOWN].enabled = true;
+            const sentence = subtitle('one two', [token(0, 3, TokenStatus.MATURE), token(4, 7, TokenStatus.UNKNOWN)]);
+            const plan = buildPlaybackPlan(
+                makePlaybackPlanInput([sentence], {
+                    playModes: new Set([mode]),
+                    dictionaryTracks: tracksWith(playback),
+                })
+            );
+            expect(plan.tokenSelection.onPause).toEqual(new Map([[0, 0]]));
+            expect(plan.tokenSelection.onAutoPause).toEqual(
+                mode === PlayMode.autoPause ? new Map([[0, 4]]) : undefined
+            );
+        }
+    );
+
+    it('distinguishes an empty automatic selection override from an absent override when comparing plans', () => {
+        const playback = config();
+        const sentence = subtitle('known', [token(0, 5, TokenStatus.MATURE)]);
+        const build = () =>
+            buildPlaybackPlan(
+                makePlaybackPlanInput([sentence], {
+                    playModes: new Set([PlayMode.autoPause]),
+                    dictionaryTracks: tracksWith(playback),
+                })
+            );
+        const withoutOverride = build();
+        expect(playbackPlansEqual(withoutOverride, build())).toBe(true);
+        playback.autoPause.onStatuses[TokenStatus.UNKNOWN].enabled = true;
+        const withOverride = build();
+        expect(withOverride.tokenSelection.onAutoPause).toEqual(new Map());
+        // Selection ownership alone must make the plan different.
+        expect(
+            playbackPlansEqual(withOverride, {
+                ...withOverride,
+                tokenSelection: withoutOverride.tokenSelection,
+            })
+        ).toBe(false);
+        expect(playbackPlansEqual(withOverride, build())).toBe(true);
+    });
+
+    it('limits auto-pause and repeat to matching subtitles', () => {
         const playback = config();
         playback.autoPause.onStatuses[TokenStatus.UNKNOWN].enabled = true;
         playback.repeat.onStatuses[TokenStatus.UNKNOWN].enabled = true;
@@ -343,7 +388,6 @@ describe('compiled dictionary playback', () => {
             expect.objectContaining({
                 id: 'autoPause:[0]',
                 startAction: true,
-                autoPauseToken: { subtitleIndex: 0, tokenStart: 4 },
                 endAction: { pause: true },
             }),
             expect.objectContaining({
@@ -392,9 +436,9 @@ describe('compiled dictionary playback', () => {
         const executor = new PlaybackPlanExecutor(plan, 1500, {
             play: async () => {},
             paused: () => false,
-            pause: ({ timestampMs, autoPauseToken, playbackModeSubtitlesAtPause }) => {
+            pause: ({ timestampMs, playbackModeSubtitlesAtPause }) => {
                 expect(playbackModeSubtitlesAtPause).toEqual([inner]);
-                pauses.push({ timestampMs, subtitleIndex: autoPauseToken?.subtitleIndex });
+                pauses.push({ timestampMs, subtitleIndex: playbackModeSubtitlesAtPause[0]?.index });
             },
             seek: async (timestampMs) => {
                 seeks.push(timestampMs);

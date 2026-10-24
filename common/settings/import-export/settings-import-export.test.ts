@@ -142,6 +142,9 @@ it('requires current playback fields when a dictionary playback config is presen
     expect(() => validateSettings(legacy)).not.toThrow();
 
     const missingFields = [
+        (config: any) => delete config.selectOnPause,
+        (config: any) => delete config.selectOnPause.onStatuses,
+        (config: any) => delete config.selectOnPause.onStates,
         (config: any) => delete config.autoPause.onStatuses,
         (config: any) => delete config.autoPause.onStatuses[0].enabled,
         (config: any) => delete config.repeat.onStates[0].enabled,
@@ -176,6 +179,25 @@ it('accepts only whole-number minimum comprehension percentages from zero throug
         settings.dictionaryTracks[0].dictionaryPlaybackConfig.fastForward.rateByComprehension.minimumPercent =
             minimumPercent;
         expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+    }
+});
+
+it('validates and round trips pause-selection playback triggers without rules', () => {
+    const settings = JSON.parse(JSON.stringify(defaultSettings));
+    const config = settings.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause;
+    config.onStatuses[1].enabled = true;
+    config.onStates[0].enabled = true;
+    const imported = validateSettings(settingsForExport(settings));
+    expect(imported.dictionaryTracks![0].dictionaryPlaybackConfig.selectOnPause).toEqual(config);
+    expect(config).not.toHaveProperty('rules');
+    for (const trigger of [config.onStatuses[1], config.onStates[0]]) {
+        for (const invalid of ['true', 1, null]) {
+            trigger.enabled = invalid;
+            expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+        }
+        delete trigger.enabled;
+        expect(() => validateSettings(settings)).toThrow('Settings validation failed');
+        trigger.enabled = true;
     }
 });
 

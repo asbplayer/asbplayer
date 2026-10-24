@@ -133,6 +133,28 @@ const dictionaryTrackSchema = {
         dictionaryPlaybackConfig: {
             type: 'object',
             properties: {
+                selectOnPause: {
+                    type: 'object',
+                    properties: {
+                        onStatuses: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: { enabled: { type: 'boolean' } },
+                                required: ['enabled'],
+                            },
+                        },
+                        onStates: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: { enabled: { type: 'boolean' } },
+                                required: ['enabled'],
+                            },
+                        },
+                    },
+                    required: ['onStatuses', 'onStates'],
+                },
                 autoPause: {
                     type: 'object',
                     properties: {
@@ -314,7 +336,7 @@ const dictionaryTrackSchema = {
                     ],
                 },
             },
-            required: ['autoPause', 'repeat', 'condensed', 'fastForward', 'wordVisibility'],
+            required: ['selectOnPause', 'autoPause', 'repeat', 'condensed', 'fastForward', 'wordVisibility'],
         },
         dictionaryTokenAnnotationConfig: {
             type: 'object',

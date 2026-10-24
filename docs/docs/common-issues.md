@@ -86,6 +86,7 @@ Annotation is considered disabled if the following settings are set to these val
 - In [`Settings > Annotation`](./reference/settings.md#annotation):
   - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
   - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
+  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): _Nothing selected_ (empty value)
   - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
   - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
   - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)

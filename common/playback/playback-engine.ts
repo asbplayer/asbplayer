@@ -19,7 +19,6 @@ import type { AsbplayerSettings, SettingsProvider } from '@project/common/settin
 
 import { PlayMode } from '@project/common';
 import type { IndexedSubtitleModel, PlaybackState } from '@project/common';
-import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 
 import { asbError, asbTrace, asbWarn } from '@project/common/util/log';
 
@@ -40,6 +39,8 @@ import type {
 
 import PlaybackPositionController from '@project/common/playback/controllers/playback-position-controller';
 import PlaybackStateController from '@project/common/playback/controllers/playback-state-controller';
+import TokenSelectionController from '@project/common/playback/controllers/token-selection-controller';
+import type { TokenSelectionControllerCallbacks } from '@project/common/playback/controllers/token-selection-controller';
 
 import type { TimingDriver } from '@project/common/playback/timing/timing-driver';
 import { CachedLocalStorage } from '@project/common/app/services/cached-local-storage';
@@ -122,8 +123,8 @@ type PlaybackRateSetting = 'playbackRate' | 'fastForwardModePlaybackRate';
 
 export interface PlaybackEngineCallbacks {
     readonly pause: () => void;
-    readonly selectToken?: (target: Readonly<TokenSelectionLocation>) => boolean;
-    readonly clearAutoPauseTokenSelection?: () => void;
+    readonly selectToken: TokenSelectionControllerCallbacks['selectToken'];
+    readonly clearAutoPauseTokenSelection: () => void;
     readonly play: () => Promise<void>;
     readonly seek: (timestampMs: number) => Promise<void>;
     readonly setPlaybackRate: (playbackRate: number) => void;
@@ -171,6 +172,7 @@ export interface PlaybackEngineOptions<T extends IndexedSubtitleModel> {
  *     ├── PlaybackPositionController
  *     ├── AutoPauseController
  *     ├── SubtitleVisibilityController
+ *     ├── TokenSelectionController
  *     ├── PlaybackPlan
  *     └── PlaybackPlanExecutor
  *         ├── PlaybackTimeline
@@ -199,8 +201,8 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private readonly autoPauseController: AutoPauseController;
     private readonly subtitleVisibilityController: SubtitleVisibilityController;
     private readonly playbackStateController: PlaybackStateController<T>;
+    private readonly tokenSelectionController: TokenSelectionController;
     private autoPauseTimestampMs?: number;
-    private autoPauseSelectionOperationId = 0;
     private readonly settingsProvider: SettingsProvider;
     private unbindOperationId = 0;
     private settingsChangedOperationId = 0;
@@ -256,6 +258,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             play: callbacks.play,
             resumeDelayStarted: () => this.subtitleVisibilityController.autoPauseResumeDelayStarted(),
             autoResumeFailed: () => {
+                this.tokenSelectionController.cancel();
                 const snapshotCleared = this.clearAutoPauseTimestamp();
                 asbTrace('playback/auto-pause', 'Automatic playback resume failed', {
                     snapshotCleared,
@@ -279,58 +282,12 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         const executorCallbacks: PlaybackPlanExecutorCallbacks<T> = {
             play: callbacks.play,
             paused: () => this.timingDriver.paused(),
-            pause: ({ timestampMs, playbackModeSubtitlesAtPause, autoPauseToken }) => {
-                const selectionOperationId = ++this.autoPauseSelectionOperationId;
+            pause: ({ timestampMs, playbackModeSubtitlesAtPause }) => {
                 this.autoPauseTimestampMs = timestampMs;
                 this.autoPauseController.autoPaused(playbackModeSubtitlesAtPause);
                 this.subtitleVisibilityController.autoPaused();
                 callbacks.pause();
-                if (autoPauseToken && callbacks.selectToken && this.subtitleVisibilityController.subtitlesVisible) {
-                    const unbindOperationId = this.unbindOperationId;
-                    let attempts = 0;
-                    const selectWhenRendered = ({ remainingAttempts }: { readonly remainingAttempts: number }) => {
-                        if (
-                            this.unbindOperationId !== unbindOperationId ||
-                            this.autoPauseSelectionOperationId !== selectionOperationId ||
-                            !this.timingDriver.paused()
-                        ) {
-                            asbTrace('playback/auto-pause', 'Automatic token selection finished', {
-                                ...autoPauseToken,
-                                attempts,
-                                outcome: 'cancelled',
-                                reason:
-                                    this.unbindOperationId !== unbindOperationId
-                                        ? 'teardown'
-                                        : this.autoPauseSelectionOperationId !== selectionOperationId
-                                          ? 'superseded'
-                                          : 'playback-resumed',
-                                timestampMs,
-                            });
-                            return;
-                        }
-                        attempts++;
-                        const selected = callbacks.selectToken?.(autoPauseToken) === true;
-                        if (selected || remainingAttempts === 0) {
-                            asbTrace('playback/auto-pause', 'Automatic token selection finished', {
-                                ...autoPauseToken,
-                                attempts,
-                                outcome: selected ? 'selected' : 'exhausted',
-                                timestampMs,
-                            });
-                            return;
-                        }
-                        setTimeout(() => selectWhenRendered({ remainingAttempts: remainingAttempts - 1 }), 16);
-                    };
-                    setTimeout(() => selectWhenRendered({ remainingAttempts: 12 }), 0);
-                } else if (autoPauseToken) {
-                    asbTrace('playback/auto-pause', 'Automatic token selection finished', {
-                        ...autoPauseToken,
-                        attempts: 0,
-                        outcome: 'skipped',
-                        reason: callbacks.selectToken ? 'subtitles-hidden' : 'selection-unavailable',
-                        timestampMs,
-                    });
-                }
+                this.tokenSelectionController.autoPaused(timestampMs);
                 void this.playbackPositionController.savePlaybackPosition(this.timingDriver.currentTimeMs());
             },
             seek: (targetTimestampMs) => this.seek(targetTimestampMs),
@@ -360,6 +317,15 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             },
         };
         this.executor = new PlaybackPlanExecutor(this.plan, this.timingDriver.currentTimeMs(), executorCallbacks);
+        this.tokenSelectionController = new TokenSelectionController(this.plan.tokenSelection, {
+            paused: () => this.timingDriver.paused(),
+            automaticallyPaused: () => this.autoPauseController.automaticallyPaused,
+            subtitlesVisible: () => this.subtitleVisibilityController.subtitlesVisible,
+            showingSubtitlesAt: (timestampMs) => this.executor.showingSubtitlesAt(timestampMs),
+            hideSubtitlesForRepeatAt: (timestampMs) => this.executor.hideSubtitlesForRepeatAt(timestampMs),
+            selectToken: callbacks.selectToken,
+            clearPauseTokenSelection: callbacks.clearAutoPauseTokenSelection,
+        });
         this.playbackPositionController = new PlaybackPositionController({
             playbackPositionKeys,
             currentTimeMs: () => this.timingDriver.currentTimeMs(),
@@ -424,6 +390,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     },
                     { force: true }
                 );
+                this.tokenSelectionController.playbackPaused(timestampMs);
             },
             onSeekStarted: (cause) => this.seekStartedWithCause(cause),
             onDiscontinuity: (currentTimestampMs) => {
@@ -434,11 +401,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                         cause,
                         timestampMs: currentTimestampMs,
                     });
+                    this.tokenSelectionController.seekStarted();
                     this.clearAutoPauseTimestamp();
                     this.autoPauseController.userSeeked();
                     this.subtitleVisibilityController.userSeeked({ paused: this.timingDriver.paused() });
                 }
                 this.playbackStateController.notify(currentTimestampMs, { force: true });
+                if (cause !== 'internal-seek') this.tokenSelectionController.seeked(currentTimestampMs);
             },
             onCancel: (options) => this.executor.cancelPendingOperations(options),
             onPlaybackStarted: async () => {
@@ -447,8 +416,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
                     timestampMs: this.timingDriver.currentTimeMs(),
                 });
                 this.clearAutoPauseTimestamp();
-                this.autoPauseSelectionOperationId++;
-                callbacks.clearAutoPauseTokenSelection?.();
+                this.tokenSelectionController.playbackStarted();
                 this.autoPauseController.playbackStarted();
                 this.subtitleVisibilityController.playbackStarted();
                 await this.executor.playbackStarted();
@@ -639,6 +607,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             wasBound,
         });
         ++this.unbindOperationId;
+        this.tokenSelectionController.cancel('teardown');
         this.clearAutoPauseTimestamp();
         this.autoPauseController.cancel();
         this.subtitleVisibilityController.cancel();
@@ -675,6 +644,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     }
 
     settingsChanged(settings: AsbplayerSettings): void {
+        this.tokenSelectionController.cancel();
         ++this.settingsChangedOperationId;
         if (!this.ready.settings) {
             asbTrace('playback/settings', 'Deferring playback settings update until initialization completes', {
@@ -750,6 +720,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         subtitles: readonly T[],
         { timingChanged = true }: { readonly timingChanged?: boolean } = {}
     ): void {
+        this.tokenSelectionController.cancel();
         const previousSubtitleCount = this.subtitles.length;
         const hadSubtitles = this.ready.subtitles;
         const snapshotCleared = timingChanged && this.clearAutoPauseTimestamp();
@@ -767,6 +738,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.bind();
             if (hadSubtitles) {
                 const planChanged = this.rebuildPlan();
+                if (planChanged && !timingChanged) this.reevaluatePausedSelection();
                 if (!planChanged && snapshotCleared && this.timingDriver.bound) {
                     this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: false });
                 }
@@ -779,6 +751,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             }); // Reset to normal while subtitles are unavailable
             this.unbind();
         }
+    }
+
+    private reevaluatePausedSelection(): void {
+        if (!this.timingDriver.bound) return;
+        this.tokenSelectionController.reevaluatePausedSelection(
+            this.autoPauseTimestampMs ?? this.timingDriver.currentTimeMs()
+        );
     }
 
     private recipePlaybackModes(): Set<PlayMode> {
@@ -1050,11 +1029,13 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
         }
         const { cause } = this.executor.handleDiscontinuity(timestampMs);
         if (cause !== 'internal-seek') {
+            this.tokenSelectionController.seekStarted();
             this.clearAutoPauseTimestamp();
             this.autoPauseController.userSeeked();
             this.subtitleVisibilityController.userSeeked({ paused: this.timingDriver.paused() });
         }
         this.playbackStateController.notify(timestampMs, { force: true });
+        if (cause !== 'internal-seek') this.tokenSelectionController.seeked(timestampMs);
     }
 
     /** Reports that a seek operation has started from a non-standard media adapter, such as Disney+'s page-script seek event. */
@@ -1071,6 +1052,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
 
     private seekStartedWithCause(cause: PlaybackTimelineTransitionCause): void {
         if (cause === 'internal-seek') return;
+        this.tokenSelectionController.seekStarted();
         const snapshotCleared = this.clearAutoPauseTimestamp();
         this.autoPauseController.userSeeked();
         this.subtitleVisibilityController.userSeeked({ paused: this.timingDriver.paused() });
@@ -1157,6 +1139,7 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
             this.executor.replacePlan(this.plan, this.timingDriver.currentTimeMs(), {
                 forcePlaybackRate: options.initializePlaybackRate,
             });
+            this.tokenSelectionController.replacePlan(this.plan.tokenSelection);
             if (this.timingDriver.bound) {
                 this.playbackStateController.notify(this.timingDriver.currentTimeMs(), { force: true });
             }
@@ -1169,7 +1152,6 @@ export default class PlaybackEngine<T extends IndexedSubtitleModel> {
     private clearAutoPauseTimestamp(): boolean {
         if (this.autoPauseTimestampMs === undefined) return false;
         this.autoPauseTimestampMs = undefined;
-        this.autoPauseSelectionOperationId++;
         return true;
     }
 

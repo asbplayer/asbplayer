@@ -243,6 +243,9 @@ describe('SubtitleController appearance rendering', () => {
         expect(document.getSelection()?.toString()).toBe('word');
         expect(document.activeElement).toBe(focusedElement);
 
+        expect(
+            controller.selectToken({ subtitleIndex: 0, tokenStart: 0 }, { autoPause: true, onlyIfUnselected: true })
+        ).toBe(true);
         controller.clearAutoPauseTokenSelection();
         expect(controller.currentTokenSelectionLocation()).toEqual(
             autoPause ? undefined : { subtitleIndex: 0, tokenStart: 0 }

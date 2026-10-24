@@ -122,6 +122,7 @@ export class HoveredToken {
 
 export interface SelectTokenInRootOptions {
     autoPause?: boolean;
+    onlyIfUnselected?: boolean;
     focusContainer?: boolean;
     scrollIntoView?: boolean;
     selectText?: boolean;
@@ -230,11 +231,13 @@ export const selectTokenInRoot = (
     target: TokenSelectionLocation,
     {
         autoPause = false,
+        onlyIfUnselected = false,
         focusContainer = true,
         scrollIntoView = true,
         selectText = true,
     }: SelectTokenInRootOptions = {}
 ) => {
+    if (onlyIfUnselected && restorableTokenSelectionInRoot(root)) return true; // Treat an existing selection as fulfilled so delayed pause selection stops retrying.
     const selector =
         `[${ASB_SUBTITLE_INDEX_ATTRIBUTE}="${target.subtitleIndex}"] ` +
         `[${ASB_TOKEN_START_ATTRIBUTE}="${target.tokenStart}"]`;

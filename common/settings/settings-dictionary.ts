@@ -229,6 +229,7 @@ export interface DictionaryPlaybackWordVisibilityConfig extends DictionaryPlayba
 }
 
 export interface DictionaryPlaybackConfig {
+    selectOnPause: Pick<DictionaryPlaybackFeatureConfig, 'onStatuses' | 'onStates'>;
     autoPause: DictionaryPlaybackFeatureConfig;
     condensed: DictionaryPlaybackFeatureConfig;
     fastForward: DictionaryPlaybackFastForwardConfig;
@@ -236,19 +237,19 @@ export interface DictionaryPlaybackConfig {
     wordVisibility: DictionaryPlaybackWordVisibilityConfig;
 }
 
-export type DictionaryPlaybackFeature = keyof DictionaryPlaybackConfig;
-
-export const dictionaryPlaybackFeatures: readonly DictionaryPlaybackFeature[] = [
+export const dictionaryPlaybackFeatures = [
     'autoPause',
     'repeat',
     'condensed',
     'fastForward',
     'wordVisibility',
-];
+] as const;
+
+export type DictionaryPlaybackFeature = (typeof dictionaryPlaybackFeatures)[number];
 
 export const dictionaryPlaybackFeatureEnabled = (
     config: DictionaryPlaybackConfig,
-    feature: DictionaryPlaybackFeature
+    feature: keyof DictionaryPlaybackConfig
 ) =>
     config[feature].onStatuses.some((status) => status.enabled) ||
     config[feature].onStates.some((state) => state.enabled);
@@ -314,6 +315,9 @@ function areDictionaryPlaybackWordVisibilityConfigsEqual(
 }
 
 const dictionaryPlaybackConfigComparators: FieldComparators<DictionaryPlaybackConfig> = {
+    selectOnPause: (a, b) =>
+        arrayEquals(a.onStatuses, b.onStatuses, areDictionaryPlaybackTriggersEqual) &&
+        arrayEquals(a.onStates, b.onStates, areDictionaryPlaybackTriggersEqual),
     autoPause: areDictionaryPlaybackFeatureConfigsEqual,
     condensed: areDictionaryPlaybackFeatureConfigsEqual,
     fastForward: areDictionaryPlaybackFastForwardConfigsEqual,
@@ -496,6 +500,7 @@ export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
         dictionaryPlaybackFeatures.some((feature) =>
             dictionaryPlaybackFeatureEnabled(dt.dictionaryPlaybackConfig, feature)
         ) ||
+        dictionaryPlaybackFeatureEnabled(dt.dictionaryPlaybackConfig, 'selectOnPause') ||
         dt.dictionaryPlaybackConfig.fastForward.rateByComprehension.enabled ||
         dt.dictionaryTokenAnnotationConfig.colorizeEnabled ||
         dt.dictionaryTokenAnnotationConfig.onStatuses.some((s) => Object.values(s).some((v) => v)) ||
@@ -507,7 +512,7 @@ export function dictionaryTrackEnabled(dt: DictionaryTrack): boolean {
 export function dictionaryStatusCollectionEnabled(dt: DictionaryTrack, options: { includeStates: boolean }): boolean {
     const { includeStates } = options;
     if (dt.dictionaryPlaybackConfig.fastForward.rateByComprehension.enabled) return true;
-    for (const feature of dictionaryPlaybackFeatures) {
+    for (const feature of [...dictionaryPlaybackFeatures, 'selectOnPause'] as const) {
         const { onStatuses, onStates } = dt.dictionaryPlaybackConfig[feature];
         if (onStatuses.some((status) => status.enabled)) return true;
         if (includeStates && onStates.some((state) => state.enabled)) return true;
@@ -706,7 +711,7 @@ export function areDictionaryTracksRenderOnly(
     return fieldsEqual(dt1, dt2, dictionaryTrackComparators, dictionaryTrackRenderOnlyComparators);
 }
 
-function makeDefaultDictionaryTokenAnnotationConfigs() {
+function makeDefaultDictionaryTokenAnnotationConfigs(): DictionaryTrack['dictionaryTokenAnnotationConfig'] {
     return {
         colorizeEnabled: false,
         video: {
@@ -740,12 +745,16 @@ export const NUM_TOKEN_STATUSES = defaultDictionaryTokenAnnotationConfig.onStatu
 export const NUM_TOKEN_STATES = defaultDictionaryTokenAnnotationConfig.onStates.length;
 
 const makeDefaultDictionaryPlaybackConfig = (): DictionaryTrack['dictionaryPlaybackConfig'] => {
-    const feature = () => ({
-        rules: { minWords: 0, maxWords: 0, minFrequency: 0, maxFrequency: 0 },
+    const triggers = () => ({
         onStatuses: Array.from({ length: NUM_TOKEN_STATUSES }, () => ({ enabled: false })),
         onStates: Array.from({ length: NUM_TOKEN_STATES }, () => ({ enabled: false })),
     });
+    const feature = () => ({
+        ...triggers(),
+        rules: { minWords: 0, maxWords: 0, minFrequency: 0, maxFrequency: 0 },
+    });
     return {
+        selectOnPause: triggers(),
         autoPause: feature(),
         condensed: feature(),
         fastForward: { ...feature(), rateByComprehension: { enabled: false, minimumPercent: 60 } },
@@ -848,7 +857,7 @@ export const ensureDictionaryTracksConsistency = ({ dictionaryTracks }: Partial<
 
         // Existing tracks predate playback settings; new statuses and states need a trigger row.
         if (!dt.dictionaryPlaybackConfig) (dt as any).dictionaryPlaybackConfig = makeDefaultDictionaryPlaybackConfig();
-        for (const feature of dictionaryPlaybackFeatures) {
+        for (const feature of [...dictionaryPlaybackFeatures, 'selectOnPause'] as const) {
             const playback = dt.dictionaryPlaybackConfig[feature];
             for (const [triggers, count] of [
                 [playback.onStatuses, NUM_TOKEN_STATUSES],

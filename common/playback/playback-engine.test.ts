@@ -8,7 +8,7 @@ import { AutoPauseResumeMode, defaultSettings, isSaveOnlySettings, SubtitleVisib
 import type { AsbplayerSettings, SettingsProvider } from '@project/common/settings';
 import PlaybackEngine, { formatPlaybackRateNotification } from '@project/common/playback/playback-engine';
 import Clock from '@project/common/playback/timing/clock';
-import type { InitialPlaybackSettings } from '@project/common/playback/playback-engine';
+import type { InitialPlaybackSettings, PlaybackEngineCallbacks } from '@project/common/playback/playback-engine';
 import type {
     InternalSeekCompletion,
     TimingDriver,
@@ -161,7 +161,7 @@ async function makePlaybackEngine(
         paused: boolean;
         notifyPauseSynchronously: boolean;
         pause: () => void;
-        selectToken: (target: { readonly subtitleIndex: number; readonly tokenStart: number }) => boolean;
+        selectToken: PlaybackEngineCallbacks['selectToken'];
         clearAutoPauseTokenSelection: () => void;
         playbackStateChanged: (state: PlaybackState) => void;
         play: () => Promise<void>;
@@ -242,8 +242,8 @@ async function makePlaybackEngine(
         playbackPositionKeys: overrides.playbackPositionKeys ?? [],
         timingDriver: driver,
         callbacks: {
-            selectToken: overrides.selectToken,
-            clearAutoPauseTokenSelection: overrides.clearAutoPauseTokenSelection,
+            selectToken: overrides.selectToken ?? (() => false),
+            clearAutoPauseTokenSelection: overrides.clearAutoPauseTokenSelection ?? (() => {}),
             pause:
                 overrides.pause ??
                 (() => {
@@ -501,7 +501,326 @@ describe('adaptive fast-forward rate changes', () => {
     );
 });
 
-describe('adaptive auto-pause selection', () => {
+describe('pause token selection', () => {
+    it.each([false, true])(
+        'selects late annotations without another playback event (automatic pause: %s)',
+        async (automatic) => {
+            jest.useFakeTimers();
+            const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+            const selected: number[] = [];
+            const harness = await makePlaybackEngine([automatic ? PlayMode.autoPause : PlayMode.normal], {
+                timestampMs: 1500,
+                settings: { dictionaryTracks },
+                autoPauseCorrectionDisabled: true,
+                selectToken: ({ tokenStart }) => {
+                    selected.push(tokenStart);
+                    return true;
+                },
+            });
+            try {
+                if (automatic) await harness.driver.time(2100);
+                else {
+                    harness.driver.isPaused = true;
+                    harness.driver.callbacks.onPlaybackPaused();
+                }
+                jest.advanceTimersByTime(200);
+                expect(selected).toEqual([]);
+
+                harness.playbackEngine.subtitlesChanged(
+                    [{ ...subtitle, tokenization: { tokens: [{ pos: [0, 8], states: [], status: 1, readings: [] }] } }],
+                    { timingChanged: false }
+                );
+                jest.advanceTimersByTime(200);
+                expect(selected).toEqual([0]);
+            } finally {
+                harness.playbackEngine.unbind();
+                jest.useRealTimers();
+            }
+        }
+    );
+
+    it.each(['none', 'manual-before-update', 'manual-during-retry', 'resume', 'seek', 'timing-change'])(
+        'respects subsequent actions when annotations arrive after a pause: %s',
+        async (action) => {
+            jest.useFakeTimers();
+            const root = document.createElement('div');
+            document.body.append(root);
+            const html =
+                '<div class="asbplayer-subtitles" data-asb-subtitle-index="0">' +
+                '<span class="asb-token" data-asb-token-start="0">one</span> ' +
+                '<span class="asb-token" data-asb-token-start="4">two</span></div>';
+            const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 1500,
+                settings: { dictionaryTracks },
+                selectToken: (target, options) => selectTokenInRoot(root, target, { ...options, autoPause: true }),
+                clearAutoPauseTokenSelection: () => clearAutoPauseTokenSelectionInRoot(root),
+            });
+            try {
+                harness.driver.isPaused = true;
+                harness.driver.callbacks.onPlaybackPaused();
+                jest.advanceTimersByTime(200);
+                if (action === 'manual-before-update') {
+                    root.innerHTML = html;
+                    selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 });
+                }
+                if (action === 'resume') await harness.driver.start();
+                if (action === 'seek') harness.driver.discontinuity(4500);
+                harness.playbackEngine.subtitlesChanged(
+                    [{ ...subtitle, tokenization: { tokens: [{ pos: [0, 3], states: [], status: 1, readings: [] }] } }],
+                    { timingChanged: action === 'timing-change' }
+                );
+                jest.advanceTimersByTime(32); // Annotations can precede their rendered tokens.
+                if (action !== 'manual-before-update') root.innerHTML = html;
+                if (action === 'manual-during-retry') selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 });
+                jest.advanceTimersByTime(200);
+                const manual = action.startsWith('manual-');
+                expect(root.querySelector('.asb-token-selected')?.textContent).toBe(
+                    manual ? 'two' : action === 'none' ? 'one' : undefined
+                );
+                await harness.driver.start();
+                expect(root.querySelector('.asb-token-selected')?.textContent).toBe(manual ? 'two' : undefined);
+            } finally {
+                harness.playbackEngine.unbind();
+                root.remove();
+                document.getSelection()?.removeAllRanges();
+                jest.useRealTimers();
+            }
+        }
+    );
+
+    it.each([
+        { adapter: 'timing-driver', paused: false },
+        { adapter: 'timing-driver', paused: true },
+        { adapter: 'external', paused: false },
+        { adapter: 'external', paused: true },
+    ])('selects at the seek destination only when paused: %j', async ({ adapter, paused }) => {
+        jest.useFakeTimers();
+        const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+        dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+        const selected: { subtitleIndex: number; tokenStart: number }[] = [];
+        const harness = await makePlaybackEngine([PlayMode.normal], {
+            timestampMs: 1500,
+            paused,
+            subtitles: [subtitle, secondSubtitle].map((subtitle) => ({
+                ...subtitle,
+                tokenization: { tokens: [{ pos: [0, 8], states: [], status: 1, readings: [] }] },
+            })),
+            settings: { dictionaryTracks },
+            selectToken: (target) => {
+                selected.push(target);
+                return true;
+            },
+        });
+        try {
+            for (const timestampMs of [4500, 1500]) {
+                if (adapter === 'external') harness.playbackEngine.seekStarted();
+                else harness.driver.callbacks.onSeekStarted('user-seek');
+                jest.advanceTimersByTime(200);
+                const selectionsBeforeSeekCompleted = selected.length;
+                harness.driver.timestampMs = timestampMs;
+                if (adapter === 'external') harness.playbackEngine.seeked(timestampMs);
+                else harness.driver.discontinuity(timestampMs);
+                jest.advanceTimersByTime(200);
+                expect(selected.length).toBe(selectionsBeforeSeekCompleted + (paused ? 1 : 0));
+            }
+            expect(selected).toEqual(
+                paused
+                    ? [
+                          { subtitleIndex: 1, tokenStart: 0 },
+                          { subtitleIndex: 0, tokenStart: 0 },
+                      ]
+                    : []
+            );
+        } finally {
+            harness.playbackEngine.unbind();
+            jest.useRealTimers();
+        }
+    });
+
+    it('uses manual selection rules after seeking away from an automatic pause', async () => {
+        jest.useFakeTimers();
+        const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+        dictionaryTracks[0].dictionaryPlaybackConfig.autoPause.onStatuses[1].enabled = true;
+        dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[5].enabled = true;
+        const selected: { subtitleIndex: number; tokenStart: number }[] = [];
+        const harness = await makePlaybackEngine([PlayMode.autoPause], {
+            timestampMs: 500,
+            subtitles: [subtitle, secondSubtitle].map((subtitle) => ({
+                ...subtitle,
+                text: 'one two',
+                tokenization: {
+                    tokens: [
+                        { pos: [0, 3], states: [], status: 5, readings: [] },
+                        { pos: [4, 7], states: [], status: 1, readings: [] },
+                    ],
+                },
+            })),
+            settings: { dictionaryTracks, autoPausePreference: AutoPausePreference.atStart },
+            selectToken: (target) => {
+                selected.push(target);
+                return true;
+            },
+        });
+        try {
+            await harness.driver.time(1000);
+            jest.advanceTimersByTime(200);
+            harness.driver.callbacks.onSeekStarted('user-seek');
+            harness.driver.discontinuity(4500);
+            jest.advanceTimersByTime(200);
+            expect(selected).toEqual([
+                { subtitleIndex: 0, tokenStart: 4 },
+                { subtitleIndex: 1, tokenStart: 0 },
+            ]);
+        } finally {
+            harness.playbackEngine.unbind();
+            jest.useRealTimers();
+        }
+    });
+
+    it.each([false, true])(
+        'gives adaptive auto-pause selection precedence while keeping manual pause selection (adaptive: %s)',
+        async (adaptive) => {
+            jest.useFakeTimers();
+            const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            dictionaryTracks[0].dictionaryPlaybackConfig.autoPause.onStatuses[1].enabled = adaptive;
+            dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[5].enabled = true;
+            const selected: number[] = [];
+            const harness = await makePlaybackEngine([PlayMode.autoPause], {
+                timestampMs: 500,
+                notifyPauseSynchronously: true,
+                subtitles: [
+                    {
+                        ...subtitle,
+                        text: 'one two',
+                        tokenization: {
+                            tokens: [
+                                { pos: [0, 3], states: [], status: 5, readings: [] },
+                                { pos: [4, 7], states: [], status: 1, readings: [] },
+                            ],
+                        },
+                    },
+                ],
+                settings: { dictionaryTracks, autoPausePreference: AutoPausePreference.atStart },
+                selectToken: ({ tokenStart }) => {
+                    selected.push(tokenStart);
+                    return true;
+                },
+            });
+            try {
+                await harness.driver.time(1000);
+                jest.advanceTimersByTime(200);
+                expect(harness.pauses).toEqual([1000]);
+                expect(selected).toEqual([adaptive ? 4 : 0]);
+                await harness.driver.start();
+                harness.driver.timestampMs = 1500;
+                harness.driver.isPaused = true;
+                harness.driver.callbacks.onPlaybackPaused();
+                jest.advanceTimersByTime(200);
+                expect(selected).toEqual([adaptive ? 4 : 0, 0]);
+            } finally {
+                harness.playbackEngine.unbind();
+                jest.useRealTimers();
+            }
+        }
+    );
+
+    it.each<{
+        statuses: number[];
+        states: number[];
+        expected: number | undefined;
+        firstStates?: number[];
+    }>([
+        { statuses: [], states: [], expected: undefined },
+        { statuses: [1], states: [], expected: 4 },
+        { statuses: [5], states: [], expected: 0 },
+        { statuses: [5, 1], states: [], expected: 0 },
+        { statuses: [], states: [0], expected: 8 },
+        { statuses: [1], states: [0], expected: 4 },
+        { statuses: [5], states: [], firstStates: [0], expected: undefined },
+        { statuses: [5], states: [0], firstStates: [0], expected: 0 },
+    ])(
+        'selects the first word matching $statuses / $states on a manual pause',
+        async ({ statuses, states, expected, firstStates = [] }) => {
+            jest.useFakeTimers();
+            const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            const selection = dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause;
+            for (const status of statuses) selection.onStatuses[status].enabled = true;
+            for (const state of states) selection.onStates[state].enabled = true;
+            const selected: number[] = [];
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 1500,
+                subtitles: [
+                    {
+                        ...subtitle,
+                        text: 'one two three',
+                        tokenization: {
+                            tokens: [
+                                { pos: [0, 3], states: firstStates, status: 5, readings: [] },
+                                { pos: [4, 7], states: [], status: 1, readings: [] },
+                                { pos: [8, 13], states: [0], status: 5, readings: [] },
+                            ],
+                        },
+                    },
+                ],
+                settings: { dictionaryTracks, subtitleVisibility: SubtitleVisibility.whileManuallyPaused },
+                selectToken: ({ tokenStart }) => {
+                    selected.push(tokenStart);
+                    return true;
+                },
+            });
+            try {
+                harness.driver.isPaused = true;
+                harness.driver.callbacks.onPlaybackPaused();
+                jest.advanceTimersByTime(200);
+                expect(selected).toEqual(expected === undefined ? [] : [expected]);
+                expect(harness.pauses).toEqual([]);
+            } finally {
+                harness.playbackEngine.unbind();
+                jest.useRealTimers();
+            }
+        }
+    );
+
+    it.each(['none', 'resume', 'seek', 'unbind'])(
+        'retries manual pause selection until rendering, cancelled by %s',
+        async (cancellation) => {
+            jest.useFakeTimers();
+            const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+            let rendered = false;
+            const selected: number[] = [];
+            const harness = await makePlaybackEngine([PlayMode.normal], {
+                timestampMs: 1500,
+                subtitles: [
+                    { ...subtitle, tokenization: { tokens: [{ pos: [0, 8], states: [], status: 1, readings: [] }] } },
+                ],
+                settings: { dictionaryTracks },
+                selectToken: ({ subtitleIndex }) => {
+                    if (!rendered) return false;
+                    selected.push(subtitleIndex);
+                    return true;
+                },
+            });
+            try {
+                harness.driver.isPaused = true;
+                harness.driver.callbacks.onPlaybackPaused();
+                jest.advanceTimersByTime(0);
+                if (cancellation === 'resume') await harness.driver.start();
+                if (cancellation === 'seek') harness.driver.callbacks.onSeekStarted('user-seek');
+                if (cancellation === 'unbind') harness.playbackEngine.unbind();
+                rendered = true;
+                jest.advanceTimersByTime(200);
+                expect(selected).toEqual(cancellation === 'none' ? [0] : []);
+            } finally {
+                harness.playbackEngine.unbind();
+                jest.useRealTimers();
+            }
+        }
+    );
+
     it.each(['none', 'seek-start', 'seek-completion', 'disable-auto-pause', 'visibility-change', 'subtitles-change'])(
         'retries token selection only while its automatic pause is active: %s',
         async (cancellation) => {
@@ -632,7 +951,10 @@ describe('adaptive auto-pause selection', () => {
                     settings: {
                         autoPausePreference: AutoPausePreference.atStart,
                         dictionaryTracks: [
-                            { ...defaultSettings.dictionaryTracks[0], dictionaryPlaybackConfig: config },
+                            {
+                                ...defaultSettings.dictionaryTracks[0],
+                                dictionaryPlaybackConfig: config,
+                            },
                             ...defaultSettings.dictionaryTracks.slice(1),
                         ],
                     },
@@ -702,7 +1024,10 @@ describe('adaptive auto-pause selection', () => {
                         autoPausePreference: AutoPausePreference.atStart,
                         subtitleVisibility: visibility,
                         dictionaryTracks: [
-                            { ...defaultSettings.dictionaryTracks[0], dictionaryPlaybackConfig: config },
+                            {
+                                ...defaultSettings.dictionaryTracks[0],
+                                dictionaryPlaybackConfig: config,
+                            },
                             ...defaultSettings.dictionaryTracks.slice(1),
                         ],
                     },
@@ -715,8 +1040,6 @@ describe('adaptive auto-pause selection', () => {
                 if (resumeBeforeSelection) {
                     harness.driver.isPaused = false;
                     await harness.driver.callbacks.onPlaybackStarted();
-                    harness.driver.isPaused = true;
-                    harness.driver.callbacks.onPlaybackPaused();
                 }
                 jest.advanceTimersByTime(0);
                 expect(harness.pauses).toEqual([1000]);
@@ -1155,6 +1478,8 @@ describe('PlaybackEngine', () => {
             playbackPositionKeys: [],
             timingDriver: driver,
             callbacks: {
+                selectToken: () => false,
+                clearAutoPauseTokenSelection: () => {},
                 pause: () => {},
                 play: async () => {},
                 seek: async () => {},
@@ -2251,6 +2576,8 @@ describe('PlaybackEngine', () => {
             playbackPositionKeys: [],
             timingDriver: new FakeTimingDriver(),
             callbacks: {
+                selectToken: () => false,
+                clearAutoPauseTokenSelection: () => {},
                 pause: () => {},
                 play: async () => {},
                 seek: async () => {},
@@ -3053,6 +3380,60 @@ describe('PlaybackEngine', () => {
 
 describe('recipe playback', () => {
     const recipe = { name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } };
+
+    it('uses recipe pause selection and restores the underlying selection when disabled', async () => {
+        jest.useFakeTimers();
+        const dictionaryTracks = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+        dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[5].enabled = true;
+        const selected: number[] = [];
+        const harness = await makePlaybackEngine([PlayMode.normal], {
+            timestampMs: 1500,
+            subtitles: [
+                {
+                    ...subtitle,
+                    text: 'one two',
+                    tokenization: {
+                        tokens: [
+                            { pos: [0, 3], states: [], status: 5, readings: [] },
+                            { pos: [4, 7], states: [], status: 1, readings: [] },
+                        ],
+                    },
+                },
+            ],
+            settings: { dictionaryTracks },
+            selectToken: ({ tokenStart }) => {
+                selected.push(tokenStart);
+                return true;
+            },
+        });
+        try {
+            const recipeTracks = JSON.parse(JSON.stringify(dictionaryTracks));
+            recipeTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[5].enabled = false;
+            recipeTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+            const settings = {
+                ...harness.settings,
+                recipes: [
+                    { ...recipe, playbackModes: [PlayMode.normal], settings: { dictionaryTracks: recipeTracks } },
+                ],
+                activeRecipeId: 0,
+            };
+            harness.playbackEngine.settingsChanged(settings);
+            harness.driver.isPaused = true;
+            harness.driver.callbacks.onPlaybackPaused();
+            jest.advanceTimersByTime(200);
+            expect(selected).toEqual([4]);
+
+            await harness.driver.start();
+            harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
+            harness.driver.isPaused = true;
+            harness.driver.callbacks.onPlaybackPaused();
+            jest.advanceTimersByTime(200);
+            expect(selected).toEqual([4, 0]);
+        } finally {
+            harness.playbackEngine.unbind();
+            jest.useRealTimers();
+        }
+    });
 
     it('returns the authoritative recipe rate for media observations and blocked user changes', async () => {
         const harness = await makePlaybackEngine([PlayMode.normal], {

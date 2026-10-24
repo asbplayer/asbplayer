@@ -67,8 +67,6 @@ import type {
 import { asbTrace } from '@project/common/util/log';
 import {
     HoveredToken,
-    selectTokenInRoot,
-    clearAutoPauseTokenSelectionInRoot,
     renderRichTextOntoSubtitles,
     getAnnotationsHtml,
     ASB_SUBTITLE_INDEX_ATTRIBUTE,
@@ -483,6 +481,7 @@ export default function VideoPlayer({
     const [showCursor, setShowCursor] = useState<boolean>(isMobile);
     const lastMouseMovementTimestamp = useRef<number>(0);
     const containerRef = useRef<HTMLDivElement>(null);
+    const tokenSelectionRef = useRef<ReturnType<typeof useTokenSelection>>(null);
     const [alert, setAlert] = useState<{ open: boolean; notifications: AlertNotification[] }>({
         open: false,
         notifications: [],
@@ -749,13 +748,13 @@ export default function VideoPlayer({
                 }
             ),
             callbacks: {
-                selectToken: (target) =>
-                    selectTokenInRoot(containerRef.current ?? document, target, {
+                selectToken: (target, options) =>
+                    tokenSelectionRef.current?.selectToken(target, {
+                        ...options,
                         autoPause: true,
                         scrollIntoView: false,
-                    }),
-                clearAutoPauseTokenSelection: () =>
-                    clearAutoPauseTokenSelectionInRoot(containerRef.current ?? document),
+                    }) ?? false,
+                clearAutoPauseTokenSelection: () => tokenSelectionRef.current?.clearPauseTokenSelection(),
                 pause: () => {
                     video.pause();
                     clock.stop();
@@ -1181,7 +1180,7 @@ export default function VideoPlayer({
         [handleSeekByTimestamp]
     );
 
-    useTokenSelection({
+    const tokenSelection = useTokenSelection({
         rootRef: containerRef,
         maxAttempts: 60,
         keyBinder,
@@ -1192,6 +1191,7 @@ export default function VideoPlayer({
         onTokenSelectionClaimed: playerChannel.tokenSelectionFocus,
         disabledGetter: tokenSelectionDisabled,
     });
+    tokenSelectionRef.current = tokenSelection;
 
     useEffect(() => {
         if (seekRequest !== undefined) {

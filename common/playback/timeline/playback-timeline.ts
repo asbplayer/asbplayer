@@ -1,5 +1,4 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import { compilePlaybackTimeline } from '@project/common/playback/timeline/playback-timeline-compiler';
 import type {
     PlaybackTimelineActionIndex,
@@ -57,8 +56,6 @@ export interface PlaybackTimelineBlock {
     /** Pause when the playback-mode interval starts. */
     readonly startAction?: true;
     readonly adaptiveRate?: PlaybackTimelineAdaptiveRate;
-    readonly autoPauseToken?: Readonly<TokenSelectionLocation>;
-    readonly autoPauseEndToken?: Readonly<TokenSelectionLocation>;
     readonly endAction?: PlaybackTimelineEndAction;
 }
 
