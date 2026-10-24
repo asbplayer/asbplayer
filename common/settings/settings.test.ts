@@ -1,5 +1,10 @@
 import {
     areDictionaryPlaybackConfigsEqual,
+    areTokenAnnotationConfigsEqual,
+    getEnabledAnnotations,
+    getEnabledAnnotationsForHover,
+    dictionaryTrackEnabled,
+    dictionaryStatusCollectionEnabled,
     dictionaryPlaybackGroupSettingsEnabled,
     dictionaryPlaybackFeatures,
     autoPausePreferenceForCheckboxChange,
@@ -24,6 +29,10 @@ it('compares dictionary playback fields by value regardless of object key order'
         rules: { maxFrequency: 0, minFrequency: 0, maxWords: 0, minWords: 0 },
     });
     const reordered = {
+        selectOnPause: {
+            onStatuses: config.selectOnPause.onStatuses.map((trigger) => ({ ...trigger })),
+            onStates: config.selectOnPause.onStates.map((trigger) => ({ ...trigger })),
+        },
         wordVisibility: {
             wholeSubtitleMatchThreshold: config.wordVisibility.wholeSubtitleMatchThreshold,
             hideWordsIndividuallyUntilThreshold: config.wordVisibility.hideWordsIndividuallyUntilThreshold,
@@ -38,6 +47,12 @@ it('compares dictionary playback fields by value regardless of object key order'
         autoPause: reorderFeature(config.autoPause),
     };
     expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(true);
+    reordered.selectOnPause.onStatuses[0].enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.selectOnPause.onStatuses[0].enabled = false;
+    reordered.selectOnPause.onStates[0].enabled = true;
+    expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
+    reordered.selectOnPause.onStates[0].enabled = false;
     reordered.fastForward.rateByComprehension.enabled = true;
     expect(areDictionaryPlaybackConfigsEqual(config, reordered)).toBe(false);
     reordered.fastForward.rateByComprehension.enabled = false;
@@ -219,3 +234,33 @@ describe('subtitlesWidth bounds', () => {
         expect(maxSubtitlesWidth('px')).toBe(10000);
     });
 });
+
+it.each([
+    { statuses: [1], states: [], statusCollection: true },
+    { statuses: [], states: [0], statusCollection: false },
+])(
+    'enables annotations independently for pause selection: $statuses / $states',
+    ({ statuses, states, statusCollection }) => {
+        const track = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0]));
+        expect(dictionaryTrackEnabled(track)).toBe(false);
+        const previous = JSON.parse(JSON.stringify(track.dictionaryTokenAnnotationConfig));
+        const previousPlayback = JSON.parse(JSON.stringify(track.dictionaryPlaybackConfig));
+        for (const status of statuses) track.dictionaryPlaybackConfig.selectOnPause.onStatuses[status].enabled = true;
+        for (const state of states) track.dictionaryPlaybackConfig.selectOnPause.onStates[state].enabled = true;
+        expect(dictionaryTrackEnabled(track)).toBe(true);
+        expect(dictionaryStatusCollectionEnabled(track, { includeStates: false })).toBe(statusCollection);
+        expect(dictionaryStatusCollectionEnabled(track, { includeStates: true })).toBe(true);
+        expect(areDictionaryPlaybackConfigsEqual(previousPlayback, track.dictionaryPlaybackConfig)).toBe(false);
+        expect(areTokenAnnotationConfigsEqual(previous, track.dictionaryTokenAnnotationConfig)).toBe(true);
+        const visualAnnotations = { color: false, reading: false, frequency: false, gloss: false, pitchAccent: false };
+        expect(getEnabledAnnotations(track)).toEqual(visualAnnotations);
+        for (const target of ['video', 'subtitlePlayer'] as const) {
+            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, false)).toEqual(
+                visualAnnotations
+            );
+            expect(getEnabledAnnotationsForHover(getEnabledAnnotations(track), track, target, true)).toEqual(
+                visualAnnotations
+            );
+        }
+    }
+);

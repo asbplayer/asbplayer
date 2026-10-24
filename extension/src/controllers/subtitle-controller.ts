@@ -204,6 +204,9 @@ export default class SubtitleController {
 
     selectToken(location: TokenSelectionLocation, options?: SelectTokenInRootOptions): boolean {
         const roots = this._tokenSelectionRoots();
+        if (options?.onlyIfUnselected && roots.some((root) => restorableTokenSelectionInRoot(root))) {
+            return true;
+        }
         for (const root of roots) {
             if (!selectTokenInRoot(root, location, options)) continue;
             for (const otherRoot of roots) {

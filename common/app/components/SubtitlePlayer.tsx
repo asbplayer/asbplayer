@@ -1,6 +1,6 @@
 import { effectiveSettings } from '@project/common/settings/settings-recipes';
-import type { ForwardedRef, ReactNode } from 'react';
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import type { ForwardedRef, ReactNode, Ref } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef, useImperativeHandle } from 'react';
 import { makeStyles } from '@mui/styles';
 import type { Theme } from '@mui/material';
 import type {
@@ -41,7 +41,7 @@ import {
 } from '@project/common/util';
 import type { SubtitleCollection } from '@project/common/subtitle-collection';
 import type { RichTextWindow, RenderedRichText, SubtitleAnnotations } from '@project/common/annotations';
-import type { TokenJumpMatch } from '@project/common/annotations/token-navigation';
+import type { TokenJumpMatch, TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import {
     getAnnotationsHtml,
     renderRichTextWindow,
@@ -653,8 +653,14 @@ const ResizeHandle = React.forwardRef(function ResizeHandle(
     );
 });
 
+export interface SubtitlePlayerHandle {
+    selectPauseToken: (target: TokenSelectionLocation, options?: { onlyIfUnselected?: boolean }) => boolean;
+    clearPauseTokenSelection: () => void;
+}
+
 interface SubtitlePlayerProps {
     onSettingsChanged: (settings: Partial<AsbplayerSettings>) => void;
+    ref?: Ref<SubtitlePlayerHandle>;
     clock: Clock;
     extension: ChromeExtension;
     onSeek: (progress: number, shouldPlay: boolean) => void;
@@ -699,6 +705,7 @@ interface SubtitlePlayerProps {
 
 export default function SubtitlePlayer({
     onSettingsChanged,
+    ref,
     clock,
     extension,
     onSeek,
@@ -825,7 +832,7 @@ export default function SubtitlePlayer({
         },
         [clock.running, onSeek]
     );
-    const { requestTokenSelection, clearTokenSelection } = useTokenSelection({
+    const { selectToken, requestTokenSelection, clearTokenSelection, clearPauseTokenSelection } = useTokenSelection({
         rootRef: scrollerElementRef,
         maxAttempts: 20,
         keyBinder,
@@ -835,6 +842,21 @@ export default function SubtitlePlayer({
         onMatch: handleTokenSelectionMatch,
         disabledGetter: tokenSelectionDisabled,
     });
+    useImperativeHandle(
+        ref,
+        () => ({
+            selectPauseToken: (target, options) => {
+                const subtitle = subtitleListRef.current.find((subtitle) => subtitle.index === target.subtitleIndex);
+                if (hiddenRef.current || !subtitle || disabledSubtitleTracks[subtitle.track]) return false;
+                if (selectToken(target, { ...options, autoPause: true })) return true;
+                const index = subtitleListRef.current.findIndex((subtitle) => subtitle.index === target.subtitleIndex);
+                if (index >= 0) virtuosoRef.current?.scrollToIndex({ index, align: 'center', behavior: 'auto' });
+                return false;
+            },
+            clearPauseTokenSelection,
+        }),
+        [selectToken, clearPauseTokenSelection, disabledSubtitleTracks]
+    );
     const find = useSubtitleFind({
         subtitles,
         dictionaryTracks: playbackSettings.dictionaryTracks,

@@ -1,5 +1,4 @@
 import type { IndexedSubtitleModel } from '@project/common';
-import type { TokenSelectionLocation } from '@project/common/annotations/token-navigation';
 import { asbTrace } from '@project/common/util/log';
 import PlaybackTimeline from '@project/common/playback/timeline/playback-timeline';
 import type {
@@ -22,7 +21,6 @@ export const maximumInternalSeekMismatchMs = 3000;
 export interface PlaybackPlanPause<T extends IndexedSubtitleModel> {
     readonly timestampMs: number;
     readonly playbackModeSubtitlesAtPause: readonly T[];
-    readonly autoPauseToken?: Readonly<TokenSelectionLocation>;
 }
 
 export interface PlaybackPlanExecutorCallbacks<T extends IndexedSubtitleModel> {
@@ -395,7 +393,6 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
         this.callbacks.pause({
             timestampMs: event.timestampMs,
             playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
-            autoPauseToken: block.autoPauseToken,
         });
         return { autoPaused: true };
     }
@@ -415,7 +412,6 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             this.callbacks.pause({
                 timestampMs: event.timestampMs,
                 playbackModeSubtitlesAtPause: this.pauseSubtitlesFor([block]),
-                autoPauseToken: block.autoPauseEndToken,
             });
         }
         if (repeat) {
@@ -515,7 +511,6 @@ export default class PlaybackPlanExecutor<T extends IndexedSubtitleModel> {
             const pause = {
                 timestampMs: target,
                 playbackModeSubtitlesAtPause: this.pauseSubtitlesFor(startActions),
-                autoPauseToken: startActions.find((block) => block.autoPauseToken)?.autoPauseToken,
             };
             if (shouldPause) this.callbacks.pause(pause);
             await seek;

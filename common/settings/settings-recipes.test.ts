@@ -311,6 +311,38 @@ describe('recipe imports and normalization', () => {
         expect(recipeImportUrl(recipeFromImportUrl(url)!)).toBe(url.href);
     });
 
+    it('preserves pause selection through recipe saving, sharing, and settings export', () => {
+        const settings = JSON.parse(JSON.stringify(defaultSettings)) as AsbplayerSettings;
+        settings.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled = true;
+        settings.dictionaryTracks[1].dictionaryPlaybackConfig.selectOnPause.onStates[0].enabled = true;
+        const recipe = { ...recipeFromSettings(settings), name: 'Pause selection' };
+        const imported = recipeFromImportUrl(new URL(recipeImportUrl(recipe)))!;
+        expect(imported).toEqual(recipe);
+        expect(validateSettings(settingsForExport({ ...settings, recipes: [recipe] })).recipes).toEqual([recipe]);
+        const effective = effectiveSettings({ ...defaultSettings, recipes: [imported], activeRecipeId: 0 });
+        expect(effective.dictionaryTracks.map((track) => track.dictionaryPlaybackConfig.selectOnPause)).toEqual(
+            settings.dictionaryTracks.map((track) => track.dictionaryPlaybackConfig.selectOnPause)
+        );
+        expect(defaultSettings.dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[1].enabled).toBe(
+            false
+        );
+    });
+
+    it('validates pause selection triggers without accepting playback rules', () => {
+        const selectOnPause = {
+            onStatuses: [{ enabled: true }, { enabled: 'yes' }],
+            onStates: [{ enabled: false }, { enabled: true }],
+            rules: { minWords: 2 },
+        };
+        const recipe = normalizeRecipe({
+            ...reading,
+            settings: { dictionaryTracks: [{ dictionaryPlaybackConfig: { selectOnPause } }] },
+        });
+        expect(recipe?.settings.dictionaryTracks?.[0].dictionaryPlaybackConfig).toEqual({
+            selectOnPause: { onStatuses: [{ enabled: true }, {}], onStates: [{ enabled: false }] },
+        });
+    });
+
     it.each(['', 'not-base64!', 'AAAA'])('rejects malformed compressed payload %j', (payload) => {
         expect(
             recipeFromImportUrl(new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`))

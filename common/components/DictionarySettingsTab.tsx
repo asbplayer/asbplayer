@@ -166,7 +166,8 @@ const tokenAnnotationSizeOptions: { annotation: TokenAnnotationSizeKey; labelKey
     { annotation: 'gloss', labelKey: 'settings.dictionaryTokenAnnotationGlossSize' },
     { annotation: 'pitchAccent', labelKey: 'settings.dictionaryTokenAnnotationPitchAccentSize' },
 ];
-const tokenAnnotationTriggerOptions: { annotation: TokenAnnotationTriggerKey; labelKey: string }[] = [
+const tokenAnnotationTriggerOptions: { annotation: TokenAnnotationTriggerKey | 'selectOnPause'; labelKey: string }[] = [
+    { annotation: 'selectOnPause', labelKey: 'settings.dictionarySelectOnPause' },
     { annotation: 'reading', labelKey: 'settings.dictionaryTokenReadingAnnotation' },
     { annotation: 'frequency', labelKey: 'settings.dictionaryTokenFrequencyAnnotation' },
     { annotation: 'gloss', labelKey: 'settings.dictionaryTokenGlossAnnotation' },
@@ -695,6 +696,31 @@ const DictionarySettingsTab: React.FC<Props> = ({
             );
         },
         [updateDictionaryTokenAnnotationConfig]
+    );
+    const updateDictionaryPauseSelection = useCallback(
+        (selection: TokenAnnotationSelection) => {
+            const newTracks = [...dictionaryTracks];
+            const track = newTracks[selectedDictionaryTrack];
+            const config = track.dictionaryPlaybackConfig;
+            newTracks[selectedDictionaryTrack] = {
+                ...track,
+                dictionaryPlaybackConfig: {
+                    ...config,
+                    selectOnPause: {
+                        onStatuses: config.selectOnPause.onStatuses.map((trigger, status) => ({
+                            ...trigger,
+                            enabled: selection.statuses.includes(status),
+                        })),
+                        onStates: config.selectOnPause.onStates.map((trigger, state) => ({
+                            ...trigger,
+                            enabled: selection.states.includes(state),
+                        })),
+                    },
+                },
+            };
+            void onSettingChanged('dictionaryTracks', newTracks);
+        },
+        [dictionaryTracks, selectedDictionaryTrack, onSettingChanged]
     );
     const updateDictionaryTokenAnnotationStatusesAndStates = useCallback(
         (annotation: TokenAnnotationTriggerKey, selection: TokenAnnotationSelection) => {
@@ -1276,10 +1302,23 @@ const DictionarySettingsTab: React.FC<Props> = ({
 
                             {tokenAnnotationTriggerOptions.map(({ annotation, labelKey }) => {
                                 const value = tokenAnnotationSelectionOptionValues(
-                                    tokenAnnotationSelection(
-                                        selectedDictionary.dictionaryTokenAnnotationConfig,
-                                        annotation
-                                    )
+                                    annotation === 'selectOnPause'
+                                        ? {
+                                              statuses: tokenAnnotationStatuses.filter(
+                                                  (status) =>
+                                                      selectedDictionary.dictionaryPlaybackConfig.selectOnPause
+                                                          .onStatuses[status].enabled
+                                              ),
+                                              states: tokenAnnotationStates.filter(
+                                                  (state) =>
+                                                      selectedDictionary.dictionaryPlaybackConfig.selectOnPause
+                                                          .onStates[state].enabled
+                                              ),
+                                          }
+                                        : tokenAnnotationSelection(
+                                              selectedDictionary.dictionaryTokenAnnotationConfig,
+                                              annotation
+                                          )
                                 );
                                 return (
                                     <SettingsTextField
@@ -1315,10 +1354,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                         }}
                                         onChange={(e) => {
                                             const selectedValues = tokenAnnotationOptionValues(e.target.value);
-                                            updateDictionaryTokenAnnotationStatusesAndStates(
-                                                annotation,
-                                                tokenAnnotationSelectionFromOptionValues(selectedValues)
-                                            );
+                                            const selection = tokenAnnotationSelectionFromOptionValues(selectedValues);
+                                            if (annotation === 'selectOnPause') {
+                                                updateDictionaryPauseSelection(selection);
+                                            } else {
+                                                updateDictionaryTokenAnnotationStatusesAndStates(annotation, selection);
+                                            }
                                         }}
                                     >
                                         {tokenAnnotationSelectOptions.map((option) => (

@@ -364,6 +364,41 @@ describe('token jump navigation', () => {
         wrapper.remove();
     });
 
+    it.each([undefined, false, true])(
+        'preserves an existing selection when delayed pause selection arrives (auto-pause: %s)',
+        (autoPause) => {
+            const root = document.createElement('div');
+            root.innerHTML =
+                '<span data-asb-subtitle-index="0"><span class="asb-token" data-asb-token-start="0">one</span>' +
+                '<span class="asb-token" data-asb-token-start="4">two</span></span>';
+            document.body.append(root);
+            try {
+                if (autoPause !== undefined)
+                    selectTokenInRoot(root, { subtitleIndex: 0, tokenStart: 4 }, { autoPause });
+                expect(
+                    selectTokenInRoot(
+                        root,
+                        { subtitleIndex: 0, tokenStart: 0 },
+                        {
+                            autoPause: true,
+                            onlyIfUnselected: true,
+                        }
+                    )
+                ).toBe(true);
+                expect(root.querySelector(`.${ASB_TOKEN_SELECTED_CLASS}`)?.textContent).toBe(
+                    autoPause === undefined ? 'one' : 'two'
+                );
+                expect(root.querySelector(`.${ASB_TOKEN_AUTO_PAUSE_SELECTED_CLASS}`) !== null).toBe(
+                    autoPause !== false
+                );
+                expect(document.getSelection()?.toString()).toBe(autoPause === undefined ? 'one' : 'two');
+            } finally {
+                root.remove();
+                document.getSelection()?.removeAllRanges();
+            }
+        }
+    );
+
     it('activates hover annotations and clears only the previous selection in the same root', () => {
         const firstRoot = document.createElement('div');
         firstRoot.innerHTML =

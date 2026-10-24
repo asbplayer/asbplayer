@@ -340,3 +340,19 @@ describe('streamingPages consistency', () => {
         expect(streamingPages).toEqual(defaultSettings.streamingPages);
     });
 });
+
+it('normalizes pause-selection trigger lengths without adding playback rules', async () => {
+    const storage = new MockSettingsStorage();
+    const track = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks[0]));
+    const selection = track.dictionaryPlaybackConfig.selectOnPause;
+    selection.onStatuses[1].enabled = true;
+    selection.onStates[0].enabled = true;
+    selection.onStatuses.pop();
+    selection.onStates.push({ enabled: true });
+    storage.setData({ dictionaryTracks: [track] });
+    const actual = (await new SettingsProvider(storage).getAll()).dictionaryTracks[0].dictionaryPlaybackConfig
+        .selectOnPause;
+    expect(actual.onStatuses.map((trigger) => trigger.enabled)).toEqual([false, true, false, false, false, false]);
+    expect(actual.onStates).toEqual([{ enabled: true }]);
+    expect(actual).not.toHaveProperty('rules');
+});

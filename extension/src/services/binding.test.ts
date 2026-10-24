@@ -913,6 +913,91 @@ describe('Binding playback mode integration', () => {
         }
     });
 
+    it.each([
+        { automatic: false, adaptive: false, selectionEnabled: true },
+        { automatic: true, adaptive: false, selectionEnabled: true },
+        { automatic: true, adaptive: true, selectionEnabled: false },
+    ])(
+        'selects words through the subtitle controller on pause and paused seek: %j',
+        async ({ automatic, adaptive, selectionEnabled }) => {
+            const dictionaryTracks: DictionaryTrack[] = JSON.parse(JSON.stringify(defaultSettings.dictionaryTracks));
+            dictionaryTracks[0].dictionaryPlaybackConfig.selectOnPause.onStatuses[TokenStatus.UNCOLLECTED].enabled =
+                selectionEnabled;
+            dictionaryTracks[0].dictionaryPlaybackConfig.autoPause.onStatuses[TokenStatus.UNCOLLECTED].enabled =
+                adaptive;
+            await storage.set({ dictionaryTracks, autoPausePreference: AutoPausePreference.atEnd });
+            const sendMessage = (globalThis as any).browser.runtime.sendMessage as jest.Mock<
+                (request: any) => Promise<any>
+            >;
+            sendMessage.mockImplementation(async ({ message }) => {
+                if (message.command === 'http-post') {
+                    if (message.url.endsWith('/yomitanVersion')) return { version: '0.0.0.0' };
+                    if (message.url.endsWith('/tokenize')) {
+                        return message.body.text.map((text: string, index: number) => ({
+                            id: 'id',
+                            source: 'source',
+                            dictionary: 'dictionary',
+                            index,
+                            content: [[{ text, reading: '' }]],
+                        }));
+                    }
+                    if (message.url.endsWith('/termEntries')) return { dictionaryEntries: [] };
+                    throw new Error(`Unexpected annotation request: ${message.url}`);
+                }
+                if (message.command === 'dictionary-get-bulk' || message.command === 'dictionary-get-by-lemma-bulk')
+                    return {};
+                if (message.command === 'dictionary-get-records')
+                    return { tokenRecords: [], ankiCardRecords: {}, waniKaniSubjectRecords: {} };
+            });
+            const video = createVideo();
+            jest.spyOn(video, 'pause').mockImplementation(() => {
+                (video as HTMLVideoElement & { paused: boolean }).paused = true;
+                video.dispatchEvent(new Event('pause'));
+            });
+            const binding = new Binding(video, bindingOptions(false, false));
+            try {
+                binding.bind();
+                await flushPlaybackTiming();
+                sendSubtitles(binding, [
+                    makeSubtitle({ text: 'word', start: 1000, end: 2000 }),
+                    makeSubtitle({ text: 'next', start: 4000, end: 5000, index: 1 }),
+                ]);
+                video.presentFrame(1500);
+                await jest.advanceTimersByTimeAsync(1100);
+                expect(binding.subtitleController.subtitles[0].tokenization?.tokens[0].status).toBe(
+                    TokenStatus.UNCOLLECTED
+                );
+                if (automatic) {
+                    binding.togglePlayMode(PlayMode.autoPause);
+                    video.presentFrame(1999);
+                } else video.pause();
+                await jest.advanceTimersByTimeAsync(200);
+                expect(binding.subtitleController.currentTokenSelectionLocation()).toEqual({
+                    subtitleIndex: 0,
+                    tokenStart: 0,
+                });
+                expect(document.querySelector('.asb-token-selected')?.textContent).toBe('word');
+                expect(document.querySelector('.asb-token-selected')?.closest('.asb-playback-paused')).not.toBeNull();
+                video.currentTime = 4.5;
+                video.dispatchEvent(new Event('seeking'));
+                video.dispatchEvent(new Event('seeked'));
+                await jest.advanceTimersByTimeAsync(200);
+                expect(binding.subtitleController.currentTokenSelectionLocation()).toEqual(
+                    selectionEnabled ? { subtitleIndex: 1, tokenStart: 0 } : undefined
+                );
+                expect(document.querySelector('.asb-token-selected')?.textContent).toBe(
+                    selectionEnabled ? 'next' : undefined
+                );
+                (video as HTMLVideoElement & { paused: boolean }).paused = false;
+                video.dispatchEvent(new Event('play'));
+                await flushPlaybackTiming();
+                expect(document.querySelector('.asb-token-selected')).toBeNull();
+            } finally {
+                binding.unbind();
+            }
+        }
+    );
+
     it('shows active playback modes above the transition notification', async () => {
         const video = createVideo();
         const binding = new Binding(video, bindingOptions(false, false));

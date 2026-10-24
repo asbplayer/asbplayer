@@ -24,6 +24,7 @@ import {
     dictionaryPlaybackFeatureEnabled,
     dictionaryPlaybackFeatures,
     SubtitleVisibility,
+    TokenState,
 } from '@project/common/settings';
 import type { DictionaryTrack, DictionaryPlaybackConfig, DictionaryPlaybackFeature } from '@project/common/settings';
 
@@ -77,6 +78,12 @@ export interface PlaybackPlanAutoPause {
     readonly resume: PlaybackPlanAutoPauseResume;
 }
 
+export interface PlaybackPlanTokenSelection {
+    readonly onPause: ReadonlyMap<number, number>;
+    /** Present when rule-based auto-pause owns selection, even if no visible word matches. */
+    readonly onAutoPause?: ReadonlyMap<number, number>;
+}
+
 /** Playback policy compiled and applied beside its owning media element. */
 export interface PlaybackPlan<T extends IndexedSubtitleModel> {
     readonly timelineSubtitles: PlaybackTimelineSubtitles<T>;
@@ -85,6 +92,7 @@ export interface PlaybackPlan<T extends IndexedSubtitleModel> {
     readonly fastForward?: PlaybackPlanFastForward;
     readonly autoPause?: PlaybackPlanAutoPause;
     readonly subtitleVisibility: SubtitleVisibility;
+    readonly tokenSelection: PlaybackPlanTokenSelection;
 }
 
 export interface PlaybackPlanInput<T extends IndexedSubtitleModel> {
@@ -274,8 +282,8 @@ const createMatchingBlockCompiler = <T extends IndexedSubtitleModel>(
 };
 
 const buildDictionaryActionBlocks = <T extends IndexedSubtitleModel>(
-    { subtitles, playModes }: PlaybackPlanInput<T>,
-    { configured, matches }: DictionaryPlaybackContext,
+    { playModes }: PlaybackPlanInput<T>,
+    { configured }: DictionaryPlaybackContext,
     compileMatchingBlocks: (feature: DictionaryPlaybackFeature) => readonly PlaybackTimelineBlock[],
     {
         autoPauseAtStart,
@@ -289,30 +297,14 @@ const buildDictionaryActionBlocks = <T extends IndexedSubtitleModel>(
         readonly revealAfterRepeats: number;
     }
 ): readonly PlaybackTimelineBlock[] => {
-    const subtitlesByIndex = new Map(subtitles.map((subtitle) => [subtitle.index, subtitle]));
-    // Tokens are only selected in subtitles displayed at the pause timestamp. Trigger offsets can move a pause
-    // outside its subtitle's display interval, where there is no rendered token to select.
-    const autoPauseToken = (block: PlaybackTimelineBlock, timestampMs: number) => {
-        for (const index of block.subtitleIndexes) {
-            const subtitle = subtitlesByIndex.get(index);
-            if (!subtitle || timestampMs < subtitle.start || timestampMs >= subtitle.end) continue;
-            const token = matches('autoPause', index)?.[0];
-            if (token) return { subtitleIndex: index, tokenStart: token.pos[0] };
-        }
-        return undefined;
-    };
     const actionBlocks: PlaybackTimelineBlock[] = [];
     if (playModes.has(PlayMode.autoPause) && configured('autoPause')) {
         for (const block of compileMatchingBlocks('autoPause')) {
-            const pauseToken = autoPauseToken(block, block.playbackModeStartMs);
-            const endPauseToken = autoPauseToken(block, block.playbackModeEndMs);
             actionBlocks.push({
                 ...block,
                 id: `autoPause:${block.id}`,
                 ...(autoPauseAtStart ? { startAction: true as const } : {}),
                 ...(autoPauseAtEnd ? { endAction: { pause: true } } : {}),
-                ...(pauseToken === undefined ? {} : { autoPauseToken: pauseToken }),
-                ...(endPauseToken === undefined ? {} : { autoPauseEndToken: endPauseToken }),
             });
         }
     }
@@ -460,7 +452,31 @@ export const buildPlaybackPlan = <T extends IndexedSubtitleModel>(input: Playbac
         };
     });
 
+    const autoPauseIndexToTokenStartsMap =
+        autoPauseEnabled && dictionary.configured('autoPause') ? new Map<number, number>() : undefined;
+    for (const subtitle of subtitles) {
+        const token = dictionary.matches('autoPause', subtitle.index)?.[0];
+        if (token) autoPauseIndexToTokenStartsMap?.set(subtitle.index, token.pos[0]);
+    }
+    const indexToTokenStartsMap = new Map<number, number>();
+    for (const subtitle of timeline.displaySubtitles) {
+        const selection = input.dictionaryTracks?.[subtitle.track]?.dictionaryPlaybackConfig.selectOnPause;
+        const token =
+            selection &&
+            wordTokens(subtitle).find((token) =>
+                token.states.includes(TokenState.IGNORED)
+                    ? selection.onStates[TokenState.IGNORED].enabled
+                    : token.states.some((state) => selection.onStates[state].enabled) ||
+                      (token.status != null && selection.onStatuses[token.status].enabled)
+            );
+        if (token) indexToTokenStartsMap.set(subtitle.index, token.pos[0]);
+    }
+
     const plan: PlaybackPlan<T> = {
+        tokenSelection: {
+            onPause: indexToTokenStartsMap,
+            ...(autoPauseIndexToTokenStartsMap === undefined ? {} : { onAutoPause: autoPauseIndexToTokenStartsMap }),
+        },
         timelineSubtitles: {
             ...timeline,
             blocks,
@@ -589,10 +605,6 @@ const playbackTimelineBlockComparators: FieldComparators<PlaybackTimelineBlock> 
     subtitleTriggerGapStartOffsetMs: (left, right) => left === right,
     startAction: (left, right) => left === right,
     adaptiveRate: (left, right) => fieldsEqual(left, right, playbackTimelineAdaptiveRateComparators),
-    autoPauseToken: (left, right) =>
-        left?.subtitleIndex === right?.subtitleIndex && left?.tokenStart === right?.tokenStart,
-    autoPauseEndToken: (left, right) =>
-        left?.subtitleIndex === right?.subtitleIndex && left?.tokenStart === right?.tokenStart,
     endAction: (left, right) => arePlaybackTimelineEndActionsEqual(left, right),
 };
 
@@ -676,7 +688,20 @@ function arePlaybackTimelineSubtitlesEqual(
     return fieldsEqual(left, right, playbackTimelineSubtitlesComparators);
 }
 
+const indexToTokenStartsMapsEqual = (
+    left: ReadonlyMap<number, number> | undefined,
+    right: ReadonlyMap<number, number> | undefined
+): boolean =>
+    left === right ||
+    (left !== undefined &&
+        right !== undefined &&
+        left.size === right.size &&
+        [...left].every(([index, start]) => right.get(index) === start));
+
 const playbackPlanComparators: FieldComparators<PlaybackPlan<IndexedSubtitleModel>> = {
+    tokenSelection: (left, right) =>
+        indexToTokenStartsMapsEqual(left.onPause, right.onPause) &&
+        indexToTokenStartsMapsEqual(left.onAutoPause, right.onAutoPause),
     timelineSubtitles: (left, right) => arePlaybackTimelineSubtitlesEqual(left, right),
     playbackRate: (left, right) => left === right,
     condensed: (left, right) => arePlaybackPlanCondensedEqual(left, right),
