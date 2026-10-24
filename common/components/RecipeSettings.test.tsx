@@ -30,6 +30,21 @@ describe('recipe editor', () => {
     let copied: string[];
     let navigation: string[];
     const recipe: Recipe = { name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } };
+    const comprehensionRecipe: Recipe = {
+        ...recipe,
+        settings: {
+            ...recipe.settings,
+            dictionaryTracks: [
+                {
+                    dictionaryPlaybackConfig: {
+                        fastForward: {
+                            rateByComprehension: { enabled: true, minimumPercent: 80 },
+                        },
+                    },
+                },
+            ],
+        },
+    };
 
     beforeEach(() => {
         globalThis.structuredClone = (value) => JSON.parse(JSON.stringify(value));
@@ -182,21 +197,6 @@ describe('recipe editor', () => {
     });
 
     it('keeps active recipe settings readable and navigation usable while disabling edits', async () => {
-        const comprehensionRecipe: Recipe = {
-            ...recipe,
-            settings: {
-                ...recipe.settings,
-                dictionaryTracks: [
-                    {
-                        dictionaryPlaybackConfig: {
-                            fastForward: {
-                                rateByComprehension: { enabled: true, minimumPercent: 80 },
-                            },
-                        },
-                    },
-                ],
-            },
-        };
         await renderEditor({ ...defaultSettings, recipes: [comprehensionRecipe], activeRecipeId: 0 }, false, true);
         expect(container.querySelector('[inert], [aria-hidden="true"] input[type="number"]')).toBeNull();
         const rate = container.querySelector<HTMLInputElement>('input[type="number"]')!;
@@ -226,18 +226,29 @@ describe('recipe editor', () => {
         await act(async () => document.querySelector<HTMLElement>('[role="option"][data-value="1"]')!.click());
         expect(selectors[0].textContent).toContain('2');
         expect(saves).toEqual([]);
+    });
+
+    it('enables playback and annotation controls when editing a recipe without saving settings', async () => {
+        await renderEditor({ ...defaultSettings, recipes: [comprehensionRecipe], activeRecipeId: 0 }, false, true);
+        const rate = container.querySelector<HTMLInputElement>('input[type="number"]')!;
+        expect(rate.disabled).toBe(true);
+        const minimumInput = () =>
+            Array.from(container.querySelectorAll('label'))
+                .find((label) => label.textContent === translations.settings.dictionaryPlaybackMinimumComprehension)!
+                .parentElement!.querySelector('input')!;
+        expect(minimumInput().disabled).toBe(true);
 
         await click('Edit Recipe');
+        expect(rate.value).toBe('0.8');
         expect(rate.disabled).toBe(false);
-        // Switch back to the track with comprehension enabled before checking its input in the draft.
-        await act(async () => selectors[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
-        await act(async () => document.querySelector<HTMLElement>('[role="option"][data-value="0"]')!.click());
-        const editableMinimum = Array.from(container.querySelectorAll('label'))
-            .find((label) => label.textContent === translations.settings.dictionaryPlaybackMinimumComprehension)!
-            .parentElement!.querySelector('input')!;
+        const editableMinimum = minimumInput();
         expect(editableMinimum.value).toBe('80');
         expect(editableMinimum.disabled).toBe(false);
+        const selectors = [
+            ...container.querySelectorAll<HTMLElement>('#dictionary-playback-settings [role="combobox"]'),
+        ];
         expect(selectors.slice(1).every((select) => select.getAttribute('aria-disabled') !== 'true')).toBe(true);
+        expect(saves).toEqual([]);
     });
 
     it('updates the selected recipe when its name is untouched and preserves omitted settings', async () => {

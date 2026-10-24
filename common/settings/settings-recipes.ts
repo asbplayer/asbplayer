@@ -391,12 +391,7 @@ export const recipeIdForShortcut = (
     settings: Pick<AsbplayerSettings, 'recipes' | 'activeRecipeId'>,
     action: RecipeShortcut
 ): number | null | undefined => {
-    const activeRecipeId =
-        action === 'clear'
-            ? null
-            : typeof action === 'number'
-              ? action
-              : cycleRecipeId(settings, action === 'cycleForward');
+    const activeRecipeId = typeof action === 'number' ? action : cycleRecipeId(settings, action === 'cycleForward');
     if (activeRecipeId !== null && !settings.recipes[activeRecipeId]) {
         asbTrace('playback/recipe', 'Recipe shortcut ignored', {
             action,
@@ -406,7 +401,7 @@ export const recipeIdForShortcut = (
         });
         return;
     }
-    return activeRecipeId;
+    return typeof action === 'number' && activeRecipeId === settings.activeRecipeId ? null : activeRecipeId;
 };
 
 /** Keep sorted JSON, compression options, base64url encoding, and fragment format in sync with docs/src/components/RecipePreset.tsx. */

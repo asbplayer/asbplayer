@@ -9,6 +9,7 @@ import {
     ensureRecipeConsistency,
     moveRecipe,
     cycleRecipeId,
+    recipeIdForShortcut,
     normalizeRecipe,
     recipeImportUrl,
     recipeFromImportUrl,
@@ -414,6 +415,24 @@ describe('effective recipe settings and partial drafts', () => {
 });
 
 describe('recipe list order and selection', () => {
+    it.each([
+        { count: 0, activeRecipeId: null, action: 0, expected: undefined },
+        { count: 1, activeRecipeId: null, action: 0, expected: 0 },
+        { count: 1, activeRecipeId: 0, action: 0, expected: null },
+        { count: 1, activeRecipeId: 0, action: 1, expected: undefined },
+        { count: 2, activeRecipeId: 0, action: 1, expected: 1 },
+        { count: 2, activeRecipeId: 1, action: 0, expected: 0 },
+        { count: 2, activeRecipeId: 1, action: 1, expected: null },
+        { count: 2, activeRecipeId: 1, action: 2, expected: undefined },
+    ])(
+        'toggles recipe $action with $count recipes and active recipe $activeRecipeId',
+        ({ count, activeRecipeId, action, expected }) => {
+            expect(recipeIdForShortcut({ recipes: [reading, listening].slice(0, count), activeRecipeId }, action)).toBe(
+                expected
+            );
+        }
+    );
+
     it.each([null, 0, 1])('moves recipes while preserving selection %s', (activeRecipeId) => {
         expect(moveRecipe({ recipes: [reading, listening], activeRecipeId }, 0, 1)).toEqual({
             recipes: [listening, reading],

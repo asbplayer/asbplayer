@@ -24,12 +24,11 @@ describe('recipe keyboard shortcuts', () => {
     };
     const keyBinder = new DefaultKeyBinder({
         ...defaultSettings.keyBindSet,
-        selectRecipe1: { keys: 's' },
-        selectRecipe2: { keys: 't' },
-        selectRecipe3: { keys: 'u' },
+        toggleRecipe1: { keys: 's' },
+        toggleRecipe2: { keys: 't' },
+        toggleRecipe3: { keys: 'u' },
         cycleRecipesForward: { keys: 'f' },
         cycleRecipesBackward: { keys: 'b' },
-        clearRecipe: { keys: 'c' },
     });
 
     beforeEach(() => {
@@ -83,32 +82,35 @@ describe('recipe keyboard shortcuts', () => {
         return consumed;
     };
 
-    it('enables selecting, cycling, and clearing only with subtitles, and preserves the dialog blocker', () => {
+    it('enables toggling and cycling only with subtitles, and preserves the dialog blocker', () => {
         renderPlayer(0);
-        for (const key of ['s', 't', 'f', 'b', 'c']) expect(press(key)).toBe(false);
+        for (const key of ['s', 't', 'f', 'b']) expect(press(key)).toBe(false);
         expect(saves).toEqual([]);
         renderPlayer(1);
         for (const [key, selected] of [
             ['s', '0'],
+            ['s', 'disabled'],
+            ['s', '0'],
             ['f', '1'],
             ['b', '0'],
-            ['c', 'disabled'],
+            ['t', '1'],
+            ['t', 'disabled'],
             ['t', '1'],
         ]) {
             press(key);
             expect(container.textContent).toBe(selected);
         }
-        expect(saves).toHaveLength(5);
+        expect(saves).toHaveLength(8);
         press('u');
         expect(container.textContent).toBe('1');
-        expect(saves).toHaveLength(5);
+        expect(saves).toHaveLength(8);
         renderPlayer(0);
-        for (const key of ['s', 't', 'f', 'b', 'c']) expect(press(key)).toBe(false);
+        for (const key of ['s', 't', 'f', 'b']) expect(press(key)).toBe(false);
         expect(container.textContent).toBe('1');
-        expect(saves).toHaveLength(5);
+        expect(saves).toHaveLength(8);
         renderPlayer(2, true);
-        press('f');
+        for (const key of ['s', 't', 'f', 'b']) expect(press(key)).toBe(false);
         expect(container.textContent).toBe('1');
-        expect(saves).toHaveLength(5);
+        expect(saves).toHaveLength(8);
     });
 });

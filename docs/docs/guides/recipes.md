@@ -77,7 +77,7 @@ Open a recipe's preview icon in the dropdown to copy its JSON or share its impor
 
 ## Keyboard shortcuts
 
-Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, **Disable recipe**, and **Select recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
+Configure **Cycle through recipes forward**, **Cycle through recipes backwards**, and **Toggle recipe #1** through **#10** under **Keyboard Shortcuts > Playback**. Toggling the active recipe disables recipes. Cycling follows the list order and includes **Disabled**. Playback setting and mode shortcuts show a notification while a recipe is active; edit or disable the recipe to change those settings.
 
 ## Common recipes
 

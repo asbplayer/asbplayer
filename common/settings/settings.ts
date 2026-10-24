@@ -463,17 +463,16 @@ export interface KeyBind {
 export interface KeyBindSet {
     readonly cycleRecipesForward: KeyBind;
     readonly cycleRecipesBackward: KeyBind;
-    readonly clearRecipe: KeyBind;
-    readonly selectRecipe1: KeyBind;
-    readonly selectRecipe2: KeyBind;
-    readonly selectRecipe3: KeyBind;
-    readonly selectRecipe4: KeyBind;
-    readonly selectRecipe5: KeyBind;
-    readonly selectRecipe6: KeyBind;
-    readonly selectRecipe7: KeyBind;
-    readonly selectRecipe8: KeyBind;
-    readonly selectRecipe9: KeyBind;
-    readonly selectRecipe10: KeyBind;
+    readonly toggleRecipe1: KeyBind;
+    readonly toggleRecipe2: KeyBind;
+    readonly toggleRecipe3: KeyBind;
+    readonly toggleRecipe4: KeyBind;
+    readonly toggleRecipe5: KeyBind;
+    readonly toggleRecipe6: KeyBind;
+    readonly toggleRecipe7: KeyBind;
+    readonly toggleRecipe8: KeyBind;
+    readonly toggleRecipe9: KeyBind;
+    readonly toggleRecipe10: KeyBind;
 
     readonly togglePlay: KeyBind;
     readonly toggleAutoPause: KeyBind;

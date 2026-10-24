@@ -183,8 +183,7 @@
         "openStatistics": "Abrir estadísticas",
         "cycleRecipesForward": "Cycle through recipes forward",
         "cycleRecipesBackward": "Cycle through recipes backward",
-        "clearRecipe": "Disable recipe",
-        "selectRecipe": "Select recipe #{{number}}"
+        "toggleRecipe": "Toggle recipe #{{number}}"
     },
     "controls": {
         "autoPauseMode": "Pausado Automático",

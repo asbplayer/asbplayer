@@ -620,7 +620,7 @@ describe('Binding playback mode integration', () => {
 
     it.each([
         { initialRecipeId: null, action: 0 as const, activeRecipeId: 0, playbackRate: 0.8 },
-        { initialRecipeId: 0, action: 'clear' as const, activeRecipeId: null, playbackRate: 1 },
+        { initialRecipeId: 0, action: 0 as const, activeRecipeId: null, playbackRate: 1 },
     ])('applies saved recipe action $action locally when its broadcast fails', async (selection) => {
         await storage.set({ recipes: shortcutRecipes, activeRecipeId: selection.initialRecipeId });
         const video = createVideo();
@@ -643,30 +643,38 @@ describe('Binding playback mode integration', () => {
     });
 
     it.each([
-        { recipeCount: 0, activeRecipeId: null },
-        { recipeCount: 1, activeRecipeId: null },
-        { recipeCount: 2, activeRecipeId: 1 },
-    ])('applies overlapping forward shortcuts with $recipeCount recipes', async ({ recipeCount, activeRecipeId }) => {
-        const recipes = shortcutRecipes.slice(0, recipeCount);
-        await storage.set({ recipes, activeRecipeId: null });
-        const video = createVideo();
-        const binding = new Binding(video, bindingOptions(false, false));
-        binding.bind();
-        await flushPlaybackTiming();
-        sendSubtitles(binding, [makeSubtitle()]);
-        await flushPlaybackTiming();
+        { recipeCount: 0, action: 'cycleForward' as const, activeRecipeId: null },
+        { recipeCount: 1, action: 'cycleForward' as const, activeRecipeId: null },
+        { recipeCount: 2, action: 'cycleForward' as const, activeRecipeId: 1 },
+        { recipeCount: 0, action: 0, activeRecipeId: null },
+        { recipeCount: 1, action: 0, activeRecipeId: null },
+        { recipeCount: 2, action: 0, activeRecipeId: null },
+    ])(
+        'applies overlapping $action shortcuts with $recipeCount recipes',
+        async ({ recipeCount, action, activeRecipeId }) => {
+            const recipes = shortcutRecipes.slice(0, recipeCount);
+            await storage.set({ recipes, activeRecipeId: null });
+            const video = createVideo();
+            const binding = new Binding(video, bindingOptions(false, false));
+            binding.bind();
+            await flushPlaybackTiming();
+            sendSubtitles(binding, [makeSubtitle()]);
+            await flushPlaybackTiming();
 
-        try {
-            await Promise.all([binding.selectRecipe('cycleForward'), binding.selectRecipe('cycleForward')]);
+            try {
+                await Promise.all([binding.selectRecipe(action), binding.selectRecipe(action)]);
 
-            expect(await binding.settings.getSingle('activeRecipeId')).toBe(activeRecipeId);
-            expect(video.playbackRate).toBe(
-                activeRecipeId === null ? defaultSettings.playbackRate : recipes[activeRecipeId].settings.playbackRate
-            );
-        } finally {
-            binding.unbind();
+                expect(await binding.settings.getSingle('activeRecipeId')).toBe(activeRecipeId);
+                expect(video.playbackRate).toBe(
+                    activeRecipeId === null
+                        ? defaultSettings.playbackRate
+                        : recipes[activeRecipeId].settings.playbackRate
+                );
+            } finally {
+                binding.unbind();
+            }
         }
-    });
+    );
 
     it('cycles from a preceding overlapping recipe selection', async () => {
         await storage.set({ recipes: shortcutRecipes, activeRecipeId: null });

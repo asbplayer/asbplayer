@@ -4,7 +4,7 @@ import type { KeyBindSet, SeekableTracks, TokenJumpTarget } from '@project/commo
 import { isTrackSeekable, TokenState, TokenStatus } from '@project/common/settings';
 import { adjacentSubtitle } from '@project/common/util';
 
-export type RecipeShortcut = 'cycleForward' | 'cycleBackward' | 'clear' | number;
+export type RecipeShortcut = 'cycleForward' | 'cycleBackward' | number;
 
 export interface KeyBinder {
     bindRecipes(
@@ -983,9 +983,8 @@ export class DefaultKeyBinder implements KeyBinder {
         const bindings: [keyof KeyBindSet, RecipeShortcut][] = [
             ['cycleRecipesForward', 'cycleForward'],
             ['cycleRecipesBackward', 'cycleBackward'],
-            ['clearRecipe', 'clear'],
             ...Array.from({ length: 10 }, (_, index): [keyof KeyBindSet, number] => [
-                `selectRecipe${index + 1}` as keyof KeyBindSet,
+                `toggleRecipe${index + 1}` as keyof KeyBindSet,
                 index,
             ]),
         ];

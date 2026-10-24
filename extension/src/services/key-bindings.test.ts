@@ -51,8 +51,7 @@ describe('KeyBindings playback modes', () => {
         binding.setKeyBindSet(context, {
             ...defaultSettings.keyBindSet,
             cycleRecipesForward: { keys: 'r' },
-            selectRecipe1: { keys: 's' },
-            clearRecipe: { keys: 'c' },
+            toggleRecipe1: { keys: 's' },
         });
         const press = (key: string) => {
             for (const type of ['keydown', 'keyup']) {
@@ -61,14 +60,14 @@ describe('KeyBindings playback modes', () => {
                 document.dispatchEvent(event);
             }
         };
-        for (const key of ['r', 's', 'c']) press(key);
+        for (const key of ['r', 's']) press(key);
         expect(selectRecipe).not.toHaveBeenCalled();
         context.subtitleController.subtitles = [makeSubtitle({ text: 'subtitle' })];
-        for (const key of ['r', 's', 'c']) press(key);
-        expect(selectRecipe.mock.calls.map(([action]) => action)).toEqual(['cycleForward', 0, 'clear']);
+        for (const key of ['r', 's']) press(key);
+        expect(selectRecipe.mock.calls.map(([action]) => action)).toEqual(['cycleForward', 0]);
         context.subtitleController.subtitles = [];
-        for (const key of ['r', 's', 'c']) press(key);
-        expect(selectRecipe).toHaveBeenCalledTimes(3);
+        for (const key of ['r', 's']) press(key);
+        expect(selectRecipe).toHaveBeenCalledTimes(2);
     });
 
     it('repeatedly seeks and selects matching tokens without taking focus from the video', () => {
