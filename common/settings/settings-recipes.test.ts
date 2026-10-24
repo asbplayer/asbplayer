@@ -345,14 +345,14 @@ describe('recipe imports and normalization', () => {
 
     it.each(['', 'not-base64!', 'AAAA'])('rejects malformed compressed payload %j', (payload) => {
         expect(
-            recipeFromImportUrl(new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`))
+            recipeFromImportUrl(new URL(`https://example.com/?view=settings#playback?recipe=${payload}`))
         ).toBeUndefined();
     });
 
     it('rejects oversized URL fragments even when the decoded recipe is small enough', () => {
         const json = JSON.stringify({ ...reading, ignored: 'x'.repeat(13 * 1024) });
         const payload = gzipSync(Buffer.from(json), { level: 0 }).toString('base64url');
-        const url = new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`);
+        const url = new URL(`https://example.com/?view=settings#playback?recipe=${payload}`);
         expect(url.hash.length).toBeGreaterThan(16 * 1024);
         expect(recipeFromImportUrl(url)).toBeUndefined();
     });
@@ -362,7 +362,7 @@ describe('recipe imports and normalization', () => {
         const json = JSON.stringify({ ...reading, ignored: 'x'.repeat(length - Buffer.byteLength(empty)) });
         expect(Buffer.byteLength(json)).toBe(length);
         const payload = gzipSync(Buffer.from(json)).toString('base64url');
-        const url = new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`);
+        const url = new URL(`https://example.com/?view=settings#playback?recipe=${payload}`);
         expect(recipeFromImportUrl(url)).toEqual(length === 64 * 1024 ? reading : undefined);
     });
 
@@ -373,7 +373,7 @@ describe('recipe imports and normalization', () => {
         const payload = compressed.toString('base64url');
         expect(payload.length).toBeLessThan(16 * 1024);
         expect(
-            recipeFromImportUrl(new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`))
+            recipeFromImportUrl(new URL(`https://example.com/?view=settings#playback?recipe=${payload}`))
         ).toBeUndefined();
     });
 
@@ -382,7 +382,7 @@ describe('recipe imports and normalization', () => {
         compressed.writeUInt32LE(length, compressed.length - 4);
         const payload = compressed.toString('base64url');
         expect(
-            recipeFromImportUrl(new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`))
+            recipeFromImportUrl(new URL(`https://example.com/?view=settings#playback?recipe=${payload}`))
         ).toBeUndefined();
     });
 
@@ -391,7 +391,7 @@ describe('recipe imports and normalization', () => {
         (json) => {
             const payload = gzipSync(Buffer.from(json)).toString('base64url');
             expect(
-                recipeFromImportUrl(new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`))
+                recipeFromImportUrl(new URL(`https://example.com/?view=settings#playback?recipe=${payload}`))
             ).toBeUndefined();
         }
     );
@@ -405,9 +405,9 @@ describe('recipe imports and normalization', () => {
                 })
             )
         ).toString('base64url');
-        expect(
-            recipeFromImportUrl(new URL(`https://app.asbplayer.dev/?view=settings#playback?recipe=${payload}`))
-        ).toEqual(reading);
+        expect(recipeFromImportUrl(new URL(`https://example.com/?view=settings#playback?recipe=${payload}`))).toEqual(
+            reading
+        );
     });
 });
 

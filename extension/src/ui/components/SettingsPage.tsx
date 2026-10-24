@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import type { CardModel } from '@project/common';
 import { HttpFetcher } from '@project/common';
 import { useCallback, useMemo } from 'react';
@@ -95,7 +96,7 @@ const SettingsPage = ({
 
     const commands = useCommandKeyBinds();
 
-    const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? 'en' });
+    const { initialized: i18nInitialized } = useI18n({ language: settings?.language ?? project.defaultLanguage });
     const { supportedLanguages } = useSupportedLanguages();
 
     const { hash: scrollToId } = useLocationHash();

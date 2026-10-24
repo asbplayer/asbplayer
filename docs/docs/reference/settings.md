@@ -2,11 +2,13 @@
 sidebar_position: 1
 ---
 
+import project from '@site/src/project';
+
 import NoteAddIcon from '@site/src/components/NoteAddIcon';
 
 # Settings {#settings}
 
-## [Anki](https://app.asbplayer.dev/?view=settings#anki-settings) {#anki}
+## <a href={new URL('?view=settings#anki-settings', project.urls.app).href}>Anki</a> {#anki}
 
 ### AnkiConnect URL {#ankiconnect-url}
 
@@ -52,7 +54,7 @@ Fields will appear in the **Anki Export Dialog** in the order that they appear i
 
 Default tags to supply with each card.
 
-## [Mining](https://app.asbplayer.dev/?view=settings#mining-settings) {#mining}
+## <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> {#mining}
 
 ### Mining button default action {#mining-button-default-action}
 
@@ -132,7 +134,7 @@ At the bottom of **Anki Export Dialog** there's a slider which can be used to ad
 
 At the bottom of **Anki Export Dialog** there's a slider which can be used to adjust the selected time interval. The slider includes surrounding subtitles as additional context. This setting controls the size of the allowed time interval around the target subtitle, for those surrounding subtitles.
 
-## [Subtitle appearance](https://app.asbplayer.dev/?view=settings#subtitle-appearance) {#subtitle-appearance}
+## <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitle appearance</a> {#subtitle-appearance}
 
 ### Subtitle track {#subtitle-appearance-track}
 
@@ -169,11 +171,11 @@ Preview and edit the subtitle text used to show the effect of the appearance set
 | Subtitle position offset from top    | Distance from the top of the video element of all top subtitle tracks.       |
 | Subtitles width                      | Width of subtitle container, in `%` or pixels.                               |
 
-## [Keyboard shortcuts](https://app.asbplayer.dev/?view=settings#keyboard-shortcuts) {#keyboard-shortcuts}
+## <a href={new URL('?view=settings#keyboard-shortcuts', project.urls.app).href}>Keyboard shortcuts</a> {#keyboard-shortcuts}
 
 Keyboard shortcuts can be used to access most of asbplayer's features.
 
-### [Subtitles](https://app.asbplayer.dev/?view=settings#subtitle-appearance) keyboard shortcuts {#subtitles-keyboard-shortcuts}
+### <a href={new URL('?view=settings#subtitle-appearance', project.urls.app).href}>Subtitles</a> keyboard shortcuts {#subtitles-keyboard-shortcuts}
 
 | Behavior                             | Default shortcut |
 | ------------------------------------ | ---------------- |
@@ -193,7 +195,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Move top subtitles up                |                  |
 | Move top subtitles down              |                  |
 
-### [Mining](https://app.asbplayer.dev/?view=settings#mining-settings) keyboard shortcuts {#mining-keyboard-shortcuts}
+### <a href={new URL('?view=settings#mining-settings', project.urls.app).href}>Mining</a> keyboard shortcuts {#mining-keyboard-shortcuts}
 
 | Behavior                                                                             | Default shortcut |
 | ------------------------------------------------------------------------------------ | ---------------- |
@@ -204,7 +206,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Manually take screenshot, overriding the one that is automatically taken when mining | Ctrl + Shift + V |
 | Manually start/stop audio recording, even when a subtitle file is loaded.            | Ctrl + Shift + R |
 
-### [Playback](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#playback-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> keyboard shortcuts {#playback-keyboard-shortcuts}
 
 | Behavior                        | Default shortcut |
 | ------------------------------- | ---------------- |
@@ -217,7 +219,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Toggle when subtitles are shown |                  |
 | Cycle auto-pause resume mode    |                  |
 
-### [Seek](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#seek-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Seek</a> keyboard shortcuts {#seek-keyboard-shortcuts}
 
 | Behavior                                                                  | Default shortcut |
 | ------------------------------------------------------------------------- | ---------------- |
@@ -227,14 +229,14 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Seek to next subtitle                                                     | →                |
 | Seek to beginning of current/previous subtitle                            | ↑                |
 
-### [Playback rate](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#playback-rate-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback rate</a> keyboard shortcuts {#playback-rate-keyboard-shortcuts}
 
 | Behavior               | Default shortcut |
 | ---------------------- | ---------------- |
 | Increase playback rate | Ctrl + Shift + ] |
 | Decrease playback rate | Ctrl + Shift + [ |
 
-### [Subtitle offset](https://app.asbplayer.dev/?view=settings#playback) keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
+### <a href={new URL('?view=settings#playback', project.urls.app).href}>Subtitle offset</a> keyboard shortcuts {#subtitle-offset-keyboard-shortcuts}
 
 | Behavior                                                                 | Default shortcut |
 | ------------------------------------------------------------------------ | ---------------- |
@@ -244,7 +246,7 @@ Keyboard shortcuts can be used to access most of asbplayer's features.
 | Adjust subtitle offset by -100ms                                         | Ctrl + Shift + → |
 | Reset subtitle offset                                                    | Ctrl + Shift + ↓ |
 
-### [Annotation](https://app.asbplayer.dev/?view=settings#annotation) keyboard shortcuts {#annotation-keyboard-shortcuts}
+### <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> keyboard shortcuts {#annotation-keyboard-shortcuts}
 
 | Behavior                          | Default shortcut |
 | --------------------------------- | ---------------- |
@@ -292,7 +294,7 @@ When the browser extension is installed, some mining shortcuts (e.g. mine curren
 - Chrome: `chrome://extensions/shortcuts`
 - Firefox: `about:addons` → `Manage Extension Shortcuts`
 
-## [Annotation](https://app.asbplayer.dev/?view=settings#annotation) {#annotation}
+## <a href={new URL('?view=settings#annotation', project.urls.app).href}>Annotation</a> {#annotation}
 
 ### Word Browser {#word-browser}
 
@@ -619,7 +621,7 @@ For how Anki Card statuses are determined, see [**Mature Anki stability/interval
 For how WaniKani statuses are determined, see [**WaniKani API token**](#wanikani-api-token).
 :::
 
-## [Playback](https://app.asbplayer.dev/?view=settings#playback) {#playback}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback</a> {#playback}
 
 ### Subtitle tracks affected by playback modes and keyboard shortcuts {#playback-subtitle-tracks}
 
@@ -713,7 +715,7 @@ In **Fixed** and **Subtitle length** modes, an automatic pause runs in two phase
 
 - **While manually paused**: Subtitles appear only when they are due and playback is manually paused.
 
-## [Playback > Annotation](https://app.asbplayer.dev/?view=settings#playback) {#playback-annotation}
+## <a href={new URL('?view=settings#playback', project.urls.app).href}>Playback > Annotation</a> {#playback-annotation}
 
 These settings use the word statuses, states, and frequencies from [Annotation](#annotation) for the selected subtitle track. The auto-pause, condensed, fast-forward, and repeat rules take effect while their playback modes are on. **No word filter** means no statuses or states are selected for that track. Rules apply per track: a seekable track without statuses or states selected for one of those modes keeps that mode's usual behavior, even when it plays alongside a track that has rules.
 
@@ -779,7 +781,7 @@ A matching word must have a frequency at or above this value. Missing frequency 
 
 A matching word must have a frequency at or below this value. Missing frequency counts as `1`. `0` disables the limit.
 
-## [Streaming video](https://app.asbplayer.dev/?view=settings#streaming-video) (extension only) {#streaming-video}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video</a> (extension only) {#streaming-video}
 
 Streaming video settings are available only when the browser extension is installed.
 
@@ -841,7 +843,7 @@ If subtitle auto-detection is supported on the current website, load them automa
 
 When automatic subtitle loading fails, prompt before trying to load detected subtitles.
 
-## [Streaming video > Pages](https://app.asbplayer.dev/?view=settings#streaming-video) {#pages}
+## <a href={new URL('?view=settings#streaming-video', project.urls.app).href}>Streaming video > Pages</a> {#pages}
 
 Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer has pre-configured default settings for each page. The pages section allows those defaults to be modified.
 
@@ -849,7 +851,7 @@ Settings for page-specific integrations like YouTube, Netflix, etc. asbplayer ha
 
 Specifies which target languages to use for YouTube's machine translation. When languages are specified here, additional tracks for each target language appear in the subtitle track selector.
 
-## [Misc](https://app.asbplayer.dev/?view=settings#misc-settings) {#misc}
+## <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>Misc</a> {#misc}
 
 ### Import/export settings {#import-export-settings}
 

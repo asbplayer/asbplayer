@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type {
     AddProfileMessage,
@@ -33,10 +34,10 @@ import { ExtensionSettingsStorage } from '@/services/extension-settings-storage'
 import { ExtensionGlobalStateProvider } from '@/services/extension-global-state-provider';
 import { configureExtensionLogProvider } from '@/services/extension-log-provider';
 
-const matches = ['*://app.asbplayer.dev/*'];
+const matches = [`*://${new URL(project.urls.app).hostname}/*`];
 
 if (import.meta.env.DEV) {
-    matches.push('*://localhost/*');
+    matches.push(`*://${project.development.host}/*`);
 }
 
 export default defineContentScript({

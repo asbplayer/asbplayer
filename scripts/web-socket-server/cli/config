@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+ASBPLAYER_PROJECT_CONFIG="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)/project.json"
+ASBPLAYER_SERVER_URL=${ASBPLAYER_SERVER_URL:-$(jq -r '.services.webSocket | "http://\(.host):\(.port)"' "$ASBPLAYER_PROJECT_CONFIG")}

@@ -3,6 +3,8 @@ sidebar_position: 1.5
 title: Recipes
 ---
 
+import project from '@site/src/project';
+
 import RecipePreset, { dialogueFocusRecipe, gapFastForwardRecipe } from '@site/src/components/RecipePreset';
 
 export const nonAnnotationPlaybackSettings = {
@@ -81,7 +83,7 @@ Configure **Cycle through recipes forward**, **Cycle through recipes backwards**
 
 ## Common recipes
 
-These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on [Discord](https://discord.gg/ad7VAQru7m) or on [GitHub](https://github.com/asbplayer/asbplayer/issues/new/choose).
+These contain some useful preset recipes for common learning activities. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
 ### Normal mode
 
@@ -299,7 +301,7 @@ Listen to the audio, then reproduce the line aloud from memory during the automa
 
 ## Annotation Recipes
 
-These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on [Discord](https://discord.gg/ad7VAQru7m) or on [GitHub](https://github.com/asbplayer/asbplayer/issues/new/choose).
+These presets require [Annotation](./annotation.md) to be enabled as they use its data. If you have any that you want to share or need a missing feature to create the perfect recipe, you can request them on <a href={project.urls.discord}>Discord</a> or on <a href={`${project.urls.repo}/issues/new/choose`}>GitHub</a>.
 
 Load your target-language subtitles as **Track 1**. These presets use that track for playback and word selection. **Unfamiliar** means **Uncollected** or **Unknown**. Other annotation display preferences, such as readings and colors, use your underlying settings.
 

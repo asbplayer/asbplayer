@@ -2,9 +2,12 @@
 sidebar_position: 2
 ---
 
+import project, { ankiConnectUrl } from '@site/src/project';
+import CodeBlock from '@theme/CodeBlock';
+
 # External API {#external-api}
 
-This page is intended to be an technical reference on asbplayer's external interface and the [pre-packaged WebSocket server](https://github.com/asbplayer/asbplayer/tree/main/scripts/web-socket-server) that implements this interface. See the [guide](../guides/web-socket-server) for how to setup the WebSocket server.
+This page is intended to be an technical reference on asbplayer's external interface and the <a href={`${project.urls.repo}/tree/main/scripts/web-socket-server`}>pre-packaged WebSocket server</a> that implements this interface. See the [guide](../guides/web-socket-server) for how to setup the WebSocket server.
 
 ## WebSocket commands {#websocket-commands}
 
@@ -216,10 +219,10 @@ Returns an empty list when no matching media is found or no subtitles are loaded
 
 The WebSocket server also implements an HTTP-based API which can trigger the commands above.
 
-- `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/load-subtitles))
-- `POST asbplayer/seek` (optional `mediaId` in the request body) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/seek))
-- `GET asbplayer/bound-media` ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/bound-media))
-- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) ([script](https://github.com/asbplayer/asbplayer/blob/main/scripts/web-socket-server/cli/subtitles))
+- `POST asbplayer/load-subtitles` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/load-subtitles`}>script</a>)
+- `POST asbplayer/seek` (optional `mediaId` in the request body) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/seek`}>script</a>)
+- `GET asbplayer/bound-media` (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/bound-media`}>script</a>)
+- `GET asbplayer/subtitles` (optional `?mediaId=...&trackNumbers=0,1`) (<a href={`${project.urls.repo}/blob/main/scripts/web-socket-server/cli/subtitles`}>script</a>)
 
 ## AnkiConnect proxy {#ankiconnect-proxy}
 
@@ -231,17 +234,15 @@ The proxy passes through all AnkiConnect requests as-is except for `addNote`. Th
 
 The server is configured with an `.env` file placed next to it in the same directory. Below is an example file with explanation.
 
-```
-# Port that the proxy will listen on
-PORT=8766
+<CodeBlock language="bash">{`# Port that the proxy will listen on
+PORT=${project.services.webSocket.port}
 
 # AnkiConnect URL
-ANKI_CONNECT_URL=http://127.0.0.1:8765
+ANKI_CONNECT_URL=${ankiConnectUrl}
 
 # Action for asbplayer to take when the proxy receives an addNote request
 # 0 = 'None'
 # 1 = 'Open Anki dialog'
 # 2 = 'Update last card' (updates last card with asbplayer media AFTER passing through original addNote request)
 # 3 = 'Export card'
-POST_MINE_ACTION=2
-```
+POST_MINE_ACTION=${project.services.webSocket.postMineAction}`}</CodeBlock>

@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { arrayEquals } from '@project/common/util/array-equals';
 import { compareField, fieldsEqual } from '@project/common/util';
 import type { FieldComparators } from '@project/common/util';
@@ -775,7 +776,7 @@ const defaultDictionaryTrackSettings: DictionaryTrack = {
     dictionaryTokenMatchStrategy: TokenMatchStrategy.ANY_FORM_COLLECTED,
     dictionaryMatchAcrossScripts: true,
     dictionaryTokenMatchStrategyPriority: TokenMatchStrategyPriority.EXACT,
-    dictionaryYomitanUrl: 'http://127.0.0.1:19633',
+    dictionaryYomitanUrl: `http://${project.services.yomitan.host}:${project.services.yomitan.port}`,
     dictionaryYomitanParser: 'scanning-parser',
     dictionaryYomitanScanLength: 16,
     dictionaryTokenReadingAnnotation: TokenReadingAnnotation.NEVER,

@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import {
     maximumRecipeNameLength,
     activeRecipe,
@@ -207,7 +208,7 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                         components={{
                             docs: (
                                 <Link
-                                    href="https://docs.asbplayer.dev/docs/guides/recipes"
+                                    href={`${project.urls.docs}/docs/guides/recipes`}
                                     target="_blank"
                                     rel="noreferrer"
                                 />

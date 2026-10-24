@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError, asbInfo, asbTrace } from '@project/common/util/log';
 import Binding from '@/services/binding';
 import { currentPageDelegate } from '@/services/pages';
@@ -24,10 +25,10 @@ import { configureExtensionLogProvider } from '@/services/extension-log-provider
 
 import './video.css';
 
-const excludeGlobs = ['*://app.asbplayer.dev/*'];
+const excludeGlobs = [`*://${new URL(project.urls.app).hostname}/*`];
 
 if (import.meta.env.DEV) {
-    excludeGlobs.push('*://localhost:3000/*');
+    excludeGlobs.push(`*://${project.development.host}:${project.development.port}/*`);
 }
 
 export default defineContentScript({

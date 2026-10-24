@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { useSettings } from '@project/extension/src/ui/hooks/use-settings';
 import type {
     AsbPlayerToVideoCommandV2,
@@ -235,7 +236,7 @@ const MobileVideoOverlayUi = () => {
         }
     }, []);
 
-    const { initialized: i18nInitialized } = useI18n({ language: model?.language ?? 'en' });
+    const { initialized: i18nInitialized } = useI18n({ language: model?.language ?? project.defaultLanguage });
     const { lastControlType, setLastControlType } = useLastScrollableControlType({
         isMobile,
         saveLastControlType,

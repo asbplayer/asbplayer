@@ -68,8 +68,8 @@ pre-agent-steps:
     run: |
       set -euo pipefail
       {
-        echo "## Latest extension version (extension/wxt.config.ts)"
-        grep -n "const version" extension/wxt.config.ts || true
+        echo "## Latest extension version (project.json)"
+        jq '{version, publishedVersion}' project.json
         echo
         echo "## Newest release blog posts"
         ls -1 docs/blog/*.mdx | tail -5
@@ -91,7 +91,7 @@ You are auditing the asbplayer repository for drift between code and documentati
 Pre-generated files in the workspace root:
 
 - `recent-contributors.md`: one line per commit merged to main since the newest "Acknowledge..." commit that touched the acknowledgement files, formatted `short-sha|pr-number-or-dash|author-handle-or-name|subject`.
-- `release-info.md`: latest extension version from `extension/wxt.config.ts`, newest release blog posts, newest git tags.
+- `release-info.md`: latest extension version from `project.json`, newest release blog posts, newest git tags.
 
 The full git history is available locally.
 

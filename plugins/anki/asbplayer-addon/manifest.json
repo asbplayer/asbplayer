@@ -1,4 +1,5 @@
 {
     "package": "asbplayer-addon",
-    "name": "asbplayer"
+    "name": "asbplayer",
+    "human_version": "1.0.0"
 }

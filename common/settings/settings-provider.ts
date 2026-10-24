@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { ensureRecipeConsistency, normalizeRecipe } from '@project/common/settings/settings-recipes';
 import type {
     AnkiField,
@@ -51,7 +52,7 @@ const defaultSubtitleTextSettings = {
 export const defaultSettings: AsbplayerSettings = {
     recipes: [],
     activeRecipeId: null,
-    ankiConnectUrl: 'http://127.0.0.1:8765',
+    ankiConnectUrl: `http://${project.services.ankiConnect.host}:${project.services.ankiConnect.port}`,
     ankiConnectApiKey: '',
     ankiRefreshBrowserAfterUpdate: false,
     deck: '',
@@ -209,7 +210,7 @@ export const defaultSettings: AsbplayerSettings = {
     recordWithAudioPlayback: true,
     preferMp3: true,
     alwaysUseSubtitleForSentence: false,
-    tabName: 'asbplayer',
+    tabName: project.names.short,
     miningHistoryStorageLimit: 25,
     clickToMineDefaultAction: PostMineAction.showAnkiDialog,
     postMiningPlaybackState: PostMinePlayback.remember,
@@ -226,11 +227,11 @@ export const defaultSettings: AsbplayerSettings = {
     subtitleRegexFilter: '',
     subtitleRegexFilterTextReplacement: '',
     convertNetflixRuby: false,
-    language: 'en',
+    language: project.defaultLanguage,
     customAnkiFields: {},
     tags: [],
     imageBasedSubtitleScaleFactor: 1,
-    streamingAppUrl: 'https://app.asbplayer.dev',
+    streamingAppUrl: project.urls.app,
     streamingDisplaySubtitles: true,
     streamingRecordMedia: true,
     streamingTakeScreenshot: true,
@@ -280,7 +281,7 @@ export const defaultSettings: AsbplayerSettings = {
         dreaming: {},
     },
     webSocketClientEnabled: false,
-    webSocketServerUrl: 'ws://127.0.0.1:8766/ws',
+    webSocketServerUrl: `ws://${project.services.webSocket.host}:${project.services.webSocket.port}${project.services.webSocket.path}`,
     pauseOnHoverMode: 0,
     lastSelectedAnkiExportMode: 'default',
     dictionaryTracks: defaultDictionaryTracks,

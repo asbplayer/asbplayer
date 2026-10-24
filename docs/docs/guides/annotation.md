@@ -2,6 +2,8 @@
 sidebar_position: 1
 ---
 
+import project from '@site/src/project';
+
 # Annotation {#annotation}
 
 asbplayer can annotate subtitles to better assist with language learning. Annotation features include:
@@ -46,4 +48,4 @@ If you rely on the **local word database**, installing the asbplayer browser ext
 
 ## Troubleshooting {#troubleshooting}
 
-Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on [Discord](https://discord.gg/ad7VAQru7m) or submit a [bug report](https://github.com/asbplayer/asbplayer/issues) with detailed information about your issue and steps to reproduce it.
+Please refer to the [common issues](../common-issues.md#annotation) section of the docs for troubleshooting annotation issues. If you can't find a solution there, please reach out on <a href={project.urls.discord}>Discord</a> or submit a <a href={`${project.urls.repo}/issues`}>bug report</a> with detailed information about your issue and steps to reproduce it.

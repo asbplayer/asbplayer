@@ -23,10 +23,10 @@ jobs:
             - name: Submit to stores
               working-directory: ./extension
               run: |
+                  export FIREFOX_EXTENSION_ID="$(jq -r '.extension.firefoxAndroid.storeId' ../project.json)"
                   pnpm wxt submit \
                     --firefox-zip .output/*-firefox-android.zip --firefox-sources-zip .output/*-sources.zip \
                     --firefox-channel listed
               env:
-                  FIREFOX_EXTENSION_ID: 'asbplayer-android'
                   FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
                   FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

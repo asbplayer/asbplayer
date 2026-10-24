@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import type Binding from '@project/extension/src/services/binding';
 import type UiFrame from '@project/extension/src/services/ui-frame';
 import { uiFrameForHtml } from '@project/extension/src/services/ui-frame';
@@ -18,11 +19,11 @@ export default class NotificationController {
         this._frame = uiFrameForHtml(
             async (lang) =>
                 `<!DOCTYPE html>
-                    <html lang="en">
+                    <html lang="${encodeURIComponent(lang)}">
                     <head>
                         <meta charset="utf-8" />
                         <meta name="viewport" content="width=device-width, initial-scale=1" />
-                        <title>asbplayer</title>
+                        <title>${project.names.short}</title>
                         <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
                         ${frameColorSchemeStyleBlock()}

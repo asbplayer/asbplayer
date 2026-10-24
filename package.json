@@ -22,9 +22,11 @@
         }
     },
     "scripts": {
+        "sync:project": "node --experimental-strip-types scripts/sync-project-config.ts",
+        "check:project": "node --experimental-strip-types scripts/sync-project-config.ts --check",
         "check:contributors": "node --experimental-strip-types scripts/check-contributors.ts",
         "test:scripts": "node --test --experimental-strip-types scripts/*.test.ts",
-        "verify": "scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && pnpm --filter @project/common run typecheck && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm eslint common extension/src client/src && pnpm run test:scripts && pnpm run pretty:check",
+        "verify": "pnpm run check:project && scripts/loc/loc-keys-match && scripts/loc/loc-codes-in-extension-config && scripts/page-file-references-are-correct && pnpm --filter @project/common run typecheck && pnpm --filter @project/common run test && pnpm --filter @project/client run test && pnpm --filter @project/extension run test && pnpm eslint common extension/src client/src && pnpm run test:scripts && pnpm run pretty:check",
         "pretty": "pnpm prettier --write './(client|common|extension)/**/*.(js|ts|tsx|css)' './scripts/*.ts'",
         "pretty:check": "pnpm prettier --check './(client|common|extension)/**/*.(js|ts|tsx|css)' './scripts/*.ts'"
     }

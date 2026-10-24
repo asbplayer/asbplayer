@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import {
     computeStyles,
@@ -104,7 +105,7 @@ import KeyboardShortcutLink from '@project/common/components/KeyboardShortcutLin
 
 const yomitanInstallerUrl = 'https://github.com/yomidevs/yomitan-api';
 const yomitanMecabInstallerUrl = 'https://github.com/yomidevs/yomitan-mecab-installer';
-const waniKaniApiTokenSetupUrl = 'https://docs.asbplayer.dev/docs/guides/annotation#setup';
+const waniKaniApiTokenSetupUrl = `${project.urls.docs}/docs/guides/annotation#setup`;
 const maskApiToken = (apiToken: string) => '•'.repeat(Array.from(apiToken).length);
 
 // These values show all digits with an increasing number of digits
@@ -1384,7 +1385,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                             <Link key={0} component="button" onClick={onPlaybackSettingsClick} />,
                                             <Link
                                                 key={1}
-                                                href="https://docs.asbplayer.dev/docs/common-issues#enable-or-disable-annotation-for-a-track"
+                                                href={`${project.urls.docs}/docs/common-issues#enable-or-disable-annotation-for-a-track`}
                                                 target="_blank"
                                                 rel="noreferrer"
                                             />,

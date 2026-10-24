@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError, asbWarn } from '@project/common/util/log';
 import { humanReadableTime, download, extractText, timeDurationDisplay } from '@project/common/util';
 import type { ComponentProps } from 'react';
@@ -93,9 +94,7 @@ import VideoDataSyncDialog, { useVideoDataSyncDialogState } from '@project/commo
 import type { FileWithId } from '@project/common/file-selector';
 import { DefaultFileSelector } from '@project/common/file-selector';
 
-const latestExtensionVersion = '1.16.0';
-const extensionUrl =
-    'https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab';
+const extensionUrl = project.extension.chrome.storeUrl;
 
 const useContentStyles = makeStyles<Theme, ContentProps>((theme) => ({
     content: {
@@ -2018,7 +2017,7 @@ function App({
                                 onClose={handleCloseNeedRefreshDialog}
                             />
                             <Bar
-                                title={fileName || 'asbplayer'}
+                                title={fileName || project.names.short}
                                 drawerWidth={drawerWidth}
                                 drawerOpen={effectiveDrawerOpen}
                                 hidden={appBarHidden}
@@ -2051,7 +2050,7 @@ function App({
                                 <Paper square style={{ width: '100%', height: '100%', position: 'relative' }}>
                                     {nothingLoaded && (
                                         <LandingPage
-                                            latestExtensionVersion={latestExtensionVersion}
+                                            latestExtensionVersion={project.publishedVersion}
                                             extensionUrl={extensionUrl}
                                             extension={extension}
                                             loading={loading}

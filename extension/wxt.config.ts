@@ -2,6 +2,8 @@ import { defineConfig } from 'wxt';
 import type { PublicPathEntry, ResolvedPublicFile, UserManifest, Wxt } from 'wxt';
 import fs from 'node:fs';
 import path from 'node:path';
+import project from '../project.json' with { type: 'json' };
+import { extensionReleaseInfo } from '../scripts/extension-release-info.ts';
 
 const commonAssets = [
     { srcDir: path.resolve(__dirname, '../common/locales'), destDir: 'asbplayer-locales' },
@@ -25,7 +27,8 @@ const addToPublicPathsType = (srcPath: string, destPath: string, paths: PublicPa
     }
 };
 
-const extName = 'asbplayer';
+const extName = project.names.short;
+const releaseInfo = extensionReleaseInfo(project);
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -43,6 +46,13 @@ export default defineConfig({
     vite: () => ({
         plugins: [
             {
+                name: 'project-html',
+                transformIndexHtml: (html) =>
+                    html
+                        .replaceAll('__PROJECT_NAME__', project.names.short)
+                        .replaceAll('__DEFAULT_LANGUAGE__', project.defaultLanguage),
+            },
+            {
                 name: 'watch-common',
                 configureServer(server) {
                     server.watcher.add(path.resolve(__dirname, '../common'));
@@ -56,8 +66,8 @@ export default defineConfig({
     zip: {
         sourcesRoot: '..',
         includeSources: ['patches/**'],
-        artifactTemplate: `${extName}-{{version}}-{{browser}}.zip`,
-        sourcesTemplate: `${extName}-{{version}}-sources.zip`,
+        artifactTemplate: releaseInfo.artifactTemplate,
+        sourcesTemplate: releaseInfo.sourcesTemplate,
     },
     hooks: {
         'build:publicAssets': (wxt: Wxt, files: ResolvedPublicFile[]) => {
@@ -73,7 +83,7 @@ export default defineConfig({
         },
     },
     manifest: ({ browser, mode }) => {
-        const version = '1.23.0';
+        const { version } = project;
         const isDev = mode === 'development';
         const devLabel = isDev ? ' (Dev)' : '';
         const title = `${extName}${devLabel}`;
@@ -84,7 +94,7 @@ export default defineConfig({
             description: '__MSG_extensionDescription__',
             version,
             action: { default_title: title },
-            default_locale: 'en',
+            default_locale: project.defaultLanguage,
             icons: {
                 '16': 'icon/icon16.png',
                 '48': 'icon/icon48.png',
@@ -200,13 +210,13 @@ export default defineConfig({
             const key = isDev
                 ? {}
                 : {
-                      key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxmdAa3ymqAjLms43ympXqtyuJnC2bSYh70+5ZZmtyx/MsnGhTEdfbqtsp3BKxHbv0rPd49+Joacm1Shik5/mCppZ0h4I4ISMm983X01H6p/hfAzQYAcnvw/ZQNHAv1QgY9JiuyTBirCDoYB50Fxol/kI/0EviYXuX83KoYpjB0VGP/ssY9ocT//fQUbRmeLDJnciry8y6MduWXHzseOP99axQIjeVsNTE30L4fRN+ppX3aOkG/RFJNx0eI02qbLul3qw5dUuBK5GgMbYftwjHnDoOegnZYFr1sxRO1zsgmxdp/6du75RiDPRJOkPCz2GTrw4CX2FCywbDZlqaIpwqQIDAQAB',
+                      key: project.extension.chrome.key,
                   };
 
             manifest = {
                 ...manifest,
                 ...key,
-                minimum_chrome_version: '116',
+                minimum_chrome_version: project.extension.chrome.minimumVersion,
                 commands,
             };
         }
@@ -226,7 +236,7 @@ export default defineConfig({
                       id: `${extName}-dev-${version}@example.com`,
                   }
                 : {
-                      id: '{e4b27483-2e73-4762-b2ec-8d988a143a40}',
+                      id: project.extension.firefox.id,
                   };
 
             manifest = {
@@ -247,7 +257,7 @@ export default defineConfig({
 
             const geckoId = isDev
                 ? `${extName}-android-dev-${version}@example.com`
-                : '{49de9206-c73e-4829-be4d-bda770d7f4b5}';
+                : project.extension.firefoxAndroid.id;
 
             manifest = {
                 ...manifest,

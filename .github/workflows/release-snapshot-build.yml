@@ -5,7 +5,7 @@
 # extension/package.json scripts (`zip`, `zip:firefox`, `zip:firefox-android`),
 # which each run the full `pnpm check` before zipping.
 #
-# The extension version is read from extension/wxt.config.ts and used to link
+# The extension version is read from project.json and used to link
 # the matching milestone. Milestone titles embed the exact version, e.g.
 # "Extension v1.22.0"; if no matching milestone exists, the link is omitted.
 #
@@ -52,22 +52,20 @@ jobs:
             - name: Build Firefox for Android snapshot
               run: pnpm --filter @project/extension run zip:firefox-android
 
-            - name: Read extension version
-              id: version
+            - name: Read extension release metadata
+              id: release-info
               run: |
                   set -euo pipefail
-                  version=$(node -e "const fs=require('fs');const m=fs.readFileSync('extension/wxt.config.ts','utf8').match(/const version = '([^']+)'/);if(!m){console.error('version not found in extension/wxt.config.ts');process.exit(1)}console.log(m[1])")
-                  echo "version=$version" >> "$GITHUB_OUTPUT"
-                  echo "Extension version: $version"
+                  node --experimental-strip-types scripts/extension-release-info.ts >> "$GITHUB_OUTPUT"
 
             - name: Upload snapshot artifacts
               uses: actions/upload-artifact@v7
               with:
-                  name: extension-snapshot-${{ steps.version.outputs.version }}
+                  name: extension-snapshot-${{ steps.release-info.outputs.version }}
                   path: |
-                      extension/.output/asbplayer-${{ steps.version.outputs.version }}-chrome.zip
-                      extension/.output/asbplayer-${{ steps.version.outputs.version }}-firefox.zip
-                      extension/.output/asbplayer-${{ steps.version.outputs.version }}-firefox-android.zip
+                      extension/.output/${{ steps.release-info.outputs.chrome }}
+                      extension/.output/${{ steps.release-info.outputs.firefox }}
+                      extension/.output/${{ steps.release-info.outputs.firefoxAndroid }}
                   if-no-files-found: error
 
             - name: Resolve milestone
@@ -76,7 +74,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   set -euo pipefail
-                  version='${{ steps.version.outputs.version }}'
+                  version='${{ steps.release-info.outputs.version }}'
                   url=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/milestones?state=all&per_page=100" \
                     --jq ".[] | select(.title == \"Extension v${version}\") | .html_url" | head -n 1)
                   echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -89,7 +87,10 @@ jobs:
             - name: "Post snapshot to #snapshot-releases"
               env:
                   WEBHOOK_URL: ${{ inputs.webhook_snapshot_releases || secrets.DISCORD_WEBHOOK_SNAPSHOT_RELEASES }}
-                  VERSION: ${{ steps.version.outputs.version }}
+                  VERSION: ${{ steps.release-info.outputs.version }}
+                  CHROME_ZIP: ${{ steps.release-info.outputs.chrome }}
+                  FIREFOX_ZIP: ${{ steps.release-info.outputs.firefox }}
+                  FIREFOX_ANDROID_ZIP: ${{ steps.release-info.outputs.firefoxAndroid }}
                   MILESTONE_URL: ${{ steps.milestone.outputs.url }}
                   RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
                   SHA: ${{ github.sha }}
@@ -105,6 +106,6 @@ jobs:
                   payload=$(jq -n --arg content "$content" '{content: $content, allowed_mentions: {parse: []}}')
                   curl -sS --fail-with-body -X POST "$WEBHOOK_URL" \
                     --form-string "payload_json=$payload" \
-                    -F "files[0]=@extension/.output/asbplayer-${VERSION}-chrome.zip" \
-                    -F "files[1]=@extension/.output/asbplayer-${VERSION}-firefox.zip" \
-                    -F "files[2]=@extension/.output/asbplayer-${VERSION}-firefox-android.zip"
+                    -F "files[0]=@extension/.output/${CHROME_ZIP}" \
+                    -F "files[1]=@extension/.output/${FIREFOX_ZIP}" \
+                    -F "files[2]=@extension/.output/${FIREFOX_ANDROID_ZIP}"
