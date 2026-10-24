@@ -15,7 +15,10 @@ export class ExternalConnection {
     private readonly _disconnectListeners: (() => void)[] = [];
     private _disconnected = false;
 
-    constructor(port: chrome.runtime.Port, private readonly _timeoutMs = 5000) {
+    constructor(
+        port: chrome.runtime.Port,
+        private readonly _timeoutMs = 5000
+    ) {
         this._port = port;
         port.onMessage.addListener((message) => this._onMessage(message));
         port.onDisconnect.addListener(() => this._onDisconnect());
@@ -48,8 +51,8 @@ export class ExternalConnection {
     }
 
     /**
-     * Posts a command and correlates the response by message ID. Rejects on timeout or
-     * disconnect while a response is pending.
+     * Posts a command and correlates the response by message ID. Resolves `undefined` on
+     * timeout or disconnect; rejects if the post itself fails.
      */
     async request<T>(command: ExternalCommand): Promise<Response<T> | undefined> {
         return new Promise<Response<T> | undefined>((resolve, reject) => {

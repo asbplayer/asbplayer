@@ -1,5 +1,6 @@
 import { asbError } from '@project/common/util/log';
 import type { ExternalConnectionsState, GlobalStateProvider } from '@project/common/global-state';
+import { mutateExternalConnections } from '@project/common/global-state';
 import type { ExternalApprovalMessage, ExternalCommand, ExternalHelloMessage } from '@project/common/external-commands';
 import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 import { externalCommandHandlers } from '@project/extension/src/services/external-command-handlers';
@@ -155,7 +156,7 @@ export class ExternalConnectionCoordinator {
     private async _hello(senderId: string, message: ExternalHelloMessage) {
         const name = typeof message.name === 'string' && message.name.length > 0 ? message.name : undefined;
 
-        await this._mutateExternalConnections((externalConnections) => {
+        await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
             const approved = externalConnections.approved[senderId];
 
             if (approved !== undefined) {
@@ -220,7 +221,7 @@ export class ExternalConnectionCoordinator {
     }
 
     private async _prunePendingRequests(): Promise<void> {
-        await this._mutateExternalConnections((externalConnections) => {
+        await mutateExternalConnections(this._globalStateProvider, (externalConnections) => {
             const pruned = this._prunePending(externalConnections.pending, Date.now());
 
             if (Object.keys(pruned).length === Object.keys(externalConnections.pending).length) {
@@ -251,19 +252,6 @@ export class ExternalConnectionCoordinator {
                 .sort(([, a], [, b]) => (b?.requestedAt ?? 0) - (a?.requestedAt ?? 0))
                 .slice(0, maxPendingRequests)
         );
-    }
-
-    private async _mutateExternalConnections(
-        mutate: (externalConnections: ExternalConnectionsState) => boolean
-    ): Promise<void> {
-        const state = await this._globalStateProvider.get(['externalConnections']);
-        const externalConnections: ExternalConnectionsState = JSON.parse(JSON.stringify(state.externalConnections));
-
-        if (!mutate(externalConnections)) {
-            return;
-        }
-
-        await this._globalStateProvider.set({ externalConnections });
     }
 
     private async _approvedIds(): Promise<Set<string>> {

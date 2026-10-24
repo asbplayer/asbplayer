@@ -28,7 +28,7 @@ so an external extension can target everything the WebSocket API targets.
 
 ## Protocol
 
-Connection: `browser.runtime.connectExternal(<asbplayer extension ID>)` with port name
+Connection: `browser.runtime.connect(<asbplayer extension ID>)` with port name
 `asbplayer-external-v1`. Frames over the port:
 
 | Direction | Frame |
