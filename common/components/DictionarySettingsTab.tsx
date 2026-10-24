@@ -12,6 +12,9 @@ import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next';
 import LabelWithHoverEffect from '@project/common/components/LabelWithHoverEffect';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import UploadIcon from '@mui/icons-material/Upload';
+import DownloadIcon from '@mui/icons-material/Download';
+import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -1025,7 +1028,12 @@ const DictionarySettingsTab: React.FC<Props> = ({
                 <SettingsSection>{t('settings.manageWords')}</SettingsSection>
                 <Stack spacing={1}>
                     {supportsDictionaryBrowser && (
-                        <Button variant="contained" color="primary" onClick={() => setWordBrowserOpen(true)}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            startIcon={<ManageSearchIcon />}
+                            onClick={() => setWordBrowserOpen(true)}
+                        >
                             {t('settings.dictionaryBrowser.title')}
                         </Button>
                     )}
@@ -1039,6 +1047,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
+                                startIcon={<UploadIcon />}
                                 onClick={() => setDictionaryImportOpen(true)}
                             >
                                 {t('action.importDictionaryLocalRecords')}
@@ -1047,6 +1056,7 @@ const DictionarySettingsTab: React.FC<Props> = ({
                                 variant="contained"
                                 color="primary"
                                 style={{ flex: 1 }}
+                                startIcon={<DownloadIcon />}
                                 onClick={handleExportDictionaryDB}
                                 loading={exportingDictionaryDB}
                             >

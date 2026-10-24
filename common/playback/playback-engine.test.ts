@@ -198,6 +198,8 @@ async function makePlaybackEngine(
     const initialPlaybackSettings: InitialPlaybackSettings[] = [];
     const playbackPositionChanges: (number | undefined)[] = [];
     const errors: unknown[] = [];
+    const recipeChanges: (string | null)[] = [];
+    const blockedSettings: string[] = [];
     const modeChanges: {
         readonly modes: Set<PlayMode>;
         readonly added: Set<PlayMode>;
@@ -283,6 +285,8 @@ async function makePlaybackEngine(
                     providerPositions = settings.lastPlaybackPositions;
                 }
             },
+            recipeChanged: (name) => recipeChanges.push(name),
+            settingChangeBlocked: (key) => blockedSettings.push(key),
             playbackModesChanged: (transition) => modeChanges.push(transition),
             initialPlaybackSettingsChanged: (settings) => initialPlaybackSettings.push(settings),
             onError: (error) => errors.push(error),
@@ -297,6 +301,8 @@ async function makePlaybackEngine(
         pauses,
         plays,
         modeChanges,
+        recipeChanges,
+        blockedSettings,
         savedSettings,
         playbackRates,
         playbackStates,
@@ -866,6 +872,7 @@ describe('PlaybackEngine', () => {
             {
                 autoHideDuration: 6000,
                 playbackRate: 1.4,
+                recipeName: null,
                 subtitleOffset: 375,
                 playbackModeTransition: {
                     modes: new Set([PlayMode.normal]),
@@ -1156,6 +1163,8 @@ describe('PlaybackEngine', () => {
                 playbackStateChanged: () => {},
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
+                recipeChanged: () => {},
+                settingChangeBlocked: () => {},
                 playbackModesChanged: () => {},
                 initialPlaybackSettingsChanged: () => {},
                 onError: () => {},
@@ -2250,6 +2259,8 @@ describe('PlaybackEngine', () => {
                 playbackStateChanged: () => {},
                 playbackPositionChanged: () => {},
                 saveSettings: () => {},
+                recipeChanged: () => {},
+                settingChangeBlocked: () => {},
                 playbackModesChanged: () => {},
                 initialPlaybackSettingsChanged: () => {},
                 onError: () => {},
@@ -3037,5 +3048,210 @@ describe('PlaybackEngine', () => {
         } finally {
             jest.useRealTimers();
         }
+    });
+});
+
+describe('recipe playback', () => {
+    const recipe = { name: 'Reading', playbackModes: [PlayMode.autoPause], settings: { playbackRate: 0.8 } };
+
+    it('returns the authoritative recipe rate for media observations and blocked user changes', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], {
+            settings: { playbackRate: 1.3, rememberPlaybackRate: true },
+        });
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+        harness.playbackEngine.settingsChanged({ ...harness.settings, recipes: [recipe], activeRecipeId: 0 });
+        expect(harness.playbackEngine.playbackRateChanged(0.8)).toMatchObject({ notify: false, playbackRate: 0.8 });
+        expect(harness.blockedSettings).toEqual([]);
+
+        harness.driver.playbackRateValue = 1.6;
+        expect(harness.playbackEngine.playbackRateChanged(1.6, { notifyBlocked: true })).toMatchObject({
+            notify: false,
+            playbackRate: 0.8,
+        });
+        expect(harness.driver.playbackRate()).toBe(0.8);
+        expect(harness.blockedSettings).toEqual(['settings.playbackRate']);
+        expect(harness.savedSettings).toEqual([]);
+
+        harness.playbackEngine.settingsChanged({ ...harness.settings, activeRecipeId: null });
+        expect(harness.playbackEngine.playbackRateChanged(harness.driver.playbackRate())).toMatchObject({
+            notify: false,
+            playbackRate: 1.3,
+        });
+        harness.playbackEngine.unbind();
+    });
+
+    it('reports recipe-controlled fast-forward and dialogue rates as playback advances', async () => {
+        const harness = await makePlaybackEngine([PlayMode.normal], {
+            settings: {
+                recipes: [
+                    {
+                        name: 'Gaps',
+                        playbackModes: [PlayMode.fastForward],
+                        settings: { playbackRate: 0.8, fastForwardModePlaybackRate: 3 },
+                    },
+                ],
+                activeRecipeId: 0,
+            },
+        });
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+        for (const [timestampMs, playbackRate] of [
+            [1500, 0.8],
+            [2500, 3],
+        ]) {
+            await harness.driver.time(timestampMs);
+            expect(harness.driver.playbackRate()).toBe(playbackRate);
+            expect(harness.playbackEngine.playbackRateChanged(playbackRate)).toMatchObject({
+                notify: false,
+                playbackRate,
+            });
+        }
+        expect(harness.blockedSettings).toEqual([]);
+        expect(harness.savedSettings).toEqual([]);
+        harness.playbackEngine.unbind();
+    });
+
+    it('initializes recipe modes and rates and reports the recipe without saving overrides on teardown', async () => {
+        const harness = await makePlaybackEngine([PlayMode.repeat], {
+            settings: {
+                playbackRate: 1.3,
+                rememberPlaybackRate: true,
+                recipes: [recipe],
+                activeRecipeId: 0,
+            },
+        });
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
+        expect(harness.driver.playbackRate()).toBe(0.8);
+        expect(harness.initialPlaybackSettings[0].recipeName).toBe('Reading');
+        harness.playbackEngine.unbind();
+        expect(
+            harness.savedSettings.some(
+                (saved) =>
+                    saved.playbackRate !== undefined ||
+                    saved.lastPlaybackModes !== undefined ||
+                    saved.fastForwardModePlaybackRate !== undefined
+            )
+        ).toBe(false);
+    });
+
+    it('restores the live rate and modes after selecting, switching, and disabling recipes', async () => {
+        const second = { name: 'Listening', playbackModes: [PlayMode.normal], settings: { playbackRate: 1.5 } };
+        const harness = await makePlaybackEngine([PlayMode.normal]);
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+        harness.playbackEngine.playbackRateChanged(1.2);
+        harness.playbackEngine.togglePlaybackMode(PlayMode.repeat);
+        const settings = { ...harness.settings, recipes: [recipe, second], activeRecipeId: 0 };
+        const previousModeNotifications = harness.modeChanges.length;
+        harness.playbackEngine.settingsChanged(settings);
+        expect(harness.driver.playbackRate()).toBe(0.8);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
+        harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: 1 });
+        expect(harness.driver.playbackRate()).toBe(1.5);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.normal]));
+        harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
+        expect(harness.driver.playbackRate()).toBe(1.2);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
+        expect(harness.recipeChanges).toEqual(['Reading', 'Listening', null]);
+        expect(harness.modeChanges).toHaveLength(previousModeNotifications);
+    });
+
+    it('uses the new profile baseline when an initially active recipe is disabled', async () => {
+        const harness = await makePlaybackEngine([PlayMode.repeat]);
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+        harness.playbackEngine.settingsChanged(harness.settings);
+        const settings = {
+            ...harness.settings,
+            recipes: [recipe],
+            activeRecipeId: 0,
+            playbackRate: 1.4,
+            lastPlaybackModes: [PlayMode.condensed],
+        };
+        harness.setProviderSettings(settings);
+        harness.setProfile('other');
+        harness.playbackEngine.profileChanged('other');
+        await flushPlaybackInitialization();
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
+        harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
+        expect(harness.driver.playbackRate()).toBe(1.4);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.condensed]));
+    });
+
+    it.each([true, false])(
+        'restores underlying modes after selecting a recipe before subtitles load with remembering %s',
+        async (rememberPlaybackModes) => {
+            const harness = await makePlaybackEngine([PlayMode.repeat], {
+                subtitles: [],
+                settings: { rememberPlaybackModes },
+            });
+            await flushPlaybackInitialization();
+            try {
+                harness.playbackEngine.settingsChanged(harness.settings);
+                const settings = { ...harness.settings, recipes: [recipe], activeRecipeId: 0 };
+                harness.playbackEngine.settingsChanged(settings);
+                harness.playbackEngine.subtitlesChanged([subtitle]);
+                expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
+
+                harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
+
+                expect(harness.playbackEngine.playbackModes).toEqual(
+                    new Set([rememberPlaybackModes ? PlayMode.repeat : PlayMode.normal])
+                );
+            } finally {
+                harness.playbackEngine.unbind();
+            }
+        }
+    );
+
+    it('restores remembered modes after selecting a recipe while subtitles are cleared', async () => {
+        const harness = await makePlaybackEngine([PlayMode.repeat]);
+        await flushPlaybackInitialization();
+        try {
+            harness.playbackEngine.subtitlesChanged([]);
+            const settings = { ...harness.settings, recipes: [recipe], activeRecipeId: 0 };
+            harness.playbackEngine.settingsChanged(settings);
+            harness.playbackEngine.subtitlesChanged([subtitle]);
+            expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
+
+            harness.playbackEngine.settingsChanged({ ...settings, activeRecipeId: null });
+
+            expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
+        } finally {
+            harness.playbackEngine.unbind();
+        }
+    });
+
+    it('blocks conflicting commands and preserves underlying settings across unrelated updates', async () => {
+        const harness = await makePlaybackEngine([PlayMode.repeat], {
+            settings: {
+                playbackRate: 1.3,
+                rememberPlaybackRate: true,
+                recipes: [recipe],
+                activeRecipeId: 0,
+            },
+        });
+        harness.playbackEngine.bind();
+        await flushPlaybackInitialization();
+        harness.playbackEngine.togglePlaybackMode(PlayMode.fastForward);
+        harness.playbackEngine.adjustPlaybackRate(0.2);
+        harness.playbackEngine.cycleAutoPauseResumeMode();
+        harness.playbackEngine.toggleSubtitleVisibility();
+        harness.playbackEngine.settingsChanged({ ...harness.settings, language: 'ja' });
+        expect(harness.driver.playbackRate()).toBe(0.8);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.autoPause]));
+        expect(harness.blockedSettings).toEqual([
+            'settings.playbackModes',
+            'settings.playbackRate',
+            'settings.autoPauseResumeMode',
+            'settings.subtitleVisibility',
+        ]);
+        expect(harness.savedSettings).toEqual([]);
+        harness.playbackEngine.settingsChanged({ ...harness.settings, activeRecipeId: null });
+        expect(harness.driver.playbackRate()).toBe(1.3);
+        expect(harness.playbackEngine.playbackModes).toEqual(new Set([PlayMode.repeat]));
     });
 });

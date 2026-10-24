@@ -9,6 +9,7 @@ import { AutoPausePreference } from '@project/common/src/model';
 import { arrayEquals } from '@project/common/util/array-equals';
 import { compareField, fieldsEqual } from '@project/common/util';
 import type { FieldComparators } from '@project/common/util';
+import type { Recipe } from '@project/common/settings/settings-recipes';
 import type { DictionarySettings } from '@project/common/settings/settings-dictionary';
 
 export const activeProfileKey = 'activeSettingsProfile';
@@ -86,6 +87,8 @@ export interface PlaybackPosition {
 }
 
 export interface MiscSettings {
+    readonly recipes: Recipe[];
+    readonly activeRecipeId: number | null;
     readonly themeType: 'dark' | 'light';
     readonly videoSubtitleSplitBehavior: VideoSubtitleSplitBehavior;
     readonly showSubtitleListMiningButton: boolean;
@@ -458,6 +461,20 @@ export interface KeyBind {
 }
 
 export interface KeyBindSet {
+    readonly cycleRecipesForward: KeyBind;
+    readonly cycleRecipesBackward: KeyBind;
+    readonly clearRecipe: KeyBind;
+    readonly selectRecipe1: KeyBind;
+    readonly selectRecipe2: KeyBind;
+    readonly selectRecipe3: KeyBind;
+    readonly selectRecipe4: KeyBind;
+    readonly selectRecipe5: KeyBind;
+    readonly selectRecipe6: KeyBind;
+    readonly selectRecipe7: KeyBind;
+    readonly selectRecipe8: KeyBind;
+    readonly selectRecipe9: KeyBind;
+    readonly selectRecipe10: KeyBind;
+
     readonly togglePlay: KeyBind;
     readonly toggleAutoPause: KeyBind;
     readonly toggleCondensedPlayback: KeyBind;

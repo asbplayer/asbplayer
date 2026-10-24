@@ -223,6 +223,7 @@ function extractSources(files: FileWithId[]): MediaSources {
 
 interface RenderVideoProps {
     searchParams: URLSearchParams;
+    supportsDictionaryPlayback: boolean;
     settingsProvider: SettingsProvider;
     settings: AsbplayerSettings;
     extension: ChromeExtension;
@@ -384,6 +385,7 @@ function App({
         settings.subtitleHtml,
         settings.convertNetflixRuby,
     ]);
+    const supportsDictionaryPlayback = !extension.installed || extension.supportsDictionaryPlayback;
     const supportsDictionaryStatistics = !extension.installed || extension.supportsDictionaryStatistics;
     const [subtitles, setSubtitles] = useState<DisplaySubtitleModel[]>([]);
     const playbackPreferences = usePlaybackPreferences();
@@ -1649,7 +1651,7 @@ function App({
         );
     }, []);
 
-    const { hash: settingsHash } = useLocationHash({ view: 'settings' });
+    const { hash: settingsHash, url: settingsUrl } = useLocationHash({ view: 'settings' });
     useEffect(() => {
         if (settingsHash === undefined) {
             return;
@@ -1657,7 +1659,7 @@ function App({
 
         setSettingsDialogScrollToId(settingsHash);
         setSettingsDialogOpen(true);
-    }, [settingsHash]);
+    }, [settingsHash, settingsUrl]);
 
     useEffect(() => {
         if (sources.videoFile && alertOpen && alert && alertSeverity) {
@@ -1880,6 +1882,7 @@ function App({
                     {inVideoPlayer ? (
                         <>
                             <RenderVideo
+                                supportsDictionaryPlayback={supportsDictionaryPlayback}
                                 searchParams={searchParams}
                                 settingsProvider={settingsProvider}
                                 settings={settings}
@@ -1959,6 +1962,7 @@ function App({
                                 />
                             )}
                             <SettingsDialog
+                                supportsDictionaryPlayback={supportsDictionaryPlayback}
                                 anki={anki}
                                 extension={extension}
                                 open={settingsDialogOpen}
@@ -2069,6 +2073,7 @@ function App({
                                     />
                                 </Paper>
                                 <Player
+                                    supportsDictionaryPlayback={supportsDictionaryPlayback}
                                     ref={playerRef}
                                     origin={origin}
                                     subtitleReader={subtitleReader}
