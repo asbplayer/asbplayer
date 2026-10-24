@@ -180,7 +180,6 @@ export default defineBackground(() => {
         badgeController,
     });
 
-    // Recompute the FTUE badge contribution whenever the annotation tutorial state changes.
     browser.storage.local.onChanged.addListener((changes) => {
         if ('ftueAnnotation' in changes) {
             void updateFtueBadge();

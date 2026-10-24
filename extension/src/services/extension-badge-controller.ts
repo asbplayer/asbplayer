@@ -1,8 +1,7 @@
 /**
  * Composes contributions to the extension action's badge. The badge is a single global slot with
- * last-write-wins semantics, so independent writers (e.g. the annotation tutorial FTUE and pending
- * external connection requests) would otherwise clobber each other. Each writer instead registers
- * a named global alert, and per-tab alerts are managed for the streaming video tabs badge.
+ * last-write-wins semantics, so independent writers register named global alerts instead of
+ * clobbering each other.
  */
 export class ExtensionBadgeController {
     private readonly _action: BadgeAction;
