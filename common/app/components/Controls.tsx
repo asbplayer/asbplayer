@@ -1,4 +1,4 @@
-import RecipeSelect from '@project/common/components/RecipeSelect';
+import PlaybackModeButton from '@project/common/components/PlaybackModeButton';
 import type { MutableRefObject } from 'react';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +27,6 @@ import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import Slider from '@mui/material/Slider';
-import TuneIcon from '@mui/icons-material/Tune';
 import SubtitlesIcon from '@mui/icons-material/Subtitles';
 import VerticalAlignTopIcon from '@mui/icons-material/VerticalAlignTop';
 import VerticalAlignBottomIcon from '@mui/icons-material/VerticalAlignBottom';
@@ -1191,22 +1190,14 @@ export default function Controls({
                                             </IconButton>
                                         </Tooltip>
                                     )}
-                                    {playModeEnabled && (
-                                        <Tooltip title={t('controls.playbackMode')}>
-                                            <IconButton color="inherit" onClick={handlePlayModeSelectorClicked}>
-                                                <TuneIcon
-                                                    className={
-                                                        playModeEnabled ? classes.button : classes.inactiveButton
-                                                    }
-                                                />
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                    {recipes && onRecipeSelect && (
-                                        <RecipeSelect
-                                            recipes={recipes}
-                                            activeRecipeId={activeRecipeId ?? null}
-                                            onSelect={onRecipeSelect}
+                                    {(playModeEnabled || (!!recipes?.length && onRecipeSelect)) && (
+                                        <PlaybackModeButton
+                                            color="inherit"
+                                            className={classes.button}
+                                            onClick={handlePlayModeSelectorClicked}
+                                            aria-expanded={playModeSelectorOpen && show}
+                                            recipes={onRecipeSelect ? recipes : undefined}
+                                            activeRecipeId={activeRecipeId}
                                         />
                                     )}
                                     {popOutEnabled && (
@@ -1264,6 +1255,10 @@ export default function Controls({
                     onClose={handlePlayModeSelectorClosed}
                     onPlayMode={handlePlayModeSelected}
                     listStyle={{ flexDirection: 'column' }}
+                    recipes={recipes}
+                    activeRecipeId={activeRecipeId}
+                    onRecipeSelect={onRecipeSelect}
+                    playModesEnabled={!!playModeEnabled}
                 />
             </div>
         </React.Fragment>
