@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import type {
     CaptureVisibleTabMessage,
@@ -38,11 +39,11 @@ export default class VideoSelectController {
         this._isBindingsSorted = options.isBindingsSorted;
         this._frame = uiFrameForHtml(
             async (lang) => `<!DOCTYPE html>
-                <html lang="en">
+                <html lang="${encodeURIComponent(lang)}">
                 <head>
                     <meta charset="utf-8" />
                     <meta name="viewport" content="width=device-width, initial-scale=1" />
-                    <title>asbplayer - Video Select</title>
+                    <title>${project.names.short} - Video Select</title>
                     <style>
                         @import url(${browser.runtime.getURL('/fonts/fonts.css')});
                         ${frameColorSchemeStyleBlock()}

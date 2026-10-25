@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 function json_to_csv() {
     jq -r '[paths(scalars) as $path | {"key": $path | join("."), "value": getpath($path)}] | .[] | "\"\(.key)\",\"\",\"\",\"\(.value)\""' $1

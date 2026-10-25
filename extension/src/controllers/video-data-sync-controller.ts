@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { arrayEquals } from '@project/common/util';
 import { asbError, asbTrace } from '@project/common/util/log';
 import type {
@@ -36,11 +37,11 @@ declare global {
 
 async function html(lang: string) {
     return `<!DOCTYPE html>
-            <html lang="en">
+            <html lang="${encodeURIComponent(lang)}">
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <title>asbplayer - Video Data Sync</title>
+                <title>${project.names.short} - Video Data Sync</title>
                 <style>
                     @import url(${browser.runtime.getURL('/fonts/fonts.css')});
                     ${frameColorSchemeStyleBlock()}

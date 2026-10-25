@@ -20,13 +20,18 @@ jobs:
 
             - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
             - run: pnpm --filter @project/extension run zip:firefox
+            - name: Read extension release metadata
+              id: release-info
+              run: node --experimental-strip-types scripts/extension-release-info.ts >> "$GITHUB_OUTPUT"
             - name: Submit to stores
               working-directory: ./extension
               run: |
+                  export FIREFOX_EXTENSION_ID="$(jq -r '.extension.firefox.storeId' ../project.json)"
                   pnpm wxt submit \
-                    --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip \
+                    --firefox-zip ".output/$FIREFOX_ASSET.zip" --firefox-sources-zip ".output/$FIREFOX_SOURCES.zip" \
                     --firefox-channel listed
               env:
-                  FIREFOX_EXTENSION_ID: 'asbplayer-language-learning'
+                  FIREFOX_ASSET: ${{ steps.release-info.outputs.firefox }}
+                  FIREFOX_SOURCES: ${{ steps.release-info.outputs.sources }}
                   FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
                   FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

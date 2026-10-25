@@ -2,6 +2,9 @@
 sidebar_position: 9
 ---
 
+import project, { webSocketHttpUrl } from '@site/src/project';
+import CodeBlock from '@theme/CodeBlock';
+
 # WebSocket server {#websocket-server}
 
 asbplayer takes advantage of the two-way nature of WebSocket connections in order to expose an interface accessible from outside of the browser.
@@ -16,10 +19,10 @@ The preferred way to do one-click mining is with the [asbplayer Anki add-on](./o
 
 ## Run the server {#run-the-server}
 
-1. Clone the [asbplayer repo](https://github.com/asbplayer/asbplayer).
-    ```
-    git clone git@github.com:asbplayer/asbplayer
-    ```
+1. Clone the <a href={project.urls.repo}>asbplayer repo</a>.
+
+    <CodeBlock language="bash">{`git clone ${project.urls.repo}.git asbplayer`}</CodeBlock>
+
 2. If not already installed, install [Golang](https://go.dev/dl/).
 3. Run the server:
 
@@ -32,7 +35,7 @@ The proxy is very lightweight, so it's fine to leave it running in the backgroun
 
 ## Connect asbplayer to the server {#connect-asbplayer-to-the-server}
 
-Configure and enable asbplayer's WebSocket client from the [misc settings](https://app.asbplayer.dev/?view=settings#misc-settings). By default, asbplayer is already pointed at the WebSocket server's default IP address and port, and so in general all that's required is to enable the WebSocket client.
+Configure and enable asbplayer's WebSocket client from the <a href={new URL('?view=settings#misc-settings', project.urls.app).href}>misc settings</a>. By default, asbplayer is already pointed at the WebSocket server's default IP address and port, and so in general all that's required is to enable the WebSocket client.
 
 ## One-click mining with the AnkiConnect proxy {#one-click-mining-with-the-ankiconnect-proxy}
 
@@ -40,7 +43,7 @@ Follow the directions on [Yomitan's website](https://yomitan.wiki/) to install Y
 
 Then configure Yomitan:
 
-- The AnkiConnect URL should point at the AnkiConnect proxy rather than AnkiConnect. The default proxy URL is `http://127.0.0.1:8766`.
+- The AnkiConnect URL should point at the AnkiConnect proxy rather than AnkiConnect. The default proxy URL is <code>{webSocketHttpUrl}</code>.
 - Yomitan should be using the same **Note Type** as asbplayer.
 
 Mining sentences using Yomitan will create cards with word definition, image, and audio already provided. A truly one-click mining flow can be achieved if the proxy's `POST_MINE_ACTION` is `2` (update last card). See the [server configuration](../reference/external-api#server-configuration) for details.

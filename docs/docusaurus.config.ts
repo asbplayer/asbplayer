@@ -1,12 +1,13 @@
+import project from "../project.json";
 import { themes as prismThemes } from "prism-react-renderer";
 import type { Config } from "@docusaurus/types";
 import type * as Preset from "@docusaurus/preset-classic";
 
 const config: Config = {
-  title: "asbplayer",
+  title: project.names.short,
   tagline: "Learn languages with subtitles",
   favicon: "img/favicon.ico",
-  url: "https://docs.asbplayer.dev",
+  url: project.urls.docs,
   baseUrl: "/",
   organizationName: "asbplayer",
   projectName: "asbplayer-docs",
@@ -28,7 +29,7 @@ const config: Config = {
         docs: {
           sidebarPath: "./sidebars.ts",
           sidebarCollapsed: false,
-          editUrl: "https://github.com/asbplayer/asbplayer/edit/main",
+          editUrl: `${project.urls.repo}/edit/main`,
         },
         blog: {
           showReadingTime: true,
@@ -54,9 +55,9 @@ const config: Config = {
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: "asbplayer",
+      title: project.names.short,
       logo: {
-        alt: "asbplayer logo",
+        alt: `${project.names.short} logo`,
         src: "img/logo.png",
       },
       items: [
@@ -69,13 +70,13 @@ const config: Config = {
         },
         { to: "/blog", label: "Blog", position: "left" },
         {
-          href: "https://github.com/asbplayer/asbplayer",
+          href: project.urls.repo,
           className: "header-github-link",
           position: "right",
           "aria-label": "GitHub repository",
         },
         {
-          href: "https://discord.gg/ad7VAQru7m",
+          href: project.urls.discord,
           className: "header-discord-link",
           position: "right",
           "aria-label": "Discord server",
@@ -99,7 +100,7 @@ const config: Config = {
           items: [
             {
               label: "Discord",
-              href: "https://discord.gg/ad7VAQru7m",
+              href: project.urls.discord,
             },
           ],
         },
@@ -108,12 +109,12 @@ const config: Config = {
           items: [
             {
               label: "GitHub",
-              href: "https://github.com/asbplayer/asbplayer",
+              href: project.urls.repo,
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} asbplayer authors. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} ${project.names.short} authors. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

@@ -4,8 +4,8 @@
 #
 # Usage: collect-milestone-items.sh [version] [output-file]
 #
-#   version      Extension version without the leading "v" (e.g. 1.22.0). When
-#                omitted or empty, it is read from extension/wxt.config.ts.
+#   version      Extension version without the tag prefix (e.g. 1.22.0). When
+#                omitted or empty, it is read from project.json.
 #   output-file  Where to write the item blocks (default: milestone-items.md).
 #
 # Also writes release-meta.json with the resolved version, milestone title/number
@@ -28,9 +28,9 @@ repo=${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner -q .nameWithOwner)
 # --- Resolve the extension version ---------------------------------------------
 
 version=$INPUT_VERSION
+PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 if [ -z "$version" ]; then
-    version=$(grep -oE "const version = '[^']+'" extension/wxt.config.ts \
-        | head -n1 | sed -E "s/.*'([^']+)'.*/\1/")
+    version=$(jq -r '.version' "$PROJECT_ROOT/project.json")
 fi
 
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -38,6 +38,7 @@ if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
+tag=$(node --experimental-strip-types "$PROJECT_ROOT/scripts/extension-release-info.ts" tag "$version")
 milestone_title="Extension v${version}"
 
 # --- Resolve the milestone -----------------------------------------------------
@@ -127,7 +128,7 @@ rm -f "$TMP_JSONL"
 
 compare_url=""
 generated_notes=$(gh api "repos/$repo/releases/generate-notes" \
-    -f tag_name="v$version" -f target_commitish="${RELEASE_TARGET:-main}" \
+    -f tag_name="$tag" -f target_commitish="${RELEASE_TARGET:-main}" \
     --jq '.body' 2>/dev/null || true)
 if [ -n "$generated_notes" ]; then
     compare_url=$(printf '%s\n' "$generated_notes" \

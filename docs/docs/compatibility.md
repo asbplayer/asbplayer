@@ -2,6 +2,8 @@
 sidebar_position: 7
 ---
 
+import project from '@site/src/project';
+
 # Compatibility {#compatibility}
 
 ## Website {#website}
@@ -31,7 +33,7 @@ sidebar_position: 7
 :::tip
 For streaming services not listed below, asbplayer can attempt a best-effort generic subtitle detection which works for ~85% of websites.
 
-You can always request a dedicated parser for any website, even if the generic parser detects subtitles, through an [issue](https://github.com/asbplayer/asbplayer/issues) or submit your own implementation in a [PR](https://github.com/asbplayer/asbplayer/pulls) on GitHub.
+You can always request a dedicated parser for any website, even if the generic parser detects subtitles, through an <a href={`${project.urls.repo}/issues`}>issue</a> or submit your own implementation in a <a href={`${project.urls.repo}/pulls`}>PR</a> on GitHub.
 :::
 
 | Service            |                                                                                      Compatibility                                                                                       | Notes                                                                                                                                                                                                          |

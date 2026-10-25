@@ -3,7 +3,7 @@ import { WebSocketClient } from '@project/common/web-socket-client';
 import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/web-socket-client';
 import { FakeWebSocket } from '@project/common/web-socket-client/fake-web-socket';
 
-const url = 'ws://localhost:8766/ws';
+const url = 'ws://example.com:1234/socket';
 
 const command = (name: string, messageId: string, body: any = {}) => JSON.stringify({ command: name, messageId, body });
 

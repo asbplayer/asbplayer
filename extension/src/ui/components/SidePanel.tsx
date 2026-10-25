@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
 import { download, timeDurationDisplay } from '@project/common/util';
 import { MediaFragment } from '@project/common';
@@ -591,7 +592,7 @@ export default function SidePanel({
     );
 
     const handleOpenUserGuide = useCallback(() => {
-        void browser.tabs.create({ active: true, url: 'https://docs.asbplayer.dev/docs/intro' });
+        void browser.tabs.create({ active: true, url: `${project.urls.docs}/docs/intro` });
     }, []);
     const noOp = useCallback(() => {}, []);
 

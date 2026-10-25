@@ -1,3 +1,4 @@
+import project from '../../../project.json';
 import React, { useMemo } from 'react';
 import { gzipSync } from 'fflate';
 
@@ -59,7 +60,7 @@ const recipeImportUrl = (json: string): string => {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
-  const url = new URL('https://app.asbplayer.dev/');
+  const url = new URL(project.urls.app);
   url.searchParams.set('view', 'settings');
   url.hash = `playback?recipe=${payload}`;
   return url.toString();

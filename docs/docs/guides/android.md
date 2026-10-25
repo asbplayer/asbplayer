@@ -2,6 +2,8 @@
 sidebar_position: 7.5
 ---
 
+import project from '@site/src/project';
+
 # Android {#android}
 
 While the UX is worse, it's possible to use asbplayer on Android devices.
@@ -26,20 +28,20 @@ Below are Android browsers where asbplayer can be installed.
 
 ### Firefox for Android {#firefox-for-android}
 
-Install asbplayer from the [AMO page](https://addons.mozilla.org/en-US/android/addon/asbplayer-android/). Firefox for Android suffers from the same limitations as Firefox - it's not possible to record audio from DRM-protected streams.
+Install asbplayer from the <a href={project.extension.firefoxAndroid.storeUrl}>AMO page</a>. Firefox for Android suffers from the same limitations as Firefox - it's not possible to record audio from DRM-protected streams.
 
 ### Edge Canary {#edge-canary}
 
 Edge Canary is another Chromium-based mobile browser that can run extensions. As of this writing, asbplayer on Edge Canary does not support audio recording.
 To install asbplayer on Edge Canary:
 
-1. Download the asbplayer `crx` file from the [releases page](https://github.com/asbplayer/asbplayer/releases/latest).
+1. Download the asbplayer `crx` file from the <a href={`${project.urls.repo}/releases/latest`}>releases page</a>.
 2. If not already, enable developer mode from the Edge Canary settings by going to "about Microsoft Edge" and tapping on the build version string several times.
 3. From **Developer Options** tap **Extension install by crx** and select the `crx` file you just downloaded.
 
 ### Kiwi Browser (discontinued) {#kiwi-browser-discontinued}
 
-Kiwi Browser is a Chromium-based mobile browser that can run extensions. However, it's development has been discontinued and the only way to install it is from the [GitHub page](https://github.com/kiwibrowser/src.next/releases). Once Kiwi Browser is installed, asbplayer can be installed from the Chrome [web store](https://chromewebstore.google.com/detail/asbplayer-language-learni/hkledmpjpaehamkiehglnbelcpdflcab).
+Kiwi Browser is a Chromium-based mobile browser that can run extensions. However, it's development has been discontinued and the only way to install it is from the [GitHub page](https://github.com/kiwibrowser/src.next/releases). Once Kiwi Browser is installed, asbplayer can be installed from the Chrome <a href={project.extension.chrome.storeUrl}>web store</a>.
 
 ## Anki integration {#anki-integration}
 

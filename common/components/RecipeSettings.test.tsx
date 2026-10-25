@@ -1,3 +1,4 @@
+import project from '@project/common/project';
 import React, { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Root } from 'react-dom/client';
@@ -169,7 +170,7 @@ describe('recipe editor', () => {
         const introduction = 'Recipes combine playback modes and settings for different learning activities.';
         expect(helper().textContent).toContain(introduction);
         expect(container.querySelector('[role="alert"]')).toBeNull();
-        expect(helper().querySelector('a')?.href).toBe('https://docs.asbplayer.dev/docs/guides/recipes');
+        expect(helper().querySelector('a')?.href).toBe(`${project.urls.docs}/docs/guides/recipes`);
         const initialHelperText = helper().textContent;
         const selector = container.querySelector('[role="combobox"]')!;
         await act(async () => selector.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));

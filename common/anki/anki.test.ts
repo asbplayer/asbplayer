@@ -13,7 +13,7 @@ import { extractText, sourceString } from '@project/common/util';
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
 const testAnkiSettings: AnkiSettings = {
-    ankiConnectUrl: 'http://127.0.0.1:8765',
+    ankiConnectUrl: 'http://anki.example.com:1234',
     ankiConnectApiKey: '',
     deck: 'Sentences',
     noteType: 'Sentence',
@@ -385,11 +385,11 @@ describe('Anki', () => {
     it.each([
         {
             name: 'deckNames',
-            invoke: (anki: Anki) => anki.deckNames('http://override:8765'),
+            invoke: (anki: Anki) => anki.deckNames('http://override.example.com:5678'),
             action: 'deckNames',
             params: undefined,
             result: ['Default', 'Mining'],
-            url: 'http://override:8765',
+            url: 'http://override.example.com:5678',
         },
         {
             name: 'modelNames',
@@ -479,11 +479,11 @@ describe('Anki', () => {
 
         const anki = new Anki(testAnkiSettings, fetcher);
 
-        await expect(anki.findCards('is:new', 'http://override:8765')).resolves.toEqual([1, 2]);
+        await expect(anki.findCards('is:new', 'http://override.example.com:5678')).resolves.toEqual([1, 2]);
         await expect(anki.findNotes('deck:Mining')).resolves.toEqual([11, 12]);
         expect(fetcher.fetch.mock.calls).toEqual([
             [
-                'http://override:8765',
+                'http://override.example.com:5678',
                 {
                     action: 'findCards',
                     version: 6,
@@ -1088,10 +1088,10 @@ describe('Anki', () => {
         fetcher.fetch.mockResolvedValue(ankiConnectResponse(321));
         const anki = new Anki(testAnkiSettings, fetcher);
 
-        await anki.export(makeExportArguments({ ankiConnectUrl: 'http://override:8765' }));
+        await anki.export(makeExportArguments({ ankiConnectUrl: 'http://override.example.com:5678' }));
 
         expect(fetcher.fetch).toHaveBeenCalledWith(
-            'http://override:8765',
+            'http://override.example.com:5678',
             expect.objectContaining({ action: 'addNote' })
         );
     });
@@ -1363,7 +1363,7 @@ describe('Anki', () => {
                         text: 'foo\nbar',
                         audioClip: makeAudioClip(),
                         image: makeImage(),
-                        ankiConnectUrl: 'http://override:8765',
+                        ankiConnectUrl: 'http://override.example.com:5678',
                     })
                 )
             ).resolves.toBe('word-11');
@@ -1386,7 +1386,7 @@ describe('Anki', () => {
                     { notes: [3], tags: 'tag-a tag-b' },
                 ]
             );
-            expect(fetcher.fetch.mock.calls.every((call) => call[0] === 'http://override:8765')).toBe(true);
+            expect(fetcher.fetch.mock.calls.every((call) => call[0] === 'http://override.example.com:5678')).toBe(true);
         }
     );
 
@@ -1416,16 +1416,16 @@ describe('Anki', () => {
 
         await anki.export(
             makeExportArguments({
-                ankiConnectUrl: 'http://override:8765',
+                ankiConnectUrl: 'http://override.example.com:5678',
                 tags: [],
                 mode: 'updateLast',
             })
         );
 
         expect(fetcher.fetch.mock.calls.map((call) => call[0])).toEqual([
-            'http://override:8765',
-            'http://override:8765',
-            'http://override:8765',
+            'http://override.example.com:5678',
+            'http://override.example.com:5678',
+            'http://override.example.com:5678',
         ]);
     });
 
