@@ -1,5 +1,6 @@
 ---
 sidebar_position: 7
+description: Use asbplayer offline through its progressive web app support.
 ---
 
 import project from '@site/src/project';

@@ -1,5 +1,6 @@
 ---
 sidebar_position: 2
+description: Technical reference for asbplayer’s external interface and the WebSocket server that implements it.
 ---
 
 import project, { ankiConnectUrl } from '@site/src/project';
