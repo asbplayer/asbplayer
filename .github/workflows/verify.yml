@@ -17,7 +17,7 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
 
-            - uses: astral-sh/setup-uv@v9
+            - uses: astral-sh/setup-uv@v9.0.0
 
             - name: Check synchronized project files
               run: |
