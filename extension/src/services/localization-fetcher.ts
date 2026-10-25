@@ -1,10 +1,9 @@
 import project from '@project/common/project';
 import { asbError } from '@project/common/util/log';
-import type { ExtensionConfig, LocalizationConfig } from '@project/extension/src/services/extension-config';
+import type { LocalizationConfig } from '@project/extension/src/services/extension-config';
 import { fetchExtensionConfig } from '@project/extension/src/services/extension-config';
 import { SettingsProvider, supportedLanguages as defaultSupportedLanguages } from '@project/common/settings';
 import { ExtensionSettingsStorage } from '@project/extension/src/services/extension-settings-storage';
-import bundledConfig from '@project/common/extension.json';
 import type { PublicPath } from 'wxt/browser';
 
 const stringsKeyForLang = (lang: string) => `locStrings-${lang}`;
@@ -72,7 +71,7 @@ export const primeLocalization = async (lang: string): Promise<void> => {
 
 // Version of the language's strings that are bundled with this build, or -1 if the language is not bundled
 const bundledVersion = (lang: string): number => {
-    const bundled = (bundledConfig as ExtensionConfig).languages.find((c) => c.code === lang);
+    const bundled = project.languages.find((c) => c.code === lang);
     return bundled?.version ?? -1;
 };
 

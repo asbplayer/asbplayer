@@ -4,7 +4,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import type projectConfig from '../project.json';
 
 type Project = typeof projectConfig;
-type ExtensionConfig = { languages: unknown[]; [key: string]: unknown };
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 4)}\n`;
 
@@ -30,15 +29,19 @@ function withPythonProjectMetadata(contents: string, addon: Project['releases'][
     return updated;
 }
 
-export function generatedProjectFiles(project: Project, extensionConfig: ExtensionConfig): Record<string, string> {
+export function generatedProjectFiles(project: Project): Record<string, string> {
     const { webSocket, ankiConnect } = project.services;
     return {
         'common/extension.json': json({
-            ...extensionConfig,
             latest: {
                 version: project.releases.extension.publishedVersion,
                 url: `${project.urls.repo}/releases/tag/${encodeURIComponent(project.releases.extension.releaseTag.replaceAll('{{version}}', project.releases.extension.publishedVersion))}`,
             },
+            languages: project.languages.map(({ code, version }) => ({
+                code,
+                url: project.languageUrl.replaceAll('{{language}}', code),
+                version,
+            })),
         }),
         'plugins/anki/asbplayer-addon/config.json': json({
             enabled: true,
@@ -99,11 +102,68 @@ export function generatedProjectFiles(project: Project, extensionConfig: Extensi
     };
 }
 
+function readOptional(path: string): string | undefined {
+    try {
+        return readFileSync(path, 'utf8');
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        return undefined;
+    }
+}
+
+function flattenStrings(value: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (child !== null && typeof child === 'object') {
+            Object.assign(result, flattenStrings(child as Record<string, unknown>, path));
+        } else {
+            result[path] = child;
+        }
+    }
+    return result;
+}
+
+/** Seed missing locale resources; existing translations and untranslated markers belong to the localization tools. */
+function missingLanguageFiles(root: string, languages: Project['languages']): Record<string, string> {
+    const generated: Record<string, string> = {};
+    for (const { code } of languages) {
+        const paths = {
+            common: (language: string) => `common/locales/${language}.json`,
+            extension: (language: string) => `extension/public/_locales/${language}/messages.json`,
+            external: (language: string) => `loc/external/${language}.json`,
+        };
+        const trackingPath = `loc/untranslated/${code}.json`;
+        const existingTracking = readOptional(join(root, trackingPath));
+        const untranslated: Record<string, Record<string, unknown>> = existingTracking === undefined
+            ? {}
+            : JSON.parse(existingTracking);
+        let trackingChanged = existingTracking === undefined;
+        for (const [namespace, localePath] of Object.entries(paths)) {
+            const path = localePath(code);
+            const existing = readOptional(join(root, path));
+            if (existing !== undefined && existingTracking !== undefined) continue;
+            const english = readFileSync(join(root, localePath('en')), 'utf8');
+            if (existing === undefined) {
+                generated[path] = english;
+                untranslated[namespace] = flattenStrings(JSON.parse(english));
+                trackingChanged = true;
+            } else {
+                const source = flattenStrings(JSON.parse(english));
+                untranslated[namespace] = Object.fromEntries(
+                    Object.entries(flattenStrings(JSON.parse(existing))).filter(([key, value]) => value === source[key])
+                );
+            }
+        }
+        if (trackingChanged) generated[trackingPath] = json(untranslated);
+    }
+    return generated;
+}
+
 /** Check or update packaged config without requiring the repository at runtime. */
 export function syncProjectConfig(root: string, check = false): string[] {
     const project: Project = JSON.parse(readFileSync(join(root, 'project.json'), 'utf8'));
-    const extensionConfig: ExtensionConfig = JSON.parse(readFileSync(join(root, 'common/extension.json'), 'utf8'));
-    const generated = generatedProjectFiles(project, extensionConfig);
+    const generated = { ...generatedProjectFiles(project), ...missingLanguageFiles(root, project.languages) };
     const pythonProject = 'plugins/anki/pyproject.toml';
     generated[pythonProject] = withPythonProjectMetadata(
         readFileSync(join(root, pythonProject), 'utf8'),

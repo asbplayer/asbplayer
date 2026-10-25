@@ -4,6 +4,12 @@
         "short": "asbplayer",
         "long": "a subtitle player"
     },
+    "urls": {
+        "app": "https://app.asbplayer.dev",
+        "docs": "https://docs.asbplayer.dev",
+        "repo": "https://github.com/asbplayer/asbplayer",
+        "discord": "https://discord.gg/ad7VAQru7m"
+    },
     "releases": {
         "extension": {
             "publishedVersion": "1.22.0",
@@ -62,10 +68,59 @@
         }
     },
     "defaultLanguage": "en",
-    "urls": {
-        "app": "https://app.asbplayer.dev",
-        "docs": "https://docs.asbplayer.dev",
-        "repo": "https://github.com/asbplayer/asbplayer",
-        "discord": "https://discord.gg/ad7VAQru7m"
-    }
+    "languageUrl": "/locales/{{language}}.json",
+    "languages": [
+        {
+            "code": "en",
+            "version": 29
+        },
+        {
+            "code": "es",
+            "version": 26
+        },
+        {
+            "code": "ja",
+            "version": 34
+        },
+        {
+            "code": "de",
+            "version": 27
+        },
+        {
+            "code": "pl",
+            "version": 27
+        },
+        {
+            "code": "pt_BR",
+            "version": 26
+        },
+        {
+            "code": "zh_CN",
+            "version": 26
+        },
+        {
+            "code": "ru",
+            "version": 25
+        },
+        {
+            "code": "fi",
+            "version": 18
+        },
+        {
+            "code": "fr",
+            "version": 18
+        },
+        {
+            "code": "ko",
+            "version": 18
+        },
+        {
+            "code": "id",
+            "version": 17
+        },
+        {
+            "code": "it",
+            "version": 8
+        }
+    ]
 }

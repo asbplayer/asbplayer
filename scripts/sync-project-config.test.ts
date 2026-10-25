@@ -1,12 +1,94 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { generatedProjectFiles, syncProjectConfig } from './sync-project-config.ts';
 
-const project = JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8'));
+const project = { ...JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8')), languages: [] };
 const ankiPyproject = readFileSync(new URL('../plugins/anki/pyproject.toml', import.meta.url), 'utf8');
+
+for (const codes of [[], ['zz'], ['zz', 'xy']]) {
+    test(`initializes ${codes.length} configured languages from English without overwriting translations`, (t) => {
+        const root = mkdtempSync(join(tmpdir(), 'asbplayer-language-'));
+        t.after(() => rmSync(root, { recursive: true, force: true }));
+        const write = (path: string, value: unknown) => {
+            mkdirSync(join(root, path, '..'), { recursive: true });
+            writeFileSync(join(root, path), JSON.stringify(value));
+        };
+        const read = (path: string) => JSON.parse(readFileSync(join(root, path), 'utf8'));
+        const common = { settings: { language: 'Language', label_one: 'One', label_other: 'Many' } };
+        const extension = { extensionDescription: { message: 'Description' } };
+        const external = { listingDescription: 'Listing' };
+        const tracking = {
+            common: { 'settings.language': 'Language', 'settings.label_one': 'One', 'settings.label_other': 'Many' },
+            extension: { 'extensionDescription.message': 'Description' },
+            external: { listingDescription: 'Listing' },
+        };
+        const config = {
+            ...project,
+            defaultLanguage: 'ja',
+            languages: codes.map((code) => ({ code, version: 1 })),
+        };
+        write('project.json', config);
+        write('common/locales/en.json', common);
+        write('common/locales/unconfigured.json', { unused: true });
+        write('extension/public/_locales/en/messages.json', extension);
+        write('loc/external/en.json', external);
+        mkdirSync(join(root, 'plugins/anki'), { recursive: true });
+        writeFileSync(join(root, 'plugins/anki/pyproject.toml'), ankiPyproject);
+
+        const stale = syncProjectConfig(root, true);
+        assert.ok(stale.includes('common/extension.json'));
+        assert.equal(existsSync(join(root, 'common/extension.json')), false);
+        for (const code of codes) {
+            assert.ok(stale.includes(`common/locales/${code}.json`));
+            assert.equal(existsSync(join(root, `common/locales/${code}.json`)), false);
+        }
+        syncProjectConfig(root);
+        assert.deepEqual(
+            read('common/extension.json').languages.map(({ code }: { code: string }) => code),
+            codes
+        );
+        assert.equal(existsSync(join(root, 'loc/untranslated/unconfigured.json')), false);
+        for (const code of codes) {
+            assert.deepEqual(read(`common/locales/${code}.json`), common);
+            assert.deepEqual(read(`extension/public/_locales/${code}/messages.json`), extension);
+            assert.deepEqual(read(`loc/external/${code}.json`), external);
+            assert.deepEqual(read(`loc/untranslated/${code}.json`), tracking);
+            write(`common/locales/${code}.json`, { translated: code });
+            write(`loc/untranslated/${code}.json`, { common: {}, extension: {}, external: {} });
+        }
+        assert.deepEqual(syncProjectConfig(root, true), []);
+        assert.deepEqual(syncProjectConfig(root), []);
+        for (const code of codes) {
+            assert.deepEqual(read(`common/locales/${code}.json`), { translated: code });
+            assert.deepEqual(read(`loc/untranslated/${code}.json`), { common: {}, extension: {}, external: {} });
+        }
+        if (codes.length > 0) {
+            const code = codes[0];
+            rmSync(join(root, `loc/external/${code}.json`));
+            assert.deepEqual(syncProjectConfig(root, true), [
+                `loc/external/${code}.json`,
+                `loc/untranslated/${code}.json`,
+            ]);
+            syncProjectConfig(root);
+            assert.deepEqual(read(`loc/untranslated/${code}.json`), {
+                common: {},
+                extension: {},
+                external: tracking.external,
+            });
+            rmSync(join(root, `loc/untranslated/${code}.json`));
+            syncProjectConfig(root);
+            assert.deepEqual(read(`loc/untranslated/${code}.json`), {
+                common: {},
+                extension: tracking.extension,
+                external: tracking.external,
+            });
+            assert.deepEqual(read(`common/locales/${code}.json`), { translated: code });
+        }
+    });
+}
 
 test('publishes the released version without changing localization revisions or build version', () => {
     const config = { ...project, version: '4.0.0' };
@@ -20,16 +102,22 @@ test('publishes the released version without changing localization revisions or 
         },
     };
     const languages = [
-        { code: 'en', version: 29, url: '/locales/en.json' },
-        { code: 'ja', version: 34, url: '/locales/ja.json' },
+        { code: 'en', version: 29 },
+        { code: 'ja', version: 34 },
     ];
-    const files = generatedProjectFiles(config, { latest: { version: '1.0.0' }, languages });
+    config.languages = languages;
+    config.languageUrl = 'https://translations.example/{{language}}/strings-{{language}}.json';
+    const files = generatedProjectFiles(config);
     const feed = JSON.parse(files['common/extension.json']);
     assert.deepEqual(feed.latest, {
         version: '3.2.1',
         url: `${config.urls.repo}/releases/tag/extension%2F3.2.1`,
     });
-    assert.deepEqual(feed.languages, languages);
+    assert.deepEqual(feed.languages, [
+        { code: 'en', version: 29, url: 'https://translations.example/en/strings-en.json' },
+        { code: 'ja', version: 34, url: 'https://translations.example/ja/strings-ja.json' },
+    ]);
+    assert.deepEqual(config.languages, languages);
     assert.equal(config.version, '4.0.0');
 });
 
@@ -49,7 +137,7 @@ test('packages changed service defaults and names for Python, Go, and the exampl
     config.services.webSocket.postMineAction = 1;
     config.services.ankiConnect.host = 'localhost';
     config.services.ankiConnect.port = 9875;
-    const files = generatedProjectFiles(config, { languages: [] });
+    const files = generatedProjectFiles(config);
     assert.deepEqual(JSON.parse(files['plugins/anki/asbplayer-addon/config.json']), {
         enabled: true,
         port: 9876,
@@ -82,7 +170,6 @@ test('check mode reports missing or stale outputs without writing and synchroniz
         mkdirSync(join(root, 'common'));
         mkdirSync(join(root, 'plugins/anki'), { recursive: true });
         writeFileSync(join(root, 'project.json'), JSON.stringify(project));
-        writeFileSync(join(root, 'common/extension.json'), JSON.stringify({ languages: [] }));
         writeFileSync(join(root, 'plugins/anki/pyproject.toml'), ankiPyproject);
         assert.equal(syncProjectConfig(root, true).length, 6);
         assert.equal(syncProjectConfig(root).length, 6);
@@ -108,7 +195,6 @@ test('syncs the Python project name and version and checks drift without changin
         config.releases.ankiAddon.package = 'example-addon';
         config.releases.ankiAddon.version = '2.3.4';
         writeFileSync(join(root, 'project.json'), JSON.stringify(config));
-        writeFileSync(join(root, 'common/extension.json'), JSON.stringify({ languages: [] }));
         const path = join(root, 'plugins/anki/pyproject.toml');
         const original = [
             '# Local development environment',

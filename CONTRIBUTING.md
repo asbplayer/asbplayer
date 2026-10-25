@@ -96,3 +96,13 @@ node ./merge-loc-from-en.js
 ```
 
 Translations are later pulled from the [Crowdin project](https://crowdin.com/project/asbplayer).
+
+Supported languages and their translation revisions are maintained in `project.json` under `languages`. Each entry has a `code` and a `version`; maintainers bump the revision when publishing updated translations.
+
+`pnpm sync:project` also generates `common/extension.json` for the translation update endpoint used by existing extensions. Edit its inputs in `project.json`; do not edit `extension.json` directly. CI runs sync and fails if it produces modified or untracked files, while local `pnpm check:project` checks for missing or stale outputs without writing.
+
+### Adding a New Language
+
+To add a language, add its entry to `project.json`, then run `pnpm sync:project`. Sync creates missing common, extension, and external locale files from their English sources and records the copied strings as untranslated. Existing translations are preserved. Commit the generated files together with the configuration change, then rebuild to make the language selectable. Locale scripts use the configured language list; extra files in the locale directories do not add supported languages.
+
+Enable new target languages separately in Crowdin's project settings and add a mapping in `scripts/loc/crowdin.yml` when Crowdin's language code differs from the local code. Adding a local language does not enable it on Crowdin.

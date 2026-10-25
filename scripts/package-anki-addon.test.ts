@@ -38,10 +38,10 @@ test('packages the configured add-on version while keeping its installed identit
             new URL('../plugins/anki/pyproject.toml', import.meta.url),
             join(root, 'plugins/anki/pyproject.toml')
         );
-        writeFileSync(join(root, 'common/extension.json'), JSON.stringify({ languages: [] }));
         writeFileSync(join(addonRoot, '__init__.py'), '# Test add-on payload\n');
 
         const project = JSON.parse(readFileSync(new URL('../project.json', import.meta.url), 'utf8'));
+        project.languages = [];
         project.version = '9.0.0';
         project.names.short = 'Example player';
         project.releases.ankiAddon = {
