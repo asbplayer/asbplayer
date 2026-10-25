@@ -1,5 +1,7 @@
 {
     "package": "asbplayer-addon",
     "name": "asbplayer",
-    "human_version": "1.0.0"
+    "human_version": "1.0.0",
+    "min_point_version": 250200,
+    "homepage": "https://github.com/asbplayer/asbplayer"
 }

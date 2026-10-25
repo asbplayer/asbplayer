@@ -19,6 +19,7 @@
         },
         "ankiAddon": {
             "version": "1.0.0",
+            "minPointVersion": "25.02",
             "package": "asbplayer-addon",
             "releaseTitle": "asbplayer-ankiaddon-v{{version}}",
             "releaseTag": "ankiaddon-v{{version}}",

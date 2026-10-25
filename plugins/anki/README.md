@@ -39,6 +39,8 @@ uv lock --project plugins/anki
 
 The configured version supplies both `manifest.json`'s `human_version` and `pyproject.toml`'s project version. The configured `package` supplies the manifest's package identity and the Python project's name. uv generates `uv.lock` for the development environment. CI checks the generated files and lockfile for drift. Commit these changes before releasing.
 
+`releases.ankiAddon.minPointVersion` is a readable Anki version such as `"25.02"` or `"25.02.1"`. Sync converts it to the manifest's `min_point_version` using Anki's `YYMMPP` integer format (`250200` or `250201`, respectively). The manifest's `homepage` comes from `urls.repo`.
+
 2. Run **Release Anki add-on** in GitHub Actions for the committed branch. The workflow checks metadata, tests packaging, and publishes the archive using `releases.ankiAddon`.
 
 To build the same archive locally without publishing:

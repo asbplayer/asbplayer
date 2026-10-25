@@ -12,6 +12,7 @@ test('rejects release metadata that could escape the output directory or corrupt
         releaseTitle: 'example-ankiaddon-v{{version}}',
         artifact: 'example-player-{{version}}.ankiaddon',
         version: '2.3.4',
+        minPointVersion: '25.02',
         releaseTag: 'custom-anki-v{{version}}',
     };
     for (const filename of ['../outside', 'nested/addon', 'nested\\addon', 'addon\0', 'addon\nfilename=other']) {
@@ -44,11 +45,13 @@ test('packages the configured add-on version while keeping its installed identit
         project.languages = [];
         project.version = '9.0.0';
         project.names.short = 'Example player';
+        project.urls.repo = 'https://code.example/player';
         project.releases.ankiAddon = {
             package: 'example-addon',
             releaseTitle: 'example-ankiaddon-v{{version}}',
             artifact: 'example-player-{{version}}.ankiaddon',
             version: '2.3.4',
+            minPointVersion: '25.02',
             releaseTag: 'custom-anki-v{{version}}',
         };
         const packageAddon = () => {
@@ -78,6 +81,8 @@ test('packages the configured add-on version while keeping its installed identit
             package: 'example-addon',
             name: 'Example player',
             human_version: '2.3.4',
+            min_point_version: 250200,
+            homepage: 'https://code.example/player',
         });
         writeFileSync(join(addonRoot, 'obsolete.py'), '# Must not survive a rebuild\n');
         packageAddon();
@@ -88,6 +93,7 @@ test('packages the configured add-on version while keeping its installed identit
         });
         assert.doesNotMatch(inventory, /obsolete\.py/);
         project.releases.ankiAddon.version = '2.3.5';
+        project.releases.ankiAddon.minPointVersion = '26.08';
         packageAddon();
         assert.match(readFileSync(join(root, 'plugins/anki/pyproject.toml'), 'utf8'), /^version = "2.3.5"$/m);
         assert.match(readFileSync(join(root, 'plugins/anki/pyproject.toml'), 'utf8'), /^name = "example-addon"$/m);
@@ -95,8 +101,11 @@ test('packages the configured add-on version while keeping its installed identit
             package: 'example-addon',
             name: 'Example player',
             human_version: '2.3.5',
+            min_point_version: 260800,
+            homepage: 'https://code.example/player',
         });
         assert.equal(readManifest('2.3.4').human_version, '2.3.4');
+        assert.equal(readManifest('2.3.4').min_point_version, 250200);
     } finally {
         rmSync(root, { recursive: true, force: true });
     }

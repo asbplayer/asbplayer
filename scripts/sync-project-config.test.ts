@@ -121,6 +121,28 @@ test('publishes the released version without changing localization revisions or 
     assert.equal(config.version, '4.0.0');
 });
 
+test('converts readable Anki minimum versions to manifest integers, including optional patches', () => {
+    for (const [version, expected] of [
+        ['25.02', 250200],
+        ['25.02.0', 250200],
+        ['25.02.1', 250201],
+        ['26.08.12', 260812],
+    ] as const) {
+        const config = structuredClone(project);
+        config.releases.ankiAddon.minPointVersion = version;
+        const files = generatedProjectFiles(config);
+        assert.equal(JSON.parse(files['plugins/anki/asbplayer-addon/manifest.json']).min_point_version, expected);
+    }
+});
+
+test('rejects malformed Anki minimum versions rather than generating an invalid compatibility limit', () => {
+    for (const version of ['', '250200', '25', '25.00', '25.13', '25.02.100', '25.02rc1', '25.02.1.2']) {
+        const config = structuredClone(project);
+        config.releases.ankiAddon.minPointVersion = version;
+        assert.throws(() => generatedProjectFiles(config), /minPointVersion must use YY\.MM/);
+    }
+});
+
 test('packages changed service defaults and names for Python, Go, and the example environment', () => {
     const config = structuredClone(project);
     config.names.short = 'Example player';
@@ -129,8 +151,10 @@ test('packages changed service defaults and names for Python, Go, and the exampl
         releaseTitle: 'example-ankiaddon-v{{version}}',
         artifact: 'example-player-{{version}}.ankiaddon',
         version: '2.3.4',
+        minPointVersion: '26.08',
         releaseTag: 'example-addon-v{{version}}',
     };
+    config.urls.repo = 'https://code.example/player';
     config.services.webSocket.host = 'socket.example.com';
     config.services.webSocket.port = 9876;
     config.services.webSocket.path = '/socket';
@@ -147,6 +171,8 @@ test('packages changed service defaults and names for Python, Go, and the exampl
         package: 'example-addon',
         name: 'Example player',
         human_version: '2.3.4',
+        min_point_version: 260800,
+        homepage: 'https://code.example/player',
     });
     const go = files['scripts/web-socket-server/project_config.go'];
     assert.match(go, /defaultWebSocketPort = "9876"/);
