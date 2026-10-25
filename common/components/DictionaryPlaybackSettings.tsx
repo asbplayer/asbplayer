@@ -33,7 +33,8 @@ interface Props {
     onChange: (config: DictionaryPlaybackConfig) => void;
 }
 
-const featureLabel: Record<DictionaryPlaybackFeature, string> = {
+const featureLabel: Record<keyof DictionaryPlaybackConfig, string> = {
+    selectOnPause: 'dictionarySelectOnPause',
     autoPause: 'dictionaryPlaybackAutoPause',
     condensed: 'dictionaryPlaybackCondensed',
     fastForward: 'dictionaryPlaybackFastForward',
@@ -60,15 +61,80 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange, disable
         feature: K,
         update: Partial<DictionaryPlaybackConfig[K]['rules']>
     ) => onChange({ ...config, [feature]: { ...config[feature], rules: { ...config[feature].rules, ...update } } });
+    const selectedOptions = (feature: keyof DictionaryPlaybackConfig) =>
+        options.filter((value) =>
+            value < NUM_TOKEN_STATUSES
+                ? config[feature].onStatuses[value].enabled
+                : config[feature].onStates[value - NUM_TOKEN_STATUSES].enabled
+        );
+    const renderWordSelection = (feature: keyof DictionaryPlaybackConfig) => {
+        const featureConfig = config[feature];
+        const selected = selectedOptions(feature);
+        return (
+            <SettingsTextField
+                select
+                disabled={disabled}
+                fullWidth
+                color="primary"
+                variant="outlined"
+                size="small"
+                label={t(`settings.${featureLabel[feature]}`)}
+                value={selected}
+                SelectProps={{
+                    multiple: true,
+                    displayEmpty: true,
+                    renderValue: (values) => {
+                        const selectedValues = optionValues(values);
+                        const statusLabels = tokenStatusSelectionLabels(
+                            selectedValues.filter((value) => value < NUM_TOKEN_STATUSES),
+                            label
+                        );
+                        const stateLabels = selectedValues.filter((value) => value >= NUM_TOKEN_STATUSES).map(label);
+                        return (
+                            [...statusLabels, ...stateLabels].join(', ') ||
+                            t(
+                                feature === 'selectOnPause'
+                                    ? 'settings.dictionaryTokenReadingAnnotationNever'
+                                    : 'settings.dictionaryPlaybackNoWordFilter'
+                            )
+                        );
+                    },
+                }}
+                onChange={(event) => {
+                    const values = optionValues(event.target.value);
+                    onChange({
+                        ...config,
+                        [feature]: {
+                            ...featureConfig,
+                            onStatuses: featureConfig.onStatuses.map((status, index) => ({
+                                ...status,
+                                enabled: values.includes(index),
+                            })),
+                            onStates: featureConfig.onStates.map((state, index) => ({
+                                ...state,
+                                enabled: values.includes(NUM_TOKEN_STATUSES + index),
+                            })),
+                        },
+                    });
+                }}
+            >
+                {options.map((value) => (
+                    <MenuItem key={value} value={value}>
+                        <ListItemIcon>
+                            <Checkbox checked={selected.includes(value)} />
+                        </ListItemIcon>
+                        <ListItemText primary={label(value)} />
+                    </MenuItem>
+                ))}
+            </SettingsTextField>
+        );
+    };
     return (
         <Stack spacing={2} sx={{ mt: 1 }}>
+            {renderWordSelection('selectOnPause')}
             {dictionaryPlaybackFeatures.map((feature) => {
                 const featureConfig = config[feature];
-                const selected = options.filter((value) =>
-                    value < NUM_TOKEN_STATUSES
-                        ? featureConfig.onStatuses[value].enabled
-                        : featureConfig.onStates[value - NUM_TOKEN_STATUSES].enabled
-                );
+                const selected = selectedOptions(feature);
                 const rules = featureConfig.rules;
                 return (
                     <Box
@@ -87,60 +153,7 @@ const DictionaryPlaybackSettings: React.FC<Props> = ({ config, onChange, disable
                             </Box>
                         )}
                         <Stack spacing={1}>
-                            <SettingsTextField
-                                select
-                                disabled={disabled}
-                                fullWidth
-                                color="primary"
-                                variant="outlined"
-                                size="small"
-                                label={t(`settings.${featureLabel[feature]}`)}
-                                value={selected}
-                                SelectProps={{
-                                    multiple: true,
-                                    displayEmpty: true,
-                                    renderValue: (values) => {
-                                        const selectedValues = optionValues(values);
-                                        const statusLabels = tokenStatusSelectionLabels(
-                                            selectedValues.filter((value) => value < NUM_TOKEN_STATUSES),
-                                            label
-                                        );
-                                        const stateLabels = selectedValues
-                                            .filter((value) => value >= NUM_TOKEN_STATUSES)
-                                            .map(label);
-                                        return (
-                                            [...statusLabels, ...stateLabels].join(', ') ||
-                                            t('settings.dictionaryPlaybackNoWordFilter')
-                                        );
-                                    },
-                                }}
-                                onChange={(event) => {
-                                    const values = optionValues(event.target.value);
-                                    onChange({
-                                        ...config,
-                                        [feature]: {
-                                            ...featureConfig,
-                                            onStatuses: featureConfig.onStatuses.map((status, index) => ({
-                                                ...status,
-                                                enabled: values.includes(index),
-                                            })),
-                                            onStates: featureConfig.onStates.map((state, index) => ({
-                                                ...state,
-                                                enabled: values.includes(NUM_TOKEN_STATUSES + index),
-                                            })),
-                                        },
-                                    });
-                                }}
-                            >
-                                {options.map((value) => (
-                                    <MenuItem key={value} value={value}>
-                                        <ListItemIcon>
-                                            <Checkbox checked={selected.includes(value)} />
-                                        </ListItemIcon>
-                                        <ListItemText primary={label(value)} />
-                                    </MenuItem>
-                                ))}
-                            </SettingsTextField>
+                            {renderWordSelection(feature)}
                             <Box sx={{ '& .MuiFormLabel-root': { minHeight: '3em' } }}>
                                 <ResponsiveSettingsStack>
                                     <NumericSettingInput

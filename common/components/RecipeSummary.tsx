@@ -14,7 +14,7 @@ import {
     Chip,
 } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { recipeSettingGroups, NUM_DICTIONARY_TRACKS } from '@project/common/settings';
+import { recipeSettingGroups, dictionaryPlaybackFeatures, NUM_DICTIONARY_TRACKS } from '@project/common/settings';
 import type { Recipe, SubtitleVisibility, AutoPauseResumeMode } from '@project/common/settings';
 import SettingsTextField from '@project/common/components/SettingsTextField';
 
@@ -208,12 +208,12 @@ export default function RecipeSummary({ recipe, onRemove }: Props) {
                 </SettingsTextField>
             )}
             {trackConfig &&
-                Object.entries(trackConfig).map(([feature, config]) =>
+                (['selectOnPause', ...dictionaryPlaybackFeatures] as const).map((feature) =>
                     group(
                         feature,
                         settingLabel(feature),
                         dictionaryRows(
-                            config,
+                            trackConfig[feature],
                             ['dictionaryTracks', String(trackIndex), 'dictionaryPlaybackConfig', feature],
                             ''
                         )

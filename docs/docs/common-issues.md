@@ -86,12 +86,12 @@ Annotation is considered disabled if the following settings are set to these val
 - In [`Settings > Annotation`](./reference/settings.md#annotation):
   - [`Colorize subtitles based on known words`](./reference/settings.md#colorize-subtitles-based-on-known-words): **Off**
   - [`Generate statistics automatically`](./reference/settings.md#generate-statistics-automatically): **Off**
-  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): _Nothing selected_ (empty value)
   - [`Display word readings`](./reference/settings.md#display-word-readings): _Nothing selected_ (empty value)
   - [`Display word frequency`](./reference/settings.md#display-word-frequency): _Nothing selected_ (empty value)
   - [`Display pitch accent (Japanese)`](./reference/settings.md#display-pitch-accent-japanese): _Nothing selected_ (empty value)
   - [`Display word definitions`](./reference/settings.md#display-word-definitions): _Nothing selected_ (empty value)
 - In [`Settings > Playback > Annotation`](./reference/settings.md#playback-annotation):
+  - [`Select first matching word on pause`](./reference/settings.md#select-first-matching-word-on-pause): Never
   - [`Auto-pause subtitles containing these words`](./reference/settings.md#auto-pause-subtitles-containing-these-words): No word filter
   - [`Play subtitles containing these words in condensed mode`](./reference/settings.md#play-subtitles-containing-these-words-in-condensed-mode): No word filter
   - [`Play subtitles containing these words at normal speed in fast-forward mode`](./reference/settings.md#play-subtitles-containing-these-words-at-normal-speed-in-fast-forward-mode): No word filter
