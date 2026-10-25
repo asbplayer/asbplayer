@@ -214,7 +214,6 @@ export default function RecipeSettings({ settings, onSettingsChanged, children }
                             ),
                         }}
                     />
-                    {readOnly && ` ${t('recipes.readOnly')}`}
                 </FormHelperText>
             </Stack>
             <ButtonGroup fullWidth size="small" variant="contained">

@@ -847,7 +847,6 @@
         "paste": "Paste recipe JSON",
         "invalid": "This recipe is invalid, check for any formatting errors.",
         "importUrl": "Import URL",
-        "readOnly": "Playback settings are read only while a recipe is active, disable or edit the recipe to change settings.",
         "introduction": "Recipes combine playback modes and settings for different learning activities. <docs>Learn about recipes and importing presets</docs>.",
         "notification": "Recipe: {{name}}",
         "settingLocked": "{{setting}} can't be changed while a Recipe is active",

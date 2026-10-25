@@ -130,7 +130,9 @@ describe('playback menu recipes', () => {
         expect(input('Normal').disabled).toBe(true);
         expect(button().getAttribute('aria-label')).toContain('Recipe: Listening');
         expect(button().textContent).toBe('2');
-        expect(document.body.textContent).toContain("Playback Modes can't be changed while a Recipe is active");
+        const lockedMessage = "Playback Modes can't be changed while a Recipe is active";
+        expect(document.body.textContent).not.toContain(lockedMessage);
+        expect(document.querySelector(`[aria-label^="${lockedMessage}"]`)).not.toBeNull();
 
         await choose('Normal');
         expect(modeChanges).toEqual([]);

@@ -242,11 +242,6 @@ export default function PlayModeSelector({
                             </Tooltip>
                         )}
                         {modeList}
-                        {selectedRecipe && !horizontal && (
-                            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 1 }}>
-                                {modesLockedMessage}
-                            </Typography>
-                        )}
                     </Box>
                 )}
             </Box>

@@ -1698,7 +1698,7 @@ function PlayerComponent(
                             onAudioTrackSelected={handleAudioTrackSelected}
                             onTabSelected={onTabSelected}
                             onOffsetChange={handleOffsetChange}
-                            recipes={supportsDictionaryPlayback ? settings.recipes : undefined}
+                            recipes={supportsDictionaryPlayback && !syntheticPlayback ? settings.recipes : undefined}
                             activeRecipeId={settings.activeRecipeId}
                             onRecipeSelect={(activeRecipeId) => onSettingsChanged({ activeRecipeId })}
                             onPlayMode={handlePlayMode}

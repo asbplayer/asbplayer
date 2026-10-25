@@ -163,23 +163,20 @@ describe('recipe editor', () => {
         });
     };
 
-    it('always shows the introduction as helper text and adds the selected recipe restriction while read only', async () => {
+    it('keeps the introduction helper text unchanged when selecting or editing a recipe', async () => {
         await renderEditor({ ...defaultSettings, recipes: [recipe], activeRecipeId: null });
         const helper = () => container.querySelector('.MuiFormHelperText-root')!;
         const introduction = 'Recipes combine playback modes and settings for different learning activities.';
         expect(helper().textContent).toContain(introduction);
-        expect(helper().textContent).not.toContain(translations.recipes.readOnly);
         expect(container.querySelector('[role="alert"]')).toBeNull();
         expect(helper().querySelector('a')?.href).toBe('https://docs.asbplayer.dev/docs/guides/recipes');
+        const initialHelperText = helper().textContent;
         const selector = container.querySelector('[role="combobox"]')!;
         await act(async () => selector.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
         await act(async () => document.querySelector<HTMLElement>('[role="option"][data-value="0"]')!.click());
-        expect(helper().textContent).toContain(introduction);
-
-        expect(helper().textContent?.endsWith(` ${translations.recipes.readOnly}`)).toBe(true);
+        expect(helper().textContent).toBe(initialHelperText);
         await click('Edit Recipe');
-        expect(helper().textContent).toContain(introduction);
-        expect(helper().textContent).not.toContain(translations.recipes.readOnly);
+        expect(helper().textContent).toBe(initialHelperText);
     });
 
     it('renders the selected effective settings read only and isolates draft changes until cancellation', async () => {
