@@ -26,15 +26,25 @@ export const annotationPlaybackRule = (statuses, rules = {}) => ({
   onStates: [{ enabled: false }],
 });
 
+export const annotationPlaybackSelection = (statuses) => ({
+  onStatuses: Array.from({ length: 6 }, (_, status) => ({ enabled: statuses.includes(status) })),
+  onStates: [{ enabled: false }],
+});
+
 export const annotationPlaybackSettings = (playbackConfig) => ({
   seekableTracks: 1,
   dictionaryTracks: nonAnnotationPlaybackSettings.dictionaryTracks.map((track, index) => ({
-    dictionaryPlaybackConfig: Object.fromEntries(
-      Object.entries(track.dictionaryPlaybackConfig).map(([feature, config]) => [
-        feature,
-        { ...config, ...(index === 0 ? playbackConfig[feature] : {}) },
-      ])
-    ),
+    dictionaryPlaybackConfig: {
+      ...Object.fromEntries(
+        Object.entries(track.dictionaryPlaybackConfig).map(([feature, config]) => [
+          feature,
+          { ...config, ...(index === 0 ? playbackConfig[feature] : {}) },
+        ])
+      ),
+      ...(index === 0 && playbackConfig.selectOnPause !== undefined
+        ? { selectOnPause: playbackConfig.selectOnPause }
+        : {}),
+    },
   })),
 });
 
@@ -305,7 +315,7 @@ Load your target-language subtitles as **Track 1**. These presets use that track
 
 ### Unfamiliar-word rescue
 
-Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. Use the pause to inspect the unfamiliar vocabulary, and adjust the pause duration if you need more time.
+Watch with subtitles visible. When a line contains an unfamiliar word, pause for 1 second at its end, then replay it once. Other lines continue uninterrupted. The first unfamiliar word is selected during the pause for lookup. Adjust the pause duration if you need more time.
 
 <RecipePreset
   gapVariants
@@ -314,14 +324,17 @@ Watch with subtitles visible. When a line contains an unfamiliar word, pause for
     playbackModes: [3, 5],
     settings: {
       ...unfamiliarWordRepeatSettings,
-      ...annotationPlaybackSettings(unfamiliarWordPlaybackConfig),
+      ...annotationPlaybackSettings({
+        ...unfamiliarWordPlaybackConfig,
+        selectOnPause: annotationPlaybackSelection([0, 1]),
+      }),
     },
   }}
 />
 
 ### i+1 mining
 
-Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, giving you time to inspect or mine it.
+Focus on subtitles containing exactly one Uncollected token. Condensed playback skips between qualifying lines, and playback pauses at each line's end until you resume manually, selecting the Uncollected token for inspection or mining.
 
 This finds i+1 candidates rather than guaranteeing that every other word is known: a line can also contain Unknown words, and repeated occurrences of the same Uncollected word count separately. Mining remains a manual action.
 
@@ -333,6 +346,7 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
       ...annotationPlaybackSettings({
         autoPause: annotationPlaybackRule([0], { minWords: 1, maxWords: 1 }),
         condensed: annotationPlaybackRule([0], { minWords: 1, maxWords: 1 }),
+        selectOnPause: annotationPlaybackSelection([0]),
       }),
       autoPausePreference: 2,
       autoPauseResumeMode: 'manual',
@@ -348,7 +362,7 @@ This finds i+1 candidates rather than guaranteeing that every other word is know
 
 ### Unfamiliar-word hints
 
-Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. Lines with no unfamiliar words have no caption when fully tokenized.
+Listen with unfamiliar words visible and familiar words hidden. Lines containing unfamiliar words pause for 1 second at their end, revealing the full text, then replay once with the hints restored. The first unfamiliar word is selected during the pause for lookup. Lines with no unfamiliar words have no caption when fully tokenized.
 
 <RecipePreset
   gapVariants
@@ -359,6 +373,7 @@ Listen with unfamiliar words visible and familiar words hidden. Lines containing
       ...unfamiliarWordRepeatSettings,
       ...annotationPlaybackSettings({
         ...unfamiliarWordPlaybackConfig,
+        selectOnPause: annotationPlaybackSelection([0, 1]),
         wordVisibility: {
           ...annotationPlaybackRule([0, 1]),
           hideWordsIndividuallyUntilThreshold: true,
