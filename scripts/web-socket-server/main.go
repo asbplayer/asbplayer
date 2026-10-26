@@ -41,9 +41,6 @@ type (
 		conn           *websocket.Conn
 		writeMux       sync.Mutex
 		jsonRpcCapable atomic.Bool
-		probeMux       sync.Mutex
-		probeId        string
-		probeResponse  chan clientResponse
 	}
 	forwarder struct {
 		WebsocketClients map[*wsClient]bool
@@ -131,42 +128,6 @@ func (client *wsClient) send(messageType int, data []byte) error {
 	return client.conn.WriteMessage(messageType, data)
 }
 
-func (client *wsClient) setProbe(id string, response chan clientResponse) {
-	client.probeMux.Lock()
-	defer client.probeMux.Unlock()
-	client.probeId = id
-	client.probeResponse = response
-}
-
-func (client *wsClient) clearProbe(id string) {
-	client.probeMux.Lock()
-	defer client.probeMux.Unlock()
-
-	if client.probeId == id {
-		client.probeId = ""
-		client.probeResponse = nil
-	}
-}
-
-func (client *wsClient) deliverProbe(response clientResponse) bool {
-	client.probeMux.Lock()
-	defer client.probeMux.Unlock()
-
-	if client.probeId == "" || client.probeId != response.MessageId {
-		return false
-	}
-
-	responseChannel := client.probeResponse
-	client.probeId = ""
-	client.probeResponse = nil
-
-	if responseChannel != nil {
-		responseChannel <- response
-	}
-
-	return true
-}
-
 func (forwarder forwarder) addClient(client *wsClient) {
 	forwarder.Mutex.Lock()
 	defer forwarder.Mutex.Unlock()
@@ -240,17 +201,16 @@ func (forwarder forwarder) probeJsonRpcSupport(client *wsClient) {
 		return
 	}
 
-	responseChannel := make(chan clientResponse, 1)
-	client.setProbe(probeId, responseChannel)
+	request := forwarder.Broker.register(probeId)
 
 	if err := client.send(websocket.TextMessage, probe); err != nil {
-		client.clearProbe(probeId)
+		forwarder.Broker.cancel(probeId, request)
 		return
 	}
 
 	select {
-	case response := <-responseChannel:
-		if response.Error != nil {
+	case response, ok := <-request.result:
+		if !ok || response.Error != nil {
 			return
 		}
 
@@ -267,7 +227,7 @@ func (forwarder forwarder) probeJsonRpcSupport(client *wsClient) {
 			}
 		}
 	case <-time.After(forwarder.RequestTimeout):
-		client.clearProbe(probeId)
+		forwarder.Broker.cancel(probeId, request)
 	}
 }
 
@@ -341,26 +301,19 @@ func (forwarder forwarder) handleJsonRpcFrame(client *wsClient, msg []byte) {
 		return
 	}
 
-	if incoming.Error != nil {
-		response := clientResponse{MessageId: id, Error: incoming.Error}
+	var response clientResponse
 
-		if !client.deliverProbe(response) {
-			forwarder.Broker.deliver(response)
-		}
-
-		return
-	}
-
-	if incoming.Result == nil {
+	switch {
+	case incoming.Error != nil:
+		response = clientResponse{MessageId: id, Error: incoming.Error}
+	case incoming.Result != nil:
+		response = clientResponse{MessageId: id, Body: incoming.Result}
+	default:
 		forwarder.sendJsonRpcError(client, id, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
 		return
 	}
 
-	response := clientResponse{MessageId: id, Body: incoming.Result}
-
-	if !client.deliverProbe(response) {
-		forwarder.Broker.deliver(response)
-	}
+	forwarder.Broker.deliver(response)
 }
 
 func stringJsonRpcId(raw json.RawMessage) (string, bool) {

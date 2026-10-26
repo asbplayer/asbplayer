@@ -192,6 +192,13 @@ func (c *fakeClient) respondJsonRpcError(t *testing.T, id string, code int, mess
 	c.write(t, fmt.Sprintf(`{"jsonrpc":"2.0","id":%q,"error":{"code":%d,"message":%q}}`, id, code, message))
 }
 
+// Declines the client-info probe so the connection stays on legacy framing.
+func (c *fakeClient) declineProbe(t *testing.T) {
+	t.Helper()
+	probe := c.nextJsonRpcRequest(t)
+	c.respondJsonRpcError(t, probe.Id, jsonRpcMethodNotFound, "Method not found")
+}
+
 // Answers the capability probe and waits for the server to switch the connection to JSON-RPC.
 func (h *harness) announceJsonRpc(t *testing.T, client *fakeClient) {
 	t.Helper()
@@ -350,6 +357,7 @@ func TestDuplicateAndLateResponsesAreIgnored(t *testing.T) {
 	h := newHarness(t, 2*time.Second, 0)
 	client := h.connect(t)
 	h.waitForClients(t, 1)
+	client.declineProbe(t)
 
 	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
 	command := client.nextCommand(t)
@@ -379,6 +387,8 @@ func TestFirstBroadcastResponseWins(t *testing.T) {
 	responding := h.connect(t)
 	late := h.connect(t)
 	h.waitForClients(t, 2)
+	responding.declineProbe(t)
+	late.declineProbe(t)
 
 	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
 	respondingCommand := responding.nextCommand(t)
@@ -415,6 +425,7 @@ func TestTimeoutCleansUpPendingState(t *testing.T) {
 	h := newHarness(t, 150*time.Millisecond, 0)
 	client := h.connect(t)
 	h.waitForClients(t, 1)
+	client.declineProbe(t)
 
 	if status, _ := h.request(t, http.MethodGet, "/asbplayer/bound-media", ""); status != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503 on timeout, got %d", status)
@@ -610,9 +621,7 @@ func TestClientInfoErrorKeepsLegacyFraming(t *testing.T) {
 	h := newHarness(t, 2*time.Second, 0)
 	client := h.connect(t)
 	h.waitForClients(t, 1)
-
-	probe := client.nextJsonRpcRequest(t)
-	client.respondJsonRpcError(t, probe.Id, jsonRpcMethodNotFound, "Method not found")
+	client.declineProbe(t)
 
 	result := h.requestAsync(t, http.MethodGet, "/asbplayer/bound-media", "")
 	command := client.nextCommand(t)
