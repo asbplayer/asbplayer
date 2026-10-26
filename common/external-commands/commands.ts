@@ -87,9 +87,7 @@ export interface GetSubtitlesResponseBody {
     subtitles: SubtitleCue[];
 }
 
-// Commands are shared with the WebSocket server integration: the external connection port and the
-// WebSocket servers carry the same method names and payloads, framed as JSON-RPC 2.0 (see
-// ./external-api.ts) or, on the WebSocket servers only, the legacy `{command, messageId, body}`
+// Also used by the WebSocket servers, which accept the legacy `{command, messageId, body}`
 // framing during the migration.
 
 export type ExternalCommand =

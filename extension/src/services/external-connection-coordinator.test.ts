@@ -94,7 +94,6 @@ class FakePort {
         return id;
     }
 
-    /** Sends a JSON-RPC notification. */
     async notify(method: string, params?: object) {
         await this.receive({ jsonrpc: '2.0', method, params });
     }
@@ -298,7 +297,6 @@ describe('external connection coordinator', () => {
         const id = await port.request('hello', { name: 'Sibling' });
 
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
-        // The badge is not raised again; the connection is still told it is pending.
         expect(harness.lastGlobalBadgeText()).toEqual('');
         expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'pending' } });
     });

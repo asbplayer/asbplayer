@@ -83,8 +83,7 @@ export type JsonRpcSuccessResponse = z.infer<typeof jsonRpcResultResponseSchema>
 export type JsonRpcErrorResponse = z.infer<typeof jsonRpcErrorResponseSchema>;
 export type JsonRpcResponse = z.infer<typeof jsonRpcResponseSchema>;
 
-// Sniffs an incoming frame into a request or notification, returning undefined for anything that
-// violates the envelope rules (not an object, missing jsonrpc version or method, non-string id).
+// Returns undefined for frames that are not JSON-RPC requests or notifications.
 export function parseJsonRpcIncomingMessage(message: unknown): JsonRpcIncomingMessage | undefined {
     if (typeof message !== 'object' || message === null) {
         return undefined;

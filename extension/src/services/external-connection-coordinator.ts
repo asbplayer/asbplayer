@@ -14,8 +14,7 @@ import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
 import type { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
 
-// The OpenRPC document is generated from the same registry the dispatcher validates against, so
-// `rpc.discover` always reflects the method surface this build actually implements.
+// Served by rpc.discover; generated from the same registry used for validation.
 const openRpcDocument = generateOpenRpcDocument();
 
 // Pending requests expire after this long, and at most this many are retained, so that
@@ -42,18 +41,8 @@ class ExternalRpcError extends Error {
 /**
  * Manages external browser extensions connecting over `browser.runtime.onConnectExternal`.
  *
- * Approval is keyed on the connecting extension's runtime ID and persisted in the
- * `externalConnections` global state key. Surfaces (popup, options page, or the asbplayer app)
- * manage approvals by writing global state; this coordinator only reacts to those writes.
- *
- * The port protocol is JSON-RPC 2.0: one message per port message, no batches, and notifications
- * (no id) are never answered. The external extension identifies itself with `hello`, which
- * returns the current approval state immediately, and polls `approval-state` while pending.
- * Commands sent before approval fail with -32002; unknown methods with -32601. Denials and
- * revocations are transport-level closes.
- *
- * Frames from unapproved extensions are not queued. Pending requests are recorded on hello so the
- * user can be alerted via badges.
+ * Approvals are keyed by extension ID and persisted in `externalConnections`; surfaces write that
+ * state and this coordinator reacts to it. The port uses JSON-RPC 2.0.
  */
 export class ExternalConnectionCoordinator {
     private readonly _globalStateProvider: GlobalStateProvider;
@@ -196,7 +185,6 @@ export class ExternalConnectionCoordinator {
         const methodDef = externalApiMethods[method];
 
         if (method?.startsWith('rpc.') || methodDef?.paramsSchema === undefined) {
-            // Reserved rpc.* methods and unregistered methods do not exist on this endpoint.
             throw new ExternalRpcError(jsonRpcErrorCodes.methodNotFound, 'Method not found');
         }
 
@@ -252,7 +240,6 @@ export class ExternalConnectionCoordinator {
         const name = params.name !== undefined && params.name.length > 0 ? params.name : undefined;
 
         if (await this._onDeniedRequestCooldown(senderId)) {
-            // Silently decline: no pending entry is recorded, so no badge is raised.
             return;
         }
 
@@ -330,7 +317,7 @@ export class ExternalConnectionCoordinator {
             try {
                 port.disconnect();
             } catch {
-                // The port may disconnect concurrently; expected teardown, not an error.
+                // Expected if the port disconnects concurrently.
             }
         }
     }

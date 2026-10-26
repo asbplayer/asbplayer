@@ -31,7 +31,6 @@ class IncomingFrame:
 
 
 def notification(method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Build a JSON-RPC notification (a request without an id)."""
     frame: dict[str, Any] = {"jsonrpc": JSON_RPC_VERSION, "method": method}
 
     if params is not None:
@@ -45,7 +44,6 @@ def request(
     params: dict[str, Any] | None = None,
     request_id: str | None = None,
 ) -> dict[str, Any]:
-    """Build a JSON-RPC request."""
     frame = notification(method, params)
     frame["id"] = request_id if request_id is not None else str(uuid.uuid4())
     return frame
@@ -57,7 +55,6 @@ def error_response(
     message: str,
     data: Any = None,
 ) -> dict[str, Any]:
-    """Build a JSON-RPC error response."""
     error: dict[str, Any] = {"code": code, "message": message}
 
     if data is not None:
@@ -69,7 +66,6 @@ def error_response(
 def mine_subtitle_notification(
     fields: dict[str, str], post_mine_action: int
 ) -> dict[str, Any]:
-    """Build the fire-and-forget mine-subtitle notification."""
     return notification(
         "mine-subtitle",
         {"fields": fields, "postMineAction": post_mine_action},
@@ -81,7 +77,6 @@ def mine_subtitle_command(
     post_mine_action: int,
     message_id: str | None = None,
 ) -> dict[str, Any]:
-    """Build the legacy mine-subtitle command."""
     return {
         "command": "mine-subtitle",
         "messageId": message_id if message_id is not None else str(uuid.uuid4()),
@@ -94,7 +89,6 @@ def mine_subtitle_frame(
     post_mine_action: int,
     json_rpc_supported: bool,
 ) -> dict[str, Any]:
-    """Choose the framing for the connected client."""
     if json_rpc_supported:
         return mine_subtitle_notification(fields, post_mine_action)
 
@@ -102,7 +96,6 @@ def mine_subtitle_frame(
 
 
 def classify_message(message: str) -> IncomingFrame:
-    """Classify an incoming WebSocket text message."""
     if message == "PING":
         return IncomingFrame("ping")
 
@@ -136,13 +129,10 @@ def classify_message(message: str) -> IncomingFrame:
 
 @dataclass
 class JsonRpcNegotiation:
-    """Per-connection JSON-RPC capability probe state."""
-
     supported: bool = False
     probe_id: str | None = None
 
     def start_probe(self) -> dict[str, Any] | None:
-        """Return a probe frame, or None when the connection is already upgraded."""
         if self.supported:
             return None
 
@@ -150,7 +140,6 @@ class JsonRpcNegotiation:
         return request(PROBE_METHOD, {}, self.probe_id)
 
     def handle_frame(self, frame: IncomingFrame) -> bool:
-        """Mark the connection capable when the probe response arrives."""
         if self.supported or frame.kind != "json-rpc-response":
             return False
 
@@ -165,7 +154,6 @@ class JsonRpcNegotiation:
         return True
 
     def handle_timeout(self) -> bool:
-        """Abandon a probe that did not receive a response."""
         if self.supported or self.probe_id is None:
             return False
 
