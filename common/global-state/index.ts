@@ -41,6 +41,23 @@ export interface PendingExternalConnection {
     requestedAt: number;
 }
 
+// Pending requests expire after this long so that unapproved requests cannot accumulate
+// indefinitely.
+export const pendingRequestExpirationMs = 24 * 60 * 60 * 1000;
+
+/**
+ * Pending requests that have not yet expired. Callers rendering pending requests (or counting
+ * them, e.g. for badges) should use this so that expired requests are never displayed even
+ * before they have been pruned from the underlying state.
+ */
+export const activePendingEntries = (
+    pending: ExternalConnectionsState['pending'],
+    now: number
+): ExternalConnectionsState['pending'] =>
+    Object.fromEntries(
+        Object.entries(pending).filter(([, request]) => now - (request?.requestedAt ?? 0) <= pendingRequestExpirationMs)
+    );
+
 export interface ExternalConnectionsState {
     // Keyed by the external extension's runtime ID.
     approved: { [extensionId: string]: ApprovedExternalConnection };

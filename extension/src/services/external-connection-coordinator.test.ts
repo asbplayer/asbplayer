@@ -3,7 +3,11 @@ import type { VideoTabModel } from '@project/common';
 import type { ExternalConnectionsState } from '@project/common/global-state';
 import type { SettingsProvider } from '@project/common/settings';
 import type TabRegistry from '@project/extension/src/services/tab-registry';
-import { ExternalConnectionCoordinator } from '@project/extension/src/services/external-connection-coordinator';
+import {
+    deniedRequestCooldownMs,
+    deniedRequestCooldownsKey,
+    ExternalConnectionCoordinator,
+} from '@project/extension/src/services/external-connection-coordinator';
 import { ExtensionBadgeController } from '@project/extension/src/services/extension-badge-controller';
 import { ExtensionGlobalStateProvider } from '@project/extension/src/services/extension-global-state-provider';
 import { MockStorageArea } from '@project/extension/src/services/mock-storage-area';
@@ -73,6 +77,7 @@ class FakePort {
 
 class Harness {
     readonly storage = new MockStorageArea();
+    readonly sessionStorage = new MockStorageArea();
     readonly locks = new MockLockManager();
     readonly globalStateProvider = new ExtensionGlobalStateProvider(this.storage, this.locks);
     readonly badgeAction = { setBadgeText: jest.fn() };
@@ -99,6 +104,7 @@ class Harness {
             },
             storage: {
                 local: this.storage,
+                session: this.sessionStorage,
             },
         };
         this.coordinator = new ExternalConnectionCoordinator({
@@ -138,6 +144,10 @@ class Harness {
 
     async approvedEntries(): Promise<ExternalConnectionsState['approved']> {
         return (await this.globalStateProvider.get(['externalConnections'])).externalConnections.approved;
+    }
+
+    async deniedRequestCooldowns(): Promise<{ [extensionId: string]: number }> {
+        return (await this.sessionStorage.get(deniedRequestCooldownsKey))[deniedRequestCooldownsKey] ?? {};
     }
 
     emptyState(): ExternalConnectionsState {
@@ -256,6 +266,53 @@ describe('external connection coordinator', () => {
             { type: 'asbplayer-external-approval', approved: false },
         ]);
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
+    });
+
+    it('does not record a pending request while a denial cooldown is active', async () => {
+        const port = harness.connect('sibling');
+        await flush();
+
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        expect(Object.keys(await harness.pendingEntries())).toEqual(['sibling']);
+
+        // The user denies the request.
+        await harness.externalConnectionsChanged(harness.emptyState());
+        await flush();
+        expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual(['sibling']);
+
+        // The extension requests again within the cooldown window.
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+
+        expect(Object.keys(await harness.pendingEntries())).toEqual([]);
+        // The badge is not raised again; the port still gets the standard unapproved response.
+        expect(harness.lastGlobalBadgeText()).toEqual('');
+        expect(approvalFrames(port)).toContainEqual({ type: 'asbplayer-external-approval', approved: false });
+    });
+
+    it('allows a denied extension to request again after the cooldown expires', async () => {
+        await harness.sessionStorage.set({
+            [deniedRequestCooldownsKey]: { sibling: Date.now() - deniedRequestCooldownMs - 1 },
+        });
+        const port = harness.connect('sibling');
+        await flush();
+
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+
+        expect((await harness.pendingEntries())['sibling']).toEqual({
+            name: 'Sibling',
+            requestedAt: expect.any(Number),
+        });
+    });
+
+    it('does not set a denial cooldown when a pending request is approved', async () => {
+        const port = harness.connect('sibling');
+        await flush();
+
+        await port.receive({ type: 'asbplayer-external-hello', name: 'Sibling' });
+        await harness.approve('sibling');
+        await flush();
+
+        expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual([]);
     });
 
     it('stores a hello name from an approved extension on its approval entry', async () => {
