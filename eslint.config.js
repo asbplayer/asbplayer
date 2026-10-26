@@ -83,6 +83,17 @@ module.exports = [
         },
     },
     {
+        files: ['ffmpeg/scripts/**/*.{js,mjs}'],
+        rules: {
+            'no-restricted-imports': 'off',
+        },
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
+    {
         files: ['**/*.{ts,tsx,mtsx}'],
         plugins: {
             '@typescript-eslint': tseslint.plugin,
@@ -113,6 +124,7 @@ module.exports = [
                     './common/tsconfig.eslint.json',
                     './client/tsconfig.eslint.json',
                     './extension/tsconfig.eslint.json',
+                    './ffmpeg/tsconfig.eslint.json',
                 ],
                 tsconfigRootDir: __dirname,
             },

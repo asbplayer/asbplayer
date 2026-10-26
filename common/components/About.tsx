@@ -16,6 +16,7 @@ import { useTheme, withStyles } from '@mui/styles';
 import type { Theme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import SettingsSection from '@project/common/components/SettingsSection';
+import { releaseUrl as ffmpegReleaseUrl } from '@project/ffmpeg/artifact-lock.json';
 
 const licenseText = String.raw`asbplayer
 Copyright (c) 2020-present asbplayer authors
@@ -716,7 +717,7 @@ SOFTWARE.`;
 interface Props {
     appVersionRepoPath?: string;
     extensionVersion?: string;
-    insideExtension?: boolean;
+    insideApp?: boolean;
 }
 
 const Link = ({ children, ...props }: { children: React.ReactNode } & LinkProps) => {
@@ -747,6 +748,7 @@ type Dependency = {
     licenseLink: string;
     purpose: string;
     extension?: boolean;
+    app?: boolean;
 };
 
 const dependencies: Dependency[] = [
@@ -857,6 +859,14 @@ const dependencies: Dependency[] = [
         purpose: 'MP3 encoding',
     },
     {
+        name: `FFmpeg`,
+        projectLink: 'https://ffmpeg.org',
+        license: 'LGPL 2.1+',
+        licenseLink: ffmpegReleaseUrl,
+        purpose: 'Media processing',
+        app: true,
+    },
+    {
         name: 'sanitize-filename',
         projectLink: 'https://github.com/parshap/node-sanitize-filename',
         license: 'ISC+WTFPL',
@@ -909,17 +919,18 @@ const dependencies: Dependency[] = [
     },
 ];
 
-const dependencyPurposeCounts: { [key: string]: number } = {};
-
-for (const dep of dependencies) {
-    const count = dependencyPurposeCounts[dep.purpose] ?? 0;
-    dependencyPurposeCounts[dep.purpose] = count + 1;
-}
-
-const About = ({ appVersionRepoPath, extensionVersion }: Props) => {
+const About = ({ appVersionRepoPath, extensionVersion, insideApp }: Props) => {
     const theme = useTheme<Theme>();
     const { t } = useTranslation();
     const renderedPurpose: { [key: string]: boolean } = {};
+    const visibleDependencies = dependencies.filter(
+        (dependency) =>
+            (!dependency.extension || extensionVersion !== undefined) && (!dependency.app || insideApp === true)
+    );
+    const dependencyPurposeCounts = visibleDependencies.reduce<Record<string, number>>((counts, dependency) => {
+        counts[dependency.purpose] = (counts[dependency.purpose] ?? 0) + 1;
+        return counts;
+    }, {});
     return (
         <Box p={1} style={{ width: '100%' }}>
             <Box style={{ width: '100%', textAlign: 'center' }}>
@@ -975,48 +986,43 @@ const About = ({ appVersionRepoPath, extensionVersion }: Props) => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {dependencies
-                            .filter((d) => !d.extension || extensionVersion !== undefined)
-                            .map((d, index) => {
-                                let alreadyRenderedPurpose: boolean;
+                        {visibleDependencies.map((d, index) => {
+                            let alreadyRenderedPurpose: boolean;
+                            if (renderedPurpose[d.purpose] === undefined) {
+                                alreadyRenderedPurpose = false;
+                            } else {
+                                alreadyRenderedPurpose = true;
+                            }
+                            renderedPurpose[d.purpose] = true;
 
-                                if (renderedPurpose[d.purpose] === undefined) {
-                                    alreadyRenderedPurpose = false;
-                                } else {
-                                    alreadyRenderedPurpose = true;
-                                }
+                            let CellComponent = TableCell;
+                            const nextPurpose = visibleDependencies[index + 1]?.purpose;
+                            if (nextPurpose !== undefined && d.purpose !== nextPurpose) {
+                                CellComponent = BorderedTableCell;
+                            }
+                            const isLastPurposeCell =
+                                d.purpose === visibleDependencies[visibleDependencies.length - 1].purpose;
 
-                                renderedPurpose[d.purpose] = true;
-
-                                let CellComponent = TableCell;
-                                const nextPurpose = dependencies[index + 1]?.purpose;
-
-                                if (nextPurpose !== undefined && d.purpose !== nextPurpose) {
-                                    CellComponent = BorderedTableCell;
-                                }
-
-                                const isLastPurposeCell = d.purpose === dependencies[dependencies.length - 1].purpose;
-
-                                return (
-                                    <TableRow key={d.name}>
-                                        <CellComponent>
-                                            {d.projectLink && <Link href={d.projectLink}>{d.name}</Link>}
-                                            {!d.projectLink && d.name}
-                                        </CellComponent>
-                                        <CellComponent>
-                                            <Link href={d.licenseLink}>{d.license}</Link>
-                                        </CellComponent>
-                                        {!alreadyRenderedPurpose && (
-                                            <BorderedTableCell
-                                                style={!isLastPurposeCell ? {} : { borderBottom: 0 }}
-                                                rowSpan={dependencyPurposeCounts[d.purpose]}
-                                            >
-                                                {d.purpose}
-                                            </BorderedTableCell>
-                                        )}
-                                    </TableRow>
-                                );
-                            })}
+                            return (
+                                <TableRow key={d.name}>
+                                    <CellComponent>
+                                        {d.projectLink && <Link href={d.projectLink}>{d.name}</Link>}
+                                        {!d.projectLink && d.name}
+                                    </CellComponent>
+                                    <CellComponent>
+                                        <Link href={d.licenseLink}>{d.license}</Link>
+                                    </CellComponent>
+                                    {!alreadyRenderedPurpose && (
+                                        <BorderedTableCell
+                                            style={!isLastPurposeCell ? {} : { borderBottom: 0 }}
+                                            rowSpan={dependencyPurposeCounts[d.purpose]}
+                                        >
+                                            {d.purpose}
+                                        </BorderedTableCell>
+                                    )}
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </TableContainer>

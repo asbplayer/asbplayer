@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!.cache/
+!.cache/sources/
+!.cache/sources/**
+!.cache/build/
+!.cache/build/ffmpeg-configure-args
+!.cache/build/asb-build-config.hpp
+!.cache/build/docker-build-args
+!.cache/build/platform
+!native/
+!native/**
+!scripts/
+!scripts/runtime-smoke.mjs
