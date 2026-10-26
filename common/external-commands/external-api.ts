@@ -1,4 +1,18 @@
 import type { PostMineAction } from '@project/common/src/model';
+import type {
+    BoundMedia,
+    ExternalCommand,
+    GetBoundMediaResponseBody,
+    GetSubtitlesCommand,
+    GetSubtitlesResponseBody,
+    LoadSubtitlesCommand,
+    MineSubtitleCommand,
+    MineSubtitleResponseBody,
+    SeekTimestampCommand,
+    SubtitleCue,
+    SubtitleFile,
+    SubtitleTrack,
+} from '@project/common/external-commands/commands';
 import { z } from 'zod';
 
 // Zod schemas for asbplayer's external API: the JSON-RPC 2.0 wire protocol spoken by
@@ -20,6 +34,11 @@ import { z } from 'zod';
 export const jsonRpcIdSchema = z.string();
 
 export const jsonRpcVersionSchema = z.literal('2.0');
+
+export const jsonRpcProtocol = 'jsonrpc-2.0';
+
+// The external extension port must use this name so a future protocol can be distinguished.
+export const externalExtensionPortName = 'asbplayer-external-v1';
 
 // `params` is validated per-method by `externalApiMethods`.
 export const jsonRpcRequestSchema = z.object({
@@ -70,7 +89,8 @@ export const jsonRpcResultResponseSchema = z.object({
 
 export const jsonRpcErrorResponseSchema = z.object({
     jsonrpc: jsonRpcVersionSchema,
-    id: jsonRpcIdSchema,
+    // Null when the id is unknown (parse and invalid-request errors).
+    id: jsonRpcIdSchema.nullable(),
     error: jsonRpcErrorObjectSchema,
 });
 
@@ -82,6 +102,14 @@ export type JsonRpcIncomingMessage = z.infer<typeof jsonRpcIncomingMessageSchema
 export type JsonRpcSuccessResponse = z.infer<typeof jsonRpcResultResponseSchema>;
 export type JsonRpcErrorResponse = z.infer<typeof jsonRpcErrorResponseSchema>;
 export type JsonRpcResponse = z.infer<typeof jsonRpcResponseSchema>;
+
+export function jsonRpcSuccess(id: string, result: unknown): JsonRpcSuccessResponse {
+    return { jsonrpc: '2.0', id, result };
+}
+
+export function jsonRpcError(id: string | null, code: number, message: string, data?: unknown): JsonRpcErrorResponse {
+    return { jsonrpc: '2.0', id, error: { code, message, ...(data !== undefined ? { data } : {}) } };
+}
 
 // Returns undefined for frames that are not JSON-RPC requests or notifications.
 export function parseJsonRpcIncomingMessage(message: unknown): JsonRpcIncomingMessage | undefined {
@@ -99,6 +127,28 @@ export function parseJsonRpcIncomingMessage(message: unknown): JsonRpcIncomingMe
     const parsed = jsonRpcIncomingMessageSchema.safeParse(shape);
 
     return parsed.success ? parsed.data : undefined;
+}
+
+// A JSON-RPC request frame that failed envelope validation, so callers can answer -32600.
+// Responses are never answered.
+export function isInvalidJsonRpcRequest(message: unknown): boolean {
+    if (typeof message !== 'object' || message === null) {
+        return false;
+    }
+
+    const frame = message as Record<string, unknown>;
+
+    if (frame.jsonrpc !== '2.0' || 'result' in frame || 'error' in frame) {
+        return false;
+    }
+
+    if (typeof frame.method === 'string') {
+        // A valid request has a string id; a valid notification has no id at all.
+        return 'id' in frame && typeof frame.id !== 'string';
+    }
+
+    // No method and no result/error: a request-like frame with an unusable envelope.
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,8 +246,9 @@ export const initializeParamsSchema = z.object({
 
 // Returns immediately. On first contact, the connection is registered as pending and the
 // approval prompt is shown (at most once per pending state); the client polls `approval-state`.
+// `denied` while a denial cooldown is active.
 export const initializeResultSchema = z.object({
-    state: z.enum(['approved', 'pending']),
+    state: z.enum(['approved', 'pending', 'denied']),
 });
 
 export const approvalStateParamsSchema = z.object({});
@@ -206,6 +257,12 @@ export const approvalStateParamsSchema = z.object({});
 // connection is closed.
 export const approvalStateResultSchema = z.object({
     state: z.enum(['approved', 'pending', 'denied']),
+});
+
+export const clientInfoParamsSchema = z.object({});
+
+export const clientInfoResultSchema = z.object({
+    protocols: z.array(z.literal(jsonRpcProtocol)),
 });
 
 // ---------------------------------------------------------------------------
@@ -221,13 +278,13 @@ export interface ExternalApiMethod {
     summary: string;
     description: string;
     tags: string[];
-    paramsSchema?: z.ZodType;
+    paramsSchema: z.ZodType;
     paramDescriptions?: Record<string, string>;
     resultSchema: z.ZodType;
     resultDescription?: string;
 }
 
-export const externalApiMethods: Record<string, ExternalApiMethod> = {
+export const externalApiMethods = {
     'mine-subtitle': {
         name: 'mine-subtitle',
         summary: 'Dispatch the mining flow for the given Anki fields.',
@@ -302,8 +359,8 @@ export const externalApiMethods: Record<string, ExternalApiMethod> = {
             'Handshake sent by an external extension right after connecting. Returns the current approval state ' +
             "immediately: `{state: 'approved'}` when the extension is already approved, otherwise the connection " +
             'is registered as pending, the approval prompt is shown (at most once per pending state), and the ' +
-            "response is `{state: 'pending'}`. Idempotent. On denial, `approval-state` returns `{state: 'denied'}` " +
-            'once and the connection is closed.',
+            "response is `{state: 'pending'}`. Returns `{state: 'denied'}` while a denial cooldown is active, " +
+            'after which the connection is closed. Idempotent.',
         tags: [externalExtensionOnlyTag],
         paramsSchema: initializeParamsSchema,
         paramDescriptions: {
@@ -311,7 +368,7 @@ export const externalApiMethods: Record<string, ExternalApiMethod> = {
             version: 'Self-reported version string.',
         },
         resultSchema: initializeResultSchema,
-        resultDescription: "The current approval state: `'approved'` or `'pending'`.",
+        resultDescription: "The current approval state: `'approved'`, `'pending'`, or `'denied'`.",
     },
     'approval-state': {
         name: 'approval-state',
@@ -325,110 +382,84 @@ export const externalApiMethods: Record<string, ExternalApiMethod> = {
         resultSchema: approvalStateResultSchema,
         resultDescription: "The current approval state: `'approved'`, `'pending'`, or `'denied'`.",
     },
+    'client-info': {
+        name: 'client-info',
+        summary: 'Report the client protocol capabilities.',
+        description:
+            'Server-initiated probe sent after the client connects. Returns the protocols the client supports; ' +
+            'servers use a `jsonrpc-2.0` result to switch the connection from legacy framing to JSON-RPC.',
+        tags: [],
+        paramsSchema: clientInfoParamsSchema,
+        resultSchema: clientInfoResultSchema,
+        resultDescription: 'The protocols supported by the client.',
+    },
     'rpc.discover': {
         name: 'rpc.discover',
         summary: 'Discover the API surface.',
         description: 'Returns the OpenRPC document describing this API.',
         tags: [],
+        paramsSchema: z.object({}),
         resultSchema: z.looseObject({}),
         resultDescription: 'An OpenRPC document.',
     },
-};
+} satisfies Record<string, ExternalApiMethod>;
 
-// ---------------------------------------------------------------------------
-// OpenRPC document
-// ---------------------------------------------------------------------------
+export type ExternalApiMethodName = keyof typeof externalApiMethods;
 
-// scripts/generate-openrpc.ts commits the result to external-api/openrpc.json.
+// Registry methods that are not ExternalCommand handlers.
+type ExternalApiSpecialMethodName = 'initialize' | 'approval-state' | 'client-info' | 'rpc.discover';
+type ExternalApiDispatchedMethodName = ExternalCommand['command'];
 
-interface JsonSchemaObject {
-    properties?: Record<string, object>;
-    required?: string[];
-    [key: string]: unknown;
-}
+type ExpectTrue<T extends true> = T;
 
-interface ContentDescriptor {
-    name: string;
-    required?: boolean;
-    schema: object;
-    description?: string;
-}
+// Every registry method must be an ExternalCommand name or listed as special above, and vice versa.
+export type ExternalApiMethodCoverage = ExpectTrue<
+    Exclude<ExternalApiMethodName, ExternalApiDispatchedMethodName | ExternalApiSpecialMethodName> extends never
+        ? Exclude<ExternalApiDispatchedMethodName | ExternalApiSpecialMethodName, ExternalApiMethodName> extends never
+            ? true
+            : false
+        : false
+>;
 
-interface MethodDefinition {
-    name: string;
-    summary: string;
-    description: string;
-    tags: { name: string }[];
-    paramStructure: 'by-name';
-    params: ContentDescriptor[];
-    result: ContentDescriptor;
-}
-
-function methodDefinition(method: ExternalApiMethod): MethodDefinition {
-    let params: ContentDescriptor[] = [];
-
-    if (method.paramsSchema !== undefined) {
-        const schema = toJsonSchema(method.paramsSchema) as JsonSchemaObject;
-        const required = schema.required ?? [];
-        const propertyNames = Object.keys(schema.properties ?? {});
-
-        if (propertyNames.length > 0) {
-            params = propertyNames.map((name) => ({
-                name,
-                required: required.includes(name),
-                schema: schema.properties![name],
-                description: method.paramDescriptions?.[name],
-            }));
-        }
-    }
-
-    return {
-        name: method.name,
-        summary: method.summary,
-        description: method.description,
-        tags: method.tags.map((name) => ({ name })),
-        paramStructure: 'by-name',
-        params,
-        result: {
-            name: 'result',
-            schema: toJsonSchema(method.resultSchema),
-            description: method.resultDescription,
-        },
-    };
-}
-
-export function generateOpenRpcDocument(): object {
-    return {
-        openrpc: '1.0.0',
-        info: {
-            title: 'asbplayer External API',
-            version: '1.0.0',
-            description:
-                'JSON-RPC 2.0 API for external clients of asbplayer: the WebSocket servers (Go server, Anki addon ' +
-                'server) and the external extension API (browser.runtime port `asbplayer-external-v1`). See ' +
-                'external-api/README.md for transport framings, error codes, and licensing.',
-            license: {
-                name: 'Unlicense',
-            },
-        },
-        methods: Object.values(externalApiMethods).map(methodDefinition),
-    };
-}
-
-export function serializeOpenRpcDocument(document: object): string {
-    return `${JSON.stringify(document, null, 4)}\n`;
+// Own properties only, so prototype names never resolve as methods.
+export function externalApiMethod(name: string): ExternalApiMethod | undefined {
+    return Object.hasOwn(externalApiMethods, name) ? externalApiMethods[name as ExternalApiMethodName] : undefined;
 }
 
 // ---------------------------------------------------------------------------
-// JSON Schema helper
+// Schema/wire-type drift guards
 // ---------------------------------------------------------------------------
 
-// JSON Schema (draft-07) generation. Strips the injected `$schema` header since the schemas are
-// embedded inside the OpenRPC document, which declares the dialect itself.
-export function toJsonSchema(schema: z.ZodType): object {
-    const { $schema, ...jsonSchema } = z.toJSONSchema(schema, { target: 'draft-7', io: 'input' });
+// Keys and optionality must match in both directions; values are checked separately because the
+// schemas narrow some fields (e.g. postMineAction).
+type SameShape<A, B> = [keyof A, keyof B] extends [keyof B, keyof A]
+    ? {
+          [K in keyof A & keyof B]-?: undefined extends A[K]
+              ? undefined extends B[K]
+                  ? true
+                  : false
+              : undefined extends B[K]
+                ? false
+                : true;
+      }[keyof A & keyof B] extends true
+        ? true
+        : false
+    : false;
 
-    void $schema;
+type MatchesSchema<S extends z.ZodType, Wire> =
+    SameShape<z.infer<S>, Wire> extends true ? (z.infer<S> extends Wire ? true : false) : false;
 
-    return jsonSchema;
+// Each schema must match its wire type in ./commands.ts.
+export interface ExternalApiSchemaChecks {
+    mineSubtitleParams: ExpectTrue<MatchesSchema<typeof mineSubtitleParamsSchema, MineSubtitleCommand['body']>>;
+    loadSubtitlesParams: ExpectTrue<MatchesSchema<typeof loadSubtitlesParamsSchema, LoadSubtitlesCommand['body']>>;
+    seekTimestampParams: ExpectTrue<MatchesSchema<typeof seekTimestampParamsSchema, SeekTimestampCommand['body']>>;
+    getSubtitlesParams: ExpectTrue<MatchesSchema<typeof getSubtitlesParamsSchema, GetSubtitlesCommand['body']>>;
+    mineSubtitleResult: ExpectTrue<MatchesSchema<typeof mineSubtitleResultSchema, MineSubtitleResponseBody>>;
+    getBoundMediaResult: ExpectTrue<MatchesSchema<typeof getBoundMediaResultSchema, GetBoundMediaResponseBody>>;
+    getSubtitlesResult: ExpectTrue<MatchesSchema<typeof getSubtitlesResultSchema, GetSubtitlesResponseBody>>;
+    boundMedia: ExpectTrue<MatchesSchema<typeof boundMediaSchema, BoundMedia>>;
+    subtitleFile: ExpectTrue<MatchesSchema<typeof subtitleFileSchema, SubtitleFile>>;
+    subtitleTrack: ExpectTrue<MatchesSchema<typeof subtitleTrackSchema, SubtitleTrack>>;
+    subtitleCue: ExpectTrue<MatchesSchema<typeof subtitleCueSchema, SubtitleCue>>;
 }

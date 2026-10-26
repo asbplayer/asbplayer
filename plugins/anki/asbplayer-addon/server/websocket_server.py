@@ -11,7 +11,9 @@ import json
 from pathlib import Path
 
 from .json_rpc import (
+    INVALID_REQUEST,
     METHOD_NOT_FOUND,
+    PARSE_ERROR,
     JsonRpcNegotiation,
     classify_message,
     error_response,
@@ -176,7 +178,9 @@ if WEBSOCKETS_AVAILABLE:
 
             self._client = client
 
-            client.textMessageReceived.connect(self._on_text_message)
+            client.textMessageReceived.connect(
+                lambda message, c=client: self._on_text_message(c, message)
+            )
             client.disconnected.connect(
                 lambda: self._on_client_disconnected(client)
             )
@@ -184,13 +188,13 @@ if WEBSOCKETS_AVAILABLE:
             _log(f"Client connected: {client.peerAddress().toString()}")
             self._start_json_rpc_probe(client)
 
-        def _on_text_message(self, message: str) -> None:
+        def _on_text_message(self, client: QWebSocket, message: str) -> None:
             """Handle incoming text message from client."""
-            if self._client is None:
+            if client is not self._client:
                 return
 
             if message == "PING":
-                self._client.sendTextMessage("PONG")
+                client.sendTextMessage("PONG")
                 return
 
             frame = classify_message(message)
@@ -198,7 +202,7 @@ if WEBSOCKETS_AVAILABLE:
             if frame.kind == "json-rpc-request":
                 request_id = frame.payload.get("id")
                 self._send_to(
-                    self._client,
+                    client,
                     error_response(
                         request_id,
                         METHOD_NOT_FOUND,
@@ -215,6 +219,24 @@ if WEBSOCKETS_AVAILABLE:
                     )
             elif frame.kind == "legacy-response":
                 _log(f"Received response: messageId={frame.payload.get('messageId')}")
+            elif frame.kind == "parse-error":
+                if self._negotiation.supported:
+                    self._send_to(
+                        client,
+                        error_response(None, PARSE_ERROR, "Parse error"),
+                    )
+                else:
+                    _log(f"Invalid JSON received: {message[:100]}")
+            elif frame.kind == "invalid-request":
+                request_id = frame.payload.get("id")
+                self._send_to(
+                    client,
+                    error_response(
+                        request_id if isinstance(request_id, str) else None,
+                        INVALID_REQUEST,
+                        "Invalid request",
+                    ),
+                )
             elif frame.kind == "invalid":
                 _log(f"Invalid JSON received: {message[:100]}")
 

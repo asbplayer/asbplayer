@@ -87,7 +87,8 @@
                     },
                     "required": [
                         "published"
-                    ]
+                    ],
+                    "additionalProperties": false
                 },
                 "description": "Whether the command was accepted and dispatched to the mining flow."
             }
@@ -135,7 +136,8 @@
                 "name": "result",
                 "schema": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": false
                 },
                 "description": "Empty object on success."
             }
@@ -168,7 +170,8 @@
                 "name": "result",
                 "schema": {
                     "type": "object",
-                    "properties": {}
+                    "properties": {},
+                    "additionalProperties": false
                 },
                 "description": "Empty object on success."
             }
@@ -221,7 +224,8 @@
                                             "required": [
                                                 "trackNumber",
                                                 "fileName"
-                                            ]
+                                            ],
+                                            "additionalProperties": false
                                         }
                                     },
                                     "active": {
@@ -233,13 +237,15 @@
                                     "type",
                                     "loadedSubtitles",
                                     "active"
-                                ]
+                                ],
+                                "additionalProperties": false
                             }
                         }
                     },
                     "required": [
                         "media"
-                    ]
+                    ],
+                    "additionalProperties": false
                 },
                 "description": "The bound media."
             }
@@ -299,13 +305,15 @@
                                     "start",
                                     "end",
                                     "track"
-                                ]
+                                ],
+                                "additionalProperties": false
                             }
                         }
                     },
                     "required": [
                         "subtitles"
-                    ]
+                    ],
+                    "additionalProperties": false
                 },
                 "description": "The loaded subtitle cues."
             }
@@ -313,7 +321,7 @@
         {
             "name": "initialize",
             "summary": "Register and request approval (external extension API).",
-            "description": "Handshake sent by an external extension right after connecting. Returns the current approval state immediately: `{state: 'approved'}` when the extension is already approved, otherwise the connection is registered as pending, the approval prompt is shown (at most once per pending state), and the response is `{state: 'pending'}`. Idempotent. On denial, `approval-state` returns `{state: 'denied'}` once and the connection is closed.",
+            "description": "Handshake sent by an external extension right after connecting. Returns the current approval state immediately: `{state: 'approved'}` when the extension is already approved, otherwise the connection is registered as pending, the approval prompt is shown (at most once per pending state), and the response is `{state: 'pending'}`. Returns `{state: 'denied'}` while a denial cooldown is active, after which the connection is closed. Idempotent.",
             "tags": [
                 {
                     "name": "external-extension-only"
@@ -347,15 +355,17 @@
                             "type": "string",
                             "enum": [
                                 "approved",
-                                "pending"
+                                "pending",
+                                "denied"
                             ]
                         }
                     },
                     "required": [
                         "state"
-                    ]
+                    ],
+                    "additionalProperties": false
                 },
-                "description": "The current approval state: `'approved'` or `'pending'`."
+                "description": "The current approval state: `'approved'`, `'pending'`, or `'denied'`."
             }
         },
         {
@@ -385,9 +395,38 @@
                     },
                     "required": [
                         "state"
-                    ]
+                    ],
+                    "additionalProperties": false
                 },
                 "description": "The current approval state: `'approved'`, `'pending'`, or `'denied'`."
+            }
+        },
+        {
+            "name": "client-info",
+            "summary": "Report the client protocol capabilities.",
+            "description": "Server-initiated probe sent after the client connects. Returns the protocols the client supports; servers use a `jsonrpc-2.0` result to switch the connection from legacy framing to JSON-RPC.",
+            "tags": [],
+            "paramStructure": "by-name",
+            "params": [],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "protocols": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "const": "jsonrpc-2.0"
+                            }
+                        }
+                    },
+                    "required": [
+                        "protocols"
+                    ],
+                    "additionalProperties": false
+                },
+                "description": "The protocols supported by the client."
             }
         },
         {

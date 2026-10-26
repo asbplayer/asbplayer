@@ -21,14 +21,13 @@ import (
 
 const (
 	jsonRpcVersion        = "2.0"
+	jsonRpcProtocol       = "jsonrpc-2.0"
 	jsonRpcParseError     = -32700
 	jsonRpcInvalidRequest = -32600
 	jsonRpcMethodNotFound = -32601
-	jsonRpcInvalidParams  = -32602
 	jsonRpcInternalError  = -32603
 	jsonRpcRequestTimeout = -32000
 	jsonRpcNoClients      = -32001
-	jsonRpcNotApproved    = -32002
 )
 
 // gorilla/websocket allows only one concurrent writer per connection, so each client
@@ -42,6 +41,9 @@ type (
 		conn           *websocket.Conn
 		writeMux       sync.Mutex
 		jsonRpcCapable atomic.Bool
+		probeMux       sync.Mutex
+		probeId        string
+		probeResponse  chan clientResponse
 	}
 	forwarder struct {
 		WebsocketClients map[*wsClient]bool
@@ -78,7 +80,7 @@ type (
 		Command   string          `json:"command"`
 		MessageId string          `json:"messageId"`
 		Body      json.RawMessage `json:"body"`
-		Error     *rpcError
+		Error     *rpcError       `json:"-"`
 	}
 	rpcError struct {
 		Code    int         `json:"code"`
@@ -88,7 +90,7 @@ type (
 	jsonRpcOutgoing struct {
 		Jsonrpc string                 `json:"jsonrpc"`
 		Method  string                 `json:"method"`
-		Params  map[string]interface{} `json:"params,omitempty"`
+		Params  map[string]interface{} `json:"params"`
 		Id      string                 `json:"id,omitempty"`
 	}
 	jsonRpcIncoming struct {
@@ -100,9 +102,12 @@ type (
 		Error   *rpcError       `json:"error"`
 	}
 	jsonRpcErrorResponse struct {
-		Jsonrpc string    `json:"jsonrpc"`
-		Id      string    `json:"id"`
-		Error   *rpcError `json:"error"`
+		Jsonrpc string      `json:"jsonrpc"`
+		Id      interface{} `json:"id"`
+		Error   *rpcError   `json:"error"`
+	}
+	clientInfoResult struct {
+		Protocols []string `json:"protocols"`
 	}
 	mineSubtitleResponseBody struct {
 		Published bool `json:"published"`
@@ -124,6 +129,42 @@ func (client *wsClient) send(messageType int, data []byte) error {
 	client.writeMux.Lock()
 	defer client.writeMux.Unlock()
 	return client.conn.WriteMessage(messageType, data)
+}
+
+func (client *wsClient) setProbe(id string, response chan clientResponse) {
+	client.probeMux.Lock()
+	defer client.probeMux.Unlock()
+	client.probeId = id
+	client.probeResponse = response
+}
+
+func (client *wsClient) clearProbe(id string) {
+	client.probeMux.Lock()
+	defer client.probeMux.Unlock()
+
+	if client.probeId == id {
+		client.probeId = ""
+		client.probeResponse = nil
+	}
+}
+
+func (client *wsClient) deliverProbe(response clientResponse) bool {
+	client.probeMux.Lock()
+	defer client.probeMux.Unlock()
+
+	if client.probeId == "" || client.probeId != response.MessageId {
+		return false
+	}
+
+	responseChannel := client.probeResponse
+	client.probeId = ""
+	client.probeResponse = nil
+
+	if responseChannel != nil {
+		responseChannel <- response
+	}
+
+	return true
 }
 
 func (forwarder forwarder) addClient(client *wsClient) {
@@ -163,6 +204,7 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 	defer conn.Close()
 	defer forwarder.removeClient(client)
 	forwarder.addClient(client)
+	go forwarder.probeJsonRpcSupport(client)
 
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -177,40 +219,112 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 			continue
 		}
 
-		var probe struct {
-			Jsonrpc string `json:"jsonrpc"`
-		}
-
-		if err := json.Unmarshal(msg, &probe); err == nil && probe.Jsonrpc == jsonRpcVersion {
-			client.jsonRpcCapable.Store(true)
-			forwarder.handleJsonRpcFrame(client, msg)
-			continue
-		}
-
-		response := clientResponse{}
-		if err := json.Unmarshal(msg, &response); err == nil {
-			forwarder.Broker.deliver(response)
-		}
+		forwarder.handleFrame(client, msg)
 	}
 
 	return nil
+}
+
+// Asks the client for its protocol capabilities. A client that ignores the probe keeps receiving
+// legacy frames.
+func (forwarder forwarder) probeJsonRpcSupport(client *wsClient) {
+	probeId := uuid.NewString()
+	probe, err := json.Marshal(jsonRpcOutgoing{
+		Jsonrpc: jsonRpcVersion,
+		Method:  "client-info",
+		Params:  map[string]interface{}{},
+		Id:      probeId,
+	})
+
+	if err != nil {
+		return
+	}
+
+	responseChannel := make(chan clientResponse, 1)
+	client.setProbe(probeId, responseChannel)
+
+	if err := client.send(websocket.TextMessage, probe); err != nil {
+		client.clearProbe(probeId)
+		return
+	}
+
+	select {
+	case response := <-responseChannel:
+		if response.Error != nil {
+			return
+		}
+
+		result := clientInfoResult{}
+
+		if json.Unmarshal(response.Body, &result) != nil {
+			return
+		}
+
+		for _, protocol := range result.Protocols {
+			if protocol == jsonRpcProtocol {
+				client.jsonRpcCapable.Store(true)
+				return
+			}
+		}
+	case <-time.After(forwarder.RequestTimeout):
+		client.clearProbe(probeId)
+	}
+}
+
+// Routes a frame by its envelope: JSON-RPC frames are validated and dispatched, everything else
+// is a legacy response.
+func (forwarder forwarder) handleFrame(client *wsClient, msg []byte) {
+	if !json.Valid(msg) {
+		if client.jsonRpcCapable.Load() {
+			forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcParseError, Message: "Parse error"})
+		}
+
+		return
+	}
+
+	var object map[string]json.RawMessage
+
+	if err := json.Unmarshal(msg, &object); err != nil {
+		// Valid JSON but not an object: neither a JSON-RPC frame nor a legacy response.
+		if client.jsonRpcCapable.Load() {
+			forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
+		}
+
+		return
+	}
+
+	var version string
+
+	if err := json.Unmarshal(object["jsonrpc"], &version); err == nil && version == jsonRpcVersion {
+		forwarder.handleJsonRpcFrame(client, msg)
+		return
+	}
+
+	response := clientResponse{}
+	if err := json.Unmarshal(msg, &response); err == nil {
+		forwarder.Broker.deliver(response)
+	}
 }
 
 func (forwarder forwarder) handleJsonRpcFrame(client *wsClient, msg []byte) {
 	incoming := jsonRpcIncoming{}
 
 	if err := json.Unmarshal(msg, &incoming); err != nil || incoming.Jsonrpc != jsonRpcVersion {
+		forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
 		return
 	}
 
 	if incoming.Method != "" {
-		if len(incoming.Id) == 0 {
+		id, ok := stringJsonRpcId(incoming.Id)
+
+		if !ok && len(incoming.Id) > 0 {
+			// A non-string id cannot be echoed, so answer -32600 with a null id.
+			forwarder.sendJsonRpcError(client, nil, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
 			return
 		}
 
-		id := ""
-
-		if err := json.Unmarshal(incoming.Id, &id); err != nil {
+		if !ok {
+			// No id: a notification, which must never be answered.
 			return
 		}
 
@@ -221,25 +335,49 @@ func (forwarder forwarder) handleJsonRpcFrame(client *wsClient, msg []byte) {
 		return
 	}
 
-	id := ""
+	id, ok := stringJsonRpcId(incoming.Id)
 
-	if len(incoming.Id) == 0 || json.Unmarshal(incoming.Id, &id) != nil {
+	if !ok {
 		return
 	}
 
 	if incoming.Error != nil {
-		forwarder.Broker.deliver(clientResponse{MessageId: id, Error: incoming.Error})
+		response := clientResponse{MessageId: id, Error: incoming.Error}
+
+		if !client.deliverProbe(response) {
+			forwarder.Broker.deliver(response)
+		}
+
 		return
 	}
 
 	if incoming.Result == nil {
+		forwarder.sendJsonRpcError(client, id, &rpcError{Code: jsonRpcInvalidRequest, Message: "Invalid request"})
 		return
 	}
 
-	forwarder.Broker.deliver(clientResponse{MessageId: id, Body: incoming.Result})
+	response := clientResponse{MessageId: id, Body: incoming.Result}
+
+	if !client.deliverProbe(response) {
+		forwarder.Broker.deliver(response)
+	}
 }
 
-func (forwarder forwarder) sendJsonRpcError(client *wsClient, id string, rpcError *rpcError) {
+func stringJsonRpcId(raw json.RawMessage) (string, bool) {
+	if len(raw) == 0 {
+		return "", false
+	}
+
+	id := ""
+
+	if err := json.Unmarshal(raw, &id); err != nil {
+		return "", false
+	}
+
+	return id, true
+}
+
+func (forwarder forwarder) sendJsonRpcError(client *wsClient, id interface{}, rpcError *rpcError) {
 	response, err := json.Marshal(jsonRpcErrorResponse{Jsonrpc: jsonRpcVersion, Id: id, Error: rpcError})
 
 	if err != nil {
@@ -254,10 +392,16 @@ func (forwarder forwarder) encodeCommand(client *wsClient, command clientCommand
 		return json.Marshal(command)
 	}
 
+	params := command.Body
+
+	if params == nil {
+		params = map[string]interface{}{}
+	}
+
 	frame := jsonRpcOutgoing{
 		Jsonrpc: jsonRpcVersion,
 		Method:  command.Command,
-		Params:  command.Body,
+		Params:  params,
 	}
 
 	if !notification {
@@ -438,12 +582,7 @@ func (forwarder forwarder) handlePostRequest(c echo.Context) error {
 	response, rpcError := forwarder.publishMessageAndAwaitResponse(command)
 
 	if rpcError != nil {
-		if rpcError.Code == jsonRpcRequestTimeout || rpcError.Code == jsonRpcNoClients {
-			return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
-		}
-
-		_, err := forwarder.forwardToAnkiConnect(buf, c, "POST")
-		return err
+		return echo.NewHTTPError(httpStatusForRpcError(rpcError), nil)
 	}
 
 	mineSubtitleResponseBody := mineSubtitleResponseBody{}
