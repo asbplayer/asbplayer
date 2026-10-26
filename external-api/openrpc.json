@@ -311,7 +311,7 @@
             }
         },
         {
-            "name": "hello",
+            "name": "initialize",
             "summary": "Register and request approval (external extension API).",
             "description": "Handshake sent by an external extension right after connecting. Returns the current approval state immediately: `{state: 'approved'}` when the extension is already approved, otherwise the connection is registered as pending, the approval prompt is shown (at most once per pending state), and the response is `{state: 'pending'}`. Idempotent. On denial, `approval-state` returns `{state: 'denied'}` once and the connection is closed.",
             "tags": [

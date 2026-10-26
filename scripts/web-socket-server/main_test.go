@@ -194,12 +194,12 @@ func (c *fakeClient) respondJsonRpcError(t *testing.T, id string, code int, mess
 // Marks the connection JSON-RPC-capable using a method the server rejects.
 func (c *fakeClient) announceJsonRpc(t *testing.T) {
 	t.Helper()
-	c.write(t, `{"jsonrpc":"2.0","id":"probe","method":"hello","params":{}}`)
+	c.write(t, `{"jsonrpc":"2.0","id":"probe","method":"initialize","params":{}}`)
 
 	response := c.nextJsonRpc(t)
 
 	if response.Error == nil || response.Error.Code != jsonRpcMethodNotFound {
-		t.Fatalf("expected hello to be rejected with method not found, got %+v", response)
+		t.Fatalf("expected initialize to be rejected with method not found, got %+v", response)
 	}
 }
 

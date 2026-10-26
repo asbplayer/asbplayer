@@ -87,8 +87,7 @@ export interface GetSubtitlesResponseBody {
     subtitles: SubtitleCue[];
 }
 
-// Also used by the WebSocket servers, which accept the legacy `{command, messageId, body}`
-// framing during the migration.
+// Also used by the WebSocket servers, which accept the legacy `{command, messageId, body}` framing.
 
 export type ExternalCommand =
     | MineSubtitleCommand

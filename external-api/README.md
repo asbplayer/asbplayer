@@ -73,7 +73,7 @@ the table above.
   same `id` are dropped. There is no one-to-one targeting.
 - **Ids.** Correlation ids are uuid **strings**. Clients must only match responses to ids they
   sent themselves.
-- **Approval flow (`hello`/`approval-state`, external extension only).** `hello` returns the
+- **Approval flow (`initialize`/`approval-state`, external extension only).** `initialize` returns the
   current state immediately. When not yet approved, the client polls `approval-state` (roughly
   every second) until it reads `approved`. Denial returns `denied` once and then the connection is
   closed; approval revocation is a transport-level close with no message. These two methods do not

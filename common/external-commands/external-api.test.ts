@@ -148,7 +148,7 @@ describe('external API schemas', () => {
 
         it('tags external-extension-only methods', () => {
             for (const method of document.methods) {
-                const expected = method.name === 'hello' || method.name === 'approval-state';
+                const expected = method.name === 'initialize' || method.name === 'approval-state';
 
                 expect(method.tags.map((tag: any) => tag.name).includes('external-extension-only')).toBe(expected);
             }

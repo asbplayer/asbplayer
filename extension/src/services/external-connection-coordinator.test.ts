@@ -231,10 +231,10 @@ describe('external connection coordinator', () => {
         expect(port.disconnected).toBe(true);
     });
 
-    it('answers hello from an unapproved connection with pending and alerts via badges', async () => {
+    it('answers initialize from an unapproved connection with pending and alerts via badges', async () => {
         const port = harness.connect('sibling');
 
-        const id = await port.request('hello', { name: 'Sibling' });
+        const id = await port.request('initialize', { name: 'Sibling' });
 
         expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'pending' } });
         expect((await harness.pendingEntries())['sibling']).toEqual({
@@ -250,28 +250,28 @@ describe('external connection coordinator', () => {
         harness.videoElements = [];
         const port = harness.connect('sibling');
 
-        await port.request('hello', { name: 'Sibling' });
+        await port.request('initialize', { name: 'Sibling' });
 
         expect(harness.lastGlobalBadgeText()).toEqual('!');
         expect(harness.badgeAction.setBadgeText).not.toHaveBeenCalledWith({ tabId: 1, text: '!' });
     });
 
-    it('answers hello from an approved extension with approved without recording a pending entry', async () => {
+    it('answers initialize from an approved extension with approved without recording a pending entry', async () => {
         await harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
 
-        const id = await port.request('hello', { name: 'Sibling' });
+        const id = await port.request('initialize', { name: 'Sibling' });
 
         expect(port.responseFor(id)).toEqual({ jsonrpc: '2.0', id, result: { state: 'approved' } });
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
     });
 
-    it('answers hello failures with an internal error instead of pretending the request is pending', async () => {
+    it('answers initialize failures with an internal error instead of pretending the request is pending', async () => {
         const port = harness.connect('sibling');
         const failure = new Error('Concurrent update when writing key externalConnections');
         (harness.globalStateProvider as any).updateWithLocking = () => Promise.reject(failure);
 
-        const id = await port.request('hello', { name: 'Sibling' });
+        const id = await port.request('initialize', { name: 'Sibling' });
 
         expect(consoleErrorSpy.mock.calls.some((args: unknown[]) => args.includes(failure))).toBe(true);
         expect(port.responseFor(id)).toEqual({
@@ -285,7 +285,7 @@ describe('external connection coordinator', () => {
     it('does not record a pending request while a denial cooldown is active', async () => {
         const port = harness.connect('sibling');
 
-        await port.request('hello', { name: 'Sibling' });
+        await port.request('initialize', { name: 'Sibling' });
         expect(Object.keys(await harness.pendingEntries())).toEqual(['sibling']);
 
         // The user denies the request.
@@ -294,7 +294,7 @@ describe('external connection coordinator', () => {
         expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual(['sibling']);
 
         // The extension requests again within the cooldown window.
-        const id = await port.request('hello', { name: 'Sibling' });
+        const id = await port.request('initialize', { name: 'Sibling' });
 
         expect(Object.keys(await harness.pendingEntries())).toEqual([]);
         expect(harness.lastGlobalBadgeText()).toEqual('');
@@ -303,7 +303,7 @@ describe('external connection coordinator', () => {
 
     it('once denied, the next approval-state poll returns denied and closes the port', async () => {
         const port = harness.connect('sibling');
-        await port.request('hello', { name: 'Sibling' });
+        await port.request('initialize', { name: 'Sibling' });
         await harness.externalConnectionsChanged(harness.emptyState());
         await flush();
 
@@ -319,7 +319,7 @@ describe('external connection coordinator', () => {
         });
         const port = harness.connect('sibling');
 
-        await port.request('hello', { name: 'Newcomer' });
+        await port.request('initialize', { name: 'Newcomer' });
 
         expect((await harness.pendingEntries())['sibling']).toEqual({
             name: 'Newcomer',
@@ -330,18 +330,18 @@ describe('external connection coordinator', () => {
     it('does not set a denial cooldown when a pending request is approved', async () => {
         const port = harness.connect('sibling');
 
-        await port.request('hello', { name: 'Sibling' });
+        await port.request('initialize', { name: 'Sibling' });
         await harness.approve('sibling');
         await flush();
 
         expect(Object.keys(await harness.deniedRequestCooldowns())).toEqual([]);
     });
 
-    it('stores a hello name from an approved extension on its approval entry', async () => {
+    it('stores an initialize name from an approved extension on its approval entry', async () => {
         await harness.approve('sibling', 'Sibling');
         const port = harness.connect('sibling');
 
-        await port.request('hello', { name: 'Renamed Sibling' });
+        await port.request('initialize', { name: 'Renamed Sibling' });
 
         expect((await harness.approvedEntries())['sibling']).toEqual({
             name: 'Renamed Sibling',
@@ -471,11 +471,11 @@ describe('external connection coordinator', () => {
 
     it('approves an external extension with an open port without notifying it', async () => {
         const port = harness.connect('sibling');
-        await port.request('hello', { name: 'Sibling' });
+        await port.request('initialize', { name: 'Sibling' });
 
         await harness.externalConnectionsChanged(harness.approvedState('sibling', 'Sibling'));
 
-        expect(port.rpcResponses()).toHaveLength(1); // Only the hello response; no push on approval.
+        expect(port.rpcResponses()).toHaveLength(1); // Only the initialize response; no push on approval.
 
         harness.dispatcher.dispatchCommand.mockResolvedValueOnce({
             command: 'response',
@@ -533,7 +533,7 @@ describe('external connection coordinator', () => {
 
     it('clears external connection badges once no pending requests remain', async () => {
         const port = harness.connect('sibling');
-        await port.request('hello', { name: 'Sibling' });
+        await port.request('initialize', { name: 'Sibling' });
         await flush();
         expect(harness.lastGlobalBadgeText()).toEqual('!');
 
@@ -557,7 +557,7 @@ describe('external connection coordinator', () => {
         await harness.seedPending(pending);
         const port = harness.connect('newcomer');
 
-        await port.request('hello', { name: 'Newcomer' });
+        await port.request('initialize', { name: 'Newcomer' });
 
         const pendingEntries = await harness.pendingEntries();
         expect(Object.keys(pendingEntries)).toHaveLength(10);
