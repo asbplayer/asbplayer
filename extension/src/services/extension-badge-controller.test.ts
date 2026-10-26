@@ -30,7 +30,20 @@ describe('extension badge controller', () => {
         expect(action.setBadgeText).toHaveBeenLastCalledWith({ text: '!' });
     });
 
-    it('sets per-tab alerts and clears the tabs it badged previously', () => {
+    it('releases tabs to the global badge instead of hiding it', () => {
+        const action = { setBadgeText: jest.fn() };
+        const controller = new ExtensionBadgeController(action);
+
+        controller.setGlobalAlert('reasonA', true);
+        controller.setTabAlerts([1]);
+
+        controller.setTabAlerts([]);
+
+        expect(action.setBadgeText).toHaveBeenLastCalledWith({ tabId: 1, text: null });
+        expect(action.setBadgeText).not.toHaveBeenCalledWith({ tabId: 1, text: '' });
+    });
+
+    it('sets per-tab alerts and releases the tabs it badged previously', () => {
         const action = { setBadgeText: jest.fn() };
         const controller = new ExtensionBadgeController(action);
 
@@ -39,11 +52,11 @@ describe('extension badge controller', () => {
         expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '!' });
 
         controller.setTabAlerts([2]);
-        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '' });
+        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: null });
         expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '!' });
-        expect(action.setBadgeText).not.toHaveBeenCalledWith({ tabId: 2, text: '' });
+        expect(action.setBadgeText).not.toHaveBeenCalledWith({ tabId: 2, text: null });
 
         controller.setTabAlerts([]);
-        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '' });
+        expect(action.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: null });
     });
 });
