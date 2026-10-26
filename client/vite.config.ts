@@ -59,6 +59,9 @@ export default defineConfig(async ({ mode, isPreview }) => {
                 strategies: 'generateSW',
                 registerType: 'prompt',
                 includeAssets: ['locales/*.json', 'background-colored.png'],
+                workbox: {
+                    maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+                },
                 manifest: {
                     short_name: project.names.short,
                     name: project.names.long,
