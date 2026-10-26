@@ -92,6 +92,9 @@ the table above.
 
 During the migration the WebSocket servers also accept the legacy framing
 (`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses);
-frames are routed by sniffing for the `jsonrpc` field. The external extension API has not shipped
-yet, so it speaks JSON-RPC only. Once legacy support is removed, this table describes the only
-remaining framing.
+frames are routed by sniffing for the `jsonrpc` field. The Go server starts each connection in
+legacy mode and switches that connection to JSON-RPC as soon as the client sends any JSON-RPC
+frame (capability is learned from the frame format, not the method's success). The external
+extension API has not shipped yet, so
+it speaks JSON-RPC only. Once legacy support is removed, this table describes the only remaining
+framing.
