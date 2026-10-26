@@ -119,7 +119,8 @@ const MiscSettingTab: React.FC<Props> = ({
         }
 
         let cancelled = false;
-        const client = new WebSocketClient();
+        // Connectivity check only: never answer commands, so it cannot preempt a real client.
+        const client = new WebSocketClient(undefined, { commands: [] });
         client
             .bind(webSocketServerUrl)
             .then(() => client.ping())

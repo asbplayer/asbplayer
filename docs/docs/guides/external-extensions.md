@@ -15,8 +15,12 @@ A template implementation of an extension that integrates with asbplayer in this
 Any extension wishing to communicate with asbplayer must first connect using code like below. asbplayer's extension ID can be obtained from the browser's extension manager (on Chrome `chrome://extensions`, on Firefox `about:addons`).
 
 ```typescript
-const port = browser.runtime.connect(<asbplayer extension ID>);
+const port = browser.runtime.connect(<asbplayer extension ID>, {
+    name: 'asbplayer-external-v1',
+});
 ```
+
+The port name is required; asbplayer disconnects ports with any other name.
 
 The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Request approval with `initialize`, which answers immediately with the current state.
 
@@ -53,7 +57,7 @@ While pending, poll `approval-state` about once per second. Polling never trigge
 }
 ```
 
-Once approved, the next poll returns `{ "state": "approved" }` and the connection can issue [commands](../reference/external-api). If denied, `approval-state` returns `{ "state": "denied" }` once; asbplayer then closes the port. Revoking an approved extension also closes the port.
+Once approved, the next poll returns `{ "state": "approved" }` and the connection can issue [commands](../reference/external-api). If denied, `approval-state` returns `{ "state": "denied" }` once; asbplayer then closes the port. While a denial cooldown is active, `initialize` returns `denied` directly and the port is closed. Revoking an approved extension also closes the port.
 
 After approval, send commands as JSON-RPC requests using the same method names and payloads documented in the [external API reference](../reference/external-api), for example:
 

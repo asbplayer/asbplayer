@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { WebSocketClient } from '@project/common/external-commands';
 import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/external-commands';
-import { generateOpenRpcDocument } from '@project/common/external-commands/external-api';
+import openRpcDocument from '@project/common/external-commands/openrpc-document.json';
 import { FakeWebSocket } from '@project/common/external-commands/web-socket/fake-web-socket';
 
 const url = 'ws://example.com:1234/socket';
@@ -238,11 +238,14 @@ describe('command dispatch', () => {
         expect(socket.sentCommands).toEqual([]);
     });
 
-    it('does not respond when the payload is not valid JSON', async () => {
+    it('answers payloads that are not valid JSON with a parse error', async () => {
         const socket = await connect();
 
-        await expect(socket.receive('not json')).rejects.toBeDefined();
-        expect(socket.sentCommands).toEqual([]);
+        await socket.receive('not json');
+
+        expect(socket.sentCommands).toEqual([
+            { jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } },
+        ]);
     });
 
     it('removes only the handlers a registration added when it is cleaned up', async () => {
@@ -373,6 +376,21 @@ describe('JSON-RPC command dispatch', () => {
         ]);
     });
 
+    it('answers handler results that violate the result schema with an internal error', async () => {
+        const socket = await connect();
+        client.setHandlers({
+            onGetBoundMedia: async () => [{ id: 1 } as any],
+        });
+
+        await socket.receive(jsonRpcRequest('get-bound-media', 'b1'));
+
+        expect(socket.sentCommands[0]).toMatchObject({
+            jsonrpc: '2.0',
+            id: 'b1',
+            error: { code: -32603, message: 'Internal error' },
+        });
+    });
+
     it('does not answer a JSON-RPC notification when the handler rejects', async () => {
         const socket = await connect();
         client.setHandlers({
@@ -396,12 +414,34 @@ describe('JSON-RPC command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 's2', result: {} }]);
     });
 
+    it('answers client-info with the supported protocols', async () => {
+        const socket = await connect({ commands: ['seek-timestamp'] });
+
+        await socket.receive(jsonRpcRequest('client-info', 'probe'));
+
+        expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 'probe', result: { protocols: ['jsonrpc-2.0'] } }]);
+    });
+
+    it('does not answer client-info notifications', async () => {
+        const socket = await connect();
+
+        await socket.receive(jsonRpcNotification('client-info'));
+
+        expect(socket.sentCommands).toEqual([]);
+    });
+
     it('answers rpc.discover even when the commands filter is active', async () => {
         const socket = await connect({ commands: ['seek-timestamp'] });
 
         await socket.receive(jsonRpcRequest('rpc.discover', 'probe'));
 
-        expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 'probe', result: generateOpenRpcDocument() }]);
+        expect(socket.sentCommands).toEqual([
+            {
+                jsonrpc: '2.0',
+                id: 'probe',
+                result: openRpcDocument,
+            },
+        ]);
     });
 
     it('does not answer rpc.discover notifications', async () => {
@@ -418,6 +458,28 @@ describe('JSON-RPC command dispatch', () => {
         await socket.receive(JSON.stringify({ jsonrpc: '2.0', id: 'r1', result: {} }));
 
         expect(socket.sentCommands).toEqual([]);
+    });
+
+    it('answers invalid JSON-RPC envelopes with invalid request', async () => {
+        const socket = await connect();
+
+        await socket.receive(JSON.stringify({ jsonrpc: '2.0', method: 'seek-timestamp', id: 1 }));
+
+        expect(socket.sentCommands).toEqual([
+            { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid request' } },
+        ]);
+    });
+
+    it('answers valid JSON that is not an object with invalid request', async () => {
+        const socket = await connect();
+
+        await socket.receive('null');
+        await socket.receive('[]');
+
+        expect(socket.sentCommands).toEqual([
+            { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid request' } },
+            { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid request' } },
+        ]);
     });
 });
 

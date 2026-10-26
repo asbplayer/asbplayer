@@ -1,20 +1,22 @@
 import type { Response, ExternalCommand, ExternalCommandHandlers } from '@project/common/external-commands/commands';
 import {
-    externalApiMethods,
-    externalExtensionOnlyTag,
-    generateOpenRpcDocument,
+    externalApiMethod,
+    isInvalidJsonRpcRequest,
+    jsonRpcError,
     jsonRpcErrorCodes,
+    jsonRpcProtocol,
+    jsonRpcSuccess,
     parseJsonRpcIncomingMessage,
 } from '@project/common/external-commands/external-api';
-import type {
-    JsonRpcErrorResponse,
-    JsonRpcIncomingMessage,
-    JsonRpcResponse,
-    JsonRpcSuccessResponse,
-} from '@project/common/external-commands/external-api';
+import type { JsonRpcIncomingMessage, JsonRpcResponse } from '@project/common/external-commands/external-api';
 
 export class ExternalCommandDispatcher {
     private _handlers: Partial<ExternalCommandHandlers> = {};
+    private readonly _tagsDenyList: string[];
+
+    constructor({ tagsDenyList }: { tagsDenyList?: string[] } = {}) {
+        this._tagsDenyList = tagsDenyList ?? [];
+    }
 
     setHandlers(handlers: Partial<ExternalCommandHandlers>) {
         this._handlers = { ...this._handlers, ...handlers };
@@ -36,14 +38,29 @@ export class ExternalCommandDispatcher {
         data: string,
         commands?: readonly ExternalCommand['command'][]
     ): Promise<Response<object> | JsonRpcResponse | undefined> {
-        const frame = JSON.parse(data);
+        let frame: unknown;
+
+        try {
+            frame = JSON.parse(data);
+        } catch {
+            return jsonRpcError(null, jsonRpcErrorCodes.parseError, 'Parse error');
+        }
+
         const request = parseJsonRpcIncomingMessage(frame);
 
         if (request !== undefined) {
             return this.dispatchJsonRpc(request, commands);
         }
 
-        return this.dispatchCommand(frame, commands);
+        if (typeof frame !== 'object' || frame === null || Array.isArray(frame)) {
+            return jsonRpcError(null, jsonRpcErrorCodes.invalidRequest, 'Invalid request');
+        }
+
+        if (isInvalidJsonRpcRequest(frame)) {
+            return jsonRpcError(null, jsonRpcErrorCodes.invalidRequest, 'Invalid request');
+        }
+
+        return this.dispatchCommand(frame as ExternalCommand, commands);
     }
 
     async dispatchJsonRpc(
@@ -52,17 +69,27 @@ export class ExternalCommandDispatcher {
     ): Promise<JsonRpcResponse | undefined> {
         const id = request.id;
 
-        if (request.method === 'rpc.discover') {
-            return id === undefined ? undefined : this._jsonRpcSuccess(id, generateOpenRpcDocument());
+        if (request.method === 'client-info') {
+            return id === undefined ? undefined : jsonRpcSuccess(id, { protocols: [jsonRpcProtocol] });
         }
 
-        const method = externalApiMethods[request.method];
-        const paramsSchema = method?.paramsSchema;
+        if (request.method === 'rpc.discover') {
+            if (id === undefined) {
+                return undefined;
+            }
 
-        if (method === undefined || paramsSchema === undefined || method.tags.includes(externalExtensionOnlyTag)) {
+            const { default: openRpcDocument } = await import(
+                '@project/common/external-commands/openrpc-document.json'
+            );
+            return jsonRpcSuccess(id, openRpcDocument);
+        }
+
+        const method = externalApiMethod(request.method);
+
+        if (method === undefined || this._tagsDenyList.some((t) => method.tags.includes(t))) {
             return id === undefined
                 ? undefined
-                : this._jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
+                : jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
         }
 
         if (commands !== undefined && !commands.includes(request.method as ExternalCommand['command'])) {
@@ -70,12 +97,12 @@ export class ExternalCommandDispatcher {
             return undefined;
         }
 
-        const params = paramsSchema.safeParse(request.params ?? {});
+        const params = method.paramsSchema.safeParse(request.params ?? {});
 
         if (!params.success) {
             return id === undefined
                 ? undefined
-                : this._jsonRpcError(id, jsonRpcErrorCodes.invalidParams, 'Invalid params', params.error.issues);
+                : jsonRpcError(id, jsonRpcErrorCodes.invalidParams, 'Invalid params', params.error.issues);
         }
 
         const command = {
@@ -93,7 +120,7 @@ export class ExternalCommandDispatcher {
                 return undefined;
             }
 
-            return this._jsonRpcError(
+            return jsonRpcError(
                 id,
                 jsonRpcErrorCodes.internalError,
                 'Internal error',
@@ -106,10 +133,16 @@ export class ExternalCommandDispatcher {
         }
 
         if (body === undefined) {
-            return this._jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
+            return jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
         }
 
-        return this._jsonRpcSuccess(id, body);
+        const result = method.resultSchema.safeParse(body);
+
+        if (!result.success) {
+            return jsonRpcError(id, jsonRpcErrorCodes.internalError, 'Internal error', result.error.issues);
+        }
+
+        return jsonRpcSuccess(id, body);
     }
 
     async dispatchCommand(
@@ -127,18 +160,6 @@ export class ExternalCommandDispatcher {
         }
 
         return { command: 'response', messageId: command.messageId, body };
-    }
-
-    private _jsonRpcSuccess(id: string, result: object): JsonRpcSuccessResponse {
-        return { jsonrpc: '2.0', id, result };
-    }
-
-    private _jsonRpcError(id: string, code: number, message: string, data?: unknown): JsonRpcErrorResponse {
-        return {
-            jsonrpc: '2.0',
-            id,
-            error: { code, message, ...(data !== undefined ? { data } : {}) },
-        };
     }
 
     private async _body(command: ExternalCommand): Promise<object | undefined> {
@@ -168,8 +189,13 @@ export class ExternalCommandDispatcher {
                 return onGetSubtitles === undefined
                     ? undefined
                     : { subtitles: await onGetSubtitles(command.body?.mediaId, command.body?.trackNumbers) };
-            default:
+            default: {
+                // Every ExternalCommand member must have a case above.
+                const unhandled: never = command;
+
+                void unhandled;
                 return undefined;
+            }
         }
     }
 }

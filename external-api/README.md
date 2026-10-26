@@ -22,6 +22,9 @@ pnpm run generate:external-api   # regenerate
 pnpm run check:external-api      # verify the committed document matches the schemas (runs in CI)
 ```
 
+The generator also writes `common/external-commands/openrpc-document.json`, which `rpc.discover`
+loads lazily. It is the same Unlicense document; the generator code remains AGPL.
+
 > SPDX-License-Identifier: Unlicense
 
 The contents of this directory (`openrpc.json` and this README) are dedicated to the public domain
@@ -39,8 +42,8 @@ Standard JSON-RPC 2.0 codes plus server-defined codes in the `-32000..-32099` ra
 
 | Code     | Name             | Meaning                                                                                          | HTTP status (Go server bridge)      |
 | -------- | ---------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `-32700` | Parse error      | Frame was not valid JSON                                                                         | n/a (bridge builds requests itself) |
-| `-32600` | Invalid request  | Frame violated the envelope rules (e.g. missing `jsonrpc: "2.0"`)                                | n/a                                 |
+| `-32700` | Parse error      | Frame was not valid JSON (WebSocket servers and asbplayer's WebSocket client)                     | n/a (bridge builds requests itself) |
+| `-32600` | Invalid request  | A `jsonrpc: "2.0"` frame violated the envelope rules (e.g. a non-string `id`)                    | n/a                                 |
 | `-32601` | Method not found | Unknown method **request**, or an `external-extension-only` method invoked on a WebSocket server | n/a                                 |
 | `-32602` | Invalid params   | Params failed schema validation                                                                  | n/a                                 |
 | `-32603` | Internal error   | Unexpected failure while handling a valid request                                                | 500                                 |
@@ -51,6 +54,9 @@ Standard JSON-RPC 2.0 codes plus server-defined codes in the `-32000..-32099` ra
 The HTTP bridge (`/asbplayer/*` endpoints and the AnkiConnect `addNote` interception in the Go
 server) never speaks JSON-RPC to HTTP callers: it maps the JSON-RPC error to a status code as in
 the table above.
+
+Error responses use `"id": null` when the id cannot be determined, as JSON-RPC 2.0 requires for
+parse errors and for requests whose id is unusable (asbplayer only supports string ids).
 
 ## Semantics the OpenRPC document cannot express
 
@@ -64,7 +70,9 @@ the table above.
   _notification_ it is silently ignored. Responses with late or unrecognized `id`s are dropped
   silently.
 - **Envelope version.** Every new-format frame must carry `jsonrpc: "2.0"`. Frames missing it are
-  treated as legacy `{command, messageId, body}` frames during the migration.
+  treated as legacy `{command, messageId, body}` frames during the migration. A frame that declares
+  `2.0` but violates the envelope gets `-32600`; a text frame that is not JSON gets `-32700` once the
+  connection is known to use JSON-RPC. Error responses use `null` for unusable ids.
 - **`mine-subtitle` ack semantics.** The response `{published: true}` means the mining flow was
   _accepted_ (dispatched), not that a card was completed - the user may still be interacting with
   the Anki dialog long after the response.
@@ -74,10 +82,11 @@ the table above.
 - **Ids.** Correlation ids are uuid **strings**. Clients must only match responses to ids they
   sent themselves.
 - **Approval flow (`initialize`/`approval-state`, external extension only).** `initialize` returns the
-  current state immediately. When not yet approved, the client polls `approval-state` (roughly
-  every second) until it reads `approved`. Denial returns `denied` once and then the connection is
-  closed; approval revocation is a transport-level close with no message. These two methods do not
-  exist on the WebSocket servers; invoking them there answers `-32601`.
+  current state immediately (including `denied` during a denial cooldown). When not yet approved, the
+  client polls `approval-state` (roughly every second) until it reads `approved`. Denial returns
+  `denied` once and then the connection is closed; approval revocation is a transport-level close
+  with no message. These two methods do not exist on the WebSocket servers; invoking them there
+  answers `-32601`.
 - **`postMineAction`.** Valid values are `0`–`4`, matching asbplayer's `PostMineAction` enum
   (`none`, `showAnkiDialog`, `updateLastCard`, `exportCard`, `showUpdateCardDialog`). Invalid
   values are rejected with `-32602`.
@@ -94,15 +103,15 @@ During the migration the WebSocket servers also accept the legacy framing
 (`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses).
 Frames are routed by the `jsonrpc` field.
 
-The Go server switches a connection from legacy to JSON-RPC when the client sends any JSON-RPC
-frame. The Anki add-on probes each client with `rpc.discover` and switches after receiving a
-JSON-RPC response. The external extension API is JSON-RPC-only.
+The Go server and Anki add-on send `client-info` to each new connection and switch it to JSON-RPC
+when the client reports `{"protocols": ["jsonrpc-2.0"]}`; a client that ignores the probe keeps
+receiving legacy frames. The external extension API is JSON-RPC-only.
 
 ## Discovery
 
 `rpc.discover` returns this document. Asbplayer serves it on the WebSocket command endpoint and
-the external extension port. The Go server and Anki add-on only call asbplayer's methods, so they
-answer `-32601`.
+the external extension port. The WebSocket servers do not answer it themselves (a client sending
+it to them gets `-32601`).
 
 The document is generated from the same zod registry used for validation and reflects the
-running build. `external-extension-only` tags mark transport-specific methods.
+running build. `external-extension-only` tags mark methods that exist only on the extension port.

@@ -1,16 +1,22 @@
 import { describe, expect, it } from '@jest/globals';
+import { z } from 'zod';
 import {
     externalApiMethods,
-    generateOpenRpcDocument,
+    externalExtensionPortName,
+    isInvalidJsonRpcRequest,
     jsonRpcErrorResponseSchema,
     jsonRpcNotificationSchema,
     jsonRpcRequestSchema,
     jsonRpcResultResponseSchema,
     mineSubtitleParamsSchema,
     parseJsonRpcIncomingMessage,
+} from '@project/common/external-commands/external-api';
+import {
+    generateOpenRpcDocument,
     serializeOpenRpcDocument,
     toJsonSchema,
-} from '@project/common/external-commands/external-api';
+} from '@project/common/external-commands/openrpc';
+import openRpcDocument from '@project/common/external-commands/openrpc-document.json';
 
 const validRequest = {
     jsonrpc: '2.0',
@@ -61,6 +67,16 @@ describe('external API schemas', () => {
             ).toBe(true);
         });
 
+        it('accepts error responses with a null id', () => {
+            expect(
+                jsonRpcErrorResponseSchema.safeParse({
+                    jsonrpc: '2.0',
+                    id: null,
+                    error: { code: -32600, message: 'Invalid request' },
+                }).success
+            ).toBe(true);
+        });
+
         it('rejects an error response with a non-integer code', () => {
             expect(
                 jsonRpcErrorResponseSchema.safeParse({
@@ -89,6 +105,17 @@ describe('external API schemas', () => {
             expect(parseJsonRpcIncomingMessage(null)).toBeUndefined();
             expect(parseJsonRpcIncomingMessage('not an object')).toBeUndefined();
         });
+
+        it('identifies invalid requests that should be answered with -32600', () => {
+            expect(isInvalidJsonRpcRequest({ ...validRequest, id: 1 })).toBe(true);
+            expect(isInvalidJsonRpcRequest({ jsonrpc: '2.0', id: 'm1' })).toBe(true);
+            expect(isInvalidJsonRpcRequest({ jsonrpc: '2.0', method: 1, id: 'm1' })).toBe(true);
+            expect(isInvalidJsonRpcRequest(validRequest)).toBe(false);
+            expect(isInvalidJsonRpcRequest({ jsonrpc: '2.0', id: 'm1', result: {} })).toBe(false);
+            expect(isInvalidJsonRpcRequest({ jsonrpc: '2.0', id: 'm1', error: {} })).toBe(false);
+            expect(isInvalidJsonRpcRequest({ command: 'response', messageId: 'm1' })).toBe(false);
+            expect(isInvalidJsonRpcRequest('not an object')).toBe(false);
+        });
     });
 
     describe('method params', () => {
@@ -110,12 +137,16 @@ describe('external API schemas', () => {
         });
 
         it('rejects invalid media ids in get-subtitles params', () => {
-            expect(externalApiMethods['get-subtitles'].paramsSchema!.safeParse({ mediaId: 42 }).success).toBe(false);
+            expect(externalApiMethods['get-subtitles'].paramsSchema.safeParse({ mediaId: 42 }).success).toBe(false);
         });
     });
 
     describe('OpenRPC document', () => {
-        const document = generateOpenRpcDocument() as any;
+        const document = generateOpenRpcDocument({ methods: externalApiMethods, externalExtensionPortName }) as any;
+
+        it('matches the runtime copy', () => {
+            expect(document).toEqual(openRpcDocument);
+        });
 
         it('covers the whole method registry with one result descriptor each', () => {
             const names = document.methods.map((method: any) => method.name);
@@ -141,16 +172,23 @@ describe('external API schemas', () => {
         });
 
         it('declares no params for parameter-less methods', () => {
-            for (const name of ['get-bound-media', 'approval-state', 'rpc.discover']) {
+            for (const name of ['get-bound-media', 'approval-state', 'client-info', 'rpc.discover']) {
                 expect(document.methods.find((method: any) => method.name === name).params).toEqual([]);
             }
         });
 
+        it('documents every initialize outcome, including denied', () => {
+            const initialize = document.methods.find((method: any) => method.name === 'initialize');
+
+            expect(initialize.result.schema.properties.state.enum).toEqual(['approved', 'pending', 'denied']);
+        });
+
         it('tags external-extension-only methods', () => {
             for (const method of document.methods) {
-                const expected = method.name === 'initialize' || method.name === 'approval-state';
+                const tags = method.tags.map((tag: any) => tag.name);
+                const externalExtensionOnly = method.name === 'initialize' || method.name === 'approval-state';
 
-                expect(method.tags.map((tag: any) => tag.name).includes('external-extension-only')).toBe(expected);
+                expect(tags.includes('external-extension-only')).toBe(externalExtensionOnly);
             }
         });
 
@@ -161,7 +199,7 @@ describe('external API schemas', () => {
         });
 
         it('generates draft-07 JSON Schemas without embedded dialect headers', () => {
-            const schema = toJsonSchema(mineSubtitleParamsSchema) as {
+            const schema = toJsonSchema(mineSubtitleParamsSchema, 'input') as {
                 $schema?: string;
                 properties?: Record<string, any>;
             };
@@ -174,6 +212,21 @@ describe('external API schemas', () => {
                 type: 'object',
                 propertyNames: { type: 'string' },
                 additionalProperties: { type: 'string' },
+            });
+        });
+
+        it('renders params as inputs and results as outputs', () => {
+            const schema = z.object({ value: z.string().default('default') });
+
+            expect(toJsonSchema(schema, 'input')).toEqual({
+                type: 'object',
+                properties: { value: { type: 'string', default: 'default' } },
+            });
+            expect(toJsonSchema(schema, 'output')).toEqual({
+                type: 'object',
+                properties: { value: { type: 'string', default: 'default' } },
+                required: ['value'],
+                additionalProperties: false,
             });
         });
     });

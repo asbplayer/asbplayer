@@ -100,6 +100,13 @@ class ClassificationTests(unittest.TestCase):
 
         self.assertEqual(frame.kind, "json-rpc-notification")
 
+    def test_classifies_null_id_as_a_request(self) -> None:
+        frame = json_rpc.classify_message(
+            json.dumps({"jsonrpc": "2.0", "method": "mine-subtitle", "id": None})
+        )
+
+        self.assertEqual(frame.kind, "json-rpc-request")
+
     def test_classifies_json_rpc_result_response(self) -> None:
         frame = json_rpc.classify_message(
             json.dumps({"jsonrpc": "2.0", "id": "p1", "result": {}})
@@ -128,11 +135,15 @@ class ClassificationTests(unittest.TestCase):
         self.assertEqual(frame.kind, "legacy-response")
 
     def test_classifies_invalid_payloads(self) -> None:
-        self.assertEqual(json_rpc.classify_message("not json").kind, "invalid")
+        self.assertEqual(json_rpc.classify_message("not json").kind, "parse-error")
         self.assertEqual(json_rpc.classify_message("[]").kind, "invalid")
         self.assertEqual(
             json_rpc.classify_message('{"jsonrpc": "2.0", "id": "m1"}').kind,
-            "invalid",
+            "invalid-request",
+        )
+        self.assertEqual(
+            json_rpc.classify_message('{"jsonrpc": "2.0", "method": 1, "id": "m1"}').kind,
+            "invalid-request",
         )
         self.assertEqual(json_rpc.classify_message('{"other": 1}').kind, "invalid")
 
@@ -144,11 +155,11 @@ class NegotiationTests(unittest.TestCase):
 
         self.assertIsNotNone(probe)
         assert probe is not None
-        self.assertEqual(probe["method"], "rpc.discover")
+        self.assertEqual(probe["method"], "client-info")
         self.assertEqual(negotiation.probe_id, probe["id"])
 
         response = json_rpc.classify_message(
-            json.dumps({"jsonrpc": "2.0", "id": probe["id"], "result": {}})
+            json.dumps({"jsonrpc": "2.0", "id": probe["id"], "result": {"protocols": ["jsonrpc-2.0"]}})
         )
 
         self.assertTrue(negotiation.handle_frame(response))
@@ -156,7 +167,7 @@ class NegotiationTests(unittest.TestCase):
         self.assertIsNone(negotiation.probe_id)
         self.assertIsNone(negotiation.start_probe())
 
-    def test_error_response_also_marks_the_connection_capable(self) -> None:
+    def test_error_response_does_not_mark_the_connection_capable(self) -> None:
         negotiation = json_rpc.JsonRpcNegotiation()
         probe = negotiation.start_probe()
 
@@ -172,8 +183,21 @@ class NegotiationTests(unittest.TestCase):
             )
         )
 
-        self.assertTrue(negotiation.handle_frame(response))
-        self.assertTrue(negotiation.supported)
+        self.assertFalse(negotiation.handle_frame(response))
+        self.assertFalse(negotiation.supported)
+
+    def test_result_without_jsonrpc_protocol_does_not_mark_the_connection_capable(self) -> None:
+        negotiation = json_rpc.JsonRpcNegotiation()
+        probe = negotiation.start_probe()
+
+        self.assertIsNotNone(probe)
+        assert probe is not None
+        response = json_rpc.classify_message(
+            json.dumps({"jsonrpc": "2.0", "id": probe["id"], "result": {"protocols": []}})
+        )
+
+        self.assertFalse(negotiation.handle_frame(response))
+        self.assertFalse(negotiation.supported)
 
     def test_response_for_another_id_is_ignored(self) -> None:
         negotiation = json_rpc.JsonRpcNegotiation()
