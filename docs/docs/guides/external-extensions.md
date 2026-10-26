@@ -2,7 +2,7 @@
 sidebar_position: 9.5
 ---
 
-import project, { ankiConnectUrl } from '@site/src/project';
+import project from '@site/src/project';
 
 # External extensions {#external-extensions}
 
@@ -16,13 +16,11 @@ Any extension wishing to communicate with asbplayer must first connect using cod
 
 ```typescript
 const port = browser.runtime.connect(<asbplayer extension ID>, {
-    name: 'asbplayer-external-v1',
+    name: 'asbplayer-external-v1', // Must match this string exactly
 });
 ```
 
-The port name is required; asbplayer disconnects ports with any other name.
-
-The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Request approval with `initialize`, which answers immediately with the current state.
+Request approval with `initialize`, which answers immediately with the current state.
 
 ```typescript
 port.postMessage({
@@ -46,7 +44,7 @@ If the extension is not approved, asbplayer registers the connection as pending,
 }
 ```
 
-While pending, poll `approval-state` about once per second. Polling never triggers a prompt:
+Poll `approval-state` to see if the user has approved the connection request.
 
 ```json
 {
@@ -57,9 +55,9 @@ While pending, poll `approval-state` about once per second. Polling never trigge
 }
 ```
 
-Once approved, the next poll returns `{ "state": "approved" }` and the connection can issue [commands](../reference/external-api). If denied, `approval-state` returns `{ "state": "denied" }` once; asbplayer then closes the port. While a denial cooldown is active, `initialize` returns `denied` directly and the port is closed. Revoking an approved extension also closes the port.
+Once approved, `approval-state` will return `{ "state": "approved" }` and the connection can issue commands. If denied, `approval-state` returns `{ "state": "denied" }` once. asbplayer then closes the port. Once denied, the requesting extension cannot request approval for 24 hours, or until the browser is restarted.
 
-After approval, send commands as JSON-RPC requests using the same method names and payloads documented in the [external API reference](../reference/external-api), for example:
+Commands can be issued as [documented](../reference/external-api). For example:
 
 ```typescript
 port.postMessage({
@@ -70,4 +68,4 @@ port.postMessage({
 });
 ```
 
-asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure. Unknown methods fail with `-32601`, invalid params with `-32602`, and commands sent before approval with `-32002`. See the [external API reference](../reference/external-api) for the full command set.
+asbplayer answers with `{ jsonrpc, id, result }` on success or `{ jsonrpc, id, error }` on failure.

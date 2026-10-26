@@ -1,12 +1,7 @@
 # asbplayer external API
 
 This directory contains the OpenRPC document (`openrpc.json`) describing asbplayer's external
-JSON-RPC 2.0 API, which is spoken by
-
-- the external **WebSocket** servers - the Go server in `scripts/web-socket-server` and the Anki
-  addon server in `plugins/anki/asbplayer-addon/server/websocket_server.py`, and
-- the external **extension** API - `browser.runtime` ports named `asbplayer-external-v1`
-  (extension ⇄ external extension).
+JSON-RPC 2.0 API.
 
 ## Regeneration and licensing
 
@@ -23,14 +18,12 @@ The package and document are Unlicense; the generator code remains AGPL.
 
 > SPDX-License-Identifier: Unlicense
 
-The contents of this directory (`openrpc.json` and this README) are dedicated to the public domain
-under the [Unlicense](https://unlicense.org/), so that third parties can consume the contract
-without licensing obligations. The zod schemas and the generator script that produce it, like the
-rest of the repository, are licensed **AGPL-3.0-or-later** - the generated document embeds only
-schema data and prose descriptions, never GPL source text.
-
-`openrpc.json` cannot carry comments (it must remain valid JSON, since `rpc.discover` serves it
-verbatim), so the license is declared through its `info.license` field and this README.
+The contents of this directory (`openrpc.json`, `package.json`, this README, and `LICENSE.md`) are
+dedicated to the public domain under the [Unlicense](https://unlicense.org/), so that third parties
+can consume the contract without licensing obligations. The full text is in
+[`LICENSE.md`](LICENSE.md). The zod schemas and the generator script that produce it, like the rest
+of the repository, are licensed **AGPL-3.0-or-later** - the generated document embeds only schema
+data and prose descriptions, never GPL source text.
 
 ## Error codes
 
