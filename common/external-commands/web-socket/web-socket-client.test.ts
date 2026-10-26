@@ -6,6 +6,9 @@ import { FakeWebSocket } from '@project/common/external-commands/web-socket/fake
 const url = 'ws://example.com:1234/socket';
 
 const command = (name: string, messageId: string, body: any = {}) => JSON.stringify({ command: name, messageId, body });
+const jsonRpcRequest = (method: string, id: string, params: any = {}) =>
+    JSON.stringify({ jsonrpc: '2.0', method, id, params });
+const jsonRpcNotification = (method: string, params: any = {}) => JSON.stringify({ jsonrpc: '2.0', method, params });
 
 const deferred = () => {
     let resolve!: () => void;
@@ -285,6 +288,119 @@ describe('command dispatch', () => {
         slow.resolve();
         await slowDispatch;
         expect(socket.sentCommands.map((response) => response.messageId)).toEqual(['fast', 'slow']);
+    });
+});
+
+describe('JSON-RPC command dispatch', () => {
+    it('dispatches a JSON-RPC request and responds with a result', async () => {
+        const socket = await connect();
+        const onMineSubtitle = jest.fn(async () => true);
+        client.setHandlers({ onMineSubtitle });
+
+        await socket.receive(jsonRpcRequest('mine-subtitle', 'm1', { fields: { Word: 'ねこ' }, postMineAction: 1 }));
+
+        expect(onMineSubtitle).toHaveBeenCalledWith({
+            command: 'mine-subtitle',
+            messageId: 'm1',
+            body: { fields: { Word: 'ねこ' }, postMineAction: 1 },
+        });
+        expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 'm1', result: { published: true } }]);
+    });
+
+    it('dispatches a JSON-RPC notification without responding', async () => {
+        const socket = await connect();
+        const onMineSubtitle = jest.fn(async () => false);
+        client.setHandlers({ onMineSubtitle });
+
+        await socket.receive(jsonRpcNotification('mine-subtitle', { fields: {}, postMineAction: 2 }));
+
+        expect(onMineSubtitle).toHaveBeenCalled();
+        expect(socket.sentCommands).toEqual([]);
+    });
+
+    it('answers unknown JSON-RPC methods with method not found', async () => {
+        const socket = await connect();
+
+        await socket.receive(jsonRpcRequest('not-a-command', 'u1'));
+
+        expect(socket.sentCommands).toEqual([
+            { jsonrpc: '2.0', id: 'u1', error: { code: -32601, message: 'Method not found' } },
+        ]);
+    });
+
+    it('answers unhandled JSON-RPC methods with method not found', async () => {
+        const socket = await connect();
+
+        await socket.receive(jsonRpcRequest('get-bound-media', 'b1'));
+
+        expect(socket.sentCommands).toEqual([
+            { jsonrpc: '2.0', id: 'b1', error: { code: -32601, message: 'Method not found' } },
+        ]);
+    });
+
+    it('answers invalid JSON-RPC params with invalid params', async () => {
+        const socket = await connect();
+        const onMineSubtitle = jest.fn(async () => true);
+        client.setHandlers({ onMineSubtitle });
+
+        await socket.receive(jsonRpcRequest('mine-subtitle', 'm2', { fields: {}, postMineAction: 99 }));
+
+        expect(onMineSubtitle).not.toHaveBeenCalled();
+        expect(socket.sentCommands[0]).toMatchObject({
+            jsonrpc: '2.0',
+            id: 'm2',
+            error: { code: -32602, message: 'Invalid params' },
+        });
+    });
+
+    it('answers handler failures with an internal error', async () => {
+        const socket = await connect();
+        client.setHandlers({
+            onSeekTimestamp: async () => {
+                throw new Error('handler failed');
+            },
+        });
+
+        await socket.receive(jsonRpcRequest('seek-timestamp', 's1', { timestamp: 0 }));
+
+        expect(socket.sentCommands).toEqual([
+            {
+                jsonrpc: '2.0',
+                id: 's1',
+                error: { code: -32603, message: 'Internal error', data: 'handler failed' },
+            },
+        ]);
+    });
+
+    it('does not answer a JSON-RPC notification when the handler rejects', async () => {
+        const socket = await connect();
+        client.setHandlers({
+            onSeekTimestamp: async () => {
+                throw new Error('handler failed');
+            },
+        });
+
+        await socket.receive(jsonRpcNotification('seek-timestamp', { timestamp: 0 }));
+
+        expect(socket.sentCommands).toEqual([]);
+    });
+
+    it('ignores JSON-RPC commands outside the ones it was created to accept', async () => {
+        const socket = await connect({ commands: ['seek-timestamp'] });
+        client.setHandlers({ onSeekTimestamp: async () => {}, onGetBoundMedia: async () => [] });
+
+        await socket.receive(jsonRpcRequest('get-bound-media', 'b2'));
+        await socket.receive(jsonRpcRequest('seek-timestamp', 's2', { timestamp: 1 }));
+
+        expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 's2', result: {} }]);
+    });
+
+    it('ignores JSON-RPC responses', async () => {
+        const socket = await connect();
+
+        await socket.receive(JSON.stringify({ jsonrpc: '2.0', id: 'r1', result: {} }));
+
+        expect(socket.sentCommands).toEqual([]);
     });
 });
 
