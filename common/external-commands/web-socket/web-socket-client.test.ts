@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { WebSocketClient } from '@project/common/external-commands';
 import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/external-commands';
+import { generateOpenRpcDocument } from '@project/common/external-commands/external-api';
 import { FakeWebSocket } from '@project/common/external-commands/web-socket/fake-web-socket';
 
 const url = 'ws://example.com:1234/socket';
@@ -395,14 +396,20 @@ describe('JSON-RPC command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 's2', result: {} }]);
     });
 
-    it('answers protocol method probes even when the commands filter is active', async () => {
+    it('answers rpc.discover even when the commands filter is active', async () => {
         const socket = await connect({ commands: ['seek-timestamp'] });
 
         await socket.receive(jsonRpcRequest('rpc.discover', 'probe'));
 
-        expect(socket.sentCommands).toEqual([
-            { jsonrpc: '2.0', id: 'probe', error: { code: -32601, message: 'Method not found' } },
-        ]);
+        expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 'probe', result: generateOpenRpcDocument() }]);
+    });
+
+    it('does not answer rpc.discover notifications', async () => {
+        const socket = await connect();
+
+        await socket.receive(jsonRpcNotification('rpc.discover'));
+
+        expect(socket.sentCommands).toEqual([]);
     });
 
     it('ignores JSON-RPC responses', async () => {

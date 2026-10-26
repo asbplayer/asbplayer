@@ -99,3 +99,14 @@ also starts in legacy mode and probes the client with `rpc.discover`; it switche
 connection to JSON-RPC notifications only after receiving a JSON-RPC response. The external
 extension API has not shipped yet, so it speaks JSON-RPC only. Once legacy support is removed,
 this table describes the only remaining framing.
+
+## Discovery
+
+`rpc.discover` returns this document as its result. It is served by asbplayer on both command
+surfaces that implement methods: the WebSocket command endpoint used by the Go server and Anki
+add-on, and the external extension port. The Go server and Anki add-on consume those methods
+rather than implementing them, so a `rpc.discover` request sent to them answers `-32601`.
+
+The returned document is generated from the same zod registry the dispatcher validates against,
+so it reflects the method surface of the running build. Per-transport applicability is expressed
+through method tags such as `external-extension-only`.
