@@ -34,7 +34,7 @@ def _on_add_notes(self: Collection, requests: Sequence[AddNoteRequest]) -> OpCha
 
 
 def _handle_note_added(note: Note) -> None:
-    """Handle note addition - send mine-subtitle command to asbplayer."""
+    """Send mine-subtitle to asbplayer."""
 
     _log(f"_handle_note_added triggered for note id={note.id}")
 

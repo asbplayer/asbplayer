@@ -182,8 +182,6 @@ func (forwarder forwarder) handleWebsocketClient(c echo.Context) error {
 		}
 
 		if err := json.Unmarshal(msg, &probe); err == nil && probe.Jsonrpc == jsonRpcVersion {
-			// Any JSON-RPC frame proves the client understands JSON-RPC. Subsequent requests to
-			// this client use JSON-RPC; legacy clients keep receiving the legacy framing.
 			client.jsonRpcCapable.Store(true)
 			forwarder.handleJsonRpcFrame(client, msg)
 			continue
@@ -207,7 +205,6 @@ func (forwarder forwarder) handleJsonRpcFrame(client *wsClient, msg []byte) {
 
 	if incoming.Method != "" {
 		if len(incoming.Id) == 0 {
-			// Notifications are never answered.
 			return
 		}
 

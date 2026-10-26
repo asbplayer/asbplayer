@@ -91,22 +91,18 @@ the table above.
 | External extension API      | One JSON-RPC message per `browser.runtime` port message | Port name `asbplayer-external-v1`          |
 
 During the migration the WebSocket servers also accept the legacy framing
-(`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses);
-frames are routed by sniffing for the `jsonrpc` field. The Go server starts each connection in
-legacy mode and switches that connection to JSON-RPC as soon as the client sends any JSON-RPC
-frame (capability is learned from the frame format, not the method's success). The Anki add-on
-also starts in legacy mode and probes the client with `rpc.discover`; it switches that
-connection to JSON-RPC notifications only after receiving a JSON-RPC response. The external
-extension API has not shipped yet, so it speaks JSON-RPC only. Once legacy support is removed,
-this table describes the only remaining framing.
+(`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses).
+Frames are routed by the `jsonrpc` field.
+
+The Go server switches a connection from legacy to JSON-RPC when the client sends any JSON-RPC
+frame. The Anki add-on probes each client with `rpc.discover` and switches after receiving a
+JSON-RPC response. The external extension API is JSON-RPC-only.
 
 ## Discovery
 
-`rpc.discover` returns this document as its result. It is served by asbplayer on both command
-surfaces that implement methods: the WebSocket command endpoint used by the Go server and Anki
-add-on, and the external extension port. The Go server and Anki add-on consume those methods
-rather than implementing them, so a `rpc.discover` request sent to them answers `-32601`.
+`rpc.discover` returns this document. Asbplayer serves it on the WebSocket command endpoint and
+the external extension port. The Go server and Anki add-on only call asbplayer's methods, so they
+answer `-32601`.
 
-The returned document is generated from the same zod registry the dispatcher validates against,
-so it reflects the method surface of the running build. Per-transport applicability is expressed
-through method tags such as `external-extension-only`.
+The document is generated from the same zod registry used for validation and reflects the
+running build. `external-extension-only` tags mark transport-specific methods.

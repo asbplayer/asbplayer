@@ -94,7 +94,6 @@ if WEBSOCKETS_AVAILABLE:
 
         @property
         def supports_json_rpc(self) -> bool:
-            """Return True once the connected client has proven JSON-RPC support."""
             return self._negotiation.supported
 
         def send_message(self, message: dict) -> None:

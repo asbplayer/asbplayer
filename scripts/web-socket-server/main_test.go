@@ -191,8 +191,7 @@ func (c *fakeClient) respondJsonRpcError(t *testing.T, id string, code int, mess
 	c.write(t, fmt.Sprintf(`{"jsonrpc":"2.0","id":%q,"error":{"code":%d,"message":%q}}`, id, code, message))
 }
 
-// announceJsonRpc marks this connection as JSON-RPC-capable without requiring rpc.discover to be
-// implemented on the server.
+// Marks the connection JSON-RPC-capable using a method the server rejects.
 func (c *fakeClient) announceJsonRpc(t *testing.T) {
 	t.Helper()
 	c.write(t, `{"jsonrpc":"2.0","id":"probe","method":"hello","params":{}}`)

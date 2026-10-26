@@ -18,7 +18,7 @@ Any extension wishing to communicate with asbplayer must first connect using cod
 const port = browser.runtime.connect(<asbplayer extension ID>);
 ```
 
-The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Approval can then be requested by issuing the `hello` method. It answers immediately with the current approval state, so no request ever waits for the user.
+The port speaks [JSON-RPC 2.0](https://www.jsonrpc.org/specification). Request approval with `hello`, which answers immediately with the current state.
 
 ```typescript
 port.postMessage({
@@ -32,7 +32,7 @@ port.postMessage({
 });
 ```
 
-If the extension hasn't been approved yet, asbplayer registers the connection as pending, prompts the user to approve it, and responds:
+If the extension is not approved, asbplayer registers the connection as pending, prompts the user, and responds:
 
 ```json
 {
@@ -42,7 +42,7 @@ If the extension hasn't been approved yet, asbplayer registers the connection as
 }
 ```
 
-While pending, poll `approval-state` (roughly once per second). It is a pure read and never triggers another prompt:
+While pending, poll `approval-state` about once per second. Polling never triggers a prompt:
 
 ```json
 {
@@ -53,7 +53,7 @@ While pending, poll `approval-state` (roughly once per second). It is a pure rea
 }
 ```
 
-Once the user approves, the next poll returns `{ "state": "approved" }` and the same connection can issue [commands](../reference/external-api). If the user denies the request, `approval-state` returns `{ "state": "denied" }` once and asbplayer closes the port. Revoking an approved extension also closes the port.
+Once approved, the next poll returns `{ "state": "approved" }` and the connection can issue [commands](../reference/external-api). If denied, `approval-state` returns `{ "state": "denied" }` once; asbplayer then closes the port. Revoking an approved extension also closes the port.
 
 After approval, send commands as JSON-RPC requests using the same method names and payloads documented in the [external API reference](../reference/external-api), for example:
 
