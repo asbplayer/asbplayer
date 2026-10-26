@@ -2,6 +2,7 @@ import type { Response, ExternalCommand, ExternalCommandHandlers } from '@projec
 import {
     externalApiMethods,
     externalExtensionOnlyTag,
+    generateOpenRpcDocument,
     jsonRpcErrorCodes,
     parseJsonRpcIncomingMessage,
 } from '@project/common/external-commands/external-api';
@@ -50,6 +51,11 @@ export class ExternalCommandDispatcher {
         commands?: readonly ExternalCommand['command'][]
     ): Promise<JsonRpcResponse | undefined> {
         const id = request.id;
+
+        if (request.method === 'rpc.discover') {
+            return id === undefined ? undefined : this._jsonRpcSuccess(id, generateOpenRpcDocument());
+        }
+
         const method = externalApiMethods[request.method];
         const paramsSchema = method?.paramsSchema;
 
