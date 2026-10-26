@@ -22,12 +22,17 @@ export class ExtensionBadgeController {
         this._action.setBadgeText({ text: this._globalAlerts.size > 0 ? '!' : '' });
     }
 
-    /** Sets a '!' badge on the given tabs and clears it from tabs badged previously. */
+    /**
+     * Sets a '!' badge on the given tabs and releases previously badged tabs to the global badge.
+     *
+     * Released tabs need a null text: a tab-specific text overrides the global badge, so `''`
+     * would hide it instead of letting it show through.
+     */
     setTabAlerts(tabIds: number[]) {
         const badgedTabIds = new Set(tabIds);
 
         for (const tabId of new Set([...this._tabIds, ...badgedTabIds])) {
-            this._action.setBadgeText({ tabId, text: badgedTabIds.has(tabId) ? '!' : '' });
+            this._action.setBadgeText({ tabId, text: badgedTabIds.has(tabId) ? '!' : null });
         }
 
         this._tabIds = [...badgedTabIds];
@@ -35,5 +40,5 @@ export class ExtensionBadgeController {
 }
 
 export interface BadgeAction {
-    setBadgeText(details: { text?: string; tabId?: number }): unknown;
+    setBadgeText(details: { text?: string | null; tabId?: number }): unknown;
 }

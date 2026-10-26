@@ -543,8 +543,8 @@ describe('external connection coordinator', () => {
         await flush();
 
         expect(harness.lastGlobalBadgeText()).toEqual('');
-        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '' });
-        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: '' });
+        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: null });
+        expect(harness.badgeAction.setBadgeText).toHaveBeenCalledWith({ tabId: 2, text: null });
     });
 
     it('prunes expired pending requests and caps the number retained', async () => {
