@@ -10,6 +10,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .json_rpc import (
+    METHOD_NOT_FOUND,
+    JsonRpcNegotiation,
+    classify_message,
+    error_response,
+)
+
 ADDON_PACKAGE = json.loads(
     (Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf-8")
 )["package"]
@@ -21,7 +28,7 @@ def _log(msg: str) -> None:
 
 
 try:
-    from aqt.qt import QObject, pyqtSlot
+    from aqt.qt import QObject, QTimer, pyqtSlot
     from PyQt6.QtWebSockets import QWebSocketServer, QWebSocket
     from PyQt6.QtNetwork import QHostAddress
 
@@ -35,11 +42,16 @@ if WEBSOCKETS_AVAILABLE:
     class AsbplayerWebSocketServer(QObject):
         """WebSocket server for asbplayer communication."""
 
+        PROBE_TIMEOUT_MS = 2000
+
         def __init__(self, port: int, parent: QObject | None = None):
             super().__init__(parent)
             self._port = port
             self._server: QWebSocketServer | None = None
             self._client: QWebSocket | None = None
+            self._negotiation = JsonRpcNegotiation()
+            self._probe_client: QWebSocket | None = None
+            self._probe_timer: QTimer | None = None
 
         def start(self) -> bool:
             """Start the WebSocket server. Returns True on success."""
@@ -66,6 +78,8 @@ if WEBSOCKETS_AVAILABLE:
             if self._server is None:
                 return
 
+            self._reset_negotiation()
+
             if self._client is not None:
                 self._client.close()
                 self._client = None
@@ -78,13 +92,74 @@ if WEBSOCKETS_AVAILABLE:
             """Return True if there is a connected client."""
             return self._client is not None
 
+        @property
+        def supports_json_rpc(self) -> bool:
+            """Return True once the connected client has proven JSON-RPC support."""
+            return self._negotiation.supported
+
         def send_message(self, message: dict) -> None:
             """Send a JSON message to the connected client."""
-            if self._client is None or not self._client.isValid():
+            self._send_to(self._client, message)
+
+        def _send_to(self, client: QWebSocket | None, message: dict) -> None:
+            if client is None or not client.isValid():
                 return
 
-            json_str = json.dumps(message)
-            self._client.sendTextMessage(json_str)
+            client.sendTextMessage(json.dumps(message))
+
+        def _start_json_rpc_probe(self, client: QWebSocket) -> None:
+            self._cancel_probe()
+            self._negotiation.reset()
+
+            probe = self._negotiation.start_probe()
+
+            if probe is None:
+                return
+
+            probe_id = self._negotiation.probe_id
+            self._probe_client = client
+            timer = QTimer(self)
+            self._probe_timer = timer
+            timer.setSingleShot(True)
+            timer.timeout.connect(
+                lambda: self._on_probe_timeout(timer, client, probe_id)
+            )
+            timer.start(self.PROBE_TIMEOUT_MS)
+            self._send_to(client, probe)
+
+        def _on_probe_timeout(
+            self,
+            timer: QTimer,
+            client: QWebSocket,
+            probe_id: str | None,
+        ) -> None:
+            timer.deleteLater()
+
+            if self._probe_client is not client:
+                return
+
+            if self._negotiation.probe_id != probe_id:
+                return
+
+            self._negotiation.handle_timeout()
+            self._probe_client = None
+
+            if self._probe_timer is timer:
+                self._probe_timer = None
+
+            _log("JSON-RPC probe timed out - using legacy protocol")
+
+        def _cancel_probe(self) -> None:
+            if self._probe_timer is not None:
+                self._probe_timer.stop()
+                self._probe_timer.deleteLater()
+                self._probe_timer = None
+
+            self._probe_client = None
+
+        def _reset_negotiation(self) -> None:
+            self._cancel_probe()
+            self._negotiation.reset()
 
         @pyqtSlot()
         def _on_new_connection(self) -> None:
@@ -103,9 +178,12 @@ if WEBSOCKETS_AVAILABLE:
             self._client = client
 
             client.textMessageReceived.connect(self._on_text_message)
-            client.disconnected.connect(self._on_client_disconnected)
+            client.disconnected.connect(
+                lambda: self._on_client_disconnected(client)
+            )
 
             _log(f"Client connected: {client.peerAddress().toString()}")
+            self._start_json_rpc_probe(client)
 
         def _on_text_message(self, message: str) -> None:
             """Handle incoming text message from client."""
@@ -116,15 +194,39 @@ if WEBSOCKETS_AVAILABLE:
                 self._client.sendTextMessage("PONG")
                 return
 
-            try:
-                data = json.loads(message)
-                if data.get("command") == "response":
-                    _log(f"Received response: messageId={data.get('messageId')}")
-            except json.JSONDecodeError:
+            frame = classify_message(message)
+
+            if frame.kind == "json-rpc-request":
+                request_id = frame.payload.get("id")
+                self._send_to(
+                    self._client,
+                    error_response(
+                        request_id,
+                        METHOD_NOT_FOUND,
+                        "Method not found",
+                    ),
+                )
+            elif frame.kind == "json-rpc-response":
+                if self._negotiation.handle_frame(frame):
+                    self._cancel_probe()
+                    _log("JSON-RPC supported by connected asbplayer")
+                else:
+                    _log(
+                        f"Received JSON-RPC response: id={frame.payload.get('id')}"
+                    )
+            elif frame.kind == "legacy-response":
+                _log(f"Received response: messageId={frame.payload.get('messageId')}")
+            elif frame.kind == "invalid":
                 _log(f"Invalid JSON received: {message[:100]}")
 
-        def _on_client_disconnected(self) -> None:
+        def _on_client_disconnected(self, client: QWebSocket | None = None) -> None:
             """Handle client disconnection."""
+            if client is not None and client is not self._client:
+                client.deleteLater()
+                return
+
+            self._reset_negotiation()
+
             if self._client is not None:
                 self._client.deleteLater()
                 self._client = None
@@ -147,6 +249,10 @@ else:
             pass
 
         def has_clients(self) -> bool:
+            return False
+
+        @property
+        def supports_json_rpc(self) -> bool:
             return False
 
         def send_message(self, message: dict) -> None:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from collections.abc import Sequence
 
 from aqt import mw, gui_hooks
@@ -9,6 +8,7 @@ from anki.decks import DeckId
 from anki.collection import AddNoteRequest, Collection, OpChanges, OpChangesWithCount
 
 from .model.config import AddonConfig
+from .server.json_rpc import mine_subtitle_frame
 from .server.websocket_server import AsbplayerWebSocketServer, _log
 
 config: AddonConfig | None = None
@@ -41,21 +41,17 @@ def _handle_note_added(note: Note) -> None:
     if server is None or config is None or not server.has_clients():
         return
 
-    fields = {}
+    fields: dict[str, str] = {}
     for field_name in note.keys():
         fields[field_name] = note[field_name]
 
-    message_id = str(uuid.uuid4())
-    command = {
-        "command": "mine-subtitle",
-        "messageId": message_id,
-        "body": {
-            "fields": fields,
-            "postMineAction": config.get_post_mine_action(),
-        },
-    }
+    message = mine_subtitle_frame(
+        fields,
+        config.get_post_mine_action(),
+        server.supports_json_rpc,
+    )
 
-    server.send_message(command)
+    server.send_message(message)
 
 
 def start_server() -> None:

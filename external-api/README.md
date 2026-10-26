@@ -94,7 +94,8 @@ During the migration the WebSocket servers also accept the legacy framing
 (`{command, messageId, body}` requests and `{command: 'response', messageId, body}` responses);
 frames are routed by sniffing for the `jsonrpc` field. The Go server starts each connection in
 legacy mode and switches that connection to JSON-RPC as soon as the client sends any JSON-RPC
-frame (capability is learned from the frame format, not the method's success). The external
-extension API has not shipped yet, so
-it speaks JSON-RPC only. Once legacy support is removed, this table describes the only remaining
-framing.
+frame (capability is learned from the frame format, not the method's success). The Anki add-on
+also starts in legacy mode and probes the client with `rpc.discover`; it switches that
+connection to JSON-RPC notifications only after receiving a JSON-RPC response. The external
+extension API has not shipped yet, so it speaks JSON-RPC only. Once legacy support is removed,
+this table describes the only remaining framing.

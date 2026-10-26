@@ -395,6 +395,16 @@ describe('JSON-RPC command dispatch', () => {
         expect(socket.sentCommands).toEqual([{ jsonrpc: '2.0', id: 's2', result: {} }]);
     });
 
+    it('answers protocol method probes even when the commands filter is active', async () => {
+        const socket = await connect({ commands: ['seek-timestamp'] });
+
+        await socket.receive(jsonRpcRequest('rpc.discover', 'probe'));
+
+        expect(socket.sentCommands).toEqual([
+            { jsonrpc: '2.0', id: 'probe', error: { code: -32601, message: 'Method not found' } },
+        ]);
+    });
+
     it('ignores JSON-RPC responses', async () => {
         const socket = await connect();
 
