@@ -33,6 +33,11 @@ jobs:
             - name: Check Anki lockfile
               run: uv lock --project plugins/anki --check
 
+            - name: Test Anki add-on protocol
+              run: |
+                  python3 -m compileall -q plugins/anki/asbplayer-addon
+                  python3 -m unittest discover -s plugins/anki/tests -v
+
             - run: pnpm install --filter @project/extension --filter @project/common --filter @project/client
 
             - name: Check external API document is up to date

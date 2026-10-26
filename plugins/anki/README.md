@@ -28,6 +28,12 @@ under `[tool.basedpyright]` in `pyproject.toml`. The dependencies in `.venv/` ar
 type checking. If dependencies not included in Anki are needed, they need to be vendored
 into the `asbplayer-addon/` folder before zipping/publishing the add-on.
 
+The protocol helpers have unit tests that do not require Anki. From this directory:
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
 ## To zip and publish the add-on:
 
 1. Set `releases.ankiAddon.version` in the repository's `project.json`. From the repository root, synchronize the generated metadata and regenerate the uv lockfile:

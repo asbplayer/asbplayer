@@ -50,12 +50,6 @@ export class ExternalCommandDispatcher {
         commands?: readonly ExternalCommand['command'][]
     ): Promise<JsonRpcResponse | undefined> {
         const id = request.id;
-
-        if (commands !== undefined && !commands.includes(request.method as ExternalCommand['command'])) {
-            // Leave the command to another connected client that handles it.
-            return undefined;
-        }
-
         const method = externalApiMethods[request.method];
         const paramsSchema = method?.paramsSchema;
 
@@ -63,6 +57,11 @@ export class ExternalCommandDispatcher {
             return id === undefined
                 ? undefined
                 : this._jsonRpcError(id, jsonRpcErrorCodes.methodNotFound, 'Method not found');
+        }
+
+        if (commands !== undefined && !commands.includes(request.method as ExternalCommand['command'])) {
+            // Leave the command to another connected client that handles it.
+            return undefined;
         }
 
         const params = paramsSchema.safeParse(request.params ?? {});
