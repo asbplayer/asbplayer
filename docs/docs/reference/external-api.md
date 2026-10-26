@@ -18,7 +18,7 @@ This page is intended to be an technical reference on asbplayer's external inter
 asbplayer responds to the following commands, represented as JSON-RPC messages. The OpenRPC schema can be found [here](https://github.com/asbplayer/asbplayer/blob/main/external-api/openrpc.json).
 
 :::info
-Older versions of asbplayer support the schema `{command, messageId, body}` instead of `{method, id, params}`.
+asbplayer extensions v1.22 and below support the schema `{ command, messageId, body }` instead of `{ method, id, params }`.
 :::
 
 ## `mine-subtitle` {#mine-subtitle}
