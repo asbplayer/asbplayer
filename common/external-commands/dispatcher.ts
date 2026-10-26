@@ -78,9 +78,7 @@ export class ExternalCommandDispatcher {
                 return undefined;
             }
 
-            const { default: openRpcDocument } = await import(
-                '@project/common/external-commands/openrpc-document.json'
-            );
+            const { default: openRpcDocument } = await import('@project/common/external-commands/openrpc-document');
             return jsonRpcSuccess(id, openRpcDocument);
         }
 

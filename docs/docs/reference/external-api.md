@@ -37,7 +37,7 @@ When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitt
         "id": "10281760-d787-4356-8572-f698d8ff3884",
         "method": "mine-subtitle",
         "params": {
-            // 0 = "None", 1 = "Show anki dialog", 2 = "Update last card", 3 = "Export card"
+            // 0 = "None", 1 = "Show Anki dialog", 2 = "Update last card", 3 = "Export card", 4 = "Show update card dialog"
             "postMineAction": 1,
             // Key-value pairs corresponding to an Anki note type
             "fields": {
@@ -255,8 +255,6 @@ Returns asbplayer client info, such as supported protocols. The latest versions 
 ## `rpc.discover` {#rpc-discover}
 
 Returns the OpenRPC document for the running build. Use it to discover the current method names, params, results, and transport tags instead of hard-coding them.
-
-`rpc.discover` is available on the WebSocket command endpoint and the external extension port. The Go server and Anki add-on are callers of asbplayer's methods rather than implementations of them, so they answer `-32601` when they receive this request themselves.
 
 ### Request {#rpc-discover-request}
 

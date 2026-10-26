@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { WebSocketClient } from '@project/common/external-commands';
 import type { SeekTimestampCommand, WebSocketClientOptions } from '@project/common/external-commands';
-import openRpcDocument from '@project/common/external-commands/openrpc-document.json';
+import openRpcDocument from '@project/common/external-commands/openrpc-document';
 import { FakeWebSocket } from '@project/common/external-commands/web-socket/fake-web-socket';
 
 const url = 'ws://example.com:1234/socket';

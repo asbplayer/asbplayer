@@ -355,6 +355,9 @@ importers:
       '@project/common':
         specifier: workspace:^
         version: 'link:'
+      '@project/external-api':
+        specifier: workspace:^
+        version: link:../external-api
       '@qgustavor/srt-parser':
         specifier: ^2.0.0
         version: 2.0.0
@@ -634,6 +637,8 @@ importers:
       wxt:
         specifier: ^0.21.4
         version: 0.21.4(eslint@9.39.4(jiti@2.6.1)(supports-color@8.1.1))(rollup@4.63.3)(typescript@5.8.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.27.3)(jiti@2.6.1)(terser@5.51.2))(web-ext@10.6.0(jiti@2.6.1)(supports-color@8.1.1))
+
+  external-api: {}
 
   scripts/loc:
     dependencies:

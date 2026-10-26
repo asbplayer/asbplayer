@@ -14,7 +14,7 @@ import { MockStorageArea } from '@project/extension/src/services/mock-storage-ar
 import { MockLockManager } from '@project/extension/src/services/mock-lock-manager';
 import { ExternalCommandDispatcher } from '@project/common/external-commands/dispatcher';
 import { externalExtensionPortName } from '@project/common/external-commands/external-api';
-import openRpcDocument from '@project/common/external-commands/openrpc-document.json';
+import openRpcDocument from '@project/common/external-commands/openrpc-document';
 
 const flush = async () => {
     for (let i = 0; i < 20; i++) {

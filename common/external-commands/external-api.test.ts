@@ -16,7 +16,7 @@ import {
     serializeOpenRpcDocument,
     toJsonSchema,
 } from '@project/common/external-commands/openrpc';
-import openRpcDocument from '@project/common/external-commands/openrpc-document.json';
+import openRpcDocument from '@project/common/external-commands/openrpc-document';
 
 const validRequest = {
     jsonrpc: '2.0',

@@ -1,0 +1,9 @@
+{
+    "name": "@project/external-api",
+    "version": "0.0.0",
+    "private": true,
+    "license": "Unlicense",
+    "exports": {
+        "./openrpc.json": "./openrpc.json"
+    }
+}

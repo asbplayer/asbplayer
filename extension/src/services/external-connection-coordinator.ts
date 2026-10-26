@@ -198,9 +198,7 @@ export class ExternalConnectionCoordinator {
 
         switch (knownMethod) {
             case 'rpc.discover': {
-                const { default: openRpcDocument } = await import(
-                    '@project/common/external-commands/openrpc-document.json'
-                );
+                const { default: openRpcDocument } = await import('@project/common/external-commands/openrpc-document');
                 return openRpcDocument;
             }
             case 'client-info': {

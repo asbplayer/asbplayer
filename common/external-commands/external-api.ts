@@ -156,30 +156,32 @@ export function isInvalidJsonRpcRequest(message: unknown): boolean {
 // ---------------------------------------------------------------------------
 
 export const subtitleFileSchema = z.object({
-    base64: z.string(),
-    name: z.string(),
+    base64: z.string().describe('Base64-encoded file contents.'),
+    name: z.string().describe('Name of the file, including its extension.'),
 });
 
 export const subtitleTrackSchema = z.object({
-    trackNumber: z.number(),
-    fileName: z.string(),
+    trackNumber: z.number().describe('Track number.'),
+    fileName: z.string().describe('File name of the subtitle track.'),
 });
 
 export const subtitleCueSchema = z.object({
-    text: z.string(),
-    start: z.number(),
-    end: z.number(),
-    track: z.number(),
+    text: z.string().describe('Subtitle text.'),
+    start: z.number().describe('Start time in milliseconds.'),
+    end: z.number().describe('End time in milliseconds.'),
+    track: z.number().describe('Loaded track number.'),
 });
 
 export const boundMediaSchema = z.object({
     // Derived from a hash of `streaming:<tabId>:<src>` or `local:<asbplayerId>`.
-    id: z.string(),
-    type: z.enum(['streaming', 'local']),
-    title: z.string().optional(),
-    faviconUrl: z.string().optional(),
-    loadedSubtitles: z.array(subtitleTrackSchema),
-    active: z.boolean(),
+    id: z.string().describe('Identifier for the media.'),
+    type: z.enum(['streaming', 'local']).describe('Type of media: `streaming` or `local`.'),
+    title: z.string().optional().describe('Display title for the media, if available.'),
+    faviconUrl: z.string().optional().describe('Favicon of the tab containing the media, if available.'),
+    loadedSubtitles: z
+        .array(subtitleTrackSchema)
+        .describe('Subtitle tracks currently loaded for this media. Empty if none are loaded.'),
+    active: z.boolean().describe("Whether the media's tab is the active tab of its window."),
 });
 
 // ---------------------------------------------------------------------------
@@ -206,7 +208,7 @@ export const mineSubtitleParamsSchema = z.object({
 });
 
 export const mineSubtitleResultSchema = z.object({
-    published: z.boolean(),
+    published: z.boolean().describe('Whether the command was successfully published to an asbplayer client.'),
 });
 
 export const loadSubtitlesParamsSchema = z.object({
@@ -226,7 +228,7 @@ export const seekTimestampResultSchema = z.object({});
 export const getBoundMediaParamsSchema = z.object({});
 
 export const getBoundMediaResultSchema = z.object({
-    media: z.array(boundMediaSchema),
+    media: z.array(boundMediaSchema).describe('The media asbplayer is currently tracking.'),
 });
 
 export const getSubtitlesParamsSchema = z.object({
@@ -235,7 +237,7 @@ export const getSubtitlesParamsSchema = z.object({
 });
 
 export const getSubtitlesResultSchema = z.object({
-    subtitles: z.array(subtitleCueSchema),
+    subtitles: z.array(subtitleCueSchema).describe('Subtitles currently loaded for the media.'),
 });
 
 export const initializeParamsSchema = z.object({
@@ -244,17 +246,12 @@ export const initializeParamsSchema = z.object({
     version: z.string().optional(),
 });
 
-// Returns immediately. On first contact, the connection is registered as pending and the
-// approval prompt is shown (at most once per pending state); the client polls `approval-state`.
-// `denied` while a denial cooldown is active.
 export const initializeResultSchema = z.object({
     state: z.enum(['approved', 'pending', 'denied']),
 });
 
 export const approvalStateParamsSchema = z.object({});
 
-// Pure read; never triggers approval prompts. `denied` is returned at most once before the
-// connection is closed.
 export const approvalStateResultSchema = z.object({
     state: z.enum(['approved', 'pending', 'denied']),
 });
@@ -262,7 +259,7 @@ export const approvalStateResultSchema = z.object({
 export const clientInfoParamsSchema = z.object({});
 
 export const clientInfoResultSchema = z.object({
-    protocols: z.array(z.literal(jsonRpcProtocol)),
+    protocols: z.array(z.literal(jsonRpcProtocol)).describe('Protocols supported by the client.'),
 });
 
 // ---------------------------------------------------------------------------
@@ -287,32 +284,42 @@ export interface ExternalApiMethod {
 export const externalApiMethods = {
     'mine-subtitle': {
         name: 'mine-subtitle',
-        summary: 'Dispatch the mining flow for the given Anki fields.',
+        summary: 'Mine the current subtitle line into Anki.',
         description:
-            'Runs the mining flow for the given Anki fields. The response means the flow was accepted ' +
-            '(dispatched), not that a card was completed - the user may still be interacting with the Anki ' +
-            'dialog long after the response. Invoked as a notification (no id), it is published fire-and-forget ' +
-            'and never answered, even on error.',
+            'Mines from the active tab by default. Set `mediaId` to an ID returned by `get-bound-media` to ' +
+            'target specific media. If the media is not found or has no subtitles, `published` is `false`.\n\n' +
+            'When `postMineAction` is `2`, `noteId` selects the Anki note to update. If omitted, the last-added ' +
+            'note is updated. `noteId` applies to streaming media only and is ignored for local media.\n\n' +
+            'The response means the flow was accepted (dispatched), not that a card was completed. Invoked as a ' +
+            'notification (no id), it is published fire-and-forget and never answered, even on error.\n\n' +
+            '`mediaId` and `noteId` require extension v1.20.0 or later.',
         tags: [],
         paramsSchema: mineSubtitleParamsSchema,
         paramDescriptions: {
-            fields: 'Anki field name to value mapping.',
-            postMineAction: 'What asbplayer should do after mining (PostMineAction values 0-4).',
-            mediaId: 'Target media. Omit to target the active media.',
-            noteId: 'Id of an existing note to update.',
+            fields: 'Key-value pairs corresponding to an Anki note type.',
+            postMineAction:
+                'What asbplayer should do after mining: 0 = none, 1 = show Anki dialog, 2 = update last card, ' +
+                '3 = export card, 4 = show update card dialog.',
+            mediaId: 'Optional media id from `get-bound-media`. Defaults to the active tab.',
+            noteId: 'Optional Anki note id to update when `postMineAction` is 2 (streaming media only).',
         },
         resultSchema: mineSubtitleResultSchema,
-        resultDescription: 'Whether the command was accepted and dispatched to the mining flow.',
+        resultDescription: 'Whether the command was successfully published to an asbplayer client.',
     },
     'load-subtitles': {
         name: 'load-subtitles',
         summary: 'Load subtitle files into a player.',
-        description: 'Loads the given subtitle files into the media identified by `mediaId`.',
+        description:
+            "Loads the files into the active tab's media by default, showing the video selector when the tab " +
+            'has more than one video. Set `mediaId` to an ID returned by `get-bound-media` to load the files ' +
+            'directly into that media.\n\n' +
+            '`mediaId` requires extension v1.23.0 or later. Earlier versions load the files into every tab with ' +
+            'a bound video.',
         tags: [],
         paramsSchema: loadSubtitlesParamsSchema,
         paramDescriptions: {
-            files: 'Subtitle files, base64-encoded, with their file names.',
-            mediaId: 'Target media. Omit to target the active media.',
+            files: 'Files to load. Each file has a name (including its extension) and base64-encoded contents.',
+            mediaId: 'Optional media id from `get-bound-media`. Omit to target the active tab.',
         },
         resultSchema: loadSubtitlesResultSchema,
         resultDescription: 'Empty object on success.',
@@ -320,12 +327,15 @@ export const externalApiMethods = {
     'seek-timestamp': {
         name: 'seek-timestamp',
         summary: 'Seek the target media to a timestamp.',
-        description: 'Seeks the media identified by `mediaId` to the given timestamp.',
+        description:
+            "Seeks the active tab's media by default. Set `mediaId` to an ID returned by `get-bound-media` to " +
+            'target specific media.\n\n' +
+            '`mediaId` requires extension v1.20.0+. Seeking local media requires extension v1.23.0+.',
         tags: [],
         paramsSchema: seekTimestampParamsSchema,
         paramDescriptions: {
-            timestamp: 'Timestamp to seek to, in seconds.',
-            mediaId: 'Target media. Omit to target the active media.',
+            timestamp: 'The timestamp to seek to, in seconds.',
+            mediaId: 'Optional media id from `get-bound-media`. Omit to target the active tab.',
         },
         resultSchema: seekTimestampResultSchema,
         resultDescription: 'Empty object on success.',
@@ -333,21 +343,27 @@ export const externalApiMethods = {
     'get-bound-media': {
         name: 'get-bound-media',
         summary: 'List media currently bound to asbplayer.',
-        description: 'Returns every media (streaming video elements and asbplayer instances) currently known.',
+        description:
+            'Returns the media asbplayer is currently tracking, including both streaming and local media.\n\n' +
+            'Requires extension v1.20.0+.',
         tags: [],
         paramsSchema: getBoundMediaParamsSchema,
         resultSchema: getBoundMediaResultSchema,
-        resultDescription: 'The bound media.',
+        resultDescription: 'The tracked media.',
     },
     'get-subtitles': {
         name: 'get-subtitles',
         summary: 'List the subtitle cues loaded into a player.',
-        description: 'Returns the subtitle cues currently loaded into the media identified by `mediaId`.',
+        description:
+            'Returns the subtitles currently loaded for a piece of media. By default it targets the active ' +
+            "tab's media; pass a `mediaId` from `get-bound-media` to target specific media. Returns an empty " +
+            'list when no matching media is found or no subtitles are loaded.\n\n' +
+            'Requires extension v1.20.0+.',
         tags: [],
         paramsSchema: getSubtitlesParamsSchema,
         paramDescriptions: {
-            mediaId: 'Target media. Omit to target the active media.',
-            trackNumbers: 'Restrict the result to these subtitle tracks. Omit to return all tracks.',
+            mediaId: 'Optional media id from `get-bound-media`. Defaults to the active tab when omitted.',
+            trackNumbers: 'Optional track numbers from `get-bound-media`. Returns all loaded tracks when omitted.',
         },
         resultSchema: getSubtitlesResultSchema,
         resultDescription: 'The loaded subtitle cues.',
@@ -386,8 +402,9 @@ export const externalApiMethods = {
         name: 'client-info',
         summary: 'Report the client protocol capabilities.',
         description:
-            'Server-initiated probe sent after the client connects. Returns the protocols the client supports; ' +
-            'servers use a `jsonrpc-2.0` result to switch the connection from legacy framing to JSON-RPC.',
+            'Returns asbplayer client info, such as supported protocols. The latest versions of asbplayer ' +
+            'support JSON-RPC. WebSocket servers send it after connecting; a `jsonrpc-2.0` response switches ' +
+            'the connection to JSON-RPC.',
         tags: [],
         paramsSchema: clientInfoParamsSchema,
         resultSchema: clientInfoResultSchema,
@@ -396,11 +413,13 @@ export const externalApiMethods = {
     'rpc.discover': {
         name: 'rpc.discover',
         summary: 'Discover the API surface.',
-        description: 'Returns the OpenRPC document describing this API.',
+        description:
+            'Returns the OpenRPC document for the running build. Use it to discover the current method names, ' +
+            'params, results, and transport tags instead of hard-coding them.',
         tags: [],
         paramsSchema: z.object({}),
         resultSchema: z.looseObject({}),
-        resultDescription: 'An OpenRPC document.',
+        resultDescription: 'The OpenRPC document describing the supported JSON-RPC methods.',
     },
 } satisfies Record<string, ExternalApiMethod>;
 
